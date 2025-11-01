@@ -1,0 +1,1171 @@
+@use './abstracts/' as *;
+
+/* Media Queries
+-------------------------------------------------------------- */
+
+
+
+@media only screen and (max-width: 1750px) {
+  .wrap-map .content-left {
+    padding: 40px 15px 35px 15px;
+  }
+}
+
+
+
+@media only screen and (max-width: 1600px) {
+  .main-header .main-menu {
+    margin-left: 0px;
+  }
+}
+
+@media only screen and (max-width: 1520px) {}
+
+@media only screen and (max-width: 1470px) {
+  .main-header .main-menu .navigation>li {
+    margin-right: 10px;
+  }
+
+  .header-account {
+    gap: 15px;
+  }
+
+  .header-account .header-search-icon::after,
+  .header-account .header-favorite::after {
+    left: 28px;
+  }
+
+
+}
+
+@media only screen and (max-width: 1440px) {
+  .why-choose-us-5 .content-wcs {
+    padding-left: 40px;
+    padding-right: 5em;
+  }
+
+  .why-choose-us-10 .content-wcs {
+    padding-left: 5em;
+    padding-right: 40px;
+  }
+}
+
+@media only screen and (max-width: 1320px) {
+  .why-choose-us-10 .content-wcs {
+    padding-left: 0em;
+  }
+
+  .why-choose-us-5 .content-wcs {
+    padding-left: 30px;
+    padding-right: 0em;
+  }
+
+  .swiper-button-next.style-1 {
+    right: 30px;
+  }
+
+  .swiper-button-prev.style-1 {
+    left: 30px;
+  }
+}
+
+@media only screen and (max-width: 1260px) {
+
+  //slider
+  .slider.home .content {
+    padding: 194px 0px 502px 0px;
+  }
+}
+
+@media only screen and (min-width: 991px) {
+  .blog-article-grid.list-car-grid-blog-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 30px;
+  }
+}
+
+@media only screen and (min-width: 1201px) {
+  .grid-sw-5 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 30px;
+  }
+
+  .grid-sw-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+  }
+
+  .grid-sw-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+  }
+}
+
+@media only screen and (max-width: 1200px) {
+  .filter-mobie {
+    display: block;
+  }
+
+  .sidebar-right-listing.style-2,
+  .sidebar-right-listing {
+    display: none;
+  }
+
+  .listing-grid-car-wrap .list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .sidebar-right-listing {
+    max-width: 100%;
+  }
+
+  .sidebar-right-listing.style-2 {
+    max-width: 100%;
+  }
+
+  .listing-grid .text-start {
+    flex-wrap: wrap;
+  }
+
+  .grid-5 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .section-why-choose-us2 .content-wcs {
+    padding-top: 0px;
+    padding-right: 30px;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-3 {
+    bottom: 5%;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-2 {
+    left: 30%;
+    top: 50%;
+  }
+
+  .section-why-choose-us2 .image-wcs .image-inner2 {
+    display: none;
+  }
+
+  .flat-filter-search.home3 .flat-tabs {
+    margin-top: -23.6em;
+  }
+
+  .slider.home2 .slider-item .img-slider {
+    height: 850px;
+  }
+
+  .list-car-grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .header-account ul li:nth-child(2),
+  .header-account ul li:nth-child(3) {
+    display: none;
+  }
+
+  .mobile-button,
+  .collapse {
+    display: block !important;
+  }
+
+  .header-account {
+    margin-right: 40px;
+    margin-left: 20px;
+  }
+
+  .main-header .header-lower .nav-outer,
+  .header-account .flat-bt-top {
+    display: none;
+  }
+
+
+  .main-header .header-lower {
+    padding: 20px 0px;
+  }
+
+  .blog-article-item.style2 .images {
+    max-width: 230px;
+  }
+
+  .blog-article-grid.grid-sw-2 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+@media only screen and (max-width: 1199px) {
+  .col-xl-3 .tf-icon-box.style-1 {
+    margin-bottom: 30px;
+  }
+}
+
+@media only screen and (max-width: 1024px) {
+  .slider.home2 video {
+    height: 850px;
+}
+  .mobile-menu .bottom-canvas .tf-top-bar-left {
+    display: block;
+    padding: 20px 0;
+  }
+
+  .mobile-menu .bottom-canvas .tf-top-bar-left ul li:not(:last-child) {
+    margin-bottom: 10px;
+  }
+
+  .home2 .flat-tabs .wrap-icon.trending2 {
+    padding: 0px 15px;
+  }
+
+  .slider.home2 .slider-item-content .flat-tabs .flat-tabs-wrap {
+    padding: 15px;
+  }
+
+  .wd-search-form-2 {
+    min-width: 100%;
+    left: 0px !important;
+    right: 0px !important;
+  }
+
+  .slider.home2 .slider-item-content .flat-tabs {
+    max-width: 100%;
+    width: 100%;
+    left: 0;
+    right: 0;
+  }
+
+  .slider.home2 .slider-item-content .flat-tabs .flat-tabs-wrap {
+    margin: 0px 15px;
+  }
+
+  .slider .slider-item .content .sub-title {
+    font-size: 40px;
+    line-height: 60px;
+  }
+
+  .slider.home8 .slider-item .content h1 {
+    font-size: 70px;
+    line-height: 70px;
+  }
+
+  .flat-filter-search.home6 .flat-tabs {
+    margin-top: -22.2em;
+  }
+
+  .slider.home5 .slider-item .content {
+    padding: 173px 0 300px;
+  }
+
+  .flat-filter-search.home5 .flat-tabs {
+    margin-top: -16.5em;
+  }
+
+  .flat-filter-search.home4 .flat-tabs {
+    margin-top: -17em;
+  }
+
+
+  //Top bar
+  .tf-top-bar .flex-one {
+    justify-content: center;
+
+    .tf-top-bar-left {
+      display: none;
+    }
+  }
+
+  .wd-find-select {
+    flex-wrap: wrap;
+    gap: 15px;
+
+    .form-style {
+      margin-right: 0px;
+      margin-left: 0px;
+    }
+  }
+
+  //slide
+  .flat-filter-search.home .flat-tabs {
+    margin-top: -20em;
+  }
+}
+
+
+@media only screen and (max-width: 991px) {
+  .flat-tabs .tab-title.style {
+    overflow-x: scroll;
+    white-space: nowrap;
+  }
+
+  .blog-article-item.style2 .images {
+    max-width: 100%;
+  }
+
+  .blog-article-item.style2 {
+    flex-direction: column;
+  }
+
+  .listing-sidebar .mb-40 {
+    margin-bottom: 20px !important;
+  }
+
+  .heading-widget .title {
+    font-size: 25px;
+    line-height: 35px;
+  }
+
+  .listing-recommended .item {
+    gap: 10px;
+  }
+
+  .listing-recommended .item .image {
+    max-width: 100%;
+  }
+
+  .profile-contact .btn-contact,
+  .listing-recommended .item {
+    flex-wrap: wrap;
+  }
+
+  .widget-listing {
+    padding: 15px;
+  }
+
+  .listing-sidebar {
+    margin-top: 0px;
+    position: fixed;
+    height: 100%;
+    left: -100%;
+    top: 0;
+    z-index: 99;
+    max-width: 320px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 2px 6px 0px;
+    overflow: scroll;
+    transition: all 0.3s ease-in-out;
+
+    &.open {
+      left: 0%;
+    }
+  }
+
+  .btn-siderbar-mobie-filter {
+    display: flex;
+  }
+
+  .tf-team.box .content {
+    padding: 25px 0 40px;
+  }
+
+  .listing-grid-car-wrap .list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tab-listing-scroll .nav-pills {
+    width: 1000px;
+    overflow-x: scroll;
+    white-space: nowrap;
+  }
+
+  .tfcl-listing-info.style-grid .image-list-details .image {
+    height: 300px;
+  }
+
+  .listing-detail.style-1 .listing-detail-wrap {
+    padding-right: 0px;
+  }
+
+  .widget-pricing {
+    margin-bottom: 30px;
+  }
+
+  .tf-section-map .map,
+  .tf-section-map .map-content {
+    height: 400px;
+  }
+
+  br {
+    display: none;
+  }
+
+  .logo-footer {
+    text-align: center;
+  }
+
+  .wd-search-form .box1.grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .slider.home9 .content {
+    padding: 150px 0px 80px 0px;
+  }
+
+  .loan-calculator.inner-6 {
+    padding: 70px 0px 70px 0px !important;
+  }
+
+  .blog-article-right {
+    padding-left: 0px;
+    padding-bottom: 0px;
+    padding-top: 30px;
+    border-left: 1px solid transparent;
+  }
+
+  .section-why-choose-us2 .image-wcs img {
+    width: 100%;
+  }
+
+  .flat-tabs .tab-title.style li h5 {
+    margin-bottom: 10px;
+  }
+
+  .col-lg-6:not(:last-child) .tf-image-box.style1,
+  .col-lg-6:not(:last-child) .tf-image-box.style2,
+  .col-md-6:not(:last-child) .tf-icon-box.style-1 {
+    margin-bottom: 30px;
+  }
+
+  .loan-calculator {
+    padding: 70px 0px;
+  }
+
+  .tf-section {
+    padding: 60px 0;
+  }
+
+  .tf-section2 {
+    padding-top: 60px;
+  }
+
+  .tf-section3 {
+    padding-bottom: 60px;
+  }
+
+  .list-car-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  //login-register
+  .modal-dialog-centered {
+    margin: 15px;
+  }
+
+  //login-register
+
+  .header-account .search-mobie>.wd-find-select {
+
+    margin-top: 26px;
+  }
+
+
+  .flat-blog-list .wrap-blog {
+    padding-right: 0px;
+  }
+
+  .flat-property {
+    .post {
+      margin-bottom: 30px;
+    }
+  }
+
+  .footer-main {
+    .widget {
+      margin-bottom: 40px;
+    }
+  }
+
+  .footer-main #logo-footer {
+    text-align: center;
+  }
+
+  .footer-bottom .footer-bottom-right {
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .wd-search-form .box2 {
+    gap: 0px;
+  }
+
+  .side-blog {
+    padding-top: 40px;
+  }
+}
+
+@media only screen and (max-width: 767px) {
+  .main-header .logo-box .logo img {
+    width: 180px;
+  }
+
+  .gap-30 {
+    gap: 15px;
+  }
+
+  .heading-section {
+    margin-bottom: 30px;
+  }
+
+  .form-sl .wd-find-select .inner-group.select-style .form-group-1 {
+    border-bottom: 1px solid #EDEDED;
+    padding-bottom: 10px;
+  }
+
+  .listing-slide .swiper-slide.swiper-slide-active .content-style {
+    margin-top: 10px;
+    display: block;
+  }
+
+  .form-sl .wd-find-select.wd-search-white .inner-group .form-group-1 {
+    width: 100%;
+    border-bottom: 1px solid #ededed1f;
+    padding-bottom: 12px;
+  }
+
+  .tf-icon-box.style-3 {
+    margin-bottom: 20px;
+  }
+
+  .listing-wrap-map .list-car-1.list-car-list-1 .box-car-list {
+    flex-wrap: wrap;
+  }
+
+  .list-car-list-1 .box-car-list>.image-group {
+    width: 100% !important;
+  }
+
+  .mg-42 {
+    margin: 0px 0;
+  }
+
+  .why-choose-us-5 .content-wcs {
+    padding-top: 30px;
+  }
+
+  .heading-section .flex-six {
+    justify-content: flex-start;
+  }
+
+  .listing-wrap-map .list-car-1.list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  #map .infoBox {
+    margin-left: 20px;
+    margin-bottom: -40px;
+  }
+
+  .listing-calculator.loan-calculator-form .button-boxs .sc-button {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .heading-widget .title {
+    font-size: 35px;
+    line-height: 45px;
+  }
+
+  .tfcl-listing-info.style-grid .image-list-details.item-4,
+  .tfcl-listing-info.style-grid .image-list-details.item-5 {
+    display: none;
+  }
+
+  .sale-agents-detail .image,
+  .sale-agents-detail .image img {
+    min-width: 100%;
+  }
+
+  .sale-agents-detail .content {
+    margin-top: 0px;
+  }
+
+  .sale-agents-detail {
+    flex-wrap: wrap;
+  }
+
+  .wrap-map {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+  }
+
+  .wrap-map .content-left {
+    width: 100%;
+  }
+
+  .wrap-map .content-right {
+    width: 100%;
+    position: relative;
+  }
+
+  .content-right #map,
+  .content-right iframe {
+    height: 500px;
+  }
+
+  .tf-banner .content .heading h1 {
+    font-size: 50px;
+    line-height: 55px;
+  }
+
+  .tf-banner.style-2 .content {
+    padding: 80px 0px 130px 0px;
+  }
+
+  .box-car-list.style-2 {
+    flex-wrap: wrap;
+  }
+
+  .box-car-list.style-2>.image-group {
+    width: 100% !important;
+  }
+
+  .why-choose-us-10 .image-wcs .bg-image-5 {
+    padding: 100px 0;
+  }
+
+  .why-choose-us-10 .content-wcs {
+    padding-top: 0px;
+    padding-left: 0em;
+    padding-right: 0px;
+  }
+
+  .find-car-h10 .content-wcs {
+    padding-top: 55px;
+    padding-bottom: 0px;
+    padding-left: 0px;
+  }
+
+  .flat-filter-search.home10 .flat-tabs {
+    margin-top: -45em;
+  }
+
+  .slider.home10 .content {
+    padding: 153px 0px 700px 0px;
+  }
+
+  .grid-5 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .listing-slide .swiper-slide.swiper-slide-active .img-style {
+    transform: scale(1);
+    text-align: center;
+  }
+
+  .listing-slide .swiper-slide.swiper-slide-active:before {
+    width: 300px;
+    height: 300px;
+  }
+
+  .flat-filter-search.home6 .flat-tabs {
+    margin-top: -38.2em;
+  }
+
+  .why-choose-us-5 .content-wcs {
+    padding-left: 0px;
+    padding-right: 0em;
+    padding-bottom: 0px;
+  }
+
+  .flat-filter-search.home5 .flat-tabs {
+    margin-top: -30.8em;
+  }
+
+  .slider.home5 .slider-item .content {
+    padding: 173px 0 470px;
+  }
+
+  .specifications-wrap .specifications {
+    width: 135px;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-2 {
+    left: 6%;
+    top: 50%;
+  }
+
+  .section-why-choose-us2 .content-wcs {
+    padding-top: 0px;
+    padding-right: 0px;
+  }
+
+  .slider.home4 .content {
+    padding: 200px 0px 540px 0px;
+  }
+
+  .flat-filter-search.home4 .flat-tabs {
+    margin-top: -35.3em;
+  }
+
+  .slider.home4 .content {
+    padding: 200px 0px 700px 0px;
+  }
+
+  .section-why-choose-us .content-wcs {
+    padding-left: 0px;
+    padding-top: 50px;
+  }
+
+  .section-why-choose-us .image-wcs .image-inner2 {
+    bottom: 0%;
+    right: 0%;
+  }
+
+  .slider.home3 .slider-item .content {
+    padding: 70px 0 550px;
+  }
+
+  .flat-filter-search.home3 .flat-tabs {
+    margin-top: -38.6em;
+  }
+
+  .loan-calculator.inner-2 {
+    padding: 60px 0px 170px 0px !important;
+  }
+
+  .section-feature-specs .content-feature-specs {
+    margin-top: 40px;
+  }
+
+  .col-md-4:not(:last-child) .box-car-list,
+  .col-md-4:not(:last-child) .compare-item {
+    margin-bottom: 30px;
+
+  }
+
+  .review-car .slider-item .content {
+    padding: 93px 15px 70px 15px;
+  }
+
+  .review-car .slider-item .content .heading h1 {
+    font-size: 40px;
+    line-height: 45px;
+
+  }
+
+  //slider
+  .flat-filter-search.home .flat-tabs {
+    margin-top: -35em;
+  }
+
+  .slider .slider-item .content h1 {
+    font-size: 50px;
+    line-height: 50px;
+  }
+
+  .slider.home .content {
+    padding: 140px 0px 502px 0px;
+  }
+
+  .swiper-button-prev,
+  .swiper-button-next {
+    display: none;
+  }
+
+  //slider
+  .form-sl .wd-find-select .inner-group {
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+
+  .form-sl .wd-find-select .inner-group.select-style .form-group-1:not(:last-child)::before {
+    background-color: unset;
+  }
+
+  //login-register
+  .modal-dialog-centered .images {
+    display: none;
+  }
+
+  //login-register
+  .preload-container .middle {
+    left: 45%;
+  }
+}
+
+@media only screen and (max-width: 600px) {
+  .tf-team h3 {
+    font-size: 18px;
+    line-height: 28.24px;
+  }
+
+  .tf-team .icon-socials {
+    width: 140px;
+    height: 30px;
+  }
+
+  .tf-team.box .content {
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  //mobie
+  .listing-line {
+    margin-top: 30px;
+    margin-bottom: 30px;
+  }
+
+  .box-car-list .content .days-box {
+    gap: 15px;
+    flex-wrap: wrap;
+  }
+
+  .box-car-list .content .icon-box {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .box-car-list .content .days-box {
+    padding-top: 10px;
+    margin-top: 10px;
+  }
+
+  .box-car-list .image-group .top .flag-tag {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .box-car-list .content {
+    padding: 15px 10px 15px 10px;
+  }
+
+  .loan-calculator-form {
+    padding: 15px;
+  }
+
+  #footer .footer-top .box-footer-top {
+    gap: 10px;
+    flex-direction: column;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  //mobie
+
+  .box-car-list .content .days-box .img-author {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  #compare_listing_wrap .compare-listing .compare-listing-body {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .box-tab {
+    overflow-x: scroll;
+    overflow-y: hidden;
+  }
+
+
+  .map-listing-item .inner-box {
+    max-width: 200px;
+  }
+
+  .listing-grid-car-wrap .list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .list-car-list-1.list-car-grid-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .features-inner>.inner {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .slider.home7 .slider-item .content {
+    padding: 145px 0px 170px 0px;
+    gap: 40px;
+  }
+
+  .slider.home7 .slider-item .content .controller-button {
+    display: none;
+  }
+
+  .box-car-list.style-2 {
+    flex-wrap: wrap;
+  }
+
+  .box-car-list.style-2>.image-group {
+    width: 100%;
+  }
+
+  .list-car-grid-4 {
+    gap: 15px;
+    // grid-template-columns: repeat(1, 1fr);
+  }
+
+
+  .blog-article-item.style2 .images {
+    max-width: 100%;
+  }
+
+  .header-account .search-mobie>.wd-find-select {
+    right: -6em;
+  }
+
+  .header-account .fs-20,
+  .header-account .fs-18 {
+    font-size: 16px;
+  }
+
+  .header-account .header-search-icon::after,
+  .header-account .header-favorite::after {
+    left: 25px;
+  }
+
+}
+
+.footer-heading-mobie {
+  display: none;
+}
+
+@media only screen and (max-width: 575px) {
+
+  .footer-heading-desktop,
+  .tf-collapse-content {
+    display: none;
+  }
+
+  .footer-heading-mobie {
+    display: block;
+  }
+
+  .footer-heading-mobie {
+    position: relative;
+  }
+
+  .footer-col-block.open .footer-heading-mobie::before {
+    transform: translate(0%, -50%) rotate(90deg);
+  }
+
+  .listing-details-mobie {
+
+    &::before,
+    &::after {
+      background-color: $color-2 !important;
+    }
+  }
+
+  .footer-heading-mobie::before {
+    position: absolute;
+    content: "";
+    right: 15px;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 1px;
+    height: 12px;
+    background-color: $color-1;
+    transition: 0.25s ease-in-out;
+  }
+
+  .footer-heading-mobie::after {
+    position: absolute;
+    content: "";
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 1px;
+    background-color: $color-1;
+    transition: 0.25s ease-in-out;
+  }
+
+}
+
+@media only screen and (max-width: 560px) {
+  .list-car-list-1 .box-car-list .content .inner2 {
+    width: auto;
+    padding-left: 0px;
+    border-left: 1px solid transparent;
+  }
+
+  .box-car-list.style-2 .content {
+    flex-wrap: wrap;
+    padding: 20px !important;
+  }
+
+  .tf-image-box.style1 {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .tf-image-box.style2 {
+    flex-wrap: wrap;
+    justify-content: center;
+    text-align: center;
+
+    .content .flex.gap-8 {
+      justify-content: center;
+    }
+  }
+}
+
+@media only screen and (max-width: 480px) {
+  .list-car-grid-4 .box-car-list .image-group .top ,.list-car-grid-4 .box-car-list .image-group .top ul{
+    align-items: flex-start;
+    flex-direction: column;
+}
+
+  .tf-btn-arrow {
+    padding: 7px 15px;
+    font-size: 13px;
+  }
+  .list-car-grid-2 {
+    gap: 15px;
+}
+  .tf-section {
+    padding: 50px 0;
+  }
+
+  .gap-20 {
+    gap: 10px;
+  }
+
+  .heading-section {
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 25px;
+    line-height: 33.8px;
+  }
+
+  .link-style-3 a {
+    font-size: 12px;
+  }
+
+  .wrap-icon.link-style-3 {
+    gap: 10px 15px;
+  }
+
+  .scrollspy-example {
+    padding: 0px 5px;
+  }
+
+  .widget-listing {
+    padding: 20px;
+  }
+
+  .profile-contact .btn-contact {
+    flex-wrap: wrap;
+  }
+
+  .slider.home8 .slider-item .content h1,
+  .slider.home9 .content .heading h1 {
+    font-size: 45px;
+    line-height: 55px;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-3 {
+    bottom: 15%;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-2 {
+    top: 45%;
+  }
+
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-1,
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-2,
+  .section-why-choose-us2 .image-wcs .tf-icon-list.po-3 {
+    right: 10%;
+    left: 10%;
+  }
+
+  .tf-icon-box.style-4 {
+    flex-wrap: wrap;
+  }
+
+  .flat-filter-search.home .flat-tabs {
+    margin-top: -38em;
+  }
+
+  .wd-search-form .box1.grid-4 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+
+  .wd-search-form .form-group {
+    margin-bottom: 15px;
+  }
+
+  .blog-article-item.style3 .images {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .blog-article-item.style3 {
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .slider.home5 .slider-item .content .heading {
+    margin-left: 0px;
+    padding-top: 30px;
+  }
+
+  .specifications-wrap .specifications {
+    width: calc(50% - 10px);
+  }
+
+  .specifications-wrap {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .slider.home5 .slider-item .content {
+    flex-wrap: wrap;
+  }
+
+  .slider.home2 .slider-item-content .flat-tabs .flat-tabs-wrap {
+    padding: 30px 15px;
+  }
+
+  .flat-tabs .box-tab.style1 .tab-title li {
+    width: auto;
+    height: 45px;
+    line-height: 45px;
+    margin-bottom: 10px;
+  }
+
+  .slider.home2 .slider-item-content .flat-tabs {
+    bottom: 40px;
+    left: 0;
+    right: 0;
+  }
+
+  .wd-find-select .button-search a {
+    min-width: auto;
+  }
+
+  .loan-calculator-form #loan-calculator .grid-sw-2 {
+    grid-template-columns: repeat(1, 1fr);
+    gap: 0px;
+  }
+
+  .loan-calculator-form #loan-calculator fieldset {
+    margin-bottom: 20px;
+  }
+}
+
+@media only screen and (max-width: 360px) {}
+
+@media (min-width: 401px) and (max-width: 767px) {}
+
+@media (min-width: 1700px) and (max-width: 3000px) {}

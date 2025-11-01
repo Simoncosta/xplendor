@@ -1,0 +1,227 @@
+@font-face {
+  font-family: "autodeal";
+  src: url("/assets/fonts/fonts/autodeal.eot?eblay1");
+  src: url("/assets/fonts/fonts/autodeal.eot?eblay1#iefix")
+      format("embedded-opentype"),
+    url("/assets/fonts/fonts/autodeal.ttf?eblay1") format("truetype"),
+    url("/assets/fonts/fonts/autodeal.woff?eblay1") format("woff"),
+    url("/assets/fonts/fonts/autodeal.svg?eblay1#autodeal") format("svg");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+[class^="icon-autodeal-"],
+[class*=" icon-autodeal-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: "autodeal" !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-autodeal-account:before {
+  content: "\e900";
+}
+.icon-autodeal-add-list:before {
+  content: "\e902";
+}
+.icon-autodeal-automatic:before {
+  content: "\e903";
+}
+.icon-autodeal-btn-right:before {
+  content: "\e904";
+}
+.icon-autodeal-chat:before {
+  content: "\e906";
+}
+.icon-autodeal-check:before {
+  content: "\e907";
+}
+.icon-autodeal-check1:before {
+  content: "\e908";
+}
+.icon-autodeal-city:before {
+  content: "\e90b";
+}
+.icon-autodeal-close2:before {
+  content: "\e90d";
+}
+.icon-autodeal-color:before {
+  content: "\e90e";
+}
+.icon-autodeal-condition:before {
+  content: "\e910";
+}
+.icon-autodeal-coupe:before {
+  content: "\e911";
+}
+.icon-autodeal-cylinders:before {
+  content: "\e912";
+}
+.icon-autodeal-diesel:before {
+  content: "\e917";
+}
+.icon-autodeal-doors:before {
+  content: "\e918";
+}
+.icon-autodeal-drive:before {
+  content: "\e919";
+}
+.icon-autodeal-engine:before {
+  content: "\e91b";
+}
+.icon-autodeal-facebook:before {
+  content: "\e91d";
+}
+.icon-autodeal-favorite:before {
+  content: "\e91e";
+}
+.icon-autodeal-filter:before {
+  content: "\e920";
+}
+.icon-autodeal-financing:before {
+  content: "\e921";
+}
+.icon-autodeal-fuel:before {
+  content: "\e922";
+}
+.icon-autodeal-hatchback:before {
+  content: "\e924";
+}
+.icon-autodeal-hightway:before {
+  content: "\e925";
+}
+.icon-autodeal-hybrid:before {
+  content: "\e926";
+}
+.icon-autodeal-instagram:before {
+  content: "\e929";
+}
+.icon-autodeal-inventory:before {
+  content: "\e92a";
+}
+.icon-autodeal-km:before {
+  content: "\e92b";
+}
+.icon-autodeal-km1:before {
+  content: "\e92c";
+}
+.icon-autodeal-linkedin:before {
+  content: "\e92d";
+}
+.icon-autodeal-list:before {
+  content: "\e92e";
+}
+.icon-autodeal-mail:before {
+  content: "\e930";
+}
+.icon-autodeal-max-power:before {
+  content: "\e932";
+}
+.icon-autodeal-max-torque:before {
+  content: "\e933";
+}
+.icon-autodeal-minus:before {
+  content: "\e935";
+}
+.icon-autodeal-next:before {
+  content: "\e939";
+}
+.icon-autodeal-number:before {
+  content: "\e93c";
+}
+.icon-autodeal-offer:before {
+  content: "\e93d";
+}
+.icon-autodeal-owner:before {
+  content: "\e93e";
+}
+.icon-autodeal-phone2:before {
+  content: "\e941";
+}
+.icon-autodeal-plus:before {
+  content: "\e944";
+}
+.icon-autodeal-plus1:before {
+  content: "\e945";
+}
+.icon-autodeal-priev:before {
+  content: "\e947";
+}
+.icon-autodeal-red:before {
+  content: "\e94a";
+}
+.icon-autodeal-right2:before {
+  content: "\e94d";
+}
+.icon-autodeal-search:before {
+  content: "\e94e";
+}
+.icon-autodeal-search-filter:before {
+  content: "\e950";
+}
+.icon-autodeal-seats:before {
+  content: "\e951";
+}
+.icon-autodeal-service:before {
+  content: "\e953";
+}
+.icon-autodeal-size:before {
+  content: "\e956";
+}
+.icon-autodeal-star:before {
+  content: "\e958";
+}
+.icon-autodeal-stock:before {
+  content: "\e959";
+}
+.icon-autodeal-suv:before {
+  content: "\e95a";
+}
+.icon-autodeal-testimonial:before {
+  content: "\e95b";
+}
+.icon-autodeal-top:before {
+  content: "\e95d";
+}
+.icon-autodeal-transmission:before {
+  content: "\e95e";
+}
+.icon-autodeal-transmission1:before {
+  content: "\e95f";
+}
+.icon-autodeal-trending:before {
+  content: "\e960";
+}
+.icon-autodeal-twitter:before {
+  content: "\e961";
+}
+.icon-autodeal-up:before {
+  content: "\e962";
+}
+.icon-autodeal-used-car:before {
+  content: "\e965";
+}
+.icon-autodeal-user:before {
+  content: "\e966";
+}
+.icon-autodeal-view2:before {
+  content: "\e96b";
+}
+.icon-autodeal-view-more:before {
+  content: "\e96c";
+}
+.icon-autodeal-year:before {
+  content: "\e96d";
+}
+.icon-autodeal-youtube:before {
+  content: "\e96e";
+}

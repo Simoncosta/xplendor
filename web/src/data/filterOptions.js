@@ -1,0 +1,17 @@
+export const featureOptions = [
+  "A/C: Front",
+  "Backup Camera",
+  "Cruise Control",
+  "Navigation",
+  "Power Locks",
+  "Audio system",
+  "Touchscreen display",
+  "GPS navigation",
+  "Phone connectivity",
+  "In-car Wi-Fi",
+  "Chrome-plated grill",
+  "Smart headlight cluster",
+  "Premium wheels",
+  "Body character lines",
+  "High-quality paint",
+];

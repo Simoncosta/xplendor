@@ -1,0 +1,100 @@
+@use '../abstracts/' as *;
+
+/* button 
+--------------------------------------------------*/
+.sc-button {
+    display      : inline-block;
+    background-color: $color-3;
+    box-sizing   : border-box;
+    padding         : 15px 36.5px;
+    border-radius: 14px;
+    text-align: center;
+    @include transition3;
+    span {
+        color             : $color-1;
+        font-weight       : 500;
+        font-size         : 16px;
+        position          : relative;
+        // text-transform    : capitalize;
+        @include transition3;
+    }
+    i {
+      @include transition3;
+    }
+    &:hover,
+    &.active {
+        border-color: transparent;
+        outline: 0 none;
+        background-color: $color-2;
+        svg {
+          animation: 0.3s link-icon2 linear;
+        }
+    }
+    i{
+      color : $color-1;
+      margin-left: 10px;
+    }
+    svg {
+      margin-right: 17px;
+      path {
+        @include transition3;
+      }
+    }
+    &.btn-55{
+      padding: 15px 55.5px !important;
+
+    }
+    &.btn-svg {
+      svg,i {
+        margin-right: 0;
+      }
+    }
+    &.btn-1 {
+      background-color: transparent;
+      border: 1px solid $color-3;
+      padding: 14px 31.5px;
+      font-family: $font-1;
+      color             : $color-3;
+      span {
+        color             : $color-3;
+        font-size: 16px;
+      }
+      i {
+        margin-left: 10px;
+        font-size: 12px;
+      }
+      &:hover,
+      &.active {
+        background-color: $color-3;
+        span ,i{
+          color : $color-1;
+        }
+        svg,i {
+          animation: 0.3s link-icon2 linear;
+          
+        }
+        svg,
+        path {
+          fill: $color-1;
+          stroke: $color-1;
+        }
+      }
+    }
+
+}
+.view-car {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 17.64px;
+  font-family: $font-1;
+  color: $color-2;
+  border: 1px solid $color-2;
+  border-radius: 14px;
+  padding: 9px 15.5px;
+  @include transition3;
+
+  &:hover {
+      color: $color-3;
+      border: 1px solid $color-3;
+  }
+}
