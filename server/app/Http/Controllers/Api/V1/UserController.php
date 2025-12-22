@@ -2,29 +2,65 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Helpers\ApiPaginate;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AuthRequest;
+use App\Http\Requests\PaginateRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
     public function __construct(protected UserService $userService) {}
 
-    public function store(StoreUserRequest $request)
+    public function index(PaginateRequest $request, int $companyId)
     {
-        $user = $this->userService->register($request->validated());
+        $authUser = Auth::user();
 
-        return ApiResponse::success([
-            'token' => $this->userService->createToken($user, $user->name),
-            'user'  => new UserResource($user),
-        ], 'User created successfully.');
+        // Bloqueia caso o usuário não pertença à empresa da rota
+        if ($authUser->company_id !== $companyId) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $paginate = $request->input('perPage')
+            ? ApiPaginate::perPage($request)
+            : null;
+
+        $users = $this->userService->getAll(
+            [
+                "id",
+                "name",
+                "avatar",
+                "signature",
+                "email",
+                "gender",
+                "email_verified_at",
+                "role",
+                "company_id"
+            ],
+            [],
+            $paginate,
+            ['company_id' => $companyId]
+        );
+
+        return ApiResponse::success($users, 'Utilizadores encontrado com sucesso.');
+    }
+
+    public function store(StoreUserRequest $request, int $companyId)
+    {
+        $data = $request->validated();
+        $data['role'] = 'user';
+        $data['company_id'] = $companyId;
+        $invite = $this->userService->store($data);
+
+        return ApiResponse::success($invite, 'Convite enviado com sucesso.');
     }
 
     public function update(UpdateUserRequest $request, string $id)
@@ -46,18 +82,36 @@ class UserController extends Controller
             ]);
         }
 
-        $token = $this->userService->createToken($user, $user->name);
-        $userArray = (new UserResource($user))->resolve();
+        $token = $this->userService->createToken($user, $user['name']);
 
         return ApiResponse::success(
-            array_merge(['token' => $token], $userArray),
+            array_merge(['token' => $token], $user->toArray()),
             'User created successfully.'
         );
     }
 
-    public function me()
+    public function show(int $companyId, int $id)
     {
-        return ApiResponse::success(new UserResource($this->userService->me()), 'User fetched successfully.');
+        $authUser = Auth::user();
+
+        // Bloqueia caso o usuário não pertença à empresa da rota
+        if ($authUser->company_id !== $companyId) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $user = $this->userService->findOrFail(
+            $id,
+            'id',
+            ['id', 'name', 'avatar', 'signature', 'email', 'role', 'gender', 'company_id'],
+            ['company']
+        );
+
+        // Verifica se o usuário encontrado pertence à empresa correta
+        if ($user['company_id'] !== $companyId) {
+            return ApiResponse::error('Utilizador não encontrado ou sem permissão.', 403);
+        }
+
+        return ApiResponse::success($user, 'User fetched successfully.');
     }
 
     public function logout(Request $request)
@@ -72,5 +126,17 @@ class UserController extends Controller
         $this->userService->revokeToken();
 
         return ApiResponse::success(null, 'All tokens revoked successfully.');
+    }
+
+    public function registerByInvite(Request $request)
+    {
+        $data = $request->validate([
+            'token'     => ['required', 'string'],
+            'password'  => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $this->userService->registerByInvite($data);
+
+        return ApiResponse::success($user, 'Convite aceito com sucesso.');
     }
 }

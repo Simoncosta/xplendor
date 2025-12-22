@@ -16,9 +16,10 @@ class UserSeeder extends Seeder
         User::insert([
             [
                 'name' => 'Admin Xplendor',
-                'email' => 'admin@xplendor.eu',
+                'email' => 'admin@xplendor.pt',
                 'password' => bcrypt('admin'),
-                'role' => 'admin',
+                'role' => 'root',
+                'company_id' => 1
             ],
             // [
             //     'name' => 'User Xplendor',

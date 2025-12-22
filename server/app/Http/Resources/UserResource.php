@@ -20,8 +20,6 @@ class UserResource extends JsonResource
             'email' => (string) $this->email,
             'avatar' => (string) $this->avatar,
             'role'  => (string) $this->role,
-            'company' => new CompanyResource($this->whenLoaded('company')),
-            'social_links' => SocialLinkResource::collection($this->whenLoaded('socialLinks')),
             'accepted_at' => optional($this->accepted_at)?->toDateTimeString(),
             'created_at' => optional($this->created_at)?->toDateTimeString(),
             'updated_at' => optional($this->updated_at)?->toDateTimeString(),

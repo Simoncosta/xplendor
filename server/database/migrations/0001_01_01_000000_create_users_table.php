@@ -15,11 +15,14 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('avatar')->nullable();
+            $table->string('signature')->nullable();
             $table->string('email')->unique();
+            $table->enum('gender', ['male', 'female'])->nullable();
+            $table->date('birthdate')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
-            $table->enum('role', ['user', 'admin', 'manager', 'seller'])->default('user');
+            $table->enum('role', ['user', 'admin', 'root'])->default('user')->index();
             $table->foreignId('company_id')->nullable()->constrained()->index();
             $table->timestamp('accepted_at')->nullable();
             $table->timestamps();

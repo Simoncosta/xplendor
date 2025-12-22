@@ -5,9 +5,6 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,11 +22,13 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'avatar',
+        'signature',
         'email',
         'password',
-        'avatar',
         'role',
-        'accepted_at',
+        'gender',
+        'birthdate',
         'company_id',
     ];
 
@@ -55,31 +54,6 @@ class User extends Authenticatable
             'accepted_at' => 'datetime',
             'password' => 'hashed',
         ];
-    }
-
-    public function socialLinks(): MorphMany
-    {
-        return $this->morphMany(SocialLink::class, 'sociable');
-    }
-
-    public function cars(): HasMany
-    {
-        return $this->hasMany(Car::class, 'seller_id');
-    }
-
-    public function companyViews(): HasMany
-    {
-        return $this->hasMany(CompanyView::class);
-    }
-
-    public function carViews(): HasMany
-    {
-        return $this->hasMany(CarView::class);
-    }
-
-    public function carLogs(): HasMany
-    {
-        return $this->hasMany(CarLog::class);
     }
 
     public function company(): BelongsTo

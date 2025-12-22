@@ -3,9 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Company extends Model
@@ -13,48 +10,37 @@ class Company extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'name',
-        'logo',
-        'banner_main',
-        'title_about',
-        'description_about',
+        'nipc',
+        'fiscal_name',
+        'trade_name',
+        'responsible_name',
         'address',
-        'number',
-        'city',
-        'state',
-        'zip_code',
-        'show_address',
+        'postal_code',
+        'district_id',
+        'municipality_id',
+        'parish_id',
+        'phone',
+        'mobile',
+        'email',
+        'invoice_email',
+        'registry_office',
+        'registry_office_number',
+        'capital_social',
+        'nib',
+        'registration_fees',
+        'export_promotion_price',
+        'credit_intermediation_link',
+        'vat_value',
+        'facebook_page_id',
+        'facebook_pixel_id',
+        'facebook_access_token',
+        'website',
+        'lead_hours_pending',
+        'lead_distribution',
+        'ad_text',
+        'pdf_path',
+        'logo_path',
+        'carmine_logo_path',
         'plan_id',
-        'country_id',
     ];
-
-    public function socialLinks(): MorphMany
-    {
-        return $this->morphMany(SocialLink::class, 'sociable');
-    }
-
-    public function plan(): BelongsTo
-    {
-        return $this->belongsTo(Plan::class);
-    }
-
-    public function views(): HasMany
-    {
-        return $this->hasMany(CompanyView::class);
-    }
-
-    public function users(): HasMany
-    {
-        return $this->hasMany(User::class);
-    }
-
-    public function operations(): HasMany
-    {
-        return $this->hasMany(CompanyOperation::class);
-    }
-
-    public function country()
-    {
-        return $this->belongsTo(Country::class);
-    }
 }

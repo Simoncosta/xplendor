@@ -14,9 +14,4 @@ class Plan extends Model
         'car_limit',
         'features',
     ];
-
-    public function companies(): HasMany
-    {
-        return $this->hasMany(Company::class);
-    }
 }

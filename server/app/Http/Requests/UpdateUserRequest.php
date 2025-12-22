@@ -23,10 +23,9 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'name' => ['sometimes', 'string', 'max:255'],
-            'avatar' => ['nullable', 'string'],
-            'social_links' => ['sometimes', 'array'],
-            'social_links.*.type' => ['required_with:social_links', 'string', 'in:facebook,instagram,youtube,site,whatsapp,social_x,linkedin,phone'],
-            'social_links.*.value' => ['required_with:social_links', 'string', 'max:255'],
+            'avatar' => ['nullable', 'file', 'image', 'max:2048'],
+            'birthdate' => ['nullable', 'date'],
+            'gender' => ['nullable', 'string', 'in:male,female'],
         ];
     }
 }

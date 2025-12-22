@@ -16,7 +16,7 @@ class PlanController extends Controller
 
     public function index()
     {
-        $plans = $this->planService->all();
+        $plans = $this->planService->getAll();
 
         return ApiResponse::success(PlanResource::collection($plans), 'Plans fetched successfully.');
     }
@@ -29,7 +29,7 @@ class PlanController extends Controller
 
     public function show(int $id)
     {
-        $plan = $this->planService->find($id);
+        $plan = $this->planService->findOrFail($id, 'id');
         return ApiResponse::success(new PlanResource($plan), 'Plan fetched successfully.');
     }
 
@@ -41,7 +41,7 @@ class PlanController extends Controller
 
     public function destroy(int $id)
     {
-        $this->planService->delete($id);
+        $this->planService->destroy($id);
         return ApiResponse::success(null, 'Plan deleted successfully.');
     }
 }

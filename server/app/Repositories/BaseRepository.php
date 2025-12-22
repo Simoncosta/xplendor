@@ -2,51 +2,202 @@
 
 namespace App\Repositories;
 
-use Illuminate\Database\Eloquent\Model;
+use App\Models\BlingConnection;
+use App\Models\BlingToken;
+use App\Models\CompanyUserPivot;
 use App\Repositories\Contracts\BaseRepositoryInterface;
+use App\Services\BlingAPI\BlingAuthenticationService;
+use Carbon\Carbon;
+use Exception;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 
 abstract class BaseRepository implements BaseRepositoryInterface
 {
     protected Model $model;
 
+    /**
+     * Construtor da classe
+     */
     public function __construct(Model $model)
     {
         $this->model = $model;
     }
 
-    public function find(int $id): ?Model
+    /**
+     * Método responsável por buscar um registro pelo ID
+     *
+     * @param int $id
+     * @param string|null $field
+     * @param array $columns
+     * @return array
+     */
+    public function findOrFail(int $id, ?string $field = null, array $columns = ['*'], array $relations = [], array $filters = []): mixed
     {
-        return $this->model->find($id);
+        try {
+            $field = $field ?? 'id';
+            $data = $this->model->where($field, $id)->select($columns);
+
+            if (!empty($relations)) {
+                $formattedRelations = [];
+
+                foreach ($relations as $key => $value) {
+                    if (is_int($key)) {
+                        // Relações simples: ['user', 'category.company']
+                        $formattedRelations[] = $value;
+                    } elseif (is_callable($value)) {
+                        // Relações com closure: ['user' => fn(...) => ...]
+                        $formattedRelations[$key] = $value;
+                    }
+                }
+
+                $data->with($formattedRelations);
+            }
+
+            // Filtros dinâmicos
+            foreach ($filters as $field => $value) {
+
+                if ($value === null || $value === '' || $value === []) {
+                    continue;
+                }
+
+                // Filtro LIKE
+                if (is_array($value) && isset($value['like'])) {
+                    $data->where($field, 'LIKE', '%' . $value['like'] . '%');
+                    continue;
+                }
+
+                // Filtro whereIn
+                if (is_array($value)) {
+                    $data->whereIn($field, $value);
+                    continue;
+                }
+
+                // Filtro exato
+                $data->where($field, $value);
+            }
+
+            $data = $data->firstOrFail();
+
+            return $data;
+        } catch (ModelNotFoundException $e) {
+
+            return ['message' => 'Não há dados com estes parâmetros.', 'error' => $e->getMessage()];
+        } catch (Exception $e) {
+
+            return ['message' => 'Ocorreu um erro inesperado.', 'error' => $e->getMessage()];
+        }
     }
 
-    public function create(array $data): Model
+    /**
+     * Método responsável por buscar um pedido pelo ID e relacionamentos
+     *
+     * @param int $id
+     * @return mixed
+     */
+    public function findWithRelations($id, $relations = []): mixed
     {
-        return $this->model->create($data);
-    }
+        if (empty($relations)) {
+            return $this->model->find($id);
+        }
 
-    public function update(Model $model, array $data): Model
-    {
-        $model->update($data);
-        return $model;
-    }
-
-    public function delete(Model $model): void
-    {
-        $model->delete();
-    }
-
-    public function all(): \Illuminate\Database\Eloquent\Collection
-    {
-        return $this->model->get();
-    }
-
-    public function findWithRelations(int $id, array $relations = []): ?Model
-    {
         return $this->model->with($relations)->find($id);
     }
 
-    public function allWithRelations(array $relations = []): \Illuminate\Database\Eloquent\Collection
+    /**
+     * Retorna dados com ou sem paginação, relações e colunas
+     *
+     * @param array $columns
+     * @param array $relations
+     * @param int|null $perPage
+     * @param array $filters
+     * @param array $orderBy
+     * @return mixed
+     */
+    public function getAll(array $columns = ['*'], array $relations = [], ?int $perPage = null, array $filters = [], array $orderBy = []): mixed
     {
-        return $this->model->with($relations)->get();
+        $query = $this->model->select($columns);
+
+        // relações dinâmicas
+        if (!empty($relations)) {
+            $query->with($relations);
+        }
+
+        // Filtros dinâmicos
+        foreach ($filters as $field => $value) {
+
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            // Filtro LIKE
+            if (is_array($value) && isset($value['like'])) {
+                $query->where($field, 'LIKE', '%' . $value['like'] . '%');
+                continue;
+            }
+
+            // Filtro whereIn
+            if (is_array($value)) {
+                $query->whereIn($field, $value);
+                continue;
+            }
+
+            // Filtro exato
+            $query->where($field, $value);
+        }
+
+        // Ordenação dinâmica
+        foreach ($orderBy as $field => $direction) {
+            $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc'; // segurança contra inputs inválidos
+            $query->orderBy($field, $direction);
+        }
+
+        return $perPage
+            ? $query->paginate($perPage)
+            : $query->get();
+    }
+
+    /**
+     * Método responsável por salvar um registro
+     *
+     * @param array $data
+     * @return array
+     */
+    public function store(array $data): mixed
+    {
+        try {
+            $store = $this->model->create($data);
+
+            return $store;
+        } catch (Exception $e) {
+
+            return ['message' => 'Erro ao inserir dados.', 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Método responsável responsável por atualizar um registro
+     *
+     * @param int $id
+     * @param array $response
+     * @return array
+     */
+    public function update(int $id, array $data): mixed
+    {
+        $response = $this->model->find($id);
+        $response->update($data);
+        return $response;
+    }
+
+    /**
+     * Método responsável por excluir um registro
+     *
+     * @param int $id
+     */
+    public function destroy(int $id): mixed
+    {
+        $model = $this->model->find($id);
+        return $model->delete();
     }
 }
