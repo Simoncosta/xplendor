@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
-use App\Models\Car;
-use App\Models\Company;
-use App\Observers\CarObserver;
-use App\Observers\CompanyObserver;
+use App\Models\{
+    Company
+};
+use App\Observers\{
+    CompanyObserver
+};
 use App\Repositories\Contracts\{
+    CarRepositoryInterface,
     CompanyRepositoryInterface,
     DistrictRepositoryInterface,
     MunicipalityRepositoryInterface,
@@ -16,6 +19,7 @@ use App\Repositories\Contracts\{
     UserRepositoryInterface
 };
 use App\Repositories\{
+    CarRepository,
     CompanyRepository,
     DistrictRepository,
     MunicipalitytRepository,
@@ -33,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
         $this->app->bind(DistrictRepositoryInterface::class, DistrictRepository::class);
         $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalitytRepository::class);
@@ -45,5 +50,8 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void {}
+    public function boot(): void
+    {
+        Company::observe(CompanyObserver::class);
+    }
 }

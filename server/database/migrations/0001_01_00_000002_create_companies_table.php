@@ -16,6 +16,7 @@ return new class extends Migration
 
             $table->string('nipc', 20);
             $table->string('fiscal_name'); // Designação Fiscal
+            $table->string('slug')->nullable()->unique();
             $table->string('trade_name')->nullable(); // Nome Comercial
             $table->string('responsible_name')->nullable(); // Nome Responsável
 
@@ -39,11 +40,14 @@ return new class extends Migration
             $table->string('credit_intermediation_link')->nullable(); // Link Banco de Portugal
             $table->integer('vat_value')->nullable(); // Valor IVA
 
-
             $table->string('facebook_page_id')->nullable(); // ID da Página do Facebook
             $table->string('facebook_pixel_id')->nullable(); // Facebook Pixel ID
             $table->string('facebook_access_token')->nullable(); // Token de Acesso Facebook
             $table->string('website')->nullable(); // Website
+            $table->string('instagram')->nullable(); // Instagram
+            $table->string('youtube')->nullable(); // Youtube
+            $table->string('facebook')->nullable(); // Facebook
+            $table->string('google')->nullable(); // Google
 
             $table->string('lead_hours_pending')->nullable(); // Nº de horas que a lead fica pendente
             $table->enum('lead_distribution', ['manual', 'automatic_latest', 'automatic_less'])->default('manual'); // Distribuição de Leads
@@ -52,6 +56,7 @@ return new class extends Migration
 
             $table->string('pdf_path')->nullable(); // Caminho do PDF
             $table->string('logo_path')->nullable(); // Caminho do logotipo principal
+            $table->string('banner_path', 20)->nullable(); // Caminho do banner principal
             $table->string('carmine_logo_path')->nullable(); // Caminho do logotipo Carmine
 
             $table->foreignId('plan_id')->constrained();

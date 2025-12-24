@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\{
+    CarController,
     CompanyController,
     DistrictController,
     PlanController,
@@ -23,6 +24,7 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('/companies/{id}')->group(function () {
             Route::apiResource('/users', UserController::class);
+            Route::apiResource('/cars', CarController::class);
         });
 
         Route::apiResource('/districts', DistrictController::class)->only(['index']);
