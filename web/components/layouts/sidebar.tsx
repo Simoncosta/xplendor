@@ -17,6 +17,7 @@ import IconHospital from '../icon/icon-hospital';
 import IconUsers from '../icon/icon-users';
 import IconCaretDown from '../icon/icon-caret-down';
 import IconTxtFile from '../icon/icon-txt-file';
+import IconMenuSuspension from '../icon/menu/icon-menu-suspension';
 
 const Sidebar = () => {
     const dispatch = useDispatch();
@@ -99,6 +100,14 @@ const Sidebar = () => {
                                     <div className="flex items-center">
                                         <IconMenuDashboard className="shrink-0 group-hover:!text-primary" />
                                         <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('dashboard')}</span>
+                                    </div>
+                                </Link>
+                            </li>
+                            <li className="menu nav-item">
+                                <Link href="/cars" className="nav-link group">
+                                    <div className="flex items-center">
+                                        <IconMenuSuspension className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('cars.title')}</span>
                                     </div>
                                 </Link>
                             </li>

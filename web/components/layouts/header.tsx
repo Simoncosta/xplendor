@@ -193,7 +193,7 @@ const Header = () => {
                                 placement={`${isRtl ? 'bottom-start' : 'bottom-end'}`}
                                 btnClassName="relative group block"
                                 button={<img className="h-9 w-9 rounded-full object-cover saturate-50 group-hover:saturate-100" src={
-                                    user.avatar
+                                    user?.avatar
                                         ? `${process.env.NEXT_PUBLIC_API_URL}/storage/${user.avatar}`
                                         : "/assets/images/user-profile.jpeg"
                                 } alt="userProfile" />}

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Car extends Model
@@ -14,8 +15,8 @@ class Car extends Model
         'vin',
         'registration_month',
         'registration_year',
-        'brand',
-        'model',
+        'car_brand_id',
+        'car_model_id',
         'version',
         'public_version_name',
         'fuel_type',
@@ -51,6 +52,44 @@ class Car extends Model
         'youtube_url',
         'company_id',
     ];
+
+    protected $casts = [
+        'extras' => 'array',
+    ];
+
+    public function getExtrasAttribute($value)
+    {
+        $extras = json_decode($value, true) ?? [];
+
+        // Lista dos grupos padrão
+        $defaultGroups = [
+            'comfort_multimedia',
+            'exterior_equipment',
+            'interior_equipment',
+            'safety_performance',
+        ];
+
+        // Indexa os grupos salvos para facilitar merge
+        $indexed = collect($extras)->keyBy('group');
+
+        // Garante retorno com todos os grupos
+        return collect($defaultGroups)->map(function ($group) use ($indexed) {
+            return [
+                'group' => $group,
+                'items' => $indexed[$group]['items'] ?? [],
+            ];
+        })->toArray();
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(CarBrand::class, 'car_brand_id');
+    }
+
+    public function model(): BelongsTo
+    {
+        return $this->belongsTo(CarModel::class, 'car_model_id');
+    }
 
     public function images(): HasMany
     {

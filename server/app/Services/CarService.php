@@ -20,7 +20,7 @@ class CarService extends BaseService
     public function store(array $data): mixed
     {
         $car = $this->repository->store($data); // Cria carro e retorna ID
-        $slug = Str::slug("{$data['brand']}-{$data['model']}");
+        $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
 
         // Salvar imagens normais
         if (!empty($data['images'])) {
@@ -42,7 +42,7 @@ class CarService extends BaseService
         if (!empty($data['exterior_360_images'])) {
             $images = $data['exterior_360_images'];
             $meta = $data['exterior_360_meta'] ?? [];
-            $processed = $this->car360ExteriorImageService->handleUploads($images, $meta, '360_exterior', $data['company_id'], $car->id, $slug);
+            $processed = $this->car360ExteriorImageService->handleUploads($images, $meta, 'exterior_360_images', $data['company_id'], $car->id, $slug);
 
             foreach ($processed as $img) {
                 $car->car360ExteriorImages()->create([
@@ -59,7 +59,7 @@ class CarService extends BaseService
     public function update(int $id, array $data): mixed
     {
         $car = $this->carRepository->findOrFail($id, 'id');
-        $slug = Str::slug("{$data['brand']}-{$data['model']}");
+        $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
 
         // Atualiza dados principais do carro
         $car->update($data);
@@ -111,6 +111,12 @@ class CarService extends BaseService
                     'order' => $metaAtual['order'] ?? $img->order,
                     'is_primary' => $metaAtual['is_primary'] ?? $img->is_primary,
                 ]);
+            }
+        } else {
+            // Se não mandou o campo 'images', apaga tudo
+            foreach ($car->images as $img) {
+                Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
+                $img->delete();
             }
         }
 
@@ -174,7 +180,7 @@ class CarService extends BaseService
         }
 
         $companyId = $car->company_id;
-        $slug = Str::slug("{$car->brand}-{$car->model}");
+        $slug = Str::slug("{$car->car_brand_id}-{$car->car_model_id}");
         $baseFolder = "company_{$companyId}/cars/{$slug}-{$car->id}";
 
         // 1) Apagar imagens normais (DB + Storage)

@@ -22,13 +22,11 @@ return new class extends Migration
             $table->string('license_plate')->nullable()->comment('Matrícula');
             $table->string('vin')->nullable();
 
-            // Registration
+            // Core vehicle data
+            $table->foreignId('car_brand_id')->constrained('car_brands');
+            $table->foreignId('car_model_id')->constrained('car_models');
             $table->unsignedTinyInteger('registration_month')->nullable();
             $table->unsignedSmallInteger('registration_year');
-
-            // Core vehicle data
-            $table->string('brand')->comment('Marca');
-            $table->string('model')->comment('Modelo');
             $table->string('version')->comment('Versão');
             $table->string('public_version_name')->nullable()->comment('Versão diferente que aparecerá no site');
             $table->string('fuel_type')->comment('Combustível');
@@ -53,7 +51,7 @@ return new class extends Migration
             $table->string('warranty_available')->nullable();
             $table->date('warranty_due_date')->nullable();
             $table->unsignedInteger('warranty_km')->nullable();
-            $table->string('service_records', 10)->comment('Registos');
+            $table->string('service_records', 10)->nullable()->comment('Registos');
             $table->boolean('has_spare_key')->default(false);
             $table->boolean('has_manuals')->default(false);
 

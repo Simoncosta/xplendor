@@ -1,5 +1,5 @@
 import React, { Fragment, ReactNode, useMemo, useState } from "react";
-import { DataTable, DataTableColumn, DataTableProps, DataTableSortStatus } from "mantine-datatable";
+import { DataTable, DataTableColumn, DataTableProps, DataTableRowExpansionProps, DataTableSortStatus } from "mantine-datatable";
 import { TextInput, Group, Button, Tooltip } from "@mantine/core";
 import IconPencil from "./icon/icon-pencil";
 import IconTrash from "./icon/icon-trash";
@@ -39,7 +39,8 @@ export type UDatatableProps<T> = Omit<DataTableProps<T>, 'onRecordsPerPageChange
     onSearchChange?: (query: string) => void;
     sortDirection?: 'asc' | 'desc';
     onRecordsPerPageChange: (pageSize: TPageSize) => void;
-    controls?: UDatatableControls<T>
+    controls?: UDatatableControls<T>;
+    rowExpansion?: DataTableRowExpansionProps<T>;
 }
 
 /**
@@ -274,6 +275,7 @@ export function UDatatable<T extends Record<string, any>>(
                     style={{ width: "100%", height: "100%" }}
                     sortStatus={sortStatus ?? undefined}
                     onSortStatusChange={setSortStatus}
+                    rowExpansion={props.rowExpansion}
                 />
             </div>
         </div>

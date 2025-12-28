@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Api\V1\{
+    CarBrandController,
     CarController,
+    CarModelController,
     CompanyController,
     DistrictController,
     PlanController,
@@ -30,6 +32,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('/districts', DistrictController::class)->only(['index']);
         Route::get('/districts/{id}/municipalities', [DistrictController::class, 'getMunicipalities']);
         Route::get('/municipalities/{id}/parishes', [DistrictController::class, 'getParishes']);
+
+        Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
+        Route::apiResource('/car-models', CarModelController::class)->only(['index']);
     });
 });
 

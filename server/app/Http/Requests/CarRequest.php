@@ -36,8 +36,8 @@ class CarRequest extends FormRequest
             'registration_year' => ['required', 'integer', 'min:1900', 'max:' . now()->year],
 
             // Core vehicle data
-            'brand' => ['required', 'string', 'max:100'],
-            'model' => ['required', 'string', 'max:100'],
+            'car_brand_id' => ['required', 'exists:car_brands,id'],
+            'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],
             'public_version_name' => ['nullable', 'string', 'max:150'],
             'fuel_type' => ['required', 'string', 'max:50'],
@@ -62,7 +62,7 @@ class CarRequest extends FormRequest
             'warranty_available' => ['nullable', 'string', 'max:50'],
             'warranty_due_date' => ['nullable', 'date'],
             'warranty_km' => ['nullable', 'integer', 'min:0'],
-            'service_records' => ['required', 'string', 'max:10'],
+            'service_records' => ['nullable', 'string', 'max:10'],
             'has_spare_key' => ['boolean'],
             'has_manuals' => ['boolean'],
 
