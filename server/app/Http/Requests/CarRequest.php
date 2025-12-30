@@ -84,7 +84,11 @@ class CarRequest extends FormRequest
 
             // Imagens normais (upload)
             'images' => ['nullable', 'array'],
-            'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'], // 5MB cada
+            'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 10MB cada
+
+            // Imagens já existentes
+            'existing_images' => ['nullable', 'array'],
+            'existing_images.*' => ['string'],
 
             // Metadados opcionais das imagens normais (mesma ordem do array images)
             'images_meta' => ['nullable', 'array'],
@@ -93,7 +97,7 @@ class CarRequest extends FormRequest
 
             // Imagens 360 exterior (upload)
             'exterior_360_images' => ['nullable', 'array'],
-            'exterior_360_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'], // 5MB cada
+            'exterior_360_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 5MB cada
 
             // Metadados opcionais das imagens 360 (mesma ordem do array exterior_360_images)
             'exterior_360_meta' => ['nullable', 'array'],

@@ -103,7 +103,7 @@ export default function ComponentsCarEditor({
             </section>
             <section className="col-span-12 grid grid-cols-12 gap-4">
                 <h2 className='col-span-12 flex items-center font-extrabold border-b text-lg my-2 capitalize'>
-                    {t('grid.equipment')}
+                    {t('grid.equipments')}
                 </h2>
                 <ComponentsCarExtrasFields
                     register={register}
@@ -123,12 +123,50 @@ export default function ComponentsCarEditor({
                     watch={watch}
                 />
             </section>
+            <section className="col-span-12 grid grid-cols-12 gap-4">
+                <h2 className='col-span-12 flex items-center font-extrabold border-b text-lg my-2 capitalize'>
+                    {t('grid.description')}
+                </h2>
+                <div className="col-span-12">
+                    <Controller
+                        name="description_website_pt"
+                        control={control}
+                        render={({ field }) => (
+                            <>
+                                <label className="block font-medium mb-1">{t('cars.form.description_website')}:</label>
+                                {/* @ts-ignore */}
+                                <textarea
+                                    {...field}
+                                    rows={3}
+                                    className="form-textarea resize-none placeholder:text-white-dark"
+                                    placeholder={t('cars.form.description_website')}
+                                />
+                            </>
+                        )}
+                    />
+                </div>
+                <UInput
+                    className="col-span-12"
+                    type='url'
+                    label={"Youtube URL"}
+                    name='youtube_url'
+                    placeholder="https://youtu.be/sD9hInmGHss?si=-QMZMeMIcXaxa5OF"
+                    register={register}
+                />
+            </section>
 
             <div className="col-span-12 flex justify-end mt-4 gap-2">
                 <UButton className="w-max" isOutline isRounded type="submit">
                     {t('config.save')}
                 </UButton>
-                <UButton className="w-max" variants="danger" isOutline isRounded type="button" onClick={() => { onCancel && onCancel(true) }}>
+                <UButton
+                    className="w-max"
+                    variants="danger"
+                    isOutline
+                    isRounded
+                    type="button"
+                    onClick={() => { onCancel && onCancel(true) }}
+                >
                     {t('config.cancel')}
                 </UButton>
             </div>

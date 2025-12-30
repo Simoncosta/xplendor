@@ -37,7 +37,7 @@ export default function ComponentsCarExpansion({ data }: { data: ICar }) {
                     key={themeConfig.rtlClass === 'rtl' ? 'rtl' : 'ltr'}
                     className="rounded overflow-hidden"
                 >
-                    {(data.images || []).map((img, idx) => (
+                    {(data.images || []).map((img: any, idx) => (
                         <SwiperSlide key={idx}>
                             <img src={`${process.env.NEXT_PUBLIC_API_URL}/${String(img.image)}`} alt={`Imagem ${idx}`} className="w-[300px] h-[225px] object-cover rounded-md" />
                         </SwiperSlide>
@@ -54,7 +54,7 @@ export default function ComponentsCarExpansion({ data }: { data: ICar }) {
             </section>
 
             <section className="w-full grid grid-cols-3 panel">
-                <h1 className="font-bold text-lg col-span-3">{data.brand} {data.model} <span className="font-normal">{data.version}</span></h1>
+                <h1 className="font-bold text-lg col-span-3">{data.brand.name} {data.model.name} <span className="font-normal">{data.version}</span></h1>
                 <div className="col-span-1">
                     <p className="text-lg font-semibold">{t('grid.license_plate')}</p>
                     <p className="text-lg">{data.license_plate}</p>

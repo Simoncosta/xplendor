@@ -202,7 +202,7 @@ const Header = () => {
                                     <li>
                                         <div className="flex items-center px-4 py-4">
                                             <img className="h-10 w-10 rounded-md object-cover" src={
-                                                user.avatar
+                                                user?.avatar
                                                     ? `${process.env.NEXT_PUBLIC_API_URL}/storage/${user.avatar}`
                                                     : "/assets/images/user-profile.jpeg"
                                             } alt="userProfile" />

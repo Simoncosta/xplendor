@@ -13,6 +13,7 @@ import api from "@/services/axiosInstance";
 import { ICar } from "./models/cars.model";
 import UBadges from "../u-badges";
 import ComponentsCarExpansion from "./components/car-expansion/components-car-expansion";
+import { confirmDelete } from "@/helpers/u-swal-alert";
 
 const PER_PAGE = 15;
 
@@ -52,6 +53,15 @@ export default function CarsCompanies() {
         } finally {
             setLoading(false);
         }
+    }
+
+    const handleRemoveRow = (row: ICar) => {
+        confirmDelete().then((result) => {
+            if (row.id == undefined) return;
+            if (result.isConfirmed) {
+                carService.removeCar(row.id);
+            }
+        });
     }
 
     const handleEditRow = (row: ICar) => {
@@ -111,7 +121,7 @@ export default function CarsCompanies() {
                 toolbarButtons={toolbarButtons}
                 controls={{
                     onEdit: handleEditRow,
-                    // onDelete: handleRemoveRow,
+                    onDelete: handleRemoveRow,
                 }}
                 rowExpansion={{
                     content: ({ record }) => <ComponentsCarExpansion data={record} />

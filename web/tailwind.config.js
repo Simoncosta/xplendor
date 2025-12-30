@@ -9,6 +9,15 @@ const rotateX = plugin(function ({ addUtilities }) {
 });
 module.exports = {
     content: ['./App.tsx', './app/**/*.{js,ts,jsx,tsx}', './pages/**/*.{js,ts,jsx,tsx}', './components/**/*.{js,ts,jsx,tsx}', './src/**/*.{js,ts,jsx,tsx}'],
+    safelist: [
+        'btn-outline-primary',
+        'btn-outline-info',
+        'btn-outline-success',
+        'btn-outline-warning',
+        'btn-outline-danger',
+        'btn-outline-secondary',
+        'btn-outline-dark',
+    ],
     darkMode: 'class',
     theme: {
         container: {

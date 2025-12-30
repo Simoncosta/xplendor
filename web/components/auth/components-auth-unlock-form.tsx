@@ -35,7 +35,7 @@ const ComponentsAuthUnlockForm = () => {
             <div className="mb-10 flex items-center">
                 <div className="flex h-16 w-16 items-end justify-center overflow-hidden rounded-full bg-[#00AB55] ltr:mr-4 rtl:ml-4">
                     <img src={
-                        user.avatar
+                        user?.avatar
                             ? `${process.env.NEXT_PUBLIC_API_URL}/storage/${user.avatar}`
                             : "/assets/images/user-profile.jpeg"
                     } className="w-full object-cover" alt="images" />

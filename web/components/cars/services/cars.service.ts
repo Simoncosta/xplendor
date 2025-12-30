@@ -97,60 +97,140 @@ export class CarService {
     }
 
     async updateCar(id: number, values: ICar) {
-        if (!id) throw new Error('O ID é obrigatório');
+        if (!id) throw new Error("O ID é obrigatório");
 
         const formData = new FormData();
 
-        // Campos simples
+        /**
+         * Helpers
+         */
+        const appendIf = (key: string, value: any) => {
+            if (value === null || value === undefined) return;
+            formData.append(key, value);
+        };
+
+        const toBool = (v: any) => (v ? "1" : "0");
+
+        const toNumberString = (v: any) => {
+            if (v === null || v === undefined || v === "") return null;
+            const n = Number(String(v).replace(",", "."));
+            return isNaN(n) ? null : String(n);
+        };
+
+        const toIntString = (v: any) => {
+            if (v === null || v === undefined || v === "") return null;
+            const n = parseInt(String(v), 10);
+            return isNaN(n) ? null : String(n);
+        };
+
+        /**
+         * 1) Campos simples com casting correto
+         */
+        const boolFields = ["is_metallic", "has_spare_key", "has_manuals", "hide_price_online"];
+        const intFields = ["co2_emissions", "cylinders", "warranty_km", "power_hp", "engine_capacity_cc", "doors", "seats"];
+        const floatFields = ["price_net", "price_gross", "monthly_payment", "mileage_km"];
+
         Object.entries(values).forEach(([key, value]) => {
-            if (['images', 'images_meta', 'extras', 'lifestyle'].includes(key)) return;
-            if (typeof value === 'object') {
-                formData.append(key, JSON.stringify(value));
-            } else {
-                formData.append(key, String(value));
+            if (["images", "images_meta", "extras", "lifestyle", "exterior_360_images", "exterior_360_meta"].includes(key)) return;
+
+            if (boolFields.includes(key)) {
+                appendIf(key, toBool(value));
+                return;
+            }
+
+            if (intFields.includes(key)) {
+                const v = toIntString(value);
+                if (v !== null) appendIf(key, v);
+                return;
+            }
+
+            if (floatFields.includes(key)) {
+                const v = toNumberString(value);
+                if (v !== null) appendIf(key, v);
+                return;
+            }
+
+            // Datas: manda como string mesmo (YYYY-MM-DD)
+            // Strings: manda normal
+            if (value !== null && value !== undefined) {
+                appendIf(key, String(value));
             }
         });
 
-        // Imagens
+        /**
+         * 2) Extras e Lifestyle (manda como JSON — simples e sem sofrimento)
+         */
+        values.extras?.forEach((group, gIndex) => {
+            formData.append(`extras[${gIndex}][group]`, group.group);
+
+            (group.items || []).forEach((item: any, iIndex: any) => {
+                formData.append(`extras[${gIndex}][items][${iIndex}]`, item);
+            });
+        });
+
+        if (values.lifestyle) {
+            appendIf("lifestyle", JSON.stringify(values.lifestyle));
+        }
+
+        /**
+         * 3) Images (update aceita string + file no mesmo array images[])
+         * Mantém o mesmo index para imagens + meta.
+         */
         const images = values.images || [];
         const meta = values.images_meta || [];
 
         images.forEach((img: any, index: number) => {
-            if (img.file instanceof File) {
+            // imagens existentes
+            if (typeof img === "string") {
+                formData.append(`existing_images[${index}]`, img);
+            } else if (typeof img?.image === "string") {
+                formData.append(`existing_images[${index}]`, img.image);
+            }
+
+            // imagens novas
+            if (img?.file instanceof File) {
                 formData.append(`images[${index}]`, img.file);
-            } else if (typeof img.image === 'string') {
-                // Envia path como string, dentro da MESMA chave "images[]"
-                formData.append(`images[${index}]`, img.image);
             }
 
             const m = meta[index] || {};
-            // @ts-ignore
-            formData.append(`images_meta[${index}][order]`, m.order ?? index + 1);
-            // @ts-ignore
-            formData.append(`images_meta[${index}][is_primary]`, m.is_primary ? 1 : 0);
+            formData.append(`images_meta[${index}][order]`, String(m.order ?? index + 1));
+            formData.append(`images_meta[${index}][is_primary]`, m.is_primary ? "1" : "0");
         });
 
-        // Extras
-        values.extras?.forEach((group, groupIndex) => {
-            formData.append(`extras[${groupIndex}][group]`, group.group);
-            group.items?.forEach((item: any, itemIndex: any) => {
-                formData.append(`extras[${groupIndex}][items][${itemIndex}]`, item);
-            });
+        /**
+         * 4) Exterior 360 (mesma lógica)
+         */
+        const exterior360 = values.exterior_360_images || [];
+        const exteriorMeta = values.exterior_360_meta || [];
+
+        exterior360.forEach((img: any, index: number) => {
+            if (typeof img === "string") {
+                formData.append(`exterior_360_images[${index}]`, img);
+            } else if (typeof img?.image === "string") {
+                formData.append(`exterior_360_images[${index}]`, img.image);
+            } else if (img?.file instanceof File) {
+                formData.append(`exterior_360_images[${index}]`, img.file);
+            }
+
+            const m = exteriorMeta[index] || {};
+            formData.append(`exterior_360_meta[${index}][order]`, String(m.order ?? index + 1));
         });
 
-        // Lifestyle
-        values.lifestyle?.forEach((item, i) => {
-            formData.append(`lifestyle[${i}]`, item);
-        });
+        /**
+         * DEBUG: ver exatamente o que estás mandando
+         */
+        // for (const pair of formData.entries()) console.log(pair[0], pair[1]);
 
+        /**
+         * Request
+         */
         try {
             const res = await this.axios.post(
                 `/v1/companies/${this.companyId}/cars/${id}?_method=PUT`,
                 formData,
-                {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                }
+                { headers: { "Content-Type": "multipart/form-data" } }
             );
+
             return res.data.data;
         } catch (error: any) {
             throw new Error("Erro ao atualizar o carro: " + (error?.message || error));

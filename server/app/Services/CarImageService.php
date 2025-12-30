@@ -19,8 +19,9 @@ class CarImageService
         foreach ($images as $index => $image) {
             $order = $meta[$index]['order'] ?? $index + 1;
             $isPrimary = $type === 'images' && ($meta[$index]['is_primary'] ?? $index === 0);
+            $timestamp = now()->format('YmdHisv');
 
-            $filename = "{$order}.webp";
+            $filename = "{$order}_{$timestamp}" . substr(md5(uniqid()), 0, 6) . ".webp";
             $path = "{$folder}/{$filename}";
 
             // WebP conversion

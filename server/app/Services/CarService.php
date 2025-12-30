@@ -69,19 +69,11 @@ class CarService extends BaseService
         *| Imagens normais
         *|--------------------------------------------------------------------------
         */
-        if (array_key_exists('images', $data)) {
-            $novas = [];
-            $existentes = [];
+        if (array_key_exists('images', $data) || array_key_exists('existing_images', $data)) {
+            $novas = $data['images'] ?? [];
+            $existentes = $data['existing_images'] ?? [];
 
-            foreach ($data['images'] as $img) {
-                if (is_string($img)) {
-                    $existentes[] = $img;
-                } else {
-                    $novas[] = $img;
-                }
-            }
-
-            // Apaga do banco e disco todas que não foram reenviadas
+            // Apaga tudo que não veio como existente
             foreach ($car->images as $img) {
                 if (!in_array($img->image, $existentes)) {
                     Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
@@ -89,9 +81,16 @@ class CarService extends BaseService
                 }
             }
 
-            // Salva novas imagens convertidas em webp
+            // Salva novas imagens
             $meta = $data['images_meta'] ?? [];
-            $processed = $this->carImageService->handleUploads($novas, $meta, 'images', $data['company_id'], $car->id, $slug);
+            $processed = $this->carImageService->handleUploads(
+                $novas,
+                $meta,
+                'images',
+                $data['company_id'],
+                $car->id,
+                $slug
+            );
 
             foreach ($processed as $img) {
                 $car->images()->create([
@@ -102,10 +101,12 @@ class CarService extends BaseService
                 ]);
             }
 
-            // Atualiza ordem e is_primary das imagens existentes
+            // Atualiza meta das existentes
             foreach ($car->images as $img) {
                 $key = array_search($img->image, $existentes);
-                $metaAtual = $data['images_meta'][$key] ?? [];
+                if ($key === false) continue;
+
+                $metaAtual = $meta[$key] ?? [];
 
                 $img->update([
                     'order' => $metaAtual['order'] ?? $img->order,

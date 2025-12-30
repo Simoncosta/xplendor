@@ -7,6 +7,7 @@ services:
     volumes:
       - ./server:/var/www
       - /var/www/vendor
+      - ./docker/php/custom-php.ini:/usr/local/etc/php/conf.d/custom-php.ini
     working_dir: /var/www
     depends_on:
       - mysql

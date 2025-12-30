@@ -67,3 +67,25 @@ export function showDialog(options: {
         cancelButtonText: options.cancelButtonText || "Cancelar",
     });
 }
+
+/** Confirm button */
+export function confirmDelete(options?: {
+    title?: string;
+    text?: string;
+    confirmText?: string;
+    cancelText?: string;
+}) {
+    // @ts-ignore
+    return Swal.fire({
+        icon: 'warning',
+        title: options?.title ?? 'Confirmar exclusão',
+        text: options?.text ?? 'Esta ação não pode ser desfeita.',
+        showCancelButton: true,
+        confirmButtonText: options?.confirmText ?? 'Excluir',
+        cancelButtonText: options?.cancelText ?? 'Cancelar',
+        reverseButtons: true,
+        focusCancel: true,
+        padding: '2em',
+        customClass: 'sweet-alerts',
+    });
+}

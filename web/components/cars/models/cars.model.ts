@@ -29,8 +29,8 @@ export interface ICar {
     registration_year: number; // 1900..currentYear
 
     // Car data
-    brand: ICarBrand;
-    model: ICarModel;
+    brand?: ICarBrand;
+    model?: ICarModel;
     // Core vehicle data
     car_brand_id: number;
     car_model_id: number;
