@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Company extends Model
@@ -47,6 +48,12 @@ class Company extends Model
         'logo_path',
         'banner_path',
         'carmine_logo_path',
+        'public_api_token',
         'plan_id',
     ];
+
+    public function cars(): HasMany
+    {
+        return $this->hasMany(Car::class);
+    }
 }

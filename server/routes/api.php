@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Public\CarController as PublicCarController;
 use App\Http\Controllers\Api\V1\{
     CarBrandController,
     CarController,
@@ -36,6 +37,10 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
         Route::apiResource('/car-models', CarModelController::class)->only(['index']);
     });
+});
+
+Route::middleware(['check_company_api_token'])->prefix('public')->group(function () {
+    Route::get('cars', [PublicCarController::class, 'index']);
 });
 
 Route::get('/user', function (Request $request) {

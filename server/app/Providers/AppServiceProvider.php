@@ -33,6 +33,8 @@ use App\Repositories\{
     UserRepository
 };
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\CheckCompanyApiToken;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -59,5 +61,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Company::observe(CompanyObserver::class);
+
+        Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
     }
 }

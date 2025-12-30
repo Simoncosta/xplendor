@@ -59,6 +59,9 @@ return new class extends Migration
             $table->string('banner_path', 20)->nullable(); // Caminho do banner principal
             $table->string('carmine_logo_path')->nullable(); // Caminho do logotipo Carmine
 
+            // Token public
+            $table->string('public_api_token')->unique()->nullable();
+
             $table->foreignId('plan_id')->constrained();
 
             $table->timestamps();

@@ -12,6 +12,7 @@ use App\Services\CompanyService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class CompanyController extends Controller
 {
@@ -57,6 +58,7 @@ class CompanyController extends Controller
             'company_id' => $company->id,
             'fiscal_name' => $company->fiscal_name,
             'role' => 'admin',
+            'public_api_token' => Str::uuid()->toString(),
         ]);
 
         return ApiResponse::success($company, 'Company created successfully.');

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Company;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class CompanySeeder extends Seeder
 {
@@ -16,7 +17,8 @@ class CompanySeeder extends Seeder
         Company::create([
             "nipc" => '1234567890',
             "fiscal_name" => "Xplendor",
-            "plan_id" => 1
+            "plan_id" => 1,
+            'public_api_token' => Str::uuid()->toString(),
         ]);
     }
 }
