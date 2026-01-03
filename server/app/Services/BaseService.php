@@ -36,7 +36,7 @@ class BaseService
      * @param array $relations Relações a serem incluídas.
      * @return mixed Retorna um array com os registros encontrados ou um objeto com a mensagem de erro.
      */
-    public function findOrFail(int $id, ?string $field = null, array $columns = ['*'], array $relations = []): mixed
+    public function findOrFail(mixed $id, ?string $field = null, array $columns = ['*'], array $relations = []): mixed
     {
         return $this->repository->findOrFail($id, $field, $columns, $relations);
     }

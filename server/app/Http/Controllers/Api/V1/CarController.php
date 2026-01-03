@@ -7,13 +7,18 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CarRequest;
 use App\Http\Requests\PaginateRequest;
+use App\Models\Car;
+use App\Services\CarAiAnalysesService;
 use App\Services\CarService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 class CarController extends Controller
 {
-    public function __construct(protected CarService $carService) {}
+    public function __construct(
+        protected CarService $carService,
+        protected CarAiAnalysesService $carAiAnalysesService
+    ) {}
 
     public function index(PaginateRequest $request, int $companyId)
     {
@@ -69,7 +74,7 @@ class CarController extends Controller
             $id,
             'id',
             ['*'],
-            ['images', 'car360ExteriorImages']
+            ['images', 'brand', 'model', 'car360ExteriorImages', 'views', 'leads', 'analyses']
         );
 
         return ApiResponse::success($car, 'Car fetched successfully.');
@@ -104,5 +109,29 @@ class CarController extends Controller
         $this->carService->destroy($id);
 
         return ApiResponse::success(null, 'Car deleted successfully.');
+    }
+
+    public function generateAiAnalyses(int $companyId, int $carId)
+    {
+        dd("aqui");
+        $car = $this->carService->findOrFail($carId, 'id', ['*'], ['brand', 'model']);
+        $car['company_id'] = $companyId;
+        $car['car_id'] = $carId;
+
+        $analyses = $this->carService->generateAiAnalyses($car);
+
+        return ApiResponse::success($analyses, 'Analyses generated successfully.');
+    }
+
+    public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)
+    {
+        $data = $request->validate([
+            'feedback' => 'required|string|max:255|in:positive,negative',
+        ]);
+
+        $this->carAiAnalysesService->update($carAiAnalysisId, $data);
+        $analysis = $this->carAiAnalysesService->findOrFail($carAiAnalysisId, 'id', ['*']);
+
+        return ApiResponse::success($analysis, 'Feedback saved successfully.');
     }
 }

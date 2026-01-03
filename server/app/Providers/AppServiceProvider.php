@@ -9,9 +9,12 @@ use App\Observers\{
     CompanyObserver
 };
 use App\Repositories\Contracts\{
+    CarAiAnalysesRepositoryInterface,
     CarBrandRepositoryInterface,
+    CarLeadRepositoryInterface,
     CarModelRepositoryInterface,
     CarRepositoryInterface,
+    CarViewRepositoryInterface,
     CompanyRepositoryInterface,
     DistrictRepositoryInterface,
     MunicipalityRepositoryInterface,
@@ -21,9 +24,12 @@ use App\Repositories\Contracts\{
     UserRepositoryInterface
 };
 use App\Repositories\{
+    CarAiAnalysesRepository,
     CarBrandRepository,
+    CarLeadRepository,
     CarModelRepository,
     CarRepository,
+    CarViewRepository,
     CompanyRepository,
     DistrictRepository,
     MunicipalitytRepository,
@@ -44,8 +50,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
+        $this->app->bind(CarAiAnalysesRepositoryInterface::class, CarAiAnalysesRepository::class);
         $this->app->bind(CarBrandRepositoryInterface::class, CarBrandRepository::class);
+        $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
         $this->app->bind(CarModelRepositoryInterface::class, CarModelRepository::class);
+        $this->app->bind(CarViewRepositoryInterface::class, CarViewRepository::class);
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
         $this->app->bind(DistrictRepositoryInterface::class, DistrictRepository::class);
         $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalitytRepository::class);

@@ -73,9 +73,26 @@ services:
     networks:
       - xplendor
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: xplendor-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=Europe/Lisbon
+      - TZ=Europe/Lisbon
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_RUNNERS_ENABLED=true
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - xplendor
+
 networks:
   xplendor:
 
 
 volumes:
   xplendor_mysql:
+  n8n_data:

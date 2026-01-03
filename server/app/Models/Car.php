@@ -5,9 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
+use OwenIt\Auditing\Auditable;
 
-class Car extends Model
+class Car extends Model implements AuditableContract
 {
+    use Auditable;
+
     protected $fillable = [
         'status',
         'origin',
@@ -99,5 +104,20 @@ class Car extends Model
     public function car360ExteriorImages(): HasMany
     {
         return $this->hasMany(Car360ExteriorImage::class);
+    }
+
+    public function views(): HasMany
+    {
+        return $this->hasMany(CarView::class);
+    }
+
+    public function leads(): HasMany
+    {
+        return $this->hasMany(CarLead::class);
+    }
+
+    public function analyses(): HasOne
+    {
+        return $this->hasOne(CarAiAnalysis::class);
     }
 }

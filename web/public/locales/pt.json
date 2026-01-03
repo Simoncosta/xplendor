@@ -130,6 +130,7 @@
     "config.cancel": "Cancelar",
     "config.edit": "Editar",
     "config.new": "Novo",
+    "config.details": "Detalhes",
     "config.form.select": "Selecione uma opção",
     "config.form.select.select_district_first": "Selecione distrito primeiro",
     "config.form.select.select_municipality_first": "Selecione município primeiro",

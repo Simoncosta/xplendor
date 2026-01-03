@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('car_views', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained();
+            $table->foreignId('car_id')->constrained();
             $table->foreignId('user_id')->nullable()->constrained();
             $table->string('ip_address', 255);
             $table->text('user_agent')->nullable(); // (ex: navegador, sistema etc.)

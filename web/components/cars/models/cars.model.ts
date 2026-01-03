@@ -10,6 +10,35 @@ export interface ICarImageMeta {
     order?: number | null;
 }
 
+export interface ICarViews {
+    id: number | undefined;
+    company_id: number;
+    car_id: number;
+    user_id: number | null;
+    ip_address: string;
+    user_agent: string | null;
+}
+
+export interface ICarLead {
+    id: number | undefined;
+    name: string;
+    email: string;
+    phone: string | null;
+    message: string | null;
+    car_id: number;
+    company_id: number;
+}
+
+export interface ICarAiAnalysis {
+    id: number | undefined;
+    input_data: string;
+    analysis: string;
+    status: string;
+    feedback: string | null;
+    car_id: number;
+    company_id: number;
+}
+
 export interface ICarExterior360Meta {
     order?: number | null;
 }
@@ -31,6 +60,9 @@ export interface ICar {
     // Car data
     brand?: ICarBrand;
     model?: ICarModel;
+    views?: ICarViews[];
+    leads?: ICarLead[];
+    analyses?: ICarAiAnalysis;
     // Core vehicle data
     car_brand_id: number;
     car_model_id: number;

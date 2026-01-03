@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Car;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 
 class CarService extends BaseService
 {
@@ -12,7 +14,8 @@ class CarService extends BaseService
         protected CarRepositoryInterface $carRepository,
         // Service
         protected CarImageService $carImageService,
-        protected Car360ExteriorImageService $car360ExteriorImageService
+        protected Car360ExteriorImageService $car360ExteriorImageService,
+        protected CarAiAnalysesService $carAiAnalysesService,
     ) {
         parent::__construct($carRepository);
     }
@@ -204,5 +207,85 @@ class CarService extends BaseService
         $car->delete();
 
         return true;
+    }
+
+    public function generateAiAnalyses(Car $car): mixed
+    {
+        $mapData = $this->mapDataToOpenAi($car);
+
+        $response = $this->openIaAnalysisCar($mapData);
+
+        return $this->carAiAnalysesService->store([
+            'input_data' => json_encode($mapData, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT),
+            'analysis' => $response,
+            'status' => 'completed',
+            'feedback' => null,
+            'car_id' => $car->id,
+            'company_id' => $car->company_id,
+        ]);
+    }
+
+    private function openIaAnalysisCar(array $car)
+    {
+        $apiKey = config('services.openai.key');
+
+        $systemContent = "Você é um estrategista sênior de marketing automotivo e publicidade digital com foco em performance e conversão. Dado os dados técnicos de um veículo (marca, modelo, versão, ano, combustível, câmbio, quilometragem, cor e demais atributos), você deve analisar e entregar:
+
+        1. **Público-alvo ideal**:
+        - Faixa etária predominante
+        - Gênero predominante
+        - Perfil profissional
+        - Estilo de vida
+
+        ⚠️ Sempre defina um gênero predominante (mesmo que haja equilíbrio).
+
+        2. **Canal de aquisição ideal entre Google Ads ou Meta (Facebook/Instagram)**:
+        - Escolha apenas um canal principal com base no comportamento do público e no tipo de veículo.
+        - Justifique claramente o porquê dessa escolha com base em intenção de busca, descoberta, comportamento e contexto de compra.
+
+        3. **Tipo de criativo recomendado**:
+        - Formato ideal (ex: reels, carrossel, imagem estática, campanha de busca etc.)
+        - Justifique com base no tipo do veículo e no perfil do público-alvo.
+
+        4. **Principais argumentos de venda**:
+        - Liste de forma objetiva os diferenciais que devem ser explorados na comunicação.
+
+        🧠 Sua resposta deve ser estratégica, clara e com foco em impacto comercial direto, como se estivesse a orientar um time de mídia e conteúdo digital.
+
+        Não use linguagem genérica nem neutra. Seja claro nas escolhas e assertivo nas recomendações.";
+
+        /** @var \Illuminate\Http\Client\Response $response */
+        $response = Http::withToken($apiKey)
+            ->timeout(60)
+            ->withHeaders([
+                'Content-Type' => 'application/json',
+            ])
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => 'gpt-4',
+                'messages' => [
+                    ['role' => 'system', 'content' => $systemContent],
+                    ['role' => 'user', 'content' => json_encode($car, JSON_PRETTY_PRINT)],
+                ],
+                'temperature' => 0.7,
+            ]);
+
+        $response->throw();
+        $content = $response->json('choices.0.message.content');
+
+        return $content;
+    }
+
+    private function mapDataToOpenAi(Car $car): array
+    {
+        return [
+            'Marca' => $car->brand->name,
+            'Modelo' => $car->model->name,
+            'Versão' => $car->version,
+            'Ano' => $car->registration_year,
+            'Combustível' => $car->fuel_type,
+            'Quilometragem' => $car->mileage_km,
+            'Cor' => $car->exterior_color,
+            'Câmbio' => $car->transmission,
+        ];
     }
 }

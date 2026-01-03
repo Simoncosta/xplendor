@@ -28,12 +28,12 @@ abstract class BaseRepository implements BaseRepositoryInterface
     /**
      * Método responsável por buscar um registro pelo ID
      *
-     * @param int $id
+     * @param mixed $id
      * @param string|null $field
      * @param array $columns
      * @return array
      */
-    public function findOrFail(int $id, ?string $field = null, array $columns = ['*'], array $relations = [], array $filters = []): mixed
+    public function findOrFail(mixed $id, ?string $field = null, array $columns = ['*'], array $relations = [], array $filters = []): mixed
     {
         try {
             $field = $field ?? 'id';
