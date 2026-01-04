@@ -3,12 +3,15 @@
 namespace App\Providers;
 
 use App\Models\{
+    Blog,
     Company
 };
 use App\Observers\{
+    BlogObserver,
     CompanyObserver
 };
 use App\Repositories\Contracts\{
+    BlogRepositoryInterface,
     CarAiAnalysesRepositoryInterface,
     CarBrandRepositoryInterface,
     CarLeadRepositoryInterface,
@@ -18,12 +21,14 @@ use App\Repositories\Contracts\{
     CompanyRepositoryInterface,
     DistrictRepositoryInterface,
     MunicipalityRepositoryInterface,
+    NewsletterRepositoryInterface,
     ParishRepositoryInterface,
     PlanRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
 };
 use App\Repositories\{
+    BlogRepository,
     CarAiAnalysesRepository,
     CarBrandRepository,
     CarLeadRepository,
@@ -33,6 +38,7 @@ use App\Repositories\{
     CompanyRepository,
     DistrictRepository,
     MunicipalitytRepository,
+    NewsletterRepository,
     ParishRepository,
     PlanRepository,
     UserInviteRepository,
@@ -49,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(BlogRepositoryInterface::class, BlogRepository::class);
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
         $this->app->bind(CarAiAnalysesRepositoryInterface::class, CarAiAnalysesRepository::class);
         $this->app->bind(CarBrandRepositoryInterface::class, CarBrandRepository::class);
@@ -58,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
         $this->app->bind(DistrictRepositoryInterface::class, DistrictRepository::class);
         $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalitytRepository::class);
+        $this->app->bind(NewsletterRepositoryInterface::class, NewsletterRepository::class);
         $this->app->bind(ParishRepositoryInterface::class, ParishRepository::class);
         $this->app->bind(PlanRepositoryInterface::class, PlanRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
@@ -70,6 +78,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Company::observe(CompanyObserver::class);
+        Blog::observe(BlogObserver::class);
 
         Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
     }

@@ -506,5 +506,6 @@
     "cars.extras.tcs": "TCS Sistema de Control de Tracção",
     "cars.extras.electric_tech": "Tecnologia eléctrica",
     "cars.extras.electric_handbrake": "Travão de Mão Eléctrico",
-    "cars.extras.mechanical_tuning": "Tuning Mecânico"
+    "cars.extras.mechanical_tuning": "Tuning Mecânico",
+    "newsletters.title": "Notícias"
 }

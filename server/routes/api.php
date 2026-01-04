@@ -3,9 +3,11 @@
 use App\Http\Controllers\Api\Public\{
     CarController as PublicCarController,
     CarLeadController,
-    CarViewController
+    CarViewController,
+    NewsletterController
 };
 use App\Http\Controllers\Api\V1\{
+    BlogController,
     CarBrandController,
     CarController,
     CarModelController,
@@ -32,6 +34,7 @@ Route::prefix('v1')->group(function () {
         Route::prefix('/companies/{id}')->group(function () {
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
+            Route::apiResource('/blogs', BlogController::class);
 
             Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
             Route::put('/car-ai-analyses-feedback/{carAiAnalysesId}', [CarController::class, 'feedbackAiAnalyses']);
@@ -51,6 +54,7 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 
     Route::post('car-view', [CarViewController::class, 'store']);
     Route::post('car-lead', [CarLeadController::class, 'store']);
+    Route::post('newsletter', [NewsletterController::class, 'store']);
 });
 
 Route::get('/user', function (Request $request) {

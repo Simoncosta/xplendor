@@ -506,5 +506,6 @@
     "cars.extras.tcs": "TCS - Traction Control System",
     "cars.extras.electric_tech": "Electric Technology",
     "cars.extras.electric_handbrake": "Electronic Handbrake",
-    "cars.extras.mechanical_tuning": "Mechanical Tuning"
+    "cars.extras.mechanical_tuning": "Mechanical Tuning",
+    "newsletters.title": "Newsletters"
 }

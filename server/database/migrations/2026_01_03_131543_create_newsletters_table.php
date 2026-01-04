@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamp('unsubscribed_at')->nullable();
             $table->string('source')->nullable();
             $table->string('ip_address')->nullable();
+            $table->foreignId('company_id')->constrained();
             $table->timestamps();
         });
     }
