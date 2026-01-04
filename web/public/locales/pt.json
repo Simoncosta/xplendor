@@ -207,6 +207,8 @@
     "grid.role.manager": "Gerente",
     "grid.role.employee": "Funcionário",
     "grid.role.technical": "Técnico",
+    "grid.yes": "Sim",
+    "grid.no": "Não",
     "condominiums.title": "Condomínios",
     "condominium.title": "Condomínio",
     "condominium.form.name": "Nome do condomínio",
@@ -507,5 +509,7 @@
     "cars.extras.electric_tech": "Tecnologia eléctrica",
     "cars.extras.electric_handbrake": "Travão de Mão Eléctrico",
     "cars.extras.mechanical_tuning": "Tuning Mecânico",
-    "newsletters.title": "Notícias"
+    "newsletters.title": "Notícias",
+    "newsletters.subscribers": "Inscritos na Notícias",
+    "subscriber.title": "Inscrito"
 }

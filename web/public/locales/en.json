@@ -207,6 +207,8 @@
     "grid.description": "Description",
     "grid.permillage": "Permillage",
     "grid.equipments": "Equipments",
+    "grid.yes": "Yes",
+    "grid.no": "No",
     "condominiums.title": "Condominiums",
     "condominium.title": "Condominium",
     "condominium.form.name": "Condominium name",
@@ -440,7 +442,7 @@
     "cars.extras.individual_rear_seats": "Individually Configurable Rear Seats",
     "cars.extras.ventilated_seats": "Ventilated Seats",
     "cars.extras.wireless_smartphone_charger": "Wireless Smartphone Charger",
-    "cars.extras.voice_control": "Voice Control",
+    "cars.extras.voice_control_interior": "Voice Control",
     "cars.extras.rear_window_curtains": "Rear Door Curtains",
     "cars.extras.rear_headrests": "Rear Headrests",
     "cars.extras.leather_gear_knob": "Leather Gear Knob",
@@ -507,5 +509,7 @@
     "cars.extras.electric_tech": "Electric Technology",
     "cars.extras.electric_handbrake": "Electronic Handbrake",
     "cars.extras.mechanical_tuning": "Mechanical Tuning",
-    "newsletters.title": "Newsletters"
+    "newsletters.title": "Newsletters",
+    "newsletters.subscribers": "Newsletter Subscribers",
+    "subscriber.title": "Subscriber"
 }

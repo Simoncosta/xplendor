@@ -5,7 +5,7 @@ use App\Http\Controllers\Api\Public\{
     CarController as PublicCarController,
     CarLeadController,
     CarViewController,
-    NewsletterController
+    NewsletterController as PublicNewsletterController
 };
 use App\Http\Controllers\Api\V1\{
     BlogController,
@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\{
     CarModelController,
     CompanyController,
     DistrictController,
+    NewsletterController,
     PlanController,
     UserController
 };
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
             Route::apiResource('/blogs', BlogController::class);
+            Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
 
             Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
             Route::put('/car-ai-analyses-feedback/{carAiAnalysesId}', [CarController::class, 'feedbackAiAnalyses']);
@@ -55,7 +57,7 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 
     Route::post('car-view', [CarViewController::class, 'store']);
     Route::post('car-lead', [CarLeadController::class, 'store']);
-    Route::post('newsletter', [NewsletterController::class, 'store']);
+    Route::post('newsletter', [PublicNewsletterController::class, 'store']);
 
     Route::get('blogs', [PublicBlogController::class, 'index']);
     Route::get('blogs/{slug}', [PublicBlogController::class, 'show']);

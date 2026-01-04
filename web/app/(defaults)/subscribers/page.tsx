@@ -2,13 +2,13 @@ import UBreadcrumbs from '@/components/u-breadcrumbs';
 import { Metadata } from 'next';
 import React from 'react';
 import { getTranslation } from '@/i18n';
-import ComponentsUsers from '@/components/users/components-users';
+import ComponentsSubscribers from '@/components/subscribers/components-subscribers';
 
 export const metadata: Metadata = {
-    title: 'Users',
+    title: 'Subscribers',
 };
 
-export default async function FractionsPage({ params }: { params: { id: number } }) {
+export default async function SubscribersPage({ params }: { params: { id: number } }) {
 
     const { t } = getTranslation();
 
@@ -18,17 +18,17 @@ export default async function FractionsPage({ params }: { params: { id: number }
             title: t('home.title'),
         },
         {
-            href: '/condominiums',
-            title: t('users.title'),
+            href: '/subscribers',
+            title: t('newsletters.subscribers'),
         },
     ];
 
-    const title = t('users.title');
+    const title = t('newsletters.subscribers');
 
     return (
         <div>
             <UBreadcrumbs navigation={breadcrumbs} title={title} />
-            <ComponentsUsers />
+            <ComponentsSubscribers />
         </div>
     );
 };

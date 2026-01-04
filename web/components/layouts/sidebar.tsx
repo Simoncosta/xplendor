@@ -19,6 +19,8 @@ import IconCaretDown from '../icon/icon-caret-down';
 import IconTxtFile from '../icon/icon-txt-file';
 import IconMenuSuspension from '../icon/menu/icon-menu-suspension';
 import IconMenuMailbox from '../icon/menu/icon-menu-mailbox';
+import IconClipboardList from '../icon/icon-clipboard-list';
+import IconDocumentAdd from '../icon/icon-document-add';
 
 const Sidebar = () => {
     const dispatch = useDispatch();
@@ -112,20 +114,28 @@ const Sidebar = () => {
                                     </div>
                                 </Link>
                             </li>
-                            {/* <li className="menu nav-item">
-                                <Link href="/newsletters" className="nav-link group">
+                            <li className="menu nav-item">
+                                <Link href="/blogs" className="nav-link group">
                                     <div className="flex items-center">
-                                        <IconMenuMailbox className="shrink-0 group-hover:!text-primary" />
+                                        <IconDocumentAdd className="shrink-0 group-hover:!text-primary" />
                                         <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('newsletters.title')}</span>
                                     </div>
                                 </Link>
-                            </li> */}
+                            </li>
 
                             <h2 className="-mx-4 mb-1 flex items-center bg-white-light/30 px-7 py-3 font-extrabold uppercase dark:bg-dark dark:bg-opacity-[0.08]">
                                 <IconMinus className="hidden h-5 w-4 flex-none" />
                                 <span>{t('sidebar.administration')}</span>
                             </h2>
 
+                            <li className="menu nav-item">
+                                <Link href="/subscribers" className="nav-link group">
+                                    <div className="flex items-center">
+                                        <IconClipboardList className="shrink-0 group-hover:!text-primary" />
+                                        <span className="text-black ltr:pl-3 rtl:pr-3 dark:text-[#506690] dark:group-hover:text-white-dark">{t('newsletters.subscribers')}</span>
+                                    </div>
+                                </Link>
+                            </li>
                             <li className="menu nav-item">
                                 <Link href="/users" className="nav-link group">
                                     <div className="flex items-center">
