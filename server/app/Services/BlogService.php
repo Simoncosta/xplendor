@@ -18,12 +18,19 @@ class BlogService extends BaseService
     public function store(array $data): mixed
     {
         $blog = $this->blogRepository->store($data);
-        $slug = $blog->slug;
 
         // Processar o banner
         if (!empty($data['banner']) && $data['banner'] instanceof UploadedFile) {
-            $bannerPath = $this->handleBannerUpload($data['banner'], $data['company_id'], $blog->id, $slug);
+            $bannerPath = $this->handleBannerUpload($data['banner'], $data['company_id'], $blog->slug);
+
+            // Atualiza o campo 'banner'
             $blog->banner = $bannerPath;
+
+            // Se o og_image não foi enviado, define o banner como imagem OG
+            if (empty($data['og_image']) && empty($blog->og_image)) {
+                $blog->og_image = $bannerPath;
+            }
+
             $blog->save();
         }
 

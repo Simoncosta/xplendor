@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Public\{
+    BlogController as PublicBlogController,
     CarController as PublicCarController,
     CarLeadController,
     CarViewController,
@@ -55,6 +56,9 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     Route::post('car-view', [CarViewController::class, 'store']);
     Route::post('car-lead', [CarLeadController::class, 'store']);
     Route::post('newsletter', [NewsletterController::class, 'store']);
+
+    Route::get('blogs', [PublicBlogController::class, 'index']);
+    Route::get('blogs/{slug}', [PublicBlogController::class, 'show']);
 });
 
 Route::get('/user', function (Request $request) {

@@ -23,6 +23,12 @@ return new class extends Migration
             $table->string('category')->comment('exemplo: "Análise de Carros"')->nullable();
             $table->enum('status', ['draft', 'published'])->default('draft');
             $table->timestamp('published_at')->nullable();
+            $table->unsignedTinyInteger('read_time')->comment('tempo estimado de leitura em minutos')->nullable();
+            $table->string('meta_title')->nullable()->comment('Título SEO para Google');
+            $table->string('meta_description')->nullable()->comment('Descrição SEO para Google');
+            $table->string('og_title')->nullable()->comment('Título para OpenGraph');
+            $table->string('og_description')->nullable()->comment('Descrição para OpenGraph');
+            $table->string('og_image')->nullable()->comment('Imagem para preview em redes sociais');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('company_id')->constrained()->onDelete('cascade');
             $table->timestamps();
