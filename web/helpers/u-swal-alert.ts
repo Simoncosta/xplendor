@@ -57,6 +57,7 @@ export function showDialog(options: {
     cancelButtonText?: string;
 }) {
     return Swal.fire({
+        customClass: 'sweet-alerts',
         title: options.title,
         text: options.text || "",
         icon: options.icon || "info",
