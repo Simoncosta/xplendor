@@ -51,6 +51,8 @@ class CompanyController extends Controller
         }
 
         $data = $request->validated();
+        $data['public_api_token'] = Str::uuid()->toString();
+
         $company = $this->companyService->store($data);
         $user = $this->userService->store([
             'name' => $data['name_user'],
@@ -58,7 +60,6 @@ class CompanyController extends Controller
             'company_id' => $company->id,
             'fiscal_name' => $company->fiscal_name,
             'role' => 'admin',
-            'public_api_token' => Str::uuid()->toString(),
         ]);
 
         return ApiResponse::success($company, 'Company created successfully.');

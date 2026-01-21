@@ -103,7 +103,7 @@ export const fetchMe = createAsyncThunk(
     async (user, thunkAPI) => {
         try {
             // @ts-ignore
-            const response = await axiosInstance.get(`/v1/companies/${user.company_id}/users/${user.id}`);
+            const response = await axiosInstance.get(`/v1/companies/${user.company_id}/users/${user?.id}`);
             return response.data;
         } catch (err: any) {
             return thunkAPI.rejectWithValue(

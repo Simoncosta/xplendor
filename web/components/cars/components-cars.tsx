@@ -80,7 +80,7 @@ export default function CarsCompanies() {
     ];
 
     const toolbarButtons = useMemo(() => {
-        if (user.role !== 'root') return [];
+        if (user.role !== 'root' && user.role !== 'admin') return [];
 
         return [
             <UButton className='w-max' isOutline isRounded type='button'
