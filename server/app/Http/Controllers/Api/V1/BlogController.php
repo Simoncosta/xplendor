@@ -11,6 +11,9 @@ use App\Services\BlogService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
+use SimpleXMLElement;
 
 class BlogController extends Controller
 {
@@ -110,5 +113,10 @@ class BlogController extends Controller
         $this->blogService->destroy($id);
 
         return ApiResponse::success(null, 'Blog deleted successfully.');
+    }
+
+    public function buildRssUrl(Request $request, int $companyId)
+    {
+        //
     }
 }

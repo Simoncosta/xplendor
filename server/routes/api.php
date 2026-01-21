@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\{
     BlogController,
     CarBrandController,
     CarController,
+    CarmineConnectionController,
     CarModelController,
     CompanyController,
     DistrictController,
@@ -34,8 +35,13 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('/companies', CompanyController::class);
 
         Route::prefix('/companies/{id}')->group(function () {
+            Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
+
+            Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
+
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
+            Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
             Route::apiResource('/blogs', BlogController::class);
             Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
 
