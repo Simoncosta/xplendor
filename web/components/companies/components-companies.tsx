@@ -69,18 +69,6 @@ export default function ComponentsCompanies() {
         router.push(`/companies/${row.id}`);
     }
 
-    const resolveImage = (img?: string) => {
-        if (!img) return undefined;
-
-        // se já for URL completa
-        if (img.startsWith("http")) return img;
-
-        // se for asset local do Next
-        if (img.startsWith("/assets") || img.startsWith("/img")) return img;
-
-        return `${process.env.NEXT_PUBLIC_API_URL}/storage/${img}`;
-    }
-
     const handleRemoveRow = (row: ICompany) => {
         try {
             Swal.fire({

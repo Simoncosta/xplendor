@@ -29,7 +29,7 @@ class CompanyController extends Controller
             ? ApiPaginate::perPage($request)
             : null;
 
-        $filter = $user->role === 'root' ? [] : ['company_id' => $user->company_id];
+        $filter = $user->role === 'root' ? [] : ['id' => $user->company_id];
 
         $companies = $this->companyService->getAll(
             ['*'],
@@ -67,6 +67,13 @@ class CompanyController extends Controller
 
     public function show(int $id)
     {
+        $user = Auth::user();
+
+        // Bloqueia caso o usuário não pertença à empresa da rota
+        if ($user->role !== 'root' && $id !== $user->company_id) {
+            return ApiResponse::error('Acesso negado: utilziador não tem permissão para aceder a empresa.', 403);
+        }
+
         $company = $this->companyService->findOrFail($id, 'id');
         return ApiResponse::success($company, 'Company fetched successfully.');
     }
