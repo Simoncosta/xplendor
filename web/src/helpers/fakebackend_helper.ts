@@ -11,7 +11,7 @@ export const getLoggedInUser = () => {
     return null;
 };
 
-// //is user is logged in
+// is user is logged in
 export const isUserAuthenticated = () => {
     return getLoggedInUser() !== null;
 };
@@ -54,11 +54,6 @@ export const postJwtRegister = (url: string, data: any) => {
             throw message;
         });
 };
-
-// Login Method
-export const postJwtLogin = (data: any) => api.create(url.POST_FAKE_JWT_LOGIN, data);
-// Logout Method
-export const postJwtLogout = (data: any) => api.create(url.POST_FAKE_JWT_LOGOUT, data);
 
 // postForgetPwd
 export const postJwtForgetPwd = (data: any) => api.create(url.POST_FAKE_JWT_PASSWORD_FORGET, data);
@@ -196,16 +191,16 @@ export const updateContact = (contact: any) => api.update(url.UPDATE_CONTACT, co
 export const deleteContact = (contact: any) => api.delete(url.DELETE_CONTACT, { headers: { contact } });
 
 // get Companies
-export const getCompanies = () => api.get(url.GET_COMPANIES);
+export const getCompanies = () => api.get(url.APP_GET_COMPANIES);
 
 // add Companies
-export const addNewCompanies = (company: any) => api.create(url.ADD_NEW_COMPANIES, company);
+export const addNewCompanies = (company: any) => api.create(url.APP_ADD_NEW_COMPANIES, company);
 
 // update Companies
-export const updateCompanies = (company: any) => api.update(url.UPDATE_COMPANIES, company);
+export const updateCompanies = (company: any) => api.update(url.APP_UPDATE_COMPANIES, company);
 
 // delete Companies
-export const deleteCompanies = (company: any) => api.delete(url.DELETE_COMPANIES, { headers: { company } });
+export const deleteCompanies = (company: any) => api.delete(url.APP_DELETE_COMPANIES, { headers: { company } });
 
 // get Deals
 export const getDeals = () => api.get(url.GET_DEALS);

@@ -1,2 +1,1 @@
-# Xplendor-typescript
-Xplendor-typescript
+# XPLENDOR

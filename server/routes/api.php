@@ -26,6 +26,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/register', [UserController::class, 'store']);
     Route::post('/login', [UserController::class, 'login']);
     Route::post('/register-by-invite', [UserController::class, 'registerByInvite']);
+    Route::get('/user-by-invite/{token}', [UserController::class, 'getUserInviteByToken']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [UserController::class, 'logout']);
@@ -60,6 +61,8 @@ Route::prefix('v1')->group(function () {
 
 Route::middleware(['check_company_api_token'])->prefix('public')->group(function () {
     Route::get('cars', [PublicCarController::class, 'index']);
+    Route::get('cars/{id}', [PublicCarController::class, 'show']);
+    Route::get('car-filters', [PublicCarController::class, 'filters']);
 
     Route::post('car-view', [CarViewController::class, 'store']);
     Route::post('car-lead', [CarLeadController::class, 'store']);

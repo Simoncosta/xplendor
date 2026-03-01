@@ -62,11 +62,15 @@ class CompanyRequest extends FormRequest
             'facebook_pixel_id' => ['nullable', 'string', 'max:255'],
             'facebook_access_token' => ['nullable', 'string'],
             'website' => ['nullable', 'string', 'max:255'],
+            'instagram' => ['nullable', 'string', 'max:255'],
+            'facebook' => ['nullable', 'string', 'max:255'],
+            'youtube' => ['nullable', 'string', 'max:255'],
+            'google' => ['nullable', 'string', 'max:255'],
 
             // Leads
             'lead_hours_pending' => ['nullable', 'string', 'max:50'],
             'lead_distribution' => [
-                'required',
+                $isUpdate ? 'sometimes' : 'required',
                 Rule::in(['manual', 'automatic_latest', 'automatic_less']),
             ],
 
@@ -75,7 +79,7 @@ class CompanyRequest extends FormRequest
 
             // Arquivos
             'pdf_path' => ['nullable', 'string', 'max:255'],
-            'logo_path' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 5MB cada
             'carmine_logo_path' => ['nullable', 'string', 'max:255'],
 
             // Plano

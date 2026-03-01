@@ -22,7 +22,6 @@ class CarViewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'company_id' => 'required|exists:companies,id',
             'car_id' => 'required|exists:cars,id',
             'user_id' => 'nullable|exists:users,id',
         ];

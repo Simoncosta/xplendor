@@ -15,7 +15,7 @@ class CompanySeeder extends Seeder
     public function run(): void
     {
         Company::create([
-            "nipc" => '1234567890',
+            "nipc" => '123456789',
             "fiscal_name" => "Xplendor",
             "plan_id" => 1,
             'public_api_token' => Str::uuid()->toString(),

@@ -15,25 +15,15 @@ class PlanSeeder extends Seeder
     {
         Plan::insert([
             [
-                'name' => 'Start',
-                'price' => 16.99,
-                'car_limit' => 1,
+                'name' => 'Xplendor Drive',
+                'price' => 99.00,
+                'car_limit' => 50,
             ],
             [
-                'name' => 'Standard',
-                'price' => 19.99,
-                'car_limit' => 5,
+                'name' => 'Xplendor Performance',
+                'price' => 199.00,
+                'car_limit' => 200,
             ],
-            [
-                'name' => 'Advanced',
-                'price' => 29.99,
-                'car_limit' => 10,
-            ],
-            [
-                'name' => 'Expert',
-                'price' => 38.99,
-                'car_limit' => 30,
-            ]
         ]);
     }
 }

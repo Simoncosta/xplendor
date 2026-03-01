@@ -4,10 +4,11 @@ import { Col, Row } from 'reactstrap';
 
 interface BreadCrumbProps {
     title: string;
-    pageTitle : string;
+    pageTitle: string;
+    pageLink?: string;
 }
 
-const BreadCrumb = ({ title, pageTitle } : BreadCrumbProps) => {
+const BreadCrumb = ({ title, pageTitle, pageLink }: BreadCrumbProps) => {
     return (
         <React.Fragment>
             <Row>
@@ -17,7 +18,7 @@ const BreadCrumb = ({ title, pageTitle } : BreadCrumbProps) => {
 
                         <div className="page-title-right">
                             <ol className="breadcrumb m-0">
-                                <li className="breadcrumb-item"><Link to="#">{pageTitle}</Link></li>
+                                <li className="breadcrumb-item"><Link to={pageLink ?? '#'}>{pageTitle}</Link></li>
                                 <li className="breadcrumb-item active">{title}</li>
                             </ol>
                         </div>

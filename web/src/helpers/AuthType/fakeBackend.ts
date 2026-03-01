@@ -458,7 +458,7 @@ const fakeBackend = () => {
 
     // crm companies
 
-    mock.onPost(url.ADD_NEW_COMPANIES).reply((company) => {
+    mock.onPost(url.APP_ADD_NEW_COMPANIES).reply((company) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (company && company.data) {
@@ -623,7 +623,7 @@ const fakeBackend = () => {
     });
 
     // Crm Companies
-    mock.onGet(url.GET_COMPANIES).reply(() => {
+    mock.onGet(url.APP_GET_COMPANIES).reply(() => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (companies) {
@@ -636,7 +636,7 @@ const fakeBackend = () => {
         });
     });
 
-    mock.onDelete(url.DELETE_COMPANIES).reply((config) => {
+    mock.onDelete(url.APP_DELETE_COMPANIES).reply((config) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (config && config.headers) {
@@ -649,7 +649,7 @@ const fakeBackend = () => {
         });
     });
 
-    mock.onPost(url.ADD_NEW_COMPANIES).reply((file) => {
+    mock.onPost(url.APP_ADD_NEW_COMPANIES).reply((file) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (file && file.data) {
@@ -662,7 +662,7 @@ const fakeBackend = () => {
         });
     });
 
-    mock.onPut(url.UPDATE_COMPANIES).reply((file) => {
+    mock.onPut(url.APP_UPDATE_COMPANIES).reply((file) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (file && file.data) {
@@ -675,7 +675,7 @@ const fakeBackend = () => {
         });
     });
 
-    mock.onPatch(url.UPDATE_COMPANIES).reply((event: any) => {
+    mock.onPatch(url.APP_UPDATE_COMPANIES).reply((event: any) => {
         return new Promise((resolve, reject) => {
             setTimeout(() => {
                 if (event && event.data) {

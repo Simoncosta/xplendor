@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { Dropdown, DropdownMenu, DropdownToggle, Form } from 'reactstrap';
 
 //import images
-import logoSm from "../assets/images/logo-sm.png";
+import logoSm from "../assets/images/logo-sm-dark.png";
 import logoDark from "../assets/images/logo-dark.png";
 import logoLight from "../assets/images/logo-light.png";
 
 //import Components
-import SearchOption from '../Components/Common/SearchOption';
 import LanguageDropdown from '../Components/Common/LanguageDropdown';
-import WebAppsDropdown from '../Components/Common/WebAppsDropdown';
-import MyCartDropdown from '../Components/Common/MyCartDropdown';
 import FullScreenDropdown from '../Components/Common/FullScreenDropdown';
-import NotificationDropdown from '../Components/Common/NotificationDropdown';
 import ProfileDropdown from '../Components/Common/ProfileDropdown';
 import LightDark from '../Components/Common/LightDark';
 
@@ -31,12 +26,6 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
     );
     // Inside your component
     const sidebarVisibilitytype = useSelector(selectDashboardData);
-
-
-    const [search, setSearch] = useState(false);
-    const toogleSearch = () => {
-        setSearch(!search);
-    };
 
     const toogleMenuBtn = () => {
         var windowSize = document.documentElement.clientWidth;

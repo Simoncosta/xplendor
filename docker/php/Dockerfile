@@ -17,8 +17,18 @@ RUN apt-get update && apt-get install -y \
     gd \
     zip
 
-# Instala o Composer globalmente
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# Redis (opcional)
+RUN pecl install redis \
+    && docker-php-ext-enable redis
 
-# Define diretório de trabalho
-WORKDIR /var/www
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# Permissões Laravel
+RUN mkdir -p storage bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+EXPOSE 9000
+CMD ["php-fpm"]

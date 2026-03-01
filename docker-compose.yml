@@ -1,98 +1,91 @@
 services:
-  php:
-    build:
-      context: ./docker/php
-    container_name: xplendor-php
-    restart: unless-stopped
-    volumes:
-      - ./server:/var/www
-      - /var/www/vendor
-      - ./docker/php/custom-php.ini:/usr/local/etc/php/conf.d/custom-php.ini
-    working_dir: /var/www
-    depends_on:
-      - mysql
-    networks:
-      - xplendor
 
-  mysql:
-    image: mysql:8.0
-    container_name: xplendor-db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: xplendor
-      MYSQL_USER: xplendor
-      MYSQL_PASSWORD: xplendor
-    ports:
-      - "3306:3306"
-    volumes:
-      - xplendor_mysql:/var/lib/mysql
-    networks:
-      - xplendor
-
-  nginx:
+  webserver:
     image: nginx:latest
     container_name: xplendor-nginx
+    restart: always
     ports:
       - "8000:80"
     volumes:
-      - ./server:/var/www
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx/load/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
     depends_on:
       - php
     networks:
       - xplendor
 
+  db:
+    image: mariadb:10.6.11-focal
+    container_name: xplendor-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: xplendor
+      MYSQL_USER: xplendor
+      MYSQL_PASSWORD: xplendor
+    volumes:
+      - db_data_xplendor:/var/lib/mysql
+    ports:
+      - "3309:3306"
+    restart: always
+    networks:
+      - xplendor
+
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: xplendor-phpmyadmin
-    restart: unless-stopped
+    image: phpmyadmin:latest
+    container_name: xplendor-phpadmin
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
     ports:
       - "8080:80"
-    environment:
-      PMA_HOST: mysql
-      MYSQL_ROOT_PASSWORD: root
+    restart: always
     depends_on:
-      - mysql
+      - db
     networks:
       - xplendor
 
-  next:
+  php:
     build:
-      context: .
-      dockerfile: docker/node/Dockerfile
-    container_name: xplendor-next
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
+      context: ./docker/php
+    container_name: xplendor-php
+    restart: always
+    working_dir: /var/www/html
+    expose:
+      - "9000"
     environment:
-      - CHOKIDAR_USEPOLLING=true
+      PHP_IDE_CONFIG: "serverName=xplendorDevServer"
+      COMPOSER_CACHE_DIR: /tmp/composer
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+      - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini:ro
+    depends_on:
+      - db
+      - redis
     networks:
       - xplendor
 
-  n8n:
-    image: docker.n8n.io/n8nio/n8n
-    container_name: xplendor-n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      - GENERIC_TIMEZONE=Europe/Lisbon
-      - TZ=Europe/Lisbon
-      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
-      - N8N_RUNNERS_ENABLED=true
+  redis:
+    image: redis:alpine
+    container_name: xplendor-redis
+    restart: always
     volumes:
-      - n8n_data:/home/node/.n8n
+      - ./docker/redis/db:/data
+    ports:
+      - "6381:6379"
     networks:
       - xplendor
 
 networks:
-  xplendor:
-
+  xplendor: {}
 
 volumes:
-  xplendor_mysql:
-  n8n_data:
+  db_data_xplendor:
+  xplendor_vendor:
+  xplendor_composer_cache:

@@ -1,5 +1,13 @@
 import { combineReducers } from "redux";
 
+import CarReducer from "./cars/reducer";
+import CompanyReducer from "./companies/reducer";
+import DistrictReducer from "./districts/reducer";
+import MunicipalityReducer from "./municipalities/reducer";
+import ParishReducer from "./parishes/reducer";
+import RegisterInviteReducer from "./auth/register/reducer";
+
+// END
 // Front
 import LayoutReducer from "./layouts/reducer";
 
@@ -70,6 +78,13 @@ import JobReducer from "./jobs/reducer";
 import APIKeyReducer from "./apiKey/reducer";
 
 const rootReducer = combineReducers({
+    Car: CarReducer,
+    Company: CompanyReducer,
+    District: DistrictReducer,
+    Municipality: MunicipalityReducer,
+    Parish: ParishReducer,
+    RegisterInvite: RegisterInviteReducer,
+
     Layout: LayoutReducer,
     Login: LoginReducer,
     Account: AccountReducer,

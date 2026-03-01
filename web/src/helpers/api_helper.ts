@@ -6,7 +6,7 @@ const { api } = config;
 // default
 axios.defaults.baseURL = api.API_URL;
 // content type
-axios.defaults.headers.post["Content-Type"] = "application/json";
+axios.defaults.headers.post["Content-Type"] = "multipart/form-data";
 
 // content type
 const authUser: any = sessionStorage.getItem("authUser")
@@ -73,10 +73,8 @@ class APIClient {
     /**
      * Posts the given data to the URL
      */
-    create = (url: string, data: any): Promise<AxiosResponse> => {
-        console.log("data", data);
-        console.log("url", url);
-        return axios.post(url, data);
+    create = (url: string, data: any, config?: AxiosRequestConfig): Promise<AxiosResponse> => {
+        return axios.post(url, data, config);
     };
 
     /**

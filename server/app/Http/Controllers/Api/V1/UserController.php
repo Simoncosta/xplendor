@@ -139,4 +139,11 @@ class UserController extends Controller
 
         return ApiResponse::success($user, 'Convite aceito com sucesso.');
     }
+
+    public function getUserInviteByToken(string $token)
+    {
+        $userInvite = $this->userService->getUserInviteByToken($token);
+
+        return ApiResponse::success($userInvite, 'Convite encontrado com sucesso.');
+    }
 }

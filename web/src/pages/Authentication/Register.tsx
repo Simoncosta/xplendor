@@ -1,85 +1,82 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, CardBody, Card, Alert, Container, Input, Label, Form, FormFeedback, Button, Spinner } from "reactstrap";
+import { Row, Col, CardBody, Card, Container, Button, Spinner } from "reactstrap";
 
 // Formik Validation
 import * as Yup from "yup";
-import { useFormik } from "formik";
+import { FormikProvider, useFormik } from "formik";
 
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-// action
-import { registerUser, resetRegisterFlag } from "../../slices/thunks";
+// Action
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
 
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 //import images 
 import logoLight from "../../assets/images/logo-light.png";
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
 import { createSelector } from "reselect";
+import { getUserByInvite, registerByInvite } from "slices/thunks";
+import XInput from "Components/Common/XInput";
 
 const Register = () => {
-    const [loader, setLoader] = useState<boolean>(false);
-    const history = useNavigate();
+    const navigate = useNavigate();
     const dispatch: any = useDispatch();
+    const [searchParams] = useSearchParams();
 
-    const validation = useFormik({
-        // enableReinitialize : use this flag when initial values needs to be changed
-        enableReinitialize: true,                                                                                                                       
+    const token = searchParams.get("token");
 
-        initialValues: {
-            email: '',
-            first_name: '',
-            password: '',
-            confirm_password: ''
-        },
-        validationSchema: Yup.object({
-                                                                                                                                                                                                                                                                                                                                                                                                                                                            email: Yup.string().required("Please Enter Your Email"),
-            first_name: Yup.string().required("Please Enter Your Username"),
-            password: Yup.string().required("Please Enter Your Password"),
-            confirm_password: Yup.string()
-            .oneOf([Yup.ref('password'), ""],)
-            .required('Confirm Password is required')
-        }),
-        onSubmit: (values) => {
-            dispatch(registerUser(values));
-            setLoader(true)
-        }
-    });
+    const [loader, setLoader] = useState<boolean>(false);
 
-    const selectLayoutState = (state: any) => state.Account;
-    const registerdatatype = createSelector(
-        selectLayoutState,
-        (account) => ({
-            success: account.success,
-            error: account.error
-        })
-    );
-    // Inside your component
-    const {
-        error, success
-    } = useSelector(registerdatatype);
+    const selectRegisterInviteState = (state: any) => state.RegisterInvite;
+
+    const registerInviteSelector = createSelector(selectRegisterInviteState, (state: any) => ({
+        data: state.userInvite,
+        error: state.meta,
+        loading: state.loading,
+    }));
+
+    const { data } = useSelector(registerInviteSelector);
 
     useEffect(() => {
-        if (success) {
-            setTimeout(() => history("/login"), 3000);
-        }
+        if (!token) return;
+        dispatch(getUserByInvite(token));
+    }, [dispatch, token]);
 
-        setTimeout(() => {
-            dispatch(resetRegisterFlag());
-        }, 3000);
+    const validationSchema = Yup.object({
+        password: Yup.string()
+            .required("Password é obrigatória")
+            .min(8, "Password deve ter no mínimo 8 caracteres"),
 
-    }, [dispatch, success, error, history]);
+        password_confirmation: Yup.string()
+            .required("Confirmação de password é obrigatória")
+            .oneOf([Yup.ref("password")], "As passwords não coincidem"),
+    });
 
-    document.title = "Basic SignUp | Velzon - React Admin & Dashboard Template";
+    const formik = useFormik({
+        enableReinitialize: true,
+        initialValues: data,
+        validationSchema,
+        onSubmit: (values) => {
+            dispatch(registerByInvite({
+                token: String(token),
+                password: values.password,
+                password_confirmation: values.password_confirmation
+            }, navigate));
+            toast("Convite aceito com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+        },
+    });
+
+    document.title = "Registro | Xplendor";
 
     return (
         <React.Fragment>
             <ParticlesAuth>
                 <div className="auth-page-content mt-lg-5">
+                    <ToastContainer />
                     <Container>
                         <Row>
                             <Col lg={12}>
@@ -89,7 +86,7 @@ const Register = () => {
                                             <img src={logoLight} alt="" height="20" />
                                         </Link>
                                     </div>
-                                    <p className="mt-3 fs-15 fw-medium">Premium Admin & Dashboard Template</p>
+                                    <p className="mt-3 fs-15 fw-medium">Xplendor - Smart Ads para Stands</p>
                                 </div>
                             </Col>
                         </Row>
@@ -100,147 +97,66 @@ const Register = () => {
 
                                     <CardBody className="p-4">
                                         <div className="text-center mt-2">
-                                            <h5 className="text-primary">Create New Account</h5>
-                                            <p className="text-muted">Get your free velzon account now</p>
+                                            <h5 className="text-primary">Registrar conta</h5>
+                                            {/* <p className="text-muted">Crie</p> */}
                                         </div>
                                         <div className="p-2 mt-4">
-                                            <Form
-                                                onSubmit={(e) => {
-                                                    e.preventDefault();
-                                                    validation.handleSubmit();
-                                                    return false;
-                                                }}
-                                                className="needs-validation" action="#">
+                                            <FormikProvider value={formik}>
+                                                <form onSubmit={formik.handleSubmit} className="needs-validation">
 
-                                                {success && success ? (
-                                                    <>
-                                                        {toast("Your Redirect To Login Page...", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white', progress: undefined, toastId: "" })}
-                                                        <ToastContainer autoClose={2000} limit={1} />
-                                                        <Alert color="success">
-                                                            Register User Successfully and Your Redirect To Login Page...
-                                                        </Alert>
-                                                    </>
-                                                ) : null}
-
-                                                {error && error ? (
-                                                    <Alert color="danger"><div>
-                                                        Email has been Register Before, Please Use Another Email Address... </div></Alert>
-                                                ) : null}
-
-                                                <div className="mb-3">
-                                                    <Label htmlFor="useremail" className="form-label">Email <span className="text-danger">*</span></Label>
-                                                    <Input
-                                                        id="email"
-                                                        name="email"
-                                                        className="form-control"
-                                                        placeholder="Enter email address"
+                                                    <XInput
+                                                        className="mb-3"
                                                         type="email"
-                                                        onChange={validation.handleChange}
-                                                        onBlur={validation.handleBlur}
-                                                        value={validation.values.email || ""}
-                                                        invalid={
-                                                            validation.touched.email && validation.errors.email ? true : false
-                                                        }
+                                                        placeholder="Email"
+                                                        name="email"
+                                                        label="Email"
+                                                        disabled={true}
                                                     />
-                                                    {validation.touched.email && validation.errors.email ? (
-                                                        <FormFeedback type="invalid"><div>{validation.errors.email}</div></FormFeedback>
-                                                    ) : null}
-
-                                                </div>
-                                                <div className="mb-3">
-                                                    <Label htmlFor="username" className="form-label">Username <span className="text-danger">*</span></Label>
-                                                    <Input
-                                                        name="first_name"
-                                                        type="text"
-                                                        placeholder="Enter username"
-                                                        onChange={validation.handleChange}
-                                                        onBlur={validation.handleBlur}
-                                                        value={validation.values.first_name || ""}
-                                                        invalid={
-                                                            validation.touched.first_name && validation.errors.first_name ? true : false
-                                                        }
+                                                    <XInput
+                                                        className="mb-3"
+                                                        placeholder="Nome"
+                                                        name="name"
+                                                        label="Nome"
+                                                        disabled={true}
                                                     />
-                                                    {validation.touched.first_name && validation.errors.first_name ? (
-                                                        <FormFeedback type="invalid"><div>{validation.errors.first_name}</div></FormFeedback>
-                                                    ) : null}
-
-                                                </div>
-
-                                                <div className="mb-3">
-                                                    <Label htmlFor="userpassword" className="form-label">Password <span className="text-danger">*</span></Label>
-                                                    <Input
+                                                    <XInput
+                                                        className="mb-3"
+                                                        placeholder="Password"
+                                                        type="password"
                                                         name="password"
-                                                        type="password"
-                                                        placeholder="Enter Password"
-                                                        onChange={validation.handleChange}
-                                                        onBlur={validation.handleBlur}
-                                                        value={validation.values.password || ""}
-                                                        invalid={
-                                                            validation.touched.password && validation.errors.password ? true : false
-                                                        }
+                                                        label="Password"
+                                                        required
                                                     />
-                                                    {validation.touched.password && validation.errors.password ? (
-                                                        <FormFeedback type="invalid"><div>{validation.errors.password}</div></FormFeedback>
-                                                    ) : null}
-
-                                                </div>
-
-                                                <div className="mb-2">
-                                                    <Label htmlFor="confirmPassword" className="form-label">Confirm Password <span className="text-danger">*</span></Label>
-                                                    <Input
-                                                        name="confirm_password"
+                                                    <XInput
+                                                        className="mb-3"
+                                                        placeholder="Confirmar Password"
                                                         type="password"
-                                                        placeholder="Confirm Password"
-                                                        onChange={validation.handleChange}
-                                                        onBlur={validation.handleBlur}
-                                                        value={validation.values.confirm_password || ""}
-                                                        invalid={
-                                                            validation.touched.confirm_password && validation.errors.confirm_password ? true : false
-                                                        }
+                                                        name="password_confirmation"
+                                                        label="Confirmar Password"
+                                                        required
                                                     />
-                                                    {validation.touched.confirm_password && validation.errors.confirm_password ? (
-                                                        <FormFeedback type="invalid"><div>{validation.errors.confirm_password}</div></FormFeedback>
-                                                    ) : null}
 
-                                                </div>
-
-                                                <div className="mb-4">
-                                                    <p className="mb-0 fs-12 text-muted fst-italic">By registering you agree to the Velzon
-                                                        <Link to="#" className="text-primary text-decoration-underline fst-normal fw-medium">Terms of Use</Link></p>
-                                                </div>
-
-                                                <div className="mt-4">
-                                                <Button color="success" className="w-100" type="submit" disabled={loader && true}>
-                                                        {loader && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
-                                                        Sign Up
-                                                    </Button>
-                                                </div>
-
-                                                <div className="mt-4 text-center">
-                                                    <div className="signin-other-title">
-                                                        <h5 className="fs-13 mb-4 title text-muted">Create account with</h5>
+                                                    <div className="mt-4">
+                                                        <Button color="success" className="w-100" type="submit" disabled={loader && true}>
+                                                            {loader && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
+                                                            Registrar
+                                                        </Button>
                                                     </div>
 
-                                                    <div>
-                                                        <button type="button" className="btn btn-primary btn-icon waves-effect waves-light"><i className="ri-facebook-fill fs-16"></i></button>{" "}
-                                                        <button type="button" className="btn btn-danger btn-icon waves-effect waves-light"><i className="ri-google-fill fs-16"></i></button>{" "}
-                                                        <button type="button" className="btn btn-dark btn-icon waves-effect waves-light"><i className="ri-github-fill fs-16"></i></button>{" "}
-                                                        <button type="button" className="btn btn-info btn-icon waves-effect waves-light"><i className="ri-twitter-fill fs-16"></i></button>
-                                                    </div>
-                                                </div>
-                                            </Form>
+                                                </form>
+                                            </FormikProvider>
                                         </div>
                                     </CardBody>
                                 </Card>
                                 <div className="mt-4 text-center">
-                                    <p className="mb-0">Already have an account ? <Link to="/login" className="fw-semibold text-primary text-decoration-underline"> Signin </Link> </p>
+                                    <p className="mb-0">Você já tem uma conta? <Link to="/login" className="fw-semibold text-primary text-decoration-underline"> Login </Link> </p>
                                 </div>
                             </Col>
                         </Row>
                     </Container>
                 </div>
             </ParticlesAuth>
-        </React.Fragment>
+        </React.Fragment >
     );
 };
 

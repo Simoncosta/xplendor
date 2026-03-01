@@ -1,49 +1,33 @@
 
 import { createSlice } from "@reduxjs/toolkit";
+import { getUserByInvite } from "./thunk";
 
 export const initialState = {
-  registrationError: null,
-  message: null,
-  loading: false,
-  user: null,
-  success: false,
-  error: false,
-  isUserLogout: true
+    userInvite: null,
+    error: null as any,
+    loading: false,
 };
 
-const registerSlice = createSlice({
-  name: "register",
-  initialState,
-  reducers: {
-    registerUserSuccessful(state : any, action : any) {
-      state.user = action.payload.user;
-      state.loading = false;
-      state.success = true;
-      state.registrationError = null;
+const RegisterSlice = createSlice({
+    name: "register",
+    initialState,
+    reducers: {},
+    extraReducers: (builder) => {
+        // LIST INVITE
+        builder
+            .addCase(getUserByInvite.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(getUserByInvite.fulfilled, (state, action) => {
+                state.loading = false;
+                state.userInvite = action.payload.data;
+            })
+            .addCase(getUserByInvite.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload || action.error;
+            });
     },
-    registerUserFailed(state : any, action : any) {
-      state.user = null;
-      state.loading = false;
-      state.registrationError = action.payload;
-      state.error = true;
-    },
-    resetRegisterFlagChange(state : any) {
-      state.success = false;
-      state.error = false;
-    },
-    apiErrorChange(state : any, action : any){
-      state.error = action.payload;
-      state.loading = false;
-      state.isUserLogout = false;
-    }
-  }
 });
 
-export const {
-  registerUserSuccessful,
-  registerUserFailed,
-  resetRegisterFlagChange,
-  apiErrorChange
-} = registerSlice.actions;
-
-export default registerSlice.reducer;
+export default RegisterSlice.reducer;

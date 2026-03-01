@@ -10,7 +10,7 @@ import withRouter from "../../Components/Common/withRouter";
 import { useSelector } from "react-redux";
 import { createSelector } from 'reselect';
 
-const VerticalLayout = (props : any) => {
+const VerticalLayout = (props: any) => {
     const navData = navdata().props.children;
     const path = props.router.location.pathname;
 
@@ -18,7 +18,7 @@ const VerticalLayout = (props : any) => {
  layout settings
  */
 
-    const selectLayoutState = (state : any) => state.Layout;
+    const selectLayoutState = (state: any) => state.Layout;
     const selectLayoutProperties = createSelector(
         selectLayoutState,
         (layout) => ({
@@ -86,7 +86,7 @@ const VerticalLayout = (props : any) => {
         const initMenu = () => {
             const pathName = process.env.PUBLIC_URL + path;
             const ul = document.getElementById("navbar-nav") as HTMLElement;
-            const items : any = ul.getElementsByTagName("a");
+            const items: any = ul.getElementsByTagName("a");
             let itemsArray = [...items]; // converts NodeList to Array
             removeActivation(itemsArray);
             let matchingMenuItem = itemsArray.find((x) => {
@@ -101,7 +101,7 @@ const VerticalLayout = (props : any) => {
         }
     }, [path, props.layoutType]);
 
-    function activateParentDropdown(item : any) {
+    function activateParentDropdown(item: any) {
         item.classList.add("active");
         let parentCollapseDiv = item.closest(".collapse.menu-dropdown");
 
@@ -124,10 +124,10 @@ const VerticalLayout = (props : any) => {
         return false;
     }
 
-    const removeActivation = (items :any) => {
-        let actiItems = items.filter((x : any) => x.classList.contains("active"));
+    const removeActivation = (items: any) => {
+        let actiItems = items.filter((x: any) => x.classList.contains("active"));
 
-        actiItems.forEach((item : any) => {
+        actiItems.forEach((item: any) => {
             if (item.classList.contains("menu-link")) {
                 if (!item.classList.contains("active")) {
                     item.setAttribute("aria-expanded", false);
@@ -149,7 +149,7 @@ const VerticalLayout = (props : any) => {
     return (
         <React.Fragment>
             {/* menu Items */}
-            {(navData || []).map((item : any, key : number) => {
+            {(navData || []).map((item: any, key: number) => {
                 return (
                     <React.Fragment key={key}>
                         {/* Main Header */}
@@ -176,7 +176,7 @@ const VerticalLayout = (props : any) => {
                                             id="sidebarApps">
                                             <ul className="nav nav-sm flex-column test">
                                                 {/* subItms  */}
-                                                {item.subItems && ((item.subItems || []).map((subItem : any, key : number) => (
+                                                {item.subItems && ((item.subItems || []).map((subItem: any, key: number) => (
                                                     <React.Fragment key={key}>
                                                         {!subItem.isChildItem ? (
                                                             <li className="nav-item">
@@ -207,7 +207,7 @@ const VerticalLayout = (props : any) => {
                                                                     <ul className="nav nav-sm flex-column">
                                                                         {/* child subItms  */}
                                                                         {subItem.childItems && (
-                                                                            (subItem.childItems || []).map((childItem : any, key : number) => (
+                                                                            (subItem.childItems || []).map((childItem: any, key: number) => (
                                                                                 <React.Fragment key={key}>
                                                                                     {!childItem.childItems ?
                                                                                         <li className="nav-item">
@@ -223,7 +223,7 @@ const VerticalLayout = (props : any) => {
                                                                                             </Link>
                                                                                             <Collapse className="menu-dropdown" isOpen={childItem.stateVariables} id="sidebaremailTemplates">
                                                                                                 <ul className="nav nav-sm flex-column">
-                                                                                                    {childItem.childItems.map((subChildItem : any, key : number) => (
+                                                                                                    {childItem.childItems.map((subChildItem: any, key: number) => (
                                                                                                         <li className="nav-item" key={key}>
                                                                                                             <Link to={subChildItem.link} className="nav-link" data-key="t-basic-action">{props.t(subChildItem.label)} </Link>
                                                                                                         </li>
@@ -247,16 +247,18 @@ const VerticalLayout = (props : any) => {
                                         </Collapse>
                                     </li>
                                 ) : (
-                                    <li className="nav-item">
-                                        <Link
-                                            className="nav-link menu-link"
-                                            to={item.link ? item.link : "/#"}>
-                                            <i className={item.icon}></i> <span>{props.t(item.label)}</span>
-                                            {item.badgeName ?
-                                                <span className={"badge badge-pill bg-" + item.badgeColor} data-key="t-new">{item.badgeName}</span>
-                                                : null}
-                                        </Link>
-                                    </li>
+                                    !item.hidden && (
+                                        <li className="nav-item">
+                                            <Link
+                                                className="nav-link menu-link"
+                                                to={item.link ? item.link : "/#"}>
+                                                <i className={item.icon}></i> <span>{props.t(item.label)}</span>
+                                                {item.badgeName ?
+                                                    <span className={"badge badge-pill bg-" + item.badgeColor} data-key="t-new">{item.badgeName}</span>
+                                                    : null}
+                                            </Link>
+                                        </li>
+                                    )
                                 ))
                             )
                         }

@@ -19,6 +19,7 @@
     right: 0;
     top: 0;
     height: 320px;
+
     @media (max-width: 575.98px) {
         height: 445px;
     }
@@ -179,8 +180,8 @@ $value in $theme-colors {
 
 @media (max-width:575.98px) {
 
-    [data-layout="horizontal"]{
-        .profile-foreground{
+    [data-layout="horizontal"] {
+        .profile-foreground {
             margin-top: 0 !important;
         }
     }

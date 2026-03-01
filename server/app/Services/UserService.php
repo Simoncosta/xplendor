@@ -54,7 +54,7 @@ class UserService extends BaseService
 
         // Gera URL de convite
         $inviteUrl = rtrim(config('app.frontend_url'), '/')
-            . '/auth/register?token=' . $invite->token;
+            . '/register?token=' . $invite->token;
 
         // Envia email
         Mail::to($invite->email)->send(
@@ -195,5 +195,10 @@ class UserService extends BaseService
         $token = $user->createToken('auth')->plainTextToken;
 
         return array_merge(['token' => $token], $user->toArray());
+    }
+
+    public function getUserInviteByToken(string $token)
+    {
+        return $this->userInviteRepository->getAll(['*'], [], null, ['token' => $token])->first();
     }
 }

@@ -28,11 +28,19 @@ class BlogController extends Controller
             ['id']
         );
 
+        $filters = ['company_id' => $company->id];
+
+        if ($request->input('search')) {
+            $filters['title'] = [
+                'like' => trim($request->input('search'))
+            ];
+        }
+
         $blogs = $this->blogService->getAll(
             ['*'],
             [],
             $paginate,
-            ['company_id' => $company->id]
+            $filters
         );
 
         return ApiResponse::success($blogs, 'Blogs fetched successfully.');

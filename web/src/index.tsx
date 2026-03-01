@@ -10,16 +10,16 @@ import rootReducer from "./slices";
 const store = configureStore({ reducer: rootReducer, devTools: true });
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+    document.getElementById('root') as HTMLElement
 );
 root.render(
-  <Provider store={store}>
-    <React.Fragment>
-      <BrowserRouter basename={process.env.PUBLIC_URL}>
-        <App />
-      </BrowserRouter>
-    </React.Fragment>
-  </Provider>
+    <Provider store={store}>
+        <React.Fragment>
+            <BrowserRouter basename={process.env.PUBLIC_URL}>
+                <App />
+            </BrowserRouter>
+        </React.Fragment>
+    </Provider>
 );
 
 // If you want to start measuring performance in your app, pass a function

@@ -17,63 +17,16 @@ const Navdata = () => {
     const [isMaps, setIsMaps] = useState(false);
     const [isMultiLevel, setIsMultiLevel] = useState(false);
 
-    // Apps
-    const [isCalendar, setCalendar] = useState<boolean>(false);
-    const [isEmail, setEmail] = useState(false);
-    const [isSubEmail, setSubEmail] = useState(false);
-    const [isEcommerce, setIsEcommerce] = useState(false);
-    const [isProjects, setIsProjects] = useState(false);
-    const [isTasks, setIsTasks] = useState(false);
-    const [isCRM, setIsCRM] = useState(false);
-    const [isCrypto, setIsCrypto] = useState(false);
-    const [isInvoices, setIsInvoices] = useState(false);
-    const [isSupportTickets, setIsSupportTickets] = useState(false);
-    const [isNFTMarketplace, setIsNFTMarketplace] = useState(false);
-    const [isJobs, setIsJobs] = useState(false);
-    const [isJobList, setIsJobList] = useState(false);
-    const [isCandidateList, setIsCandidateList] = useState(false);
-
-
-    // Authentication
-    const [isSignIn, setIsSignIn] = useState(false);
-    const [isSignUp, setIsSignUp] = useState(false);
-    const [isPasswordReset, setIsPasswordReset] = useState(false);
-    const [isPasswordCreate, setIsPasswordCreate] = useState(false);
-    const [isLockScreen, setIsLockScreen] = useState(false);
-    const [isLogout, setIsLogout] = useState(false);
-    const [isSuccessMessage, setIsSuccessMessage] = useState(false);
-    const [isVerification, setIsVerification] = useState(false);
-    const [isError, setIsError] = useState(false);
-
-    // Pages
-    const [isProfile, setIsProfile] = useState(false);
-    const [isLanding, setIsLanding] = useState(false);
-    const [isBlog, setIsBlog] = useState(false);
-
-    // Charts
-    const [isApex, setIsApex] = useState(false);
-
-    // Multi Level
-    const [isLevel1, setIsLevel1] = useState(false);
-    const [isLevel2, setIsLevel2] = useState(false);
-
     const [iscurrentState, setIscurrentState] = useState('Dashboard');
+    const [isRoot, setIsRoot] = useState(false);
 
-    function updateIconSidebar(e: any) {
-        if (e && e.target && e.target.getAttribute("sub-items")) {
-            const ul: any = document.getElementById("two-column-menu");
-            const iconItems = ul.querySelectorAll(".nav-icon.active");
-            let activeIconItems = [...iconItems];
-            activeIconItems.forEach((item) => {
-                item.classList.remove("active");
-
-                var id = item.getAttribute("sub-items");
-                const getID = document.getElementById(id) as HTMLElement
-                if (getID)
-                    getID.classList.remove("show");
-            });
+    useEffect(() => {
+        const authUser = sessionStorage.getItem("authUser");
+        if (authUser) {
+            const obj = JSON.parse(authUser);
+            setIsRoot(obj.role === 'root');
         }
-    }
+    }, []);
 
     useEffect(() => {
         document.body.classList.remove('twocolumn-panel');
@@ -117,9 +70,6 @@ const Navdata = () => {
             history("/widgets");
             document.body.classList.add('twocolumn-panel');
         }
-        if (iscurrentState !== 'Landing') {
-            setIsLanding(false);
-        }
     }, [
         history,
         iscurrentState,
@@ -143,13 +93,34 @@ const Navdata = () => {
             isHeader: true,
         },
         {
-            id: "ashboar",
+            id: "dashboard",
             label: "Dashboards",
-            icon: "bx bxs-dashboard",
+            icon: "ri-dashboard-2-line",
             link: "/dashboard",
             click: function (e: any) {
                 e.preventDefault();
                 setIscurrentState('Dashboard');
+            }
+        },
+        {
+            id: "cars",
+            label: "Carros",
+            icon: "ri-car-line",
+            link: "/cars",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Cars');
+            }
+        },
+        {
+            id: "company",
+            label: "Empresas",
+            icon: "bx bx-buildings",
+            link: "/companies",
+            hidden: !isRoot,
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Companies');
             }
         },
         // {

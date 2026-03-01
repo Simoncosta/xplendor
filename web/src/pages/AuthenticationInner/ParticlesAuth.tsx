@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import withRouter from '../../Components/Common/withRouter';
 
 const ParticlesAuth = ({ children }: any) => {
@@ -25,7 +25,7 @@ const ParticlesAuth = ({ children }: any) => {
                         <div className="row">
                             <div className="col-lg-12">
                                 <div className="text-center">
-                                    <p className="mb-0 text-muted">&copy; {new Date().getFullYear()} Velzon. Crafted with <i className="mdi mdi-heart text-danger"></i> by Themesbrand</p>
+                                    <p className="mb-0 text-muted">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por IT Rocket</p>
                                 </div>
                             </div>
                         </div>

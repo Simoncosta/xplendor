@@ -1,6 +1,17 @@
 // AUTH
-export const POST_FAKE_JWT_LOGIN = "/login";
-export const POST_FAKE_JWT_LOGOUT = "/logout";
+export const POST_FAKE_API_LOGIN = "/login";
+export const POST_FAKE_API_LOGOUT = "/logout";
+export const GET_USER_BY_INVITE = "/user-by-invite/";
+export const POST_REGISTER_BY_INVITE = "/register-by-invite";
+
+// COMPANIES 
+export const GET_COMPANIES = "/companies";
+
+// CARS
+export const GET_CARS = "/cars";
+
+// DISTRICTS
+export const GET_DISTRICTS = "/districts";
 
 // END
 //REGISTER
@@ -84,10 +95,10 @@ export const UPDATE_CONTACT = "/apps/contact";
 export const DELETE_CONTACT = "/apps/contact";
 
 // Companies
-export const GET_COMPANIES = "/apps/company";
-export const ADD_NEW_COMPANIES = "/apps/company";
-export const UPDATE_COMPANIES = "/apps/company";
-export const DELETE_COMPANIES = "/apps/company";
+export const APP_GET_COMPANIES = "/apps/company";
+export const APP_ADD_NEW_COMPANIES = "/apps/company";
+export const APP_UPDATE_COMPANIES = "/apps/company";
+export const APP_DELETE_COMPANIES = "/apps/company";
 
 // Lead
 export const GET_LEADS = "/apps/lead";

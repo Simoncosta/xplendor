@@ -6,7 +6,6 @@ import withRouter from '../Components/Common/withRouter';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
-import RightSidebar from '../Components/Common/RightSidebar';
 
 //import actions
 import {
@@ -26,11 +25,11 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from 'reselect';
 
-const Layout = (props : any) => {
+const Layout = (props: any) => {
     const [headerClass, setHeaderClass] = useState("");
-    const dispatch : any = useDispatch();
+    const dispatch: any = useDispatch();
 
-    const selectLayoutState = (state : any) => state.Layout;
+    const selectLayoutState = (state: any) => state.Layout;
     const selectLayoutProperties = createSelector(
         selectLayoutState,
         (layout) => ({
@@ -103,7 +102,7 @@ const Layout = (props : any) => {
     /*
     call dark/light mode
     */
-    const onChangeLayoutMode = (value : any) => {
+    const onChangeLayoutMode = (value: any) => {
         if (changeLayoutMode) {
             dispatch(changeLayoutMode(value));
         }
@@ -147,7 +146,7 @@ const Layout = (props : any) => {
                     <Footer />
                 </div>
             </div>
-            <RightSidebar />
+            {/* <RightSidebar /> */}
         </React.Fragment>
 
     );

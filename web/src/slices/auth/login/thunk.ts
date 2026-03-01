@@ -1,18 +1,36 @@
 //Include Both Helper File with needed methods
 import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 import {
-    postJwtLogin,
-    postJwtLogout,
-} from "../../../helpers/fakebackend_helper";
+    postApiLogin,
+    postApiLogout,
+    postRegisterByInvite as postRegisterByInviteApi,
+} from "../../../helpers/laravel_helper";
 
 import { loginSuccess, logoutUserSuccess, apiError, reset_login_flag } from './reducer';
+
+export const registerByInvite =
+    (payload: { token: string; password: string; password_confirmation: string }, navigate: any) =>
+        async (dispatch: any) => {
+            try {
+                const res = await postRegisterByInviteApi(payload);
+
+                const authData = res.data.data ?? res;
+
+                sessionStorage.setItem("authUser", JSON.stringify(authData.data));
+
+                dispatch(loginSuccess(authData.data));
+                navigate("/dashboard");
+            } catch (error: any) {
+                dispatch(apiError(error));
+            }
+        };
 
 export const loginUser = (user: any, history: any) => async (dispatch: any) => {
     try {
         let response;
 
         if (process.env.REACT_APP_DEFAULTAUTH === "jwt") {
-            response = postJwtLogin({
+            response = postApiLogin({
                 email: user.email,
                 password: user.password
             });
@@ -22,8 +40,8 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
         var data = await response;
 
         if (data) {
-            sessionStorage.setItem("authUser", JSON.stringify(data));
-            dispatch(loginSuccess(data));
+            sessionStorage.setItem("authUser", JSON.stringify(data.data));
+            dispatch(loginSuccess(data.data));
             history('/dashboard')
         }
     } catch (error) {
@@ -33,7 +51,7 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
 
 export const logoutUser = () => async (dispatch: any) => {
     try {
-        postJwtLogout({});
+        postApiLogout({});
         sessionStorage.removeItem("authUser");
         dispatch(logoutUserSuccess(true));
     } catch (error) {

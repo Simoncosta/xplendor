@@ -1,17 +1,17 @@
 import React from 'react';
 import ReactApexChart from "react-apexcharts";
 import { seriesData } from "../series";
-import logoSm from "../../../../assets/images/logo-sm.png";
+import logoSm from "../../../../assets/images/logo-sm-dark.png";
 
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
-const BasicLineCharts = ({ dataColors } : any) => {
+const BasicLineCharts = ({ dataColors }: any) => {
     var linechartBasicColors = getChartColorsArray(dataColors);
     const series = [{
         name: "Desktops",
         data: [10, 41, 35, 51, 49, 62, 69, 91, 148]
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 350,
             type: 'line',
@@ -57,7 +57,7 @@ const BasicLineCharts = ({ dataColors } : any) => {
     );
 };
 
-const ZoomableTimeseries = ({ dataColors } : any) => {
+const ZoomableTimeseries = ({ dataColors }: any) => {
     var ZoomableTimeseriesColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'XYZ MOTORS',
@@ -441,7 +441,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
             y: 162
         },]
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             type: 'area',
             stacked: false,
@@ -483,7 +483,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
             showAlways: true,
             labels: {
                 show: true,
-                formatter: function (val : any) {
+                formatter: function (val: any) {
                     return (val / 1000000).toFixed(0);
                 },
             },
@@ -501,7 +501,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
         tooltip: {
             shared: false,
             y: {
-                formatter: function (val : any) {
+                formatter: function (val: any) {
                     return (val / 1000000).toFixed(0);
                 }
             }
@@ -520,7 +520,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
     );
 };
 
-const LinewithDataLabels = ({ dataColors } : any) => {
+const LinewithDataLabels = ({ dataColors }: any) => {
     var LinewithDataLabelsColors = getChartColorsArray(dataColors);
     var series = [{
         name: "High - 2018",
@@ -531,7 +531,7 @@ const LinewithDataLabels = ({ dataColors } : any) => {
         data: [14, 11, 16, 12, 17, 13, 12]
     }
     ];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 380,
             type: 'line',
@@ -615,7 +615,7 @@ const LinewithDataLabels = ({ dataColors } : any) => {
     );
 };
 
-const DashedLine = ({ dataColors } : any) => {
+const DashedLine = ({ dataColors }: any) => {
     var DashedLineColors = getChartColorsArray(dataColors);
     var series = [{
         name: "Session Duration",
@@ -630,7 +630,7 @@ const DashedLine = ({ dataColors } : any) => {
         data: [89, 56, 74, 98, 72, 38, 64, 46, 84, 58, 46, 49]
     }
     ];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 380,
             type: 'line',
@@ -672,19 +672,19 @@ const DashedLine = ({ dataColors } : any) => {
         tooltip: {
             y: [{
                 title: {
-                    formatter: function (val : any) {
+                    formatter: function (val: any) {
                         return val + " (mins)";
                     }
                 }
             }, {
                 title: {
-                    formatter: function (val : any) {
+                    formatter: function (val: any) {
                         return val + " per session";
                     }
                 }
             }, {
                 title: {
-                    formatter: function (val : any) {
+                    formatter: function (val: any) {
                         return val;
                     }
                 }
@@ -707,12 +707,12 @@ const DashedLine = ({ dataColors } : any) => {
     );
 };
 
-const LinewithAnnotations = ({ dataColors } : any) => {
+const LinewithAnnotations = ({ dataColors }: any) => {
     var LinewithAnnotationsColors = getChartColorsArray(dataColors);
     const series = [{
         data: seriesData.monthDataSeries1.prices
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 350,
             type: 'line',
@@ -848,9 +848,9 @@ const LinewithAnnotations = ({ dataColors } : any) => {
     );
 };
 
-const BrushChart = ({ dataColors } : any) => {
+const BrushChart = ({ dataColors }: any) => {
     var BrushChartColors = getChartColorsArray(dataColors);
-    const generateDayWiseTimeSeries = (baseval : any, count : any, yrange : any) => {
+    const generateDayWiseTimeSeries = (baseval: any, count: any, yrange: any) => {
         var i = 0;
         var series = [];
         while (i < count) {
@@ -871,7 +871,7 @@ const BrushChart = ({ dataColors } : any) => {
     const series = [{
         data: data
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             id: 'chart2',
             type: 'line',
@@ -913,9 +913,9 @@ const BrushChart = ({ dataColors } : any) => {
 };
 
 
-const BrushChart1 = ({ dataColors } : any) => {
+const BrushChart1 = ({ dataColors }: any) => {
     var BrushChart1Colors = getChartColorsArray(dataColors);
-    const generateDayWiseTimeSeries = (baseval : any, count : any, yrange : any) => {
+    const generateDayWiseTimeSeries = (baseval: any, count: any, yrange: any) => {
         var i = 0;
         var series = [];
         while (i < count) {
@@ -937,7 +937,7 @@ const BrushChart1 = ({ dataColors } : any) => {
     const series = [{
         data: data
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             id: "chart1",
             brush: {
@@ -985,14 +985,14 @@ const BrushChart1 = ({ dataColors } : any) => {
 };
 
 
-const SteplineChart = ({ dataColors } : any) => {
+const SteplineChart = ({ dataColors }: any) => {
     var SteplineChartColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58],
         },
     ];
-    const options : any = {
+    const options: any = {
         stroke: {
             curve: "stepline",
         },
@@ -1027,13 +1027,13 @@ const SteplineChart = ({ dataColors } : any) => {
     );
 };
 
-const GradientCharts = ({ dataColors } : any) => {
+const GradientCharts = ({ dataColors }: any) => {
     var GradientChartsColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Likes',
         data: [4, 3, 10, 9, 29, 19, 22, 9, 12, 7, 19, 5, 13, 9, 17, 2, 7, 5]
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 350,
             type: 'line',
@@ -1100,7 +1100,7 @@ const GradientCharts = ({ dataColors } : any) => {
     );
 };
 
-const MissingData = ({ dataColors } : any) => {
+const MissingData = ({ dataColors }: any) => {
     var MissingDataColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Peter',
@@ -1112,7 +1112,7 @@ const MissingData = ({ dataColors } : any) => {
         name: 'David',
         data: [null, null, null, null, 3, 4, 1, 3, 4, 6, 7, 9, 5, null, null, null]
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             height: 350,
             type: 'line',
@@ -1152,7 +1152,7 @@ const MissingData = ({ dataColors } : any) => {
 };
 
 
-function generateDayWiseTimeSeriesline(baseval : any, count : any, yrange : any) {
+function generateDayWiseTimeSeriesline(baseval: any, count: any, yrange: any) {
     var i = 0;
     var series = [];
     while (i < count) {
@@ -1166,7 +1166,7 @@ function generateDayWiseTimeSeriesline(baseval : any, count : any, yrange : any)
     return series;
 }
 
-const ChartSyncingLine = ({ dataColors } : any) => {
+const ChartSyncingLine = ({ dataColors }: any) => {
     var chartSyncingColors = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
@@ -1174,7 +1174,7 @@ const ChartSyncingLine = ({ dataColors } : any) => {
             max: 60
         })
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             id: 'fb',
             group: 'social',
@@ -1237,7 +1237,7 @@ const ChartSyncingLine = ({ dataColors } : any) => {
     );
 };
 
-const ChartSyncingLine2 = ({ dataColors } : any) => {
+const ChartSyncingLine2 = ({ dataColors }: any) => {
     var chartSyncingColors2 = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
@@ -1245,7 +1245,7 @@ const ChartSyncingLine2 = ({ dataColors } : any) => {
             max: 30
         })
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             id: 'tw',
             group: 'social',
@@ -1308,7 +1308,7 @@ const ChartSyncingLine2 = ({ dataColors } : any) => {
     );
 };
 
-const ChartSyncingArea = ({ dataColors } : any) => {
+const ChartSyncingArea = ({ dataColors }: any) => {
     var ChartSyncingAreaColors = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
@@ -1316,7 +1316,7 @@ const ChartSyncingArea = ({ dataColors } : any) => {
             max: 60
         })
     }];
-    var options : any = {
+    var options: any = {
         chart: {
             id: 'yt',
             group: 'social',

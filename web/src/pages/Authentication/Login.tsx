@@ -18,10 +18,10 @@ import logoLight from "../../assets/images/logo-light.png";
 import { createSelector } from 'reselect';
 //import images
 
-const Login = (props : any) => {
-    const dispatch : any = useDispatch();
+const Login = (props: any) => {
+    const dispatch: any = useDispatch();
 
-    const selectLayoutState = (state : any) => state;
+    const selectLayoutState = (state: any) => state;
     const loginpageData = createSelector(
         selectLayoutState,
         (state) => ({
@@ -51,7 +51,7 @@ const Login = (props : any) => {
         }
     }, [user]);
 
-    const validation : any = useFormik({
+    const validation: any = useFormik({
         // enableReinitialize : use this flag when initial values needs to be changed
         enableReinitialize: true,
 
@@ -68,18 +68,6 @@ const Login = (props : any) => {
             setLoader(true)
         }
     });
-
-    const signIn = (type : any) => {
-        dispatch(socialLogin(type, props.router.navigate));
-    };
-
-
-
-    //for facebook and google authentication
-    const socialResponse = (type : any) => {
-        signIn(type);
-    };
-
 
     useEffect(() => {
         if (errorMsg) {
@@ -177,7 +165,7 @@ const Login = (props : any) => {
                                                 </div>
 
                                                 <div className="mt-4">
-                                                <Button color="success"
+                                                    <Button color="success"
                                                         disabled={loader && true}
                                                         className="btn btn-success w-100" type="submit">
                                                         {loader && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
@@ -195,7 +183,7 @@ const Login = (props : any) => {
                                                             className="btn btn-primary btn-icon me-1"
                                                             onClick={e => {
                                                                 e.preventDefault();
-                                                                socialResponse("facebook");
+                                                                // socialResponse("facebook");
                                                             }}
                                                         >
                                                             <i className="ri-facebook-fill fs-16" />
@@ -205,7 +193,7 @@ const Login = (props : any) => {
                                                             className="btn btn-danger btn-icon me-1"
                                                             onClick={e => {
                                                                 e.preventDefault();
-                                                                socialResponse("google");
+                                                                // socialResponse("google");
                                                             }}
                                                         >
                                                             <i className="ri-google-fill fs-16" />

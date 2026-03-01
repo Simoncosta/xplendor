@@ -9,13 +9,13 @@ import navdata from "../LayoutMenuData";
 //i18n
 import { withTranslation } from "react-i18next";
 
-const HorizontalLayout = (props : any) => {
+const HorizontalLayout = (props: any) => {
     const [isMoreMenu, setIsMoreMenu] = useState(false);
     const navData = navdata().props.children;
     let menuItems = [];
-    let splitMenuItems : Array<any> = [];
+    let splitMenuItems: Array<any> = [];
     let menuSplitContainer = 6;
-    navData.forEach(function (value : any, key : number) {
+    navData.forEach(function (value: any, key: number) {
         if (value['isHeader']) {
             menuSplitContainer++;
         }
@@ -29,7 +29,7 @@ const HorizontalLayout = (props : any) => {
             menuItems.push(value);
         }
     });
-    menuItems.push({ id: 'more', label: 'More', icon: 'ri-briefcase-2-line', link: "/#", stateVariables: isMoreMenu, subItems: splitMenuItems, click: function (e : any) { e.preventDefault(); setIsMoreMenu(!isMoreMenu); }, });
+    menuItems.push({ id: 'more', label: 'More', icon: 'ri-briefcase-2-line', link: "/#", stateVariables: isMoreMenu, subItems: splitMenuItems, click: function (e: any) { e.preventDefault(); setIsMoreMenu(!isMoreMenu); }, });
 
     const path = props.router.location.pathname;
 
@@ -38,7 +38,7 @@ const HorizontalLayout = (props : any) => {
         const initMenu = () => {
             const pathName = process.env.PUBLIC_URL + path;
             const ul = document.getElementById("navbar-nav") as HTMLElement;
-            const items : any = ul.getElementsByTagName("a");
+            const items: any = ul.getElementsByTagName("a");
             let itemsArray = [...items]; // converts NodeList to Array
             removeActivation(itemsArray);
             let matchingMenuItem = itemsArray.find((x) => {
@@ -51,7 +51,7 @@ const HorizontalLayout = (props : any) => {
         initMenu();
     }, [path, props.layoutType]);
 
-    function activateParentDropdown(item : any) {
+    function activateParentDropdown(item: any) {
         item.classList.add("active");
         let parentCollapseDiv = item.closest(".collapse.menu-dropdown");
 
@@ -78,10 +78,10 @@ const HorizontalLayout = (props : any) => {
         return false;
     }
 
-    const removeActivation = (items : any) => {
-        let actiItems = items.filter((x : any) => x.classList.contains("active"));
+    const removeActivation = (items: any) => {
+        let actiItems = items.filter((x: any) => x.classList.contains("active"));
 
-        actiItems.forEach((item : any) => {
+        actiItems.forEach((item: any) => {
             if (item.classList.contains("menu-link")) {
                 if (!item.classList.contains("active")) {
                     item.setAttribute("aria-expanded", false);
@@ -102,7 +102,7 @@ const HorizontalLayout = (props : any) => {
 
     return (
         <React.Fragment>
-            {(menuItems || []).map((item  :any, key : number) => {
+            {(menuItems || []).map((item: any, key: number) => {
                 return (
                     <React.Fragment key={key}>
                         {/* Main Header */}
@@ -125,7 +125,7 @@ const HorizontalLayout = (props : any) => {
                                         {item.id === "baseUi" && item.subItems.length > 13 ? (
                                             <React.Fragment>
                                                 <Row>
-                                                    {item.subItems && ((item.subItems || []).map((subItem : any, key : number) => (
+                                                    {item.subItems && ((item.subItems || []).map((subItem: any, key: number) => (
                                                         <React.Fragment key={key}>
                                                             {key % 2 === 0 ? (
                                                                 <Col lg={4}>
@@ -152,7 +152,7 @@ const HorizontalLayout = (props : any) => {
                                             </React.Fragment>
                                         ) : (
                                             <ul className="nav nav-sm flex-column test">
-                                                {item.subItems && ((item.subItems || []).map((subItem  : any, key : number) => (
+                                                {item.subItems && ((item.subItems || []).map((subItem: any, key: number) => (
                                                     <React.Fragment key={key}>
                                                         {!subItem.isChildItem ? (
                                                             <li className="nav-item">
@@ -176,7 +176,7 @@ const HorizontalLayout = (props : any) => {
                                                                     <ul className="nav nav-sm flex-column">
                                                                         {/* child subItms  */}
                                                                         {subItem.childItems && (
-                                                                            (subItem.childItems || []).map((subChildItem : any, key : number) => (
+                                                                            (subItem.childItems || []).map((subChildItem: any, key: number) => (
                                                                                 <React.Fragment key={key}>
                                                                                     {!subChildItem.isChildItem ? (
                                                                                         <li className="nav-item">
@@ -200,7 +200,7 @@ const HorizontalLayout = (props : any) => {
                                                                                                 <ul className="nav nav-sm flex-column">
                                                                                                     {/* child subItms  */}
                                                                                                     {subChildItem.childItems && (
-                                                                                                        (subChildItem.childItems || []).map((subSubChildItem : any, key : number) => (
+                                                                                                        (subChildItem.childItems || []).map((subSubChildItem: any, key: number) => (
                                                                                                             <li className="nav-item apex" key={key}>
                                                                                                                 <Link
                                                                                                                     to={subSubChildItem.link ? subSubChildItem.link : "/#"}
