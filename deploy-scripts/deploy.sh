@@ -14,12 +14,6 @@ git reset --hard origin/main
 echo "🐳 Backend: build + up"
 docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml up -d --build
 
-echo "📦 Composer"
-docker exec -it xplendor-php composer install --no-dev --optimize-autoloader
-
-echo "🗄️ Migrations"
-docker exec -it xplendor-php php artisan migrate --force
-
 echo "🧱 Storage link + permissions"
 docker exec -it xplendor-php php artisan storage:link || true
 docker exec -it xplendor-php sh -lc "chmod -R 775 storage bootstrap/cache && chown -R www-data:www-data storage bootstrap/cache"
