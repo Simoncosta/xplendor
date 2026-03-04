@@ -45,8 +45,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: xplendor
-      MYSQL_USER: xplendor
-      MYSQL_PASSWORD: secret
+      MYSQL_USER: xplendor_admin
+      MYSQL_PASSWORD: 83a3dYSt7MbmeJ2l
     volumes:
       - db_data_xplendor:/var/lib/mysql
     ports:
@@ -74,7 +74,7 @@ services:
     environment:
       PMA_HOST: db
       PMA_PORT: 3306
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: 83a3dYSt7MbmeJ2l
     ports:
       - "8081:80"
     depends_on:
