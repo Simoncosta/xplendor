@@ -14,7 +14,7 @@ import { useFormik } from "formik";
 // actions
 import { loginUser } from 'slices/thunks';
 
-const SignIn = (props: any) => {
+const LogIn = (props: any) => {
     const dispatch: any = useDispatch();
 
     const [passwordShow, setPasswordShow] = useState<boolean>(false);
@@ -38,7 +38,7 @@ const SignIn = (props: any) => {
         }
     });
 
-    document.title = "SignIn | Xplendor - Dashboard";
+    document.title = "LogIn | Xplendor - Dashboard";
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
@@ -159,4 +159,4 @@ const SignIn = (props: any) => {
     );
 };
 
-export default withRouter(SignIn);
+export default withRouter(LogIn);
