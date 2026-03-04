@@ -28,8 +28,7 @@ cd "$APP_DIR/web"
 yarn install --frozen-lockfile || yarn install
 yarn build
 
-echo "🔁 Reload nginx (host)"
-sudo nginx -t
-sudo systemctl reload nginx
+echo "🔁 Reload nginx (docker)"
+docker restart xplendor-nginx
 
 echo "✅ Deploy OK"
