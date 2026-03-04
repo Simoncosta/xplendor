@@ -19,7 +19,16 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:5173'],
+    'allowed_origins' => [
+        'https://xplendor.tech',
+        'https://www.xplendor.tech',
+        'https://paautomoveis.pt',
+        'https://www.paautomoveis.pt',
+
+        'http://localhost:3000',
+        'http://localhost:8000',
+        'http://localhost:5173'
+    ],
 
     'allowed_origins_patterns' => [],
 
