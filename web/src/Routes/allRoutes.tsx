@@ -5,7 +5,7 @@ import { Navigate } from "react-router-dom";
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
 import Logout from "../pages/Authentication/Logout";
 import Register from "../pages/Authentication/Register";
-import Login from "pages/Authentication/LogIn";
+import SignIn from "pages/Authentication/LogIn";
 
 // Company
 import CompanyList from "pages/Companies/CompanyList";
@@ -43,7 +43,7 @@ const authProtectedRoutes = [
 const publicRoutes = [
     // Authentication Page
     { path: "/logout", component: <Logout /> },
-    { path: "/login", component: <Login /> },
+    { path: "/login", component: <SignIn /> },
     { path: "/forgot-password", component: <ForgetPasswordPage /> },
     { path: "/register", component: <Register /> },
 ];
