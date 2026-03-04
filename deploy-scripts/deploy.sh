@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-APP_DIR="/var/www/xplendor"
-ENV_FILE="$APP_DIR/.env.prod"
+APP_DIR="/home/xplendor"
+ENV_FILE="$APP_DIR/.env"
 
 echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
