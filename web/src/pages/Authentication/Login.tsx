@@ -14,7 +14,7 @@ import { useFormik } from "formik";
 // actions
 import { loginUser } from 'slices/thunks';
 
-const LogIn = (props: any) => {
+const Login = (props: any) => {
     const dispatch: any = useDispatch();
 
     const [passwordShow, setPasswordShow] = useState<boolean>(false);
@@ -159,4 +159,4 @@ const LogIn = (props: any) => {
     );
 };
 
-export default withRouter(LogIn);
+export default withRouter(Login);
