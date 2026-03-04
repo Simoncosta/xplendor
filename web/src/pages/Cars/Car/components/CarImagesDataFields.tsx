@@ -1,4 +1,4 @@
-import { Col, Row } from "reactstrap";
+import { Alert, Col, Row } from "reactstrap";
 import { useFormikContext } from "formik";
 import { useEffect, useState } from "react";
 
@@ -133,7 +133,20 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
                 <h5 className="card-title">Imagens da Viatura</h5>
             </div>
 
+
             <Row>
+                <Col lg={12}>
+                    <Alert color="primary">
+                        <strong>Requisitos das imagens:</strong>
+                        <ul className="mb-0 mt-2">
+                            <li>Proporção recomendada: <b>16:9</b></li>
+                            <li>Exemplos: <b>1245x701</b></li>
+                            <li>Formatos: <b>JPG, PNG ou WEBP</b></li>
+                            <li>Tamanho máximo: <b>10MB por imagem</b></li>
+                            <li>Máximo de <b>60 imagens</b></li>
+                        </ul>
+                    </Alert>
+                </Col>
                 <Col lg={12}>
                     <div className={styles.carImagesPond}>
                         <FilePond
