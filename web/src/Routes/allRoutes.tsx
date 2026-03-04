@@ -1,16 +1,11 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 
-// Dashboard
-import DashboardEcommerce from "../pages/DashboardEcommerce";
-
-// AuthenticationInner pages
-import SignIn from '../pages/AuthenticationInner/Login/SignIn';
-
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
 import Logout from "../pages/Authentication/Logout";
 import Register from "../pages/Authentication/Register";
+import Login from "pages/Authentication/LogIn";
 
 // Company
 import CompanyList from "pages/Companies/CompanyList";
@@ -23,7 +18,7 @@ import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
 
 const authProtectedRoutes = [
-    { path: "/dashboard", component: <DashboardEcommerce /> },
+    { path: "/dashboard", component: <></> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },
@@ -48,7 +43,7 @@ const authProtectedRoutes = [
 const publicRoutes = [
     // Authentication Page
     { path: "/logout", component: <Logout /> },
-    { path: "/login", component: <SignIn /> },
+    { path: "/login", component: <Login /> },
     { path: "/forgot-password", component: <ForgetPasswordPage /> },
     { path: "/register", component: <Register /> },
 ];

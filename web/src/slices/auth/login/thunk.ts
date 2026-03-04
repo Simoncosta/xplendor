@@ -1,5 +1,4 @@
 //Include Both Helper File with needed methods
-import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 import {
     postApiLogin,
     postApiLogout,
@@ -54,30 +53,6 @@ export const logoutUser = () => async (dispatch: any) => {
         postApiLogout({});
         sessionStorage.removeItem("authUser");
         dispatch(logoutUserSuccess(true));
-    } catch (error) {
-        dispatch(apiError(error));
-    }
-};
-
-export const socialLogin = (type: any, history: any) => async (dispatch: any) => {
-    try {
-        let response;
-
-        if (process.env.REACT_APP_DEFAULTAUTH === "firebase") {
-            const fireBaseBackend: any = getFirebaseBackend();
-            response = fireBaseBackend.socialLoginUser(type);
-        }
-        //  else {
-        //   response = postSocialLogin(data);
-        // }
-
-        const socialdata = await response;
-        if (socialdata) {
-            sessionStorage.setItem("authUser", JSON.stringify(response));
-            dispatch(loginSuccess(response));
-            history('/dashboard')
-        }
-
     } catch (error) {
         dispatch(apiError(error));
     }

@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\{
     UserController
 };
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -75,3 +76,26 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::match(['GET', 'OPTIONS'], '/media/{path}', function ($path) {
+    $origin = request()->headers->get('Origin');
+
+    $allowed = ['http://localhost:3000']; // adiciona outros se precisares
+
+    if (request()->isMethod('OPTIONS')) {
+        return response('', 204, [
+            'Access-Control-Allow-Origin' => in_array($origin, $allowed) ? $origin : '',
+            'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+            'Access-Control-Allow-Headers' => 'Content-Type, Authorization, X-Requested-With',
+            'Vary' => 'Origin',
+        ]);
+    }
+
+    $fullPath = storage_path('app/public/' . $path);
+    abort_unless(file_exists($fullPath), 404);
+
+    return Response::file($fullPath, [
+        'Access-Control-Allow-Origin' => in_array($origin, $allowed) ? $origin : '',
+        'Vary' => 'Origin',
+    ]);
+})->where('path', '.*');

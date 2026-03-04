@@ -83,7 +83,7 @@ class CarRequest extends FormRequest
             'youtube_url' => ['nullable', 'url'],
 
             // Imagens normais (upload)
-            'images' => ['nullable', 'array'],
+            'images' => ['nullable', 'array', 'max:60'],
             'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 10MB cada
 
             // Imagens já existentes
@@ -96,12 +96,16 @@ class CarRequest extends FormRequest
             'images_meta.*.order' => ['nullable', 'integer', 'min:1'],
 
             // Imagens 360 exterior (upload)
-            'exterior_360_images' => ['nullable', 'array'],
-            'exterior_360_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 5MB cada
+            'exterior_360_images' => ['nullable', 'array', 'max:60'],
+            'exterior_360_images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
 
             // Metadados opcionais das imagens 360 (mesma ordem do array exterior_360_images)
             'exterior_360_meta' => ['nullable', 'array'],
             'exterior_360_meta.*.order' => ['nullable', 'integer', 'min:1'],
+
+            'existing_images_meta' => ['nullable', 'array'],
+            'existing_images_meta.*.is_primary' => ['nullable', 'boolean'],
+            'existing_images_meta.*.order' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

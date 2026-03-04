@@ -9,12 +9,6 @@ import Route from './Routes';
 // Import Firebase Configuration file
 // import { initFirebaseBackend } from "./helpers/firebase_helper";
 
-// Fake Backend 
-import fakeBackend from "./helpers/AuthType/fakeBackend";
-
-// Activating fake backend
-fakeBackend();
-
 // const firebaseConfig = {
 //   apiKey: process.env.REACT_APP_APIKEY,
 //   authDomain: process.env.REACT_APP_AUTHDOMAIN,
@@ -30,11 +24,11 @@ fakeBackend();
 // initFirebaseBackend(firebaseConfig);
 
 function App() {
-  return (
-    <React.Fragment>
-      <Route />
-    </React.Fragment>
-  );
+    return (
+        <React.Fragment>
+            <Route />
+        </React.Fragment>
+    );
 }
 
 export default App;

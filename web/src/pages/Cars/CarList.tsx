@@ -20,14 +20,11 @@ import classnames from "classnames";
 // RangeSlider
 import Nouislider from "nouislider-react";
 import "nouislider/distribute/nouislider.css";
-import DeleteModal from "../../Components/Common/DeleteModal";
 
 import TableContainer from "../../Components/Common/TableContainer";
-//Import data
-import { productsData } from "../../common/data";
 
 //Import actions
-import { getProducts as onGetProducts, deleteProducts } from "../../slices/thunks";
+// import { getProducts as onGetProducts, deleteProducts } from "../../slices/thunks";
 import { isEmpty } from "lodash";
 import Select from "react-select";
 
@@ -56,6 +53,21 @@ const CarList = (props: any) => {
         (state: any) => state.Car
     );
 
+    // State
+    const [activeTab, setActiveTab] = useState<any>("1");
+
+    // Actions
+    const toggleTab = (tab: any, type: any) => {
+        if (activeTab !== tab) {
+            setActiveTab(tab);
+            // let filteredProducts = products;
+            // if (type !== "all") {
+            //     filteredProducts = products.filter((product: any) => product.status === type);
+            // }
+            // setProductList(filteredProducts);
+        }
+    };
+
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
         pageIndex: 0,
@@ -78,158 +90,6 @@ const CarList = (props: any) => {
         }
     }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
-    // END
-
-    const selectecomproductData = createSelector(
-        (state: any) => state.Ecommerce,
-        (products) => products.products
-    );
-    // Inside your component
-    const products = useSelector(selectecomproductData);
-
-    const [productList, setProductList] = useState<any>([]);
-    const [activeTab, setActiveTab] = useState<any>("1");
-    const [selectedMulti, setselectedMulti] = useState<any>(null);
-    const [product, setProduct] = useState<any>(null);
-
-    function handleMulti(selectedMulti: any) {
-        setselectedMulti(selectedMulti);
-    }
-
-    useEffect(() => {
-        if (products && !products.length) {
-            dispatch(onGetProducts());
-        }
-    }, [dispatch, products]);
-
-    useEffect(() => {
-        setProductList(products);
-    }, [products]);
-
-    useEffect(() => {
-        if (!isEmpty(products)) setProductList(products);
-    }, [products]);
-
-    const toggleTab = (tab: any, type: any) => {
-        if (activeTab !== tab) {
-            setActiveTab(tab);
-            let filteredProducts = products;
-            if (type !== "all") {
-                filteredProducts = products.filter((product: any) => product.status === type);
-            }
-            setProductList(filteredProducts);
-        }
-    };
-
-    const [cate, setCate] = useState("all");
-
-    const categories = (category: any) => {
-        let filteredProducts = products;
-        if (category !== "all") {
-            filteredProducts = products.filter((product: any) => product.category === category);
-        }
-        setProductList(filteredProducts);
-        setCate(category);
-    };
-
-    useEffect(() => {
-        const sliderq = document.getElementById("product-price-range");
-        sliderq?.setAttribute("data-slider-color", "success");
-    }, []);
-
-    const [mincost, setMincost] = useState(0);
-    const [maxcost, setMaxcost] = useState(500);
-
-    useEffect(() => {
-        onUpDate([mincost, maxcost]);
-    }, [mincost, maxcost]);
-
-    const onUpDate = (value: any) => {
-        setProductList(
-            productsData.filter(
-                (product) => product.price >= value[0] && product.price <= value[1]
-            )
-        );
-        setMincost(value[0]);
-        setMaxcost(value[1]);
-    };
-
-
-    const [ratingvalues, setRatingvalues] = useState([]);
-    /*
-    on change rating checkbox method
-    */
-    const onChangeRating = (value: any) => {
-        setProductList(productsData.filter(product => product.rating >= value));
-
-        // var modifiedRating = [...ratingvalues];
-        // modifiedRating.push(value);
-        // setRatingvalues(modifiedRating);
-    };
-
-    const onUncheckMark = (value: any) => {
-        var modifiedRating = [...ratingvalues];
-        const modifiedData = (modifiedRating || []).filter(x => x !== value);
-        /*
-        find min values
-        */
-        var filteredProducts = productsData;
-        if (modifiedData && modifiedData.length && value !== 1) {
-            var minValue = Math.min(...modifiedData);
-            if (minValue && minValue !== Infinity) {
-                filteredProducts = productsData.filter(
-                    product => product.rating >= minValue
-                );
-                setRatingvalues(modifiedData);
-            }
-        } else {
-            filteredProducts = productsData;
-        }
-        setProductList(filteredProducts);
-    };
-
-    //delete order
-    const [deleteModal, setDeleteModal] = useState<boolean>(false);
-    const [deleteModalMulti, setDeleteModalMulti] = useState<boolean>(false);
-
-    const onClickDelete = (product: any) => {
-        setProduct(product);
-        setDeleteModal(true);
-    };
-
-    const handleDeleteProduct = () => {
-        if (product) {
-            dispatch(deleteProducts(product.id));
-            setDeleteModal(false);
-        }
-    };
-
-
-    const [dele, setDele] = useState(0);
-
-    // Displat Delete Button
-    const displayDelete = () => {
-        const ele = document.querySelectorAll(".productCheckBox:checked");
-        const del = document.getElementById("selection-element") as HTMLElement;
-        setDele(ele.length);
-        if (ele.length === 0) {
-            del.style.display = 'none';
-        } else {
-            del.style.display = 'block';
-        }
-    };
-
-    // Delete Multiple
-    const deleteMultiple = () => {
-        const ele = document.querySelectorAll(".productCheckBox:checked");
-        const del = document.getElementById("selection-element") as HTMLElement;
-        ele.forEach((element: any) => {
-            dispatch(deleteProducts(element.value));
-            setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
-            del.style.display = 'none';
-        });
-    };
-
     const columns = useMemo(() => [
         {
             header: "#",
@@ -237,7 +97,7 @@ const CarList = (props: any) => {
             enableColumnFilter: false,
             enableSorting: false,
             cell: (cell: any) => {
-                return <input type="checkbox" className="productCheckBox form-check-input" value={cell.getValue()} onClick={() => displayDelete()} />;
+                return <input type="checkbox" className="productCheckBox form-check-input" value={cell.getValue()} />;
             },
         },
         {
@@ -303,18 +163,18 @@ const CarList = (props: any) => {
                             <i className="ri-more-fill" />
                         </DropdownToggle>
                         <DropdownMenu className="dropdown-menu-end">
-                            <DropdownItem href="apps-ecommerce-product-details">
+                            <DropdownItem href={`/cars/${cell.row.original.id}/show`}>
                                 <i className="ri-eye-fill align-bottom me-2 text-muted"></i>{" "}
-                                View
+                                Visualizar
                             </DropdownItem>
 
-                            <DropdownItem href="apps-ecommerce-add-product">
+                            <DropdownItem href={`/cars/${cell.row.original.id}`}>
                                 <i className="ri-pencil-fill align-bottom me-2 text-muted"></i>{" "}
-                                Edit
+                                Editar
                             </DropdownItem>
 
-                            <DropdownItem divider />
-                            <DropdownItem
+                            {/* <DropdownItem divider /> */}
+                            {/* <DropdownItem
                                 href="#"
                                 onClick={() => {
                                     const productData = cell.row.original;
@@ -323,7 +183,7 @@ const CarList = (props: any) => {
                             >
                                 <i className="ri-delete-bin-fill align-bottom me-2 text-muted"></i>{" "}
                                 Delete
-                            </DropdownItem>
+                            </DropdownItem> */}
                         </DropdownMenu>
                     </UncontrolledDropdown>
                 );
@@ -338,7 +198,7 @@ const CarList = (props: any) => {
         <div className="page-content">
             <ToastContainer closeButton={false} limit={1} />
 
-            <DeleteModal
+            {/* <DeleteModal
                 show={deleteModal}
                 onDeleteClick={handleDeleteProduct}
                 onCloseClick={() => setDeleteModal(false)}
@@ -350,7 +210,7 @@ const CarList = (props: any) => {
                     setDeleteModalMulti(false);
                 }}
                 onCloseClick={() => setDeleteModalMulti(false)}
-            />
+            /> */}
             <Container fluid>
                 <Row>
                     <Col xl={3} lg={4}>
@@ -895,7 +755,7 @@ const CarList = (props: any) => {
                                                 </NavItem>
                                             </Nav>
                                         </Col>
-                                        <div className="col-auto">
+                                        {/* <div className="col-auto">
                                             <div id="selection-element">
                                                 <div className="my-n1 d-flex align-items-center text-muted">
                                                     Select{" "}
@@ -913,7 +773,7 @@ const CarList = (props: any) => {
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </div> */}
                                     </Row>
                                 </div>
                                 <div className="card-body pt-0">
@@ -953,8 +813,6 @@ const CarList = (props: any) => {
                                         </div>
                                     )}
                                 </div>
-
-
                             </Card>
                         </div>
                     </Col>

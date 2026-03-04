@@ -1,14 +1,16 @@
 // React
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { createSelector } from "reselect";
+import { toast, ToastContainer } from "react-toastify";
 // Components
 import CompanyProfileEditor from "./CarEditor";
-import { showCompany, updateCompany } from "slices/thunks";
 // Slices
-import { COMPANY_CREATE_DEFAULTS } from "slices/companies/company.defaults";
-import { toast, ToastContainer } from "react-toastify";
+import { CAR_CREATE_DEFAULTS } from "slices/cars/car.defaults";
+import { showCar, updateCar } from "slices/cars/thunk";
+// Utils
+import { buildCarFormData } from "./utils/buildCarFormData";
 
 export default function CarUpdate() {
     const dispatch: any = useDispatch();
@@ -17,70 +19,40 @@ export default function CarUpdate() {
 
     document.title = "Editar Carro | Xplendor";
 
-    const selectCompanyState = (state: any) => state.Company;
+    // State
+    const [companyId, setCompanyId] = useState<number>(0);
 
-    const companySelector = createSelector(selectCompanyState, (state: any) => ({
-        company: state.company,
-        loadingShow: state.loadingShow,
+    const selectCarState = (state: any) => state.Car;
+
+    const carSelector = createSelector(selectCarState, (state: any) => ({
+        car: state.car,
+        loading: state.loading,
     }));
 
-    const { company, loadingShow } = useSelector(companySelector);
+    const { car, loading } = useSelector(carSelector);
 
     useEffect(() => {
-        dispatch(showCompany(Number(id)));
+        const authUser = sessionStorage.getItem("authUser");
+        if (authUser) {
+            const obj = JSON.parse(authUser);
+            setCompanyId(Number(obj.company_id));
+            dispatch(showCar({ companyId: obj.company_id, id: Number(id) }));
+        }
     }, [dispatch, id]);
 
-    if (loadingShow) return null;
+    if (loading) return null;
 
     return (
         <>
             <ToastContainer />
             <CompanyProfileEditor
-                data={company ?? COMPANY_CREATE_DEFAULTS}
+                data={car ?? CAR_CREATE_DEFAULTS}
                 onSubmit={(values: any) => {
-                    const formData = new FormData();
+                    const fd = buildCarFormData(values);
+                    fd.append("_method", "PUT");
 
-                    const appendLogo = (value: any) => {
-                        if (!value) return;
-
-                        if (value instanceof File) {
-                            formData.append("logo", value);
-                            return;
-                        }
-
-                        // se vier FileList
-                        if (value instanceof FileList && value.length > 0) {
-                            formData.append("logo", value[0]);
-                            return;
-                        }
-
-                        // se vier array de files
-                        if (Array.isArray(value) && value[0] instanceof File) {
-                            formData.append("logo", value[0]);
-                            return;
-                        }
-                    };
-
-                    Object.entries(values).forEach(([key, value]: any) => {
-                        if (value === null || value === undefined) return;
-
-                        if (key === "logo_file") {
-                            appendLogo(value);
-                            return;
-                        }
-
-                        if (typeof value === "object" && !(value instanceof File)) {
-                            formData.append(key, JSON.stringify(value));
-                            return;
-                        }
-
-                        formData.append(key, String(value));
-                    });
-
-                    formData.append("_method", "PUT");
-
-                    dispatch(updateCompany({ id: Number(id), formData: formData }));
-                    toast("Empresa atualizada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd }));
+                    toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                 }}
                 onCancel={() => {
                     navigate(-1);

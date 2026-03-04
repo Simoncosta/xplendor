@@ -13,7 +13,7 @@ import * as Yup from "yup";
 import { useFormik } from "formik";
 
 // action
-import { userForgetPassword } from "../../slices/thunks";
+// import { userForgetPassword } from "../../slices/thunks";
 
 // import images
 // import profile from "../../assets/images/bg.png";
@@ -21,10 +21,10 @@ import logoLight from "../../assets/images/logo-light.png";
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
 import { createSelector } from "reselect";
 
-const ForgetPasswordPage = (props : any) => {
-  const dispatch : any = useDispatch();
+const ForgetPasswordPage = (props: any) => {
+  const dispatch: any = useDispatch();
 
-  const validation : any = useFormik({
+  const validation: any = useFormik({
     // enableReinitialize : use this flag when initial values needs to be changed
     enableReinitialize: true,
 
@@ -35,12 +35,12 @@ const ForgetPasswordPage = (props : any) => {
       email: Yup.string().required("Please Enter Your Email"),
     }),
     onSubmit: (values) => {
-      dispatch(userForgetPassword(values, props.history));
+      // dispatch(userForgetPassword(values, props.history));
     }
   });
 
 
-  const selectLayoutState = (state : any) => state.ForgetPassword;
+  const selectLayoutState = (state: any) => state.ForgetPassword;
   const selectLayoutProperties = createSelector(
     selectLayoutState,
     (state) => ({

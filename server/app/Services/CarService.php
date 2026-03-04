@@ -72,55 +72,79 @@ class CarService extends BaseService
         *| Imagens normais
         *|--------------------------------------------------------------------------
         */
-        if (array_key_exists('images', $data) || array_key_exists('existing_images', $data)) {
+        // Só mexe em imagens se o request trouxer algum campo relacionado
+        $touchImages =
+            array_key_exists('images', $data) ||
+            array_key_exists('existing_images', $data) ||
+            array_key_exists('existing_images_meta', $data) ||
+            array_key_exists('images_meta', $data);
+
+        if ($touchImages) {
             $novas = $data['images'] ?? [];
             $existentes = $data['existing_images'] ?? [];
 
-            // Apaga tudo que não veio como existente
+            // 1) Apaga as que não foram mantidas (com base no estado final)
+            // Recarrega do DB para não usar relação cacheada
+            $car->load('images');
+
             foreach ($car->images as $img) {
-                if (!in_array($img->image, $existentes)) {
+                if (!in_array($img->image, $existentes, true)) {
                     Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
                     $img->delete();
                 }
             }
 
-            // Salva novas imagens
-            $meta = $data['images_meta'] ?? [];
-            $processed = $this->carImageService->handleUploads(
-                $novas,
-                $meta,
-                'images',
-                $data['company_id'],
-                $car->id,
-                $slug
-            );
+            // 2) Salva novas imagens (se existirem)
+            if (!empty($novas)) {
+                $metaNovas = $data['images_meta'] ?? [];
 
-            foreach ($processed as $img) {
-                $car->images()->create([
-                    'image' => $img['image'],
-                    'order' => $img['order'],
-                    'is_primary' => $img['is_primary'],
-                    'company_id' => $data['company_id'],
-                ]);
+                $processed = $this->carImageService->handleUploads(
+                    $novas,
+                    $metaNovas,
+                    'images',
+                    $data['company_id'],
+                    $car->id,
+                    $slug
+                );
+
+                foreach ($processed as $img) {
+                    $car->images()->create([
+                        'image' => $img['image'],
+                        'order' => $img['order'],
+                        'is_primary' => $img['is_primary'],
+                        'company_id' => $data['company_id'],
+                    ]);
+                }
             }
 
-            // Atualiza meta das existentes
-            foreach ($car->images as $img) {
-                $key = array_search($img->image, $existentes);
-                if ($key === false) continue;
+            // 3) Atualiza meta das existentes
+            $existingMeta = $data['existing_images_meta'] ?? [];
 
-                $metaAtual = $meta[$key] ?? [];
+            // Recarrega novamente para garantir que inclui as novas e exclui as apagadas
+            $car->load('images');
+
+            foreach ($existentes as $idx => $path) {
+                $img = $car->images->firstWhere('image', $path);
+                if (!$img) continue;
+
+                $metaAtual = $existingMeta[$idx] ?? [];
 
                 $img->update([
                     'order' => $metaAtual['order'] ?? $img->order,
-                    'is_primary' => $metaAtual['is_primary'] ?? $img->is_primary,
+                    'is_primary' => array_key_exists('is_primary', $metaAtual)
+                        ? (bool)$metaAtual['is_primary']
+                        : $img->is_primary,
                 ]);
             }
-        } else {
-            // Se não mandou o campo 'images', apaga tudo
-            foreach ($car->images as $img) {
-                Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
-                $img->delete();
+
+            // 4) Garantir 1 primary (opcional mas recomendado)
+            $car->load('images');
+            if ($car->images->count() > 0) {
+                $hasPrimary = $car->images->contains(fn($i) => (bool)$i->is_primary);
+                if (!$hasPrimary) {
+                    $first = $car->images->sortBy('order')->first();
+                    if ($first) $first->update(['is_primary' => 1]);
+                }
             }
         }
 

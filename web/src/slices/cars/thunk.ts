@@ -27,9 +27,9 @@ export const getCarsPaginate = createAsyncThunk(
 
 export const showCar = createAsyncThunk(
     "car/showCar",
-    async (id: number, { rejectWithValue }) => {
+    async ({ companyId, id }: { companyId: number, id: number }, { rejectWithValue }) => {
         try {
-            return await showCarApi({ id });
+            return await showCarApi({ companyId, id });
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);
         }
@@ -38,9 +38,9 @@ export const showCar = createAsyncThunk(
 
 export const createCar = createAsyncThunk(
     "car/createCar",
-    async (formData: FormData, { rejectWithValue }) => {
+    async ({ companyId, formData }: { companyId: number, formData: FormData }, { rejectWithValue }) => {
         try {
-            return await createCarApi(formData);
+            return await createCarApi(companyId, formData);
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);
         }
@@ -49,9 +49,9 @@ export const createCar = createAsyncThunk(
 
 export const updateCar = createAsyncThunk(
     "car/updateCar",
-    async ({ id, formData }: { id: number, formData: FormData }, { rejectWithValue }) => {
+    async ({ companyId, id, formData }: { companyId: number, id: number, formData: FormData }, { rejectWithValue }) => {
         try {
-            return await updateCarApi(id, formData);
+            return await updateCarApi(companyId, id, formData);
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);
         }

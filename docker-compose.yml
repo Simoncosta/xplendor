@@ -65,6 +65,7 @@ services:
       - xplendor_vendor:/var/www/html/vendor
       - xplendor_composer_cache:/tmp/composer
       - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini:ro
+      - ./docker/php/conf.d/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
     depends_on:
       - db
       - redis

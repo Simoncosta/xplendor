@@ -12,6 +12,7 @@ interface XInputProps {
     label?: string;
     type?: InputType;
     placeholder?: string;
+    step?: string;
     required?: boolean;
     disabled?: boolean;
     className?: string;
