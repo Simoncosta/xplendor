@@ -1,0 +1,92 @@
+services:
+  webserver:
+    image: nginx:latest
+    container_name: xplendor-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/prod/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./server:/var/www/html:ro
+      - ./web/build:/var/www/web:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - php
+    networks:
+      - xplendor
+
+  php:
+    build:
+      context: ./docker/php
+    container_name: xplendor-php
+    restart: always
+    working_dir: /var/www/html
+    expose:
+      - "9000"
+    environment:
+      COMPOSER_CACHE_DIR: /tmp/composer
+      APP_ENV: production
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+      - ./docker/php/conf.d/uploads.ini:/usr/local/etc/php/conf.d/uploads.ini:ro
+      - ./docker/php/conf.d/error_reporting.ini:/usr/local/etc/php/conf.d/error_reporting.ini:ro
+    depends_on:
+      - db
+      - redis
+    networks:
+      - xplendor
+
+  db:
+    image: mariadb:10.6.11-focal
+    container_name: xplendor-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: xplendor
+      MYSQL_USER: xplendor
+      MYSQL_PASSWORD: secret
+    volumes:
+      - db_data_xplendor:/var/lib/mysql
+    ports:
+      - "3310:3306"
+    restart: always
+    networks:
+      - xplendor
+
+  redis:
+    image: redis:alpine
+    container_name: xplendor-redis
+    restart: always
+    volumes:
+      - redis_data_xplendor:/data
+    ports:
+      - "127.0.0.1:6381:6379" # opcional (debug). melhor: remover em prod
+    networks:
+      - xplendor
+
+  # Opcional: phpMyAdmin (recomendo PROTEGER e só localhost)
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: xplendor-phpadmin
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      - db
+    networks:
+      - xplendor
+
+networks:
+  xplendor: {}
+
+volumes:
+  db_data_xplendor:
+  redis_data_xplendor:
+  xplendor_vendor:
+  xplendor_composer_cache:
