@@ -9,7 +9,7 @@ services:
     volumes:
       - ./docker/nginx/prod/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./server:/var/www/html:ro
-      - ./web/build:/var/www/web:ro
+      - ./web/build:/var/www/web/build:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - php
