@@ -81,20 +81,44 @@ class CarService extends BaseService
 
         if ($touchImages) {
             $novas = $data['images'] ?? [];
-            $existentes = $data['existing_images'] ?? [];
 
-            // 1) Apaga as que não foram mantidas (com base no estado final)
-            // Recarrega do DB para não usar relação cacheada
-            $car->load('images');
+            // Só apaga se o request trouxe a lista final das existentes
+            $hasExistingList = array_key_exists('existing_images', $data);
 
-            foreach ($car->images as $img) {
-                if (!in_array($img->image, $existentes, true)) {
-                    Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
-                    $img->delete();
+            if ($hasExistingList) {
+                $existentes = $data['existing_images'] ?? [];
+
+                $car->load('images');
+
+                foreach ($car->images as $img) {
+                    if (!in_array($img->image, $existentes, true)) {
+                        Storage::disk('public')->delete(str_replace('storage/', '', $img->image));
+                        $img->delete();
+                    }
+                }
+
+                // Atualiza meta das existentes só se também veio meta
+                if (array_key_exists('existing_images_meta', $data)) {
+                    $existingMeta = $data['existing_images_meta'] ?? [];
+                    $car->load('images');
+
+                    foreach ($existentes as $idx => $path) {
+                        $img = $car->images->firstWhere('image', $path);
+                        if (!$img) continue;
+
+                        $metaAtual = $existingMeta[$idx] ?? [];
+
+                        $img->update([
+                            'order' => $metaAtual['order'] ?? $img->order,
+                            'is_primary' => array_key_exists('is_primary', $metaAtual)
+                                ? (bool)$metaAtual['is_primary']
+                                : $img->is_primary,
+                        ]);
+                    }
                 }
             }
 
-            // 2) Salva novas imagens (se existirem)
+            // Salva novas imagens (independente de existing_images)
             if (!empty($novas)) {
                 $metaNovas = $data['images_meta'] ?? [];
 
@@ -117,34 +141,11 @@ class CarService extends BaseService
                 }
             }
 
-            // 3) Atualiza meta das existentes
-            $existingMeta = $data['existing_images_meta'] ?? [];
-
-            // Recarrega novamente para garantir que inclui as novas e exclui as apagadas
+            // Garantir 1 primary (boa prática)
             $car->load('images');
-
-            foreach ($existentes as $idx => $path) {
-                $img = $car->images->firstWhere('image', $path);
-                if (!$img) continue;
-
-                $metaAtual = $existingMeta[$idx] ?? [];
-
-                $img->update([
-                    'order' => $metaAtual['order'] ?? $img->order,
-                    'is_primary' => array_key_exists('is_primary', $metaAtual)
-                        ? (bool)$metaAtual['is_primary']
-                        : $img->is_primary,
-                ]);
-            }
-
-            // 4) Garantir 1 primary (opcional mas recomendado)
-            $car->load('images');
-            if ($car->images->count() > 0) {
-                $hasPrimary = $car->images->contains(fn($i) => (bool)$i->is_primary);
-                if (!$hasPrimary) {
-                    $first = $car->images->sortBy('order')->first();
-                    if ($first) $first->update(['is_primary' => 1]);
-                }
+            if ($car->images->count() > 0 && !$car->images->contains(fn($i) => (bool)$i->is_primary)) {
+                $first = $car->images->sortBy('order')->first();
+                if ($first) $first->update(['is_primary' => 1]);
             }
         }
 

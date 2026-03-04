@@ -111,10 +111,10 @@ const Login = (props: any) => {
                                                         </div>
 
                                                         <div className="mt-4">
-                                                            <Button color="success" className="w-100" type="submit">Sign In</Button>
+                                                            <Button color="dark" className="w-100" type="submit">Entrar</Button>
                                                         </div>
 
-                                                        <div className="mt-4 text-center">
+                                                        {/* <div className="mt-4 text-center">
                                                             <div className="signin-other-title">
                                                                 <h5 className="fs-13 mb-4 title">Sign In with</h5>
                                                             </div>
@@ -125,14 +125,14 @@ const Login = (props: any) => {
                                                                 <Button color="dark" className="btn-icon me-1"><i className="ri-github-fill fs-16"></i></Button>
                                                                 <Button color="info" className="btn-icon"><i className="ri-twitter-fill fs-16"></i></Button>
                                                             </div>
-                                                        </div>
+                                                        </div> */}
 
                                                     </Form>
                                                 </div>
 
-                                                <div className="mt-5 text-center">
+                                                {/* <div className="mt-5 text-center">
                                                     <p className="mb-0">Don't have an account ? <a href="/auth-signup-cover" className="fw-semibold text-primary text-decoration-underline"> Signup</a> </p>
-                                                </div>
+                                                </div> */}
                                             </div>
                                         </Col>
                                     </Row>

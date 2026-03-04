@@ -36,6 +36,7 @@ import { createSelector } from "reselect";
 import { getCarsPaginate } from "slices/cars/thunk";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import XButton from "Components/Common/XButton";
+import { ICar } from "common/models/car.model";
 
 const SingleOptions = [
     { value: 'Watches', label: 'Watches' },
@@ -109,13 +110,12 @@ const CarList = (props: any) => {
                     <div className="d-flex align-items-center">
                         {cell.row.original.images.length > 0 && (
                             <div className="flex-shrink-0 me-3">
-                                <div className="avatar-md bg-light rounded p-1">
-                                    <img
-                                        src={process.env.REACT_APP_PUBLIC_URL + cell.row.original.images[0].image}
-                                        alt=""
-                                        className="img-fluid d-block"
-                                    />
-                                </div>
+                                <img
+                                    src={process.env.REACT_APP_PUBLIC_URL + cell.row.original.images[0].image}
+                                    alt=""
+                                    className="img-thumbnail"
+                                    width={150}
+                                />
                             </div>
                         )}
                         <div className="flex-grow-1">
@@ -151,13 +151,13 @@ const CarList = (props: any) => {
             enableColumnFilter: false,
         },
         {
-            header: "Action",
+            header: "Ação",
             cell: (cell: any) => {
                 return (
                     <UncontrolledDropdown>
                         <DropdownToggle
                             href="#"
-                            className="btn btn-soft-secondary btn-sm"
+                            className="btn btn-soft-primary btn-sm"
                             tag="button"
                         >
                             <i className="ri-more-fill" />
@@ -718,7 +718,7 @@ const CarList = (props: any) => {
                                                     >
                                                         Ativos{" "}
                                                         <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                            {cars?.length}
+                                                            {cars?.filter((car: ICar) => car.status === 'active').length}
                                                         </span>
                                                     </NavLink>
                                                 </NavItem>
@@ -735,7 +735,7 @@ const CarList = (props: any) => {
                                                     >
                                                         Vendidos{" "}
                                                         <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                            0
+                                                            {cars?.filter((car: ICar) => car.status === 'sold').length}
                                                         </span>
                                                     </NavLink>
                                                 </NavItem>
@@ -750,7 +750,10 @@ const CarList = (props: any) => {
                                                         }}
                                                         href="#"
                                                     >
-                                                        Em Rascunho
+                                                        Em Rascunho{" "}
+                                                        <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
+                                                            {cars?.filter((car: ICar) => car.status === 'draft').length}
+                                                        </span>
                                                     </NavLink>
                                                 </NavItem>
                                             </Nav>
@@ -792,7 +795,11 @@ const CarList = (props: any) => {
                                     {cars && cars.length > 0 ? (
                                         <XTanStackTable
                                             columns={columns}
-                                            data={(cars || [])}
+                                            data={(
+                                                (activeTab === "1" ? cars.filter((car: ICar) => car.status === 'active') :
+                                                    (activeTab === "2" ? cars.filter((car: ICar) => car.status === 'sold') :
+                                                        cars.filter((car: ICar) => car.status === 'draft'))) || []
+                                            )}
                                             loading={loading}
                                             pagination={pagination}
                                             onPaginationChange={setPagination}

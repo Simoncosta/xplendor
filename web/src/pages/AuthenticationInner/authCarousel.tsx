@@ -24,22 +24,33 @@ const AuthSlider = () => {
                                 <i className="ri-double-quotes-l display-4 text-success"></i>
                             </div>
 
-                            <Carousel showThumbs={false} autoPlay={true} showArrows={false} showStatus={false} infiniteLoop={true} className="slide" 
+                            <Carousel showThumbs={false} autoPlay={true} showArrows={false} showStatus={false} infiniteLoop={true} className="slide"
                             // id="qoutescarouselIndicators"
                             >
                                 <div className="carousel-inner text-center text-white pb-5">
                                     <div className="item">
-                                        <p className="fs-15 fst-italic">" Great! Clean code, clean design, easy for customization. Thanks very much! "</p>
+                                        <p className="fs-15 fst-italic">
+                                            " Desde que usamos a Xplendor, deixámos de depender de marketplaces.
+                                            Agora controlamos o tráfego, as leads e as vendas diretamente no nosso site. "
+                                        </p>
                                     </div>
                                 </div>
+
                                 <div className="carousel-inner text-center text-white pb-5">
                                     <div className="item">
-                                        <p className="fs-15 fst-italic">" The theme is really great with an amazing customer support."</p>
+                                        <p className="fs-15 fst-italic">
+                                            " A Xplendor transformou o nosso stock num verdadeiro motor de vendas.
+                                            Cada viatura passa a ter estratégia, conteúdo e campanhas próprias. "
+                                        </p>
                                     </div>
                                 </div>
+
                                 <div className="carousel-inner text-center text-white pb-5">
                                     <div className="item">
-                                        <p className="fs-15 fst-italic">" Great! Clean code, clean design, easy for customization. Thanks very much! "</p>
+                                        <p className="fs-15 fst-italic">
+                                            " Pela primeira vez conseguimos medir exatamente quanto cada carro nos gera
+                                            em visitas, leads e vendas. Isto muda completamente a forma de gerir o stock. "
+                                        </p>
                                     </div>
                                 </div>
                             </Carousel>

@@ -35,6 +35,21 @@ type CarEditorProps = {
 const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
 
+    const emptyExtrasByGroup = {
+        comfort_multimedia: [],
+        exterior_equipment: [],
+        interior_equipment: [],
+        safety_performance: [],
+    };
+
+    const arrayToMap = (arr?: { group: string; items: string[] }[]) => {
+        const map = { ...emptyExtrasByGroup } as any;
+        (arr ?? []).forEach((g) => {
+            map[g.group] = g.items ?? [];
+        });
+        return map;
+    };
+
     const validationSchema = Yup.object({
         // car_brand_id: Yup.number().min(1, "Marca é obrigatória").required(),
         // car_model_id: Yup.number().min(1, "Modelo é obrigatório").required(),
@@ -50,6 +65,9 @@ const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
         enableReinitialize: true,
         initialValues: {
             ...data,
+            extras: data.extras ?? [],
+            extrasByGroup: arrayToMap(data.extras),
+
             stored_images: data.images,
 
             existing_images: data.images?.slice()

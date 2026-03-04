@@ -61,7 +61,7 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
     // Inicializa FilePond com imagens já existentes (edição)
     useEffect(() => {
         if (!isEdit) return;
-        if (files.length) return; // evita re-inicializar
+        if (files.length) return;
 
         const stored = (values as any)?.stored_images as CarStoredImage[] | undefined;
         if (!stored?.length) return;
@@ -69,11 +69,11 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
         const initial = [...stored]
             .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
             .map((img) => ({
-                source: toAbsoluteUrl(img.image), // URL para preview/load
+                source: toAbsoluteUrl(img.image),
                 options: {
                     type: "local" as const,
                     metadata: {
-                        storage_path: img.image,                 // <<< O QUE VAI PARA existing_images
+                        storage_path: img.image,
                         is_primary: Boolean(img.is_primary),
                         order: img.order ?? 0,
                         stored_id: img.id,
@@ -82,6 +82,20 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
             }));
 
         setFiles(initial);
+
+        // ✅ IMPORTANTÍSSIMO: sincroniza o Formik logo no load
+        setTimeout(() => {
+            // FilePond items locais aqui ainda são objetos simples,
+            // então faz uma sync manual baseada no `initial`
+            setFieldValue("existing_images", initial.map(i => i.options.metadata.storage_path));
+            setFieldValue(
+                "existing_images_meta",
+                initial.map((i, idx) => ({
+                    order: idx + 1,
+                    is_primary: Boolean(i.options.metadata.is_primary),
+                }))
+            );
+        }, 0);
     }, [isEdit, (values as any)?.stored_images, files.length]);
 
     const syncFormikFromPond = (pondItems: any[]) => {

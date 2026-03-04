@@ -148,7 +148,7 @@ $chat-secondary-color:                            var(--#{$prefix}primary);
 $timeline-color:                                  var(--#{$prefix}secondary-bg);     
 
 //auth pages
-$auth-bg-cover:                                   linear-gradient(-45deg, $primary 50%, $success);
+$auth-bg-cover:                                   linear-gradient(-45deg, #232526 50%, #414345);
 
 $input-bg-custom:                                 $body-secondary-bg;
 $input-border-custom:                             $border-color-translucent;

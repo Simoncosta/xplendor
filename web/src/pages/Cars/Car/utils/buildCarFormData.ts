@@ -61,11 +61,27 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
     });
 
     // 4) extras
-    if (values.extras && typeof values.extras === "object" && !Array.isArray(values.extras)) {
+    // 4) extras (SUPORTA array CarExtrasGroup[])
+    if (Array.isArray(values.extras)) {
+        values.extras.forEach((g: any, i: number) => {
+            if (!g) return;
+
+            // group
+            if (g.group) fd.append(`extras[${i}][group]`, String(g.group));
+
+            // items[]
+            (g.items ?? []).forEach((item: any, j: number) => {
+                if (item === null || item === undefined) return;
+                fd.append(`extras[${i}][items][${j}]`, String(item));
+            });
+        });
+    } else if (values.extras && typeof values.extras === "object") {
+        // fallback: se algum dia enviares map {group: string[]}
         Object.entries(values.extras).forEach(([group, items]: any) => {
             if (!Array.isArray(items)) return;
             items.forEach((item: any, idx: number) => {
-                if (!isNil(item)) fd.append(`extras[${group}][${idx}]`, String(item));
+                if (item === null || item === undefined) return;
+                fd.append(`extras_map[${group}][${idx}]`, String(item));
             });
         });
     }
