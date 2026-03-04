@@ -2,7 +2,7 @@
 set -e
 
 APP_DIR="/home/xplendor"
-ENV_FILE="$APP_DIR/.env"
+ENV_FILE="$APP_DIR/server/.env"
 
 echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
