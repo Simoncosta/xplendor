@@ -9,7 +9,12 @@ import {
 export const getCarsPaginate = createAsyncThunk(
     "car/getCarsPaginate",
     async (
-        params: { perPage: number; page: number; companyId: number; },
+        params: {
+            perPage: number;
+            page: number;
+            companyId: number;
+            status?: 'active' | 'sold' | 'draft';
+        },
         { rejectWithValue }
     ) => {
         try {
@@ -17,6 +22,7 @@ export const getCarsPaginate = createAsyncThunk(
                 perPage: params.perPage,
                 page: params.page,
                 companyId: params.companyId,
+                status: params.status,
             });
             return response;
         } catch (error: any) {

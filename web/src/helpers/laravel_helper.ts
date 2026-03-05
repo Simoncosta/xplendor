@@ -38,12 +38,19 @@ export const createCompany = (data: FormData | any) => api.create(url.GET_COMPAN
 export const updateCompany = (id: number, data: FormData | any) => api.create(url.GET_COMPANIES + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 
 // CARS
-export const getCarsPaginate = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS, {
+export const getCarsPaginate = (
     params: {
-        perPage: params.perPage,
-        page: params.page,
-    }
-});
+        perPage: number;
+        page: number;
+        companyId: number;
+        status?: 'active' | 'sold' | 'draft';
+    }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS, {
+        params: {
+            perPage: params.perPage,
+            page: params.page,
+            status: params.status
+        }
+    });
 export const showCar = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS + "/" + params.id);
 export const createCar = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateCar = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });

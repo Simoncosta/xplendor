@@ -30,6 +30,10 @@ class CarController extends Controller
 
         $filter = $user->role === 'root' ? [] : ['company_id' => $user->company_id];
 
+        if ($request->input('status')) {
+            $filter['status'] = $request->input('status');
+        }
+
         $paginate = $request->input('perPage')
             ? ApiPaginate::perPage($request)
             : null;

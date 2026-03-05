@@ -31,6 +31,8 @@ export default function CarUpdate() {
 
     const { car, loading } = useSelector(carSelector);
 
+    console.log(loading);
+
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {

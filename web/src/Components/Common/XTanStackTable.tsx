@@ -249,9 +249,9 @@ const XTanStackTable = ({
             <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
                 <div className="col-sm">
                     <div className="text-muted">
-                        Showing{" "}
-                        <span className="fw-semibold">{data.length}</span> of{" "}
-                        <span className="fw-semibold">{total ?? "-"}</span> Results
+                        Mostrando{" "}
+                        <span className="fw-semibold">{data.length}</span> de{" "}
+                        <span className="fw-semibold">{total ?? "-"}</span> Resultados
                     </div>
                 </div>
                 <div className="col-sm-auto">
@@ -270,7 +270,7 @@ const XTanStackTable = ({
                                     }
                                 }}
                             >
-                                Previous
+                                Anterior
                             </Link>
                         </li>
                         {getPageOptions().map((item: any, key: number) => (
@@ -294,7 +294,7 @@ const XTanStackTable = ({
                                     }
                                 }}
                             >
-                                Next
+                                Próximo
                             </Link>
                         </li>
                     </ul>

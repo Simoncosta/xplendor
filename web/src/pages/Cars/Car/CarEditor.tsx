@@ -1,10 +1,8 @@
 // React
-import { useEffect, useState } from "react";
 import {
     Col,
     Container,
     Row,
-    Form,
     CardBody,
     Card,
 } from "reactstrap";
@@ -82,7 +80,13 @@ const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
             images_meta: [],
         },
         validationSchema,
-        onSubmit: (values) => onSubmit?.(values),
+        onSubmit: (values) => {
+            console.log("existing_images", values.existing_images);
+            console.log("existing_images_meta", values.existing_images_meta);
+            console.log("images", values.images);
+            console.log("images_meta", values.images_meta);
+            onSubmit?.(values)
+        },
     });
 
     return (

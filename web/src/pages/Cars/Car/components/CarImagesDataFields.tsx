@@ -99,8 +99,8 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
     }, [isEdit, (values as any)?.stored_images, files.length]);
 
     const syncFormikFromPond = (pondItems: any[]) => {
+        // 1) identificar stored vs new
         const isStored = (it: any) => {
-            // item "local" não tem File, e tem metadata storage_path
             const sp = it?.getMetadata?.("storage_path");
             return typeof sp === "string" && sp.startsWith("/storage/");
         };
@@ -108,31 +108,56 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
         const storedItems = pondItems.filter(isStored);
         const newItems = pondItems.filter((it) => it?.file instanceof File);
 
-        // existing_images: usa SEMPRE storage_path
-        const existing_images = storedItems.map((it) => String(it.getMetadata("storage_path")));
-
-        // meta das existentes alinhado por índice
-        const existing_images_meta = storedItems.map((it: any, idx: number) => {
-            const isPrimary = Boolean(it?.getMetadata?.("is_primary"));
-            return { order: idx + 1, is_primary: isPrimary };
+        // 2) actualizar metadados COM a ordem actual (crítico)
+        storedItems.forEach((it: any, idx: number) => {
+            it.setMetadata("order", idx + 1);
         });
 
-        // novas imagens
-        const images: File[] = newItems.map((it: any) => it.file);
+        newItems.forEach((it: any, idx: number) => {
+            it.setMetadata("order", idx + 1);
+        });
 
-        const images_meta = newItems.map((_: any, idx: number) => ({
+        // 3) existing_images (estado final)
+        const existing_images = storedItems.map((it: any) =>
+            String(it.getMetadata("storage_path"))
+        );
+
+        // 4) meta alinhado pela ordem actual (idx)
+        const existing_images_meta = storedItems.map((it: any, idx: number) => ({
             order: idx + 1,
-            is_primary: false,
+            is_primary: Boolean(it.getMetadata("is_primary")),
         }));
 
-        // garantir 1 primary total
-        const totalHasPrimary =
-            existing_images_meta.some((m) => m.is_primary) ||
-            images_meta.some((m) => m.is_primary);
+        // 5) novas imagens
+        const images: File[] = newItems.map((it: any) => it.file);
 
-        if (!totalHasPrimary) {
-            if (existing_images_meta.length) existing_images_meta[0].is_primary = true;
-            else if (images_meta.length) images_meta[0].is_primary = true;
+        const images_meta = newItems.map((it: any, idx: number) => ({
+            order: idx + 1,
+            is_primary: Boolean(it.getMetadata("is_primary")) || false,
+        }));
+
+        // 6) garantir 1 primary total
+        const total = [...existing_images_meta, ...images_meta];
+        const primaryIndex = total.findIndex((m) => m.is_primary);
+
+        if (primaryIndex === -1 && total.length > 0) {
+            // mete primary na primeira imagem do pond (stored ou new)
+            if (storedItems.length) {
+                storedItems[0].setMetadata("is_primary", true);
+                existing_images_meta[0].is_primary = true;
+            } else if (newItems.length) {
+                newItems[0].setMetadata("is_primary", true);
+                images_meta[0].is_primary = true;
+            }
+        } else if (primaryIndex !== -1) {
+            // normaliza: só 1 primary
+            storedItems.forEach((it: any, i: number) => it.setMetadata("is_primary", i === primaryIndex));
+            newItems.forEach((it: any, i: number) =>
+                it.setMetadata("is_primary", storedItems.length + i === primaryIndex)
+            );
+
+            existing_images_meta.forEach((m, i) => (m.is_primary = i === primaryIndex));
+            images_meta.forEach((m, i) => (m.is_primary = storedItems.length + i === primaryIndex));
         }
 
         setFieldValue("existing_images", existing_images);
@@ -146,7 +171,6 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
             <div className="mb-2 border-bottom pb-2">
                 <h5 className="card-title">Imagens da Viatura</h5>
             </div>
-
 
             <Row>
                 <Col lg={12}>
@@ -186,7 +210,7 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
                             fileValidateTypeLabelExpectedTypes="Só JPG, PNG ou WEBP"
                             name="images"
                             className="filepond filepond-input-multiple"
-                            labelIdle='Arraste suas images ou <span class="filepond--label-action">clique aqui</span>'
+                            labelIdle='Arraste suas imagens aqui pra dentrou ou <span class="filepond--label-action">clique aqui</span>'
                             server={{
                                 load: (source, load, error, progress, abort) => {
                                     const controller = new AbortController();
@@ -208,8 +232,6 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
                                     };
                                 },
                             }}
-                            styleItemPanelAspectRatio="1:1"
-                        // stylePanelLayout="compact"
                         />
                     </div>
                 </Col>
