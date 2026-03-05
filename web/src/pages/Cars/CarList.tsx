@@ -108,7 +108,12 @@ const CarList = (props: any) => {
             accessorKey: "price_gross",
             enableColumnFilter: false,
             cell: (cell: any) => (
-                <span>€{cell.getValue()}</span>
+                <span>
+                    €{new Intl.NumberFormat("pt-PT", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }).format(cell.getValue())}
+                </span>
             )
         },
         {

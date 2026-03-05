@@ -17,6 +17,9 @@ import CarList from "pages/Cars/CarList";
 import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
 
+// Landing 
+import Landing from "pages/Landing";
+
 const authProtectedRoutes = [
     { path: "/dashboard", component: <></> },
 
@@ -33,7 +36,7 @@ const authProtectedRoutes = [
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name
     {
-        path: "/",
+        path: "/dashboard",
         exact: true,
         component: <Navigate to="/dashboard" />,
     },
@@ -46,6 +49,9 @@ const publicRoutes = [
     { path: "/login", component: <Login /> },
     { path: "/forgot-password", component: <ForgetPasswordPage /> },
     { path: "/register", component: <Register /> },
+
+    // Landing Page
+    { path: "/", component: <Landing /> },
 ];
 
 export { authProtectedRoutes, publicRoutes };
