@@ -98,6 +98,11 @@ const CarList = (props: any) => {
                                     {cell.row.original.model.name}
                                 </span>
                             </p>
+                            <p className="text-muted mb-0">
+                                <span className="fw-medium">
+                                    {cell.row.original.license_plate}
+                                </span>
+                            </p>
                         </div>
                     </div>
                 </>
@@ -117,9 +122,20 @@ const CarList = (props: any) => {
             )
         },
         {
-            header: "Matrícula",
-            accessorKey: "license_plate",
+            header: "Views",
+            accessorKey: "views",
             enableColumnFilter: false,
+            cell: (cell: any) => (
+                <span className="text-muted">{cell.row.original.views.length > 0 ? cell.row.original.views.length : 0}</span>
+            )
+        },
+        {
+            header: "Leads",
+            accessorKey: "leads",
+            enableColumnFilter: false,
+            cell: (cell: any) => (
+                <span className="text-muted">{cell.row.original.leads.length > 0 ? cell.row.original.leads.length : 0}</span>
+            )
         },
         {
             header: "Ação",

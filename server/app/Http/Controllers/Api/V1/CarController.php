@@ -40,7 +40,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'car360ExteriorImages', 'brand', 'model'],
+            ['images', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id'],
             $paginate,
             $filter
         );

@@ -22,8 +22,22 @@ class CarViewRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'car_id' => 'required|exists:cars,id',
-            'user_id' => 'nullable|exists:users,id',
+            // relations
+            'car_id'     => ['required', 'integer', 'exists:cars,id'],
+
+            // tracking
+            'referrer'     => ['nullable', 'string', 'max:2048'],
+            'landing_path' => ['nullable', 'string', 'max:2048'],
+            'channel'      => ['nullable', 'string', 'max:50'],
+
+            'visitor_id' => ['nullable', 'uuid'],
+            'session_id' => ['nullable', 'uuid'],
+
+            'utm_source'   => ['nullable', 'string', 'max:120'],
+            'utm_medium'   => ['nullable', 'string', 'max:120'],
+            'utm_campaign' => ['nullable', 'string', 'max:120'],
+            'utm_content'  => ['nullable', 'string', 'max:255'],
+            'utm_term'     => ['nullable', 'string', 'max:255'],
         ];
     }
 }
