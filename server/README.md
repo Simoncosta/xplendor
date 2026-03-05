@@ -1,5 +1,31 @@
 # XPLENDOR
 
+Isto vai ser o único código obrigatório no site do cliente:
+```js
+<script>
+        window.xplendor = window.xplendor || function () { (window.xplendor.q = window.xplendor.q || []).push(arguments); };
+</script>
+
+<script src="https://xplendor.tech/xplendor.js" defer></script>
+
+<script>
+	window.addEventListener("load", function () {
+		window.xplendor("init", {
+			token: "496eca6a-4146-47d6-89ef-abc797813517",
+			api_base: "https://xplendor.tech",
+			debug: false,
+			auto_page_view: true,
+		});
+	});
+</script>
+```
+Depois, no site, em pontos específicos:
+```js
+window.xplendor('event', 'car_view', { car_id: 123 });
+window.xplendor('event', 'lead', { car_id: 123, name, email, phone, message });
+```
+
+---
 TODO: Backend Laravel
 Campos recomendados
 	•	custom_domain (nullable, unique)
