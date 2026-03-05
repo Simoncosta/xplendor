@@ -12,6 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('car_leads', function (Blueprint $table) {
+            $table->enum('status', ['new', 'contacted', 'qualified', 'won', 'lost', 'spam'])
+                ->default('new')->index()->after('message');
+
             $table->timestamp('assigned_at')->nullable()->after('status');
 
             $table->timestamp('contacted_at')->nullable()
