@@ -11,4 +11,18 @@ class CarLeadRepository extends BaseRepository implements CarLeadRepositoryInter
     {
         parent::__construct($model);
     }
+
+    public function countByCar(int $carId): int
+    {
+        return $this->model->where('car_id', $carId)->count();
+    }
+
+    public function getTimelineByCar(int $carId)
+    {
+        return $this->model
+            ->select('id', 'created_at')
+            ->where('car_id', $carId)
+            ->latest('created_at')
+            ->get();
+    }
 }

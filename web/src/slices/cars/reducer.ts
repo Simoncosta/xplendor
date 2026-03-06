@@ -1,17 +1,20 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCarsPaginate, showCar } from "./thunk";
+import { getCarsPaginate, showCar, analyticsCar } from "./thunk";
 
 const initialState = {
     cars: [] as any[],
     meta: null as any,
 
     car: null as any | null,
+    carAnalytics: null as any | null,
 
     loadingList: false,
     loadingShow: false,
+    loadingAnalytics: false,
 
     errorList: null as any,
     errorShow: null as any,
+    errorAnalytics: null as any,
 };
 
 const CarSlice = createSlice({
@@ -48,6 +51,21 @@ const CarSlice = createSlice({
             .addCase(showCar.rejected, (state, action) => {
                 state.loadingShow = false;
                 state.errorShow = action.payload || action.error;
+            });
+
+        // ANALYTICS
+        builder
+            .addCase(analyticsCar.pending, (state) => {
+                state.loadingAnalytics = true;
+                state.errorAnalytics = null;
+            })
+            .addCase(analyticsCar.fulfilled, (state, action) => {
+                state.loadingAnalytics = false;
+                state.carAnalytics = action.payload.data;
+            })
+            .addCase(analyticsCar.rejected, (state, action) => {
+                state.loadingAnalytics = false;
+                state.errorAnalytics = action.payload || action.error;
             });
     },
 });

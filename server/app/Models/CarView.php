@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CarView extends Model
 {
@@ -23,4 +24,9 @@ class CarView extends Model
         'ip_address',
         'user_agent'
     ];
+
+    public function car(): BelongsTo
+    {
+        return $this->belongsTo(Car::class);
+    }
 }

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Public\{
 };
 use App\Http\Controllers\Api\V1\{
     BlogController,
+    CarAnalyticsController,
     CarBrandController,
     CarController,
     CarmineConnectionController,
@@ -39,8 +40,8 @@ Route::prefix('v1')->group(function () {
 
         Route::prefix('/companies/{id}')->group(function () {
             Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
-
             Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
+            Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
 
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);

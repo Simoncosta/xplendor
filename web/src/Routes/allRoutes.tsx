@@ -16,6 +16,7 @@ import CompanyProfileCreate from "pages/Companies/CompanyProfile/CompanyProfileC
 import CarList from "pages/Cars/CarList";
 import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
+import CarAnalytics from "pages/Cars/Car/CarAnalytics";
 
 // Landing 
 import Landing from "pages/Landing";
@@ -32,6 +33,7 @@ const authProtectedRoutes = [
     { path: "/cars", component: <CarList /> },
     { path: "/cars/create", component: <CarCreate /> },
     { path: "/cars/:id", component: <CarUpdate /> },
+    { path: "/cars/:id/analytics", component: <CarAnalytics /> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

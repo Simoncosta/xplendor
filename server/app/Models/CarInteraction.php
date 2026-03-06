@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CarInteraction extends Model
 {
@@ -79,4 +80,14 @@ class CarInteraction extends Model
     protected $casts = [
         'meta' => 'array',
     ];
+
+    public function car(): BelongsTo
+    {
+        return $this->belongsTo(Car::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

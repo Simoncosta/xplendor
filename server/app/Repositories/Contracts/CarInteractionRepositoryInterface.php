@@ -2,8 +2,11 @@
 
 namespace App\Repositories\Contracts;
 
-interface CarLeadRepositoryInterface extends BaseRepositoryInterface
+interface CarInteractionRepositoryInterface extends BaseRepositoryInterface
 {
     public function countByCar(int $carId): int;
+
+    public function groupByType(int $carId);
+
     public function getTimelineByCar(int $carId);
 }

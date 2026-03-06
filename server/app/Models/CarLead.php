@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CarLead extends Model
 {
@@ -33,4 +34,14 @@ class CarLead extends Model
         'car_id',
         'company_id',
     ];
+
+    public function car(): BelongsTo
+    {
+        return $this->belongsTo(Car::class);
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

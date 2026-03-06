@@ -116,6 +116,23 @@ class Car extends Model implements AuditableContract
         return $this->hasMany(CarLead::class);
     }
 
+    public function interactions(): HasMany
+    {
+        return $this->hasMany(CarInteraction::class);
+    }
+
+    public function whatsappInteractions(): HasMany
+    {
+        return $this->hasMany(CarInteraction::class)
+            ->where('interaction_type', 'whatsapp_click');
+    }
+
+    public function callInteractions(): HasMany
+    {
+        return $this->hasMany(CarInteraction::class)
+            ->where('interaction_type', 'call_click');
+    }
+
     public function analyses(): HasOne
     {
         return $this->hasOne(CarAiAnalysis::class);

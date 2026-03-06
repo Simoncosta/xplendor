@@ -138,6 +138,14 @@ const CarList = (props: any) => {
             )
         },
         {
+            header: "Interações",
+            accessorKey: "interactions",
+            enableColumnFilter: false,
+            cell: (cell: any) => (
+                <span className="text-muted">{cell.row.original.interactions.length > 0 ? cell.row.original.interactions.length : 0}</span>
+            )
+        },
+        {
             header: "Ação",
             cell: (cell: any) => {
                 return (
@@ -150,9 +158,9 @@ const CarList = (props: any) => {
                             <i className="ri-more-fill" />
                         </DropdownToggle>
                         <DropdownMenu className="dropdown-menu-end">
-                            <DropdownItem href={`/cars/${cell.row.original.id}/show`}>
+                            <DropdownItem href={`/cars/${cell.row.original.id}/analytics`}>
                                 <i className="ri-eye-fill align-bottom me-2 text-muted"></i>{" "}
-                                Visualizar
+                                Análises
                             </DropdownItem>
 
                             <DropdownItem href={`/cars/${cell.row.original.id}`}>
