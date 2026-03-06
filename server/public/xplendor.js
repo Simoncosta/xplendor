@@ -4,6 +4,7 @@
         sessionId: "xpl_session_id",
         firstTouch: "xpl_first_touch",
         lastTouch: "xpl_last_touch",
+        lastCarView: "xpl_last_car_view",
     };
 
     const state = {
@@ -13,8 +14,27 @@
         debug: false,
     };
 
+    const safeStorage = (storage) => {
+        try {
+            const testKey = "__xpl_test__";
+            storage.setItem(testKey, "1");
+            storage.removeItem(testKey);
+            return storage;
+        } catch {
+            return {
+                getItem: () => null,
+                setItem: () => { },
+                removeItem: () => { },
+            };
+        }
+    };
+
+    const ls = safeStorage(window.localStorage);
+    const ss = safeStorage(window.sessionStorage);
+
     const uuid = () => {
-        if (crypto?.randomUUID) return crypto.randomUUID();
+        if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+
         return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
             const r = (Math.random() * 16) | 0;
             const v = c === "x" ? r : (r & 0x3) | 0x8;
@@ -25,6 +45,7 @@
     const getOrCreate = (key, storage) => {
         const existing = storage.getItem(key);
         if (existing) return existing;
+
         const id = uuid();
         storage.setItem(key, id);
         return id;
@@ -33,6 +54,7 @@
     const pickUtm = () => {
         const sp = new URLSearchParams(window.location.search);
         const g = (k) => sp.get(k) || null;
+
         return {
             utm_source: g("utm_source"),
             utm_medium: g("utm_medium"),
@@ -45,16 +67,44 @@
     const inferChannel = ({ utm_medium, referrer }) => {
         if (utm_medium) {
             const m = String(utm_medium).toLowerCase();
-            if (["cpc", "ppc", "paid", "ads", "paid_social", "paidsearch"].includes(m)) return "paid";
-            if (["social", "bio", "organic_social"].includes(m)) return "organic_social";
-            if (["email", "newsletter"].includes(m)) return "email";
+
+            if (["cpc", "ppc", "paid", "ads", "paid_social", "paidsearch"].includes(m)) {
+                return "paid";
+            }
+
+            if (["social", "bio", "organic_social"].includes(m)) {
+                return "organic_social";
+            }
+
+            if (["email", "newsletter"].includes(m)) {
+                return "email";
+            }
+
             return "utm";
         }
+
         if (!referrer) return "direct";
+
         try {
             const host = new URL(referrer).hostname.toLowerCase();
-            if (host.includes("google.") || host.includes("bing.") || host.includes("duckduckgo.")) return "organic_search";
-            if (host.includes("facebook.") || host.includes("instagram.") || host.includes("t.co") || host.includes("linkedin.")) return "organic_social";
+
+            if (
+                host.includes("google.") ||
+                host.includes("bing.") ||
+                host.includes("duckduckgo.")
+            ) {
+                return "organic_search";
+            }
+
+            if (
+                host.includes("facebook.") ||
+                host.includes("instagram.") ||
+                host.includes("t.co") ||
+                host.includes("linkedin.")
+            ) {
+                return "organic_social";
+            }
+
             return "referral";
         } catch {
             return "referral";
@@ -79,23 +129,40 @@
     const ensureTouch = () => {
         const touch = buildTouch();
 
-        if (!localStorage.getItem(STORAGE_KEYS.firstTouch)) {
-            localStorage.setItem(STORAGE_KEYS.firstTouch, JSON.stringify(touch));
+        if (!ls.getItem(STORAGE_KEYS.firstTouch)) {
+            ls.setItem(STORAGE_KEYS.firstTouch, JSON.stringify(touch));
         }
-        localStorage.setItem(STORAGE_KEYS.lastTouch, JSON.stringify(touch));
+
+        ls.setItem(STORAGE_KEYS.lastTouch, JSON.stringify(touch));
     };
 
     const getTouch = (mode = "last") => {
-        const key = mode === "first" ? STORAGE_KEYS.firstTouch : STORAGE_KEYS.lastTouch;
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : {};
+        try {
+            const key = mode === "first" ? STORAGE_KEYS.firstTouch : STORAGE_KEYS.lastTouch;
+            const raw = ls.getItem(key);
+            return raw ? JSON.parse(raw) : {};
+        } catch {
+            return {};
+        }
+    };
+
+    const detectPageType = () => {
+        const path = window.location.pathname;
+
+        if (path === "/") return "home";
+        if (path.startsWith("/car/")) return "car_detail";
+        if (path.startsWith("/cars")) return "listing";
+        if (path.startsWith("/stand/")) return "company_page";
+        if (path.startsWith("/contact")) return "contact_page";
+
+        return "other";
     };
 
     const getTrackingPayload = () => {
-        const visitor_id = getOrCreate(STORAGE_KEYS.visitorId, localStorage);
-        const session_id = getOrCreate(STORAGE_KEYS.sessionId, sessionStorage);
-
+        const visitor_id = getOrCreate(STORAGE_KEYS.visitorId, ls);
+        const session_id = getOrCreate(STORAGE_KEYS.sessionId, ss);
         const t = getTouch("last");
+
         return {
             visitor_id,
             session_id,
@@ -110,87 +177,220 @@
         };
     };
 
-    const post = async (payload) => {
-        if (!state.api_base || !state.token) return;
+    const getPageContext = () => ({
+        page_url: window.location.pathname + window.location.search,
+        page_type: detectPageType(),
+    });
 
-        const url = `${state.api_base}/api/public/track?token=${encodeURIComponent(state.token)}`;
-        const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            keepalive: true, // importante para eventos no unload
-            body: JSON.stringify(payload),
-        });
+    const saveLastCarView = (data = {}) => {
+        if (!data.car_id) return;
 
-        if (state.debug) {
-            const txt = await res.text().catch(() => "");
-            console.log("[xplendor] track response", res.status, txt);
+        ls.setItem(
+            STORAGE_KEYS.lastCarView,
+            JSON.stringify({
+                car_id: data.car_id,
+                page_url: window.location.pathname + window.location.search,
+                captured_at: new Date().toISOString(),
+            })
+        );
+    };
+
+    const getLastCarView = () => {
+        try {
+            const raw = ls.getItem(STORAGE_KEYS.lastCarView);
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
         }
+    };
+
+    const clearLastCarView = () => {
+        ls.removeItem(STORAGE_KEYS.lastCarView);
     };
 
     const shouldCount = (key, ttlMs) => {
         const k = `xpl_dedupe_${key}`;
-        const last = sessionStorage.getItem(k);
+        const last = ss.getItem(k);
         const now = Date.now();
-        if (last && now - Number(last) < ttlMs) return false;
-        sessionStorage.setItem(k, String(now));
+
+        if (last && now - Number(last) < ttlMs) {
+            return false;
+        }
+
+        ss.setItem(k, String(now));
         return true;
+    };
+
+    const mergeMeta = (baseMeta, extraMeta) => {
+        return {
+            ...(baseMeta && typeof baseMeta === "object" ? baseMeta : {}),
+            ...(extraMeta && typeof extraMeta === "object" ? extraMeta : {}),
+        };
+    };
+
+    const enrichInteractionData = (type, data = {}) => {
+        const interactionData = {
+            ...data,
+            ...getPageContext(),
+        };
+
+        if (!interactionData.meta || typeof interactionData.meta !== "object") {
+            interactionData.meta = {};
+        }
+
+        if (interactionData.car_id) {
+            interactionData.meta = mergeMeta(interactionData.meta, {
+                car_id_source: "explicit",
+            });
+
+            return interactionData;
+        }
+
+        const lastCar = getLastCarView();
+
+        if (!lastCar) {
+            interactionData.meta = mergeMeta(interactionData.meta, {
+                car_id_source: "none",
+            });
+
+            return interactionData;
+        }
+
+        interactionData.car_id = lastCar.car_id;
+        interactionData.meta = mergeMeta(interactionData.meta, {
+            car_id_source: "last_car_view",
+            inferred_from_page_url: lastCar.page_url || null,
+            inferred_from_captured_at: lastCar.captured_at || null,
+            inferred_for_interaction_type: type,
+        });
+
+        clearLastCarView();
+
+        return interactionData;
+    };
+
+    const buildEventPayload = (type, data = {}) => ({
+        type,
+        data,
+        tracking: getTrackingPayload(),
+    });
+
+    const post = async (payload) => {
+        if (!state.api_base || !state.token) return;
+
+        const url = `${state.api_base}/api/public/track?token=${encodeURIComponent(state.token)}`;
+
+        try {
+            const res = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                keepalive: true,
+                body: JSON.stringify(payload),
+            });
+
+            if (state.debug) {
+                const txt = await res.text().catch(() => "");
+                console.log("[xplendor] track response", res.status, txt, payload);
+            }
+        } catch (error) {
+            if (state.debug) {
+                console.error("[xplendor] track error", error, payload);
+            }
+        }
+    };
+
+    const handleInit = (cfg = {}) => {
+        state.token = cfg.token || null;
+        state.api_base = cfg.api_base || window.__XPLENDOR_API_BASE__ || "http://localhost:8000";
+        state.debug = !!cfg.debug;
+        state.inited = true;
+
+        ensureTouch();
+
+        if (cfg.auto_page_view !== false) {
+            const dedupeKey = `page_view_${window.location.pathname}${window.location.search}`;
+
+            if (shouldCount(dedupeKey, 10000)) {
+                post(
+                    buildEventPayload("page_view", {
+                        path: window.location.pathname,
+                        qs: window.location.search || null,
+                        ...getPageContext(),
+                    })
+                );
+            }
+        }
+    };
+
+    const handleEvent = (type, data = {}) => {
+        if (!state.inited || !type) return;
+
+        const payloadData = {
+            ...data,
+            ...getPageContext(),
+        };
+
+        if (type === "car_view") {
+            const carId = payloadData.car_id;
+
+            if (!carId) return;
+            if (!shouldCount(`car_view_${carId}`, 60000)) return;
+
+            saveLastCarView(payloadData);
+        }
+
+        ensureTouch();
+
+        post(buildEventPayload(type, payloadData));
+    };
+
+    const handleInteraction = (type, data = {}) => {
+        if (!state.inited || !type) return;
+
+        const payloadData = enrichInteractionData(type, data);
+
+        ensureTouch();
+
+        post(buildEventPayload(type, payloadData));
     };
 
     const api = (cmd, a, b) => {
         if (cmd === "init") {
-            const cfg = a || {};
-            state.token = cfg.token;
-            state.api_base = cfg.api_base || (window.__XPLENDOR_API_BASE__ || "http://localhost:8000");
-            state.debug = !!cfg.debug;
-            state.inited = true;
-
-            ensureTouch();
-
-            // opcional: page_view automático (dedupe 10s)
-            if (cfg.auto_page_view !== false) {
-                if (shouldCount(`page_view_${location.pathname}${location.search}`, 10_000)) {
-                    post({
-                        type: "page_view",
-                        data: { path: location.pathname, qs: location.search || null },
-                        tracking: getTrackingPayload(),
-                    });
-                }
-            }
-
+            handleInit(a || {});
             return;
         }
 
         if (cmd === "event") {
-            const type = a;
-            const data = b || {};
-
-            if (!state.inited) return;
-
-            // dedupe views por car_id (60s)
-            if (type === "car_view") {
-                const carId = data.car_id;
-                if (!carId) return;
-                if (!shouldCount(`car_view_${carId}`, 60_000)) return;
-            }
-
-            ensureTouch();
-
-            post({
-                type,
-                data,
-                tracking: getTrackingPayload(),
-            });
+            handleEvent(a, b || {});
             return;
+        }
+
+        if (cmd === "interaction") {
+            handleInteraction(a, b || {});
+            return;
+        }
+
+        if (cmd === "clear_last_car_view") {
+            clearLastCarView();
+            return;
+        }
+
+        if (cmd === "debug_last_car_view") {
+            if (state.debug) {
+                console.log("[xplendor] last_car_view", getLastCarView());
+            }
         }
     };
 
-    // expõe
+    const previous = window.xplendor;
+
     window.xplendor = function () {
         api(arguments[0], arguments[1], arguments[2]);
     };
 
-    // drena queue criada antes do script carregar
-    const q = window.xplendor.q || [];
+    const q = previous?.q || window.xplendor.q || [];
     q.forEach((args) => api(args[0], args[1], args[2]));
     window.xplendor.q = [];
 })();

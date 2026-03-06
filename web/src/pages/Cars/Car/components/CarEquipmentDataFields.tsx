@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormikContext } from "formik";
 import XInputCheckboxArray from "Components/Common/XInputCheckboxArray";
 import type { ICarUpdatePayload, CarExtraGroup, CarExtrasGroup } from "common/models/car.model";
@@ -208,24 +208,25 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
         setOpen(open === id ? "" : id);
     };
 
-    // 1) Ao carregar / reinitialize (editar), garante que extrasByGroup é preenchido a partir de values.extras
+    const isSyncingFromExtras = useRef(false);
+
     useEffect(() => {
-        const hasAnyUI =
-            values.extrasByGroup &&
+        if ((values.extras?.length ?? 0) === 0) return;
+        const hasAnyUI = values.extrasByGroup &&
             Object.values(values.extrasByGroup).some((items) => (items?.length ?? 0) > 0);
-
-        const hasBackend = (values.extras?.length ?? 0) > 0;
-
-        if (!hasAnyUI && hasBackend) {
+        if (!hasAnyUI) {
+            isSyncingFromExtras.current = true;
             setFieldValue("extrasByGroup", arrayToMap(values.extras as any), false);
         }
-    }, [values.extras]); // dispara no mount e quando alterna edit/create
+    }, [values.extras]);
 
-    // 2) Sempre que extrasByGroup mudar, sincroniza para values.extras (array)
     useEffect(() => {
         if (!values.extrasByGroup) return;
+        if (isSyncingFromExtras.current) {
+            isSyncingFromExtras.current = false;
+            return; // ignora este ciclo — foi iniciado pelo efeito 1
+        }
         setFieldValue("extras", mapToArray(values.extrasByGroup), false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [values.extrasByGroup]);
 
     const counts = useMemo(() => {

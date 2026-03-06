@@ -23,6 +23,8 @@ class CarLead extends Model
         'referrer',
         'landing_path',
         'channel',
+        'visitor_id',
+        'session_id',
         'utm_source',
         'utm_medium',
         'utm_campaign',

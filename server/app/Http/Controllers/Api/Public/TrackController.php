@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Car;
+use App\Models\CarInteraction;
 use App\Models\CarLead;
 use App\Models\CarView;
 use Illuminate\Http\Request;
@@ -13,19 +14,48 @@ class TrackController extends Controller
 {
     public function store(Request $request)
     {
-        // company_id vem do middleware via token:
-        // $data['company_id'] = $request->input('public_api_company')->id;
         $companyId = data_get($request->input('public_api_company'), 'id');
 
+        if (!$companyId) {
+            return response()->json([
+                'message' => 'Token inválido (empresa não encontrada).',
+            ], 401);
+        }
+
+        $interactionTypes = [
+            'whatsapp_click',
+            'call_click',
+            'show_phone',
+            'copy_phone',
+            'favorite',
+            'share',
+            'form_open',
+            'form_start',
+            'location_view',
+        ];
+
+        $allowedTypes = array_merge([
+            'page_view',
+            'car_view',
+            'car_lead',
+        ], $interactionTypes);
+
         $validated = $request->validate([
-            'type' => ['required', 'string', Rule::in(['page_view', 'car_view', 'car_lead'])],
+            'type' => ['required', 'string', Rule::in($allowedTypes)],
 
             'data' => ['nullable', 'array'],
             'data.car_id' => ['nullable', 'integer'],
             'data.name' => ['nullable', 'string', 'max:255'],
             'data.email' => ['nullable', 'email', 'max:255'],
-            'data.phone' => ['nullable', 'string', 'max:20'],
+            'data.phone' => ['nullable', 'string', 'max:30'],
             'data.message' => ['nullable', 'string'],
+
+            'data.interaction_target' => ['nullable', 'string', 'max:50'],
+            'data.page_type' => ['nullable', 'string', 'max:50'],
+            'data.page_context' => ['nullable', 'string', 'max:100'],
+            'data.page_url' => ['nullable', 'string'],
+            'data.whatsapp_number' => ['nullable', 'string', 'max:30'],
+            'data.meta' => ['nullable', 'array'],
 
             'tracking' => ['nullable', 'array'],
             'tracking.visitor_id' => ['nullable', 'uuid'],
@@ -40,31 +70,10 @@ class TrackController extends Controller
             'tracking.utm_term' => ['nullable', 'string', 'max:255'],
         ]);
 
-        if (!$companyId) {
-            return response()->json(['message' => 'Token inválido (empresa não encontrada).'], 401);
-        }
-
         $type = $validated['type'];
         $data = $validated['data'] ?? [];
         $t = $validated['tracking'] ?? [];
 
-        // validar car_id quando necessário
-        if (in_array($type, ['car_view', 'car_lead'], true)) {
-            if (empty($data['car_id'])) {
-                return response()->json(['message' => 'data.car_id é obrigatório.'], 422);
-            }
-
-            $carExistsForCompany = Car::query()
-                ->where('id', $data['car_id'])
-                ->where('company_id', $companyId)
-                ->exists();
-
-            if (!$carExistsForCompany) {
-                return response()->json(['message' => 'Carro não encontrado para esta empresa.'], 404);
-            }
-        }
-
-        // helpers de tracking (mapeia "tracking.*" -> colunas diretas)
         $trackingCols = [
             'referrer'     => $t['referrer'] ?? null,
             'landing_path' => $t['landing_path'] ?? null,
@@ -78,15 +87,34 @@ class TrackController extends Controller
             'utm_term'     => $t['utm_term'] ?? null,
         ];
 
+        $carId = $data['car_id'] ?? null;
+
+        if ($carId) {
+            $carExistsForCompany = Car::query()
+                ->where('id', $carId)
+                ->where('company_id', $companyId)
+                ->exists();
+
+            if (!$carExistsForCompany) {
+                return response()->json([
+                    'message' => 'Carro não encontrado para esta empresa.',
+                ], 404);
+            }
+        }
+
         if ($type === 'car_view') {
+            if (!$carId) {
+                return response()->json([
+                    'message' => 'data.car_id é obrigatório.',
+                ], 422);
+            }
+
             $view = CarView::create([
                 'company_id' => $companyId,
-                'car_id' => (int) $data['car_id'],
-                'user_id' => null, // público
+                'car_id' => (int) $carId,
+                'user_id' => null,
                 'ip_address' => (string) $request->ip(),
                 'user_agent' => (string) ($request->userAgent() ?? ''),
-
-                // tracking
                 ...$trackingCols,
             ]);
 
@@ -98,11 +126,10 @@ class TrackController extends Controller
         }
 
         if ($type === 'car_lead') {
-            // regras extra só para lead
             $leadData = validator($data, [
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255'],
-                'phone' => ['nullable', 'string', 'max:20'],
+                'phone' => ['nullable', 'string', 'max:30'],
                 'message' => ['nullable', 'string'],
                 'car_id' => ['required', 'integer'],
             ])->validate();
@@ -114,9 +141,6 @@ class TrackController extends Controller
                 'email' => $leadData['email'],
                 'phone' => $leadData['phone'] ?? null,
                 'message' => $leadData['message'] ?? null,
-
-                // defaults do teu schema (status/source/etc) ficam a cargo do BD
-                // tracking
                 ...$trackingCols,
             ]);
 
@@ -127,15 +151,46 @@ class TrackController extends Controller
             ], 201);
         }
 
-        // page_view (não tens tabela própria; mantém “ok” para já)
+        if (in_array($type, $interactionTypes, true)) {
+            $interaction = CarInteraction::create([
+                'company_id' => $companyId,
+                'car_id' => $carId ? (int) $carId : null,
+                'user_id' => null,
+
+                'interaction_type' => $type,
+                'interaction_target' => $data['interaction_target'] ?? null,
+
+                'page_type' => $data['page_type'] ?? null,
+                'page_context' => $data['page_context'] ?? null,
+                'page_url' => $data['page_url'] ?? null,
+
+                'phone' => $data['phone'] ?? null,
+                'whatsapp_number' => $data['whatsapp_number'] ?? null,
+
+                'meta' => $data['meta'] ?? null,
+
+                'ip_address' => (string) $request->ip(),
+                'user_agent' => (string) ($request->userAgent() ?? ''),
+
+                ...$trackingCols,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'type' => $type,
+                'id' => $interaction->id,
+            ], 201);
+        }
+
         if ($type === 'page_view') {
-            // se quiseres, podes gravar numa tabela própria depois.
             return response()->json([
                 'ok' => true,
                 'type' => $type,
             ], 201);
         }
 
-        return response()->json(['message' => 'Tipo inválido.'], 422);
+        return response()->json([
+            'message' => 'Tipo inválido.',
+        ], 422);
     }
 }
