@@ -24,10 +24,13 @@ return [
         'https://www.xplendor.tech',
         'https://paautomoveis.pt',
         'https://www.paautomoveis.pt',
+        'https://spacedrive.pt',
+        'https://www.spacedrive.pt',
 
         'http://localhost:3000',
         'http://localhost:8000',
-        'http://localhost:5173'
+        'http://localhost:5173',
+        'http://127.0.0.1:5500',
     ],
 
     'allowed_origins_patterns' => [],

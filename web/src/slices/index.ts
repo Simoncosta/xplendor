@@ -3,6 +3,7 @@ import { combineReducers } from "redux";
 import CarReducer from "./cars/reducer";
 import CarBrandReducer from "./car-brands/reducer";
 import CarModelsReducer from "./car-models/reducer";
+import CarmineReducer from "./carmine/reducer";
 import CompanyReducer from "./companies/reducer";
 import DistrictReducer from "./districts/reducer";
 import MunicipalityReducer from "./municipalities/reducer";
@@ -20,6 +21,7 @@ import ProfileReducer from "./auth/profile/reducer";
 
 const rootReducer = combineReducers({
     Car: CarReducer,
+    Carmine: CarmineReducer,
     CarBrand: CarBrandReducer,
     CarModel: CarModelsReducer,
     Company: CompanyReducer,

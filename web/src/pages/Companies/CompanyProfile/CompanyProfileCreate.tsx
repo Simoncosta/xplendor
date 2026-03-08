@@ -7,6 +7,7 @@ import { createCompany } from "slices/thunks";
 // Components
 import CompanyProfileEditor from "./CompanyProfileEditor";
 import { toast, ToastContainer } from "react-toastify";
+import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
 
 export default function CompanyProfileCreate() {
     const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function CompanyProfileCreate() {
             <ToastContainer />
             <CompanyProfileEditor
                 data={COMPANY_CREATE_DEFAULTS}
+                dataCarmine={CARMINE_API_CREATE_DEFAULTS}
                 onSubmit={(values) => {
                     const formData = new FormData();
 
@@ -37,6 +39,9 @@ export default function CompanyProfileCreate() {
                     toast("Empresa criada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     dispatch(createCompany(formData));
                     navigate(-1);
+                }}
+                onSubmitCarmine={(value) => {
+                    // console.log(value)
                 }}
                 onCancel={() => {
                     navigate(-1);

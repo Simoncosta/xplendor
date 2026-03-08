@@ -75,6 +75,7 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     Route::get('blogs/{slug}', [PublicBlogController::class, 'show']);
 
     Route::post('track', [TrackController::class, 'store']);
+    Route::post('track/carmine', [TrackController::class, 'storeCarmine']);
 });
 
 Route::get('/user', function (Request $request) {

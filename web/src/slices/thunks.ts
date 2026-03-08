@@ -1,5 +1,7 @@
 // Company
 export * from "./companies/thunk";
+// Carmine
+export * from "./carmine/thunk";
 // District
 export * from "./districts/thunk";
 // Municipality

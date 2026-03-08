@@ -96,6 +96,7 @@ interface IXTanStackTable {
     handleContactClick?: any;
     handleTicketClick?: any;
     isBordered?: any;
+    mobileMode?: boolean;
 }
 
 const XTanStackTable = ({
@@ -114,7 +115,8 @@ const XTanStackTable = ({
     thClass,
     divClass,
     SearchPlaceholder,
-    isBordered
+    isBordered,
+    mobileMode = false
 }: IXTanStackTable) => {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -192,59 +194,89 @@ const XTanStackTable = ({
             </Row>}
 
 
-            <div className={`${divClass} ${isBordered ? 'table-bordered' : ''}`}>
-                <Table hover className={tableClass}>
-                    <thead className={theadClass}>
-                        {getHeaderGroups().map((headerGroup: any) => (
-                            <tr className={trClass} key={headerGroup.id}>
-                                {headerGroup.headers.map((header: any) => (
-                                    <th key={header.id} className={thClass}  {...{
-                                        onClick: header.column.getToggleSortingHandler(),
-                                    }}>
-                                        {header.isPlaceholder ? null : (
-                                            <React.Fragment>
-                                                {flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                                {{
-                                                    asc: ' ',
-                                                    desc: ' ',
-                                                }
-                                                [header.column.getIsSorted() as string] ?? null}
-                                                {header.column.getCanFilter() ? (
-                                                    <div>
-                                                        <Filter column={header.column} table={table} />
-                                                    </div>
-                                                ) : null}
-                                            </React.Fragment>
-                                        )}
-                                    </th>
-                                ))}
-                            </tr>
-                        ))}
-                    </thead>
+            {mobileMode ? (
+                <div className="d-flex flex-column gap-3">
+                    {getRowModel().rows.map((row: any) => (
+                        <div key={row.id} className="card border shadow-sm mb-0">
+                            <div className="card-body p-3">
+                                {row.getVisibleCells().map((cell: any) => {
+                                    const header = getHeaderGroups()[0]?.headers.find(
+                                        (h: any) => h.id === cell.column.id
+                                    );
+                                    const label = header && !header.isPlaceholder
+                                        ? flexRender(header.column.columnDef.header, header.getContext())
+                                        : cell.column.id;
 
-                    <tbody>
-                        {getRowModel().rows.map((row: any) => {
-                            return (
-                                <tr key={row.id}>
-                                    {row.getVisibleCells().map((cell: any) => {
-                                        return (
-                                            <td key={cell.id}>
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext()
-                                                )}
-                                            </td>
-                                        );
-                                    })}
+                                    return (
+                                        <div key={cell.id} className="d-flex justify-content-between align-items-center py-1 border-bottom last-border-0">
+                                            <span className="text-muted fw-semibold" style={{ fontSize: 12, minWidth: 120 }}>
+                                                {label}
+                                            </span>
+                                            <span className="text-end">
+                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className={`${divClass} ${isBordered ? 'table-bordered' : ''}`}>
+                    <Table hover className={tableClass}>
+                        <thead className={theadClass}>
+                            {getHeaderGroups().map((headerGroup: any) => (
+                                <tr className={trClass} key={headerGroup.id}>
+                                    {headerGroup.headers.map((header: any) => (
+                                        <th key={header.id} className={thClass}  {...{
+                                            onClick: header.column.getToggleSortingHandler(),
+                                        }}>
+                                            {header.isPlaceholder ? null : (
+                                                <React.Fragment>
+                                                    {flexRender(
+                                                        header.column.columnDef.header,
+                                                        header.getContext()
+                                                    )}
+                                                    {{
+                                                        asc: ' ',
+                                                        desc: ' ',
+                                                    }
+                                                    [header.column.getIsSorted() as string] ?? null}
+                                                    {header.column.getCanFilter() ? (
+                                                        <div>
+                                                            <Filter column={header.column} table={table} />
+                                                        </div>
+                                                    ) : null}
+                                                </React.Fragment>
+                                            )}
+                                        </th>
+                                    ))}
                                 </tr>
-                            );
-                        })}
-                    </tbody>
-                </Table>
-            </div>
+                            ))}
+                        </thead>
+
+                        <tbody>
+                            {getRowModel().rows.map((row: any) => {
+                                return (
+                                    <tr key={row.id}>
+                                        {row.getVisibleCells().map((cell: any) => {
+                                            return (
+                                                <td key={cell.id}>
+                                                    {flexRender(
+                                                        cell.column.columnDef.cell,
+                                                        cell.getContext()
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </Table>
+                </div>
+            )}
 
             <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
                 <div className="col-sm">

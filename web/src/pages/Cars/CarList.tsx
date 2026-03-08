@@ -19,15 +19,23 @@ import classnames from "classnames";
 // RangeSlider
 import "nouislider/distribute/nouislider.css";
 
+// image
+import easyDataIcon from "../../assets/images/icon-easydata.png";
+
 //redux
 import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import { getCarsPaginate } from "slices/cars/thunk";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import { showCarmine, syncCarmine } from "slices/thunks";
 
 const CarList = (props: any) => {
     const dispatch: any = useDispatch();
+
+    const { carmine, loading: loadingCarmine } = useSelector(
+        (state: any) => state.Carmine
+    );
 
     const { cars, meta, loading } = useSelector(
         (state: any) => state.Car
@@ -35,6 +43,8 @@ const CarList = (props: any) => {
 
     // State
     const [activeTab, setActiveTab] = useState<any>("active");
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 680);
+    const [companyId, setCompanyId] = useState<any>(null);
 
     // Actions
     const toggleTab = (tab: any, type: any) => {
@@ -54,6 +64,7 @@ const CarList = (props: any) => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
             const obj = JSON.parse(authUser);
+            setCompanyId(obj.company_id);
 
             dispatch(
                 getCarsPaginate({
@@ -63,8 +74,25 @@ const CarList = (props: any) => {
                     status: activeTab
                 })
             );
+            dispatch(showCarmine({ companyId: obj.company_id, id: 0 }));
         }
     }, [dispatch, activeTab, pagination.pageIndex, pagination.pageSize]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 680);
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Actions
+    const onClickSyncCarmine = async () => {
+        if (!companyId) return;
+        dispatch(syncCarmine({ companyId: Number(companyId) }));
+        toast("Carros sincronizados com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+    };
 
     const columns = useMemo(() => [
         {
@@ -191,6 +219,11 @@ const CarList = (props: any) => {
                                         <h5 className="card-title mb-0 flex-grow-1">Carros</h5>
                                         <div className="flex-shrink-0">
                                             <div className="d-flex gap-2 flex-wrap">
+                                                {carmine && carmine.id && (
+                                                    <button onClick={onClickSyncCarmine} className="btn btn-outline-danger">
+                                                        <img src={easyDataIcon} alt="EasyData" width={10} />
+                                                    </button>
+                                                )}
                                                 <Link to="/cars/create" className="btn btn-outline-success">
                                                     <i className="ri-add-line align-bottom"></i>
                                                 </Link>
@@ -250,6 +283,27 @@ const CarList = (props: any) => {
                                                 <NavItem>
                                                     <NavLink
                                                         className={classnames(
+                                                            { active: activeTab === "available_soon" },
+                                                            "fw-semibold"
+                                                        )}
+                                                        onClick={() => {
+                                                            toggleTab("available_soon", "available_soon");
+                                                        }}
+                                                        href="#"
+                                                    >
+                                                        Disponível Brevemente{" "}
+                                                        {
+                                                            activeTab === 'available_soon' && (
+                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
+                                                                    {meta?.total}
+                                                                </span>
+                                                            )
+                                                        }
+                                                    </NavLink>
+                                                </NavItem>
+                                                <NavItem>
+                                                    <NavLink
+                                                        className={classnames(
                                                             { active: activeTab === "draft" },
                                                             "fw-semibold"
                                                         )}
@@ -273,28 +327,18 @@ const CarList = (props: any) => {
                                     </Row>
                                 </div>
                                 <div className="card-body pt-2">
-                                    {cars && cars.length > 0 ? (
-                                        <XTanStackTable
-                                            columns={columns}
-                                            data={(cars || [])}
-                                            loading={loading}
-                                            pagination={pagination}
-                                            onPaginationChange={setPagination}
-                                            pageCount={meta?.last_page ?? 0}
-                                            total={meta?.total}
-                                            isBordered={true}
-                                            theadClass="text-muted table-light"
-                                        />
-                                    ) : (
-                                        <div className="py-4 text-center">
-                                            <div>
-                                                <i className="ri-search-line display-5 text-dark"></i>
-                                            </div>
-                                            <div className="mt-4">
-                                                <h5>Nenhum resultado encontrado!</h5>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <XTanStackTable
+                                        columns={columns}
+                                        data={cars || []}
+                                        loading={loading}
+                                        pagination={pagination}
+                                        onPaginationChange={setPagination}
+                                        pageCount={meta?.last_page ?? 0}
+                                        total={meta?.total}
+                                        isBordered={true}
+                                        theadClass="text-muted table-light"
+                                        mobileMode={isMobile}
+                                    />
                                 </div>
                             </Card>
                         </div>

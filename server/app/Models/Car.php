@@ -56,6 +56,7 @@ class Car extends Model implements AuditableContract
         'internal_notes',
         'youtube_url',
         'company_id',
+        'carmine_id',
     ];
 
     protected $casts = [

@@ -14,16 +14,27 @@ import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem,
 import classnames from "classnames";
 // Models
 import { ICompanyUpdatePayload } from 'common/models/company.model';
+import XInput from 'Components/Common/XInput';
+import { ICarmineApi } from 'common/models/carmine-api.model';
 
 type CompanyProfileEditorProps = {
     data: ICompanyUpdatePayload;
+    dataCarmine: ICarmineApi;
     onSubmit: (data: ICompanyUpdatePayload) => void;
+    onSubmitCarmine: (data: ICarmineApi) => void;
     onCancel: () => void;
     loading?: boolean;
 };
 
-export default function CompanyProfileEditor({ data, onSubmit, onCancel }: CompanyProfileEditorProps) {
+export default function CompanyProfileEditor({
+    data,
+    dataCarmine,
+    onSubmit,
+    onSubmitCarmine,
+    onCancel
+}: CompanyProfileEditorProps) {
     const isEdit = Boolean((data as any)?.id);
+    const [tokenCarmineShow, setTokenCarmineShow] = useState<boolean>(true);
 
     const [logoPreview, setLogoPreview] = useState<string | null>(
         `${data?.logo_path ? String(process.env.REACT_APP_PUBLIC_URL) + data?.logo_path : avatar1}` || null
@@ -47,6 +58,12 @@ export default function CompanyProfileEditor({ data, onSubmit, onCancel }: Compa
         initialValues: data,
         validationSchema,
         onSubmit: (values) => onSubmit?.(values),
+    });
+
+    const formikCarmine = useFormik({
+        enableReinitialize: true,
+        initialValues: dataCarmine,
+        onSubmit: (values) => onSubmitCarmine?.(values),
     });
 
     const progress = useMemo(() => {
@@ -225,6 +242,18 @@ export default function CompanyProfileEditor({ data, onSubmit, onCancel }: Compa
                                                 Dados Gerais
                                             </NavLink>
                                         </NavItem>
+                                        <NavItem>
+                                            <NavLink
+                                                className={classnames("text-body", { active: activeTab === "2" })}
+                                                onClick={() => {
+                                                    tabChange("2");
+                                                }}
+                                                disabled={!isEdit}
+                                            >
+                                                <i className="fas fa-home"></i>
+                                                API Carmine
+                                            </NavLink>
+                                        </NavItem>
                                     </Nav>
                                 </CardHeader>
                                 <CardBody className="p-4">
@@ -236,6 +265,61 @@ export default function CompanyProfileEditor({ data, onSubmit, onCancel }: Compa
                                                         isEdit={isEdit}
                                                     />
 
+                                                    <Col lg={12}>
+                                                        <div className="hstack gap-2 justify-content-end">
+                                                            <XButton
+                                                                variant="success"
+                                                                type='submit'
+                                                                outline
+                                                                rounded
+                                                                icon={<i className="ri-check-double-line" />}
+                                                            >
+                                                                Salvar
+                                                            </XButton>
+                                                            <XButton
+                                                                variant="danger"
+                                                                outline
+                                                                rounded
+                                                                icon={<i className="ri-close-line" />}
+                                                                onClick={() => onCancel()}
+                                                            >
+                                                                Cancelar
+                                                            </XButton>
+                                                        </div>
+                                                    </Col>
+                                                </form>
+                                            </FormikProvider>
+                                        </TabPane>
+                                        <TabPane tabId="2">
+                                            <FormikProvider value={formikCarmine}>
+                                                <form onSubmit={formikCarmine.handleSubmit}>
+                                                    <div className="mb-2 border-bottom pb-2">
+                                                        <h5 className="card-title">Carmine</h5>
+                                                    </div>
+
+                                                    <Row>
+                                                        <Col lg={6}>
+                                                            <XInput
+                                                                className='mb-2'
+                                                                name="dealer_id"
+                                                                label="ID do Dealer"
+                                                                placeholder="ID do Dealer"
+                                                                required
+                                                            />
+                                                        </Col>
+                                                        <Col lg={6}>
+                                                            <div className="position-relative auth-pass-inputgroup mb-3">
+                                                                <XInput
+                                                                    type={tokenCarmineShow ? "text" : "password"}
+                                                                    className='mb-2 '
+                                                                    name="token"
+                                                                    label={"Token"}
+                                                                    placeholder="Token"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </Col>
+                                                    </Row>
                                                     <Col lg={12}>
                                                         <div className="hstack gap-2 justify-content-end">
                                                             <XButton

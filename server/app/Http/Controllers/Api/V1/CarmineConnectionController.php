@@ -105,6 +105,6 @@ class CarmineConnectionController extends Controller
     {
         $carmine = $this->carmineService->getListaDetalhesViatura($companyId);
 
-        return ApiResponse::success($carmine, 'Connection Carmine deleted successfully.');
+        return ApiResponse::success($carmine, 'Connection Carmine sync successfully.');
     }
 }
