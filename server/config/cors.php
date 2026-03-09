@@ -26,6 +26,8 @@ return [
         'https://www.paautomoveis.pt',
         'https://spacedrive.pt',
         'https://www.spacedrive.pt',
+        'https://standspacedrive.pt',
+        'https:/www.standspacedrive.pt',
 
         'http://localhost:3000',
         'http://localhost:8000',
