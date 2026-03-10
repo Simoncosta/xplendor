@@ -149,6 +149,11 @@ const CarList = (props: any) => {
                 </span>
             )
         },
+        // {
+        //     header: "Empresa",
+        //     accessorKey: "company.fiscal_name",
+        //     enableColumnFilter: false,
+        // },
         {
             header: "Views",
             accessorKey: "views",

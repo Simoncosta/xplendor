@@ -206,7 +206,9 @@ export default function CompanyProfileEditor({
                                                 </Label>
                                             </div>
                                         </div>
-                                        <h5 className="fs-16 mb-1">{formik.values.fiscal_name || '-'}</h5>
+                                        <h5 className="fs-16 mb-2">{formik.values.fiscal_name || '-'}</h5>
+                                        {/* @ts-ignore */}
+                                        <p><b>API Key:</b> {data?.public_api_token || '-'}</p>
                                     </div>
                                 </CardBody>
                             </Card>

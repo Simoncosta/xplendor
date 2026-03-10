@@ -138,4 +138,9 @@ class Car extends Model implements AuditableContract
     {
         return $this->hasOne(CarAiAnalysis::class);
     }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

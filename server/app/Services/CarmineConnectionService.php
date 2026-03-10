@@ -7,6 +7,7 @@ use App\Repositories\Contracts\CarBrandRepositoryInterface;
 use App\Repositories\Contracts\CarmineConnectionRepositoryInterface;
 use App\Repositories\Contracts\CarModelRepositoryInterface;
 use App\Services\Api\ApiCarmineService;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Log;
 
@@ -173,7 +174,7 @@ class CarmineConnectionService extends BaseService
             "description_website_pt"  => $data['TextoGenericoAnuncios'],
             "youtube_url"             => $data['UrlVideo'],
             "company_id"              => $companyId,
-            "created_at"              => $data['DataCriacao'],
+            "created_at"              => Carbon::createFromFormat('d/m/Y H:i:s', $data['DataCriacao'])->format('Y-m-d H:i:s'),
             "updated_at"              => $data['UltimaAlteracao'],
         ];
     }
