@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Password;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -26,6 +27,15 @@ class UpdateUserRequest extends FormRequest
             'avatar' => ['nullable', 'file', 'image', 'max:2048'],
             'birthdate' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'in:male,female'],
+
+            'password' => [
+                'sometimes',
+                'nullable',
+                'confirmed',
+                // Password::min(8)->letters()->mixedCase()->numbers()->symbols(),
+                Password::min(8),
+            ],
+            'password_confirmation' => ['nullable', 'string'],
         ];
     }
 }

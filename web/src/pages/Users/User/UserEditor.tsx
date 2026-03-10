@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import Select from "react-select";
 // Formik
+import * as Yup from "yup";
 import { FormikProvider, useFormik } from 'formik';
 // Models
 import { IUser } from "common/models/user.model";
@@ -37,10 +38,20 @@ export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps
         `${data?.avatar ? String(process.env.REACT_APP_PUBLIC_URL) + "/storage/" + data?.avatar : avatar1} ` || null
     );
 
+    const validationSchema = Yup.object({
+        password: Yup.string()
+            .nullable()
+            .min(8, "Password deve ter no mínimo 8 caracteres"),
+
+        password_confirmation: Yup.string()
+            .nullable()
+            .oneOf([Yup.ref("password"), null], "As passwords não coincidem"),
+    });
+
     const formik = useFormik({
         enableReinitialize: true,
         initialValues: data,
-        // validationSchema,
+        validationSchema: validationSchema,
         onSubmit: (values) => onSubmit?.(values),
     });
 
@@ -105,6 +116,30 @@ export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps
                                 <CardBody className="p-4">
                                     <FormikProvider value={formik}>
                                         <form onSubmit={formik.handleSubmit}>
+                                            <div className="mb-2 border-bottom pb-2">
+                                                <h5 className="card-title">Alterar Senha</h5>
+                                            </div>
+                                            <Row>
+                                                <Col lg={6}>
+                                                    <XInput
+                                                        type='password'
+                                                        className='mb-4'
+                                                        name="password"
+                                                        label="Nova Senha"
+                                                        placeholder="Nova Senha"
+                                                    />
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <XInput
+                                                        className='mb-4'
+                                                        placeholder="Confirmar Password"
+                                                        type="password"
+                                                        name="password_confirmation"
+                                                        label="Confirmar Password"
+                                                    />
+                                                </Col>
+                                            </Row>
+
                                             <div className="mb-2 border-bottom pb-2">
                                                 <h5 className="card-title">Dados do Colaborador</h5>
                                             </div>
