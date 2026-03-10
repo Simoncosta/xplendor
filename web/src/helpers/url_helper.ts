@@ -10,6 +10,9 @@ export const GET_COMPANIES = "/companies";
 // CARS
 export const GET_CARS = "/cars";
 
+// USERS
+export const GET_USERS_APIS = "/users";
+
 // CARMINE
 export const GET_CARMINE_APIS = "/carmine-connection";
 

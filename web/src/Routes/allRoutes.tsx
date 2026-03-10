@@ -18,8 +18,13 @@ import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
 import CarAnalytics from "pages/Cars/Car/CarAnalytics";
 
+// Users
+import UsersList from "pages/Users/UsersList";
+
 // Landing 
 import Landing from "pages/Landing";
+import UserCreate from "pages/Users/User/UserCreate";
+import UserUpdate from "pages/Users/User/UserUpdate";
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <></> },
@@ -34,6 +39,11 @@ const authProtectedRoutes = [
     { path: "/cars/create", component: <CarCreate /> },
     { path: "/cars/:id", component: <CarUpdate /> },
     { path: "/cars/:id/analytics", component: <CarAnalytics /> },
+
+    // Users
+    { path: "/users", component: <UsersList /> },
+    { path: "/users/create", component: <UserCreate /> },
+    { path: "/users/:id", component: <UserUpdate /> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

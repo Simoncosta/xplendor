@@ -123,6 +123,16 @@ const Navdata = () => {
                 setIscurrentState('Companies');
             }
         },
+        {
+            id: "user",
+            label: "Colaboradores",
+            icon: "bx bx-user-circle",
+            link: "/users",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Users');
+            }
+        },
         // {
         //     id: "dashboard",
         //     label: "Dashboards",

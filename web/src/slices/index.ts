@@ -9,6 +9,7 @@ import DistrictReducer from "./districts/reducer";
 import MunicipalityReducer from "./municipalities/reducer";
 import ParishReducer from "./parishes/reducer";
 import RegisterInviteReducer from "./auth/register/reducer";
+import UserReducer from "./users/reducer";
 
 // Front
 import LayoutReducer from "./layouts/reducer";
@@ -17,7 +18,6 @@ import LayoutReducer from "./layouts/reducer";
 import LoginReducer from "./auth/login/reducer";
 import AccountReducer from "./auth/register/reducer";
 import ProfileReducer from "./auth/profile/reducer";
-
 
 const rootReducer = combineReducers({
     Car: CarReducer,
@@ -28,6 +28,8 @@ const rootReducer = combineReducers({
     District: DistrictReducer,
     Municipality: MunicipalityReducer,
     Parish: ParishReducer,
+    User: UserReducer,
+
     RegisterInvite: RegisterInviteReducer,
     Layout: LayoutReducer,
     Login: LoginReducer,

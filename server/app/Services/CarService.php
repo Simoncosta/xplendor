@@ -262,7 +262,7 @@ class CarService extends BaseService
         - Perfil profissional
         - Estilo de vida
 
-        ⚠️ Sempre defina um gênero predominante (mesmo que haja equilíbrio).
+        Indique o género predominante provável, assumindo uma decisão estratégica de comunicação.
 
         2. **Canal de aquisição ideal entre Google Ads ou Meta (Facebook/Instagram)**:
         - Escolha apenas um canal principal com base no comportamento do público e no tipo de veículo.
@@ -277,7 +277,8 @@ class CarService extends BaseService
 
         🧠 Sua resposta deve ser estratégica, clara e com foco em impacto comercial direto, como se estivesse a orientar um time de mídia e conteúdo digital.
 
-        Não use linguagem genérica nem neutra. Seja claro nas escolhas e assertivo nas recomendações.";
+        Não use linguagem genérica nem neutra. Seja claro nas escolhas e assertivo nas recomendações. 
+        Responda exclusivamente em JSON válido, sem texto fora do JSON.";
 
         /** @var \Illuminate\Http\Client\Response $response */
         $response = Http::withToken($apiKey)
