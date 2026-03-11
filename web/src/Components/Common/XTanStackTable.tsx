@@ -7,6 +7,7 @@ import {
     Table as ReactTable,
     ColumnFiltersState,
     FilterFn,
+    SortingState,
     useReactTable,
     getCoreRowModel,
     getFilteredRowModel,
@@ -97,6 +98,8 @@ interface IXTanStackTable {
     handleTicketClick?: any;
     isBordered?: any;
     mobileMode?: boolean;
+
+    onSortingChange?: (sorting: { field: string; direction: 'asc' | 'desc' } | null) => void;
 }
 
 const XTanStackTable = ({
@@ -116,10 +119,12 @@ const XTanStackTable = ({
     divClass,
     SearchPlaceholder,
     isBordered,
-    mobileMode = false
+    mobileMode = false,
+    onSortingChange
 }: IXTanStackTable) => {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState('');
+    const [sorting, setSorting] = useState<SortingState>([]);
 
     const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
         const itemRank = rankItem(row.getValue(columnId), value);
@@ -139,13 +144,18 @@ const XTanStackTable = ({
             columnFilters,
             globalFilter,
             pagination,
+            sorting,
         },
         onPaginationChange,
+        onSortingChange: setSorting,
+
         manualPagination: true,
+        manualSorting: true,
         pageCount,
 
         onColumnFiltersChange: setColumnFilters,
         onGlobalFilterChange: setGlobalFilter,
+
         globalFilterFn: fuzzyFilter,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -171,6 +181,22 @@ const XTanStackTable = ({
     useEffect(() => {
         Number(customPageSize) && setPageSize(Number(customPageSize));
     }, [customPageSize, setPageSize]);
+
+    useEffect(() => {
+        if (!onSortingChange) return;
+
+        if (!sorting.length) {
+            onSortingChange(null);
+            return;
+        }
+
+        const currentSort = sorting[0];
+
+        onSortingChange({
+            field: currentSort.id,
+            direction: currentSort.desc ? 'desc' : 'asc',
+        });
+    }, [sorting, onSortingChange]);
 
     return (
         <Fragment>
@@ -229,20 +255,25 @@ const XTanStackTable = ({
                             {getHeaderGroups().map((headerGroup: any) => (
                                 <tr className={trClass} key={headerGroup.id}>
                                     {headerGroup.headers.map((header: any) => (
-                                        <th key={header.id} className={thClass}  {...{
-                                            onClick: header.column.getToggleSortingHandler(),
-                                        }}>
+                                        <th
+                                            key={header.id}
+                                            className={thClass}
+                                            onClick={header.column.getCanSort() ? header.column.getToggleSortingHandler() : undefined}
+                                            style={{ cursor: header.column.getCanSort() ? "pointer" : "default" }}
+                                        >
                                             {header.isPlaceholder ? null : (
                                                 <React.Fragment>
                                                     {flexRender(
                                                         header.column.columnDef.header,
                                                         header.getContext()
                                                     )}
-                                                    {{
-                                                        asc: ' ',
-                                                        desc: ' ',
-                                                    }
-                                                    [header.column.getIsSorted() as string] ?? null}
+
+                                                    <span className="ms-1">
+                                                        {header.column.getIsSorted() === 'asc' && '↑'}
+                                                        {header.column.getIsSorted() === 'desc' && '↓'}
+                                                        {!header.column.getIsSorted() && header.column.getCanSort() && '↕'}
+                                                    </span>
+
                                                     {header.column.getCanFilter() ? (
                                                         <div>
                                                             <Filter column={header.column} table={table} />

@@ -20,6 +20,11 @@ class CarService extends BaseService
         parent::__construct($carRepository);
     }
 
+    public function getAll(array $columns = ['*'], array $relations = [], ?int $perPage = null, array $filters = [], array $orderBy = []): mixed
+    {
+        return $this->carRepository->getAllWithAnalytics($columns, $relations, $perPage, $filters, $orderBy);
+    }
+
     public function store(array $data): mixed
     {
         $car = $this->repository->store($data); // Cria carro e retorna ID

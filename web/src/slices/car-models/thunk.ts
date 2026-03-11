@@ -6,7 +6,7 @@ import {
 export const getCarModels = createAsyncThunk(
     "car-models/getCarModels",
     async (
-        brandId: number,
+        brandId: number | number[],
         { rejectWithValue }
     ) => {
         try {

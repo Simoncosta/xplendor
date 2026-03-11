@@ -15,6 +15,7 @@ class Car extends Model implements AuditableContract
 
     protected $fillable = [
         'status',
+        'is_resume',
         'origin',
         'license_plate',
         'vin',

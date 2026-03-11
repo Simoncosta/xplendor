@@ -44,11 +44,23 @@ export const getCarsPaginate = (
         page: number;
         companyId: number;
         status?: 'active' | 'sold' | 'draft';
+        carBrandIds?: number[];
+        carModelIds?: number[];
+        mincost?: number;
+        maxcost?: number;
+        sort_by?: string;
+        sort_direction?: 'asc' | 'desc';
     }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS, {
         params: {
             perPage: params.perPage,
             page: params.page,
-            status: params.status
+            status: params.status,
+            car_brand_id: params.carBrandIds?.join(",") ?? undefined,
+            car_model_id: params.carModelIds?.join(",") ?? undefined,
+            mincost: params.mincost,
+            maxcost: params.maxcost,
+            sort_by: params.sort_by,
+            sort_direction: params.sort_direction,
         }
     });
 export const showCar = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS + "/" + params.id);
@@ -72,9 +84,9 @@ export const syncCarmine = (companyId: number) => api.create(url.GET_COMPANIES +
 export const getCarBrands = () => api.get(url.GET_CAR_BRANDS);
 
 // CAR MODELS
-export const getCarModels = (brandId: number) => api.get(url.GET_CAR_MODELS, {
+export const getCarModels = (brandId: number | number[]) => api.get(url.GET_CAR_MODELS, {
     params: {
-        car_brand_id: brandId,
+        car_brand_id: typeof brandId === "number" ? brandId.toString() : brandId.join(","),
     }
 });
 

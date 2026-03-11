@@ -51,7 +51,7 @@ class CarmineConnectionService extends BaseService
                     $this->carRepository->store($carmineMapData);
                     $imported++;
                 } else {
-                    $this->carRepository->update($carmine['id'], $carmineMapData);
+                    $this->carRepository->updateFromCarmine($carmine['id'], $carmineMapData);
                     $updated++;
                 }
             } catch (\Throwable $e) {
@@ -149,6 +149,7 @@ class CarmineConnectionService extends BaseService
             "status"                  => $data['DisponivelBrevemente']
                 ? 'available_soon'
                 : ($data['Vendido'] ? 'sold' : 'active'),
+            "is_resume"               => $data['Retoma'] ?? false,
             "origin"                  => $data['Importado'] ? 'imported' : 'national',
             "license_plate"           => $data['Matricula'],
             "vin"                     => $data['VIN'],
@@ -169,7 +170,7 @@ class CarmineConnectionService extends BaseService
             "is_metallic"             => $data['Metalizado'],
             "interior_color"          => null,
             "condition"               => $condition,
-            "mileage_km"              => $data['Km'],
+            "mileage_km"              => $data['Km'] === "" ? 0 : $data['Km'],
             "price_gross"             => $data['Preco'] === '' ? 0 : $data['Preco'],
             "description_website_pt"  => $data['TextoGenericoAnuncios'],
             "youtube_url"             => $data['UrlVideo'],

@@ -137,6 +137,12 @@ abstract class BaseRepository implements BaseRepositoryInterface
                 continue;
             }
 
+            // BETWEEN
+            if (is_array($value) && isset($value['between']) && is_array($value['between'])) {
+                $query->whereBetween($field, $value['between']);
+                continue;
+            }
+
             // Filtro whereIn
             if (is_array($value)) {
                 $query->whereIn($field, $value);
@@ -148,9 +154,11 @@ abstract class BaseRepository implements BaseRepositoryInterface
         }
 
         // Ordenação dinâmica
-        foreach ($orderBy as $field => $direction) {
-            $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc'; // segurança contra inputs inválidos
-            $query->orderBy($field, $direction);
+        if (!empty($orderBy)) {
+            foreach ($orderBy as $field => $direction) {
+                $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
+                $query->orderBy($field, $direction);
+            }
         }
 
         return $perPage
