@@ -113,6 +113,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "blogs",
+            label: "Blogs",
+            icon: "bx bxl-blogger",
+            link: "/blogs",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Blogs');
+            }
+        },
+        {
             id: "company",
             label: "Empresas",
             icon: "bx bx-buildings",

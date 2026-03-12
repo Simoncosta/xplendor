@@ -1,67 +1,163 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { Row } from "reactstrap";
 
-const Pagination = ({ data, currentPage, setCurrentPage, perPageData }:any) => {
+interface XPaginationProps {
+    currentPage: number;
+    lastPage: number;
+    total: number;
+    perPage: number;
+    from: number;
+    to: number;
+    onPageChange: (page: number) => void;
+}
 
-
-    const handleClick = (e:any) => {
-        setCurrentPage(e);
+const Pagination = ({
+    currentPage,
+    lastPage,
+    total,
+    perPage,
+    from,
+    to,
+    onPageChange,
+}: XPaginationProps) => {
+    const handleClick = (page: number) => {
+        if (page < 1 || page > lastPage || page === currentPage) return;
+        onPageChange(page);
     };
 
-    const pageNumbers = [];
-    for (let i = 1; i <= Math.ceil(data?.length / perPageData); i++) {
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            onPageChange(currentPage - 1);
+        }
+    };
+
+    const handleNextPage = () => {
+        if (currentPage < lastPage) {
+            onPageChange(currentPage + 1);
+        }
+    };
+
+    const pageNumbers: number[] = [];
+
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = startPage + maxVisiblePages - 1;
+
+    if (endPage > lastPage) {
+        endPage = lastPage;
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
         pageNumbers.push(i);
     }
-    const handleprevPage = () => {
-        let prevPage = currentPage - 1;
-        setCurrentPage(prevPage);
-    };
-    const handlenextPage = () => {
-        let nextPage = currentPage + 1;
-        setCurrentPage(nextPage);
-    };
 
-    useEffect(() => {
-        if (pageNumbers.length && pageNumbers.length < currentPage) {
-            setCurrentPage(pageNumbers.length)
-        }
-    }, [pageNumbers.length, currentPage, setCurrentPage])
     return (
-        <React.Fragment>
-                  <Row className="g-0 justify-content-end mb-4">
-                <div className="col-sm-auto">
-                    <ul className="pagination-block pagination pagination-separated justify-content-center justify-content-sm-end mb-sm-0">
-                        {currentPage <= 1 ? (
-                            <Link className="page-item pagination-prev disabled" to="#!">
-                                Previous
+        <Row className="g-0 text-center text-sm-start align-items-center mb-4">
+            <div className="col-sm-6">
+                <div>
+                    <p className="mb-sm-0 text-muted">
+                        Mostrando{" "}
+                        <span className="fw-semibold">{from}</span> até{" "}
+                        <span className="fw-semibold">{to}</span> de{" "}
+                        <span className="fw-semibold text-decoration-underline">{total}</span> resultados
+                    </p>
+                </div>
+            </div>
+
+            <div className="col-sm-6">
+                <div className="d-flex justify-content-center justify-content-sm-end mt-3 mt-sm-0">
+                    <ul className="pagination pagination-separated pagination-md mb-0">
+                        <li className={`page-item ${currentPage <= 1 ? "disabled" : ""}`}>
+                            <Link
+                                to="#"
+                                className="page-link"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handlePrevPage();
+                                }}
+                            >
+                                Anterior
                             </Link>
-                        ) :
-                            <li className={currentPage <= 1 ? "page-item disabled" : "page-item"}>
-                                <Link to="#!" className="page-link" onClick={handleprevPage}>Previous</Link>
-                            </li>
-                        }
-                        {pageNumbers.map((item, key) => (
-                            <React.Fragment key={key}>
+                        </li>
+
+                        {startPage > 1 && (
+                            <>
                                 <li className="page-item">
-                                    <Link to="#!" className={currentPage === item ? "page-link active" : "page-link"} onClick={() => handleClick(item)}>{item}</Link>
+                                    <Link
+                                        to="#"
+                                        className="page-link"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleClick(1);
+                                        }}
+                                    >
+                                        1
+                                    </Link>
                                 </li>
-                            </React.Fragment>
-                        ))}
-                        {currentPage >= pageNumbers.length ? (
-                            <Link className="page-item pagination-next disabled" to="#!">
-                                Next
-                            </Link>
-                        ) :
-                            <li className={currentPage <= 1 ? "page-item disabled" : "page-item"}>
-                                <Link to="#!" className="page-link" onClick={handlenextPage}>Next</Link>
+                                {startPage > 2 && (
+                                    <li className="page-item disabled">
+                                        <span className="page-link">...</span>
+                                    </li>
+                                )}
+                            </>
+                        )}
+
+                        {pageNumbers.map((page) => (
+                            <li key={page} className="page-item">
+                                <Link
+                                    to="#"
+                                    className={currentPage === page ? "page-link active" : "page-link"}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        handleClick(page);
+                                    }}
+                                >
+                                    {page}
+                                </Link>
                             </li>
-                        }
+                        ))}
+
+                        {endPage < lastPage && (
+                            <>
+                                {endPage < lastPage - 1 && (
+                                    <li className="page-item disabled">
+                                        <span className="page-link">...</span>
+                                    </li>
+                                )}
+                                <li className="page-item">
+                                    <Link
+                                        to="#"
+                                        className="page-link"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleClick(lastPage);
+                                        }}
+                                    >
+                                        {lastPage}
+                                    </Link>
+                                </li>
+                            </>
+                        )}
+
+                        <li className={`page-item ${currentPage >= lastPage ? "disabled" : ""}`}>
+                            <Link
+                                to="#"
+                                className="page-link"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    handleNextPage();
+                                }}
+                            >
+                                Próximo
+                            </Link>
+                        </li>
                     </ul>
                 </div>
-            </Row>
-        </React.Fragment>
+            </div>
+        </Row>
     );
-}
+};
 
 export default Pagination;

@@ -26,6 +26,12 @@ import Landing from "pages/Landing";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
 
+// Blogs
+import BlogList from "pages/Blogs/BlogList";
+import BlogCreate from "pages/Blogs/Blog/BlogCreate";
+import BlogUpdate from "pages/Blogs/Blog/BlogUpdate";
+import BlogShow from "pages/Blogs/Blog/BlogShow";
+
 const authProtectedRoutes = [
     { path: "/dashboard", component: <></> },
 
@@ -44,6 +50,12 @@ const authProtectedRoutes = [
     { path: "/users", component: <UsersList /> },
     { path: "/users/create", component: <UserCreate /> },
     { path: "/users/:id", component: <UserUpdate /> },
+
+    // Blogs
+    { path: "/blogs", component: <BlogList /> },
+    { path: "/blogs/create", component: <BlogCreate /> },
+    { path: "/blogs/:id", component: <BlogUpdate /> },
+    { path: "/blogs/:id/show", component: <BlogShow /> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

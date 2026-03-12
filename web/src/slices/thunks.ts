@@ -1,3 +1,5 @@
+// Blogs
+export * from "./blogs/thunk";
 // Cars
 export * from "./cars/thunk";
 // Company
