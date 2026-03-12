@@ -107,6 +107,7 @@ export default function BlogUpdate() {
                         formData.append("id", String(values.id));
                     }
 
+                    formData.append("_method", "PUT");
                     dispatch(updateBlog({ companyId: companyId, id: Number(id), formData: formData }));
                     toast("Blog atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                 }}
