@@ -46,20 +46,6 @@ const BlogList = () => {
                     <Row className="g-4 mb-3">
                         <div className="col-sm">
                             <div className="d-flex justify-content-sm-init gap-2">
-                                <div className="search-box">
-                                    <input type="text" className="form-control" placeholder="Buscar..." />
-                                    <i className="ri-search-line search-icon"></i>
-                                </div>
-
-                                <select className="form-control w-md" style={{ width: "152px" }} defaultValue="Yesterday">
-                                    <option value="All">All</option>
-                                    <option value="Today">Today</option>
-                                    <option value="Yesterday">Yesterday</option>
-                                    <option value="Last 7 Days">Last 7 Days</option>
-                                    <option value="Last 30 Days">Last 30 Days</option>
-                                    <option value="This Month">This Month</option>
-                                    <option value="Last Year">Last Year</option>
-                                </select>
                             </div>
                         </div>
                         <div className="col-sm-auto">
