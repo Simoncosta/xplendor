@@ -16,6 +16,9 @@ export const GET_BLOGS_APIS = "/blogs";
 // CARS
 export const GET_CARS = "/cars";
 
+// ANALYSES
+export const GET_CARS_ANALYSES = "/car-ai-analyses";
+
 // USERS
 export const GET_USERS_APIS = "/users";
 
