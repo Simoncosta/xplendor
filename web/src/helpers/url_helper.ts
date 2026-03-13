@@ -7,6 +7,9 @@ export const POST_REGISTER_BY_INVITE = "/register-by-invite";
 // COMPANIES 
 export const GET_COMPANIES = "/companies";
 
+// DASHBOARDS
+export const GET_DASHBOARD_APIS = "/dashboard";
+
 // BLOGS
 export const GET_BLOGS_APIS = "/blogs";
 

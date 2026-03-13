@@ -51,7 +51,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at'
             ])
@@ -61,7 +61,8 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ])
             ->withCount([
                 'views',
-                'leads'
+                'leads',
+                'interactions',
             ])
             ->orderByDesc('views_count')
             ->limit($limit)
@@ -91,7 +92,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at'
             ]);
@@ -109,7 +110,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at',
                 DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock')
@@ -134,7 +135,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
             ])
             ->with([
@@ -190,7 +191,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at',
                 DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock'),
@@ -219,7 +220,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at',
                 DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock'),
@@ -274,7 +275,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at',
             ])
@@ -341,7 +342,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'id',
                 'car_brand_id',
                 'car_model_id',
-                'public_version_name',
+                'version',
                 'price_gross',
                 'created_at',
             ])

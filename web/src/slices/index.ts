@@ -6,6 +6,7 @@ import CarBrandReducer from "./car-brands/reducer";
 import CarModelsReducer from "./car-models/reducer";
 import CarmineReducer from "./carmine/reducer";
 import CompanyReducer from "./companies/reducer";
+import DashboardReducer from "./dashboards/reducer";
 import DistrictReducer from "./districts/reducer";
 import MunicipalityReducer from "./municipalities/reducer";
 import ParishReducer from "./parishes/reducer";
@@ -27,6 +28,7 @@ const rootReducer = combineReducers({
     CarBrand: CarBrandReducer,
     CarModel: CarModelsReducer,
     Company: CompanyReducer,
+    Dashboard: DashboardReducer,
     District: DistrictReducer,
     Municipality: MunicipalityReducer,
     Parish: ParishReducer,

@@ -37,6 +37,9 @@ export const showCompany = (params: { id: number }) => api.get(url.GET_COMPANIES
 export const createCompany = (data: FormData | any) => api.create(url.GET_COMPANIES, data);
 export const updateCompany = (id: number, data: FormData | any) => api.create(url.GET_COMPANIES + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 
+// DASHBOARDS
+export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS);
+
 // BLOGS
 export const getBlogs = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS, { params });
 export const showBlog = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS + "/" + params.id);

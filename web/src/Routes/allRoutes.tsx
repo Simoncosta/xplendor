@@ -1,6 +1,9 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 
+// Dashboard
+import Dashboard from "pages/Dashboards/Dashboard";
+
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
 import Logout from "../pages/Authentication/Logout";
@@ -33,7 +36,7 @@ import BlogUpdate from "pages/Blogs/Blog/BlogUpdate";
 import BlogShow from "pages/Blogs/Blog/BlogShow";
 
 const authProtectedRoutes = [
-    { path: "/dashboard", component: <></> },
+    { path: "/dashboard", component: <Dashboard /> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },

@@ -38,6 +38,7 @@ export default function BlogShow() {
     }, [dispatch, id]);
 
     if (loadingShow) return null;
+    if (!blog) return null;
 
     return (
         <React.Fragment>
