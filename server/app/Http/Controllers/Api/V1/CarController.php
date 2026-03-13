@@ -134,8 +134,12 @@ class CarController extends Controller
 
     public function generateAiAnalyses(int $companyId, int $carId)
     {
-        dd("aqui");
-        $car = $this->carService->findOrFail($carId, 'id', ['*'], ['brand', 'model']);
+        $car = $this->carService->findOrFail(
+            $carId,
+            'id',
+            ['*'],
+            ['brand', 'model', 'views', 'leads', 'interactions']
+        );
         $car['company_id'] = $companyId;
         $car['car_id'] = $carId;
 
