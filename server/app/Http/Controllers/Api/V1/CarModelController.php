@@ -19,7 +19,7 @@ class CarModelController extends Controller
             ? ApiPaginate::perPage($request)
             : null;
 
-        $filter = $request->input('car_brand_id') ? ['car_brand_id' => $request->input('car_brand_id')] : [];
+        $filter = $request->input('car_brand_id') ? ['car_brand_id' => explode(',', $request->input('car_brand_id'))] : [];
 
         $carModels = $this->carModelService->getAll(
             ['*'],

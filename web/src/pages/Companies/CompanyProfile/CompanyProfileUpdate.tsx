@@ -3,12 +3,19 @@ import { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 import { createSelector } from "reselect";
+import { toast, ToastContainer } from "react-toastify";
 // Components
 import CompanyProfileEditor from "./CompanyProfileEditor";
-import { showCompany, updateCompany } from "slices/thunks";
+import {
+    createCarmine,
+    showCarmine,
+    showCompany,
+    updateCarmine,
+    updateCompany
+} from "slices/thunks";
 // Slices
 import { COMPANY_CREATE_DEFAULTS } from "slices/companies/company.defaults";
-import { toast, ToastContainer } from "react-toastify";
+import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
 
 export default function CompanyProfileUpdate() {
     const dispatch: any = useDispatch();
@@ -18,16 +25,23 @@ export default function CompanyProfileUpdate() {
     document.title = "Perfil da Empresa | Xplendor";
 
     const selectCompanyState = (state: any) => state.Company;
+    const selectCarmineState = (state: any) => state.Carmine;
 
     const companySelector = createSelector(selectCompanyState, (state: any) => ({
         company: state.company,
         loadingShow: state.loadingShow,
     }));
+    const carmineSelector = createSelector(selectCarmineState, (state: any) => ({
+        carmine: state.carmine,
+        loading: state.loading,
+    }));
 
     const { company, loadingShow } = useSelector(companySelector);
+    const { carmine, loading } = useSelector(carmineSelector);
 
     useEffect(() => {
         dispatch(showCompany(Number(id)));
+        dispatch(showCarmine({ companyId: Number(id), id: 0 }));
     }, [dispatch, id]);
 
     if (loadingShow) return null;
@@ -37,6 +51,7 @@ export default function CompanyProfileUpdate() {
             <ToastContainer />
             <CompanyProfileEditor
                 data={company ?? COMPANY_CREATE_DEFAULTS}
+                dataCarmine={carmine ?? CARMINE_API_CREATE_DEFAULTS}
                 onSubmit={(values) => {
                     const formData = new FormData();
 
@@ -81,6 +96,16 @@ export default function CompanyProfileUpdate() {
 
                     dispatch(updateCompany({ id: Number(id), formData: formData }));
                     toast("Empresa atualizada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                }}
+                onSubmitCarmine={(value) => {
+
+                    if (!value.id) {
+                        dispatch(createCarmine({ companyId: Number(id), data: value }));
+                        toast("API Carmine criada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    } else {
+                        dispatch(updateCarmine({ companyId: Number(id), id: value.id, data: value }));
+                        toast("API Carmine atualizada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    }
                 }}
                 onCancel={() => {
                     navigate(-1);

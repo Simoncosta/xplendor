@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 
 import {
     Container,
@@ -13,21 +13,41 @@ import {
     Card,
     CardHeader,
     Col,
+    Label,
 } from "reactstrap";
 import classnames from "classnames";
 
-// RangeSlider
-import "nouislider/distribute/nouislider.css";
+// Select Form
+import Select from "react-select";
+
+// image
+import easyDataIcon from "../../assets/images/icon-easydata.png";
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import { getCarsPaginate } from "slices/cars/thunk";
+import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
+// Slices
+import { showCarmine, syncCarmine } from "slices/thunks";
+import { getCarsPaginate } from "slices/cars/thunk";
+import { getCarBrands } from "slices/car-brands/thunk";
+import { getCarModels } from "slices/car-models/thunk";
 
 const CarList = (props: any) => {
     const dispatch: any = useDispatch();
+
+    const { carmine, loading: loadingCarmine } = useSelector(
+        (state: any) => state.Carmine
+    );
+
+    const { brands, loading: loadingCarBrands } = useSelector(
+        (state: any) => state.CarBrand
+    );
+
+    const { models, loading: loadingCarModels } = useSelector(
+        (state: any) => state.CarModel
+    );
 
     const { cars, meta, loading } = useSelector(
         (state: any) => state.Car
@@ -35,8 +55,39 @@ const CarList = (props: any) => {
 
     // State
     const [activeTab, setActiveTab] = useState<any>("active");
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 680);
+    const [companyId, setCompanyId] = useState<any>(null);
+    const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
+    const [carModelIds, setCarModelIds] = useState<number[]>([]);
+    const [mincost, setMincost] = useState<number | undefined>(undefined);
+    const [maxcost, setMaxcost] = useState<number | undefined>(undefined);
+    const [sort, setSort] = useState<{
+        field: string | null;
+        direction: 'asc' | 'desc' | undefined | null;
+    }>({
+        field: null,
+        direction: null,
+    });
 
     // Actions
+    const handleSortChange = useCallback((sorting: any) => {
+        setSort((prev) => {
+            const next = {
+                field: sorting?.field ?? null,
+                direction: sorting?.direction ?? null,
+            };
+
+            if (
+                prev.field === next.field &&
+                prev.direction === next.direction
+            ) {
+                return prev;
+            }
+
+            return next;
+        });
+    }, []);
+
     const toggleTab = (tab: any, type: any) => {
         if (activeTab !== tab) {
             setActiveTab(tab);
@@ -54,22 +105,58 @@ const CarList = (props: any) => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
             const obj = JSON.parse(authUser);
+            setCompanyId(obj.company_id);
 
             dispatch(
                 getCarsPaginate({
                     page: pagination.pageIndex + 1,
                     perPage: pagination.pageSize,
                     companyId: obj.company_id,
-                    status: activeTab
+                    status: activeTab,
+                    carBrandIds: carBrandIds,
+                    carModelIds: carModelIds,
+                    mincost: mincost,
+                    maxcost: maxcost,
+                    sort_by: sort.field ?? undefined,
+                    sort_direction: sort.direction ?? undefined,
                 })
             );
+            dispatch(showCarmine({ companyId: obj.company_id, id: 0 }));
+            dispatch(getCarBrands());
+            if (carBrandIds.length > 0) dispatch(getCarModels(carBrandIds));
         }
-    }, [dispatch, activeTab, pagination.pageIndex, pagination.pageSize]);
+    }, [
+        dispatch,
+        activeTab,
+        carBrandIds,
+        carModelIds,
+        mincost,
+        maxcost,
+        sort,
+        pagination.pageIndex,
+        pagination.pageSize,
+    ]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 680);
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Actions
+    const onClickSyncCarmine = async () => {
+        if (!companyId) return;
+        dispatch(syncCarmine({ companyId: Number(companyId) }));
+        toast("Carros sincronizados com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+    };
 
     const columns = useMemo(() => [
         {
             header: "Carro",
-            accessorKey: "name",
+            accessorKey: "brand",
             enableColumnFilter: false,
             cell: (cell: any) => (
                 <>
@@ -146,6 +233,21 @@ const CarList = (props: any) => {
             )
         },
         {
+            header: "Criado em",
+            accessorKey: "created_at",
+            enableColumnFilter: false,
+            cell: (cell: any) => (
+                <>
+                    <span className="text-muted">{new Date(cell.row.original.created_at).toLocaleDateString("pt-PT", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                    })}</span>
+                    <span>{cell.row.original.is_resume ? " (Retoma)" : ""}</span>
+                </>
+            )
+        },
+        {
             header: "Ação",
             cell: (cell: any) => {
                 return (
@@ -183,7 +285,84 @@ const CarList = (props: any) => {
             <ToastContainer closeButton={false} limit={1} />
             <Container fluid>
                 <Row>
-                    <Col lg={12}>
+                    <Col xl={3} lg={4}>
+                        <Card>
+                            <CardHeader >
+                                <div className="d-flex mb-3">
+                                    <div className="flex-grow-1">
+                                        <h5 className="fs-16">Filtros</h5>
+                                    </div>
+                                    <div className="flex-shrink-0">
+                                        <a href="#" onClick={() => {
+                                            setCarBrandIds([]);
+                                            setCarModelIds([]);
+                                            setMincost(undefined);
+                                            setMaxcost(undefined);
+                                            setSort({
+                                                field: null,
+                                                direction: null,
+                                            })
+                                        }} className="text-decoration-underline">
+                                            Limpar todos
+                                        </a>
+                                    </div>
+                                </div>
+                                <div className="filter-choices-input mb-3">
+                                    <Label for="car_brand_id">Marca</Label>
+                                    <Select
+                                        placeholder="Selecione as marcas"
+                                        options={brands}
+                                        getOptionLabel={(option: any) => option.name}
+                                        getOptionValue={(option: any) => String(option.id)}
+                                        isMulti
+                                        value={brands.filter((brand: any) => carBrandIds?.includes(brand.id))}
+                                        onChange={(selected: any) => {
+                                            setCarBrandIds(selected ? selected.map((item: any) => item.id) : []);
+                                        }}
+                                    />
+                                </div>
+                                <div className="filter-choices-input mb-4">
+                                    <Label for="car_model_id">Modelo</Label>
+                                    <Select
+                                        placeholder="Selecione os modelos"
+                                        options={models}
+                                        getOptionLabel={(option: any) => option.name}
+                                        getOptionValue={(option: any) => String(option.id)}
+                                        isMulti
+                                        value={models.filter((model: any) => carModelIds?.includes(model.id))}
+                                        onChange={(selected: any) => {
+                                            setCarModelIds(selected ? selected.map((item: any) => item.id) : []);
+                                        }}
+                                        isDisabled={carBrandIds.length === 0}
+                                    />
+                                </div>
+                                <div className="filter-choices-input">
+                                    <Label for="car_model_id">Preço</Label>
+                                    <div className="formCost d-flex gap-2 align-items-center">
+                                        <input
+                                            className="form-control form-control-sm"
+                                            type="text"
+                                            placeholder="Preço de"
+                                            value={mincost}
+                                            onChange={(e: any) => setMincost(e.target.value)}
+                                            id="minCost"
+                                        />
+                                        <span className="fw-semibold text-muted">até</span>
+                                        <input
+                                            className="form-control form-control-sm"
+                                            type="text"
+                                            placeholder="Preço até"
+                                            value={maxcost}
+                                            onChange={(e: any) => setMaxcost(e.target.value)}
+                                            id="maxCost"
+                                        />
+                                    </div>
+                                </div>
+                            </CardHeader>
+                        </Card>
+                    </Col>
+
+                    <Col xl={9} lg={8}>
                         <div>
                             <Card>
                                 <CardHeader className="border-0">
@@ -191,6 +370,11 @@ const CarList = (props: any) => {
                                         <h5 className="card-title mb-0 flex-grow-1">Carros</h5>
                                         <div className="flex-shrink-0">
                                             <div className="d-flex gap-2 flex-wrap">
+                                                {carmine && carmine.id && (
+                                                    <button onClick={onClickSyncCarmine} className="btn btn-outline-danger">
+                                                        <img src={easyDataIcon} alt="EasyData" width={10} />
+                                                    </button>
+                                                )}
                                                 <Link to="/cars/create" className="btn btn-outline-success">
                                                     <i className="ri-add-line align-bottom"></i>
                                                 </Link>
@@ -250,6 +434,27 @@ const CarList = (props: any) => {
                                                 <NavItem>
                                                     <NavLink
                                                         className={classnames(
+                                                            { active: activeTab === "available_soon" },
+                                                            "fw-semibold"
+                                                        )}
+                                                        onClick={() => {
+                                                            toggleTab("available_soon", "available_soon");
+                                                        }}
+                                                        href="#"
+                                                    >
+                                                        Disponível Brevemente{" "}
+                                                        {
+                                                            activeTab === 'available_soon' && (
+                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
+                                                                    {meta?.total}
+                                                                </span>
+                                                            )
+                                                        }
+                                                    </NavLink>
+                                                </NavItem>
+                                                <NavItem>
+                                                    <NavLink
+                                                        className={classnames(
                                                             { active: activeTab === "draft" },
                                                             "fw-semibold"
                                                         )}
@@ -273,28 +478,19 @@ const CarList = (props: any) => {
                                     </Row>
                                 </div>
                                 <div className="card-body pt-2">
-                                    {cars && cars.length > 0 ? (
-                                        <XTanStackTable
-                                            columns={columns}
-                                            data={(cars || [])}
-                                            loading={loading}
-                                            pagination={pagination}
-                                            onPaginationChange={setPagination}
-                                            pageCount={meta?.last_page ?? 0}
-                                            total={meta?.total}
-                                            isBordered={true}
-                                            theadClass="text-muted table-light"
-                                        />
-                                    ) : (
-                                        <div className="py-4 text-center">
-                                            <div>
-                                                <i className="ri-search-line display-5 text-dark"></i>
-                                            </div>
-                                            <div className="mt-4">
-                                                <h5>Nenhum resultado encontrado!</h5>
-                                            </div>
-                                        </div>
-                                    )}
+                                    <XTanStackTable
+                                        columns={columns}
+                                        data={cars || []}
+                                        loading={loading}
+                                        pagination={pagination}
+                                        onPaginationChange={setPagination}
+                                        pageCount={meta?.last_page ?? 0}
+                                        total={meta?.total}
+                                        isBordered={true}
+                                        theadClass="text-muted table-light"
+                                        mobileMode={isMobile}
+                                        onSortingChange={handleSortChange}
+                                    />
                                 </div>
                             </Card>
                         </div>

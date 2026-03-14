@@ -34,15 +34,32 @@ class CarController extends Controller
             $filter['status'] = $request->input('status');
         }
 
+        if ($request->filled('car_brand_id')) {
+            $filter['car_brand_id'] = explode(',', $request->input('car_brand_id'));
+        }
+
+        if ($request->filled('car_model_id')) {
+            $filter['car_model_id'] = explode(',', $request->input('car_model_id'));
+        }
+
+        if ($request->filled('mincost') && $request->filled('maxcost')) {
+            $filter['price_gross'] = ['between' => [$request->input('mincost'), $request->input('maxcost')]];
+        }
+
+        $orderBy = $request->filled('sort_by')
+            ? [$request->input('sort_by') => $request->input('sort_direction')]
+            : [];
+
         $paginate = $request->input('perPage')
             ? ApiPaginate::perPage($request)
             : null;
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id'],
+            ['images', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
             $paginate,
-            $filter
+            $filter,
+            $orderBy
         );
 
         return ApiResponse::success($cars, 'Cars fetched successfully.');
@@ -117,8 +134,12 @@ class CarController extends Controller
 
     public function generateAiAnalyses(int $companyId, int $carId)
     {
-        dd("aqui");
-        $car = $this->carService->findOrFail($carId, 'id', ['*'], ['brand', 'model']);
+        $car = $this->carService->findOrFail(
+            $carId,
+            'id',
+            ['*'],
+            ['brand', 'model', 'views', 'leads', 'interactions']
+        );
         $car['company_id'] = $companyId;
         $car['car_id'] = $carId;
 

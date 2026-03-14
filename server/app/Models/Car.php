@@ -15,6 +15,7 @@ class Car extends Model implements AuditableContract
 
     protected $fillable = [
         'status',
+        'is_resume',
         'origin',
         'license_plate',
         'vin',
@@ -56,6 +57,7 @@ class Car extends Model implements AuditableContract
         'internal_notes',
         'youtube_url',
         'company_id',
+        'carmine_id',
     ];
 
     protected $casts = [
@@ -136,5 +138,10 @@ class Car extends Model implements AuditableContract
     public function analyses(): HasOne
     {
         return $this->hasOne(CarAiAnalysis::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
     }
 }

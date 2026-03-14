@@ -1,4 +1,5 @@
 //Include Both Helper File with needed methods
+import { setAuthorization } from "helpers/api_helper";
 import {
     postApiLogin,
     postApiLogout,
@@ -40,8 +41,9 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
 
         if (data) {
             sessionStorage.setItem("authUser", JSON.stringify(data.data));
+            setAuthorization(data.data.token);
             dispatch(loginSuccess(data.data));
-            history('/dashboard')
+            history('/dashboard');
         }
     } catch (error) {
         dispatch(apiError(error));
@@ -50,11 +52,15 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
 
 export const logoutUser = () => async (dispatch: any) => {
     try {
-        postApiLogout({});
+        await postApiLogout({});
+    } catch (error: any) {
+        // ignora erro de token inválido / sessão expirada no logout
+        console.warn("Logout API failed, clearing local session anyway.", error);
+    } finally {
         sessionStorage.removeItem("authUser");
+        localStorage.removeItem("authUser");
+        setAuthorization(null);
         dispatch(logoutUserSuccess(true));
-    } catch (error) {
-        dispatch(apiError(error));
     }
 };
 

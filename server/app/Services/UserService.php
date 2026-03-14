@@ -53,7 +53,7 @@ class UserService extends BaseService
         }
 
         // Gera URL de convite
-        $inviteUrl = rtrim(config('app.frontend_url'), '/')
+        $inviteUrl = rtrim(config('app.url'), '/')
             . '/register?token=' . $invite->token;
 
         // Envia email
@@ -88,6 +88,15 @@ class UserService extends BaseService
             // Mantém logo antiga
             $data['avatar'] = $user->avatar;
         }
+
+        // Password
+        if (!empty($data['password'])) {
+            $data['password'] = bcrypt($data['password']);
+        } else {
+            unset($data['password']);
+        }
+
+        unset($data['password_confirmation']);
 
         $this->userRepository->update($id, $data);
 

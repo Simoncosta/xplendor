@@ -3,16 +3,31 @@ import config from "../config";
 
 const { api } = config;
 
-// default
 axios.defaults.baseURL = api.API_URL;
-// content type
 axios.defaults.headers.post["Content-Type"] = "multipart/form-data";
 
-// content type
-const authUser: any = sessionStorage.getItem("authUser")
-const token = JSON.parse(authUser) ? JSON.parse(authUser).token : null;
-if (token)
-    axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+axios.interceptors.request.use(
+    function (config) {
+        const authUser = sessionStorage.getItem("authUser");
+
+        if (authUser) {
+            const parsedUser = JSON.parse(authUser);
+            const token = parsedUser?.token;
+
+            if (token) {
+                config.headers = config.headers || {};
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } else if (config.headers?.Authorization) {
+            delete config.headers.Authorization;
+        }
+
+        return config;
+    },
+    function (error) {
+        return Promise.reject(error);
+    }
+);
 
 // intercepting to capture errors
 axios.interceptors.response.use(
@@ -42,8 +57,12 @@ axios.interceptors.response.use(
  * Sets the default authorization
  * @param {*} token
  */
-const setAuthorization = (token: string) => {
-    axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+const setAuthorization = (token: string | null) => {
+    if (token) {
+        axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+    } else {
+        delete axios.defaults.headers.common["Authorization"];
+    }
 };
 
 class APIClient {

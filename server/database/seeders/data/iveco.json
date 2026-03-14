@@ -1,0 +1,43 @@
+[
+    {
+        "marca": "Iveco",
+        "slug": "iveco",
+        "modelos_recomendados": [
+            "Daily",
+            "Duty",
+            "EuroCargo",
+            "EuroStar",
+            "EuroTech",
+            "EuroTrakker",
+            "Massif",
+            "Stralis",
+            "Stralis AD",
+            "Stralis AS",
+            "Stralis AT",
+            "Trakker",
+            "Zeta"
+        ],
+        "modelos_outros": [
+            "120EP22",
+            "260.25",
+            "35C12",
+            "35S17V",
+            "480",
+            "50C13",
+            "50C15",
+            "AD 260 T",
+            "AD400T",
+            "BA3C",
+            "Daily IS35CC2AA",
+            "Giottline",
+            "J3JRSO",
+            "M",
+            "MK",
+            "ML100",
+            "ML180E",
+            "T/P/PA",
+            "TurboStar",
+            "TurboZeta"
+        ]
+    }
+]

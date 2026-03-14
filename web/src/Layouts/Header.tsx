@@ -19,7 +19,6 @@ import { createSelector } from 'reselect';
 const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
     const dispatch: any = useDispatch();
 
-
     const selectDashboardData = createSelector(
         (state) => state.Layout,
         (sidebarVisibilitytype) => sidebarVisibilitytype.sidebarVisibilitytype

@@ -14,6 +14,16 @@ class TrackController extends Controller
 {
     public function store(Request $request)
     {
+        return $this->handleStore($request, false);
+    }
+
+    public function storeCarmine(Request $request)
+    {
+        return $this->handleStore($request, true);
+    }
+
+    private function handleStore(Request $request, bool $useCarmineId = false)
+    {
         $companyId = data_get($request->input('public_api_company'), 'id');
 
         if (!$companyId) {
@@ -87,19 +97,18 @@ class TrackController extends Controller
             'utm_term'     => $t['utm_term'] ?? null,
         ];
 
-        $carId = $data['car_id'] ?? null;
+        $carId = $this->resolveCarId(
+            companyId: $companyId,
+            rawCarId: $data['car_id'] ?? null,
+            useCarmineId: $useCarmineId
+        );
 
-        if ($carId) {
-            $carExistsForCompany = Car::query()
-                ->where('id', $carId)
-                ->where('company_id', $companyId)
-                ->exists();
-
-            if (!$carExistsForCompany) {
-                return response()->json([
-                    'message' => 'Carro não encontrado para esta empresa.',
-                ], 404);
-            }
+        if (($data['car_id'] ?? null) && !$carId) {
+            return response()->json([
+                'message' => $useCarmineId
+                    ? 'Carro CARMINE não encontrado para esta empresa.'
+                    : 'Carro não encontrado para esta empresa.',
+            ], 404);
         }
 
         if ($type === 'car_view') {
@@ -111,7 +120,7 @@ class TrackController extends Controller
 
             $view = CarView::create([
                 'company_id' => $companyId,
-                'car_id' => (int) $carId,
+                'car_id' => $carId,
                 'user_id' => null,
                 'ip_address' => (string) $request->ip(),
                 'user_agent' => (string) ($request->userAgent() ?? ''),
@@ -134,9 +143,15 @@ class TrackController extends Controller
                 'car_id' => ['required', 'integer'],
             ])->validate();
 
+            if (!$carId) {
+                return response()->json([
+                    'message' => 'data.car_id é obrigatório.',
+                ], 422);
+            }
+
             $lead = CarLead::create([
                 'company_id' => $companyId,
-                'car_id' => (int) $leadData['car_id'],
+                'car_id' => $carId,
                 'name' => $leadData['name'],
                 'email' => $leadData['email'],
                 'phone' => $leadData['phone'] ?? null,
@@ -154,7 +169,7 @@ class TrackController extends Controller
         if (in_array($type, $interactionTypes, true)) {
             $interaction = CarInteraction::create([
                 'company_id' => $companyId,
-                'car_id' => $carId ? (int) $carId : null,
+                'car_id' => $carId,
                 'user_id' => null,
 
                 'interaction_type' => $type,
@@ -192,5 +207,22 @@ class TrackController extends Controller
         return response()->json([
             'message' => 'Tipo inválido.',
         ], 422);
+    }
+
+    private function resolveCarId(int $companyId, ?int $rawCarId, bool $useCarmineId = false): ?int
+    {
+        if (!$rawCarId) {
+            return null;
+        }
+
+        $query = Car::query()->where('company_id', $companyId);
+
+        if ($useCarmineId) {
+            $car = $query->where('carmine_id', $rawCarId)->first();
+        } else {
+            $car = $query->where('id', $rawCarId)->first();
+        }
+
+        return $car?->id;
     }
 }

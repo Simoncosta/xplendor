@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\{
     CarmineConnectionController,
     CarModelController,
     CompanyController,
+    DashboardController,
     DistrictController,
     NewsletterController,
     PlanController,
@@ -42,6 +43,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
             Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
             Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
+            Route::get('dashboard', [DashboardController::class, 'index']);
 
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
@@ -75,6 +77,7 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     Route::get('blogs/{slug}', [PublicBlogController::class, 'show']);
 
     Route::post('track', [TrackController::class, 'store']);
+    Route::post('track/carmine', [TrackController::class, 'storeCarmine']);
 });
 
 Route::get('/user', function (Request $request) {

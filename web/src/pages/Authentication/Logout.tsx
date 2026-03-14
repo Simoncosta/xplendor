@@ -10,16 +10,16 @@ import { useSelector, useDispatch } from "react-redux";
 import withRouter from "../../Components/Common/withRouter";
 import { createSelector } from "reselect";
 
-const Logout = (props : any) => {
-  const dispatch : any = useDispatch();
+const Logout = (props: any) => {
+  const dispatch: any = useDispatch();
 
 
   const logoutData = createSelector(
     // (state) => state.Dashboard.productOverviewChart,
     (state) => state.Login,
-    (isUserLogout : any) => isUserLogout.isUserLogout
-    );
-    
+    (isUserLogout: any) => isUserLogout.isUserLogout
+  );
+
   // Inside your component
   const isUserLogout = useSelector(logoutData);
 

@@ -63,7 +63,7 @@ class UserController extends Controller
         return ApiResponse::success($invite, 'Convite enviado com sucesso.');
     }
 
-    public function update(UpdateUserRequest $request, string $id)
+    public function update(UpdateUserRequest $request, int $companyId, $id)
     {
         $user = $this->userService->update($id, $request->validated());
 

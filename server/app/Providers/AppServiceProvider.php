@@ -21,6 +21,7 @@ use App\Repositories\Contracts\{
     CarRepositoryInterface,
     CarViewRepositoryInterface,
     CompanyRepositoryInterface,
+    DashboardRepositoryInterface,
     DistrictRepositoryInterface,
     MunicipalityRepositoryInterface,
     NewsletterRepositoryInterface,
@@ -40,6 +41,7 @@ use App\Repositories\{
     CarRepository,
     CarViewRepository,
     CompanyRepository,
+    DashboardRepository,
     DistrictRepository,
     MunicipalitytRepository,
     NewsletterRepository,
@@ -69,6 +71,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarmineConnectionRepositoryInterface::class, CarmineConnectionRepository::class);
         $this->app->bind(CarViewRepositoryInterface::class, CarViewRepository::class);
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
+        $this->app->bind(DashboardRepositoryInterface::class, DashboardRepository::class);
         $this->app->bind(DistrictRepositoryInterface::class, DistrictRepository::class);
         $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalitytRepository::class);
         $this->app->bind(NewsletterRepositoryInterface::class, NewsletterRepository::class);

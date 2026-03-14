@@ -1,0 +1,35 @@
+[
+    {
+        "marca": "Jaguar",
+        "slug": "jaguar",
+        "modelos_recomendados": [
+            "Daimler",
+            "E-Pace",
+            "F-Pace",
+            "F-Type",
+            "I-Pace",
+            "Sovereign",
+            "S-Type",
+            "XE",
+            "XF",
+            "XF Sportbrake",
+            "XJ",
+            "XJS",
+            "XK",
+            "X-Type"
+        ],
+        "modelos_outros": [
+            "E-Type",
+            "Kougar Sports",
+            "MK",
+            "MK 10",
+            "Three Point Four",
+            "XJ12",
+            "XJ6",
+            "XJ8",
+            "XJR",
+            "XK8",
+            "XKR"
+        ]
+    }
+]

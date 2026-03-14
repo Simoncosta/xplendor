@@ -11,6 +11,7 @@
         inited: false,
         token: null,
         api_base: null,
+        endpoint_path: "/api/public/track",
         debug: false,
     };
 
@@ -278,7 +279,7 @@
     const post = async (payload) => {
         if (!state.api_base || !state.token) return;
 
-        const url = `${state.api_base}/api/public/track?token=${encodeURIComponent(state.token)}`;
+        const url = `${state.api_base}${state.endpoint_path}?token=${encodeURIComponent(state.token)}`;
 
         try {
             const res = await fetch(url, {
@@ -304,6 +305,7 @@
     const handleInit = (cfg = {}) => {
         state.token = cfg.token || null;
         state.api_base = cfg.api_base || window.__XPLENDOR_API_BASE__ || "http://localhost:8000";
+        state.endpoint_path = cfg.endpoint_path || "/api/public/track";
         state.debug = !!cfg.debug;
         state.inited = true;
 

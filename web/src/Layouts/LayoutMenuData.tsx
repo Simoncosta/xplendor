@@ -113,6 +113,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "blogs",
+            label: "Blogs",
+            icon: "bx bxl-blogger",
+            link: "/blogs",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Blogs');
+            }
+        },
+        {
             id: "company",
             label: "Empresas",
             icon: "bx bx-buildings",
@@ -121,6 +131,16 @@ const Navdata = () => {
             click: function (e: any) {
                 e.preventDefault();
                 setIscurrentState('Companies');
+            }
+        },
+        {
+            id: "user",
+            label: "Colaboradores",
+            icon: "bx bx-user-circle",
+            link: "/users",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Users');
             }
         },
         // {

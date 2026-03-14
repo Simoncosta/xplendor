@@ -12,7 +12,7 @@ git fetch origin main
 git reset --hard origin/main
 
 echo "🐳 Backend: build + up"
-docker compose --env-file "$ENV_FILE" -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 echo "🧱 Storage link + permissions"
 docker exec -it xplendor-php php artisan storage:link || true

@@ -7,8 +7,23 @@ export const POST_REGISTER_BY_INVITE = "/register-by-invite";
 // COMPANIES 
 export const GET_COMPANIES = "/companies";
 
+// DASHBOARDS
+export const GET_DASHBOARD_APIS = "/dashboard";
+
+// BLOGS
+export const GET_BLOGS_APIS = "/blogs";
+
 // CARS
 export const GET_CARS = "/cars";
+
+// ANALYSES
+export const GET_CARS_ANALYSES = "/car-ai-analyses";
+
+// USERS
+export const GET_USERS_APIS = "/users";
+
+// CARMINE
+export const GET_CARMINE_APIS = "/carmine-connection";
 
 // CAR BRANDS
 export const GET_CAR_BRANDS = "/car-brands";
