@@ -83,6 +83,24 @@ services:
     networks:
       - xplendor
 
+  scheduler:
+    build:
+      context: ./docker/php
+    container_name: xplendor-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    entrypoint: []
+    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+    depends_on:
+      - db
+      - redis
+    networks:
+      - xplendor
+
 networks:
   xplendor: {}
 

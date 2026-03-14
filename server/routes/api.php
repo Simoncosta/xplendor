@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\{
     CarController,
     CarmineConnectionController,
     CarModelController,
+    CarPerformanceMetricController,
     CompanyController,
     DashboardController,
     DistrictController,
@@ -53,6 +54,10 @@ Route::prefix('v1')->group(function () {
 
             Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
             Route::put('/car-ai-analyses-feedback/{carAiAnalysesId}', [CarController::class, 'feedbackAiAnalyses']);
+            Route::get('cars/{car}/performance', [CarPerformanceMetricController::class, 'index']);
+            Route::post('cars/{car}/performance', [CarPerformanceMetricController::class, 'store']);
+            Route::get('cars/{car}/performance/summary', [CarPerformanceMetricController::class, 'summary']);
+            Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
         });
 
         Route::apiResource('/districts', DistrictController::class)->only(['index']);

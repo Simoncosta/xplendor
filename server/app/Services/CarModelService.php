@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Plan;
 use App\Repositories\Contracts\CarModelRepositoryInterface;
 
 class CarModelService extends BaseService
