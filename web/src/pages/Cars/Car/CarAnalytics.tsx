@@ -161,27 +161,6 @@ export default function CarAnalytics() {
     const ai = carAnalytics.car?.analyses?.analysis;
     const aiMeta = carAnalytics.car?.analyses;
 
-    const scoreOptions: any = {
-        chart: { type: "radialBar", sparkline: { enabled: true } },
-        plotOptions: {
-            radialBar: {
-                startAngle: -90, endAngle: 90,
-                track: { background: "#e9ebec", strokeWidth: "97%", margin: 5 },
-                dataLabels: {
-                    name: { show: false },
-                    value: {
-                        offsetY: -2, fontSize: "22px", fontWeight: 700,
-                        formatter: (v: any) => `${v}`, color: "#212529"
-                    },
-                },
-                hollow: { size: "60%" },
-            },
-        },
-        fill: { colors: [aiMeta?.score_conversao <= 40 ? "#f06548" : aiMeta?.score_conversao <= 70 ? "#f7b84b" : "#0ab39c"] },
-        stroke: { lineCap: "round" },
-        labels: ["Score"],
-    };
-
     const forecastOptions: any = {
         chart: { type: "area", toolbar: { show: false }, sparkline: { enabled: false } },
         dataLabels: { enabled: false },
@@ -211,6 +190,59 @@ export default function CarAnalytics() {
 
     // ─── car specs (from carAnalytics.car or raw car data) ────────────────────
     const car = carAnalytics.car;
+
+    // ─── Performance (XPLDR-26) ───────────────────────────────────────────────
+    const perf = carAnalytics.performance;
+    const perfTotals = perf?.totals;
+    const perfChannels = (perf?.by_channel || []).map((ch: any) => ({
+        ...ch,
+        label: channelLabels[ch.channel] || ch.channel,
+        color: channelColors[ch.channel] || "#adb5bd",
+    }));
+
+    // ─── IPS (XPLDR-27) ───────────────────────────────────────────────────────
+    const ips = carAnalytics.potential_score;
+
+    const ipsScoreColor = (score: number) =>
+        score >= 70 ? "#0ab39c" : score >= 40 ? "#f7b84b" : "#f06548";
+
+    const ipsClassBadge = (cls: string) =>
+        cls === "hot" ? "badge-soft-success" : cls === "warm" ? "badge-soft-warning" : "badge-soft-danger";
+
+    const ipsFactorLabels: Record<string, { label: string; max: number; icon: string; color: string }> = {
+        price_vs_market: { label: "Preço vs Mercado", max: 25, icon: "ri-price-tag-3-line", color: "primary" },
+        engagement_rate: { label: "Engajamento", max: 20, icon: "ri-cursor-line", color: "info" },
+        days_in_stock: { label: "Dias em Stock", max: 20, icon: "ri-time-line", color: "warning" },
+        segment_demand: { label: "Procura do Segmento", max: 15, icon: "ri-bar-chart-line", color: "success" },
+        listing_quality: { label: "Qualidade do Anúncio", max: 10, icon: "ri-image-line", color: "purple" },
+        model_history: { label: "Histórico do Modelo", max: 10, icon: "ri-history-line", color: "secondary" },
+    };
+
+    const ipsRadialOptions: any = {
+        chart: { type: "radialBar", sparkline: { enabled: true } },
+        plotOptions: {
+            radialBar: {
+                startAngle: -90, endAngle: 90,
+                track: { background: "#e9ebec", strokeWidth: "97%", margin: 5 },
+                dataLabels: {
+                    name: { show: false },
+                    value: { offsetY: -2, fontSize: "28px", fontWeight: 700, formatter: (v: any) => `${v}`, color: "#212529" },
+                },
+                hollow: { size: "60%" },
+            },
+        },
+        fill: { colors: [ips ? ipsScoreColor(ips.score) : "#e9ebec"] },
+        stroke: { lineCap: "round" },
+        labels: ["IPS"],
+    };
+
+    const ipsHistoryOptions: any = {
+        chart: { type: "line", toolbar: { show: false }, sparkline: { enabled: true } },
+        stroke: { curve: "smooth", width: 2 },
+        colors: [ips ? ipsScoreColor(ips.score) : "#405189"],
+        tooltip: { y: { formatter: (v: any) => `Score: ${v}` } },
+        markers: { size: 3 },
+    };
 
     // ── tab config ────────────────────────────────────────────────────────────
     const tabs: { key: TabKey; label: string; icon: string }[] = [
@@ -269,6 +301,12 @@ export default function CarAnalytics() {
                                                         </span>
                                                     )}
                                                 </>
+                                            )}
+                                            {ips && (
+                                                <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
+                                                    <i className="ri-award-line me-1" />
+                                                    IPS {ips.score}/100
+                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -518,6 +556,102 @@ export default function CarAnalytics() {
                                             )}
                                         </Col>
 
+                                        {/* ── Performance por Canal (XPLDR-26) ── */}
+                                        {perfTotals && (
+                                            <Col xs={12}>
+                                                <div className="d-flex align-items-center justify-content-between mb-3">
+                                                    <h6 className="fs-13 fw-semibold mb-0">
+                                                        <i className="ri-funds-line me-2 text-primary" />
+                                                        Performance por Canal
+                                                    </h6>
+                                                    {perfTotals.weighted_engagement_rate !== null && (
+                                                        <span className="badge badge-soft-primary fs-12">
+                                                            Engajamento ponderado: {perfTotals.weighted_engagement_rate}%
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="table-responsive">
+                                                    <table className="table table-borderless table-sm align-middle mb-0" style={{ fontSize: 13 }}>
+                                                        <thead>
+                                                            <tr style={{ borderBottom: "1px solid #e9ebec" }}>
+                                                                <th className="text-muted fw-medium ps-0">Canal</th>
+                                                                <th className="text-muted fw-medium text-end">Sessões</th>
+                                                                <th className="text-muted fw-medium text-end">Leads</th>
+                                                                <th className="text-muted fw-medium text-end">WhatsApp</th>
+                                                                <th className="text-muted fw-medium text-end">Interações</th>
+                                                                <th className="text-muted fw-medium text-end">Taxa Conv.</th>
+                                                                <th className="text-muted fw-medium text-end">Eng. Ponderado</th>
+                                                                <th className="text-muted fw-medium text-end">Investimento</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {perfChannels.map((ch: any, idx: number) => (
+                                                                <tr key={idx} style={{ borderBottom: "1px dashed #e9ebec" }}>
+                                                                    <td className="ps-0">
+                                                                        <div className="d-flex align-items-center gap-2">
+                                                                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color, display: "inline-block", flexShrink: 0 }} />
+                                                                            <span className="fw-medium">{ch.label}</span>
+                                                                            {ch.channel === "paid" && Number(ch.total_spend) === 0 && (
+                                                                                <span className="badge badge-soft-warning" style={{ fontSize: 10 }}>Sem spend</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="text-end fw-semibold">{ch.total_sessions}</td>
+                                                                    <td className="text-end">
+                                                                        <span className={Number(ch.total_leads) > 0 ? "fw-semibold text-success" : "text-muted"}>
+                                                                            {ch.total_leads}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="text-end">
+                                                                        <span className={Number(ch.total_whatsapp_clicks) > 0 ? "fw-semibold text-success" : "text-muted"}>
+                                                                            {ch.total_whatsapp_clicks}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="text-end">
+                                                                        <span className={Number(ch.total_interactions) > 0 ? "fw-semibold text-info" : "text-muted"}>
+                                                                            {ch.total_interactions}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="text-end">
+                                                                        {Number(ch.avg_conversion_rate) > 0
+                                                                            ? <span className="fw-semibold text-success">{Number(ch.avg_conversion_rate).toFixed(2)}%</span>
+                                                                            : <span className="text-muted">—</span>}
+                                                                    </td>
+                                                                    <td className="text-end">
+                                                                        {ch.weighted_engagement_rate > 0
+                                                                            ? <span className="fw-semibold text-primary">{ch.weighted_engagement_rate}%</span>
+                                                                            : <span className="text-muted">—</span>}
+                                                                    </td>
+                                                                    <td className="text-end">
+                                                                        {Number(ch.total_spend) > 0
+                                                                            ? <span className="fw-semibold">€{fmt(Number(ch.total_spend))}</span>
+                                                                            : <span className="text-muted">—</span>}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                        <tfoot>
+                                                            <tr style={{ borderTop: "2px solid #e9ebec" }}>
+                                                                <td className="ps-0 fw-semibold">Total</td>
+                                                                <td className="text-end fw-semibold">{perfTotals.total_sessions}</td>
+                                                                <td className="text-end fw-semibold text-success">{perfTotals.total_leads}</td>
+                                                                <td className="text-end fw-semibold text-success">{perfTotals.total_whatsapp_clicks}</td>
+                                                                <td className="text-end fw-semibold text-info">{perfTotals.total_interactions}</td>
+                                                                <td className="text-end fw-semibold">
+                                                                    {perfTotals.avg_conversion_rate > 0 ? `${perfTotals.avg_conversion_rate}%` : "—"}
+                                                                </td>
+                                                                <td className="text-end fw-semibold text-primary">
+                                                                    {perfTotals.weighted_engagement_rate !== null ? `${perfTotals.weighted_engagement_rate}%` : "—"}
+                                                                </td>
+                                                                <td className="text-end fw-semibold">
+                                                                    {Number(perfTotals.total_spend) > 0 ? `€${fmt(Number(perfTotals.total_spend))}` : "—"}
+                                                                </td>
+                                                            </tr>
+                                                        </tfoot>
+                                                    </table>
+                                                </div>
+                                            </Col>
+                                        )}
                                     </Row>
                                 )}
 
@@ -525,71 +659,180 @@ export default function CarAnalytics() {
                                     TAB 2 — ANÁLISE IA
                                 ═══════════════════════════════════════════ */}
                                 {activeTab === "analise" && (
-                                    ai ? (
-                                        <Row className="g-3">
+                                    <Row className="g-3">
+                                        {/* IPS — Índice de Potencial de Venda (XPLDR-27) */}
+                                        < Col md={4}>
+                                            <h6 className="fs-13 fw-semibold mb-3">
+                                                <i className="ri-award-line me-2 text-primary" />
+                                                Índice de Potencial de Venda
+                                            </h6>
 
-                                            {/* Score + alerta de preço */}
-                                            <Col md={4}>
-                                                <div className="text-center mb-2">
+                                            {ips ? (
+                                                <>
+                                                    {/* Score radial */}
+                                                    <div className="text-center mb-2">
+                                                        <ReactApexChart
+                                                            options={ipsRadialOptions}
+                                                            series={[ips.score]}
+                                                            type="radialBar" height={200}
+                                                        />
+                                                        <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
+                                                            <span className={`badge rounded-pill fs-12 px-3 py-2 ${ipsClassBadge(ips.classification)}`}>
+                                                                {ips.classification === "hot" ? "🔥 Hot" : ips.classification === "warm" ? "Warm" : "Cold"}
+                                                            </span>
+                                                            {ips.price_vs_market !== null && (
+                                                                <span className={`badge rounded-pill fs-11 ${Number(ips.price_vs_market) < 0 ? "badge-soft-success" : "badge-soft-danger"}`}>
+                                                                    {Number(ips.price_vs_market) < 0 ? "▼" : "▲"} {Math.abs(Number(ips.price_vs_market))}% vs mercado
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Breakdown dos fatores */}
+                                                    <div className="vstack gap-2 mt-3">
+                                                        {Object.entries(ips.breakdown || {}).map(([key, pts]: any) => {
+                                                            const factor = ipsFactorLabels[key];
+                                                            if (!factor) return null;
+                                                            const pct = Math.round((pts / factor.max) * 100);
+                                                            return (
+                                                                <div
+                                                                    key={key}
+                                                                    style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.6rem 0.75rem", background: "#fff" }}
+                                                                >
+                                                                    <div className="d-flex align-items-center justify-content-between mb-1">
+                                                                        <div className="d-flex align-items-center gap-2">
+                                                                            <i className={`${factor.icon} text-${factor.color} fs-14`} />
+                                                                            <span className="fs-12 fw-medium">{factor.label}</span>
+                                                                        </div>
+                                                                        <span className="fs-12 fw-semibold">
+                                                                            {pts}<span className="text-muted fw-normal">/{factor.max}</span>
+                                                                        </span>
+                                                                    </div>
+                                                                    <Progress
+                                                                        color={pct >= 70 ? "success" : pct >= 40 ? "warning" : "danger"}
+                                                                        value={pct}
+                                                                        style={{ height: "4px" }}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Histórico */}
+                                                    <div className="mt-3">
+                                                        <div className="d-flex align-items-center justify-content-between mb-2">
+                                                            <span className="fs-12 fw-semibold text-muted text-uppercase">Histórico (90 dias)</span>
+                                                            <span className="fs-11 text-muted">
+                                                                {ips.history?.length || 0} cálculo{(ips.history?.length || 0) !== 1 ? "s" : ""}
+                                                            </span>
+                                                        </div>
+                                                        {ips.history && ips.history.length > 1 ? (
+                                                            <ReactApexChart
+                                                                options={ipsHistoryOptions}
+                                                                series={[{ name: "Score", data: ips.history.map((h: any) => h.score) }]}
+                                                                type="line" height={80}
+                                                            />
+                                                        ) : (
+                                                            <div style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.6rem 0.75rem", background: "#fff" }}>
+                                                                <p className="fs-12 text-muted mb-0 text-center">Histórico a construir — recalcula diariamente</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Recalcular */}
+                                                    <div className="mt-3 text-end">
+                                                        <span className="fs-11 text-muted me-2">
+                                                            Calculado: {fmtDate(ips.calculated_at)}
+                                                        </span>
+                                                        <button
+                                                            className="btn btn-soft-primary btn-sm"
+                                                            onClick={() => {
+                                                                const authUser = sessionStorage.getItem("authUser");
+                                                                if (!authUser) return;
+                                                                const { company_id } = JSON.parse(authUser);
+                                                                fetch(`${process.env.REACT_APP_API_URL}/v1/companies/${company_id}/cars/${id}/potential-score/recalculate`, {
+                                                                    method: "POST",
+                                                                    headers: { Authorization: `Bearer ${JSON.parse(authUser).token}`, "Content-Type": "application/json" },
+                                                                }).then(() => dispatch(analyticsCar({ companyId: company_id, id: Number(id) })));
+                                                            }}
+                                                        >
+                                                            <i className="ri-refresh-line me-1" /> Recalcular
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-4 text-muted">
+                                                    <i className="ri-award-line fs-1 d-block mb-2" />
+                                                    <p className="fs-13 mb-2">Score ainda não calculado</p>
+                                                    <button
+                                                        className="btn btn-soft-primary btn-sm"
+                                                        onClick={() => {
+                                                            const authUser = sessionStorage.getItem("authUser");
+                                                            if (!authUser) return;
+                                                            const { company_id } = JSON.parse(authUser);
+                                                            fetch(`${process.env.REACT_APP_API_URL}/companies/${company_id}/cars/${id}/potential-score/recalculate`, {
+                                                                method: "POST",
+                                                                headers: { Authorization: `Bearer ${JSON.parse(authUser).token}`, "Content-Type": "application/json" },
+                                                            }).then(() => dispatch(analyticsCar({ companyId: company_id, id: Number(id) })));
+                                                        }}
+                                                    >
+                                                        <i className="ri-play-line me-1" /> Calcular agora
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </Col>
+
+                                        {ai ? (
+                                            <>
+                                                {/* Público-alvo + argumentos */}
+                                                <Col md={4}>
                                                     <h6 className="fs-13 fw-semibold mb-3">
-                                                        <i className="ri-award-line me-2 text-primary" />
-                                                        Score de Conversão
+                                                        <i className="ri-user-heart-line me-2 text-info" />
+                                                        Público-Alvo
                                                     </h6>
-                                                    <ReactApexChart
-                                                        options={scoreOptions}
-                                                        series={[aiMeta.score_conversao]}
-                                                        type="radialBar" height={200}
-                                                    />
-                                                    <span className={`badge rounded-pill fs-12 px-3 py-2 ${aiMeta.score_classificacao === "Baixo" ? "badge-soft-danger" : aiMeta.score_classificacao === "Médio" ? "badge-soft-warning" : "badge-soft-success"}`}>
-                                                        {aiMeta.score_classificacao}
-                                                    </span>
-                                                </div>
-
-                                                {aiMeta.price_alert && ai.alerta_preco && (
-                                                    <div className="alert alert-warning d-flex align-items-start gap-2 p-3 mt-3">
-                                                        <i className="ri-price-tag-3-line fs-18 flex-shrink-0 mt-1" />
-                                                        <div>
-                                                            <p className="fw-semibold fs-13 mb-1">Alerta de Preço</p>
-                                                            <p className="fs-12 mb-0">{ai.alerta_preco.recomendacao}</p>
+                                                    {ai.publico_alvo && (
+                                                        <div className="vstack gap-2">
+                                                            {[
+                                                                { icon: "ri-calendar-2-line", color: "primary", label: "Faixa etária", val: ai.publico_alvo.faixa_etaria },
+                                                                { icon: "ri-men-line", color: "info", label: "Género", val: ai.publico_alvo.genero_predominante },
+                                                                { icon: "ri-briefcase-4-line", color: "success", label: "Perfil profissional", val: ai.publico_alvo.perfil_profissional },
+                                                                { icon: "ri-trophy-line", color: "warning", label: "Estilo de vida", val: ai.publico_alvo.estilo_de_vida },
+                                                                { icon: "ri-search-eye-line", color: "danger", label: "Comportamento", val: ai.publico_alvo.comportamento_de_compra },
+                                                            ].map((row, idx) => (
+                                                                <div
+                                                                    key={idx}
+                                                                    className="d-flex align-items-start gap-2"
+                                                                    style={{
+                                                                        border: "1px dashed #e9ebec",
+                                                                        borderRadius: "0.4rem",
+                                                                        padding: "0.6rem 0.75rem",
+                                                                        background: "#fff",
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        className={`avatar-title rounded-circle bg-${row.color}-subtle text-${row.color} flex-shrink-0`}
+                                                                        style={{ width: 30, height: 30, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}
+                                                                    >
+                                                                        <i className={row.icon} />
+                                                                    </div>
+                                                                    <div style={{ minWidth: 0, flex: 1 }}>
+                                                                        <p className="fs-11 text-muted mb-0">{row.label}</p>
+                                                                        <p className="fs-13 fw-medium mb-0" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>{row.val}</p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    </div>
-                                                )}
+                                                    )}
 
-                                                {ai.recomendacao_urgencia && (
-                                                    <div className="alert alert-danger d-flex align-items-start gap-2 p-3">
-                                                        <i className="ri-alarm-warning-line fs-18 flex-shrink-0 mt-1" />
-                                                        <div>
-                                                            <p className="fw-semibold fs-13 mb-1">Urgência {ai.recomendacao_urgencia.nivel}</p>
-                                                            <p className="fs-12 mb-0">{ai.recomendacao_urgencia.acao_recomendada}</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Justificação */}
-                                                <div className="bg-light rounded p-3">
-                                                    <p className="fs-12 mb-1 text-muted fw-semibold text-uppercase">Justificação</p>
-                                                    <p className="fs-13 mb-0">{ai.score_conversao?.justificacao}</p>
-                                                </div>
-                                            </Col>
-
-                                            {/* Público-alvo + argumentos */}
-                                            <Col md={4}>
-                                                <h6 className="fs-13 fw-semibold mb-3">
-                                                    <i className="ri-user-heart-line me-2 text-info" />
-                                                    Público-Alvo
-                                                </h6>
-                                                {ai.publico_alvo && (
+                                                    <h6 className="fs-13 fw-semibold mt-4 mb-2">
+                                                        <i className="ri-checkbox-circle-line me-2 text-success" />
+                                                        Argumentos de Venda
+                                                    </h6>
                                                     <div className="vstack gap-2">
-                                                        {[
-                                                            { icon: "ri-calendar-2-line", color: "primary", label: "Faixa etária", val: ai.publico_alvo.faixa_etaria },
-                                                            { icon: "ri-men-line", color: "info", label: "Género", val: ai.publico_alvo.genero_predominante },
-                                                            { icon: "ri-briefcase-4-line", color: "success", label: "Perfil profissional", val: ai.publico_alvo.perfil_profissional },
-                                                            { icon: "ri-trophy-line", color: "warning", label: "Estilo de vida", val: ai.publico_alvo.estilo_de_vida },
-                                                            { icon: "ri-search-eye-line", color: "danger", label: "Comportamento", val: ai.publico_alvo.comportamento_de_compra },
-                                                        ].map((row, idx) => (
+                                                        {(ai.argumentos_de_venda || []).map((arg: string, idx: number) => (
                                                             <div
                                                                 key={idx}
-                                                                className="d-flex align-items-start gap-2"
+                                                                className="d-flex align-items-center gap-2 fs-13"
                                                                 style={{
                                                                     border: "1px dashed #e9ebec",
                                                                     borderRadius: "0.4rem",
@@ -597,140 +840,145 @@ export default function CarAnalytics() {
                                                                     background: "#fff",
                                                                 }}
                                                             >
-                                                                <div
-                                                                    className={`avatar-title rounded-circle bg-${row.color}-subtle text-${row.color} flex-shrink-0`}
-                                                                    style={{ width: 30, height: 30, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 2 }}
-                                                                >
-                                                                    <i className={row.icon} />
-                                                                </div>
-                                                                <div style={{ minWidth: 0, flex: 1 }}>
-                                                                    <p className="fs-11 text-muted mb-0">{row.label}</p>
-                                                                    <p className="fs-13 fw-medium mb-0" style={{ whiteSpace: "normal", wordBreak: "break-word" }}>{row.val}</p>
-                                                                </div>
+                                                                <i className="ri-check-line text-success fs-16 flex-shrink-0" />
+                                                                {arg}
                                                             </div>
                                                         ))}
                                                     </div>
-                                                )}
+                                                </Col>
 
-                                                <h6 className="fs-13 fw-semibold mt-4 mb-2">
-                                                    <i className="ri-checkbox-circle-line me-2 text-success" />
-                                                    Argumentos de Venda
-                                                </h6>
-                                                <div className="vstack gap-2">
-                                                    {(ai.argumentos_de_venda || []).map((arg: string, idx: number) => (
+                                                {/* Previsão + canais + copy */}
+                                                <Col md={4}>
+                                                    <h6 className="fs-13 fw-semibold mb-3">
+                                                        <i className="ri-line-chart-line me-2 text-success" />
+                                                        Previsão de Venda
+                                                    </h6>
+                                                    <Row className="g-2 mb-3">
+                                                        {[
+                                                            { label: "7 dias", val: ai.previsao?.probabilidade_venda_7d, color: "danger" },
+                                                            { label: "14 dias", val: ai.previsao?.probabilidade_venda_14d, color: "warning" },
+                                                            { label: "30 dias", val: ai.previsao?.probabilidade_venda_30d, color: "success" },
+                                                        ].map((p, idx) => (
+                                                            <Col xs={4} key={idx}>
+                                                                <div className={`bg-${p.color}-subtle rounded text-center p-2`}>
+                                                                    <div className={`fs-18 fw-bold text-${p.color}`}>{p.val}%</div>
+                                                                    <div className="fs-11 text-muted">{p.label}</div>
+                                                                </div>
+                                                            </Col>
+                                                        ))}
+                                                    </Row>
+                                                    <div
+                                                        className="mt-3 p-3 rounded"
+                                                        style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                                    >
+                                                        <p className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: 11, letterSpacing: "0.5px" }}>
+                                                            <i className="ri-information-line me-1" />
+                                                            O que significa este score?
+                                                        </p>
+                                                        <p className="text-muted mb-2">
+                                                            Probabilidade estimada de venda desta viatura com base no preço vs mercado, engajamento, dias em stock e histórico do modelo.
+                                                        </p>
+                                                        <div className="vstack gap-1">
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <span className="badge badge-soft-danger text-dark" style={{ fontSize: 10, minWidth: 48 }}>7 dias</span>
+                                                                <span className="text-muted">Probabilidade imediata — sem ajustes</span>
+                                                            </div>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <span className="badge badge-soft-warning text-dark" style={{ fontSize: 10, minWidth: 48 }}>14 dias</span>
+                                                                <span className="text-muted">Com pequenos ajustes de preço ou distribuição</span>
+                                                            </div>
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <span className="badge badge-soft-success text-dark" style={{ fontSize: 10, minWidth: 48 }}>30 dias</span>
+                                                                <span className="text-muted">Potencial máximo com otimização ativa</span>
+                                                            </div>
+                                                        </div>
+                                                        {ai.previsao?.condicao && (
+                                                            <div className="mt-2 pt-2" style={{ borderTop: "1px dashed #e9ebec" }}>
+                                                                <p className="text-muted mb-0" style={{ fontSize: 11, fontStyle: "italic" }}>
+                                                                    <i className="ri-lightbulb-line me-1 text-warning" />
+                                                                    {ai.previsao.condicao}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <ReactApexChart
+                                                        options={forecastOptions}
+                                                        series={[{ name: "Probabilidade", data: [0, ai.previsao?.probabilidade_venda_7d, ai.previsao?.probabilidade_venda_14d, ai.previsao?.probabilidade_venda_30d] }]}
+                                                        type="area" height={140}
+                                                    />
+
+                                                    <h6 className="fs-13 fw-semibold mt-4 mb-3">
+                                                        <i className="ri-megaphone-line me-2 text-primary" />
+                                                        Canais Recomendados
+                                                    </h6>
+                                                    {[
+                                                        { data: ai.canal_principal, badge: "Principal", badgeClass: "bg-primary-subtle text-primary", accentColor: "#405189" },
+                                                        { data: ai.canal_secundario, badge: "Secundário", badgeClass: "bg-info-subtle text-info", accentColor: "#299cdb" },
+                                                    ].map((c, idx) => c.data && (
                                                         <div
                                                             key={idx}
-                                                            className="d-flex align-items-center gap-2 fs-13"
+                                                            className="mb-2"
                                                             style={{
                                                                 border: "1px dashed #e9ebec",
+                                                                borderLeft: `3px solid ${c.accentColor}`,
                                                                 borderRadius: "0.4rem",
-                                                                padding: "0.6rem 0.75rem",
+                                                                padding: "0.65rem 0.75rem",
                                                                 background: "#fff",
                                                             }}
                                                         >
-                                                            <i className="ri-check-line text-success fs-16 flex-shrink-0" />
-                                                            {arg}
+                                                            <div className="d-flex align-items-center justify-content-between mb-1">
+                                                                <span className="fw-semibold fs-13">{c.data.canal}</span>
+                                                                <span className={`badge ${c.badgeClass} fs-11`}>{c.badge}</span>
+                                                            </div>
+                                                            <p className="text-muted fs-12 mb-0">{c.data.justificacao}</p>
                                                         </div>
                                                     ))}
+
+                                                    {ai.sugestao_conteudo && (
+                                                        <>
+                                                            <h6 className="fs-13 fw-semibold mt-3 mb-2">
+                                                                <i className="ri-quill-pen-line me-2 text-warning" />
+                                                                Copy Sugerido
+                                                            </h6>
+                                                            <div className="vstack gap-2">
+                                                                {[
+                                                                    { label: "Título do anúncio", val: ai.sugestao_conteudo.titulo_anuncio, bold: true, italic: false },
+                                                                    { label: "Hook de vídeo", val: ai.sugestao_conteudo.hook_video, bold: false, italic: true },
+                                                                    { label: "Copy curto", val: ai.sugestao_conteudo.copy_curto, bold: false, italic: false },
+                                                                ].map((item, idx) => (
+                                                                    <div
+                                                                        key={idx}
+                                                                        style={{
+                                                                            border: "1px dashed #e9ebec",
+                                                                            borderRadius: "0.4rem",
+                                                                            padding: "0.65rem 0.75rem",
+                                                                            background: "#fff",
+                                                                        }}
+                                                                    >
+                                                                        <p className="fs-11 text-primary fw-semibold text-uppercase mb-1">{item.label}</p>
+                                                                        <p className={`fs-13 mb-0 ${item.bold ? "fw-semibold" : ""} ${item.italic ? "fst-italic text-muted" : ""}`}>
+                                                                            {item.val}
+                                                                        </p>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </Col>
+                                            </>
+                                        ) : (
+                                            <Col md={8}>
+                                                <div className="text-center py-5 text-muted">
+                                                    <i className="ri-cpu-line fs-1 d-block mb-3" />
+                                                    <h5>Análise IA ainda não disponível</h5>
+                                                    <p className="mb-3 fs-13">A análise será gerada automaticamente assim que existirem dados suficientes.</p>
+                                                    <XButton onClick={handleGenerateAiAnalyses}>
+                                                        Gerar análise
+                                                    </XButton>
                                                 </div>
                                             </Col>
-
-                                            {/* Previsão + canais + copy */}
-                                            <Col md={4}>
-                                                <h6 className="fs-13 fw-semibold mb-3">
-                                                    <i className="ri-line-chart-line me-2 text-success" />
-                                                    Previsão de Venda
-                                                </h6>
-                                                <Row className="g-2 mb-3">
-                                                    {[
-                                                        { label: "7 dias", val: ai.previsao?.probabilidade_venda_7d, color: "danger" },
-                                                        { label: "14 dias", val: ai.previsao?.probabilidade_venda_14d, color: "warning" },
-                                                        { label: "30 dias", val: ai.previsao?.probabilidade_venda_30d, color: "success" },
-                                                    ].map((p, idx) => (
-                                                        <Col xs={4} key={idx}>
-                                                            <div className={`bg-${p.color}-subtle rounded text-center p-2`}>
-                                                                <div className={`fs-18 fw-bold text-${p.color}`}>{p.val}%</div>
-                                                                <div className="fs-11 text-muted">{p.label}</div>
-                                                            </div>
-                                                        </Col>
-                                                    ))}
-                                                </Row>
-                                                <ReactApexChart
-                                                    options={forecastOptions}
-                                                    series={[{ name: "Probabilidade", data: [0, ai.previsao?.probabilidade_venda_7d, ai.previsao?.probabilidade_venda_14d, ai.previsao?.probabilidade_venda_30d] }]}
-                                                    type="area" height={140}
-                                                />
-
-                                                <h6 className="fs-13 fw-semibold mt-4 mb-3">
-                                                    <i className="ri-megaphone-line me-2 text-primary" />
-                                                    Canais Recomendados
-                                                </h6>
-                                                {[
-                                                    { data: ai.canal_principal, badge: "Principal", badgeClass: "bg-primary-subtle text-primary", accentColor: "#405189" },
-                                                    { data: ai.canal_secundario, badge: "Secundário", badgeClass: "bg-info-subtle text-info", accentColor: "#299cdb" },
-                                                ].map((c, idx) => c.data && (
-                                                    <div
-                                                        key={idx}
-                                                        className="mb-2"
-                                                        style={{
-                                                            border: "1px dashed #e9ebec",
-                                                            borderLeft: `3px solid ${c.accentColor}`,
-                                                            borderRadius: "0.4rem",
-                                                            padding: "0.65rem 0.75rem",
-                                                            background: "#fff",
-                                                        }}
-                                                    >
-                                                        <div className="d-flex align-items-center justify-content-between mb-1">
-                                                            <span className="fw-semibold fs-13">{c.data.canal}</span>
-                                                            <span className={`badge ${c.badgeClass} fs-11`}>{c.badge}</span>
-                                                        </div>
-                                                        <p className="text-muted fs-12 mb-0">{c.data.justificacao}</p>
-                                                    </div>
-                                                ))}
-
-                                                {ai.sugestao_conteudo && (
-                                                    <>
-                                                        <h6 className="fs-13 fw-semibold mt-3 mb-2">
-                                                            <i className="ri-quill-pen-line me-2 text-warning" />
-                                                            Copy Sugerido
-                                                        </h6>
-                                                        <div className="vstack gap-2">
-                                                            {[
-                                                                { label: "Título do anúncio", val: ai.sugestao_conteudo.titulo_anuncio, bold: true, italic: false },
-                                                                { label: "Hook de vídeo", val: ai.sugestao_conteudo.hook_video, bold: false, italic: true },
-                                                                { label: "Copy curto", val: ai.sugestao_conteudo.copy_curto, bold: false, italic: false },
-                                                            ].map((item, idx) => (
-                                                                <div
-                                                                    key={idx}
-                                                                    style={{
-                                                                        border: "1px dashed #e9ebec",
-                                                                        borderRadius: "0.4rem",
-                                                                        padding: "0.65rem 0.75rem",
-                                                                        background: "#fff",
-                                                                    }}
-                                                                >
-                                                                    <p className="fs-11 text-primary fw-semibold text-uppercase mb-1">{item.label}</p>
-                                                                    <p className={`fs-13 mb-0 ${item.bold ? "fw-semibold" : ""} ${item.italic ? "fst-italic text-muted" : ""}`}>
-                                                                        {item.val}
-                                                                    </p>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </Col>
-
-                                        </Row>
-                                    ) : (
-                                        <div className="text-center py-5 text-muted">
-                                            <i className="ri-cpu-line fs-1 d-block mb-3" />
-                                            <h5>Análise IA ainda não disponível</h5>
-                                            <p className="mb-3 fs-13">A análise será gerada automaticamente assim que existirem dados suficientes.</p>
-                                            <XButton onClick={handleGenerateAiAnalyses}>
-                                                Gerar análise
-                                            </XButton>
-                                        </div>
-                                    )
+                                        )}
+                                    </Row>
                                 )}
 
                                 {/* ═══════════════════════════════════════════
@@ -862,6 +1110,6 @@ export default function CarAnalytics() {
                 </Row>
 
             </Container>
-        </div>
+        </div >
     );
 }

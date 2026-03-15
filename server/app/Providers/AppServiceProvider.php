@@ -4,12 +4,15 @@ namespace App\Providers;
 
 use App\Models\{
     Blog,
+    CarImage,
     CarLead,
     CarPerformanceMetric,
+    CarSalePotentialScore,
     Company
 };
 use App\Observers\{
     BlogObserver,
+    CarImageObserver,
     CarPerformanceMetricObserver,
     CompanyObserver,
     LeadObserver
@@ -24,6 +27,7 @@ use App\Repositories\Contracts\{
     CarModelRepositoryInterface,
     CarPerformanceMetricRepositoryInterface,
     CarRepositoryInterface,
+    CarSalePotentialScoreRepositoryInterface,
     CarViewRepositoryInterface,
     CompanyRepositoryInterface,
     DashboardRepositoryInterface,
@@ -45,6 +49,7 @@ use App\Repositories\{
     CarModelRepository,
     CarPerformanceMetricRepository,
     CarRepository,
+    CarSalePotentialScoreRepository,
     CarViewRepository,
     CompanyRepository,
     DashboardRepository,
@@ -75,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
         $this->app->bind(CarModelRepositoryInterface::class, CarModelRepository::class);
         $this->app->bind(CarPerformanceMetricRepositoryInterface::class, CarPerformanceMetricRepository::class);
+        $this->app->bind(CarSalePotentialScoreRepositoryInterface::class, CarSalePotentialScoreRepository::class);
         $this->app->bind(CarmineConnectionRepositoryInterface::class, CarmineConnectionRepository::class);
         $this->app->bind(CarViewRepositoryInterface::class, CarViewRepository::class);
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
@@ -97,6 +103,7 @@ class AppServiceProvider extends ServiceProvider
         Blog::observe(BlogObserver::class);
         CarLead::observe(LeadObserver::class);
         CarPerformanceMetric::observe(CarPerformanceMetricObserver::class);
+        CarImage::observe(CarImageObserver::class);
 
         Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
     }

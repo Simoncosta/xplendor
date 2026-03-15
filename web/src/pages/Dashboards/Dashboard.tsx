@@ -93,12 +93,11 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
         days_in_stock: car.days_in_stock ?? null,
         price_gross: Number(car.price_gross || 0),
         reason: car.reason || "Ação urgente",
-        suggestion:
-            car.priority >= 2
-                ? "Rever preço e destacar anúncio"
-                : "Melhorar fotos e rever copy",
+        suggestion: car.priority >= 2 ? "Rever preço e destacar anúncio" : "Melhorar fotos e rever copy",
         source: "urgent" as const,
         priority: car.priority || 1,
+        ips_score: car.ips_score ?? null,           // ← NOVO
+        ips_classification: car.ips_classification ?? null, // ← NOVO
     }));
 
     const lowConversionCars = (analytics.high_interest_low_conversion_cars || []).map((car) => ({
@@ -114,6 +113,8 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
             : "Melhorar fotos e rever copy",
         source: "low_conversion" as const,
         priority: 1,
+        ips_score: car.ips_score ?? null,
+        ips_classification: car.ips_classification ?? null,
     }));
 
     const stuckCapitalCars = (analytics.highest_stuck_capital_cars || []).map((car) => ({
@@ -127,6 +128,8 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
         suggestion: "Rever preço e destacar anúncio",
         source: "stuck_capital" as const,
         priority: 2,
+        ips_score: car.ips_score ?? null,
+        ips_classification: car.ips_classification ?? null,
     }));
 
     const merged = [...urgentCars, ...lowConversionCars, ...stuckCapitalCars];

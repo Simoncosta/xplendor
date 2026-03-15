@@ -39,6 +39,11 @@ class CarPerformanceMetric extends Model
         'data_source',
         'requires_review',
         'notes',
+
+        // Interações
+        'interactions_count',
+        'whatsapp_clicks',
+        'phone_clicks',
     ];
 
     // Campos calculados — nunca aceites via fillable
@@ -149,6 +154,7 @@ class CarPerformanceMetric extends Model
             ? round($this->spend_amount / $this->leads_count, 2)
             : null;
 
+        // conversion_rate padrão: leads / sessions (métrica tradicional)
         $this->conversion_rate = $this->sessions > 0
             ? round(($this->leads_count / $this->sessions) * 100, 2)
             : null;

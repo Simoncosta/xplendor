@@ -1,0 +1,311 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Car;
+use App\Models\CarSalePotentialScore;
+use App\Repositories\Contracts\CarSalePotentialScoreRepositoryInterface;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+class CarSalePotentialScoreService
+{
+    public function __construct(
+        private CarSalePotentialScoreRepositoryInterface $repository
+    ) {}
+
+    // ── Entrada pública ───────────────────────────────────────────────────────
+
+    public function calculate(int $carId, int $companyId, string $triggeredBy): CarSalePotentialScore
+    {
+        $car = Car::where('id', $carId)
+            ->where('company_id', $companyId)
+            ->firstOrFail();
+
+        $breakdown = [
+            'price_vs_market' => $this->scorePriceVsMarket($car),
+            'engagement_rate' => $this->scoreEngagementRate($car),
+            'days_in_stock'   => $this->scoreDaysInStock($car),
+            'segment_demand'  => $this->scoreSegmentDemand($car),
+            'listing_quality' => $this->scoreListingQuality($car),
+            'model_history'   => $this->scoreModelHistory($car),
+        ];
+
+        $score          = (int) array_sum($breakdown);
+        $score          = max(0, min(100, $score)); // garantir 0–100
+        $daysInStock    = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $priceVsMarket  = $this->getPriceVsMarketPercent($car);
+
+        Log::info('[IPS] Carro calculado', [
+            'car_id'      => $carId,
+            'score'       => $score,
+            'breakdown'   => $breakdown,
+            'triggered_by' => $triggeredBy,
+        ]);
+
+        return $this->repository->create([
+            'car_id'                => $carId,
+            'company_id'            => $companyId,
+            'score'                 => $score,
+            'classification'        => CarSalePotentialScore::classify($score),
+            'score_breakdown'       => $breakdown,
+            'price_vs_market'       => $priceVsMarket,
+            'days_in_stock_at_calc' => $daysInStock,
+            'calculated_at'         => now(),
+            'triggered_by'          => $triggeredBy,
+        ]);
+    }
+
+    public function getLatestWithHistory(int $carId, int $companyId): array
+    {
+        $latest  = $this->repository->getLatest($carId, $companyId);
+        $history = $this->repository->getHistory($carId, $companyId, 90);
+
+        return [
+            'score'          => $latest?->score,
+            'classification' => $latest?->classification,
+            'calculated_at'  => $latest?->calculated_at,
+            'price_vs_market' => $latest?->price_vs_market,
+            'breakdown'      => $latest?->score_breakdown,
+            'history'        => $history->map(fn($h) => [
+                'score' => $h->score,
+                'classification' => $h->classification,
+                'date'  => $h->calculated_at,
+                'triggered_by' => $h->triggered_by,
+            ]),
+        ];
+    }
+
+    // ── Fator 1: Preço vs mercado (25 pts) ───────────────────────────────────
+    // Compara price_gross com a mediana dos carros do mesmo modelo e ano ±1
+    // que estão activos noutros stands (ou no histórico da plataforma)
+
+    private function scorePriceVsMarket(Car $car): int
+    {
+        $deviation = $this->getPriceVsMarketPercent($car);
+
+        if ($deviation === null) {
+            return 15; // sem dados de mercado → valor neutro
+        }
+
+        if ($deviation <= -10) return 25; // preço >10% abaixo da mediana
+        if ($deviation <= -5)  return 20;
+        if ($deviation <= 0)   return 15; // na mediana
+        if ($deviation <= 5)   return 8;
+        return 5;                          // acima 5%+ → penaliza
+    }
+
+    private function getPriceVsMarketPercent(Car $car): ?float
+    {
+        // Mediana de todos os carros ativos do mesmo modelo, ano ±1, excluindo o próprio
+        $median = DB::table('cars')
+            ->where('car_model_id', $car->car_model_id)
+            ->where('car_brand_id', $car->car_brand_id)
+            ->whereBetween('registration_year', [
+                $car->registration_year - 1,
+                $car->registration_year + 1,
+            ])
+            ->where('status', 'active')
+            ->where('id', '!=', $car->id)
+            ->whereNotNull('price_gross')
+            ->orderByRaw('price_gross')
+            ->pluck('price_gross')
+            ->pipe(fn($prices) => $this->median($prices->toArray()));
+
+        if (! $median || $median == 0) {
+            return null;
+        }
+
+        return round((($car->price_gross - $median) / $median) * 100, 2);
+    }
+
+    // ── Fator 2: Velocidade de engajamento (20 pts) ───────────────────────────
+    // Combina taxa de leads/views COM sinais de intenção (interações)
+    // Interações de contacto (WhatsApp, telefone) pesam mais que views passivas
+
+    private function scoreEngagementRate(Car $car): int
+    {
+        $views = DB::table('car_views')
+            ->where('car_id', $car->id)
+            ->count();
+
+        $leads = DB::table('car_leads')
+            ->where('car_id', $car->id)
+            ->count();
+
+        // Interações de intenção alta (WhatsApp + chamadas + mostrar telefone)
+        $intentInteractions = DB::table('car_interactions')
+            ->where('car_id', $car->id)
+            ->whereIn('interaction_type', [
+                'whatsapp_click',
+                'call_click',
+                'show_phone',
+                'copy_phone',
+                'form_start',
+            ])
+            ->count();
+
+        // Interações de intenção média (favorito, partilha, form_open)
+        $softInteractions = DB::table('car_interactions')
+            ->where('car_id', $car->id)
+            ->whereIn('interaction_type', [
+                'favorite',
+                'share',
+                'form_open',
+                'location_view',
+            ])
+            ->count();
+
+        if ($views === 0) return 0;
+
+        // Score combinado: lead vale 3x, intent interaction vale 1.5x, soft vale 0.5x
+        // Normalizado para criar uma "taxa de engajamento ponderada"
+        $weightedEngagement = ($leads * 3) + ($intentInteractions * 1.5) + ($softInteractions * 0.5);
+        $engagementRate     = $weightedEngagement / $views;
+
+        // Benchmark do stand com o mesmo método ponderado
+        $benchmark = $this->getStandEngagementBenchmark($car->company_id);
+
+        if ($benchmark === 0.0) {
+            // Sem benchmark ainda — avaliar em absoluto
+            if ($engagementRate >= 0.05)  return 20; // 5%+ de engajamento ponderado
+            if ($engagementRate >= 0.02)  return 14;
+            if ($engagementRate > 0)      return 7;
+            return 0;
+        }
+
+        $ratio = $engagementRate / $benchmark;
+
+        if ($ratio >= 1.5) return 20;
+        if ($ratio >= 1.0) return 14;
+        if ($ratio >= 0.5) return 7;
+        return 0;
+    }
+
+    private function getStandEngagementBenchmark(int $companyId): float
+    {
+        $cars = DB::table('cars')
+            ->where('company_id', $companyId)
+            ->where('status', 'active')
+            ->pluck('id');
+
+        if ($cars->isEmpty()) return 0.0;
+
+        $rates = $cars->map(function ($carId) {
+            $views  = DB::table('car_views')->where('car_id', $carId)->count();
+            $leads  = DB::table('car_leads')->where('car_id', $carId)->count();
+            $intent = DB::table('car_interactions')
+                ->where('car_id', $carId)
+                ->whereIn('interaction_type', ['whatsapp_click', 'call_click', 'show_phone', 'copy_phone', 'form_start'])
+                ->count();
+            $soft = DB::table('car_interactions')
+                ->where('car_id', $carId)
+                ->whereIn('interaction_type', ['favorite', 'share', 'form_open', 'location_view'])
+                ->count();
+
+            if ($views === 0) return 0;
+
+            return (($leads * 3) + ($intent * 1.5) + ($soft * 0.5)) / $views;
+        });
+
+        return $rates->avg() ?? 0.0;
+    }
+
+    // ── Fator 3: Dias em stock (20 pts) ──────────────────────────────────────
+
+    private function scoreDaysInStock(Car $car): int
+    {
+        $days = (int) Carbon::parse($car->created_at)->diffInDays(now());
+
+        if ($days <= 15) return 20;
+        if ($days <= 30) return 12;
+        if ($days <= 60) return 5;
+        return 0;
+    }
+
+    // ── Fator 4: Procura do segmento (15 pts) ────────────────────────────────
+    // Quantas viaturas do mesmo segmento/combustível foram vendidas nos últimos 90 dias
+
+    private function scoreSegmentDemand(Car $car): int
+    {
+        $soldCount = DB::table('cars')
+            ->where('company_id', $car->company_id)
+            ->where('segment', $car->segment)
+            ->where('fuel_type', $car->fuel_type)
+            ->where('status', 'sold')
+            ->where('updated_at', '>=', now()->subDays(90))
+            ->count();
+
+        if ($soldCount >= 3) return 15; // alta rotação
+        if ($soldCount >= 1) return 8;  // média
+        return 3;                        // baixa (mas não zero — pode ser nicho)
+    }
+
+    // ── Fator 5: Qualidade do anúncio (10 pts) ───────────────────────────────
+
+    private function scoreListingQuality(Car $car): int
+    {
+        $pts = 0;
+
+        // Fotos: ≥8 → 4pts, ≥4 → 2pts
+        $photoCount = DB::table('car_images')
+            ->where('car_id', $car->id)
+            ->count();
+
+        if ($photoCount >= 8)      $pts += 4;
+        elseif ($photoCount >= 4)  $pts += 2;
+
+        // Descrição preenchida
+        if (! empty($car->description_website_pt)) $pts += 2;
+
+        // Preço visível
+        if (! $car->hide_price_online && $car->price_gross > 0) $pts += 2;
+
+        // Extras preenchidos (pelo menos um grupo com items)
+        $hasExtras = collect($car->extras ?? [])
+            ->contains(fn($group) => ! empty($group['items']));
+
+        if ($hasExtras) $pts += 2;
+
+        return min(10, $pts);
+    }
+
+    // ── Fator 6: Histórico de conversão do modelo (10 pts) ───────────────────
+
+    private function scoreModelHistory(Car $car): int
+    {
+        // Tempo médio (dias) de venda de carros do mesmo modelo no stand
+        $avgDays = DB::table('cars')
+            ->where('company_id', $car->company_id)
+            ->where('car_model_id', $car->car_model_id)
+            ->where('status', 'sold')
+            ->whereNotNull('updated_at')
+            ->selectRaw('AVG(DATEDIFF(updated_at, created_at)) as avg_days')
+            ->value('avg_days');
+
+        if ($avgDays === null) return 5; // sem histórico → neutro
+
+        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
+
+        // Se está a vender mais rápido que a média histórica → bom sinal
+        if ($daysInStock < $avgDays * 0.7) return 10;
+        if ($daysInStock <= $avgDays)      return 5;
+        return 2; // já passou a média histórica
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function median(array $values): ?float
+    {
+        if (empty($values)) return null;
+
+        sort($values);
+        $count = count($values);
+        $mid   = (int) floor($count / 2);
+
+        return $count % 2 === 0
+            ? ($values[$mid - 1] + $values[$mid]) / 2
+            : $values[$mid];
+    }
+}

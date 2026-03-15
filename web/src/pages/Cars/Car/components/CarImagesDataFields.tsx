@@ -51,7 +51,7 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
     // Estado UI do FilePond
     const [files, setFiles] = useState<PondFile[]>([]);
 
-    const API_BASE = process.env.REACT_APP_PUBLIC_URL ?? "http://localhost:8000";
+    const API_BASE = process.env.REACT_APP_PUBLIC_URL ?? "http://localhost:8001";
 
     const toAbsoluteUrl = (storagePath: string) => {
         const normalized = storagePath.replace(/^\/storage\//, "");

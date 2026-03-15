@@ -2,8 +2,9 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use App\Jobs\AggregateCarPerformanceMetricsJob;
 use Illuminate\Support\Facades\Schedule;
+use App\Jobs\AggregateCarPerformanceMetricsJob;
+use App\Jobs\RecalculateAllCarScoresJob;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -17,3 +18,10 @@ Schedule::job(new AggregateCarPerformanceMetricsJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[AggregateCarPerformanceMetrics] Job falhou no scheduler');
     });
+
+// Corre às 00:35 — 5 min depois do AggregateCarPerformanceMetrics (00:30)
+// para garantir que os dados de sessions/leads já estão actualizados
+Schedule::job(new RecalculateAllCarScoresJob())
+    ->dailyAt('00:35')
+    ->name('recalculate-all-car-scores')
+    ->withoutOverlapping();

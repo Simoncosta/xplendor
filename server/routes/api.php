@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\{
     CarmineConnectionController,
     CarModelController,
     CarPerformanceMetricController,
+    CarSalePotentialScoreController,
     CompanyController,
     DashboardController,
     DistrictController,
@@ -58,6 +59,9 @@ Route::prefix('v1')->group(function () {
             Route::post('cars/{car}/performance', [CarPerformanceMetricController::class, 'store']);
             Route::get('cars/{car}/performance/summary', [CarPerformanceMetricController::class, 'summary']);
             Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
+
+            Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
+            Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);
         });
 
         Route::apiResource('/districts', DistrictController::class)->only(['index']);

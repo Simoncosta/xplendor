@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\CalculateCarSalePotentialScoreJob;
 use App\Models\Car;
 use App\Models\CarLead;
 use App\Models\CarPerformanceMetric;
@@ -16,6 +17,15 @@ class LeadObserver
         }
 
         $this->fillTimeToFirstLead($lead);
+
+        // Nova lead → recalcular IPS (engagement mudou)
+        if ($lead->car_id) {
+            CalculateCarSalePotentialScoreJob::dispatch(
+                carId: $lead->car_id,
+                companyId: $lead->company_id,
+                triggeredBy: 'lead_created',
+            );
+        }
     }
 
     private function fillTimeToFirstLead(CarLead $lead): void

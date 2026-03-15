@@ -5,72 +5,102 @@ namespace App\Services;
 use App\Models\Car;
 use App\Repositories\Contracts\CarInteractionRepositoryInterface;
 use App\Repositories\Contracts\CarLeadRepositoryInterface;
+use App\Repositories\Contracts\CarPerformanceMetricRepositoryInterface;
+use App\Repositories\Contracts\CarSalePotentialScoreRepositoryInterface;
 use App\Repositories\Contracts\CarViewRepositoryInterface;
 
 class CarAnalyticsService
 {
     public function __construct(
-        protected CarViewRepositoryInterface $viewRepository,
-        protected CarInteractionRepositoryInterface $interactionRepository,
-        protected CarLeadRepositoryInterface $leadRepository,
+        protected CarViewRepositoryInterface                  $viewRepository,
+        protected CarInteractionRepositoryInterface           $interactionRepository,
+        protected CarLeadRepositoryInterface                  $leadRepository,
+        protected CarPerformanceMetricRepositoryInterface     $performanceRepository,
+        protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
     ) {}
 
     public function show(Car $car): array
     {
-        $views = $this->viewRepository->countByCar($car->id);
+        $views        = $this->viewRepository->countByCar($car->id);
         $interactions = $this->interactionRepository->countByCar($car->id);
-        $leads = $this->leadRepository->countByCar($car->id);
+        $leads        = $this->leadRepository->countByCar($car->id);
 
         $views24h = $this->viewRepository->countByCarSince($car->id, now()->subDay());
-        $views7d = $this->viewRepository->countByCarSince($car->id, now()->subDays(7));
+        $views7d  = $this->viewRepository->countByCarSince($car->id, now()->subDays(7));
 
         $interactionsBreakdown = $this->interactionRepository->groupByType($car->id);
-        $trafficSources = $this->viewRepository->groupByChannel($car->id);
+        $trafficSources        = $this->viewRepository->groupByChannel($car->id);
+
+        // ── Performance metrics (XPLDR-5) ─────────────────────────────────────
+        $performanceSummary   = $this->performanceRepository->getSummary($car->id, $car->company_id);
+        $performanceByChannel = $this->performanceRepository->getSummaryByChannel($car->id, $car->company_id);
+
+        // ── Índice de Potencial de Venda (XPLDR-6) ────────────────────────────
+        $latestScore   = $this->potentialScoreRepository->getLatest($car->id, $car->company_id);
+        $scoreHistory  = $this->potentialScoreRepository->getHistory($car->id, $car->company_id, 90);
 
         return [
             'car' => [
-                'id' => $car->id,
-                'price_gross' => $car->price_gross,
-                'price' => $car->price_gross,
-                'brand' => $car->brand,
-                'model' => $car->model,
-                'version' => $car->version,
-                'created_at' => $car->created_at,
-                'analyses' => $car->analyses,
-                'created_at' => $car->created_at,
-                'license_plate' => $car->license_plate,
-                'fuel_type' => $car->fuel_type,
-                'transmission' => $car->transmission,
-                'power_hp' => $car->power_hp,
-                'engine_capacity_cc' => $car->engine_capacity_cc,
-                'doors' => $car->doors,
-                'seats' => $car->seats,
-                'exterior_color' => $car->exterior_color,
-                'segment' => $car->segment,
-                'registration_month' => $car->registration_month,
-                'registration_year' => $car->registration_year,
-                'license_plate' => $car->license_plate,
-                'condition' => $car->condition,
-                'has_spare_key' => $car->has_spare_key,
-                'has_manuals' => $car->has_manuals,
-                'origin' => $car->origin,
-                'mileage_km' => $car->mileage_km,
+                'id'                     => $car->id,
+                'price_gross'            => $car->price_gross,
+                'price'                  => $car->price_gross,
+                'brand'                  => $car->brand,
+                'model'                  => $car->model,
+                'version'                => $car->version,
+                'created_at'             => $car->created_at,
+                'analyses'               => $car->analyses,
+                'license_plate'          => $car->license_plate,
+                'fuel_type'              => $car->fuel_type,
+                'transmission'           => $car->transmission,
+                'power_hp'               => $car->power_hp,
+                'engine_capacity_cc'     => $car->engine_capacity_cc,
+                'doors'                  => $car->doors,
+                'seats'                  => $car->seats,
+                'exterior_color'         => $car->exterior_color,
+                'segment'                => $car->segment,
+                'registration_month'     => $car->registration_month,
+                'registration_year'      => $car->registration_year,
+                'condition'              => $car->condition,
+                'has_spare_key'          => $car->has_spare_key,
+                'has_manuals'            => $car->has_manuals,
+                'origin'                 => $car->origin,
+                'mileage_km'             => $car->mileage_km,
                 'description_website_pt' => $car->description_website_pt,
-                'images' => $car->images,
+                'images'                 => $car->images,
             ],
             'metrics' => [
-                'views' => $views,
-                'interactions' => $interactions,
-                'leads' => $leads,
-                'views_24h' => $views24h,
-                'views_7d' => $views7d,
+                'views'         => $views,
+                'interactions'  => $interactions,
+                'leads'         => $leads,
+                'views_24h'     => $views24h,
+                'views_7d'      => $views7d,
                 'interest_rate' => $views > 0
                     ? round(($interactions / $views) * 100, 2)
                     : 0,
             ],
             'interactions_breakdown' => $interactionsBreakdown,
-            'traffic_sources' => $trafficSources,
-            'timeline' => $this->buildTimeline($car),
+            'traffic_sources'        => $trafficSources,
+            'timeline'               => $this->buildTimeline($car),
+
+            // ── Novos blocos ──────────────────────────────────────────────────
+            'performance' => [
+                'totals'     => $performanceSummary,
+                'by_channel' => $performanceByChannel,
+            ],
+            'potential_score' => $latestScore ? [
+                'score'            => $latestScore->score,
+                'classification'   => $latestScore->classification,
+                'calculated_at'    => $latestScore->calculated_at,
+                'price_vs_market'  => $latestScore->price_vs_market,
+                'breakdown'        => $latestScore->score_breakdown,
+                'triggered_by'     => $latestScore->triggered_by,
+                'history'          => $scoreHistory->map(fn($h) => [
+                    'score'          => $h->score,
+                    'classification' => $h->classification,
+                    'date'           => $h->calculated_at,
+                    'triggered_by'   => $h->triggered_by,
+                ])->values(),
+            ] : null,
         ];
     }
 
@@ -79,52 +109,49 @@ class CarAnalyticsService
         $timeline = [];
 
         $timeline[] = [
-            'type' => 'car_created',
-            'label' => 'Carro publicado',
+            'type'       => 'car_created',
+            'label'      => 'Carro publicado',
             'created_at' => $car->created_at,
-            'icon' => 'ri-add-circle-line',
-            'color' => 'success',
+            'icon'       => 'ri-add-circle-line',
+            'color'      => 'success',
         ];
 
         foreach ($this->viewRepository->getGroupedTimelineByCar($car->id) as $viewGroup) {
-            $total = (int) $viewGroup->total;
-
+            $total      = (int) $viewGroup->total;
             $timeline[] = [
-                'type' => 'view_group',
-                'label' => $total === 1
+                'type'            => 'view_group',
+                'label'           => $total === 1
                     ? '1 visualização do anúncio'
                     : "{$total} visualizações do anúncio",
-                'created_at' => $viewGroup->grouped_at,
-                'icon' => 'ri-eye-line',
-                'color' => 'primary',
-                'count' => $total,
+                'created_at'      => $viewGroup->grouped_at,
+                'icon'            => 'ri-eye-line',
+                'color'           => 'primary',
+                'count'           => $total,
                 'unique_visitors' => (int) $viewGroup->unique_visitors,
             ];
         }
 
         foreach ($this->interactionRepository->getTimelineByCar($car->id) as $interaction) {
             $timeline[] = [
-                'type' => 'interaction',
-                'label' => $this->mapInteractionLabel($interaction->interaction_type),
+                'type'       => 'interaction',
+                'label'      => $this->mapInteractionLabel($interaction->interaction_type),
                 'created_at' => $interaction->created_at,
-                'icon' => $this->mapInteractionIcon($interaction->interaction_type),
-                'color' => $this->mapInteractionColor($interaction->interaction_type),
+                'icon'       => $this->mapInteractionIcon($interaction->interaction_type),
+                'color'      => $this->mapInteractionColor($interaction->interaction_type),
             ];
         }
 
         foreach ($this->leadRepository->getTimelineByCar($car->id) as $lead) {
             $timeline[] = [
-                'type' => 'lead',
-                'label' => 'Lead registada',
+                'type'       => 'lead',
+                'label'      => 'Lead registada',
                 'created_at' => $lead->created_at,
-                'icon' => 'ri-user-follow-line',
-                'color' => 'warning',
+                'icon'       => 'ri-user-follow-line',
+                'color'      => 'warning',
             ];
         }
 
-        usort($timeline, function ($a, $b) {
-            return strtotime($b['created_at']) <=> strtotime($a['created_at']);
-        });
+        usort($timeline, fn($a, $b) => strtotime($b['created_at']) <=> strtotime($a['created_at']));
 
         return $timeline;
     }

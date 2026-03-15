@@ -304,7 +304,7 @@
 
     const handleInit = (cfg = {}) => {
         state.token = cfg.token || null;
-        state.api_base = cfg.api_base || window.__XPLENDOR_API_BASE__ || "http://localhost:8000";
+        state.api_base = cfg.api_base || window.__XPLENDOR_API_BASE__ || "http://localhost:8001";
         state.endpoint_path = cfg.endpoint_path || "/api/public/track";
         state.debug = !!cfg.debug;
         state.inited = true;
