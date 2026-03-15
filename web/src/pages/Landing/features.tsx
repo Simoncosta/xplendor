@@ -1,244 +1,121 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Col, Container, Row } from 'reactstrap';
 
-// Import Images
-import img1 from "../../assets/images/landing/features/img-1.png";
-import img2 from "../../assets/images/landing/features/img-2.png";
-import img3 from "../../assets/images/landing/features/img-3.png";
+// Substituir pelas imagens reais do teu dashboard
+import dashboard from "../../assets/images/xpledor/dashboard-do-stand.png";
+import dashboardCar from "../../assets/images/xpledor/dashboard-do-carro.png";
 
 const Features = () => {
     return (
         <React.Fragment>
-
             <section className="section bg-light py-5" id="features">
                 <Container>
-                    <Row className="align-items-center gy-4">
-                        <Col lg={6} sm={7} className="mx-auto">
-                            <div>
-                                <img src={img1} alt="" className="img-fluid mx-auto" />
+
+                    {/* ── Bloco 1: Dashboard do stand ── */}
+                    <Row className="align-items-center gy-4 mb-5 pb-lg-5">
+                        <Col lg={6} sm={8} className="mx-auto order-1 order-lg-2">
+                            <div
+                                className="shadow rounded d-flex align-items-center justify-content-center bg-primary-subtle"
+                                style={{ height: 340 }}
+                            >
+                                <img src={dashboard} alt="Dashboard do Stand" className="img-fluid" />
                             </div>
                         </Col>
-                        <Col lg={6}>
-                            <div className="text-muted">
-                                <div className="avatar-sm icon-effect mb-4">
-                                    <div className="avatar-title bg-transparent rounded-circle text-success h1">
-                                        <i className="ri-collage-line fs-36"></i>
-                                    </div>
-                                </div>
-                                <h3 className="mb-3 fs-20">Gestão completa de leads</h3>
-                                <p className="mb-4 fs-16">
-                                    Centralize todos os contactos recebidos nas suas viaturas, acompanhe a origem de cada lead e tenha controlo total sobre o processo de venda.
-                                </p>
 
-                                <Row className="pt-3">
-                                    <Col className="col-4">
-                                        <div className="text-center">
-                                            <h4>+1000</h4>
-                                            <p>Viaturas analisadas</p>
-                                        </div>
-                                    </Col>
-                                    <Col className="col-4">
-                                        <div className="text-center">
-                                            <h4>+300</h4>
-                                            <p>Leads registadas</p>
-                                        </div>
-                                    </Col>
-                                    <Col className="col-4">
-                                        <div className="text-center">
-                                            <h4>+10</h4>
-                                            <p>Stands em piloto</p>
-                                        </div>
-                                    </Col>
-                                </Row>
-                            </div>
-                        </Col>
-                    </Row>
-                </Container>
-            </section>
-
-            <section className="py-5 bg-primary position-relative">
-                <div className="bg-overlay bg-overlay-pattern opacity-50"></div>
-                <Container>
-                    <Row className="align-items-center gy-4">
-                        <Col className="col-sm">
-                            <div>
-                                <h4 className="text-white mb-0 fw-semibold">
-                                    Comece a vender carros com dados reais e controlo total do seu stand
-                                </h4>
-                            </div>
-                        </Col>
-                        <Col className="col-sm-auto">
-                            <div>
-                                <Link to="/register" className="btn bg-gradient btn-danger">
-                                    <i className="ri-rocket-line align-middle me-1"></i> Criar Conta
-                                </Link>
-                            </div>
-                        </Col>
-                    </Row>
-                </Container>
-            </section>
-
-
-            <section className="section">
-                <Container>
-                    <Row className="align-items-center gy-4">
                         <Col lg={6} className="order-2 order-lg-1">
-                            <div className="text-muted">
-                                <h5 className="fs-12 text-uppercase text-success">Plataforma</h5>
-                                <h4 className="mb-3">Gestão inteligente de viaturas</h4>
-                                <p className="mb-4">
-                                    A Xplendor permite aos stands gerir o stock de viaturas, acompanhar visualizações e leads,
-                                    e tomar decisões baseadas em dados reais para vender mais e com maior controlo.
+                            <div className="pe-lg-5">
+                                <span className="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 mb-3 fs-12">
+                                    Inventory Intelligence
+                                </span>
+                                <h3 className="fw-bold mb-3">
+                                    O stand completo numa única vista
+                                </h3>
+                                <p className="text-muted mb-4 fs-15">
+                                    Abre o dashboard de manhã e sabes imediatamente: quais carros têm procura, quais estão parados há demasiado tempo, e onde está o capital imobilizado.
                                 </p>
 
-                                <Row>
-                                    <Col sm={5}>
-                                        <div className="vstack gap-2">
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0 me-2">
-                                                    <div className="avatar-xs icon-effect">
-                                                        <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                            <i className="ri-check-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fs-14 mb-0">Gestão completa de viaturas</h5>
-                                                </div>
+                                <div className="vstack gap-3">
+                                    {[
+                                        { icon: "ri-award-line", color: "text-primary", text: "IPS (Índice de Potencial de Venda) por carro — score 0 a 100" },
+                                        { icon: "ri-alarm-warning-line", color: "text-danger", text: "Alertas automáticos: carros parados, conversão baixa, capital imobilizado" },
+                                        { icon: "ri-bar-chart-line", color: "text-success", text: "Ranking de carros quentes vs. carros mortos — em tempo real" },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="d-flex align-items-start gap-3">
+                                            <div
+                                                className="rounded-circle bg-white d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 36, height: 36, border: "1px solid #e9ebec" }}
+                                            >
+                                                <i className={`${item.icon} ${item.color} fs-16`}></i>
                                             </div>
-
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0 me-2">
-                                                    <div className="avatar-xs icon-effect">
-                                                        <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                            <i className="ri-check-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fs-14 mb-0">Controlo de leads em tempo real</h5>
-                                                </div>
-                                            </div>
-
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0 me-2">
-                                                    <div className="avatar-xs icon-effect">
-                                                        <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                            <i className="ri-check-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fs-14 mb-0">Análise de performance dos anúncios</h5>
-                                                </div>
-                                            </div>
+                                            <p className="text-muted mb-0 fs-14 pt-1">{item.text}</p>
                                         </div>
-                                    </Col>
-
-                                    <Col sm={5}>
-                                        <div className="vstack gap-2">
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0 me-2">
-                                                    <div className="avatar-xs icon-effect">
-                                                        <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                            <i className="ri-check-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fs-14 mb-0">Relatórios de vendas e margem</h5>
-                                                </div>
-                                            </div>
-
-                                            <div className="d-flex align-items-center">
-                                                <div className="flex-shrink-0 me-2">
-                                                    <div className="avatar-xs icon-effect">
-                                                        <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                            <i className="ri-check-fill"></i>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-grow-1">
-                                                    <h5 className="fs-14 mb-0">Plataforma orientada a dados</h5>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Col>
-                                </Row>
-
-                                <div className="mt-4">
-                                    <Link to="/register" className="btn btn-primary">
-                                        Começar agora <i className="ri-arrow-right-line align-middle ms-1"></i>
-                                    </Link>
+                                    ))}
                                 </div>
-                            </div>
-                        </Col>
 
-                        <Col lg={6} sm={7} className="col-10 ms-auto order-1 order-lg-2">
-                            <div>
-                                <img src={img2} alt="" className="img-fluid" />
+                                <div className="mt-4 pt-2">
+                                    <div className="d-flex gap-4 flex-wrap">
+                                        <div className="text-center">
+                                            <h4 className="text-primary fw-bold mb-0">56 dias</h4>
+                                            <p className="text-muted fs-12 mb-0">tempo médio em stock</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <h4 className="text-danger fw-bold mb-0">€83k</h4>
+                                            <p className="text-muted fs-12 mb-0">capital parado identificado</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <h4 className="text-success fw-bold mb-0">3 dias</h4>
+                                            <p className="text-muted fs-12 mb-0">para primeiro alerta</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </Col>
                     </Row>
 
-                    <Row className="align-items-center mt-5 pt-lg-5 gy-4">
-                        <Col lg={6} sm={7} className="col-10 mx-auto">
-                            <div>
-                                <img src={img3} alt="" className="img-fluid" />
+                    {/* ── Bloco 2: Analytics por viatura ── */}
+                    <Row className="align-items-center gy-4">
+                        <Col lg={6} sm={8} className="mx-auto">
+                            <div
+                                className="shadow rounded d-flex align-items-center justify-content-center bg-success-subtle"
+                                style={{ height: 340 }}
+                            >
+                                <img src={dashboardCar} alt="Dashboard do Carro" className="img-fluid" />
                             </div>
                         </Col>
+
                         <Col lg={6}>
-                            <div className="text-muted ps-lg-5">
-                                <h5 className="fs-12 text-uppercase text-success">plataforma</h5>
-                                <h4 className="mb-3">Gestão inteligente do stock automóvel</h4>
-                                <p className="mb-4">
-                                    A Xplendor foi criada para stands que querem controlar vendas, leads e performance dos carros num único sistema orientado a dados.
+                            <div className="ps-lg-5">
+                                <span className="badge bg-success-subtle text-success rounded-pill px-3 py-2 mb-3 fs-12">
+                                    Car Analytics
+                                </span>
+                                <h3 className="fw-bold mb-3">
+                                    Cada carro tem o seu próprio relatório
+                                </h3>
+                                <p className="text-muted mb-4 fs-15">
+                                    Clica num carro e vês tudo: views por canal, leads geradas, taxa de engajamento ponderada, score de potencial e histórico de evolução.
                                 </p>
 
-                                <div className="vstack gap-2">
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-shrink-0 me-2">
-                                            <div className="avatar-xs icon-effect">
-                                                <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                    <i className="ri-check-fill"></i>
-                                                </div>
+                                <div className="vstack gap-3">
+                                    {[
+                                        { icon: "ri-eye-line", color: "text-primary", text: "Views por canal: pago, orgânico, direto, social — atribuição exacta" },
+                                        { icon: "ri-whatsapp-line", color: "text-success", text: "Cliques de WhatsApp e chamadas registados como intenção real de compra" },
+                                        { icon: "ri-cpu-line", color: "text-info", text: "Análise IA com público-alvo, copy sugerido e canais recomendados" },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="d-flex align-items-start gap-3">
+                                            <div
+                                                className="rounded-circle bg-white d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 36, height: 36, border: "1px solid #e9ebec" }}
+                                            >
+                                                <i className={`${item.icon} ${item.color} fs-16`}></i>
                                             </div>
+                                            <p className="text-muted mb-0 fs-14 pt-1">{item.text}</p>
                                         </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-0">Gestão centralizada de viaturas</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-shrink-0 me-2">
-                                            <div className="avatar-xs icon-effect">
-                                                <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                    <i className="ri-check-fill"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-0">Controlo de leads e contactos</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-shrink-0 me-2">
-                                            <div className="avatar-xs icon-effect">
-                                                <div className="avatar-title bg-transparent text-success rounded-circle h2">
-                                                    <i className="ri-check-fill"></i>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <p className="mb-0">Relatórios de vendas e performance</p>
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         </Col>
                     </Row>
+
                 </Container>
             </section>
         </React.Fragment>

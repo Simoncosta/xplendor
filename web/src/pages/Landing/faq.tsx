@@ -1,322 +1,115 @@
 import React, { useState } from 'react';
 import { Col, Container, Row, Collapse } from 'reactstrap';
-import classnames from "classnames";
 
-const Faqs = () => {
+const whatsappNumber = "351938963526";
+const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Olá! Tenho uma dúvida sobre a Xplendor.")}`;
 
-    const [col1, setcol1] = useState(true);
-    const [col2, setcol2] = useState(false);
-    const [col3, setcol3] = useState(false);
-    const [col4, setcol4] = useState(false);
+const faqGroups = [
+    {
+        icon: "ri-question-line",
+        title: "Plataforma",
+        faqs: [
+            {
+                q: "O que é o Índice de Potencial de Venda (IPS)?",
+                a: "O IPS é um score de 0 a 100 que calculamos automaticamente para cada carro com base no preço vs. mercado, views, taxa de engajamento, dias em stock e histórico de vendas do segmento. Um score alto significa que o carro tem condições para vender rápido. Um score baixo alerta para o que precisa de ser ajustado.",
+            },
+            {
+                q: "Preciso de ter um site para usar a Xplendor?",
+                a: "Sim — a Xplendor funciona como uma camada de inteligência por cima do site que já tens. Instalas uma linha de código (X-TAG) e a plataforma começa a registar todos os dados automaticamente. Compatível com WordPress, sites custom, Webflow ou qualquer outra plataforma.",
+            },
+            {
+                q: "A Xplendor substitui o Standvirtual ou o OLX?",
+                a: "Não substitui — complementa. O Standvirtual traz tráfego, mas os dados ficam deles. A Xplendor dá-te dados do teu próprio tráfego: quem visitou, por onde chegou, se clicou no WhatsApp, se preencheu formulário. Com o tempo, podes reduzir a dependência dos marketplaces porque entendes melhor onde estão os teus compradores.",
+            },
+            {
+                q: "Quanto tempo demora a configurar?",
+                a: "5 minutos para instalar a X-TAG. Em 24 horas já tens os primeiros dados de views e canais. O IPS começa a calcular automaticamente após a instalação. Não precisas de formação nem de consultores.",
+            },
+        ],
+    },
+    {
+        icon: "ri-shield-keyhole-line",
+        title: "Dados e Preços",
+        faqs: [
+            {
+                q: "Os dados do meu stand são meus?",
+                a: "Sim, sempre. Os dados de views, leads e interações do teu site pertencem-te. A Xplendor é apenas a plataforma que os agrega e analisa — nunca vendemos nem partilhamos dados com terceiros.",
+            },
+            {
+                q: "Posso cancelar quando quiser?",
+                a: "Sim. Sem contratos anuais forçados, sem penalizações. Podes cancelar a qualquer momento a partir das definições da conta. O primeiro mês é sempre gratuito para experimentares sem risco.",
+            },
+            {
+                q: "O que muda entre os planos?",
+                a: "O Starter tem tracking básico e gestão de leads. O Growth adiciona o IPS, Analytics IA por viatura e alertas automáticos — é o plano que recomendamos para stands com stock activo. O Pro adiciona integração directa com Meta Ads e Google Ads, automação de conteúdo e XPLDR Intelligence (consultor IA).",
+            },
+            {
+                q: "Consigo ver de onde vêm os compradores?",
+                a: "Sim — essa é uma das funcionalidades centrais. A X-TAG identifica se o visitante veio do Meta Ads, Google, pesquisa orgânica, direto ou referral. Vês isso por carro individual e agregado para o stand inteiro.",
+            },
+        ],
+    },
+];
 
-    const [col9, setcol5] = useState(false);
-    const [col10, setcol6] = useState(true);
-    const [col11, setcol7] = useState(false);
-    const [col12, setcol8] = useState(false);
+export default function Faqs() {
+    const [open, setOpen] = useState<string>("0-0");
 
-    const t_col1 = () => {
-        setcol1(!col1);
-        setcol2(false);
-        setcol3(false);
-        setcol4(false);
-
-    };
-
-    const t_col2 = () => {
-        setcol2(!col2);
-        setcol1(false);
-        setcol3(false);
-        setcol4(false);
-
-    };
-
-    const t_col3 = () => {
-        setcol3(!col3);
-        setcol1(false);
-        setcol2(false);
-        setcol4(false);
-
-    };
-
-    const t_col4 = () => {
-        setcol4(!col4);
-        setcol1(false);
-        setcol2(false);
-        setcol3(false);
-    };
-
-    const t_col5 = () => {
-        setcol5(!col9);
-        setcol6(false);
-        setcol7(false);
-        setcol8(false);
-
-    };
-
-    const t_col6 = () => {
-        setcol6(!col10);
-        setcol7(false);
-        setcol8(false);
-        setcol5(false);
-
-    };
-
-    const t_col7 = () => {
-        setcol7(!col11);
-        setcol5(false);
-        setcol6(false);
-        setcol8(false);
-
-    };
-
-    const t_col8 = () => {
-        setcol8(!col12);
-        setcol5(false);
-        setcol6(false);
-        setcol7(false);
-    };
+    const toggle = (key: string) => setOpen(open === key ? "" : key);
 
     return (
         <React.Fragment>
-            <section className="section" id='faqs'>
+            <section className="section bg-light" id="faqs">
                 <Container>
                     <Row className="justify-content-center">
-                        <Col lg={8}>
+                        <Col lg={7}>
                             <div className="text-center mb-5">
-                                <h3 className="mb-3 fw-bold">Perguntas Frequentes</h3>
-                                <p className="text-muted mb-4">
-                                    Tire as principais dúvidas sobre como a Xplendor ajuda stands a vender mais e a controlar melhor o seu stock.
+                                <h2 className="fw-bold mb-3">Perguntas frequentes</h2>
+                                <p className="text-muted fs-15">
+                                    Não encontras o que procuras?{" "}
+                                    <a href={whatsappUrl} target="_blank" rel="noreferrer" className="text-success fw-medium">
+                                        Fala connosco no WhatsApp
+                                    </a>
                                 </p>
-
-                                <div>
-                                    <button type="button" className="btn btn-primary btn-label rounded-pill me-1">
-                                        <i className="ri-mail-line label-icon align-middle rounded-pill fs-16 me-2"></i>
-                                        Falar com a equipa
-                                    </button>
-
-                                    <button type="button" className="btn btn-success btn-label rounded-pill">
-                                        <i className="ri-whatsapp-line label-icon align-middle rounded-pill fs-16 me-2"></i>
-                                        WhatsApp
-                                    </button>
-                                </div>
                             </div>
                         </Col>
                     </Row>
 
                     <Row className="g-lg-5 g-4">
-                        <Col lg={6}>
-                            <div className="d-flex align-items-center mb-2">
-                                <div className="flex-shrink-0 me-1">
-                                    <i className="ri-question-line fs-24 align-middle text-success me-1"></i>
+                        {faqGroups.map((group, gIdx) => (
+                            <Col lg={6} key={gIdx}>
+                                <div className="d-flex align-items-center mb-3 gap-2">
+                                    <i className={`${group.icon} fs-22 text-success`}></i>
+                                    <h5 className="fw-bold mb-0">{group.title}</h5>
                                 </div>
-                                <div className="flex-grow-1">
-                                    <h5 className="mb-0 fw-bold">Plataforma</h5>
+                                <div className="accordion custom-accordionwithicon custom-accordion-border accordion-border-box">
+                                    {group.faqs.map((faq, fIdx) => {
+                                        const key = `${gIdx}-${fIdx}`;
+                                        return (
+                                            <div className="accordion-item" key={fIdx}>
+                                                <h2 className="accordion-header">
+                                                    <button
+                                                        className={`accordion-button fw-semibold fs-14 ${open !== key ? "collapsed" : ""}`}
+                                                        type="button"
+                                                        onClick={() => toggle(key)}
+                                                        style={{ cursor: "pointer" }}
+                                                    >
+                                                        {faq.q}
+                                                    </button>
+                                                </h2>
+                                                <Collapse isOpen={open === key} className="accordion-collapse">
+                                                    <div className="accordion-body text-muted fs-14" style={{ lineHeight: 1.7 }}>
+                                                        {faq.a}
+                                                    </div>
+                                                </Collapse>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            </div>
-                            <div className="accordion custom-accordionwithicon custom-accordion-border accordion-border-box"
-                                id="genques-accordion">
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="genques-headingOne">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col1 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col1}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            Como funciona a Xplendor?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col1} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            A Xplendor é uma plataforma criada para stands automóveis gerirem viaturas,
-                                            leads e vendas num único sistema. Cada carro tem uma página própria otimizada
-                                            para conversão e pode ser promovido através de tráfego pago.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="genques-headingTwo">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col2 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col2}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            A Xplendor substitui os marketplaces como Standvirtual ou OLX?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col2} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Não necessariamente. A Xplendor funciona como a sua própria plataforma de vendas,
-                                            permitindo gerar tráfego direto para as páginas das viaturas e controlar
-                                            todos os dados dos clientes.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="genques-headingThree">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col3 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col3}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            Preciso de ter um website para usar a Xplendor?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col3} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Não. A Xplendor cria páginas de viaturas otimizadas automaticamente.
-                                            No entanto, pode também integrar facilmente com o seu site atual.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="genques-headingFour">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col4 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col4}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            Posso promover as viaturas com anúncios pagos?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col4} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Sim. A Xplendor foi criada para funcionar perfeitamente com tráfego pago.
-                                            Pode enviar anúncios diretamente para as páginas das viaturas e acompanhar
-                                            resultados como visitas, leads e conversões.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                            </div>
-                        </Col>
-
-                        <Col lg={6}>
-                            <div className="d-flex align-items-center mb-2">
-                                <div className="flex-shrink-0 me-1">
-                                    <i className="ri-shield-keyhole-line fs-24 align-middle text-success me-1"></i>
-                                </div>
-                                <div className="flex-grow-1">
-                                    <h5 className="mb-0 fw-bold">Dados e Segurança</h5>
-                                </div>
-                            </div>
-
-                            <div className="accordion custom-accordionwithicon custom-accordion-border accordion-border-box"
-                                id="privacy-accordion">
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="privacy-headingOne">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col9 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col5}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            A Xplendor guarda os contactos dos clientes?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col9} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Sim. Todos os contactos gerados nas páginas das viaturas
-                                            ficam registados no sistema para acompanhamento e gestão de leads.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="privacy-headingTwo">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col10 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col6}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            Consigo ver quais carros geram mais interesse?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col10} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Sim. A plataforma mostra estatísticas como visualizações de carros,
-                                            contactos recebidos e performance das campanhas.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="privacy-headingThree">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col11 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col7}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            Quantas viaturas posso adicionar?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col11} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Depende do plano escolhido. Pode começar com um número reduzido
-                                            e aumentar conforme o crescimento do seu stock.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                                <div className="accordion-item">
-                                    <h2 className="accordion-header" id="privacy-headingFour">
-                                        <button
-                                            className={classnames(
-                                                "accordion-button",
-                                                "fw-semibold fs-14",
-                                                { collapsed: !col12 }
-                                            )}
-                                            type="button"
-                                            onClick={t_col8}
-                                            style={{ cursor: "pointer" }}
-                                        >
-                                            É difícil começar a usar?
-                                        </button>
-                                    </h2>
-                                    <Collapse isOpen={col12} className="accordion-collapse">
-                                        <div className="accordion-body ff-secondary">
-                                            Não. O processo é simples: cria a conta, adiciona as viaturas e começa a receber contactos em minutos.
-                                        </div>
-                                    </Collapse>
-                                </div>
-                            </div>
-
-                            {/* <!--end accordion--> */}
-                        </Col>
+                            </Col>
+                        ))}
                     </Row>
                 </Container>
             </section>
         </React.Fragment>
     );
-};
-
-export default Faqs;
+}

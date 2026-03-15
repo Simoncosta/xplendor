@@ -1,297 +1,172 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import { Card, CardBody, Col, Container, Row } from 'reactstrap';
 
+const whatsappNumber = "351938963526";
+
+const getWhatsappUrl = (plan: string) => {
+    const message = encodeURIComponent(
+        `Olá! Tenho interesse no plano ${plan} da Xplendor. Podem explicar-me como funciona?`
+    );
+    return `https://wa.me/${whatsappNumber}?text=${message}`;
+};
+
+const plans = [
+    {
+        name: "Starter",
+        description: "Para stands a começar com dados",
+        price: "49",
+        icon: "ri-book-mark-line",
+        popular: false,
+        features: [
+            { text: "Até 20 viaturas activas", included: true },
+            { text: "Dashboard do stand", included: true },
+            { text: "Gestão de leads", included: true },
+            { text: "X-TAG de tracking", included: true },
+            { text: "Views e canais por carro", included: true },
+            { text: "IPS (Índice de Potencial de Venda)", included: false },
+            { text: "Analytics IA por viatura", included: false },
+        ],
+    },
+    {
+        name: "Growth",
+        description: "Para stands que querem vender com inteligência",
+        price: "99",
+        icon: "ri-medal-fill",
+        popular: true,
+        features: [
+            { text: "Até 60 viaturas activas", included: true },
+            { text: "Dashboard do stand completo", included: true },
+            { text: "CRM de leads com histórico", included: true },
+            { text: "X-TAG de tracking avançado", included: true },
+            { text: "IPS (Índice de Potencial de Venda)", included: true },
+            { text: "Analytics IA por viatura", included: true },
+            { text: "Alertas automáticos de stock", included: true },
+        ],
+    },
+    {
+        name: "Pro",
+        description: "Para stands que querem escalar",
+        price: "199",
+        icon: "ri-stack-fill",
+        popular: false,
+        features: [
+            { text: "Viaturas ilimitadas", included: true },
+            { text: "Tudo do Growth", included: true },
+            { text: "XPLDR Intelligence (consultor IA)", included: true },
+            { text: "Integração Meta Ads + Google Ads", included: true },
+            { text: "Automação de conteúdo (SmartAds)", included: true },
+            { text: "API e integrações personalizadas", included: true },
+            { text: "Suporte prioritário", included: true },
+        ],
+    },
+];
+
 const Plans = () => {
-    const [plan, setPlan] = useState(true);
-    const toggle = () => setPlan(!plan);
     return (
         <React.Fragment>
             <section className="section bg-light" id="plans">
                 <div className="bg-overlay bg-overlay-pattern"></div>
                 <Container>
                     <Row className="justify-content-center">
-                        <Col lg={8}>
+                        <Col lg={7}>
                             <div className="text-center mb-5">
-                                <h3 className="mb-3 fw-bold">Planos simples para stands que querem vender mais</h3>
-                                <p className="text-muted mb-4">
-                                    Comece gratuitamente e evolua conforme o crescimento do seu stock e das suas vendas.
+                                <h2 className="fw-bold mb-3">
+                                    Preços simples, valor real
+                                </h2>
+                                <p className="text-muted fs-15">
+                                    Sem contratos anuais forçados. Começa quando quiseres, cancela quando quiseres.
+                                    O primeiro mês é gratuito — sem cartão.
                                 </p>
-
-                                {/* <div className="d-flex justify-content-center align-items-center">
-                                    <div>
-                                        <h5 className="fs-14 mb-0">Month</h5>
-                                    </div>
-                                    <div className="form-check form-switch fs-20 ms-3 " onClick={toggle} >
-                                        <input className="form-check-input" type="checkbox" id="plan-switch" />
-                                        <label className="form-check-label" htmlFor="plan-switch"></label>
-                                    </div>
-                                    <div>
-                                        <h5 className="fs-14 mb-0">Annual <span className="badge bg-danger-subtle text-danger">Save 20%</span></h5>
-                                    </div>
-                                </div> */}
+                                <div className="d-inline-flex align-items-center gap-2 badge bg-success-subtle text-success rounded-pill px-3 py-2 fs-13">
+                                    <i className="ri-shield-check-line"></i>
+                                    30 dias grátis · Sem cartão de crédito
+                                </div>
                             </div>
                         </Col>
                     </Row>
 
-                    <Row className="gy-4">
-                        <Col lg={4}>
-                            <Card className="plan-box mb-0">
-                                <CardBody className="p-4 m-2">
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-grow-1">
-                                            <h5 className="mb-1 fw-bold">Starter</h5>
-                                            <p className="text-muted mb-0">Ideal para pequenos stands</p>
+                    <Row className="gy-4 justify-content-center">
+                        {plans.map((p, idx) => (
+                            <Col lg={4} key={idx}>
+                                <Card
+                                    className="plan-box mb-0 h-100"
+                                    style={p.popular ? {} : {}}
+                                >
+                                    {p.popular && (
+                                        <div className="text-center py-1 bg-primary rounded-top" style={{ fontSize: 12, color: "#fff", fontWeight: 600 }}>
+                                            Mais escolhido
                                         </div>
-                                        <div className="avatar-sm">
-                                            <div className="avatar-title bg-light rounded-circle text-primary">
-                                                <i className="ri-book-mark-line fs-20"></i>
+                                    )}
+                                    <CardBody className="p-4 d-flex flex-column">
+                                        <div className="d-flex align-items-center mb-3">
+                                            <div className="flex-grow-1">
+                                                <h5 className="mb-1 fw-bold">{p.name}</h5>
+                                                <p className="text-muted mb-0 fs-13">{p.description}</p>
+                                            </div>
+                                            <div className="avatar-sm">
+                                                <div className="avatar-title bg-primary-subtle rounded-circle text-primary">
+                                                    <i className={`${p.icon} fs-20`}></i>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="py-4 text-center">
-                                        {plan ? <h1 className="month"><span className="ff-secondary fw-bold">19</span><sup><small>€</small></sup> <span
-                                            className="fs-13 text-muted">/Mês</span></h1> :
-                                            <h1 className="annual"><sup><small>$</small></sup><span className="ff-secondary fw-bold">171</span> <span
-                                                className="fs-13 text-muted">/Year</span></h1>}
-                                    </div>
 
-                                    <div>
-                                        <ul className="list-unstyled text-muted vstack gap-3">
+                                        <div className="py-3 border-top border-bottom mb-3">
+                                            <h1 className="mb-0">
+                                                <span className="fw-bold">{p.price}</span>
+                                                <sup><small>€</small></sup>
+                                                <span className="fs-13 text-muted fw-normal"> /mês</span>
+                                            </h1>
+                                            <p className="text-muted mb-0 fs-12 mt-1">
+                                                Primeiro mês grátis
+                                            </p>
+                                        </div>
 
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
+                                        <ul className="list-unstyled text-muted vstack gap-2 mb-4 flex-grow-1">
+                                            {p.features.map((f, fidx) => (
+                                                <li key={fidx}>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <i className={`fs-15 ${f.included ? "ri-checkbox-circle-fill text-success" : "ri-close-circle-fill text-danger"}`}></i>
+                                                        <span className={f.included ? "" : "text-decoration-line-through opacity-50"}>
+                                                            {f.text}
+                                                        </span>
                                                     </div>
-                                                    <div className="flex-grow-1">
-                                                        Até <b>15 viaturas</b>
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Gestão de <b>leads</b>
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Landing pages de viaturas
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-danger me-1">
-                                                        <i className="ri-close-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Analytics avançado
-                                                    </div>
-                                                </div>
-                                            </li>
-
+                                                </li>
+                                            ))}
                                         </ul>
-                                        <div className="mt-4">
-                                            <Link to="/register" className="btn btn-soft-success w-100">
-                                                Começar
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </CardBody>
-                            </Card>
-                        </Col>
 
-                        {/* <!--end col--> */}
-                        <Col lg={4}>
-                            <Card className="plan-box mb-0 ribbon-box right">
-                                <CardBody className="p-4 m-2">
-                                    <div className="ribbon-two ribbon-two-danger"><span>Popular</span></div>
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-grow-1">
-                                            <h5 className="mb-1 fw-bold">Growth</h5>
-                                            <p className="text-muted mb-0">Para stands em crescimento</p>
-                                        </div>
-                                        <div className="avatar-sm">
-                                            <div className="avatar-title bg-light rounded-circle text-primary">
-                                                <i className="ri-medal-fill fs-20"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="py-4 text-center">
-                                        {plan ? <h1 className="month"><span className="ff-secondary fw-bold">49</span><sup><small>€</small></sup> <span
-                                            className="fs-13 text-muted">/Mês</span></h1> :
-                                            <h1 className="annual"><sup><small>$</small></sup><span className="ff-secondary fw-bold">261</span> <span
-                                                className="fs-13 text-muted">/Year</span></h1>}
-                                    </div>
+                                        <a
+                                            href={getWhatsappUrl(p.name)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className={`btn w-100 ${p.popular ? "btn-primary" : "btn-outline-primary"}`}
+                                        >
+                                            <i className="ri-whatsapp-line me-2"></i>
+                                            Começar no WhatsApp
+                                        </a>
+                                    </CardBody>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
 
-                                    <div>
-                                        <ul className="list-unstyled text-muted vstack gap-3">
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Até <b>50 viaturas</b>
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Gestão completa de <b>leads</b>
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Analytics de performance
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Tracking de tráfego pago
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Relatórios de vendas
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                        </ul>
-                                        <div className="mt-4">
-                                            <Link to="#" className="btn btn-soft-success w-100">Começar</Link>
-                                        </div>
-                                    </div>
-                                </CardBody>
-                            </Card>
-                        </Col>
-
-                        <Col lg={4}>
-                            <Card className="plan-box mb-0">
-                                <CardBody className="p-4 m-2">
-                                    <div className="d-flex align-items-center">
-                                        <div className="flex-grow-1">
-                                            <h5 className="mb-1 fw-bold">Pro</h5>
-                                            <p className="text-muted mb-0">Para stands profissionais</p>
-                                        </div>
-                                        <div className="avatar-sm">
-                                            <div className="avatar-title bg-light rounded-circle text-primary">
-                                                <i className="ri-stack-fill fs-20"></i>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="py-4 text-center">
-                                        {plan ? <h1 className="month"><span className="ff-secondary fw-bold">99</span><sup><small>€</small></sup> <span
-                                            className="fs-13 text-muted">/Mês</span></h1> :
-                                            <h1 className="annual"><sup><small>$</small></sup><span className="ff-secondary fw-bold">351</span> <span
-                                                className="fs-13 text-muted">/Year</span></h1>}
-                                    </div>
-
-                                    <div>
-                                        <ul className="list-unstyled text-muted vstack gap-3">
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        <b>Viaturas ilimitadas</b>
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        CRM completo de leads
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Smart Budget (IA de anúncios)
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Integrações e API
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                            <li>
-                                                <div className="d-flex">
-                                                    <div className="flex-shrink-0 text-success me-1">
-                                                        <i className="ri-checkbox-circle-fill fs-15 align-middle"></i>
-                                                    </div>
-                                                    <div className="flex-grow-1">
-                                                        Suporte prioritário
-                                                    </div>
-                                                </div>
-                                            </li>
-
-                                        </ul>
-                                        <div className="mt-4">
-                                            <Link to="#" className="btn btn-soft-success w-100">Começar</Link>
-                                        </div>
-                                    </div>
-                                </CardBody>
-                            </Card>
+                    {/* Nota de transparência */}
+                    <Row className="justify-content-center mt-4">
+                        <Col lg={8}>
+                            <div className="text-center text-muted" style={{ fontSize: 13 }}>
+                                <i className="ri-information-line me-1"></i>
+                                Não sabes qual plano escolher? Fala connosco — analisamos o teu stand e recomendamos o melhor caminho.
+                                <a
+                                    href={getWhatsappUrl("adequado ao meu stand")}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-primary ms-1 fw-medium"
+                                >
+                                    Falar no WhatsApp
+                                </a>
+                            </div>
                         </Col>
                     </Row>
+
                 </Container>
             </section>
         </React.Fragment>

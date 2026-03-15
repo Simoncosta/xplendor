@@ -42,7 +42,7 @@ const Index = () => {
             <div className="layout-wrapper landing">
                 <Navbar />
                 <Home />
-                <Client />
+                {/* <Client /> */}
                 <Services />
                 <Features />
                 <Plans />

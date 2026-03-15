@@ -101,6 +101,24 @@ services:
     networks:
       - xplendor
 
+  worker:
+    build:
+      context: ./docker/php
+    container_name: xplendor-worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    entrypoint: []
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+    depends_on:
+      - db
+      - redis
+    networks:
+      - xplendor
+
 networks:
   xplendor: {}
 

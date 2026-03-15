@@ -15,15 +15,21 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import imgpattern from "../../assets/images/landing/img-pattern.png";
 
 import defaultDemo from "../../assets/images/demos/default.png";
-import saasDemo from "../../assets/images/demos/saas.png";
-import materialDemo from "../../assets/images/demos/material.png";
-import minimalDemo from "../../assets/images/demos/minimal.png";
-import creativeDemo from "../../assets/images/demos/creative.png";
-import modernDemo from "../../assets/images/demos/modern.png";
-import interactiveDemo from "../../assets/images/demos/interactive.png";
+import defaultDemoTwo from "../../assets/images/demos/default-2.png";
+import cars from "../../assets/images/demos/cars.png";
+import carsMetrics from "../../assets/images/demos/cars-metrics.png";
+import carsAi from "../../assets/images/demos/cars-ai.png";
+import carsAiTwo from "../../assets/images/demos/cars-ai-2.png";
 
 
 const Home = () => {
+
+    const whatsappNumber = "351938963526";
+    const whatsappMessage = encodeURIComponent(
+        "Olá! Vi a Xplendor e gostava de saber como pode ajudar o meu stand."
+    );
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`;
+
     return (
         <React.Fragment>
             <section className="section pb-0 hero-section" id="hero">
@@ -32,25 +38,57 @@ const Home = () => {
                     <Row className="justify-content-center">
                         <Col lg={8} sm={10}>
                             <div className="text-center mt-lg-5 pt-5">
+                                {/* Pill de credibilidade */}
+                                <div className="d-inline-flex align-items-center gap-2 badge bg-primary-subtle text-primary rounded-pill px-3 py-2 mb-3 fs-13">
+                                    <span className="bg-primary rounded-circle" style={{ width: 8, height: 8, display: "inline-block" }}></span>
+                                    Plataforma utilizada por stands em Portugal
+                                </div>
+
                                 <h1 className="display-6 fw-bold mb-3 lh-base">
-                                    Venda carros com <span className="text-primary">dados e estratégia</span>,
-                                    não apenas com anúncios.
+                                    Sabe exactamente{" "}
+                                    <span className="text-primary">qual carro vai vender</span>{" "}
+                                    esta semana
                                 </h1>
                                 <p className="lead text-muted lh-base">
-                                    A Xplendor é uma plataforma criada para stands automóveis que querem
-                                    controlar os seus leads, acompanhar o desempenho das viaturas
-                                    e crescer com dados próprios.
+                                    A Xplendor analisa o comportamento dos compradores no teu site
+                                    e diz-te quais carros têm procura real, quais estão parados
+                                    e onde estás a perder leads — tudo automático.
                                 </p>
 
-                                <div className="d-flex gap-2 justify-content-center mt-4">
-                                    <Link to="/register" className="btn btn-primary">
-                                        Criar conta <i className="ri-arrow-right-line align-middle ms-1"></i>
-                                    </Link>
-
-                                    <Link to="#platform" className="btn btn-danger">
-                                        Ver como funciona <i className="ri-eye-line align-middle ms-1"></i>
-                                    </Link>
+                                {/* Três micro-provas */}
+                                <div className="d-flex justify-content-center gap-4 mt-3 mb-4 flex-wrap">
+                                    {[
+                                        { icon: "ri-eye-line", text: "Views por carro em tempo real" },
+                                        { icon: "ri-award-line", text: "Índice de Potencial de Venda" },
+                                        { icon: "ri-whatsapp-line", text: "Leads por canal identificadas" },
+                                    ].map((item, idx) => (
+                                        <div key={idx} className="d-flex align-items-center gap-2 text-muted fs-13">
+                                            <i className={`${item.icon} text-primary fs-16`}></i>
+                                            {item.text}
+                                        </div>
+                                    ))}
                                 </div>
+
+                                {/* CTAs */}
+                                <div className="d-flex gap-2 justify-content-center mt-4 flex-wrap">
+                                    <a
+                                        href={whatsappUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-success btn-lg"
+                                    >
+                                        <i className="ri-whatsapp-line me-2 fs-16"></i>
+                                        Falar connosco no WhatsApp
+                                    </a>
+                                    <a href="#platform" className="btn btn-outline-primary btn-lg">
+                                        Ver como funciona
+                                        <i className="ri-arrow-down-line ms-2"></i>
+                                    </a>
+                                </div>
+
+                                <p className="text-muted mt-2" style={{ fontSize: 12 }}>
+                                    Sem compromisso · Respondemos em minutos
+                                </p>
                             </div>
 
                             <div className='mt-4 mt-sm-5 pt-sm-5 mb-sm-n5 demo-carousel'>
@@ -75,22 +113,19 @@ const Home = () => {
                                         <img src={defaultDemo} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                     <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={saasDemo} className="d-block w-100" alt="..." />
+                                        <img src={defaultDemoTwo} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                     <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={materialDemo} className="d-block w-100" alt="..." />
+                                        <img src={cars} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                     <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={minimalDemo} className="d-block w-100" alt="..." />
+                                        <img src={carsMetrics} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                     <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={creativeDemo} className="d-block w-100" alt="..." />
+                                        <img src={carsAi} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                     <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={modernDemo} className="d-block w-100" alt="..." />
-                                    </SwiperSlide>
-                                    <SwiperSlide className="carousel-inner shadow-lg p-2 bg-white rounded">
-                                        <img src={interactiveDemo} className="d-block w-100" alt="..." />
+                                        <img src={carsAiTwo} className="d-block w-100" alt="..." />
                                     </SwiperSlide>
                                 </Swiper>
                             </div>
