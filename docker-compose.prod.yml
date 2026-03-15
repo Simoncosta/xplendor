@@ -62,11 +62,10 @@ services:
     volumes:
       - redis_data_xplendor:/data
     ports:
-      - "127.0.0.1:6381:6379" # opcional (debug). melhor: remover em prod
+      - "127.0.0.1:6381:6379"
     networks:
       - xplendor
 
-  # Opcional: phpMyAdmin (recomendo PROTEGER e só localhost)
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: xplendor-phpadmin
@@ -90,6 +89,24 @@ services:
     working_dir: /var/www/html
     entrypoint: []
     command: sh -c "while true; do php artisan schedule:run >> /dev/null 2>&1; sleep 60; done"
+    volumes:
+      - ./server:/var/www/html:delegated
+      - xplendor_vendor:/var/www/html/vendor
+      - xplendor_composer_cache:/tmp/composer
+    depends_on:
+      - db
+      - redis
+    networks:
+      - xplendor
+
+  worker:
+    build:
+      context: ./docker/php
+    container_name: xplendor-worker
+    restart: always
+    working_dir: /var/www/html
+    entrypoint: []
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
