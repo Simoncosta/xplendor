@@ -12,6 +12,7 @@ interface Props {
 }
 
 export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate, ipsClassBadge }: Props) {
+    console.log(ips)
     return (
         <Card className="mb-0">
             <CardBody className="py-3">
@@ -44,12 +45,12 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate,
                             {ai && (
                                 <>
                                     <span className="vr" />
-                                    <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "badge-soft-danger" : "badge-soft-warning"} rounded-pill`}>
+                                    <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"} rounded-pill`}>
                                         <i className="ri-alarm-warning-line me-1" />
                                         Urgência {aiMeta?.urgency_level}
                                     </span>
                                     {aiMeta?.price_alert && (
-                                        <span className="badge badge-soft-warning rounded-pill">
+                                        <span className="badge bg-warning-subtle text-warning rounded-pill">
                                             <i className="ri-price-tag-3-line me-1" />
                                             Alerta de preço
                                         </span>
@@ -59,13 +60,15 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate,
                             {ips && (
                                 <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
                                     <i className="ri-award-line me-1" />
-                                    {/* Índice de Potencial de Venda */}
                                     IPS {ips.score}/100
                                 </span>
                             )}
                         </div>
                     </div>
                     <div className="d-flex gap-2">
+                        <Link to={`/cars/${car?.id}/marketing`} className="btn btn-soft-secondary btn-sm">
+                            <i className="ri-megaphone-line me-1" /> Marketing
+                        </Link>
                         <Link to={`/cars/${car?.id}`} className="btn btn-soft-primary btn-sm">
                             <i className="ri-pencil-fill me-1" /> Editar viatura
                         </Link>

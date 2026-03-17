@@ -47,6 +47,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
             Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
             Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
+            Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
             Route::get('dashboard', [DashboardController::class, 'index']);
 
             Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);

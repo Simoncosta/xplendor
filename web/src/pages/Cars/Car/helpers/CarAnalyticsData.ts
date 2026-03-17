@@ -149,7 +149,7 @@ export const ipsScoreColor = (score: number) =>
     score >= 70 ? "#0ab39c" : score >= 40 ? "#f7b84b" : "#f06548";
 
 export const ipsClassBadge = (cls: string) =>
-    cls === "hot" ? "badge-soft-success" : cls === "warm" ? "badge-soft-warning" : "badge-soft-danger";
+    cls === "hot" ? "bg-success-subtle text-success" : cls === "warm" ? "bg-warning-subtle text-warning" : "bg-danger-subtle text-danger";
 
 export const ipsFactorLabels: Record<string, { label: string; max: number; icon: string; color: string }> = {
     price_vs_market: { label: "Preço vs Mercado", max: 25, icon: "ri-price-tag-3-line", color: "primary" },

@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCarsPaginate, showCar, analyticsCar } from "./thunk";
+import { getCarsPaginate, showCar, analyticsCar, getCarMarketing, generateCarMarketing } from "./thunk";
 
 const initialState = {
     cars: [] as any[],
@@ -7,14 +7,17 @@ const initialState = {
 
     car: null as any | null,
     carAnalytics: null as any | null,
+    carMarketing: [] as any[],
 
     loadingList: false,
     loadingShow: false,
     loadingAnalytics: false,
+    loadingMarketing: false,
 
     errorList: null as any,
     errorShow: null as any,
     errorAnalytics: null as any,
+    errorMarketing: null as any,
 };
 
 const CarSlice = createSlice({
@@ -66,6 +69,36 @@ const CarSlice = createSlice({
             .addCase(analyticsCar.rejected, (state, action) => {
                 state.loadingAnalytics = false;
                 state.errorAnalytics = action.payload || action.error;
+            });
+
+        // GET MARKETING
+        builder
+            .addCase(getCarMarketing.pending, (state) => {
+                state.loadingMarketing = true;
+                state.errorMarketing = null;
+            })
+            .addCase(getCarMarketing.fulfilled, (state, action) => {
+                state.loadingMarketing = false;
+                state.carMarketing = action.payload.data;
+            })
+            .addCase(getCarMarketing.rejected, (state, action) => {
+                state.loadingMarketing = false;
+                state.errorMarketing = action.payload || action.error;
+            });
+
+        // GENERATE MARKETING
+        builder
+            .addCase(generateCarMarketing.pending, (state) => {
+                state.loadingMarketing = true;
+                state.errorMarketing = null;
+            })
+            .addCase(generateCarMarketing.fulfilled, (state, action) => {
+                state.loadingMarketing = false;
+                state.carMarketing = action.payload.data;
+            })
+            .addCase(generateCarMarketing.rejected, (state, action) => {
+                state.loadingMarketing = false;
+                state.errorMarketing = action.payload || action.error;
             });
     },
 });

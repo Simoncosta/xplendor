@@ -5,6 +5,8 @@ import {
     createCar as createCarApi,
     updateCar as updateCarApi,
     analyticsCar as analyticsCarApi,
+    generateCarMarketingApi,
+    getCarMarketingApi,
 } from "../../helpers/laravel_helper";
 
 export const getCarsPaginate = createAsyncThunk(
@@ -88,3 +90,24 @@ export const analyticsCar = createAsyncThunk(
     }
 );
 
+export const getCarMarketing = createAsyncThunk(
+    "car/getCarMarketing",
+    async ({ companyId, id }: { companyId: number, id: number }, { rejectWithValue }) => {
+        try {
+            return await getCarMarketingApi(companyId, id);
+        } catch (error: any) {
+            return rejectWithValue(error?.response?.data || error?.message || error);
+        }
+    }
+);
+
+export const generateCarMarketing = createAsyncThunk(
+    "car/generateCarMarketing",
+    async ({ companyId, carId }: { companyId: number, carId: number }, { rejectWithValue }) => {
+        try {
+            return await generateCarMarketingApi(companyId, carId);
+        } catch (error: any) {
+            return rejectWithValue(error?.response?.data || error?.message || error);
+        }
+    }
+);

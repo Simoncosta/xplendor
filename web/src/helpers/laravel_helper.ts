@@ -80,6 +80,8 @@ export const showCar = (params: { companyId: number; id: number; }) => api.get(u
 export const createCar = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateCar = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const analyticsCar = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/analytics");
+export const generateCarMarketingApi = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/marketing/generate", {});
+export const getCarMarketingApi = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/marketing");
 
 // CAR AI ANALISES
 export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {});
@@ -113,4 +115,3 @@ export const getDistricts = () => api.get(url.GET_DISTRICTS);
 // MUNICIPALITIES
 export const getMunicipalities = (districtId: number) => api.get(`${url.GET_DISTRICTS}/${districtId}/municipalities`);
 export const getParishes = (municipalityId: number) => api.get(`/municipalities/${municipalityId}/parishes`);
-
