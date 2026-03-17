@@ -47,6 +47,9 @@ export const createBlog = (companyId: number, data: FormData | any) => api.creat
 export const updateBlog = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const deleteBlog = (companyId: number, id: number) => api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id);
 
+// LEADS
+export const getLeads = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_LEADS_APIS, { params });
+
 // CARS
 export const getCarsPaginate = (
     params: {

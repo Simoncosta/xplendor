@@ -113,6 +113,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "leads",
+            label: "Leads",
+            icon: "ri-folder-user-line",
+            link: "/leads",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Leads');
+            }
+        },
+        {
             id: "blogs",
             label: "Blogs",
             icon: "bx bxl-blogger",

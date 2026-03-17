@@ -35,6 +35,9 @@ import BlogCreate from "pages/Blogs/Blog/BlogCreate";
 import BlogUpdate from "pages/Blogs/Blog/BlogUpdate";
 import BlogShow from "pages/Blogs/Blog/BlogShow";
 
+// Leads
+import LeadList from "pages/Leads/LeadList";
+
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
 
@@ -48,6 +51,9 @@ const authProtectedRoutes = [
     { path: "/cars/create", component: <CarCreate /> },
     { path: "/cars/:id", component: <CarUpdate /> },
     { path: "/cars/:id/analytics", component: <CarAnalytics /> },
+
+    // Leads
+    { path: "/leads", component: <LeadList /> },
 
     // Users
     { path: "/users", component: <UsersList /> },

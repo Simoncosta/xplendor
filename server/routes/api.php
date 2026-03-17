@@ -50,7 +50,7 @@ Route::prefix('v1')->group(function () {
 
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
-            Route::apiResource('/car-leads', V1CarLeadController::class)->only(['index', 'update']);
+            Route::apiResource('/leads', V1CarLeadController::class)->only(['index', 'update']);
             Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
             Route::apiResource('/blogs', BlogController::class);
             Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);

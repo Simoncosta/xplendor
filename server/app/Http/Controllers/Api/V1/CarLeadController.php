@@ -48,6 +48,7 @@ class CarLeadController extends Controller
                 'id',
                 'name',
                 'email',
+                'phone',
                 'message',
                 'notes',
                 'status',

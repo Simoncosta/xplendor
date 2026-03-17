@@ -10,6 +10,9 @@ export const GET_COMPANIES = "/companies";
 // DASHBOARDS
 export const GET_DASHBOARD_APIS = "/dashboard";
 
+// LEADS
+export const GET_LEADS_APIS = "/leads";
+
 // BLOGS
 export const GET_BLOGS_APIS = "/blogs";
 

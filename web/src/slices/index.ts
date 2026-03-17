@@ -9,6 +9,7 @@ import CarmineReducer from "./carmine/reducer";
 import CompanyReducer from "./companies/reducer";
 import DashboardReducer from "./dashboards/reducer";
 import DistrictReducer from "./districts/reducer";
+import LeadReducer from "./leads/reducer";
 import MunicipalityReducer from "./municipalities/reducer";
 import ParishReducer from "./parishes/reducer";
 import RegisterInviteReducer from "./auth/register/reducer";
@@ -32,6 +33,7 @@ const rootReducer = combineReducers({
     Company: CompanyReducer,
     Dashboard: DashboardReducer,
     District: DistrictReducer,
+    Lead: LeadReducer,
     Municipality: MunicipalityReducer,
     Parish: ParishReducer,
     User: UserReducer,
