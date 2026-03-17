@@ -40,6 +40,11 @@ class CarLead extends Model
         return $this->belongsTo(Car::class);
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
     public function assignedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');

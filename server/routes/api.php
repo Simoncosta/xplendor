@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\{
     CarAnalyticsController,
     CarBrandController,
     CarController,
+    CarLeadController as V1CarLeadController,
     CarmineConnectionController,
     CarModelController,
     CarPerformanceMetricController,
@@ -49,6 +50,7 @@ Route::prefix('v1')->group(function () {
 
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
+            Route::apiResource('/car-leads', V1CarLeadController::class)->only(['index', 'update']);
             Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
             Route::apiResource('/blogs', BlogController::class);
             Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
