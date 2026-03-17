@@ -6,6 +6,7 @@ interface IActionRequiredCar {
     car_name: string;
     views_count: number;
     leads_count: number;
+    interactions_count: number;
     days_in_stock: number | null;
     price_gross: number;
     reason: string;
@@ -108,6 +109,7 @@ export default function ActionRequiredCarsDashboard({
                                         <th>IPS</th>
                                         <th>Views</th>
                                         <th>Leads</th>
+                                        <th>Interações</th>
                                         <th>Dias em stock</th>
                                         <th>Preço</th>
                                         <th>Motivo</th>
@@ -133,6 +135,7 @@ export default function ActionRequiredCarsDashboard({
                                             </td>
                                             <td>{car.views_count}</td>
                                             <td>{car.leads_count}</td>
+                                            <td>{car.interactions_count}</td>
                                             <td>{car.days_in_stock ?? "—"}</td>
                                             <td>
                                                 {Number(car.price_gross).toLocaleString("pt-PT", {

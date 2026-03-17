@@ -28,7 +28,7 @@ export default function TabAnaliseIA({
     return (
         <Row className="g-3">
 
-            {/* ── IPS ───────────────────────────────────────────── */}
+            {/* ── IPS Índice de Potencial de Venda ───────────────────────────────────────────── */}
             <Col md={4}>
                 <h6 className="fs-13 fw-semibold mb-3">
                     <i className="ri-award-line me-2 text-primary" />

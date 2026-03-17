@@ -59,6 +59,7 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate,
                             {ips && (
                                 <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
                                     <i className="ri-award-line me-1" />
+                                    {/* Índice de Potencial de Venda */}
                                     IPS {ips.score}/100
                                 </span>
                             )}
