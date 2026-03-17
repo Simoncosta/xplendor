@@ -14,24 +14,24 @@ class GenerateWeeklyMarketingIdeasJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-    public int $timeout = 900;
+    // public int $tries = 3;
+    // public int $timeout = 900;
 
-    public function __construct(
-        public int $companyId
-    ) {}
-
-    public function handle(CarMarketingIdeaService $service): void
-    {
-        $service->generateForCompany($this->companyId);
-    }
+    // public function __construct(
+    //     public int $companyId
+    // ) {}
 
     // public function handle(CarMarketingIdeaService $service): void
     // {
-    //     $companyIds = Company::query()->pluck('id');
-
-    //     foreach ($companyIds as $companyId) {
-    //         $service->generateForCompany($companyId);
-    //     }
+    //     $service->generateForCompany($this->companyId);
     // }
+
+    public function handle(CarMarketingIdeaService $service): void
+    {
+        $companyIds = Company::query()->pluck('id');
+
+        foreach ($companyIds as $companyId) {
+            $service->generateForCompany($companyId);
+        }
+    }
 }

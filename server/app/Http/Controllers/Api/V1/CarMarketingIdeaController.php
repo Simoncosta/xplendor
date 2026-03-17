@@ -73,7 +73,7 @@ class CarMarketingIdeaController extends Controller
         $carMarketing->views_count        = $carMarketing->views()->count();
         $carMarketing->leads_count        = $carMarketing->leads()->count();
         $carMarketing->interactions_count = $carMarketing->interactions()->count();
-        $carMarketing->days_in_stock      = (int) now()->diffInDays($carMarketing->created_at);
+        $carMarketing->days_in_stock      = (int) $carMarketing->created_at->diffInDays(now());
 
         // IPS mais recente (null se ainda não calculado)
         $latestIps = \App\Models\CarSalePotentialScore::where('car_id', $carId)

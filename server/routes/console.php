@@ -32,8 +32,8 @@ Schedule::job(new RecalculateAllCarScoresJob())
 /**
  * todo: colocar pra funcionar
  */
-// Schedule::job(new GenerateWeeklyMarketingIdeasJob())
-//     ->mondays()
-//     ->at('09:00')
-//     ->name('generate-weekly-marketing-ideas')
-//     ->withoutOverlapping();
+Schedule::job(new GenerateWeeklyMarketingIdeasJob())
+    ->mondays()
+    ->at('03:00')
+    ->name('generate-weekly-marketing-ideas')
+    ->withoutOverlapping();
