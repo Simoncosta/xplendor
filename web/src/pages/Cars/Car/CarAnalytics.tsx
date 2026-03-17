@@ -33,7 +33,7 @@ type TabKey = "metricas" | "analise" | "viatura";
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
     { key: "metricas", label: "Métricas", icon: "ri-bar-chart-line" },
-    { key: "analise", label: "Análise IA", icon: "ri-cpu-line" },
+    { key: "analise", label: "Inteligência", icon: "ri-cpu-line" },
     { key: "viatura", label: "Viatura", icon: "ri-car-line" },
 ];
 

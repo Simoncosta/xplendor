@@ -99,7 +99,7 @@ const Features = () => {
                                     {[
                                         { icon: "ri-eye-line", color: "text-primary", text: "Views por canal: pago, orgânico, direto, social — atribuição exacta" },
                                         { icon: "ri-whatsapp-line", color: "text-success", text: "Cliques de WhatsApp e chamadas registados como intenção real de compra" },
-                                        { icon: "ri-cpu-line", color: "text-info", text: "Análise IA com público-alvo, copy sugerido e canais recomendados" },
+                                        { icon: "ri-cpu-line", color: "text-info", text: "Inteligência com público-alvo, copy sugerido e canais recomendados" },
                                     ].map((item, idx) => (
                                         <div key={idx} className="d-flex align-items-start gap-3">
                                             <div

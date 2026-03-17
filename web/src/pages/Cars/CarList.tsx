@@ -250,30 +250,37 @@ const CarList = (props: any) => {
         {
             header: "Ação",
             cell: (cell: any) => {
-                return (
-                    <UncontrolledDropdown>
-                        <DropdownToggle
-                            href="#"
-                            className="btn btn-soft-primary btn-sm"
-                            tag="button"
-                        >
-                            <i className="ri-more-fill" />
-                        </DropdownToggle>
-                        <DropdownMenu className="dropdown-menu-end">
-                            <DropdownItem href={`/cars/${cell.row.original.id}/analytics`}>
-                                <i className="ri-eye-fill align-bottom me-2 text-muted"></i>{" "}
-                                Análises
-                            </DropdownItem>
+                const id = cell.row.original.id;
 
-                            <DropdownItem href={`/cars/${cell.row.original.id}`}>
-                                <i className="ri-pencil-fill align-bottom me-2 text-muted"></i>{" "}
-                                Editar
-                            </DropdownItem>
-                        </DropdownMenu>
-                    </UncontrolledDropdown>
+                return (
+                    <div className="d-flex gap-2">
+                        <Link
+                            to={`/cars/${id}/analytics`}
+                            className="btn btn-soft-info btn-sm"
+                            title="Inteligência"
+                        >
+                            <i className="ri-brain-line" />
+                        </Link>
+
+                        <Link
+                            to={`/cars/${id}/marketing`}
+                            className="btn btn-soft-warning btn-sm"
+                            title="Marketing"
+                        >
+                            <i className="ri-megaphone-line" />
+                        </Link>
+
+                        <Link
+                            to={`/cars/${id}`}
+                            className="btn btn-soft-primary btn-sm"
+                            title="Editar"
+                        >
+                            <i className="ri-pencil-line" />
+                        </Link>
+                    </div>
                 );
             },
-        },
+        }
     ],
         []
     );

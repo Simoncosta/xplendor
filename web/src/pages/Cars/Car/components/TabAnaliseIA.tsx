@@ -40,11 +40,11 @@ export default function TabAnaliseIA({
                         <div className="text-center mb-2">
                             <ReactApexChart options={ipsRadialOptions} series={[ips.score]} type="radialBar" height={200} />
                             <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
-                                <span className={`badge rounded-pill fs-12 px-3 py-2 ${ipsClassBadge(ips.classification)}`}>
+                                <span className={`badge rounded-pill fs-12 px-3 py-2 text-dark ${ipsClassBadge(ips.classification)}`}>
                                     {ips.classification === "hot" ? "🔥 Hot" : ips.classification === "warm" ? "⚠️ Warm" : "❄️ Cold"}
                                 </span>
                                 {ips.price_vs_market !== null && (
-                                    <span className={`badge rounded-pill fs-11 ${Number(ips.price_vs_market) < 0 ? "badge-soft-success" : "badge-soft-danger"}`}>
+                                    <span className={`badge rounded-pill fs-11 text-dark ${Number(ips.price_vs_market) < 0 ? "badge-soft-success" : "badge-soft-danger"}`}>
                                         {Number(ips.price_vs_market) < 0 ? "▼" : "▲"} {Math.abs(Number(ips.price_vs_market))}% vs mercado
                                     </span>
                                 )}
@@ -111,7 +111,7 @@ export default function TabAnaliseIA({
                 )}
             </Col>
 
-            {/* ── Análise IA ────────────────────────────────────── */}
+            {/* ── Inteligência ────────────────────────────────────── */}
             {ai ? (
                 <>
                     {/* Público-alvo + argumentos */}
@@ -252,7 +252,7 @@ export default function TabAnaliseIA({
                 <Col md={8}>
                     <div className="text-center py-5 text-muted">
                         <i className="ri-cpu-line fs-1 d-block mb-3" />
-                        <h5>Análise IA ainda não disponível</h5>
+                        <h5>Inteligência ainda não disponível</h5>
                         <p className="mb-3 fs-13">A análise será gerada automaticamente assim que existirem dados suficientes.</p>
                         <XButton onClick={onGenerateAi}>Gerar análise</XButton>
                     </div>
