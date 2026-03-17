@@ -41,7 +41,7 @@ export default function TabAnaliseIA({
                             <ReactApexChart options={ipsRadialOptions} series={[ips.score]} type="radialBar" height={200} />
                             <div className="d-flex align-items-center justify-content-center gap-2 mt-1">
                                 <span className={`badge rounded-pill fs-12 px-3 py-2 ${ipsClassBadge(ips.classification)}`}>
-                                    {ips.classification === "hot" ? "🔥 Hot" : ips.classification === "warm" ? "Warm" : "Cold"}
+                                    {ips.classification === "hot" ? "🔥 Hot" : ips.classification === "warm" ? "⚠️ Warm" : "❄️ Cold"}
                                 </span>
                                 {ips.price_vs_market !== null && (
                                     <span className={`badge rounded-pill fs-11 ${Number(ips.price_vs_market) < 0 ? "badge-soft-success" : "badge-soft-danger"}`}>
