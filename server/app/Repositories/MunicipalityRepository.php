@@ -5,7 +5,7 @@ namespace App\Repositories;
 use App\Models\Municipality;
 use App\Repositories\Contracts\MunicipalityRepositoryInterface;
 
-class MunicipalitytRepository extends BaseRepository implements MunicipalityRepositoryInterface
+class MunicipalityRepository extends BaseRepository implements MunicipalityRepositoryInterface
 {
     public function __construct(
         Municipality $model,

@@ -144,4 +144,9 @@ class Car extends Model implements AuditableContract
     {
         return $this->belongsTo(Company::class);
     }
+
+    public function marketingIdeas(): HasMany
+    {
+        return $this->hasMany(CarMarketingIdea::class);
+    }
 }

@@ -23,6 +23,7 @@ use App\Repositories\Contracts\{
     CarBrandRepositoryInterface,
     CarInteractionRepositoryInterface,
     CarLeadRepositoryInterface,
+    CarMarketingIdeaRepositoryInterface,
     CarmineConnectionRepositoryInterface,
     CarModelRepositoryInterface,
     CarPerformanceMetricRepositoryInterface,
@@ -45,6 +46,7 @@ use App\Repositories\{
     CarBrandRepository,
     CarInteractionRepository,
     CarLeadRepository,
+    CarMarketingIdeaRepository,
     CarmineConnectionRepository,
     CarModelRepository,
     CarPerformanceMetricRepository,
@@ -54,7 +56,7 @@ use App\Repositories\{
     CompanyRepository,
     DashboardRepository,
     DistrictRepository,
-    MunicipalitytRepository,
+    MunicipalityRepository,
     NewsletterRepository,
     ParishRepository,
     PlanRepository,
@@ -78,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarBrandRepositoryInterface::class, CarBrandRepository::class);
         $this->app->bind(CarInteractionRepositoryInterface::class, CarInteractionRepository::class);
         $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
+        $this->app->bind(CarMarketingIdeaRepositoryInterface::class, CarMarketingIdeaRepository::class);
         $this->app->bind(CarModelRepositoryInterface::class, CarModelRepository::class);
         $this->app->bind(CarPerformanceMetricRepositoryInterface::class, CarPerformanceMetricRepository::class);
         $this->app->bind(CarSalePotentialScoreRepositoryInterface::class, CarSalePotentialScoreRepository::class);
@@ -86,7 +89,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CompanyRepositoryInterface::class, CompanyRepository::class);
         $this->app->bind(DashboardRepositoryInterface::class, DashboardRepository::class);
         $this->app->bind(DistrictRepositoryInterface::class, DistrictRepository::class);
-        $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalitytRepository::class);
+        $this->app->bind(MunicipalityRepositoryInterface::class, MunicipalityRepository::class);
         $this->app->bind(NewsletterRepositoryInterface::class, NewsletterRepository::class);
         $this->app->bind(ParishRepositoryInterface::class, ParishRepository::class);
         $this->app->bind(PlanRepositoryInterface::class, PlanRepository::class);

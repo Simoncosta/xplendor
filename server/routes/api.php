@@ -3,7 +3,7 @@
 use App\Http\Controllers\Api\Public\{
     BlogController as PublicBlogController,
     CarController as PublicCarController,
-    CarLeadController,
+    CarLeadController as PublicCarLeadController,
     CarViewController,
     NewsletterController as PublicNewsletterController,
     TrackController
@@ -13,7 +13,8 @@ use App\Http\Controllers\Api\V1\{
     CarAnalyticsController,
     CarBrandController,
     CarController,
-    CarLeadController as V1CarLeadController,
+    CarLeadController,
+    CarMarketingIdeaController,
     CarmineConnectionController,
     CarModelController,
     CarPerformanceMetricController,
@@ -48,9 +49,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
             Route::get('dashboard', [DashboardController::class, 'index']);
 
+            Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
+            Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
+
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
-            Route::apiResource('/leads', V1CarLeadController::class)->only(['index', 'update']);
+            Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
             Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
             Route::apiResource('/blogs', BlogController::class);
             Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
@@ -81,7 +85,7 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
     Route::get('car-filters', [PublicCarController::class, 'filters']);
 
     Route::post('car-view', [CarViewController::class, 'store']);
-    Route::post('car-lead', [CarLeadController::class, 'store']);
+    Route::post('car-lead', [PublicCarLeadController::class, 'store']);
     Route::post('newsletter', [PublicNewsletterController::class, 'store']);
 
     Route::get('blogs', [PublicBlogController::class, 'index']);

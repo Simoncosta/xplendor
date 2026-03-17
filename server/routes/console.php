@@ -3,8 +3,11 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-use App\Jobs\AggregateCarPerformanceMetricsJob;
-use App\Jobs\RecalculateAllCarScoresJob;
+use App\Jobs\{
+    AggregateCarPerformanceMetricsJob,
+    GenerateWeeklyMarketingIdeasJob,
+    RecalculateAllCarScoresJob
+};
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -25,3 +28,12 @@ Schedule::job(new RecalculateAllCarScoresJob())
     ->dailyAt('00:35')
     ->name('recalculate-all-car-scores')
     ->withoutOverlapping();
+
+/**
+ * todo: colocar pra funcionar
+ */
+// Schedule::job(new GenerateWeeklyMarketingIdeasJob())
+//     ->mondays()
+//     ->at('09:00')
+//     ->name('generate-weekly-marketing-ideas')
+//     ->withoutOverlapping();
