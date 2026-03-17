@@ -21,8 +21,12 @@ type ActionRequiredCarsDashboardProps = {
 };
 
 const getPriorityBadge = (priority: number) => {
-    if (priority >= 2) return <Badge color="danger">Alta</Badge>;
-    return <Badge color="warning">Média</Badge>;
+
+    if (priority >= 3) return <Badge color="danger">Alta</Badge>
+
+    if (priority === 2) return <Badge color="warning">Média</Badge>
+
+    return <Badge color="secondary">Baixa</Badge>
 };
 
 const getIpsBadge = (score?: number | null, classification?: string | null) => {
@@ -46,6 +50,40 @@ const getIpsBadge = (score?: number | null, classification?: string | null) => {
     );
 };
 
+const getReasonIcon = (reason: string) => {
+
+    if (!reason) return "⚠️"
+
+    const r = reason.toLowerCase()
+
+    if (r.includes("conversão")) return "🔥"
+    if (r.includes("interesse")) return "👀"
+    if (r.includes("visibilidade")) return "📉"
+    if (r.includes("inventário")) return "⏳"
+    if (r.includes("capital")) return "💰"
+
+    return "⚠️"
+};
+
+const formatSuggestion = (suggestion: string) => {
+
+    if (!suggestion) return null
+
+    return (
+        <span className="text-muted fs-12">
+            {suggestion}
+        </span>
+    )
+}
+
+const getRowClass = (priority: number) => {
+
+    if (priority >= 3) return "table-danger"
+    if (priority === 2) return "table-warning"
+
+    return ""
+}
+
 export default function ActionRequiredCarsDashboard({
     cars,
 }: ActionRequiredCarsDashboardProps) {
@@ -56,7 +94,7 @@ export default function ActionRequiredCarsDashboard({
             <Card className="card-height-100">
                 <CardHeader className="align-items-center d-flex">
                     <h4 className="card-title mb-0 flex-grow-1">
-                        ⚠️ Carros que exigem atenção
+                        🚨 Problemas no stock
                     </h4>
                 </CardHeader>
 
@@ -80,12 +118,13 @@ export default function ActionRequiredCarsDashboard({
                                 <tbody>
                                     {cars.map((car) => (
                                         <tr
+                                            className={getRowClass(car.priority)}
                                             key={car.id}
                                             style={{ cursor: "pointer" }}
                                             onClick={() => navigate(`/cars/${car.id}/analytics`)}
                                         >
                                             <td>
-                                                <h6 className="mb-0 text-primary">
+                                                <h6 className="mb-0 text-primary fw-semibold">
                                                     {car.car_name}
                                                 </h6>
                                             </td>
@@ -102,8 +141,14 @@ export default function ActionRequiredCarsDashboard({
                                                     maximumFractionDigits: 0,
                                                 })}
                                             </td>
-                                            <td>{car.reason}</td>
-                                            <td>{car.suggestion}</td>
+                                            <td>
+                                                <span className="fw-medium">
+                                                    {getReasonIcon(car.reason)} {car.reason}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {formatSuggestion(car.suggestion)}
+                                            </td>
                                             <td>{getPriorityBadge(car.priority)}</td>
                                         </tr>
                                     ))}

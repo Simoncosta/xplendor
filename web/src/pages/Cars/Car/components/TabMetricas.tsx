@@ -30,7 +30,7 @@ export default function TabMetricas({
         <Row className="g-3">
 
             {/* Traffic donut */}
-            <Col xl={4} xxl={3}>
+            <Col xl={4} xxl={4}>
                 <h6 className="fs-13 fw-semibold mb-3">
                     <i className="ri-pie-chart-line me-2 text-primary" />
                     Distribuição do Tráfego
@@ -65,7 +65,7 @@ export default function TabMetricas({
             </Col>
 
             {/* Interactions */}
-            <Col xl={4} xxl={3}>
+            <Col xl={4} xxl={4}>
                 <h6 className="fs-13 fw-semibold mb-3">
                     <i className="ri-cursor-line me-2 text-success" />
                     Interações
@@ -100,7 +100,7 @@ export default function TabMetricas({
             </Col>
 
             {/* Insight automático */}
-            <Col xl={4} xxl={3}>
+            <Col xl={4} xxl={4}>
                 <h6 className="fs-13 fw-semibold mb-3">
                     <i className="ri-lightbulb-flash-line me-2 text-warning" />
                     Insight Automático
@@ -125,7 +125,7 @@ export default function TabMetricas({
             </Col>
 
             {/* Timeline */}
-            <Col xl={12} xxl={3}>
+            {/* <Col xl={12} xxl={3}>
                 <h6 className="fs-13 fw-semibold mb-3">
                     <i className="ri-time-line me-2 text-info" />
                     Timeline
@@ -174,7 +174,7 @@ export default function TabMetricas({
                         </div>
                     </div>
                 )}
-            </Col>
+            </Col> */}
 
             {/* Performance por Canal */}
             {perfTotals && (

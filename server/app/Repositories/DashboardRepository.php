@@ -204,8 +204,14 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ->limit($limit)
             ->get()
             ->map(function ($car) {
+
                 $car->brand_name = $car->brand?->name;
                 $car->model_name = $car->model?->name;
+
+                $car->car_name = "{$car->brand_name} {$car->model_name} {$car->version}";
+                $car->reason = "Capital parado há {$car->days_in_stock} dias";
+                $car->suggestion = "Rever preço ou destacar anúncio";
+                $car->priority = 3;
 
                 return $car;
             });
@@ -213,7 +219,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function getUrgentActionCars(int $companyId, int $limit = 5)
     {
-        return $this->model->where('company_id', $companyId)
+        $cars = $this->model->where('company_id', $companyId)
             ->where('status', 'active')
             ->where('is_resume', 0)
             ->select([
@@ -232,35 +238,69 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ->withCount([
                 'views',
                 'leads',
+                'interactions'
             ])
-            ->get()
-            ->map(function ($car) {
-                $car->brand_name = $car->brand?->name;
-                $car->model_name = $car->model?->name;
+            ->get();
 
-                $reason = null;
-                $priority = 0;
+        if ($cars->isEmpty()) {
+            return collect();
+        }
 
-                if ($car->views_count >= 100 && $car->leads_count === 0) {
-                    $reason = "{$car->views_count} views / 0 leads";
-                    $priority = 3;
-                } elseif ($car->days_in_stock >= 60) {
-                    $reason = "{$car->days_in_stock} dias em stock";
-                    $priority = 2;
-                } elseif ($car->views_count >= 30 && $car->leads_count <= 1) {
-                    $reason = "Conversão baixa";
-                    $priority = 1;
-                }
+        $avgViews = $cars->avg('views_count');
+        $avgInteractions = $cars->avg('interactions_count');
 
-                if (!$reason) {
-                    return null;
-                }
+        return $cars->map(function ($car) use ($avgViews, $avgInteractions) {
 
-                $car->reason = $reason;
-                $car->priority = $priority;
+            $car->brand_name = $car->brand?->name;
+            $car->model_name = $car->model?->name;
+            $car->car_name = "{$car->brand_name} {$car->model_name} {$car->version}";
 
-                return $car;
-            })
+            $reason = null;
+            $suggestion = null;
+            $priority = 0;
+
+            // 🔥 Alta procura sem conversão
+            if ($car->views_count > ($avgViews * 1.6) && $car->leads_count == 0) {
+
+                $reason = "Alta procura sem conversão";
+                $suggestion = "Rever preço e melhorar fotos do anúncio";
+                $priority = 3;
+            }
+
+            // ⚠ Interesse mas sem contacto
+            elseif ($car->interactions_count > ($avgInteractions * 1.5) && $car->leads_count == 0) {
+
+                $reason = "Interesse elevado sem contacto";
+                $suggestion = "Melhorar CTA e destacar contacto WhatsApp";
+                $priority = 2;
+            }
+
+            // 📉 Baixa visibilidade
+            elseif ($car->views_count < ($avgViews * 0.5) && $car->days_in_stock > 7) {
+
+                $reason = "Baixa visibilidade";
+                $suggestion = "Promover anúncio ou publicar nas redes sociais";
+                $priority = 1;
+            }
+
+            // ⏳ Inventário parado
+            elseif ($car->days_in_stock > 60) {
+
+                $reason = "Inventário parado";
+                $suggestion = "Rever preço ou criar campanha de destaque";
+                $priority = 3;
+            }
+
+            if (!$reason) {
+                return null;
+            }
+
+            $car->reason = $reason;
+            $car->suggestion = $suggestion;
+            $car->priority = $priority;
+
+            return $car;
+        })
             ->filter()
             ->sortByDesc('priority')
             ->take($limit)
@@ -301,9 +341,10 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                     ? round(($car->leads_count / $car->views_count) * 100, 2)
                     : 0;
 
-                $demandScore = ($car->views_count * 1)
-                    + ($car->interactions_count * 3)
-                    + ($car->leads_count * 5);
+                $demandScore =
+                    ($car->views_count * 1)
+                    + ($car->interactions_count * 4)
+                    + ($car->leads_count * 8);
 
                 if ($car->views_count < 50) {
                     return null;
@@ -312,11 +353,11 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 $suggestion = 'Monitorizar, carro com procura saudável';
 
                 if ($car->views_count >= 150 && $car->leads_count === 0) {
-                    $suggestion = 'Rever preço e melhorar fotos';
+                    $suggestion = 'Alta procura sem conversão: rever preço ou melhorar anúncio';
                 } elseif ($car->views_count >= 150 && $car->leads_count >= 2) {
                     $suggestion = 'Aumentar orçamento e destacar anúncio';
                 } elseif ($car->interactions_count >= 10 && $car->leads_count === 0) {
-                    $suggestion = 'Melhorar descrição e CTA do anúncio';
+                    $suggestion = 'Interesse alto sem leads: melhorar CTA e contacto';
                 } elseif ($leadRate >= 2) {
                     $suggestion = 'Carro com boa conversão, reforçar promoção';
                 }
