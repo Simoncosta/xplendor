@@ -9,6 +9,7 @@ import * as Yup from "yup";
 // Components
 import XButton from 'Components/Common/XButton';
 import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
+import IntegrationsSettings from './IntegrationsSettings';
 import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
@@ -256,6 +257,18 @@ export default function CompanyProfileEditor({
                                                 API Carmine
                                             </NavLink>
                                         </NavItem>
+                                        <NavItem>
+                                            <NavLink
+                                                className={classnames("text-body", { active: activeTab === "3" })}
+                                                onClick={() => {
+                                                    tabChange("3");
+                                                }}
+                                                disabled={!isEdit}
+                                            >
+                                                <i className="fas fa-home"></i>
+                                                Integração Ads
+                                            </NavLink>
+                                        </NavItem>
                                     </Nav>
                                 </CardHeader>
                                 <CardBody className="p-4">
@@ -295,9 +308,14 @@ export default function CompanyProfileEditor({
                                         <TabPane tabId="2">
                                             <FormikProvider value={formikCarmine}>
                                                 <form onSubmit={formikCarmine.handleSubmit}>
-                                                    <div className="mb-2 border-bottom pb-2">
-                                                        <h5 className="card-title">Carmine</h5>
-                                                    </div>
+                                                    <Row className="mb-3">
+                                                        <Col>
+                                                            <h4 className="fw-semibold mb-1">Carmine</h4>
+                                                            <p className="text-muted fs-13 mb-0">
+                                                                Conecte a sua conta Carmine para sincronizar os dados do seu stock.
+                                                            </p>
+                                                        </Col>
+                                                    </Row>
 
                                                     <Row>
                                                         <Col lg={6}>
@@ -346,6 +364,9 @@ export default function CompanyProfileEditor({
                                                     </Col>
                                                 </form>
                                             </FormikProvider>
+                                        </TabPane>
+                                        <TabPane tabId="3">
+                                            <IntegrationsSettings />
                                         </TabPane>
                                     </TabContent>
                                 </CardBody>

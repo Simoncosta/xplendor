@@ -72,9 +72,6 @@ const authProtectedRoutes = [
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
 
-    // Settings Integrations
-    { path: "/settings/integrations", component: <IntegrationsSettings /> },
-
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name
     {

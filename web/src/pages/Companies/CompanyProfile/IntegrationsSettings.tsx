@@ -29,8 +29,6 @@ const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
 export default function IntegrationsSettings() {
-    document.title = "Integrações | Xplendor";
-
     const dispatch: any = useDispatch();
     const [companyId, setCompanyId] = useState<number>(0);
     const metaAdsSelector = createSelector(
@@ -83,10 +81,9 @@ export default function IntegrationsSettings() {
     if (loadingIntegrations) return null;
 
     return (
-        <div className="page-content">
+        <Row>
             <ToastContainer />
             <Container fluid>
-
                 <Row className="mb-3">
                     <Col>
                         <h4 className="fw-semibold mb-1">Integrações</h4>
@@ -202,6 +199,6 @@ export default function IntegrationsSettings() {
 
                 </Row>
             </Container>
-        </div>
+        </Row>
     );
 }
