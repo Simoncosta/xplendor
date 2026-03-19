@@ -18,6 +18,34 @@ import { IDistrict } from "common/models/district.model";
 import { IMunicipality } from "common/models/municipality.model";
 import { IParish } from "common/models/parish.model";
 
+const selectDistrictState = (state: any) => state.District;
+const selectMunicipalityState = (state: any) => state.Municipality;
+const selectParishState = (state: any) => state.Parish;
+
+const selectDistrictViewModel = createSelector(
+    [selectDistrictState],
+    (districtState) => ({
+        data: districtState.data.districts,
+        loading: districtState.loading.list,
+    })
+);
+
+const selectMunicipalityViewModel = createSelector(
+    [selectMunicipalityState],
+    (municipalityState) => ({
+        data: municipalityState.data.municipalities,
+        loading: municipalityState.loading.list,
+    })
+);
+
+const selectParishViewModel = createSelector(
+    [selectParishState],
+    (parishState) => ({
+        data: parishState.data.parishes,
+        loading: parishState.loading.list,
+    })
+);
+
 export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }) {
     const dispatch: any = useDispatch();
 
@@ -26,28 +54,9 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
     const [fieldMunicipality, metaMunicipality] = useField<number | null>("municipality_id");
     const [fieldParish, metaParish] = useField<number | null>("parish_id");
 
-    const selectDistrictState = (state: any) => state.District;
-    const selectMunicipalityState = (state: any) => state.Municipality;
-    const selectParishState = (state: any) => state.Parish;
-
-    const districtSelector = createSelector(selectDistrictState, (state: any) => ({
-        data: state.data.districts,
-        loading: state.loading.list,
-    }));
-
-    const municipalitySelector = createSelector(selectMunicipalityState, (state: any) => ({
-        data: state.data.municipalities,
-        loading: state.loading.list,
-    }));
-
-    const parishSelector = createSelector(selectParishState, (state: any) => ({
-        data: state.data.parishes,
-        loading: state.loading.list,
-    }));
-
-    const { data: districts, loading: loadingDistricts } = useSelector(districtSelector);
-    const { data: municipalities, loading: loadingMunicipalities } = useSelector(municipalitySelector);
-    const { data: parishes, loading: loadingParishes } = useSelector(parishSelector);
+    const { data: districts, loading: loadingDistricts } = useSelector(selectDistrictViewModel);
+    const { data: municipalities, loading: loadingMunicipalities } = useSelector(selectMunicipalityViewModel);
+    const { data: parishes, loading: loadingParishes } = useSelector(selectParishViewModel);
 
     const hasError = Boolean(meta.touched && meta.error);
     const selected = districts.find((d: IDistrict) => d.id === field.value) ?? null;

@@ -1,5 +1,5 @@
 // React
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { createSelector } from 'reselect';
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,27 +18,20 @@ import MarketingTopCampaignsCard from './components/MarketingTopCampaignsCard';
 import TopCarsToPromoteCard from './components/TopCarsToPromoteCard';
 import { IMarketingRoi } from './components/marketingRoi.types';
 
+const selectDashboardState = (state: any) => state.Dashboard;
+const selectDashboardViewModel = createSelector(
+    [selectDashboardState],
+    (dashboardState) => ({
+        analytics: dashboardState.data.analytics,
+        loading: dashboardState.loading.list,
+    })
+);
+
 const Dashboard = () => {
     const dispatch: any = useDispatch();
     document.title = "Dashboard | Xplendor";
 
-    // State
-    const [companyId, setCompanyId] = useState<number>(0);
-
-    const selectDashboardState = (state: any) => state.Dashboard;
-
-    const dashboardSelector = createSelector(selectDashboardState, (state: any) => ({
-        analytics: state.data.analytics,
-        loading: state.loading.list,
-    }));
-
-    const { analytics, loading } = useSelector(dashboardSelector);
-
-    const loginState = useSelector((state: any) => state.Login);
-
-    const user = loginState?.data?.user || loginState?.authUser || null;
-    const token = user?.token || null;
-    const isAuthenticated = !!token;
+    const { analytics, loading } = useSelector(selectDashboardViewModel);
 
     // Effects
     useEffect(() => {
@@ -48,14 +41,24 @@ const Dashboard = () => {
         const obj = JSON.parse(authUser);
         if (!obj?.company_id) return;
 
-        setCompanyId(Number(obj.company_id));
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
     }, [dispatch]);
+    const highDemandCars = useMemo(
+        () => (analytics?.high_demand_opportunity_cars || []).filter((car: any) => car.views_count > 0),
+        [analytics]
+    );
+    const actionRequiredCars = useMemo(
+        () => buildActionRequiredCars({
+            urgent_action_cars: analytics.urgent_action_cars,
+            high_interest_low_conversion_cars: analytics.high_interest_low_conversion_cars,
+            highest_stuck_capital_cars: analytics.highest_stuck_capital_cars,
+        }),
+        [analytics]
+    );
+    const marketingRoi = analytics?.marketing_roi || emptyMarketingRoi;
 
     if (loading) return null;
     if (!analytics) return null;
-
-    const marketingRoi = analytics.marketing_roi || emptyMarketingRoi;
 
     return (
         <React.Fragment>
@@ -64,16 +67,12 @@ const Dashboard = () => {
                     <Row className="row">
                         <SummaryDashboard summary={analytics.summary} />
                         <HighDemandOpportunityChart
-                            data={(analytics?.high_demand_opportunity_cars || []).filter((car: any) => car.views_count > 0)}
+                            data={highDemandCars}
                             dataColors='["--vz-primary", "--vz-success", "--vz-warning"]'
                         />
                     </Row>
                     <Row className='tow'>
-                        <ActionRequiredCarsDashboard cars={buildActionRequiredCars({
-                            urgent_action_cars: analytics.urgent_action_cars,
-                            high_interest_low_conversion_cars: analytics.high_interest_low_conversion_cars,
-                            highest_stuck_capital_cars: analytics.highest_stuck_capital_cars,
-                        })} />
+                        <ActionRequiredCarsDashboard cars={actionRequiredCars} />
                         <MarketingTrafficDonutChart
                             marketingPerformance={analytics.marketing_performance}
                             dataColors='["--vz-primary", "--vz-success", "--vz-warning"]'

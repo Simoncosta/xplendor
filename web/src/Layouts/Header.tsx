@@ -16,15 +16,14 @@ import { changeSidebarVisibility } from '../slices/thunks';
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from 'reselect';
 
+const selectSidebarVisibilityType = createSelector(
+    [(state: any) => state.Layout],
+    (layoutState) => layoutState.sidebarVisibilitytype
+);
+
 const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
     const dispatch: any = useDispatch();
-
-    const selectDashboardData = createSelector(
-        (state) => state.Layout,
-        (sidebarVisibilitytype) => sidebarVisibilitytype.sidebarVisibilitytype
-    );
-    // Inside your component
-    const sidebarVisibilitytype = useSelector(selectDashboardData);
+    const sidebarVisibilitytype = useSelector(selectSidebarVisibilityType);
 
     const toogleMenuBtn = () => {
         var windowSize = document.documentElement.clientWidth;

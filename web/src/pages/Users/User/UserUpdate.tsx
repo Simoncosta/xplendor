@@ -12,6 +12,16 @@ import { showUser, updateUser } from "slices/thunks";
 // Utils
 import { toast, ToastContainer } from "react-toastify";
 
+const selectUserState = (state: any) => state.User;
+
+const selectUserUpdateViewModel = createSelector(
+    [selectUserState],
+    (userState) => ({
+        user: userState.data.user,
+        loadingShow: userState.loading.show,
+    })
+);
+
 export default function UserUpdate() {
     const dispatch: any = useDispatch();
     const navigate = useNavigate();
@@ -22,14 +32,7 @@ export default function UserUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const selectUserState = (state: any) => state.User;
-
-    const userSelector = createSelector(selectUserState, (state: any) => ({
-        user: state.data.user,
-        loadingShow: state.loading.show,
-    }));
-
-    const { user, loadingShow } = useSelector(userSelector);
+    const { user, loadingShow } = useSelector(selectUserUpdateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");

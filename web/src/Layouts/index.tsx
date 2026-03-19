@@ -25,28 +25,28 @@ import {
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from 'reselect';
 
+const selectLayoutState = (state: any) => state.Layout;
+
+const selectLayoutProperties = createSelector(
+    [selectLayoutState],
+    (layout) => ({
+        layoutType: layout.layoutType,
+        leftSidebarType: layout.leftSidebarType,
+        layoutModeType: layout.layoutModeType,
+        layoutWidthType: layout.layoutWidthType,
+        layoutPositionType: layout.layoutPositionType,
+        topbarThemeType: layout.topbarThemeType,
+        leftsidbarSizeType: layout.leftsidbarSizeType,
+        leftSidebarViewType: layout.leftSidebarViewType,
+        leftSidebarImageType: layout.leftSidebarImageType,
+        preloader: layout.preloader,
+        sidebarVisibilitytype: layout.sidebarVisibilitytype,
+    })
+);
+
 const Layout = (props: any) => {
     const [headerClass, setHeaderClass] = useState("");
     const dispatch: any = useDispatch();
-
-    const selectLayoutState = (state: any) => state.Layout;
-    const selectLayoutProperties = createSelector(
-        selectLayoutState,
-        (layout) => ({
-            layoutType: layout.layoutType,
-            leftSidebarType: layout.leftSidebarType,
-            layoutModeType: layout.layoutModeType,
-            layoutWidthType: layout.layoutWidthType,
-            layoutPositionType: layout.layoutPositionType,
-            topbarThemeType: layout.topbarThemeType,
-            leftsidbarSizeType: layout.leftsidbarSizeType,
-            leftSidebarViewType: layout.leftSidebarViewType,
-            leftSidebarImageType: layout.leftSidebarImageType,
-            preloader: layout.preloader,
-            sidebarVisibilitytype: layout.sidebarVisibilitytype,
-        })
-    );
-    // Inside your component
     const {
         layoutType,
         leftSidebarType,

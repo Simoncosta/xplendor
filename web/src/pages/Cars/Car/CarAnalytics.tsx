@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { Card, CardBody, CardHeader, Col, Container, Row } from "reactstrap";
@@ -37,6 +37,16 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
     { key: "viatura", label: "Viatura", icon: "ri-car-line" },
 ];
 
+const selectCarState = (state: any) => state.Car;
+
+const selectCarAnalyticsViewModel = createSelector(
+    [selectCarState],
+    (carState) => ({
+        carAnalytics: carState.data.carAnalytics,
+        loading: carState.loading.analytics,
+    })
+);
+
 export default function CarAnalytics() {
     document.title = "Análises do Carro | Xplendor";
 
@@ -45,11 +55,7 @@ export default function CarAnalytics() {
     const [activeTab, setActiveTab] = useState<TabKey>("metricas");
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const carSelector = createSelector(
-        (state: any) => state.Car,
-        (state: any) => ({ carAnalytics: state.data.carAnalytics, loading: state.loading.analytics })
-    );
-    const { carAnalytics, loading } = useSelector(carSelector);
+    const { carAnalytics, loading } = useSelector(selectCarAnalyticsViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -59,34 +65,52 @@ export default function CarAnalytics() {
         dispatch(analyticsCar({ companyId: obj.company_id, id: Number(id) }));
     }, [dispatch, id]);
 
-    if (loading || !carAnalytics) return null;
-
     // ── Dados derivados ────────────────────────────────────────────────────────
-    const car = carAnalytics.car;
-    const m = carAnalytics.metrics;
+    const car = carAnalytics?.car;
+    const m = carAnalytics?.metrics;
     const ai = car?.analyses?.analysis;
     const aiMeta = car?.analyses;
-    const ips = carAnalytics.potential_score;
-    const perf = carAnalytics.performance;
+    const ips = carAnalytics?.potential_score;
+    const perf = carAnalytics?.performance;
 
-    const trafficSources = buildTrafficSources(carAnalytics.traffic_sources);
-    const totalTraffic = trafficSources.reduce((s: number, i: any) => s + i.total, 0);
-    const donutOptions = buildDonutOptions(trafficSources, totalTraffic);
+    const trafficSources = useMemo(
+        () => buildTrafficSources(carAnalytics?.traffic_sources),
+        [carAnalytics?.traffic_sources]
+    );
+    const totalTraffic = useMemo(
+        () => trafficSources.reduce((s: number, i: any) => s + i.total, 0),
+        [trafficSources]
+    );
+    const donutOptions = useMemo(
+        () => buildDonutOptions(trafficSources, totalTraffic),
+        [trafficSources, totalTraffic]
+    );
 
-    const interactions = buildInteractions(carAnalytics.interactions_breakdown);
-    const totalInteractions = interactions.reduce((s: number, i: any) => s + i.total, 0);
+    const interactions = useMemo(
+        () => buildInteractions(carAnalytics?.interactions_breakdown),
+        [carAnalytics?.interactions_breakdown]
+    );
+    const totalInteractions = useMemo(
+        () => interactions.reduce((s: number, i: any) => s + i.total, 0),
+        [interactions]
+    );
 
-    const insight = buildInsight(m);
+    const insight = useMemo(() => buildInsight(m), [m]);
 
     const perfTotals = perf?.totals;
-    const perfChannels = (perf?.by_channel || []).map((ch: any) => ({
-        ...ch,
-        label: channelLabels[ch.channel] || ch.channel,
-        color: channelColors[ch.channel] || "#adb5bd",
-    }));
+    const perfChannels = useMemo(
+        () => (perf?.by_channel || []).map((ch: any) => ({
+            ...ch,
+            label: channelLabels[ch.channel] || ch.channel,
+            color: channelColors[ch.channel] || "#adb5bd",
+        })),
+        [perf?.by_channel]
+    );
 
-    const ipsRadialOptions = buildIpsRadialOptions(ips);
-    const ipsHistoryOptions = buildIpsHistoryOptions(ips);
+    const ipsRadialOptions = useMemo(() => buildIpsRadialOptions(ips), [ips]);
+    const ipsHistoryOptions = useMemo(() => buildIpsHistoryOptions(ips), [ips]);
+
+    if (loading || !carAnalytics) return null;
 
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleGenerateAi = () => {
@@ -97,7 +121,7 @@ export default function CarAnalytics() {
     const handleRecalculate = () => {
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
-        const { company_id, token } = JSON.parse(authUser);
+        const { company_id } = JSON.parse(authUser);
         dispatch(carRecalculate({ companyId: company_id, carId: Number(id) }));
         toast("Recalculando análise de viatura... Aguarde um pouco e recarregue a página.");
     };

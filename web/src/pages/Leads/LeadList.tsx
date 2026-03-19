@@ -14,17 +14,23 @@ import {
 } from "reactstrap";
 // Slices
 import { getLeadsPaginate } from "slices/thunks";
+import { createSelector } from "reselect";
+
+const selectLeadState = (state: any) => state.Lead;
+
+const selectLeadListViewModel = createSelector(
+    [selectLeadState],
+    (leadState) => ({
+        leads: leadState.data.leads,
+        meta: leadState.data.meta,
+        loading: leadState.loading.list,
+    })
+);
 
 export default function LeadList() {
     const dispatch: any = useDispatch();
 
-    const { leads, meta, loading } = useSelector(
-        (state: any) => ({
-            leads: state.Lead.data.leads,
-            meta: state.Lead.data.meta,
-            loading: state.Lead.loading.list,
-        })
-    );
+    const { leads, meta, loading } = useSelector(selectLeadListViewModel);
 
     const [companyId, setCompanyId] = useState<any>(null);
     // Paginação controlada no pai (server-side)

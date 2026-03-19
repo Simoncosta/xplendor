@@ -17,6 +17,25 @@ import {
 import { COMPANY_CREATE_DEFAULTS } from "slices/companies/company.defaults";
 import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
 
+const selectCompanyState = (state: any) => state.Company;
+const selectCarmineState = (state: any) => state.Carmine;
+
+const selectCompanyProfileViewModel = createSelector(
+    [selectCompanyState],
+    (companyState) => ({
+        company: companyState.data.company,
+        loadingShow: companyState.loading.show,
+    })
+);
+
+const selectCarmineProfileViewModel = createSelector(
+    [selectCarmineState],
+    (carmineState) => ({
+        carmine: carmineState.data.carmine,
+        loading: carmineState.loading.show,
+    })
+);
+
 export default function CompanyProfileUpdate() {
     const dispatch: any = useDispatch();
     const navigate = useNavigate();
@@ -24,20 +43,8 @@ export default function CompanyProfileUpdate() {
 
     document.title = "Perfil da Empresa | Xplendor";
 
-    const selectCompanyState = (state: any) => state.Company;
-    const selectCarmineState = (state: any) => state.Carmine;
-
-    const companySelector = createSelector(selectCompanyState, (state: any) => ({
-        company: state.data.company,
-        loadingShow: state.loading.show,
-    }));
-    const carmineSelector = createSelector(selectCarmineState, (state: any) => ({
-        carmine: state.data.carmine,
-        loading: state.loading.show,
-    }));
-
-    const { company, loadingShow } = useSelector(companySelector);
-    const { carmine, loading } = useSelector(carmineSelector);
+    const { company, loadingShow } = useSelector(selectCompanyProfileViewModel);
+    const { carmine, loading } = useSelector(selectCarmineProfileViewModel);
 
     useEffect(() => {
         dispatch(showCompany(Number(id)));

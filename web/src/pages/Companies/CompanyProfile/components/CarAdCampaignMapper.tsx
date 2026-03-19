@@ -34,21 +34,24 @@ interface Props {
     carId: number | string | undefined;
 }
 
+const selectMetaAdsState = (state: any) => state.MetaAds;
+
+const selectMetaAdsCampaignMapperViewModel = createSelector(
+    [selectMetaAdsState],
+    (metaAdsState) => ({
+        mappings: metaAdsState.data.carAdCampaigns as Mapping[],
+        adsets: metaAdsState.data.adsets as Adset[],
+        loading: metaAdsState.loading.sync,
+        saving: metaAdsState.loading.create,
+    })
+);
+
 export default function CarAdCampaignMapper({ companyId, carId }: Props) {
     const dispatch: any = useDispatch();
     const [showForm, setShowForm] = useState(false);
     const [selected, setSelected] = useState<Adset | null>(null);
     const [splitPct, setSplitPct] = useState(100);
-    const metaAdsSelector = createSelector(
-        (state: any) => state.MetaAds,
-        (state: any) => ({
-            mappings: state.data.carAdCampaigns as Mapping[],
-            adsets: state.data.adsets as Adset[],
-            loading: state.loading.sync,
-            saving: state.loading.create,
-        })
-    );
-    const { mappings, adsets, loading, saving } = useSelector(metaAdsSelector);
+    const { mappings, adsets, loading, saving } = useSelector(selectMetaAdsCampaignMapperViewModel);
 
     const fetchMappings = useCallback(async () => {
         if (!companyId || !carId) return;

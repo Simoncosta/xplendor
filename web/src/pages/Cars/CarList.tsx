@@ -28,43 +28,58 @@ import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import { createSelector } from "reselect";
 // Slices
 import { showCarmine, syncCarmine } from "slices/thunks";
 import { getCarsPaginate } from "slices/cars/thunk";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { getCarModels } from "slices/car-models/thunk";
 
+const selectCarmineState = (state: any) => state.Carmine;
+const selectCarBrandState = (state: any) => state.CarBrand;
+const selectCarModelState = (state: any) => state.CarModel;
+const selectCarState = (state: any) => state.Car;
+
+const selectCarmineViewModel = createSelector(
+    [selectCarmineState],
+    (carmineState: any) => ({
+        carmine: carmineState.data.carmine,
+        loading: carmineState.loading.show,
+    })
+);
+
+const selectCarBrandViewModel = createSelector(
+    [selectCarBrandState],
+    (carBrandState: any) => ({
+        brands: carBrandState.data.brands,
+        loading: carBrandState.loading.list,
+    })
+);
+
+const selectCarModelViewModel = createSelector(
+    [selectCarModelState],
+    (carModelState: any) => ({
+        models: carModelState.data.models,
+        loading: carModelState.loading.list,
+    })
+);
+
+const selectCarListViewModel = createSelector(
+    [selectCarState],
+    (carState: any) => ({
+        cars: carState.data.cars,
+        meta: carState.data.meta,
+        loading: carState.loading.list,
+    })
+);
+
 const CarList = (props: any) => {
     const dispatch: any = useDispatch();
 
-    const { carmine, loading: loadingCarmine } = useSelector(
-        (state: any) => ({
-            carmine: state.Carmine.data.carmine,
-            loading: state.Carmine.loading.show,
-        })
-    );
-
-    const { brands, loading: loadingCarBrands } = useSelector(
-        (state: any) => ({
-            brands: state.CarBrand.data.brands,
-            loading: state.CarBrand.loading.list,
-        })
-    );
-
-    const { models, loading: loadingCarModels } = useSelector(
-        (state: any) => ({
-            models: state.CarModel.data.models,
-            loading: state.CarModel.loading.list,
-        })
-    );
-
-    const { cars, meta, loading } = useSelector(
-        (state: any) => ({
-            cars: state.Car.data.cars,
-            meta: state.Car.data.meta,
-            loading: state.Car.loading.list,
-        })
-    );
+    const { carmine, loading: loadingCarmine } = useSelector(selectCarmineViewModel);
+    const { brands, loading: loadingCarBrands } = useSelector(selectCarBrandViewModel);
+    const { models, loading: loadingCarModels } = useSelector(selectCarModelViewModel);
+    const { cars, meta, loading } = useSelector(selectCarListViewModel);
 
     // State
     const [activeTab, setActiveTab] = useState<any>("active");

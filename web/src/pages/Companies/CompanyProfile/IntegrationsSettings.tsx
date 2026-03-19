@@ -34,17 +34,26 @@ const formatMetaAccountId = (accountId: string | null | undefined) => {
 const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
 
+const selectMetaAdsState = (state: any) => state.MetaAds;
+
+const selectMetaAdsViewModel = createSelector(
+    [selectMetaAdsState],
+    (metaAdsState) => ({
+        integrations: metaAdsState.data.integrations as Integration[],
+        loadingIntegrations: metaAdsState.loading.list,
+    })
+);
+
+const selectMetaIntegration = createSelector(
+    [selectMetaAdsViewModel],
+    ({ integrations }) => integrations.find((integration) => integration.platform === "meta")
+);
+
 export default function IntegrationsSettings() {
     const dispatch: any = useDispatch();
     const [companyId, setCompanyId] = useState<number>(0);
-    const metaAdsSelector = createSelector(
-        (state: any) => state.MetaAds,
-        (state: any) => ({
-            integrations: state.data.integrations as Integration[],
-            loadingIntegrations: state.loading.list,
-        })
-    );
-    const { integrations, loadingIntegrations } = useSelector(metaAdsSelector);
+    const { loadingIntegrations } = useSelector(selectMetaAdsViewModel);
+    const metaIntegration = useSelector(selectMetaIntegration);
 
     const fetchIntegrations = useCallback(async (cId: number) => {
         try {
@@ -81,8 +90,6 @@ export default function IntegrationsSettings() {
         },
         onError: (msg) => toast.error(msg),
     });
-
-    const metaIntegration = integrations.find(i => i.platform === "meta");
 
     if (loadingIntegrations) return null;
 

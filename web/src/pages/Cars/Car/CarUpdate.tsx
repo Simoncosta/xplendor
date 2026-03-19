@@ -12,6 +12,16 @@ import { showCar, updateCar } from "slices/cars/thunk";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
 
+const selectCarState = (state: any) => state.Car;
+
+const selectCarUpdateViewModel = createSelector(
+    [selectCarState],
+    (carState) => ({
+        car: carState.data.car,
+        loading: carState.loading.show,
+    })
+);
+
 export default function CarUpdate() {
     const dispatch: any = useDispatch();
     const navigate = useNavigate();
@@ -22,14 +32,7 @@ export default function CarUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const selectCarState = (state: any) => state.Car;
-
-    const carSelector = createSelector(selectCarState, (state: any) => ({
-        car: state.data.car,
-        loading: state.loading.show,
-    }));
-
-    const { car, loading } = useSelector(carSelector);
+    const { car, loading } = useSelector(selectCarUpdateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");

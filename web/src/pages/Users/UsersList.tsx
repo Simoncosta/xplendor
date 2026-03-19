@@ -21,17 +21,23 @@ import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import { getUsersPaginate } from "slices/users/thunk";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import { createSelector } from "reselect";
+
+const selectUserState = (state: any) => state.User;
+
+const selectUsersListViewModel = createSelector(
+    [selectUserState],
+    (userState) => ({
+        users: userState.data.users,
+        meta: userState.data.meta,
+        loading: userState.loading.list,
+    })
+);
 
 export default function UsersList() {
     const dispatch: any = useDispatch();
 
-    const { users, meta, loading } = useSelector(
-        (state: any) => ({
-            users: state.User.data.users,
-            meta: state.User.data.meta,
-            loading: state.User.loading.list,
-        })
-    );
+    const { users, meta, loading } = useSelector(selectUsersListViewModel);
 
     const [companyId, setCompanyId] = useState<any>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 680);

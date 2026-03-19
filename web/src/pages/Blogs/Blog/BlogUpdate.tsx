@@ -10,6 +10,16 @@ import { showBlog, updateBlog } from "slices/thunks";
 import { toast, ToastContainer } from "react-toastify";
 import { createSelector } from "reselect";
 
+const selectBlogState = (state: any) => state.Blog;
+
+const selectBlogUpdateViewModel = createSelector(
+    [selectBlogState],
+    (blogState) => ({
+        blog: blogState.data.blog,
+        loading: blogState.loading.show,
+    })
+);
+
 export default function BlogUpdate() {
     const dispatch: any = useDispatch();
     const navigate = useNavigate();
@@ -20,14 +30,7 @@ export default function BlogUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const selectBlogState = (state: any) => state.Blog;
-
-    const blogSelector = createSelector(selectBlogState, (state: any) => ({
-        blog: state.data.blog,
-        loading: state.loading.show,
-    }));
-
-    const { blog, loading } = useSelector(blogSelector);
+    const { blog, loading } = useSelector(selectBlogUpdateViewModel);
 
     // Effects
     useEffect(() => {

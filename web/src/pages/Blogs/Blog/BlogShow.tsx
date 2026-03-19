@@ -8,6 +8,16 @@ import { Container } from "reactstrap";
 // Slices
 import { showBlog } from "slices/thunks";
 
+const selectBlogState = (state: any) => state.Blog;
+
+const selectBlogShowViewModel = createSelector(
+    [selectBlogState],
+    (blogState) => ({
+        blog: blogState.data.blog,
+        loadingShow: blogState.loading.show,
+    })
+);
+
 export default function BlogShow() {
     const dispatch: any = useDispatch();
     const navigate = useNavigate();
@@ -18,14 +28,7 @@ export default function BlogShow() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const selectBlogState = (state: any) => state.Blog;
-
-    const blogSelector = createSelector(selectBlogState, (state: any) => ({
-        blog: state.data.blog,
-        loadingShow: state.loading.show,
-    }));
-
-    const { blog, loadingShow } = useSelector(blogSelector);
+    const { blog, loadingShow } = useSelector(selectBlogShowViewModel);
 
     // Effects
     useEffect(() => {

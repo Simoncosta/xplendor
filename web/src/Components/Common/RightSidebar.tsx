@@ -51,6 +51,23 @@ import img03 from "../../assets/images/sidebar/img-3.jpg";
 import img04 from "../../assets/images/sidebar/img-4.jpg";
 import { createSelector } from 'reselect';
 
+const selectRightSidebarLayoutProperties = createSelector(
+    [(state: any) => state.Layout],
+    (layout) => ({
+        layoutType: layout.layoutType,
+        leftSidebarType: layout.leftSidebarType,
+        layoutModeType: layout.layoutModeType,
+        layoutWidthType: layout.layoutWidthType,
+        layoutPositionType: layout.layoutPositionType,
+        topbarThemeType: layout.topbarThemeType,
+        leftsidbarSizeType: layout.leftsidbarSizeType,
+        leftSidebarViewType: layout.leftSidebarViewType,
+        leftSidebarImageType: layout.leftSidebarImageType,
+        preloader: layout.preloader,
+        sidebarVisibilitytype: layout.sidebarVisibilitytype,
+    })
+);
+
 const RightSidebar = (props: any) => {
     const dispatch: any = useDispatch();
 
@@ -71,23 +88,6 @@ const RightSidebar = (props: any) => {
         }
     }, [show]);
 
-    const selectLayoutProperties = createSelector(
-        (state: any) => state.Layout,
-        (layout) => ({
-            layoutType: layout.layoutType,
-            leftSidebarType: layout.leftSidebarType,
-            layoutModeType: layout.layoutModeType,
-            layoutWidthType: layout.layoutWidthType,
-            layoutPositionType: layout.layoutPositionType,
-            topbarThemeType: layout.topbarThemeType,
-            leftsidbarSizeType: layout.leftsidbarSizeType,
-            leftSidebarViewType: layout.leftSidebarViewType,
-            leftSidebarImageType: layout.leftSidebarImageType,
-            preloader: layout.preloader,
-            sidebarVisibilitytype: layout.sidebarVisibilitytype,
-        })
-    );
-    // Inside your component
     const {
         layoutType,
         leftSidebarType,
@@ -100,7 +100,7 @@ const RightSidebar = (props: any) => {
         leftSidebarImageType,
         preloader,
         sidebarVisibilitytype
-    } = useSelector(selectLayoutProperties);
+    } = useSelector(selectRightSidebarLayoutProperties);
 
     // open offcanvas
     const [open, setOpen] = useState(false);

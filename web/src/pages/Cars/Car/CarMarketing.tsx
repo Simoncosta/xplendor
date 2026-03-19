@@ -10,6 +10,16 @@ import TabMarketing from "./components/TabMarketing";
 const ipsClassBadge = (cls: string) =>
     cls === "hot" ? "bg-success-subtle text-success" : cls === "warm" ? "bg-warning-subtle text-warning" : "bg-danger-subtle text-danger";
 
+const selectCarState = (state: any) => state.Car;
+
+const selectCarMarketingViewModel = createSelector(
+    [selectCarState],
+    (carState) => ({
+        carMarketing: carState.data.carMarketing,
+        loading: carState.loading.marketing || carState.loading.generate,
+    })
+);
+
 export default function CarMarketing() {
     document.title = "Marketing | Xplendor";
 
@@ -17,14 +27,7 @@ export default function CarMarketing() {
     const { id } = useParams();
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const carSelector = createSelector(
-        (state: any) => state.Car,
-        (state: any) => ({
-            carMarketing: state.data.carMarketing,
-            loading: state.loading.marketing || state.loading.generate,
-        })
-    );
-    const { carMarketing, loading } = useSelector(carSelector);
+    const { carMarketing, loading } = useSelector(selectCarMarketingViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");

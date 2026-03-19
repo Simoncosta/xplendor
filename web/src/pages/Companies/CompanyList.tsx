@@ -6,21 +6,27 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 import { ToastContainer } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
+import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
+
+const selectCompanyState = (state: any) => state.Company;
+
+const selectCompanyListViewModel = createSelector(
+    [selectCompanyState],
+    (companyState: any) => ({
+        companies: companyState.data.companies,
+        meta: companyState.data.meta,
+        loading: companyState.loading.list,
+    })
+);
 
 const CompanyList = () => {
     const dispatch: any = useDispatch();
     document.title = "Empresas | Xplendor";
 
     // Redux direto, sem reselect desnecessário
-    const { companies, meta, loading } = useSelector(
-        (state: any) => ({
-            companies: state.Company.data.companies,
-            meta: state.Company.data.meta,
-            loading: state.Company.loading.list,
-        })
-    );
+    const { companies, meta, loading } = useSelector(selectCompanyListViewModel);
 
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({

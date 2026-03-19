@@ -5,14 +5,13 @@ import withRouter from '../Components/Common/withRouter';
 import { useSelector } from "react-redux";
 import { createSelector } from 'reselect';
 
-const NonAuthLayout = ({ children } : any) => {
+const selectLayoutModeType = createSelector(
+    [(state: any) => state.Layout],
+    (layoutState) => layoutState.layoutModeType
+);
 
-    const nonauthData = createSelector(
-        (state) => state.Layout,
-        (layoutModeType) => layoutModeType.layoutModeType
-      );
-    // Inside your component
-    const layoutModeType = useSelector(nonauthData);
+const NonAuthLayout = ({ children } : any) => {
+    const layoutModeType = useSelector(selectLayoutModeType);
 
     useEffect(() => {
         if (layoutModeType === "dark") {

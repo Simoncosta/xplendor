@@ -10,6 +10,17 @@ import withRouter from "../../Components/Common/withRouter";
 import { useSelector } from "react-redux";
 import { createSelector } from 'reselect';
 
+const selectLayoutState = (state: any) => state.Layout;
+
+const selectVerticalLayoutProperties = createSelector(
+    [selectLayoutState],
+    (layout) => ({
+        leftsidbarSizeType: layout.leftsidbarSizeType,
+        sidebarVisibilitytype: layout.sidebarVisibilitytype,
+        layoutType: layout.layoutType
+    })
+);
+
 const VerticalLayout = (props: any) => {
     const navData = navdata().props.children;
     const path = props.router.location.pathname;
@@ -17,20 +28,9 @@ const VerticalLayout = (props: any) => {
     /*
  layout settings
  */
-
-    const selectLayoutState = (state: any) => state.Layout;
-    const selectLayoutProperties = createSelector(
-        selectLayoutState,
-        (layout) => ({
-            leftsidbarSizeType: layout.leftsidbarSizeType,
-            sidebarVisibilitytype: layout.sidebarVisibilitytype,
-            layoutType: layout.layoutType
-        })
-    );
-    // Inside your component
     const {
         leftsidbarSizeType, sidebarVisibilitytype, layoutType
-    } = useSelector(selectLayoutProperties);
+    } = useSelector(selectVerticalLayoutProperties);
 
     //vertical and semibox resize events
     const resizeSidebarMenu = useCallback(() => {

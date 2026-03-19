@@ -21,6 +21,16 @@ import logoLight from "../../assets/images/logo-light.png";
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
 import { createSelector } from "reselect";
 
+const selectForgetPasswordState = (state: any) => state.ForgetPassword;
+
+const selectForgetPasswordViewModel = createSelector(
+  [selectForgetPasswordState],
+  (forgetPasswordState) => ({
+    forgetError: forgetPasswordState.forgetError,
+    forgetSuccessMsg: forgetPasswordState.forgetSuccessMsg,
+  })
+);
+
 const ForgetPasswordPage = (props: any) => {
   const dispatch: any = useDispatch();
 
@@ -39,19 +49,9 @@ const ForgetPasswordPage = (props: any) => {
     }
   });
 
-
-  const selectLayoutState = (state: any) => state.ForgetPassword;
-  const selectLayoutProperties = createSelector(
-    selectLayoutState,
-    (state) => ({
-      forgetError: state.forgetError,
-      forgetSuccessMsg: state.forgetSuccessMsg,
-    })
-  );
-  // Inside your component
   const {
     forgetError, forgetSuccessMsg
-  } = useSelector(selectLayoutProperties);
+  } = useSelector(selectForgetPasswordViewModel);
 
   document.title = "Reset Password | Velzon - React Admin & Dashboard Template";
   return (

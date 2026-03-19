@@ -17,6 +17,25 @@ import { getCarBrands } from "slices/car-brands/thunk";
 import { useEffect } from "react";
 import { getCarModels } from "slices/car-models/thunk";
 import { fuelTypeOptions, monthsOptions, transmissionOptions } from "common/data/cars";
+import { createSelector } from "reselect";
+
+const selectCarBrandState = (state: any) => state.CarBrand;
+const selectCarModelState = (state: any) => state.CarModel;
+
+const selectCarBrandOptionsState = createSelector(
+    [selectCarBrandState],
+    (carBrandState) => ({
+        brands: carBrandState.data.brands,
+        loading: carBrandState.loading.list,
+    })
+);
+
+const selectCarModelOptionsState = createSelector(
+    [selectCarModelState],
+    (carModelState) => ({
+        models: carModelState.data.models,
+    })
+);
 
 export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const dispatch: any = useDispatch();
@@ -24,24 +43,14 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
 
     // Redux direto, sem reselect desnecessário
-    const { brands, meta, loading } = useSelector(
-        (state: any) => ({
-            brands: state.CarBrand.data.brands,
-            meta: null,
-            loading: state.CarBrand.loading.list,
-        })
-    );
+    const { brands, loading } = useSelector(selectCarBrandOptionsState);
 
     // Fetch sempre que mudar de tamanho
     useEffect(() => {
         dispatch(getCarBrands());
     }, [dispatch]);
 
-    const { models } = useSelector(
-        (state: any) => ({
-            models: state.CarModel.data.models,
-        })
-    );
+    const { models } = useSelector(selectCarModelOptionsState);
 
     useEffect(() => {
         if (!values.car_brand_id) return;

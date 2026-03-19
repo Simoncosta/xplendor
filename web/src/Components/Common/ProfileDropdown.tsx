@@ -7,14 +7,13 @@ import { useSelector } from 'react-redux';
 //import images
 import avatar1 from '../../assets/images/users/avatar-company.jpg';
 
-const ProfileDropdown = () => {
-    const profiledropdownData = createSelector(
-        (state: any) => state.Profile,
-        (state: any) => state.data.user
-    );
+const selectProfileUser = createSelector(
+    [(state: any) => state.Profile],
+    (profileState) => profileState.data.user
+);
 
-    // Inside your component
-    const user = useSelector(profiledropdownData);
+const ProfileDropdown = () => {
+    const user = useSelector(selectProfileUser);
 
     const [userId, setUserId] = useState(0);
     const [userName, setUserName] = useState("");

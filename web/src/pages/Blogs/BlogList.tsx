@@ -7,19 +7,25 @@ import { Col, Container, Row } from 'reactstrap'
 // Redux
 import { useDispatch, useSelector } from 'react-redux'
 import { getBlogsPaginate } from 'slices/thunks'
+import { createSelector } from 'reselect'
+
+const selectBlogState = (state: any) => state.Blog;
+
+const selectBlogListViewModel = createSelector(
+    [selectBlogState],
+    (blogState) => ({
+        blogs: blogState.data.blogs,
+        meta: blogState.data.meta,
+        loading: blogState.loading.list,
+    })
+)
 
 const BlogList = () => {
     const dispatch: any = useDispatch();
     document.title = "Blogs | Xplendor";
 
     // Redux direto, sem reselect desnecessário
-    const { blogs, meta, loading } = useSelector(
-        (state: any) => ({
-            blogs: state.Blog.data.blogs,
-            meta: state.Blog.data.meta,
-            loading: state.Blog.loading.list,
-        })
-    );
+    const { blogs, meta, loading } = useSelector(selectBlogListViewModel);
 
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({

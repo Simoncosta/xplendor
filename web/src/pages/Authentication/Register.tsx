@@ -22,6 +22,17 @@ import { createSelector } from "reselect";
 import { getUserByInvite, registerByInvite } from "slices/thunks";
 import XInput from "Components/Common/XInput";
 
+const selectRegisterInviteState = (state: any) => state.RegisterInvite;
+
+const selectRegisterInviteViewModel = createSelector(
+    [selectRegisterInviteState],
+    (registerInviteState) => ({
+        data: registerInviteState.data.userInvite,
+        error: registerInviteState.error.show,
+        loading: registerInviteState.loading.show,
+    })
+);
+
 const Register = () => {
     const navigate = useNavigate();
     const dispatch: any = useDispatch();
@@ -31,15 +42,7 @@ const Register = () => {
 
     const [loader, setLoader] = useState<boolean>(false);
 
-    const selectRegisterInviteState = (state: any) => state.RegisterInvite;
-
-    const registerInviteSelector = createSelector(selectRegisterInviteState, (state: any) => ({
-        data: state.data.userInvite,
-        error: state.error.show,
-        loading: state.loading.show,
-    }));
-
-    const { data } = useSelector(registerInviteSelector);
+    const { data } = useSelector(selectRegisterInviteViewModel);
 
     useEffect(() => {
         if (!token) return;
