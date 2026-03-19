@@ -12,6 +12,7 @@ export const registerByInvite =
     (payload: { token: string; password: string; password_confirmation: string }, navigate: any) =>
         async (dispatch: any) => {
             try {
+                dispatch(reset_login_flag());
                 const res = await postRegisterByInviteApi(payload);
 
                 const authData = res.data.data ?? res;
@@ -27,6 +28,7 @@ export const registerByInvite =
 
 export const loginUser = (user: any, history: any) => async (dispatch: any) => {
     try {
+        dispatch(reset_login_flag());
         let response;
 
         if (process.env.REACT_APP_DEFAULTAUTH === "jwt") {

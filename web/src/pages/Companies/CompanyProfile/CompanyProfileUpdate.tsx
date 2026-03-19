@@ -28,12 +28,12 @@ export default function CompanyProfileUpdate() {
     const selectCarmineState = (state: any) => state.Carmine;
 
     const companySelector = createSelector(selectCompanyState, (state: any) => ({
-        company: state.company,
-        loadingShow: state.loadingShow,
+        company: state.data.company,
+        loadingShow: state.loading.show,
     }));
     const carmineSelector = createSelector(selectCarmineState, (state: any) => ({
-        carmine: state.carmine,
-        loading: state.loading,
+        carmine: state.data.carmine,
+        loading: state.loading.show,
     }));
 
     const { company, loadingShow } = useSelector(companySelector);

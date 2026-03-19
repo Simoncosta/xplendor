@@ -2,7 +2,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { createSelector } from 'reselect';
 // Components
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 import { ToastContainer } from 'react-toastify';
@@ -16,7 +15,11 @@ const CompanyList = () => {
 
     // Redux direto, sem reselect desnecessário
     const { companies, meta, loading } = useSelector(
-        (state: any) => state.Company
+        (state: any) => ({
+            companies: state.Company.data.companies,
+            meta: state.Company.data.meta,
+            loading: state.Company.loading.list,
+        })
     );
 
     // Paginação controlada no pai (server-side)

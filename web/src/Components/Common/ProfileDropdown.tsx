@@ -10,7 +10,7 @@ import avatar1 from '../../assets/images/users/avatar-company.jpg';
 const ProfileDropdown = () => {
     const profiledropdownData = createSelector(
         (state: any) => state.Profile,
-        (user) => user.user
+        (state: any) => state.data.user
     );
 
     // Inside your component

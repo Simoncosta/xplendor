@@ -2,9 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getCarModels } from "./thunk";
 
 const initialState = {
-    models: [] as any[],
-    loading: false,
-    error: null as any,
+    data: {
+        models: [] as any[],
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const CarModelsSlice = createSlice({
@@ -14,16 +20,17 @@ const CarModelsSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(getCarModels.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getCarModels.fulfilled, (state, action) => {
-                state.loading = false;
-                state.models = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.models = action.payload.data;
             })
             .addCase(getCarModels.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });

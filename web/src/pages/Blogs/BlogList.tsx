@@ -14,7 +14,11 @@ const BlogList = () => {
 
     // Redux direto, sem reselect desnecessário
     const { blogs, meta, loading } = useSelector(
-        (state: any) => state.Blog
+        (state: any) => ({
+            blogs: state.Blog.data.blogs,
+            meta: state.Blog.data.meta,
+            loading: state.Blog.loading.list,
+        })
     );
 
     // Paginação controlada no pai (server-side)

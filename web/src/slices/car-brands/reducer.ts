@@ -2,9 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getCarBrands } from "./thunk";
 
 const initialState = {
-    brands: [] as any[],
-    loading: false,
-    error: null as any,
+    data: {
+        brands: [] as any[],
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const CarBrandsSlice = createSlice({
@@ -15,16 +21,17 @@ const CarBrandsSlice = createSlice({
         // LIST
         builder
             .addCase(getCarBrands.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getCarBrands.fulfilled, (state, action) => {
-                state.loading = false;
-                state.brands = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.brands = action.payload.data;
             })
             .addCase(getCarBrands.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });

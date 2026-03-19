@@ -19,7 +19,11 @@ export default function LeadList() {
     const dispatch: any = useDispatch();
 
     const { leads, meta, loading } = useSelector(
-        (state: any) => state.Lead
+        (state: any) => ({
+            leads: state.Lead.data.leads,
+            meta: state.Lead.data.meta,
+            loading: state.Lead.loading.list,
+        })
     );
 
     const [companyId, setCompanyId] = useState<any>(null);

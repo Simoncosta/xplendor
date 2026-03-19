@@ -47,7 +47,7 @@ export default function CarAnalytics() {
 
     const carSelector = createSelector(
         (state: any) => state.Car,
-        (state: any) => ({ carAnalytics: state.carAnalytics, loading: state.loading })
+        (state: any) => ({ carAnalytics: state.data.carAnalytics, loading: state.loading.analytics })
     );
     const { carAnalytics, loading } = useSelector(carSelector);
 

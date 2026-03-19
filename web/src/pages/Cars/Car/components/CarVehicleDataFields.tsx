@@ -25,7 +25,11 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
 
     // Redux direto, sem reselect desnecessário
     const { brands, meta, loading } = useSelector(
-        (state: any) => state.CarBrand
+        (state: any) => ({
+            brands: state.CarBrand.data.brands,
+            meta: null,
+            loading: state.CarBrand.loading.list,
+        })
     );
 
     // Fetch sempre que mudar de tamanho
@@ -34,7 +38,9 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     }, [dispatch]);
 
     const { models } = useSelector(
-        (state: any) => state.CarModel
+        (state: any) => ({
+            models: state.CarModel.data.models,
+        })
     );
 
     useEffect(() => {

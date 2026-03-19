@@ -1,8 +1,9 @@
 // action
-import { profileSuccess, profileError, resetProfileFlagChange } from "./reducer";
+import { editProfileChange, profileSuccess, profileError, resetProfileFlagChange } from "./reducer";
 
 export const editProfile = (user: any) => async (dispatch: any) => {
     try {
+        dispatch(editProfileChange());
         let response;
 
         const data = await response;

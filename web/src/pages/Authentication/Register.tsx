@@ -34,9 +34,9 @@ const Register = () => {
     const selectRegisterInviteState = (state: any) => state.RegisterInvite;
 
     const registerInviteSelector = createSelector(selectRegisterInviteState, (state: any) => ({
-        data: state.userInvite,
-        error: state.meta,
-        loading: state.loading,
+        data: state.data.userInvite,
+        error: state.error.show,
+        loading: state.loading.show,
     }));
 
     const { data } = useSelector(registerInviteSelector);

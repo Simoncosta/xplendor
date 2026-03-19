@@ -31,18 +31,18 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
     const selectParishState = (state: any) => state.Parish;
 
     const districtSelector = createSelector(selectDistrictState, (state: any) => ({
-        data: state.districts,
-        loading: state.loading,
+        data: state.data.districts,
+        loading: state.loading.list,
     }));
 
     const municipalitySelector = createSelector(selectMunicipalityState, (state: any) => ({
-        data: state.municipalities,
-        loading: state.loading,
+        data: state.data.municipalities,
+        loading: state.loading.list,
     }));
 
     const parishSelector = createSelector(selectParishState, (state: any) => ({
-        data: state.parishes,
-        loading: state.loading,
+        data: state.data.parishes,
+        loading: state.loading.list,
     }));
 
     const { data: districts, loading: loadingDistricts } = useSelector(districtSelector);
@@ -61,12 +61,12 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
     useEffect(() => {
         if (!selected) return;
         dispatch(getMunicipalities(selected?.id));
-    }, [selected]);
+    }, [dispatch, selected]);
 
     useEffect(() => {
         if (!selectedMunicipality) return;
         dispatch(getParishes(selectedMunicipality?.id));
-    }, [selectedMunicipality]);
+    }, [dispatch, selectedMunicipality]);
 
     return (
         <Row>

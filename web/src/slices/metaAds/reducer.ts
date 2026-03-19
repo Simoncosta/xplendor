@@ -12,30 +12,32 @@ import {
 } from "./thunk";
 
 const initialState = {
-    oauthUrl: null as string | null,
-    integrations: [] as any[],
-    adsets: [] as any[],
-    carAdCampaigns: [] as any[],
-
-    loadingOAuthUrl: false,
-    loadingConnect: false,
-    loadingDisconnect: false,
-    loadingIntegrations: false,
-    loadingAdsets: false,
-    loadingCarAdCampaigns: false,
-    loadingStoreCarAdCampaign: false,
-    loadingDeleteCarAdCampaign: false,
-    loadingToggleCarAdCampaign: false,
-
-    errorOAuthUrl: null as any,
-    errorConnect: null as any,
-    errorDisconnect: null as any,
-    errorIntegrations: null as any,
-    errorAdsets: null as any,
-    errorCarAdCampaigns: null as any,
-    errorStoreCarAdCampaign: null as any,
-    errorDeleteCarAdCampaign: null as any,
-    errorToggleCarAdCampaign: null as any,
+    data: {
+        oauthUrl: null as string | null,
+        integrations: [] as any[],
+        adsets: [] as any[],
+        carAdCampaigns: [] as any[],
+    },
+    loading: {
+        show: false,
+        connect: false,
+        disconnect: false,
+        list: false,
+        sync: false,
+        create: false,
+        delete: false,
+        update: false,
+    },
+    error: {
+        show: null as any,
+        connect: null as any,
+        disconnect: null as any,
+        list: null as any,
+        sync: null as any,
+        create: null as any,
+        delete: null as any,
+        update: null as any,
+    },
 };
 
 const MetaAdsSlice = createSlice({
@@ -45,123 +47,132 @@ const MetaAdsSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(getMetaOAuthUrl.pending, (state) => {
-                state.loadingOAuthUrl = true;
-                state.errorOAuthUrl = null;
+                state.loading.show = true;
+                state.error.show = null;
             })
             .addCase(getMetaOAuthUrl.fulfilled, (state, action) => {
-                state.loadingOAuthUrl = false;
-                state.oauthUrl = action.payload.data?.url ?? null;
+                state.loading.show = false;
+                state.error.show = null;
+                state.data.oauthUrl = action.payload.data?.url ?? null;
             })
             .addCase(getMetaOAuthUrl.rejected, (state, action) => {
-                state.loadingOAuthUrl = false;
-                state.errorOAuthUrl = action.payload || action.error;
+                state.loading.show = false;
+                state.error.show = action.payload || action.error;
             });
 
         builder
             .addCase(connectMetaAds.pending, (state) => {
-                state.loadingConnect = true;
-                state.errorConnect = null;
+                state.loading.connect = true;
+                state.error.connect = null;
             })
             .addCase(connectMetaAds.fulfilled, (state) => {
-                state.loadingConnect = false;
+                state.loading.connect = false;
+                state.error.connect = null;
             })
             .addCase(connectMetaAds.rejected, (state, action) => {
-                state.loadingConnect = false;
-                state.errorConnect = action.payload || action.error;
+                state.loading.connect = false;
+                state.error.connect = action.payload || action.error;
             });
 
         builder
             .addCase(disconnectMetaAds.pending, (state) => {
-                state.loadingDisconnect = true;
-                state.errorDisconnect = null;
+                state.loading.disconnect = true;
+                state.error.disconnect = null;
             })
             .addCase(disconnectMetaAds.fulfilled, (state) => {
-                state.loadingDisconnect = false;
+                state.loading.disconnect = false;
+                state.error.disconnect = null;
             })
             .addCase(disconnectMetaAds.rejected, (state, action) => {
-                state.loadingDisconnect = false;
-                state.errorDisconnect = action.payload || action.error;
+                state.loading.disconnect = false;
+                state.error.disconnect = action.payload || action.error;
             });
 
         builder
             .addCase(getCompanyIntegrations.pending, (state) => {
-                state.loadingIntegrations = true;
-                state.errorIntegrations = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getCompanyIntegrations.fulfilled, (state, action) => {
-                state.loadingIntegrations = false;
-                state.integrations = action.payload.data ?? [];
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.integrations = action.payload.data ?? [];
             })
             .addCase(getCompanyIntegrations.rejected, (state, action) => {
-                state.loadingIntegrations = false;
-                state.errorIntegrations = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
 
         builder
             .addCase(getMetaAdsets.pending, (state) => {
-                state.loadingAdsets = true;
-                state.errorAdsets = null;
+                state.loading.sync = true;
+                state.error.sync = null;
             })
             .addCase(getMetaAdsets.fulfilled, (state, action) => {
-                state.loadingAdsets = false;
-                state.adsets = action.payload.data ?? [];
+                state.loading.sync = false;
+                state.error.sync = null;
+                state.data.adsets = action.payload.data ?? [];
             })
             .addCase(getMetaAdsets.rejected, (state, action) => {
-                state.loadingAdsets = false;
-                state.errorAdsets = action.payload || action.error;
+                state.loading.sync = false;
+                state.error.sync = action.payload || action.error;
             });
 
         builder
             .addCase(getCarAdCampaigns.pending, (state) => {
-                state.loadingCarAdCampaigns = true;
-                state.errorCarAdCampaigns = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getCarAdCampaigns.fulfilled, (state, action) => {
-                state.loadingCarAdCampaigns = false;
-                state.carAdCampaigns = action.payload.data ?? [];
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.carAdCampaigns = action.payload.data ?? [];
             })
             .addCase(getCarAdCampaigns.rejected, (state, action) => {
-                state.loadingCarAdCampaigns = false;
-                state.errorCarAdCampaigns = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
 
         builder
             .addCase(storeCarAdCampaign.pending, (state) => {
-                state.loadingStoreCarAdCampaign = true;
-                state.errorStoreCarAdCampaign = null;
+                state.loading.create = true;
+                state.error.create = null;
             })
             .addCase(storeCarAdCampaign.fulfilled, (state) => {
-                state.loadingStoreCarAdCampaign = false;
+                state.loading.create = false;
+                state.error.create = null;
             })
             .addCase(storeCarAdCampaign.rejected, (state, action) => {
-                state.loadingStoreCarAdCampaign = false;
-                state.errorStoreCarAdCampaign = action.payload || action.error;
+                state.loading.create = false;
+                state.error.create = action.payload || action.error;
             });
 
         builder
             .addCase(deleteCarAdCampaign.pending, (state) => {
-                state.loadingDeleteCarAdCampaign = true;
-                state.errorDeleteCarAdCampaign = null;
+                state.loading.delete = true;
+                state.error.delete = null;
             })
             .addCase(deleteCarAdCampaign.fulfilled, (state) => {
-                state.loadingDeleteCarAdCampaign = false;
+                state.loading.delete = false;
+                state.error.delete = null;
             })
             .addCase(deleteCarAdCampaign.rejected, (state, action) => {
-                state.loadingDeleteCarAdCampaign = false;
-                state.errorDeleteCarAdCampaign = action.payload || action.error;
+                state.loading.delete = false;
+                state.error.delete = action.payload || action.error;
             });
 
         builder
             .addCase(toggleCarAdCampaign.pending, (state) => {
-                state.loadingToggleCarAdCampaign = true;
-                state.errorToggleCarAdCampaign = null;
+                state.loading.update = true;
+                state.error.update = null;
             })
             .addCase(toggleCarAdCampaign.fulfilled, (state) => {
-                state.loadingToggleCarAdCampaign = false;
+                state.loading.update = false;
+                state.error.update = null;
             })
             .addCase(toggleCarAdCampaign.rejected, (state, action) => {
-                state.loadingToggleCarAdCampaign = false;
-                state.errorToggleCarAdCampaign = action.payload || action.error;
+                state.loading.update = false;
+                state.error.update = action.payload || action.error;
             });
     },
 });

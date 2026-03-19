@@ -3,9 +3,21 @@ import { createCarmine, updateCarmine, showCarmine, syncCarmine } from "./thunk"
 import { ICarmineApi } from "common/models/carmine-api.model";
 
 const initialState = {
-    carmine: [] as ICarmineApi[],
-    loading: false,
-    error: null as any,
+    data: {
+        carmine: [] as ICarmineApi[],
+    },
+    loading: {
+        show: false,
+        create: false,
+        update: false,
+        sync: false,
+    },
+    error: {
+        show: null as any,
+        create: null as any,
+        update: null as any,
+        sync: null as any,
+    },
 };
 
 const CarmineSlice = createSlice({
@@ -16,60 +28,64 @@ const CarmineSlice = createSlice({
         // SHOW
         builder
             .addCase(showCarmine.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.show = true;
+                state.error.show = null;
             })
             .addCase(showCarmine.fulfilled, (state, action) => {
-                state.loading = false;
-                state.carmine = action.payload.data;
+                state.loading.show = false;
+                state.error.show = null;
+                state.data.carmine = action.payload.data;
             })
             .addCase(showCarmine.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.show = false;
+                state.error.show = action.payload || action.error;
             });
 
         // CREATE
         builder
             .addCase(createCarmine.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.create = true;
+                state.error.create = null;
             })
             .addCase(createCarmine.fulfilled, (state, action) => {
-                state.loading = false;
-                state.carmine = action.payload.data;
+                state.loading.create = false;
+                state.error.create = null;
+                state.data.carmine = action.payload.data;
             })
             .addCase(createCarmine.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.create = false;
+                state.error.create = action.payload || action.error;
             });
 
         // UPDATE
         builder
             .addCase(updateCarmine.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.update = true;
+                state.error.update = null;
             })
             .addCase(updateCarmine.fulfilled, (state, action) => {
-                state.loading = false;
-                state.carmine = action.payload.data;
+                state.loading.update = false;
+                state.error.update = null;
+                state.data.carmine = action.payload.data;
             })
             .addCase(updateCarmine.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.update = false;
+                state.error.update = action.payload || action.error;
             });
 
         // SYNC
         builder
             .addCase(syncCarmine.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.sync = true;
+                state.error.sync = null;
             })
-            .addCase(syncCarmine.fulfilled, (state, action) => {
-                state.loading = false;
+            .addCase(syncCarmine.fulfilled, (state) => {
+                state.loading.sync = false;
+                state.error.sync = null;
             })
             .addCase(syncCarmine.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.sync = false;
+                state.error.sync = action.payload || action.error;
             });
     },
 });

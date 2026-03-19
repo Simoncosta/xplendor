@@ -2,14 +2,17 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getLeadsPaginate } from "./thunk";
 
 const initialState = {
-    leads: [] as any[],
-    meta: null as any,
-
-    lead: null as any | null,
-
-    loadingList: false,
-
-    errorList: null as any,
+    data: {
+        leads: [] as any[],
+        meta: null as any,
+        lead: null as any | null,
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const LeadSlice = createSlice({
@@ -20,17 +23,18 @@ const LeadSlice = createSlice({
         // LIST
         builder
             .addCase(getLeadsPaginate.pending, (state) => {
-                state.loadingList = true;
-                state.errorList = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getLeadsPaginate.fulfilled, (state, action) => {
-                state.loadingList = false;
-                state.leads = action.payload.data.data;
-                state.meta = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.leads = action.payload.data.data;
+                state.data.meta = action.payload.data;
             })
             .addCase(getLeadsPaginate.rejected, (state, action) => {
-                state.loadingList = false;
-                state.errorList = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });

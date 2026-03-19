@@ -22,15 +22,15 @@ const Dashboard = () => {
     const selectDashboardState = (state: any) => state.Dashboard;
 
     const dashboardSelector = createSelector(selectDashboardState, (state: any) => ({
-        analytics: state.analytics,
-        loading: state.loading,
+        analytics: state.data.analytics,
+        loading: state.loading.list,
     }));
 
     const { analytics, loading } = useSelector(dashboardSelector);
 
     const loginState = useSelector((state: any) => state.Login);
 
-    const user = loginState?.user || loginState?.authUser || null;
+    const user = loginState?.data?.user || loginState?.authUser || null;
     const token = user?.token || null;
     const isAuthenticated = !!token;
 

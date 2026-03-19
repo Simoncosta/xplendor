@@ -1,10 +1,18 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { carAiAnalyses } from "./thunk";
+import { carAiAnalyses, carRecalculate } from "./thunk";
 
 const initialState = {
-    analytics: [] as any[],
-    loading: false,
-    error: null as any,
+    data: {
+        analytics: [] as any[],
+    },
+    loading: {
+        create: false,
+        update: false,
+    },
+    error: {
+        create: null as any,
+        update: null as any,
+    },
 };
 
 const CarSlice = createSlice({
@@ -15,16 +23,32 @@ const CarSlice = createSlice({
         // SHOW
         builder
             .addCase(carAiAnalyses.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.create = true;
+                state.error.create = null;
             })
             .addCase(carAiAnalyses.fulfilled, (state, action) => {
-                state.loading = false;
-                state.analytics = action.payload.data;
+                state.loading.create = false;
+                state.error.create = null;
+                state.data.analytics = action.payload.data;
             })
             .addCase(carAiAnalyses.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.create = false;
+                state.error.create = action.payload || action.error;
+            });
+
+        builder
+            .addCase(carRecalculate.pending, (state) => {
+                state.loading.update = true;
+                state.error.update = null;
+            })
+            .addCase(carRecalculate.fulfilled, (state, action) => {
+                state.loading.update = false;
+                state.error.update = null;
+                state.data.analytics = action.payload.data;
+            })
+            .addCase(carRecalculate.rejected, (state, action) => {
+                state.loading.update = false;
+                state.error.update = action.payload || action.error;
             });
 
     },

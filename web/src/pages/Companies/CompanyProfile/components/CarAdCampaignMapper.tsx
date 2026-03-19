@@ -42,10 +42,10 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
     const metaAdsSelector = createSelector(
         (state: any) => state.MetaAds,
         (state: any) => ({
-            mappings: state.carAdCampaigns as Mapping[],
-            adsets: state.adsets as Adset[],
-            loading: state.loadingAdsets,
-            saving: state.loadingStoreCarAdCampaign,
+            mappings: state.data.carAdCampaigns as Mapping[],
+            adsets: state.data.adsets as Adset[],
+            loading: state.loading.sync,
+            saving: state.loading.create,
         })
     );
     const { mappings, adsets, loading, saving } = useSelector(metaAdsSelector);

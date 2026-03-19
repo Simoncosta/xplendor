@@ -19,7 +19,10 @@ export default function CarMarketing() {
 
     const carSelector = createSelector(
         (state: any) => state.Car,
-        (state: any) => ({ carMarketing: state.carMarketing, loading: state.loadingMarketing })
+        (state: any) => ({
+            carMarketing: state.data.carMarketing,
+            loading: state.loading.marketing || state.loading.generate,
+        })
     );
     const { carMarketing, loading } = useSelector(carSelector);
 

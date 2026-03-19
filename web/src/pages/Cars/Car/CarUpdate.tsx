@@ -25,8 +25,8 @@ export default function CarUpdate() {
     const selectCarState = (state: any) => state.Car;
 
     const carSelector = createSelector(selectCarState, (state: any) => ({
-        car: state.car,
-        loading: state.loading,
+        car: state.data.car,
+        loading: state.loading.show,
     }));
 
     const { car, loading } = useSelector(carSelector);

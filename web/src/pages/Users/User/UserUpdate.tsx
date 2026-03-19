@@ -25,8 +25,8 @@ export default function UserUpdate() {
     const selectUserState = (state: any) => state.User;
 
     const userSelector = createSelector(selectUserState, (state: any) => ({
-        user: state.user,
-        loadingShow: state.loadingShow,
+        user: state.data.user,
+        loadingShow: state.loading.show,
     }));
 
     const { user, loadingShow } = useSelector(userSelector);

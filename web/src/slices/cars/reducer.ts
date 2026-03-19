@@ -1,23 +1,32 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCarsPaginate, showCar, analyticsCar, getCarMarketing, generateCarMarketing } from "./thunk";
+import { getCarsPaginate, showCar, createCar, updateCar, analyticsCar, getCarMarketing, generateCarMarketing } from "./thunk";
 
 const initialState = {
-    cars: [] as any[],
-    meta: null as any,
-
-    car: null as any | null,
-    carAnalytics: null as any | null,
-    carMarketing: [] as any[],
-
-    loadingList: false,
-    loadingShow: false,
-    loadingAnalytics: false,
-    loadingMarketing: false,
-
-    errorList: null as any,
-    errorShow: null as any,
-    errorAnalytics: null as any,
-    errorMarketing: null as any,
+    data: {
+        cars: [] as any[],
+        meta: null as any,
+        car: null as any | null,
+        carAnalytics: null as any | null,
+        carMarketing: [] as any[],
+    },
+    loading: {
+        list: false,
+        show: false,
+        create: false,
+        update: false,
+        analytics: false,
+        marketing: false,
+        generate: false,
+    },
+    error: {
+        list: null as any,
+        show: null as any,
+        create: null as any,
+        update: null as any,
+        analytics: null as any,
+        marketing: null as any,
+        generate: null as any,
+    },
 };
 
 const CarSlice = createSlice({
@@ -28,79 +37,116 @@ const CarSlice = createSlice({
         // LIST
         builder
             .addCase(getCarsPaginate.pending, (state) => {
-                state.loadingList = true;
-                state.errorList = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getCarsPaginate.fulfilled, (state, action) => {
-                state.loadingList = false;
-                state.cars = action.payload.data.data;
-                state.meta = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.cars = action.payload.data.data;
+                state.data.meta = action.payload.data;
             })
             .addCase(getCarsPaginate.rejected, (state, action) => {
-                state.loadingList = false;
-                state.errorList = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
 
         // SHOW
         builder
             .addCase(showCar.pending, (state) => {
-                state.loadingShow = true;
-                state.errorShow = null;
+                state.loading.show = true;
+                state.error.show = null;
             })
             .addCase(showCar.fulfilled, (state, action) => {
-                state.loadingShow = false;
-                state.car = action.payload.data;
+                state.loading.show = false;
+                state.error.show = null;
+                state.data.car = action.payload.data;
             })
             .addCase(showCar.rejected, (state, action) => {
-                state.loadingShow = false;
-                state.errorShow = action.payload || action.error;
+                state.loading.show = false;
+                state.error.show = action.payload || action.error;
+            });
+
+        // CREATE
+        builder
+            .addCase(createCar.pending, (state) => {
+                state.loading.create = true;
+                state.error.create = null;
+            })
+            .addCase(createCar.fulfilled, (state, action) => {
+                state.loading.create = false;
+                state.error.create = null;
+                state.data.car = action.payload.data;
+            })
+            .addCase(createCar.rejected, (state, action) => {
+                state.loading.create = false;
+                state.error.create = action.payload || action.error;
+            });
+
+        // UPDATE
+        builder
+            .addCase(updateCar.pending, (state) => {
+                state.loading.update = true;
+                state.error.update = null;
+            })
+            .addCase(updateCar.fulfilled, (state, action) => {
+                state.loading.update = false;
+                state.error.update = null;
+                state.data.car = action.payload.data;
+            })
+            .addCase(updateCar.rejected, (state, action) => {
+                state.loading.update = false;
+                state.error.update = action.payload || action.error;
             });
 
         // ANALYTICS
         builder
             .addCase(analyticsCar.pending, (state) => {
-                state.loadingAnalytics = true;
-                state.errorAnalytics = null;
+                state.loading.analytics = true;
+                state.error.analytics = null;
             })
             .addCase(analyticsCar.fulfilled, (state, action) => {
-                state.loadingAnalytics = false;
-                state.carAnalytics = action.payload.data;
+                state.loading.analytics = false;
+                state.error.analytics = null;
+                state.data.carAnalytics = action.payload.data;
             })
             .addCase(analyticsCar.rejected, (state, action) => {
-                state.loadingAnalytics = false;
-                state.errorAnalytics = action.payload || action.error;
+                state.loading.analytics = false;
+                state.error.analytics = action.payload || action.error;
             });
 
         // GET MARKETING
         builder
             .addCase(getCarMarketing.pending, (state) => {
-                state.loadingMarketing = true;
-                state.errorMarketing = null;
+                state.loading.marketing = true;
+                state.error.marketing = null;
             })
             .addCase(getCarMarketing.fulfilled, (state, action) => {
-                state.loadingMarketing = false;
-                state.carMarketing = action.payload.data;
+                state.loading.marketing = false;
+                state.error.marketing = null;
+                state.data.carMarketing = action.payload.data;
             })
             .addCase(getCarMarketing.rejected, (state, action) => {
-                state.loadingMarketing = false;
-                state.errorMarketing = action.payload || action.error;
+                state.loading.marketing = false;
+                state.error.marketing = action.payload || action.error;
             });
 
         // GENERATE MARKETING
         builder
             .addCase(generateCarMarketing.pending, (state) => {
-                state.loadingMarketing = true;
-                state.errorMarketing = null;
+                state.loading.generate = true;
+                state.error.generate = null;
             })
             .addCase(generateCarMarketing.fulfilled, (state, action) => {
-                state.loadingMarketing = false;
+                state.loading.generate = false;
+                state.error.generate = null;
                 if (action.payload.data) {
-                    state.carMarketing = action.payload.data;
+                    state.data.carMarketing = action.payload.data;
                 }
             })
             .addCase(generateCarMarketing.rejected, (state, action) => {
-                state.loadingMarketing = false;
-                state.errorMarketing = action.payload || action.error;
+                state.loading.generate = false;
+                state.error.generate = action.payload || action.error;
             });
     },
 });

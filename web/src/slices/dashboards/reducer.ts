@@ -2,9 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getAnalyticsDashboard } from "./thunk";
 
 const initialState = {
-    analytics: [] as any[],
-    loading: false,
-    error: null as any,
+    data: {
+        analytics: [] as any[],
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const DashboardSlice = createSlice({
@@ -15,16 +21,17 @@ const DashboardSlice = createSlice({
         // LIST
         builder
             .addCase(getAnalyticsDashboard.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getAnalyticsDashboard.fulfilled, (state, action) => {
-                state.loading = false;
-                state.analytics = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.analytics = action.payload.data;
             })
             .addCase(getAnalyticsDashboard.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });

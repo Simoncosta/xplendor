@@ -26,7 +26,11 @@ export default function UsersList() {
     const dispatch: any = useDispatch();
 
     const { users, meta, loading } = useSelector(
-        (state: any) => state.User
+        (state: any) => ({
+            users: state.User.data.users,
+            meta: state.User.data.meta,
+            loading: state.User.loading.list,
+        })
     );
 
     const [companyId, setCompanyId] = useState<any>(null);

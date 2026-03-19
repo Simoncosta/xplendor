@@ -2,9 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getParishes } from "./thunk";
 
 const initialState = {
-    parishes: [] as [],
-    loading: false,
-    error: null as any,
+    data: {
+        parishes: [] as [],
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const ParishSlice = createSlice({
@@ -14,16 +20,17 @@ const ParishSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(getParishes.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getParishes.fulfilled, (state, action) => {
-                state.loading = false;
-                state.parishes = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.parishes = action.payload.data;
             })
             .addCase(getParishes.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });

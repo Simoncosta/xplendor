@@ -34,8 +34,8 @@ export default function IntegrationsSettings() {
     const metaAdsSelector = createSelector(
         (state: any) => state.MetaAds,
         (state: any) => ({
-            integrations: state.integrations as Integration[],
-            loadingIntegrations: state.loadingIntegrations,
+            integrations: state.data.integrations as Integration[],
+            loadingIntegrations: state.loading.list,
         })
     );
     const { integrations, loadingIntegrations } = useSelector(metaAdsSelector);

@@ -21,8 +21,8 @@ export default function BlogShow() {
     const selectBlogState = (state: any) => state.Blog;
 
     const blogSelector = createSelector(selectBlogState, (state: any) => ({
-        blog: state.blog,
-        loadingShow: state.loadingShow,
+        blog: state.data.blog,
+        loadingShow: state.loading.show,
     }));
 
     const { blog, loadingShow } = useSelector(blogSelector);

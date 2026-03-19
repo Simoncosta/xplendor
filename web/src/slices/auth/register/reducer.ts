@@ -3,9 +3,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getUserByInvite } from "./thunk";
 
 export const initialState = {
-    userInvite: null,
-    error: null as any,
-    loading: false,
+    data: {
+        userInvite: null,
+    },
+    loading: {
+        show: false,
+    },
+    error: {
+        show: null as any,
+    },
 };
 
 const RegisterSlice = createSlice({
@@ -16,16 +22,17 @@ const RegisterSlice = createSlice({
         // LIST INVITE
         builder
             .addCase(getUserByInvite.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.show = true;
+                state.error.show = null;
             })
             .addCase(getUserByInvite.fulfilled, (state, action) => {
-                state.loading = false;
-                state.userInvite = action.payload.data;
+                state.loading.show = false;
+                state.error.show = null;
+                state.data.userInvite = action.payload.data;
             })
             .addCase(getUserByInvite.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.show = false;
+                state.error.show = action.payload || action.error;
             });
     },
 });

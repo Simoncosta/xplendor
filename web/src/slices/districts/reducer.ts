@@ -2,9 +2,15 @@ import { createSlice } from "@reduxjs/toolkit";
 import { getDistricts } from "./thunk";
 
 const initialState = {
-    districts: [] as [],
-    loading: false,
-    error: null as any,
+    data: {
+        districts: [] as [],
+    },
+    loading: {
+        list: false,
+    },
+    error: {
+        list: null as any,
+    },
 };
 
 const DistrictSlice = createSlice({
@@ -14,16 +20,17 @@ const DistrictSlice = createSlice({
     extraReducers: (builder) => {
         builder
             .addCase(getDistricts.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+                state.loading.list = true;
+                state.error.list = null;
             })
             .addCase(getDistricts.fulfilled, (state, action) => {
-                state.loading = false;
-                state.districts = action.payload.data;
+                state.loading.list = false;
+                state.error.list = null;
+                state.data.districts = action.payload.data;
             })
             .addCase(getDistricts.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.payload || action.error;
+                state.loading.list = false;
+                state.error.list = action.payload || action.error;
             });
     },
 });
