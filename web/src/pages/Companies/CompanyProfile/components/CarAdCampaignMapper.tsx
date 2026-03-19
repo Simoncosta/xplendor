@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
-import { Col, Row, Progress } from "reactstrap";
+import { useDispatch, useSelector } from "react-redux";
+import { createSelector } from "reselect";
+import { Col, Row } from "reactstrap";
 import { toast } from "react-toastify";
-
-const API_URL = process.env.REACT_APP_API_URL ?? "";
+import {
+    deleteCarAdCampaign,
+    getCarAdCampaigns,
+    getMetaAdsets,
+    storeCarAdCampaign,
+    toggleCarAdCampaign,
+} from "slices/metaAds/thunk";
 
 interface Adset {
     id: string;
@@ -27,49 +34,42 @@ interface Props {
     carId: number | string | undefined;
 }
 
-const getToken = () => {
-    const authUser = sessionStorage.getItem("authUser");
-    return authUser ? JSON.parse(authUser).token : "";
-};
-
 export default function CarAdCampaignMapper({ companyId, carId }: Props) {
-    const [mappings, setMappings] = useState<Mapping[]>([]);
-    const [adsets, setAdsets] = useState<Adset[]>([]);
-    const [loading, setLoading] = useState(false);
+    const dispatch: any = useDispatch();
     const [showForm, setShowForm] = useState(false);
     const [selected, setSelected] = useState<Adset | null>(null);
     const [splitPct, setSplitPct] = useState(100);
-    const [saving, setSaving] = useState(false);
-
-    const headers = { Authorization: `Bearer ${getToken()}` };
+    const metaAdsSelector = createSelector(
+        (state: any) => state.MetaAds,
+        (state: any) => ({
+            mappings: state.carAdCampaigns as Mapping[],
+            adsets: state.adsets as Adset[],
+            loading: state.loadingAdsets,
+            saving: state.loadingStoreCarAdCampaign,
+        })
+    );
+    const { mappings, adsets, loading, saving } = useSelector(metaAdsSelector);
 
     const fetchMappings = useCallback(async () => {
-        const res = await fetch(
-            `${API_URL}/companies/${companyId}/cars/${carId}/ad-campaigns`,
-            { headers }
-        );
-        const data = await res.json();
-        setMappings(data?.data ?? []);
-    }, [companyId, carId]);
+        if (!companyId || !carId) return;
+
+        await dispatch(getCarAdCampaigns({ companyId, carId })).unwrap();
+    }, [carId, companyId, dispatch]);
 
     const fetchAdsets = useCallback(async () => {
-        setLoading(true);
+        if (!companyId) return;
+
         try {
-            const res = await fetch(
-                `${API_URL}/companies/${companyId}/integrations/meta/adsets`,
-                { headers }
-            );
-            const data = await res.json();
-            setAdsets(data?.data ?? []);
+            await dispatch(getMetaAdsets({ companyId })).unwrap();
         } catch {
             toast.error("Erro ao carregar adsets do Meta.");
-        } finally {
-            setLoading(false);
         }
-    }, [companyId]);
+    }, [companyId, dispatch]);
 
     useEffect(() => {
-        fetchMappings();
+        fetchMappings().catch(() => {
+            toast.error("Erro ao carregar mapeamentos.");
+        });
     }, [fetchMappings]);
 
     const handleOpenForm = () => {
@@ -79,56 +79,49 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
 
     const handleSave = async () => {
         if (!selected) return;
-        setSaving(true);
-        try {
-            const res = await fetch(
-                `${API_URL}/companies/${companyId}/cars/${carId}/ad-campaigns`,
-                {
-                    method: "POST",
-                    headers: { ...headers, "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        platform: "meta",
-                        campaign_id: selected.campaign_id,
-                        campaign_name: selected.campaign?.name ?? "",
-                        adset_id: selected.id,
-                        adset_name: selected.name,
-                        level: "adset",
-                        spend_split_pct: splitPct,
-                    }),
-                }
-            );
 
-            if (!res.ok) {
-                const data = await res.json();
-                toast.error(data?.message ?? "Erro ao mapear campanha.");
-                return;
-            }
+        try {
+            await dispatch(storeCarAdCampaign({
+                companyId,
+                carId: carId!,
+                data: {
+                    platform: "meta",
+                    campaign_id: selected.campaign_id,
+                    campaign_name: selected.campaign?.name ?? "",
+                    adset_id: selected.id,
+                    adset_name: selected.name,
+                    level: "adset",
+                    spend_split_pct: splitPct,
+                },
+            })).unwrap();
 
             toast.success("Campanha mapeada com sucesso!");
             setShowForm(false);
             setSelected(null);
             setSplitPct(100);
-            fetchMappings();
-        } finally {
-            setSaving(false);
+            await fetchMappings();
+        } catch (error: any) {
+            toast.error(error?.message ?? error ?? "Erro ao mapear campanha.");
         }
     };
 
     const handleDelete = async (id: number) => {
-        await fetch(
-            `${API_URL}/companies/${companyId}/cars/${carId}/ad-campaigns/${id}`,
-            { method: "DELETE", headers }
-        );
-        toast.success("Mapeamento removido.");
-        fetchMappings();
+        try {
+            await dispatch(deleteCarAdCampaign({ companyId, carId: carId!, id })).unwrap();
+            toast.success("Mapeamento removido.");
+            await fetchMappings();
+        } catch {
+            toast.error("Erro ao remover mapeamento.");
+        }
     };
 
     const handleToggle = async (id: number) => {
-        await fetch(
-            `${API_URL}/companies/${companyId}/cars/${carId}/ad-campaigns/${id}/toggle`,
-            { method: "PATCH", headers }
-        );
-        fetchMappings();
+        try {
+            await dispatch(toggleCarAdCampaign({ companyId, carId: carId!, id })).unwrap();
+            await fetchMappings();
+        } catch {
+            toast.error("Erro ao actualizar mapeamento.");
+        }
     };
 
     const dashed = { border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.75rem", background: "#fff" };

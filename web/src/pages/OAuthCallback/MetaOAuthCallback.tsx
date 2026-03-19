@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
-
-const API_URL = process.env.REACT_APP_API_URL ?? "";
+import { connectMetaAds } from "slices/metaAds/thunk";
 
 /**
  * Página de callback OAuth do Meta.
@@ -15,6 +15,7 @@ const API_URL = process.env.REACT_APP_API_URL ?? "";
  * 4. Fecha a popup
  */
 export default function MetaOAuthCallback() {
+    const dispatch: any = useDispatch();
     const [searchParams] = useSearchParams();
     const [status, setStatus] = useState<"loading" | "account" | "success" | "error">("loading");
     const [accountId, setAccountId] = useState("");
@@ -34,48 +35,25 @@ export default function MetaOAuthCallback() {
     }, [code, state]);
 
     const handleSubmit = async () => {
-        if (!accountId.trim()) return;
+        if (!accountId.trim() || !code || !state) return;
 
         setStatus("loading");
 
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) {
-            setStatus("error");
-            setError("Sessão expirada. Faz login novamente.");
-            return;
-        }
-        const { token } = JSON.parse(authUser);
-
         try {
-            const res = await fetch(`${API_URL}/integrations/meta/callback`, {
-                method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
+            await dispatch(connectMetaAds({
                     code,
                     state,
                     account_id: accountId.replace("act_", ""), // normalizar
-                }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                setStatus("error");
-                setError(data?.message ?? "Erro ao conectar o Meta Ads.");
-                return;
-            }
+                })).unwrap();
 
             setStatus("success");
 
             // Fechar a popup após 1.5 segundos
             setTimeout(() => window.close(), 1500);
 
-        } catch (err) {
+        } catch (err: any) {
             setStatus("error");
-            setError("Erro de rede. Tenta novamente.");
+            setError(err?.message ?? err ?? "Erro ao conectar o Meta Ads.");
         }
     };
 

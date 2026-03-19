@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
-
-const API_URL = process.env.REACT_APP_API_URL ?? "";
+import { useDispatch } from "react-redux";
+import { getMetaOAuthUrl } from "slices/metaAds/thunk";
 
 interface UseMetaOAuthOptions {
     companyId: number;
@@ -19,6 +19,7 @@ interface UseMetaOAuthOptions {
  * 5. O hook detecta o fechamento e chama onSuccess
  */
 export function useMetaOAuth({ companyId, onSuccess, onError }: UseMetaOAuthOptions) {
+    const dispatch: any = useDispatch();
     const popupRef = useRef<Window | null>(null);
     const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -30,18 +31,11 @@ export function useMetaOAuth({ companyId, onSuccess, onError }: UseMetaOAuthOpti
     }, []);
 
     const connect = useCallback(async () => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-        const { token } = JSON.parse(authUser);
+        if (!companyId) return;
 
         try {
-            // 1. Pedir URL de autorização ao backend
-            const res = await fetch(
-                `${API_URL}/companies/${companyId}/integrations/meta/oauth-url`,
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            const data = await res.json();
-            const authUrl = data?.data?.url;
+            const response = await dispatch(getMetaOAuthUrl({ companyId })).unwrap();
+            const authUrl = response?.data?.url;
 
             if (!authUrl) {
                 onError("Não foi possível obter a URL de autorização.");
@@ -72,7 +66,7 @@ export function useMetaOAuth({ companyId, onSuccess, onError }: UseMetaOAuthOpti
         } catch (err) {
             onError("Erro ao iniciar autenticação com o Meta.");
         }
-    }, [companyId, onSuccess, onError]);
+    }, [companyId, dispatch, onSuccess, onError]);
 
     return { connect };
 }

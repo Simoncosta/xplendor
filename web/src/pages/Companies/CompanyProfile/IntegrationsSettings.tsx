@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { createSelector } from "reselect";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
-
-const API_URL = process.env.REACT_APP_API_URL ?? "";
+import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
 
 interface Integration {
     id: number;
@@ -30,28 +31,24 @@ const fmtDate = (d: string | null) =>
 export default function IntegrationsSettings() {
     document.title = "Integrações | Xplendor";
 
+    const dispatch: any = useDispatch();
     const [companyId, setCompanyId] = useState<number>(0);
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    const getToken = () => {
-        const authUser = sessionStorage.getItem("authUser");
-        return authUser ? JSON.parse(authUser).token : "";
-    };
+    const metaAdsSelector = createSelector(
+        (state: any) => state.MetaAds,
+        (state: any) => ({
+            integrations: state.integrations as Integration[],
+            loadingIntegrations: state.loadingIntegrations,
+        })
+    );
+    const { integrations, loadingIntegrations } = useSelector(metaAdsSelector);
 
     const fetchIntegrations = useCallback(async (cId: number) => {
         try {
-            const res = await fetch(`${API_URL}/companies/${cId}/integrations`, {
-                headers: { Authorization: `Bearer ${getToken()}` },
-            });
-            const data = await res.json();
-            setIntegrations(data?.data ?? []);
+            await dispatch(getCompanyIntegrations({ companyId: cId })).unwrap();
         } catch {
             toast.error("Erro ao carregar integrações.");
-        } finally {
-            setLoading(false);
         }
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -63,12 +60,13 @@ export default function IntegrationsSettings() {
 
     const handleDisconnect = async (platform: string) => {
         if (!window.confirm(`Tens a certeza que queres desconectar o ${platform}?`)) return;
-        await fetch(`${API_URL}/companies/${companyId}/integrations/${platform}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${getToken()}` },
-        });
-        toast.success("Integração desconectada.");
-        fetchIntegrations(companyId);
+        try {
+            await dispatch(disconnectMetaAds({ companyId, platform })).unwrap();
+            toast.success("Integração desconectada.");
+            await fetchIntegrations(companyId);
+        } catch {
+            toast.error("Erro ao desconectar integração.");
+        }
     };
 
     const { connect: connectMeta } = useMetaOAuth({
@@ -82,7 +80,7 @@ export default function IntegrationsSettings() {
 
     const metaIntegration = integrations.find(i => i.platform === "meta");
 
-    if (loading) return null;
+    if (loadingIntegrations) return null;
 
     return (
         <div className="page-content">

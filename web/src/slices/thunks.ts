@@ -16,6 +16,8 @@ export * from "./carmine/thunk";
 export * from "./districts/thunk";
 // Municipality
 export * from "./municipalities/thunk";
+// Meta Ads
+export * from "./metaAds/thunk";
 
 // Front
 export * from "./layouts/thunk";

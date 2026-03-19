@@ -6,6 +6,8 @@ export const POST_REGISTER_BY_INVITE = "/register-by-invite";
 
 // COMPANIES 
 export const GET_COMPANIES = "/companies";
+export const GET_INTEGRATIONS = "/integrations";
+export const GET_META_INTEGRATIONS = "/integrations/meta";
 
 // DASHBOARDS
 export const GET_DASHBOARD_APIS = "/dashboard";
@@ -18,9 +20,15 @@ export const GET_BLOGS_APIS = "/blogs";
 
 // CARS
 export const GET_CARS = "/cars";
+export const GET_CAR_AD_CAMPAIGNS = "/ad-campaigns";
 
 // ANALYSES
 export const GET_CARS_ANALYSES = "/car-ai-analyses";
+
+// META ADS
+export const GET_META_OAUTH_URL = "/oauth-url";
+export const GET_META_ADSETS = "/adsets";
+export const POST_META_CALLBACK = "/callback";
 
 // USERS
 export const GET_USERS_APIS = "/users";

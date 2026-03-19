@@ -11,6 +11,7 @@ import DashboardReducer from "./dashboards/reducer";
 import DistrictReducer from "./districts/reducer";
 import LeadReducer from "./leads/reducer";
 import MunicipalityReducer from "./municipalities/reducer";
+import MetaAdsReducer from "./metaAds/reducer";
 import ParishReducer from "./parishes/reducer";
 import RegisterInviteReducer from "./auth/register/reducer";
 import UserReducer from "./users/reducer";
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
     District: DistrictReducer,
     Lead: LeadReducer,
     Municipality: MunicipalityReducer,
+    MetaAds: MetaAdsReducer,
     Parish: ParishReducer,
     User: UserReducer,
 

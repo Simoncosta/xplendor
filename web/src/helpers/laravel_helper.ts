@@ -40,6 +40,40 @@ export const updateCompany = (id: number, data: FormData | any) => api.create(ur
 // DASHBOARDS
 export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS);
 
+// META ADS
+export const getCompanyIntegrationsApi = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS);
+export const getMetaOAuthUrlApi = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_OAUTH_URL);
+export const connectMetaAdsApi = (data: { code: string; state: string; account_id: string; }) =>
+    api.create(url.GET_META_INTEGRATIONS + url.POST_META_CALLBACK, data, {
+        headers: { "Content-Type": "application/json" }
+    });
+export const disconnectMetaAdsApi = (companyId: number, platform: string) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS + `/${platform}`);
+export const getMetaAdsetsApi = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_ADSETS);
+export const getCarAdCampaignsApi = (companyId: number, carId: number | string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS);
+export const storeCarAdCampaignApi = (
+    companyId: number,
+    carId: number | string,
+    data: {
+        platform: string;
+        campaign_id: string;
+        campaign_name: string;
+        adset_id: string;
+        adset_name: string;
+        level: string;
+        spend_split_pct: number;
+    }
+) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS, data, {
+        headers: { "Content-Type": "application/json" }
+    });
+export const deleteCarAdCampaignApi = (companyId: number, carId: number | string, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS + `/${id}`);
+export const toggleCarAdCampaignApi = (companyId: number, carId: number | string, id: number) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS + `/${id}/toggle`, {});
+
 // BLOGS
 export const getBlogs = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS, { params });
 export const showBlog = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS + "/" + params.id);
