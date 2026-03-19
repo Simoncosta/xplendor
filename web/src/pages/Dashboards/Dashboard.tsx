@@ -32,6 +32,7 @@ const Dashboard = () => {
     document.title = "Dashboard | Xplendor";
 
     const { analytics, loading } = useSelector(selectDashboardViewModel);
+    const safeAnalytics = analytics ?? emptyAnalytics;
 
     // Effects
     useEffect(() => {
@@ -44,18 +45,18 @@ const Dashboard = () => {
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
     }, [dispatch]);
     const highDemandCars = useMemo(
-        () => (analytics?.high_demand_opportunity_cars || []).filter((car: any) => car.views_count > 0),
-        [analytics]
+        () => (safeAnalytics.high_demand_opportunity_cars || []).filter((car: any) => car.views_count > 0),
+        [safeAnalytics]
     );
     const actionRequiredCars = useMemo(
         () => buildActionRequiredCars({
-            urgent_action_cars: analytics.urgent_action_cars,
-            high_interest_low_conversion_cars: analytics.high_interest_low_conversion_cars,
-            highest_stuck_capital_cars: analytics.highest_stuck_capital_cars,
+            urgent_action_cars: safeAnalytics.urgent_action_cars,
+            high_interest_low_conversion_cars: safeAnalytics.high_interest_low_conversion_cars,
+            highest_stuck_capital_cars: safeAnalytics.highest_stuck_capital_cars,
         }),
-        [analytics]
+        [safeAnalytics]
     );
-    const marketingRoi = analytics?.marketing_roi || emptyMarketingRoi;
+    const marketingRoi = safeAnalytics.marketing_roi || emptyMarketingRoi;
 
     if (loading) return null;
     if (!analytics) return null;
@@ -112,9 +113,25 @@ const emptyMarketingRoi: IMarketingRoi = {
 };
 
 type TAnalytics = {
+    summary?: any;
+    high_demand_opportunity_cars?: any[];
     urgent_action_cars?: any[];
     high_interest_low_conversion_cars?: any[];
     highest_stuck_capital_cars?: any[];
+    marketing_performance?: any;
+    insights?: any[];
+    marketing_roi?: IMarketingRoi | null;
+};
+
+const emptyAnalytics: TAnalytics = {
+    summary: undefined,
+    high_demand_opportunity_cars: [],
+    urgent_action_cars: [],
+    high_interest_low_conversion_cars: [],
+    highest_stuck_capital_cars: [],
+    marketing_performance: undefined,
+    insights: [],
+    marketing_roi: emptyMarketingRoi,
 };
 
 const buildActionRequiredCars = (analytics: TAnalytics) => {

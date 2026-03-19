@@ -486,59 +486,59 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ? round((($interactions + $leads) / $views) * 100, 2)
             : 0;
 
-        $rawSources = DB::table('car_views')
+        $channelCounts = collect();
+
+        $viewChannels = DB::table('car_views')
             ->where('company_id', $companyId)
             ->where('created_at', '>=', $since)
             ->select(
-                'channel',
-                'utm_source',
-                'utm_medium',
+                DB::raw("COALESCE(channel, 'direct') as channel"),
                 DB::raw('COUNT(*) as total')
             )
-            ->groupBy('channel', 'utm_source', 'utm_medium')
+            ->groupBy('channel')
             ->get();
 
-        $distribution = [
-            'meta_ads' => 0,
-            'google' => 0,
-            'organic' => 0,
-        ];
+        $leadChannels = DB::table('car_leads')
+            ->where('company_id', $companyId)
+            ->where('created_at', '>=', $since)
+            ->select(
+                DB::raw("COALESCE(channel, 'direct') as channel"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('channel')
+            ->get();
 
-        $totalTraffic = $rawSources->sum('total');
+        $interactionChannels = DB::table('car_interactions')
+            ->where('company_id', $companyId)
+            ->where('created_at', '>=', $since)
+            ->select(
+                DB::raw("COALESCE(channel, 'direct') as channel"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('channel')
+            ->get();
 
-        foreach ($rawSources as $source) {
-            if ($totalTraffic === 0) {
-                continue;
+        foreach ([$viewChannels, $leadChannels, $interactionChannels] as $rows) {
+            foreach ($rows as $row) {
+                $channel = strtolower((string) ($row->channel ?? 'direct'));
+                $channelCounts[$channel] = ($channelCounts[$channel] ?? 0) + (int) $row->total;
             }
-
-            $bucket = 'organic';
-
-            $utmSource = strtolower($source->utm_source ?? '');
-            $utmMedium = strtolower($source->utm_medium ?? '');
-            $channel   = strtolower($source->channel ?? '');
-
-            if (
-                in_array($utmSource, ['facebook', 'instagram', 'meta'], true) ||
-                in_array($utmMedium, ['paid_social', 'cpc', 'ppc'], true) ||
-                $channel === 'paid'
-            ) {
-                $bucket = 'meta_ads';
-            } elseif (
-                $utmSource === 'google' ||
-                in_array($utmMedium, ['search', 'paid_search', 'google_ads'], true) ||
-                $channel === 'organic_search'
-            ) {
-                $bucket = 'google';
-            }
-
-            $distribution[$bucket] += $source->total;
         }
 
-        $distribution = [
-            'meta_ads' => $totalTraffic > 0 ? round(($distribution['meta_ads'] / $totalTraffic) * 100, 1) : 0,
-            'google'   => $totalTraffic > 0 ? round(($distribution['google'] / $totalTraffic) * 100, 1) : 0,
-            'organic'  => $totalTraffic > 0 ? round(($distribution['organic'] / $totalTraffic) * 100, 1) : 0,
-        ];
+        $totalTraffic = $channelCounts->sum();
+
+        $distribution = $channelCounts
+            ->sortDesc()
+            ->map(function (int $total, string $channel) use ($totalTraffic) {
+                return [
+                    'channel' => $channel,
+                    'label' => $this->normalizeMarketingChannelLabel($channel),
+                    'count' => $total,
+                    'percentage' => $totalTraffic > 0 ? round(($total / $totalTraffic) * 100, 1) : 0,
+                ];
+            })
+            ->values()
+            ->all();
 
         return [
             'views_last_7_days' => $views,
@@ -547,6 +547,20 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             'interest_rate' => $interestRate,
             'traffic_distribution' => $distribution,
         ];
+    }
+
+    private function normalizeMarketingChannelLabel(string $channel): string
+    {
+        return match ($channel) {
+            'paid' => 'Trafego pago',
+            'organic_search' => 'Pesquisa organica',
+            'organic_social' => 'Social organico',
+            'direct' => 'Direto',
+            'referral' => 'Referral',
+            'email' => 'Email',
+            'utm' => 'UTM',
+            default => ucfirst(str_replace('_', ' ', $channel)),
+        };
     }
 
     public function getCompanyInsights(int $companyId): array
@@ -588,15 +602,23 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ->values();
 
         $totalSegmentLeads = $segmentData->sum('leads_count');
+        $totalSegmentViews = $segmentData->sum('views_count');
 
-        if ($segmentData->count() > 0 && $totalSegmentLeads > 0) {
+        if ($segmentData->count() > 0 && ($totalSegmentLeads > 0 || $totalSegmentViews > 0)) {
             $topSegment = $segmentData->first();
-            $segmentLeadShare = round(($topSegment->leads_count / $totalSegmentLeads) * 100, 1);
+            $segmentLeadShare = $totalSegmentLeads > 0
+                ? round(($topSegment->leads_count / $totalSegmentLeads) * 100, 1)
+                : 0;
+            $segmentViewShare = $totalSegmentViews > 0
+                ? round(($topSegment->views_count / $totalSegmentViews) * 100, 1)
+                : 0;
 
             $insights[] = [
                 'type' => 'segment_performance',
                 'title' => 'Segmento com melhor performance',
-                'text' => strtoupper((string) $topSegment->label) . " gera {$segmentLeadShare}% das leads nos últimos 7 dias.",
+                'text' => $totalSegmentLeads > 0
+                    ? strtoupper((string) $topSegment->label) . " gera {$segmentLeadShare}% das leads nos últimos 7 dias."
+                    : strtoupper((string) $topSegment->label) . " concentra {$segmentViewShare}% das views nos últimos 7 dias.",
                 'meta' => [
                     'label' => $topSegment->label,
                     'views_count' => (int) $topSegment->views_count,
@@ -642,18 +664,42 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             $bestFuel = $fuelData->first();
             $secondFuel = $fuelData->skip(1)->first();
 
-            if ($bestFuel && $secondFuel && $bestFuel->conversion_rate > 0 && $secondFuel->conversion_rate > 0) {
-                $multiplier = round($bestFuel->conversion_rate / $secondFuel->conversion_rate, 1);
+            if ($bestFuel && $secondFuel) {
+                $multiplier = $secondFuel->conversion_rate > 0
+                    ? round($bestFuel->conversion_rate / $secondFuel->conversion_rate, 1)
+                    : null;
 
                 $insights[] = [
                     'type' => 'fuel_performance',
                     'title' => 'Combustível com melhor conversão',
-                    'text' => strtoupper((string) $bestFuel->label) . " converte {$multiplier}x melhor que " . strtoupper((string) $secondFuel->label) . " nos últimos 7 dias.",
+                    'text' => $multiplier && $bestFuel->conversion_rate > 0
+                        ? strtoupper((string) $bestFuel->label) . " converte {$multiplier}x melhor que " . strtoupper((string) $secondFuel->label) . " nos últimos 7 dias."
+                        : strtoupper((string) $bestFuel->label) . " lidera a conversão e engagement por combustível nos últimos 7 dias.",
                     'meta' => [
                         'best_label' => $bestFuel->label,
+                        'best_views_count' => (int) $bestFuel->views_count,
+                        'best_leads_count' => (int) $bestFuel->leads_count,
                         'best_conversion_rate' => round($bestFuel->conversion_rate * 100, 2),
                         'second_label' => $secondFuel->label,
+                        'second_views_count' => (int) $secondFuel->views_count,
+                        'second_leads_count' => (int) $secondFuel->leads_count,
                         'second_conversion_rate' => round($secondFuel->conversion_rate * 100, 2),
+                    ],
+                ];
+            }
+        } elseif ($fuelData->count() === 1) {
+            $bestFuel = $fuelData->first();
+
+            if ($bestFuel) {
+                $insights[] = [
+                    'type' => 'fuel_performance',
+                    'title' => 'Combustível em destaque',
+                    'text' => strtoupper((string) $bestFuel->label) . " concentra a atividade do stock nos últimos 7 dias.",
+                    'meta' => [
+                        'best_label' => $bestFuel->label,
+                        'best_views_count' => (int) $bestFuel->views_count,
+                        'best_leads_count' => (int) $bestFuel->leads_count,
+                        'best_conversion_rate' => round($bestFuel->conversion_rate * 100, 2),
                     ],
                 ];
             }
@@ -695,16 +741,38 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             $bestBrand = $brandData->first();
             $secondBrand = $brandData->skip(1)->first();
 
-            if ($bestBrand && $secondBrand && $bestBrand->conversion_rate > 0 && $secondBrand->conversion_rate >= 0) {
+            if ($bestBrand && $secondBrand) {
                 $insights[] = [
                     'type' => 'brand_performance',
                     'title' => 'Marca com melhor conversão',
-                    'text' => "{$bestBrand->label} converte melhor que {$secondBrand->label} no stock dos últimos 7 dias.",
+                    'text' => $bestBrand->conversion_rate > 0
+                        ? "{$bestBrand->label} converte melhor que {$secondBrand->label} no stock dos últimos 7 dias."
+                        : "{$bestBrand->label} está a liderar o interesse entre as marcas do stock nos últimos 7 dias.",
                     'meta' => [
                         'best_label' => $bestBrand->label,
+                        'best_views_count' => (int) $bestBrand->views_count,
+                        'best_leads_count' => (int) $bestBrand->leads_count,
                         'best_conversion_rate' => round($bestBrand->conversion_rate * 100, 2),
                         'second_label' => $secondBrand->label,
+                        'second_views_count' => (int) $secondBrand->views_count,
+                        'second_leads_count' => (int) $secondBrand->leads_count,
                         'second_conversion_rate' => round($secondBrand->conversion_rate * 100, 2),
+                    ],
+                ];
+            }
+        } elseif ($brandData->count() === 1) {
+            $bestBrand = $brandData->first();
+
+            if ($bestBrand) {
+                $insights[] = [
+                    'type' => 'brand_performance',
+                    'title' => 'Marca em destaque',
+                    'text' => "{$bestBrand->label} concentra o maior volume de interesse do stock nos últimos 7 dias.",
+                    'meta' => [
+                        'best_label' => $bestBrand->label,
+                        'best_views_count' => (int) $bestBrand->views_count,
+                        'best_leads_count' => (int) $bestBrand->leads_count,
+                        'best_conversion_rate' => round($bestBrand->conversion_rate * 100, 2),
                     ],
                 ];
             }

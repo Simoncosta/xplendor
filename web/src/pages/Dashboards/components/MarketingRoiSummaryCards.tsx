@@ -27,7 +27,7 @@ const executiveCards = (marketingRoi: IMarketingRoi) => [
         accentClass: "text-warning",
     },
     {
-        label: "Melhor canal",
+        label: "Melhor canal pago",
         value: marketingRoi.summary.best_channel || "Sem dados",
         icon: "ri-rocket-line",
         accentClass: "text-info",
@@ -52,7 +52,7 @@ export default function MarketingRoiSummaryCards({
                                 ROI e decisão de investimento
                             </h4>
                             <p className="text-muted mb-0">
-                                Quanto investiste, quantas leads geraste e onde faz mais sentido escalar.
+                                Quanto investiste, quantas leads geraste e em que canal pago faz mais sentido escalar.
                             </p>
                         </div>
 

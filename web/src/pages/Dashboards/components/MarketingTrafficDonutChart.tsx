@@ -8,11 +8,12 @@ interface IMarketingPerformance {
     leads_last_7_days: number;
     interactions_last_7_days: number;
     interest_rate: number;
-    traffic_distribution: {
-        meta_ads: number;
-        google: number;
-        organic: number;
-    };
+    traffic_distribution: Array<{
+        channel: string;
+        label: string;
+        count: number;
+        percentage: number;
+    }>;
 }
 
 type MarketingTrafficDonutChartProps = {
@@ -22,22 +23,27 @@ type MarketingTrafficDonutChartProps = {
 
 export default function MarketingTrafficDonutChart({
     marketingPerformance,
-    dataColors = '["--vz-primary", "--vz-success", "--vz-warning"]',
+    dataColors = '["--vz-primary", "--vz-success", "--vz-warning", "--vz-info", "--vz-danger", "--vz-secondary", "--vz-dark"]',
 }: MarketingTrafficDonutChartProps) {
-    const chartColors = getChartColorsArray(dataColors);
-
-    const series = [
-        marketingPerformance?.traffic_distribution?.meta_ads || 0,
-        marketingPerformance?.traffic_distribution?.google || 0,
-        marketingPerformance?.traffic_distribution?.organic || 0,
+    const defaultDistribution = [
+        { channel: "paid", label: "Trafego pago", count: 0, percentage: 0 },
+        { channel: "organic_search", label: "Pesquisa organica", count: 0, percentage: 0 },
+        { channel: "direct", label: "Direto", count: 0, percentage: 0 },
     ];
+    const distribution = marketingPerformance?.traffic_distribution?.length
+        ? marketingPerformance.traffic_distribution
+        : defaultDistribution;
+    const chartColors = getChartColorsArray(dataColors).slice(0, distribution.length);
+
+    const series = distribution.map((item) => item.percentage || 0);
+    const labels = distribution.map((item) => item.label);
 
     const options: ApexCharts.ApexOptions = {
         chart: {
             height: 280,
             type: "donut",
         },
-        labels: ["Meta Ads", "Google", "Orgânico"],
+        labels,
         legend: {
             position: "bottom",
             horizontalAlign: "center",
@@ -80,7 +86,7 @@ export default function MarketingTrafficDonutChart({
             <Card className="card-height-100">
                 <CardHeader className="align-items-center d-flex">
                     <h4 className="card-title mb-0 flex-grow-1">
-                        Performance de Marketing
+                        📈 Performance de Marketing
                     </h4>
                 </CardHeader>
 

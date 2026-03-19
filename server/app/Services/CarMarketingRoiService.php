@@ -106,12 +106,22 @@ class CarMarketingRoiService extends BaseService
         $avgCostPerLead = $totalLeads > 0 ? round($totalSpend / $totalLeads, 2) : 0;
 
         $bestChannel = $byChannel
-            ->filter(fn(array $channel) => $channel['leads'] > 0)
+            ->filter(fn(array $channel) => $channel['leads'] > 0 && $channel['total_spend'] > 0)
             ->sortBy([
                 ['cost_per_lead', 'asc'],
                 ['leads', 'desc'],
             ])
             ->first();
+
+        if (!$bestChannel) {
+            $bestChannel = $byChannel
+                ->filter(fn(array $channel) => $channel['leads'] > 0)
+                ->sortBy([
+                    ['conversion_rate', 'desc'],
+                    ['leads', 'desc'],
+                ])
+                ->first();
+        }
 
         $bestCampaign = $topCampaigns
             ->filter(fn(array $campaign) => $campaign['leads'] > 0)

@@ -8,7 +8,7 @@ interface IDashboardInsight {
 }
 
 type DashboardInsightsCardProps = {
-    insights: IDashboardInsight[];
+    insights?: IDashboardInsight[];
 };
 
 const getInsightIcon = (type: string) => {
@@ -62,6 +62,14 @@ const formatPercent = (value?: number) => {
     return `${Number(value).toFixed(2)}%`;
 };
 
+const formatCount = (value?: number) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "0";
+    }
+
+    return Number(value).toLocaleString("pt-PT");
+};
+
 const normalizeInsightText = (text: string) => {
     return text
         .replaceAll("STATION_WAGON", "Carrinha")
@@ -103,8 +111,16 @@ const renderInsightMeta = (insight: IDashboardInsight) => {
                         Melhor: {normalizeLabel(insight.meta.best_label)} ({formatPercent(insight.meta.best_conversion_rate)})
                     </span>
                     <span className="badge bg-light text-dark">
-                        Seguinte: {normalizeLabel(insight.meta.second_label)} ({formatPercent(insight.meta.second_conversion_rate)})
+                        Views: {formatCount(insight.meta.best_views_count)}
                     </span>
+                    <span className="badge bg-light text-dark">
+                        Leads: {formatCount(insight.meta.best_leads_count)}
+                    </span>
+                    {insight.meta.second_label && (
+                        <span className="badge bg-light text-dark">
+                            Seguinte: {normalizeLabel(insight.meta.second_label)} ({formatPercent(insight.meta.second_conversion_rate)})
+                        </span>
+                    )}
                 </div>
             );
 
@@ -115,8 +131,16 @@ const renderInsightMeta = (insight: IDashboardInsight) => {
                         Melhor: {insight.meta.best_label ?? "-"} ({formatPercent(insight.meta.best_conversion_rate)})
                     </span>
                     <span className="badge bg-light text-dark">
-                        Seguinte: {insight.meta.second_label ?? "-"} ({formatPercent(insight.meta.second_conversion_rate)})
+                        Views: {formatCount(insight.meta.best_views_count)}
                     </span>
+                    <span className="badge bg-light text-dark">
+                        Leads: {formatCount(insight.meta.best_leads_count)}
+                    </span>
+                    {insight.meta.second_label && (
+                        <span className="badge bg-light text-dark">
+                            Seguinte: {insight.meta.second_label ?? "-"} ({formatPercent(insight.meta.second_conversion_rate)})
+                        </span>
+                    )}
                 </div>
             );
 
@@ -128,6 +152,10 @@ const renderInsightMeta = (insight: IDashboardInsight) => {
 export default function DashboardInsightsCard({
     insights,
 }: DashboardInsightsCardProps) {
+    const safeInsights = Array.isArray(insights)
+        ? insights.filter((insight) => insight && (insight.title || insight.text))
+        : [];
+
     return (
         <Col xl={6}>
             <Card className="card-height-100">
@@ -136,11 +164,11 @@ export default function DashboardInsightsCard({
                 </CardHeader>
 
                 {
-                    insights.length > 0 ? (
+                    safeInsights.length > 0 ? (
 
                         <CardBody>
                             <div className="vstack gap-3">
-                                {insights.map((insight, index) => (
+                                {safeInsights.map((insight, index) => (
                                     <div
                                         key={`${insight.type}-${index}`}
                                         className="border rounded p-3"
@@ -167,12 +195,21 @@ export default function DashboardInsightsCard({
                             </div>
                         </CardBody>
                     ) : (
-                        <div className="p-3">
-                            <p className="fs-16 lh-base">
-                                A Xplendor ainda está a recolher dados suficientes para gerar insights automáticos sobre segmento, combustível e marca.
-                                Assim que houver mais histórico de visitas, interações e leads, os insights aparecem aqui.
-                            </p>
-                        </div>
+                        <CardBody>
+                            <div className="border rounded p-3 bg-light-subtle">
+                                <p className="fs-16 lh-base mb-2">
+                                    Ainda não há insights suficientes para destacar padrões fiáveis no stock.
+                                </p>
+                                <p className="text-muted mb-0">
+                                    Assim que houver mais histórico de visitas, interações e leads por segmento, combustível e marca, os insights aparecem aqui automaticamente.
+                                </p>
+                            </div>
+                            <div className="d-flex flex-wrap gap-2 mt-3">
+                                <span className="badge bg-light text-dark">Segmentos</span>
+                                <span className="badge bg-light text-dark">Combustíveis</span>
+                                <span className="badge bg-light text-dark">Marcas</span>
+                            </div>
+                        </CardBody>
                     )
                 }
             </Card>
