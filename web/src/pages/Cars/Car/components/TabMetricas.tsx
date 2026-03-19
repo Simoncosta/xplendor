@@ -1,7 +1,10 @@
 import { Col, Row, Progress } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
+import CarAdCampaignMapper from "pages/Companies/CompanyProfile/components/CarAdCampaignMapper";
 
 interface Props {
+    companyId: number,
+    carId: number,
     trafficSources: any[];
     totalTraffic: number;
     donutOptions: any;
@@ -19,6 +22,7 @@ interface Props {
 }
 
 export default function TabMetricas({
+    companyId, carId,
     trafficSources, totalTraffic, donutOptions,
     interactions, totalInteractions,
     insight, m,
@@ -254,6 +258,13 @@ export default function TabMetricas({
                     </div>
                 </Col>
             )}
+
+            <Col xs={12}>
+                <CarAdCampaignMapper
+                    companyId={companyId}
+                    carId={carId}
+                />
+            </Col>
         </Row>
     );
 }

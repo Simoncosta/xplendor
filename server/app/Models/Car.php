@@ -58,10 +58,12 @@ class Car extends Model implements AuditableContract
         'youtube_url',
         'company_id',
         'carmine_id',
+        'created_at',
     ];
 
     protected $casts = [
         'extras' => 'array',
+        'created_at' => 'datetime',
     ];
 
     public function getExtrasAttribute($value)

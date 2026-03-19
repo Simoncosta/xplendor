@@ -29,6 +29,9 @@ return [
         'https://standspacedrive.pt',
         'https:/www.standspacedrive.pt',
 
+        // Localhost
+        'https://277d-2001-818-c523-5900-5084-d9fa-97d0-679.ngrok-free.app',
+
         'http://localhost:3000',
         'http://localhost:8001',
         'http://localhost:5173',

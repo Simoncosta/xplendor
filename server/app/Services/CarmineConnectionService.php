@@ -175,7 +175,7 @@ class CarmineConnectionService extends BaseService
             "description_website_pt"  => $data['TextoGenericoAnuncios'],
             "youtube_url"             => $data['UrlVideo'],
             "company_id"              => $companyId,
-            "created_at"              => Carbon::createFromFormat('d/m/Y H:i:s', $data['DataCriacao'])->format('Y-m-d H:i:s'),
+            "created_at"              => $data['DataCriacao'],
             "updated_at"              => $data['UltimaAlteracao'],
         ];
     }

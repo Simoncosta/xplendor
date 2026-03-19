@@ -6,14 +6,15 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\{
     AggregateCarPerformanceMetricsJob,
     GenerateWeeklyMarketingIdeasJob,
-    RecalculateAllCarScoresJob
+    RecalculateAllCarScoresJob,
+    FetchMetaAdsMetricsJob,
 };
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Agrega views e leads de todos os carros todos os dias às 00:30
+// 00:30 — agrega dados comportamentais (views, leads, interactions)
 Schedule::job(new AggregateCarPerformanceMetricsJob())
     ->dailyAt('00:30')
     ->name('aggregate-car-performance-metrics')
@@ -22,16 +23,22 @@ Schedule::job(new AggregateCarPerformanceMetricsJob())
         \Illuminate\Support\Facades\Log::error('[AggregateCarPerformanceMetrics] Job falhou no scheduler');
     });
 
-// Corre às 00:35 — 5 min depois do AggregateCarPerformanceMetrics (00:30)
-// para garantir que os dados de sessions/leads já estão actualizados
+// 00:45 — puxa dados do Meta Ads (spend, impressions, clicks)
+Schedule::job(new FetchMetaAdsMetricsJob())
+    ->dailyAt('00:45')
+    ->name('fetch-meta-ads-metrics')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[FetchMetaAdsMetrics] Job falhou no scheduler');
+    });
+
+// 01:00 — recalcula IPS com todos os dados completos (comportamentais + paid)
 Schedule::job(new RecalculateAllCarScoresJob())
-    ->dailyAt('00:35')
+    ->dailyAt('01:00')
     ->name('recalculate-all-car-scores')
     ->withoutOverlapping();
 
-/**
- * todo: colocar pra funcionar
- */
+
 Schedule::job(new GenerateWeeklyMarketingIdeasJob())
     ->mondays()
     ->at('03:00')

@@ -39,6 +39,10 @@ import BlogShow from "pages/Blogs/Blog/BlogShow";
 // Leads
 import LeadList from "pages/Leads/LeadList";
 
+// OAuth Meta
+import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
+import IntegrationsSettings from "pages/Companies/CompanyProfile/IntegrationsSettings";
+
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
 
@@ -68,6 +72,9 @@ const authProtectedRoutes = [
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
 
+    // Settings Integrations
+    { path: "/settings/integrations", component: <IntegrationsSettings /> },
+
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name
     {
@@ -84,6 +91,8 @@ const publicRoutes = [
     { path: "/login", component: <Login /> },
     { path: "/forgot-password", component: <ForgetPasswordPage /> },
     { path: "/register", component: <Register /> },
+
+    { path: "/oauth/meta/callback", component: <MetaOAuthCallback /> },
 
     // Landing Page
     { path: "/", component: <Landing /> },

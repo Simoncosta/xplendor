@@ -162,6 +162,8 @@ export default function CarAnalytics() {
                             <CardBody>
                                 {activeTab === "metricas" && (
                                     <TabMetricas
+                                        companyId={companyId}
+                                        carId={Number(id)}
                                         trafficSources={trafficSources}
                                         totalTraffic={totalTraffic}
                                         donutOptions={donutOptions}

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Public\{
 };
 use App\Http\Controllers\Api\V1\{
     BlogController,
+    CarAdCampaignController,
     CarAnalyticsController,
     CarBrandController,
     CarController,
@@ -20,8 +21,10 @@ use App\Http\Controllers\Api\V1\{
     CarPerformanceMetricController,
     CarSalePotentialScoreController,
     CompanyController,
+    CompanyIntegrationController,
     DashboardController,
     DistrictController,
+    MetaOAuthController,
     NewsletterController,
     PlanController,
     UserController
@@ -43,15 +46,29 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('/plans', PlanController::class);
         Route::apiResource('/companies', CompanyController::class);
 
+        // Callback OAuth — sem prefixo de company (o company_id vem no state)
+        Route::post('integrations/meta/callback', [MetaOAuthController::class, 'handleCallback']);
+
         Route::prefix('/companies/{id}')->group(function () {
             Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
             Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
             Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
             Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
+
+            Route::get('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'index']);
+            Route::post('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'store']);
+            Route::delete('/cars/{carId}/ad-campaigns/{campaign}', [CarAdCampaignController::class, 'destroy']);
+            Route::patch('/cars/{carId}/ad-campaigns/{campaign}/toggle', [CarAdCampaignController::class, 'toggle']);
+
             Route::get('dashboard', [DashboardController::class, 'index']);
 
             Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
             Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
+
+            Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
+            Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);
+            Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
+            Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
 
             Route::apiResource('/users', UserController::class);
             Route::apiResource('/cars', CarController::class);
@@ -69,6 +86,12 @@ Route::prefix('v1')->group(function () {
 
             Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
             Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);
+
+            // OAuth Meta
+            Route::get('integrations/meta/oauth-url', [MetaOAuthController::class, 'getAuthUrl']);
+            Route::get('integrations', [CompanyIntegrationController::class, 'index']);
+            Route::delete('integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
+            Route::get('integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
         });
 
         Route::apiResource('/districts', DistrictController::class)->only(['index']);
