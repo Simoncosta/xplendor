@@ -16,6 +16,7 @@ import MarketingRoiChannelTable from './components/MarketingRoiChannelTable';
 import MarketingRoiInsightsCard from './components/MarketingRoiInsightsCard';
 import MarketingTopCampaignsCard from './components/MarketingTopCampaignsCard';
 import TopCarsToPromoteCard from './components/TopCarsToPromoteCard';
+import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import { IMarketingRoi } from './components/marketingRoi.types';
 
 const selectDashboardState = (state: any) => state.Dashboard;
@@ -65,6 +66,9 @@ const Dashboard = () => {
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
+                    <Row className="mb-3">
+                        <SubscriptionTrialBanner />
+                    </Row>
                     <Row className="row">
                         <SummaryDashboard summary={analytics.summary} />
                         <HighDemandOpportunityChart

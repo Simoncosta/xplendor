@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Company;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use App\Repositories\Contracts\CompanyRepositoryInterface;
@@ -16,8 +17,13 @@ class CompanyService extends BaseService
 
     public function store($data): mixed
     {
+        $subscriptionData = $this->buildInitialSubscriptionData();
+
         // cria empresa sem logo (ou com campos normais)
-        $company = $this->companyRepository->store($data);
+        $company = $this->companyRepository->store([
+            ...$data,
+            ...$subscriptionData,
+        ]);
 
         // se veio logo, faz upload e atualiza
         if (!empty($data['logo']) && $data['logo'] instanceof UploadedFile) {
@@ -29,6 +35,19 @@ class CompanyService extends BaseService
         }
 
         return $company;
+    }
+
+    private function buildInitialSubscriptionData(): array
+    {
+        $company = new Company();
+        $company->initializeTrial();
+
+        return [
+            'subscription_status' => $company->subscription_status,
+            'trial_starts_at' => $company->trial_starts_at,
+            'trial_ends_at' => $company->trial_ends_at,
+            'subscription_ends_at' => $company->subscription_ends_at,
+        ];
     }
 
     public function update(int $id, array $data): mixed

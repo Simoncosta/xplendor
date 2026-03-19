@@ -8,6 +8,9 @@ interface IMarketingPerformance {
     leads_last_7_days: number;
     interactions_last_7_days: number;
     interest_rate: number;
+    meta_clicks_last_7_days?: number;
+    meta_reach_last_7_days?: number;
+    meta_spend_last_7_days?: number;
     traffic_distribution: Array<{
         channel: string;
         label: string;
@@ -37,6 +40,7 @@ export default function MarketingTrafficDonutChart({
 
     const series = distribution.map((item) => item.percentage || 0);
     const labels = distribution.map((item) => item.label);
+    const hasMarketingSignals = series.some((value) => value > 0);
 
     const options: ApexCharts.ApexOptions = {
         chart: {
@@ -72,8 +76,8 @@ export default function MarketingTrafficDonutChart({
                         show: true,
                         total: {
                             show: true,
-                            label: "Tráfego",
-                            formatter: () => "100%",
+                            label: "Canais",
+                            formatter: () => hasMarketingSignals ? "100%" : "0%",
                         },
                     },
                 },
@@ -93,14 +97,30 @@ export default function MarketingTrafficDonutChart({
                 <CardBody>
                     <Row className="align-items-center">
                         <Col lg={7}>
-                            <ReactApexChart
-                                dir="ltr"
-                                className="apex-charts"
-                                series={series}
-                                options={options}
-                                type="donut"
-                                height={280}
-                            />
+                            {hasMarketingSignals ? (
+                                <ReactApexChart
+                                    dir="ltr"
+                                    className="apex-charts"
+                                    series={series}
+                                    options={options}
+                                    type="donut"
+                                    height={280}
+                                />
+                            ) : (
+                                <div className="h-100 d-flex align-items-center justify-content-center">
+                                    <div className="text-center px-3">
+                                        <div className="avatar-sm mx-auto mb-3">
+                                            <div className="avatar-title bg-light text-muted rounded-circle fs-3">
+                                                <i className="ri-pie-chart-line" />
+                                            </div>
+                                        </div>
+                                        <h6 className="mb-1">Sem sinais de marketing</h6>
+                                        <p className="text-muted mb-0">
+                                            O gráfico aparece automaticamente quando existirem sinais em views, interações, leads ou Meta Ads no período.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </Col>
 
                         <Col lg={5}>

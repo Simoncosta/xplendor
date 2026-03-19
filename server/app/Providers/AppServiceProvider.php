@@ -70,6 +70,7 @@ use App\Repositories\{
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckCompanyApiToken;
+use App\Http\Middleware\CheckCompanySubscription;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -115,5 +116,6 @@ class AppServiceProvider extends ServiceProvider
         CarImage::observe(CarImageObserver::class);
 
         Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
+        Route::aliasMiddleware('check_company_subscription', CheckCompanySubscription::class);
     }
 }

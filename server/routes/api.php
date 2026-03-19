@@ -44,62 +44,66 @@ Route::prefix('v1')->group(function () {
         Route::post('/revoke-tokens', [UserController::class, 'revokeTokens']);
 
         Route::apiResource('/plans', PlanController::class);
-        Route::apiResource('/companies', CompanyController::class);
+        Route::post('/companies', [CompanyController::class, 'store']);
 
-        // Callback OAuth — sem prefixo de company (o company_id vem no state)
-        Route::post('integrations/meta/callback', [MetaOAuthController::class, 'handleCallback']);
+        Route::middleware('check_company_subscription')->group(function () {
+            Route::apiResource('/companies', CompanyController::class)->except(['store']);
 
-        Route::prefix('/companies/{id}')->group(function () {
-            Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
-            Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
-            Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
-            Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
+            // Callback OAuth - sem prefixo de company (o company_id vem no state)
+            Route::post('integrations/meta/callback', [MetaOAuthController::class, 'handleCallback']);
 
-            Route::get('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'index']);
-            Route::post('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'store']);
-            Route::delete('/cars/{carId}/ad-campaigns/{campaign}', [CarAdCampaignController::class, 'destroy']);
-            Route::patch('/cars/{carId}/ad-campaigns/{campaign}/toggle', [CarAdCampaignController::class, 'toggle']);
+            Route::prefix('/companies/{id}')->group(function () {
+                Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
+                Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
+                Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
+                Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
 
-            Route::get('dashboard', [DashboardController::class, 'index']);
+                Route::get('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'index']);
+                Route::post('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'store']);
+                Route::delete('/cars/{carId}/ad-campaigns/{campaign}', [CarAdCampaignController::class, 'destroy']);
+                Route::patch('/cars/{carId}/ad-campaigns/{campaign}/toggle', [CarAdCampaignController::class, 'toggle']);
 
-            Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
-            Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
+                Route::get('dashboard', [DashboardController::class, 'index']);
 
-            Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
-            Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);
-            Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
-            Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+                Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
+                Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
 
-            Route::apiResource('/users', UserController::class);
-            Route::apiResource('/cars', CarController::class);
-            Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
-            Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
-            Route::apiResource('/blogs', BlogController::class);
-            Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
+                Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
+                Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);
+                Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
+                Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
 
-            Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
-            Route::put('/car-ai-analyses-feedback/{carAiAnalysesId}', [CarController::class, 'feedbackAiAnalyses']);
-            Route::get('cars/{car}/performance', [CarPerformanceMetricController::class, 'index']);
-            Route::post('cars/{car}/performance', [CarPerformanceMetricController::class, 'store']);
-            Route::get('cars/{car}/performance/summary', [CarPerformanceMetricController::class, 'summary']);
-            Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
+                Route::apiResource('/users', UserController::class);
+                Route::apiResource('/cars', CarController::class);
+                Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
+                Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
+                Route::apiResource('/blogs', BlogController::class);
+                Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
 
-            Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
-            Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);
+                Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
+                Route::put('/car-ai-analyses-feedback/{carAiAnalysesId}', [CarController::class, 'feedbackAiAnalyses']);
+                Route::get('cars/{car}/performance', [CarPerformanceMetricController::class, 'index']);
+                Route::post('cars/{car}/performance', [CarPerformanceMetricController::class, 'store']);
+                Route::get('cars/{car}/performance/summary', [CarPerformanceMetricController::class, 'summary']);
+                Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
 
-            // OAuth Meta
-            Route::get('integrations/meta/oauth-url', [MetaOAuthController::class, 'getAuthUrl']);
-            Route::get('integrations', [CompanyIntegrationController::class, 'index']);
-            Route::delete('integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
-            Route::get('integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+                Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
+                Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);
+
+                // OAuth Meta
+                Route::get('integrations/meta/oauth-url', [MetaOAuthController::class, 'getAuthUrl']);
+                Route::get('integrations', [CompanyIntegrationController::class, 'index']);
+                Route::delete('integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
+                Route::get('integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+            });
+
+            Route::apiResource('/districts', DistrictController::class)->only(['index']);
+            Route::get('/districts/{id}/municipalities', [DistrictController::class, 'getMunicipalities']);
+            Route::get('/municipalities/{id}/parishes', [DistrictController::class, 'getParishes']);
+
+            Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
+            Route::apiResource('/car-models', CarModelController::class)->only(['index']);
         });
-
-        Route::apiResource('/districts', DistrictController::class)->only(['index']);
-        Route::get('/districts/{id}/municipalities', [DistrictController::class, 'getMunicipalities']);
-        Route::get('/municipalities/{id}/parishes', [DistrictController::class, 'getParishes']);
-
-        Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
-        Route::apiResource('/car-models', CarModelController::class)->only(['index']);
     });
 });
 

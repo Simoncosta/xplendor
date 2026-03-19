@@ -466,6 +466,8 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
     public function getMarketingPerformance(int $companyId): array
     {
         $since = now()->subDays(7);
+        $fromDate = $since->toDateString();
+        $toDate = now()->toDateString();
 
         $views = DB::table('car_views')
             ->where('company_id', $companyId)
@@ -486,7 +488,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ? round((($interactions + $leads) / $views) * 100, 2)
             : 0;
 
-        $channelCounts = collect();
+        $channelSignals = collect();
 
         $viewChannels = DB::table('car_views')
             ->where('company_id', $companyId)
@@ -518,23 +520,49 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             ->groupBy('channel')
             ->get();
 
-        foreach ([$viewChannels, $leadChannels, $interactionChannels] as $rows) {
-            foreach ($rows as $row) {
+        $metaSignals = DB::table('meta_audience_insights')
+            ->where('company_id', $companyId)
+            ->whereDate('period_start', '<=', $toDate)
+            ->whereDate('period_end', '>=', $fromDate)
+            ->selectRaw('
+                COALESCE(SUM(clicks), 0) as total_clicks,
+                COALESCE(SUM(reach), 0) as total_reach,
+                COALESCE(SUM(spend), 0) as total_spend
+            ')
+            ->first();
+
+        $signalSources = [
+            ['rows' => $viewChannels, 'weight' => 1],
+            ['rows' => $interactionChannels, 'weight' => 2],
+            ['rows' => $leadChannels, 'weight' => 3],
+        ];
+
+        foreach ($signalSources as $source) {
+            foreach ($source['rows'] as $row) {
                 $channel = strtolower((string) ($row->channel ?? 'direct'));
-                $channelCounts[$channel] = ($channelCounts[$channel] ?? 0) + (int) $row->total;
+                $channelSignals[$channel] = ($channelSignals[$channel] ?? 0) + ((int) $row->total * $source['weight']);
             }
         }
 
-        $totalTraffic = $channelCounts->sum();
+        $metaClicks = (int) ($metaSignals->total_clicks ?? 0);
+        $metaSpend = (float) ($metaSignals->total_spend ?? 0);
 
-        $distribution = $channelCounts
+        if ($metaClicks > 0) {
+            $channelSignals['paid'] = ($channelSignals['paid'] ?? 0) + $metaClicks;
+        } elseif ($metaSpend > 0) {
+            $channelSignals['paid'] = ($channelSignals['paid'] ?? 0) + 1;
+        }
+
+        $totalSignals = $channelSignals->sum();
+
+        $distribution = $channelSignals
             ->sortDesc()
-            ->map(function (int $total, string $channel) use ($totalTraffic) {
+            ->map(function (int $total, string $channel) use ($totalSignals) {
                 return [
                     'channel' => $channel,
                     'label' => $this->normalizeMarketingChannelLabel($channel),
                     'count' => $total,
-                    'percentage' => $totalTraffic > 0 ? round(($total / $totalTraffic) * 100, 1) : 0,
+                    'percentage' => $totalSignals > 0 ? round(($total / $totalSignals) * 100, 1) : 0,
                 ];
             })
             ->values()
@@ -545,6 +573,9 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             'leads_last_7_days' => $leads,
             'interactions_last_7_days' => $interactions,
             'interest_rate' => $interestRate,
+            'meta_clicks_last_7_days' => $metaClicks,
+            'meta_reach_last_7_days' => (int) ($metaSignals->total_reach ?? 0),
+            'meta_spend_last_7_days' => round($metaSpend, 2),
             'traffic_distribution' => $distribution,
         ];
     }
