@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
+use App\Services\CompanyIntegrationService;
 use App\Services\MetaAdsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,14 +14,14 @@ use Illuminate\Support\Facades\Log;
 class CompanyIntegrationController extends Controller
 {
     public function __construct(
-        private readonly MetaAdsService $metaAds
+        private readonly MetaAdsService $metaAds,
+        private readonly CompanyIntegrationService $companyIntegrationService
     ) {}
 
     // GET /companies/{id}/integrations
     public function index(int $companyId): JsonResponse
     {
-        $integrations = CompanyIntegration::where('company_id', $companyId)
-            ->get(['id', 'platform', 'account_id', 'status', 'last_synced_at', 'token_expires_at']);
+        $integrations = $this->companyIntegrationService->getCompanyIntegrations($companyId);
 
         return ApiResponse::success($integrations);
     }

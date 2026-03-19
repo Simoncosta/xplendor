@@ -13,16 +13,22 @@ interface Integration {
     status: "active" | "expired" | "revoked" | "error";
     last_synced_at: string | null;
     token_expires_at: string | null;
+    active_campaigns_count: number;
 }
 
 const statusBadge = (status: Integration["status"]) => {
     const map = {
-        active: { label: "Conectado", class: "badge-soft-success" },
-        expired: { label: "Token expirado", class: "badge-soft-warning" },
-        revoked: { label: "Desconectado", class: "badge-soft-secondary" },
-        error: { label: "Erro", class: "badge-soft-danger" },
+        active: { label: "OK", class: "badge-soft-success", helper: "Sincronização operacional" },
+        expired: { label: "Token expirado", class: "badge-soft-warning", helper: "Reconexão necessária" },
+        revoked: { label: "Desconectado", class: "badge-soft-secondary", helper: "Integração desligada" },
+        error: { label: "Erro", class: "badge-soft-danger", helper: "Verificar integração" },
     };
-    return map[status] ?? map.error;
+    return map[status] ?? { label: "Erro", class: "badge-soft-danger", helper: "Verificar integração" };
+};
+
+const formatMetaAccountId = (accountId: string | null | undefined) => {
+    if (!accountId) return "—";
+    return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 };
 
 const fmtDate = (d: string | null) =>
@@ -113,9 +119,14 @@ export default function IntegrationsSettings() {
                                         </div>
                                     </div>
                                     {metaIntegration && (
-                                        <span className={`badge ${statusBadge(metaIntegration.status).class} fs-11`}>
-                                            {statusBadge(metaIntegration.status).label}
-                                        </span>
+                                        <div className="text-end">
+                                            <span className={`badge ${statusBadge(metaIntegration.status).class} fs-11`}>
+                                                {statusBadge(metaIntegration.status).label}
+                                            </span>
+                                            <div className="text-muted fs-11 mt-1">
+                                                {statusBadge(metaIntegration.status).helper}
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
 
@@ -123,14 +134,21 @@ export default function IntegrationsSettings() {
                                     Puxa automaticamente spend, impressions, clicks, CPM e CTR das tuas campanhas todas as noites.
                                 </p>
 
-                                {metaIntegration?.status === "active" ? (
+                                {metaIntegration ? (
                                     <div className="vstack gap-2">
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
                                             style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
                                         >
                                             <span className="text-muted">Conta</span>
-                                            <span className="fw-medium">act_{metaIntegration.account_id}</span>
+                                            <span className="fw-medium">{formatMetaAccountId(metaIntegration.account_id)}</span>
+                                        </div>
+                                        <div
+                                            className="d-flex align-items-center justify-content-between p-2 rounded"
+                                            style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                        >
+                                            <span className="text-muted">Campanhas ativas</span>
+                                            <span className="fw-medium">{metaIntegration.active_campaigns_count ?? 0}</span>
                                         </div>
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
@@ -146,12 +164,23 @@ export default function IntegrationsSettings() {
                                             <span className="text-muted">Token expira</span>
                                             <span className="fw-medium">{fmtDate(metaIntegration.token_expires_at)}</span>
                                         </div>
-                                        <button
-                                            className="btn btn-soft-danger btn-sm mt-1"
-                                            onClick={() => handleDisconnect("meta")}
-                                        >
-                                            <i className="ri-unlink me-1" /> Desconectar
-                                        </button>
+                                        {metaIntegration.status === "active" ? (
+                                            <button
+                                                className="btn btn-soft-danger btn-sm mt-1"
+                                                onClick={() => handleDisconnect("meta")}
+                                            >
+                                                <i className="ri-unlink me-1" /> Desconectar
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="btn btn-primary w-100 mt-1"
+                                                onClick={connectMeta}
+                                                style={{ background: "#1877F2", borderColor: "#1877F2" }}
+                                            >
+                                                <i className="ri-facebook-fill me-2" />
+                                                Reconectar com Facebook
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <button
