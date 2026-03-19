@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Car;
 use App\Repositories\CarRepository;
 use App\Repositories\Contracts\CarBrandRepositoryInterface;
 use App\Repositories\Contracts\CarmineConnectionRepositoryInterface;
@@ -51,7 +52,7 @@ class CarmineConnectionService extends BaseService
                     $this->carRepository->store($carmineMapData);
                     $imported++;
                 } else {
-                    $this->carRepository->updateFromCarmine($carmine['id'], $carmineMapData);
+                    $this->carRepository->update($carmine['id'], $carmineMapData);
                     $updated++;
                 }
             } catch (\Throwable $e) {
@@ -175,8 +176,32 @@ class CarmineConnectionService extends BaseService
             "description_website_pt"  => $data['TextoGenericoAnuncios'],
             "youtube_url"             => $data['UrlVideo'],
             "company_id"              => $companyId,
-            "created_at"              => $data['DataCriacao'],
-            "updated_at"              => $data['UltimaAlteracao'],
+            "car_created_at"          => $this->parseCarmineDate($data['DataCriacao'] ?? null),
+            "updated_at"              => $this->parseCarmineDate($data['UltimaAlteracao'] ?? null),
         ];
+    }
+
+    private function parseCarmineDate(?string $value): ?Carbon
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        try {
+            return Carbon::createFromFormat('d/m/Y H:i:s', $value);
+        } catch (\Throwable $exception) {
+            try {
+                return Carbon::parse($value);
+            } catch (\Throwable $exception) {
+                Log::warning('[Carmine Import] Data inválida recebida do Carmine', [
+                    'value' => $value,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return null;
+            }
+        }
     }
 }

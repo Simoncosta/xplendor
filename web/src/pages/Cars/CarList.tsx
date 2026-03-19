@@ -234,11 +234,11 @@ const CarList = (props: any) => {
         },
         {
             header: "Criado em",
-            accessorKey: "created_at",
+            accessorKey: "car_created_at",
             enableColumnFilter: false,
             cell: (cell: any) => (
                 <>
-                    <span className="text-muted">{new Date(cell.row.original.created_at).toLocaleDateString("pt-PT", {
+                    <span className="text-muted">{new Date(cell.row.original.car_created_at ?? cell.row.original.created_at).toLocaleDateString("pt-PT", {
                         month: "long",
                         day: "numeric",
                         year: "numeric",

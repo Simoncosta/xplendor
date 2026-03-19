@@ -89,23 +89,4 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
             ? $query->paginate($perPage)
             : $query->get();
     }
-
-    public function updateFromCarmine(int $id, array $data): mixed
-    {
-        $car = $this->model->findOrFail($id);
-
-        $car->fill($data);
-
-        if (isset($data['created_at'])) {
-            $car->created_at = $data['created_at'];
-        }
-
-        if (isset($data['updated_at'])) {
-            $car->updated_at = $data['updated_at'];
-        }
-
-        $car->save();
-
-        return $car;
-    }
 }
