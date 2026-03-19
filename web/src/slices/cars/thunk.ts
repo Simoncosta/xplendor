@@ -103,7 +103,7 @@ export const getCarMarketing = createAsyncThunk(
 
 export const generateCarMarketing = createAsyncThunk(
     "car/generateCarMarketing",
-    async ({ companyId, carId }: { companyId: number, carId: number }, { rejectWithValue }) => {
+    async ({ companyId, carId }: { companyId: number, carId?: number }, { rejectWithValue }) => {
         try {
             return await generateCarMarketingApi(companyId, carId);
         } catch (error: any) {

@@ -94,7 +94,9 @@ const CarSlice = createSlice({
             })
             .addCase(generateCarMarketing.fulfilled, (state, action) => {
                 state.loadingMarketing = false;
-                state.carMarketing = action.payload.data;
+                if (action.payload.data) {
+                    state.carMarketing = action.payload.data;
+                }
             })
             .addCase(generateCarMarketing.rejected, (state, action) => {
                 state.loadingMarketing = false;

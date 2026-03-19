@@ -16,9 +16,11 @@ class CarMarketingIdeaService extends BaseService
         parent::__construct($carMarketingRepository);
     }
 
-    public function generateForCompany(int $companyId): array
+    public function generateForCompany(int $companyId, ?int $carId = null): array
     {
-        $cars = $this->carMarketingRepository->getActiveCarsForWeeklyIdeas($companyId);
+        $cars = $carId
+            ? $this->carMarketingRepository->getActiveCarForWeeklyIdeas($companyId, $carId)
+            : $this->carMarketingRepository->getActiveCarsForWeeklyIdeas($companyId);
 
         $ideas = [];
 

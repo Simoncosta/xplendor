@@ -114,7 +114,11 @@ export const showCar = (params: { companyId: number; id: number; }) => api.get(u
 export const createCar = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateCar = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const analyticsCar = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/analytics");
-export const generateCarMarketingApi = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/marketing/generate", {});
+export const generateCarMarketingApi = (companyId: number, carId?: number) =>
+    api.create(
+        url.GET_COMPANIES + `/${companyId}` + url.GET_MARKETING_IDEAS + url.POST_MARKETING_IDEAS_GENERATE,
+        carId ? { car_id: carId } : {}
+    );
 export const getCarMarketingApi = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/marketing");
 
 // CAR AI ANALISES

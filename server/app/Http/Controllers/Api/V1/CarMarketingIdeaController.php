@@ -94,7 +94,11 @@ class CarMarketingIdeaController extends Controller
 
     public function generate(Request $request, int $companyId): JsonResponse
     {
-        GenerateWeeklyMarketingIdeasJob::dispatch($companyId);
+        $validated = $request->validate([
+            'car_id' => ['nullable', 'integer'],
+        ]);
+
+        GenerateWeeklyMarketingIdeasJob::dispatch($companyId, $validated['car_id'] ?? null);
 
         return ApiResponse::success(null, 'Geração de ideias enviada para processamento.');
     }

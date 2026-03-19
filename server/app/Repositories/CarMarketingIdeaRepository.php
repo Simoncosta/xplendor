@@ -37,6 +37,31 @@ class CarMarketingIdeaRepository extends BaseRepository implements CarMarketingI
             ->values();
     }
 
+    public function getActiveCarForWeeklyIdeas(int $companyId, int $carId)
+    {
+        $since = now()->subDays(7);
+
+        $car = Car::query()
+            ->where('company_id', $companyId)
+            ->where('id', $carId)
+            ->where('status', 'active')
+            ->with(['brand:id,name', 'model:id,name'])
+            ->withCount([
+                'views as views_count' => fn($q) => $q->where('created_at', '>=', $since),
+                'leads as leads_count' => fn($q) => $q->where('created_at', '>=', $since),
+                'interactions as interactions_count' => fn($q) => $q->where('created_at', '>=', $since),
+            ])
+            ->first();
+
+        if (!$car) {
+            return collect();
+        }
+
+        $car->days_in_stock = (int) $car->created_at->diffInDays(now());
+
+        return collect([$car]);
+    }
+
     public function upsertWeeklyIdea(int $companyId, int $carId, string $contentType, array $data)
     {
         return $this->model->updateOrCreate(

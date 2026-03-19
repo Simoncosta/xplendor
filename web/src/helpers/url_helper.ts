@@ -12,6 +12,10 @@ export const GET_META_INTEGRATIONS = "/integrations/meta";
 // DASHBOARDS
 export const GET_DASHBOARD_APIS = "/dashboard";
 
+// MARKETING IDEAS
+export const GET_MARKETING_IDEAS = "/marketing-ideas";
+export const POST_MARKETING_IDEAS_GENERATE = "/generate";
+
 // LEADS
 export const GET_LEADS_APIS = "/leads";
 
