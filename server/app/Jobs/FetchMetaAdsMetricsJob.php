@@ -109,19 +109,21 @@ class FetchMetaAdsMetricsJob implements ShouldQueue
                     'period_end'   => $dateStr,
                 ],
                 [
-                    'total_sessions'     => 0,
-                    'total_leads'        => 0,
+                    'sessions'           => 0,
+                    'leads_count'        => 0,
                     'interactions_count' => 0,
-                    'total_spend'        => 0,
-                    'total_impressions'  => 0,
-                    'total_clicks'       => 0,
+                    'spend_amount'       => 0,
+                    'impressions'        => 0,
+                    'clicks'             => 0,
+                    'data_source'        => 'meta_ads',
                 ]
             );
 
             $metric->update([
-                'total_spend'       => $spend,
-                'total_impressions' => $impressions,
-                'total_clicks'      => $clicks,
+                'spend_amount' => $spend,
+                'impressions'  => $impressions,
+                'clicks'       => $clicks,
+                'data_source'  => 'meta_ads',
             ]);
 
             // Recalcular métricas derivadas (CTR, CPC, cost_per_lead)

@@ -11,6 +11,7 @@ class DashboardService extends BaseService
     public function __construct(
         protected DashboardRepositoryInterface               $dashboardRepository,
         protected CarSalePotentialScoreRepositoryInterface   $potentialScoreRepository,
+        protected CarMarketingRoiService                     $carMarketingRoiService,
     ) {}
 
     public function getDashboard(int $companyId): array
@@ -52,6 +53,7 @@ class DashboardService extends BaseService
             'high_demand_opportunity_cars'     => $highDemandOpportunityCars,
             'high_interest_low_conversion_cars' => $this->dashboardRepository->getHighInterestLowConversionCars($companyId),
             'marketing_performance'            => $this->dashboardRepository->getMarketingPerformance($companyId),
+            'marketing_roi'                    => $this->carMarketingRoiService->getCompanyMarketingRoi($companyId),
             'insights'                         => $this->dashboardRepository->getCompanyInsights($companyId),
         ];
     }

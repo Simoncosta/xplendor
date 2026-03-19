@@ -3,7 +3,7 @@ import { getAnalyticsDashboard } from "./thunk";
 
 const initialState = {
     data: {
-        analytics: [] as any[],
+        analytics: null as any,
     },
     loading: {
         list: false,

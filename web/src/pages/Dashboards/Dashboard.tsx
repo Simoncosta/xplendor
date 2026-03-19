@@ -11,6 +11,12 @@ import HighDemandOpportunityChart from './components/HighDemandOpportunityChart'
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
 import MarketingTrafficDonutChart from './components/MarketingTrafficDonutChart';
 import DashboardInsightsCard from './components/DashboardInsightsCard';
+import MarketingRoiSummaryCards from './components/MarketingRoiSummaryCards';
+import MarketingRoiChannelTable from './components/MarketingRoiChannelTable';
+import MarketingRoiInsightsCard from './components/MarketingRoiInsightsCard';
+import MarketingTopCampaignsCard from './components/MarketingTopCampaignsCard';
+import TopCarsToPromoteCard from './components/TopCarsToPromoteCard';
+import { IMarketingRoi } from './components/marketingRoi.types';
 
 const Dashboard = () => {
     const dispatch: any = useDispatch();
@@ -47,7 +53,9 @@ const Dashboard = () => {
     }, [dispatch]);
 
     if (loading) return null;
-    if (analytics.length === 0) return null;
+    if (!analytics) return null;
+
+    const marketingRoi = analytics.marketing_roi || emptyMarketingRoi;
 
     return (
         <React.Fragment>
@@ -72,10 +80,36 @@ const Dashboard = () => {
                         />
                         <DashboardInsightsCard insights={analytics.insights || []} />
                     </Row>
+                    <Row>
+                        <MarketingRoiSummaryCards marketingRoi={marketingRoi} />
+                    </Row>
+                    <Row>
+                        <MarketingRoiChannelTable channels={marketingRoi.by_channel} />
+                        <MarketingRoiInsightsCard insights={marketingRoi.insights} />
+                    </Row>
+                    <Row>
+                        <MarketingTopCampaignsCard campaigns={marketingRoi.top_campaigns} />
+                        <TopCarsToPromoteCard cars={marketingRoi.top_cars_to_promote} />
+                    </Row>
                 </Container>
             </div>
         </React.Fragment>
     );
+};
+
+const emptyMarketingRoi: IMarketingRoi = {
+    summary: {
+        total_spend: 0,
+        total_leads: 0,
+        overall_conversion_rate: 0,
+        avg_cost_per_lead: 0,
+        best_channel: "",
+        best_campaign: "",
+    },
+    by_channel: [],
+    top_campaigns: [],
+    top_cars_to_promote: [],
+    insights: [],
 };
 
 type TAnalytics = {
