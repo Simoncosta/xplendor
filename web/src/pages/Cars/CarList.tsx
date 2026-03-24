@@ -362,16 +362,6 @@ const CarList = () => {
                             <i className="ri-brain-line me-1" />
                             Ver Inteligência
                         </Link>
-
-                        <Link
-                            to={`/cars/${id}`}
-                            className="btn btn-soft-primary btn-sm"
-                            title="Editar"
-                        >
-                            <i className="ri-pencil-line me-1" />
-                            Editar
-                        </Link>
-
                         <Link
                             to={`/cars/${id}/marketing`}
                             className="btn btn-soft-warning btn-sm"
@@ -379,6 +369,14 @@ const CarList = () => {
                         >
                             <i className="ri-megaphone-line me-1" />
                             Marketing
+                        </Link>
+                        <Link
+                            to={`/cars/${id}`}
+                            className="btn btn-soft-primary btn-sm"
+                            title="Editar"
+                        >
+                            <i className="ri-pencil-line me-1" />
+                            Editar
                         </Link>
                     </div>
                 );
