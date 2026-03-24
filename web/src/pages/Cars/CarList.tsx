@@ -2,16 +2,12 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 
 import {
     Container,
-    UncontrolledDropdown,
-    DropdownToggle,
-    DropdownItem,
-    DropdownMenu,
     Nav,
     NavItem,
-    NavLink,
     Row,
     Card,
     CardHeader,
+    CardBody,
     Col,
     Label,
 } from "reactstrap";
@@ -34,6 +30,62 @@ import { showCarmine, syncCarmine } from "slices/thunks";
 import { getCarsPaginate } from "slices/cars/thunk";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { getCarModels } from "slices/car-models/thunk";
+
+const tabOptions = [
+    { key: "active", label: "Ativos" },
+    { key: "sold", label: "Vendidos" },
+    { key: "available_soon", label: "Disponível Brevemente" },
+    { key: "draft", label: "Em Rascunho" },
+];
+
+const getMetricCount = (items: any) => (Array.isArray(items) ? items.length : Number(items ?? 0));
+
+const getAttentionBadge = (car: any) => {
+    const views = getMetricCount(car.views);
+    const leads = getMetricCount(car.leads);
+
+    if (views > 500 && leads === 0) {
+        return {
+            label: "Sem conversao",
+            className: "bg-warning-subtle text-warning",
+            icon: "ri-error-warning-line",
+        };
+    }
+
+    if (leads > 2) {
+        return {
+            label: "Bom desempenho",
+            className: "bg-success-subtle text-success",
+            icon: "ri-checkbox-circle-line",
+        };
+    }
+
+    if (views < 50) {
+        return {
+            label: "Baixa visibilidade",
+            className: "bg-secondary-subtle text-secondary",
+            icon: "ri-radar-line",
+        };
+    }
+
+    return {
+        label: "Em observacao",
+        className: "bg-info-subtle text-info",
+        icon: "ri-focus-3-line",
+    };
+};
+
+const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-PT", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value);
+
+const formatConversionRate = (views: number, leads: number) => {
+    if (!views) return "0%";
+    const rate = (leads / views) * 100;
+    return `${rate.toFixed(rate >= 1 ? 1 : 2)}%`;
+};
 
 const selectCarmineState = (state: any) => state.Carmine;
 const selectCarBrandState = (state: any) => state.CarBrand;
@@ -73,12 +125,12 @@ const selectCarListViewModel = createSelector(
     })
 );
 
-const CarList = (props: any) => {
+const CarList = () => {
     const dispatch: any = useDispatch();
 
-    const { carmine, loading: loadingCarmine } = useSelector(selectCarmineViewModel);
-    const { brands, loading: loadingCarBrands } = useSelector(selectCarBrandViewModel);
-    const { models, loading: loadingCarModels } = useSelector(selectCarModelViewModel);
+    const { carmine } = useSelector(selectCarmineViewModel);
+    const { brands } = useSelector(selectCarBrandViewModel);
+    const { models } = useSelector(selectCarModelViewModel);
     const { cars, meta, loading } = useSelector(selectCarListViewModel);
 
     // State
@@ -116,7 +168,7 @@ const CarList = (props: any) => {
         });
     }, []);
 
-    const toggleTab = (tab: any, type: any) => {
+    const toggleTab = (tab: any) => {
         if (activeTab !== tab) {
             setActiveTab(tab);
         }
@@ -186,53 +238,60 @@ const CarList = (props: any) => {
             header: "Carro",
             accessorKey: "brand",
             enableColumnFilter: false,
-            cell: (cell: any) => (
-                <>
+            cell: (cell: any) => {
+                const car = cell.row.original;
+                const badge = getAttentionBadge(car);
+
+                return (
                     <div className="d-flex align-items-center">
-                        {cell.row.original.images.length > 0 && (
+                        {car.images.length > 0 && (
                             <div className="flex-shrink-0 me-3">
                                 <img
-                                    src={process.env.REACT_APP_PUBLIC_URL + cell.row.original.images[0].image}
+                                    src={process.env.REACT_APP_PUBLIC_URL + car.images[0].image}
                                     alt=""
-                                    className="img-thumbnail"
+                                    className="img-thumbnail border-0"
                                     width={150}
+                                    style={{
+                                        borderRadius: "1rem",
+                                        objectFit: "cover",
+                                        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
+                                    }}
                                 />
                             </div>
                         )}
                         <div className="flex-grow-1">
-                            <h5 className="fs-14 mb-1">
-                                <Link
-                                    to="/apps-ecommerce-product-details"
-                                    className="text-body"
-                                >
-                                    {cell.row.original.brand.name}
-                                </Link>
-                            </h5>
-                            <p className="text-muted mb-0">
-                                <span className="fw-medium">
-                                    {cell.row.original.model.name}
+                            <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
+                                <h5 className="fs-14 mb-0 fw-semibold text-body">
+                                    {car.brand.name} {car.model.name}
+                                </h5>
+                                <span className={`badge rounded-pill px-3 py-2 fs-11 ${badge.className}`}>
+                                    <i className={`${badge.icon} me-1`} />
+                                    {badge.label}
                                 </span>
+                            </div>
+                            <p className="text-muted mb-1 fs-13">
+                                <span className="fw-medium">{car.license_plate}</span>
                             </p>
-                            <p className="text-muted mb-0">
-                                <span className="fw-medium">
-                                    {cell.row.original.license_plate}
-                                </span>
+                            <p className="text-muted mb-0 fs-12">
+                                Publicado em {new Date(car.car_created_at ?? car.created_at).toLocaleDateString("pt-PT", {
+                                    month: "long",
+                                    day: "numeric",
+                                    year: "numeric",
+                                })}
+                                {car.is_resume ? " • Retoma" : ""}
                             </p>
                         </div>
                     </div>
-                </>
-            ),
+                );
+            },
         },
         {
             header: "Preço",
             accessorKey: "price_gross",
             enableColumnFilter: false,
             cell: (cell: any) => (
-                <span>
-                    €{new Intl.NumberFormat("pt-PT", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    }).format(cell.getValue())}
+                <span className="fw-semibold text-body">
+                    €{formatCurrency(cell.getValue())}
                 </span>
             )
         },
@@ -241,39 +300,52 @@ const CarList = (props: any) => {
             accessorKey: "views",
             enableColumnFilter: false,
             cell: (cell: any) => (
-                <span className="text-muted">{cell.row.original.views.length > 0 ? cell.row.original.views.length : 0}</span>
+                <div>
+                    <div className="fw-semibold text-body">{getMetricCount(cell.row.original.views)}</div>
+                    <div className="text-muted fs-12">visibilidade</div>
+                </div>
             )
         },
         {
             header: "Leads",
             accessorKey: "leads",
             enableColumnFilter: false,
-            cell: (cell: any) => (
-                <span className="text-muted">{cell.row.original.leads.length > 0 ? cell.row.original.leads.length : 0}</span>
-            )
+            cell: (cell: any) => {
+                const leads = getMetricCount(cell.row.original.leads);
+                return (
+                    <div>
+                        <div className={`fw-semibold ${leads > 0 ? "text-success" : "text-body"}`}>{leads}</div>
+                        <div className="text-muted fs-12">oportunidades</div>
+                    </div>
+                );
+            },
         },
         {
             header: "Interações",
             accessorKey: "interactions",
             enableColumnFilter: false,
             cell: (cell: any) => (
-                <span className="text-muted">{cell.row.original.interactions.length > 0 ? cell.row.original.interactions.length : 0}</span>
+                <div>
+                    <div className="fw-semibold text-body">{getMetricCount(cell.row.original.interactions)}</div>
+                    <div className="text-muted fs-12">interações</div>
+                </div>
             )
         },
         {
-            header: "Criado em",
-            accessorKey: "car_created_at",
+            header: "Conversão",
+            accessorKey: "conversion_rate",
             enableColumnFilter: false,
-            cell: (cell: any) => (
-                <>
-                    <span className="text-muted">{new Date(cell.row.original.car_created_at ?? cell.row.original.created_at).toLocaleDateString("pt-PT", {
-                        month: "long",
-                        day: "numeric",
-                        year: "numeric",
-                    })}</span>
-                    <span>{cell.row.original.is_resume ? " (Retoma)" : ""}</span>
-                </>
-            )
+            cell: (cell: any) => {
+                const views = getMetricCount(cell.row.original.views);
+                const leads = getMetricCount(cell.row.original.leads);
+
+                return (
+                    <div>
+                        <div className="fw-semibold text-body">{formatConversionRate(views, leads)}</div>
+                        <div className="text-muted fs-12">leads / views</div>
+                    </div>
+                );
+            },
         },
         {
             header: "Ação",
@@ -287,15 +359,8 @@ const CarList = (props: any) => {
                             className="btn btn-soft-info btn-sm"
                             title="Inteligência"
                         >
-                            <i className="ri-brain-line" />
-                        </Link>
-
-                        <Link
-                            to={`/cars/${id}/marketing`}
-                            className="btn btn-soft-warning btn-sm"
-                            title="Marketing"
-                        >
-                            <i className="ri-megaphone-line" />
+                            <i className="ri-brain-line me-1" />
+                            Ver Inteligência
                         </Link>
 
                         <Link
@@ -303,7 +368,17 @@ const CarList = (props: any) => {
                             className="btn btn-soft-primary btn-sm"
                             title="Editar"
                         >
-                            <i className="ri-pencil-line" />
+                            <i className="ri-pencil-line me-1" />
+                            Editar
+                        </Link>
+
+                        <Link
+                            to={`/cars/${id}/marketing`}
+                            className="btn btn-soft-warning btn-sm"
+                            title="Marketing"
+                        >
+                            <i className="ri-megaphone-line me-1" />
+                            Marketing
                         </Link>
                     </div>
                 );
@@ -319,31 +394,78 @@ const CarList = (props: any) => {
         <div className="page-content">
             <ToastContainer closeButton={false} limit={1} />
             <Container fluid>
+                <Row className="mb-3">
+                    <Col>
+                        <div className="d-flex align-items-start justify-content-between flex-wrap gap-3">
+                            <div>
+                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                    Painel Comercial
+                                </p>
+                                <h3 className="mb-1 fw-semibold">Carros</h3>
+                            </div>
+                            <div className="d-flex gap-2 flex-wrap">
+                                {carmine && carmine.id && (
+                                    <button onClick={onClickSyncCarmine} className="btn btn-soft-danger">
+                                        <img src={easyDataIcon} alt="EasyData" width={10} className="me-1" />
+                                        Sincronizar
+                                    </button>
+                                )}
+                                <Link to="/cars/create" className="btn btn-primary">
+                                    <i className="ri-add-line align-bottom me-1"></i>
+                                    Nova viatura
+                                </Link>
+                            </div>
+                        </div>
+                    </Col>
+                </Row>
+
                 <Row>
                     <Col xl={3} lg={4}>
-                        <Card>
-                            <CardHeader >
-                                <div className="d-flex mb-3">
+                        <Card
+                            className="border-0"
+                            style={{
+                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                            }}
+                        >
+                            <CardHeader
+                                className="border-bottom-0"
+                                style={{
+                                    padding: "1.25rem 1.25rem 0 1.25rem",
+                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                }}
+                            >
+                                <div className="d-flex mb-3 align-items-start justify-content-between gap-2">
                                     <div className="flex-grow-1">
-                                        <h5 className="fs-16">Filtros</h5>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Filtros
+                                        </p>
+                                        <h5 className="fs-16 mb-1 fw-semibold">Refinar listagem</h5>
+                                        <p className="text-muted fs-13 mb-0">Encontra rapidamente as viaturas que pedem ação.</p>
                                     </div>
                                     <div className="flex-shrink-0">
-                                        <a href="#" onClick={() => {
-                                            setCarBrandIds([]);
-                                            setCarModelIds([]);
-                                            setMincost(undefined);
-                                            setMaxcost(undefined);
-                                            setSort({
-                                                field: null,
-                                                direction: null,
-                                            })
-                                        }} className="text-decoration-underline">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setCarBrandIds([]);
+                                                setCarModelIds([]);
+                                                setMincost(undefined);
+                                                setMaxcost(undefined);
+                                                setSort({
+                                                    field: null,
+                                                    direction: null,
+                                                });
+                                            }}
+                                            className="btn btn-link text-decoration-none p-0 fs-13"
+                                        >
                                             Limpar todos
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
+                            </CardHeader>
+                            <CardBody className="pt-2">
                                 <div className="filter-choices-input mb-3">
-                                    <Label for="car_brand_id">Marca</Label>
+                                    <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
                                     <Select
                                         placeholder="Selecione as marcas"
                                         options={brands}
@@ -357,7 +479,7 @@ const CarList = (props: any) => {
                                     />
                                 </div>
                                 <div className="filter-choices-input mb-4">
-                                    <Label for="car_model_id">Modelo</Label>
+                                    <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
                                     <Select
                                         placeholder="Selecione os modelos"
                                         options={models}
@@ -372,7 +494,7 @@ const CarList = (props: any) => {
                                     />
                                 </div>
                                 <div className="filter-choices-input">
-                                    <Label for="car_model_id">Preço</Label>
+                                    <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
                                     <div className="formCost d-flex gap-2 align-items-center">
                                         <input
                                             className="form-control form-control-sm"
@@ -393,126 +515,97 @@ const CarList = (props: any) => {
                                         />
                                     </div>
                                 </div>
-                            </CardHeader>
+                            </CardBody>
                         </Card>
                     </Col>
 
                     <Col xl={9} lg={8}>
-                        <div>
-                            <Card>
-                                <CardHeader className="border-0">
-                                    <div className="d-flex align-items-center">
-                                        <h5 className="card-title mb-0 flex-grow-1">Carros</h5>
-                                        <div className="flex-shrink-0">
-                                            <div className="d-flex gap-2 flex-wrap">
-                                                {carmine && carmine.id && (
-                                                    <button onClick={onClickSyncCarmine} className="btn btn-outline-danger">
-                                                        <img src={easyDataIcon} alt="EasyData" width={10} />
-                                                    </button>
+                        <Card
+                            className="border-0 overflow-hidden"
+                            style={{
+                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                            }}
+                        >
+                            <CardHeader
+                                className="border-bottom-0"
+                                style={{
+                                    padding: "1rem 1rem 0 1rem",
+                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                }}
+                            >
+                                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3 px-2">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Gestão de Stock
+                                        </p>
+                                        <h5 className="mb-1 fw-semibold">Viaturas acompanhadas por estado e desempenho</h5>
+                                        <p className="text-muted fs-13 mb-0">
+                                            Prioriza rapidamente os carros com mais procura, menos conversão ou menor visibilidade.
+                                        </p>
+                                    </div>
+                                    <span className="badge bg-light text-muted fs-12 px-3 py-2">
+                                        {meta?.total ?? 0} viatura{meta?.total === 1 ? "" : "s"}
+                                    </span>
+                                </div>
+                                <Nav
+                                    className="nav-tabs-custom card-header-tabs border-bottom-0 rounded-3 p-2"
+                                    role="tablist"
+                                    style={{
+                                        background: "#f8f9fa",
+                                        boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
+                                        gap: "0.35rem",
+                                    }}
+                                >
+                                    {tabOptions.map((tab) => (
+                                        <NavItem key={tab.key} className="flex-fill">
+                                            <button
+                                                type="button"
+                                                className={classnames("nav-link w-100")}
+                                                onClick={() => {
+                                                    toggleTab(tab.key);
+                                                }}
+                                                style={{
+                                                    border: activeTab === tab.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
+                                                    borderBottom: "none",
+                                                    borderRadius: "0.75rem",
+                                                    background: activeTab === tab.key ? "#ffffff" : "transparent",
+                                                    color: activeTab === tab.key ? "#405189" : "#878a99",
+                                                    fontWeight: activeTab === tab.key ? 600 : 400,
+                                                    padding: "14px 16px",
+                                                    fontSize: "13px",
+                                                    boxShadow: activeTab === tab.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
+                                                    transition: "all 0.2s ease",
+                                                }}
+                                            >
+                                                {tab.label}
+                                                {activeTab === tab.key && (
+                                                    <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-2">
+                                                        {meta?.total}
+                                                    </span>
                                                 )}
-                                                <Link to="/cars/create" className="btn btn-outline-success">
-                                                    <i className="ri-add-line align-bottom"></i>
-                                                </Link>
-                                            </div>
+                                            </button>
+                                        </NavItem>
+                                    ))}
+                                </Nav>
+                            </CardHeader>
+                            <CardBody className="pt-4">
+                                <div className="mb-3 px-1">
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                        <div>
+                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                                Prioridade Comercial
+                                            </p>
+                                            <h6 className="mb-0 fw-semibold">Que carros precisam de atenção agora?</h6>
+                                        </div>
+                                        <div className="d-flex gap-2 flex-wrap">
+                                            <span className="badge bg-warning-subtle text-warning px-3 py-2 fs-12">Sem conversao</span>
+                                            <span className="badge bg-success-subtle text-success px-3 py-2 fs-12">Bom desempenho</span>
+                                            <span className="badge bg-secondary-subtle text-secondary px-3 py-2 fs-12">Baixa visibilidade</span>
                                         </div>
                                     </div>
-                                </CardHeader>
-                                <div className="card-header border-0">
-                                    <Row className=" align-items-center">
-                                        <Col>
-                                            <Nav
-                                                className="nav-tabs-custom card-header-tabs border-bottom-0"
-                                                role="tablist"
-                                            >
-                                                <NavItem>
-                                                    <NavLink
-                                                        className={classnames(
-                                                            { active: activeTab === "active" },
-                                                            "fw-semibold"
-                                                        )}
-                                                        onClick={() => {
-                                                            toggleTab("active", "active");
-                                                        }}
-                                                        href="#"
-                                                    >
-                                                        Ativos{" "}
-                                                        {
-                                                            activeTab === 'active' && (
-                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                                    {meta?.total}
-                                                                </span>
-                                                            )
-                                                        }
-                                                    </NavLink>
-                                                </NavItem>
-                                                <NavItem>
-                                                    <NavLink
-                                                        className={classnames(
-                                                            { active: activeTab === "sold" },
-                                                            "fw-semibold"
-                                                        )}
-                                                        onClick={() => {
-                                                            toggleTab("sold", "sold");
-                                                        }}
-                                                        href="#"
-                                                    >
-                                                        Vendidos{" "}
-                                                        {
-                                                            activeTab === 'sold' && (
-                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                                    {meta?.total}
-                                                                </span>
-                                                            )
-                                                        }
-                                                    </NavLink>
-                                                </NavItem>
-                                                <NavItem>
-                                                    <NavLink
-                                                        className={classnames(
-                                                            { active: activeTab === "available_soon" },
-                                                            "fw-semibold"
-                                                        )}
-                                                        onClick={() => {
-                                                            toggleTab("available_soon", "available_soon");
-                                                        }}
-                                                        href="#"
-                                                    >
-                                                        Disponível Brevemente{" "}
-                                                        {
-                                                            activeTab === 'available_soon' && (
-                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                                    {meta?.total}
-                                                                </span>
-                                                            )
-                                                        }
-                                                    </NavLink>
-                                                </NavItem>
-                                                <NavItem>
-                                                    <NavLink
-                                                        className={classnames(
-                                                            { active: activeTab === "draft" },
-                                                            "fw-semibold"
-                                                        )}
-                                                        onClick={() => {
-                                                            toggleTab("draft", "draft");
-                                                        }}
-                                                        href="#"
-                                                    >
-                                                        Em Rascunho{" "}
-                                                        {
-                                                            activeTab === 'draft' && (
-                                                                <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-1">
-                                                                    {meta?.total}
-                                                                </span>
-                                                            )
-                                                        }
-                                                    </NavLink>
-                                                </NavItem>
-                                            </Nav>
-                                        </Col>
-                                    </Row>
                                 </div>
-                                <div className="card-body pt-2">
+                                <div className="pt-1">
                                     <XTanStackTable
                                         columns={columns}
                                         data={cars || []}
@@ -527,8 +620,8 @@ const CarList = (props: any) => {
                                         onSortingChange={handleSortChange}
                                     />
                                 </div>
-                            </Card>
-                        </div>
+                            </CardBody>
+                        </Card>
                     </Col>
                 </Row>
             </Container>

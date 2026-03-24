@@ -8,4 +8,5 @@ interface CarMarketingIdeaRepositoryInterface extends BaseRepositoryInterface
     public function getActiveCarForWeeklyIdeas(int $companyId, int $carId);
     public function upsertWeeklyIdea(int $companyId, int $carId, string $contentType, array $data);
     public function getWeeklyIdeas(int $companyId);
+    public function getIdeasForCar(int $companyId, int $carId);
 }

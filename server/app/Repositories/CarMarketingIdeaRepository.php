@@ -83,4 +83,14 @@ class CarMarketingIdeaRepository extends BaseRepository implements CarMarketingI
             ->latest()
             ->get();
     }
+
+    public function getIdeasForCar(int $companyId, int $carId)
+    {
+        return $this->model->query()
+            ->where('company_id', $companyId)
+            ->where('car_id', $carId)
+            ->orderByDesc('week_ref')
+            ->orderByDesc('id')
+            ->get();
+    }
 }

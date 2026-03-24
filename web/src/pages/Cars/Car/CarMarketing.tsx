@@ -65,14 +65,20 @@ export default function CarMarketing() {
                 {/* ── Header ──────────────────────────────────────────── */}
                 <Row className="mb-3">
                     <Col>
-                        <Card className="mb-0">
-                            <CardBody className="py-3">
-                                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <Card
+                            className="mb-0 border-0"
+                            style={{
+                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                            }}
+                        >
+                            <CardBody className="py-3 py-lg-4 px-3 px-lg-4">
+                                <div className="d-flex align-items-start justify-content-between flex-wrap gap-3">
                                     <div>
-                                        <p className="text-muted text-uppercase fw-semibold mb-1" style={{ fontSize: 11, letterSpacing: ".05em" }}>
+                                        <p className="text-muted text-uppercase fw-semibold mb-2" style={{ fontSize: 11, letterSpacing: ".08em" }}>
                                             Semana de {weekLabel} — Briefing de Conteúdo
                                         </p>
-                                        <h4 className="mb-2 fw-semibold">
+                                        <h4 className="mb-3 fw-semibold">
                                             {carMarketing?.brand?.name} {carMarketing?.model?.name}
                                             {carMarketing?.version && (
                                                 <span className="badge bg-primary-subtle text-primary ms-2 fw-medium" style={{ fontSize: "12px", verticalAlign: "middle" }}>
@@ -82,23 +88,28 @@ export default function CarMarketing() {
                                         </h4>
 
                                         {/* Métricas de performance */}
-                                        <div className="hstack gap-2 flex-wrap">
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
                                             {[
                                                 { icon: "ri-eye-line", label: "Views", value: carMarketing.views_count ?? 0, color: "primary" },
                                                 { icon: "ri-user-follow-line", label: "Leads", value: carMarketing.leads_count ?? 0, color: carMarketing.leads_count > 0 ? "success" : "secondary" },
                                                 { icon: "ri-time-line", label: "dias em stock", value: carMarketing.days_in_stock ?? 0, color: "secondary" },
                                             ].map((chip, idx) => (
-                                                <span
+                                                <div
                                                     key={idx}
-                                                    className="d-inline-flex align-items-center gap-1 badge bg-light text-body rounded-pill px-3 py-2 fs-12"
+                                                    className="d-inline-flex align-items-center gap-2 rounded-pill px-3 py-2"
+                                                    style={{
+                                                        background: "rgba(248,249,250,0.95)",
+                                                        border: "1px solid rgba(233,235,236,0.95)",
+                                                        minHeight: 38,
+                                                    }}
                                                 >
-                                                    <i className={`${chip.icon} text-${chip.color} fs-13`} />
-                                                    <strong>{chip.value}</strong>
-                                                    <span className="text-muted">{chip.label}</span>
-                                                </span>
+                                                    <i className={`${chip.icon} text-${chip.color} fs-14`} />
+                                                    <span className="fw-semibold text-body fs-13">{chip.value}</span>
+                                                    <span className="text-muted fs-12">{chip.label}</span>
+                                                </div>
                                             ))}
                                             {ips && (
-                                                <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill px-3 py-2 fs-12`}>
+                                                <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill px-3 py-2 fs-12`} style={{ minHeight: 38, display: "inline-flex", alignItems: "center" }}>
                                                     <i className="ri-award-line me-1" />
                                                     IPS {ips.score}/100
                                                 </span>
@@ -106,7 +117,7 @@ export default function CarMarketing() {
                                         </div>
                                     </div>
 
-                                    <div className="d-flex gap-2">
+                                    <div className="d-flex gap-2 flex-wrap">
                                         <Link to={`/cars/${carMarketing?.id}/analytics`} className="btn btn-soft-secondary btn-sm">
                                             <i className="ri-brain-line me-1" /> Análises
                                         </Link>
@@ -121,19 +132,33 @@ export default function CarMarketing() {
                 </Row>
 
                 {ideas.length > 0 ? (
-                    <TabMarketing ideas={ideas} />
+                    <TabMarketing ideas={ideas} onGenerateIdeas={handleGenerateIdeas} />
                 ) : (
                     <Row>
                         <Col>
-                            <Card className="mb-0">
-                                <CardBody className="py-5 text-center">
-                                    <i className="ri-lightbulb-flash-line fs-1 text-muted d-block mb-3" />
-                                    <h5 className="mb-2">Ainda não existem ideias para esta viatura</h5>
-                                    <p className="text-muted mb-4">
-                                        Gera ideias de marketing para este carro sem alterar o fluxo semanal da empresa.
+                            <Card
+                                className="mb-0 border-0"
+                                style={{
+                                    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                    background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                                }}
+                            >
+                                <CardBody className="py-5 text-center px-4">
+                                    <div
+                                        className="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
+                                        style={{ width: 68, height: 68, background: "rgba(64,81,137,0.08)" }}
+                                    >
+                                        <i className="ri-lightbulb-flash-line fs-1 text-primary" />
+                                    </div>
+                                    <p className="text-muted text-uppercase fw-semibold mb-2" style={{ fontSize: 11, letterSpacing: ".08em" }}>
+                                        Inteligência de Marketing
+                                    </p>
+                                    <h5 className="mb-2 fw-semibold">Ainda não existem ideias para esta viatura</h5>
+                                    <p className="text-muted mb-4 fs-13 mx-auto" style={{ maxWidth: 540 }}>
+                                        Gera um primeiro briefing criativo para este carro e passa a ter sugestões prontas para formatos, hooks, copy e CTA.
                                     </p>
                                     <button
-                                        className="btn btn-primary"
+                                        className="btn btn-primary btn-lg"
                                         onClick={handleGenerateIdeas}
                                         disabled={loading}
                                     >

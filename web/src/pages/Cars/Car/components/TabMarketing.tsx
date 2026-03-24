@@ -38,37 +38,61 @@ export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
     return (
         <Row className="g-3">
             <Col xs={12}>
-                <Card className="mb-0">
-                    <CardHeader className="p-0 border-bottom-0">
-                        <div className="px-3 pt-3 pb-2 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <Card
+                    className="mb-0 border-0 overflow-hidden"
+                    style={{
+                        boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                        background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                    }}
+                >
+                    <CardHeader
+                        className="border-bottom-0"
+                        style={{
+                            padding: "1rem 1rem 0 1rem",
+                            background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                        }}
+                    >
+                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3 px-2">
                             <div>
-                                <h6 className="fs-13 fw-semibold mb-1">
+                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                    Briefing Editorial
+                                </p>
+                                <h5 className="mb-1 fw-semibold">
                                     <i className="ri-megaphone-line me-2 text-primary" />
                                     Inteligência de Marketing
-                                </h6>
+                                </h5>
                                 <p className="fs-12 text-muted mb-0">Ideias de conteúdo organizadas por intenção para este carro.</p>
                             </div>
-                            <span className="badge badge-soft-primary fs-12">
+                            <span className="badge bg-light text-muted fs-12 px-3 py-2">
                                 {totalIdeas} ideia{totalIdeas !== 1 ? "s" : ""} gerada{totalIdeas !== 1 ? "s" : ""}
                             </span>
                         </div>
 
-                        <ul className="nav nav-tabs nav-tabs-custom nav-justified" style={{ borderBottom: "1px solid #e9ebec" }}>
+                        <ul
+                            className="nav nav-tabs nav-tabs-custom nav-justified rounded-3 p-2 mb-0"
+                            style={{
+                                borderBottom: "none",
+                                background: "#f8f9fa",
+                                boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
+                                gap: "0.35rem",
+                            }}
+                        >
                             {tabs.map((tab) => (
                                 <li className="nav-item" key={tab.key}>
                                     <button
-                                        className={`nav-link w-100 ${activeTab === tab.key ? "active" : ""}`}
+                                        className="nav-link w-100"
                                         onClick={() => setActiveTab(tab.key)}
                                         style={{
-                                            border: "none",
-                                            borderBottom: activeTab === tab.key ? "2px solid #405189" : "2px solid transparent",
-                                            borderRadius: 0,
-                                            background: "transparent",
+                                            border: activeTab === tab.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
+                                            borderBottom: "none",
+                                            borderRadius: "0.75rem",
+                                            background: activeTab === tab.key ? "#ffffff" : "transparent",
                                             color: activeTab === tab.key ? "#405189" : "#878a99",
                                             fontWeight: activeTab === tab.key ? 600 : 400,
-                                            padding: "12px 16px",
+                                            padding: "14px 16px",
                                             fontSize: "13px",
-                                            transition: "all .2s",
+                                            boxShadow: activeTab === tab.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
+                                            transition: "all 0.2s ease",
                                             cursor: "pointer",
                                         }}
                                     >
@@ -80,9 +104,9 @@ export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
                         </ul>
                     </CardHeader>
 
-                    <CardBody>
+                    <CardBody style={{ padding: "1.5rem" }}>
                         {/* Sub-header da tab activa */}
-                        <div className="mb-3 p-3 rounded" style={{ background: "#f8f9fa", border: "1px dashed #e9ebec" }}>
+                        <div className="mb-4 p-3 rounded-3" style={{ background: "#f8f9fa", border: "1px dashed #e9ebec" }}>
                             <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
                                 <div>
                                     <p className="fw-semibold text-muted text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: "0.5px" }}>
@@ -93,12 +117,12 @@ export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
                                 </div>
                                 {/* Badge accionável em vez de "Ideia disponível" */}
                                 {ideasByType[activeTab] ? (
-                                    <span className="badge badge-soft-success fs-11 d-flex align-items-center gap-1">
+                                    <span className="badge badge-soft-success fs-11 d-flex align-items-center gap-1 px-3 py-2">
                                         <i className="ri-check-line" />
                                         Pronto a usar
                                     </span>
                                 ) : (
-                                    <span className="badge badge-soft-secondary fs-11">
+                                    <span className="badge badge-soft-secondary fs-11 px-3 py-2">
                                         Sem ideia
                                     </span>
                                 )}

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Repositories\Contracts\CarRepositoryInterface;
 use App\Repositories\Contracts\CarInteractionRepositoryInterface;
 use App\Repositories\Contracts\CarLeadRepositoryInterface;
 use App\Repositories\Contracts\CarPerformanceMetricRepositoryInterface;
@@ -12,11 +13,13 @@ use App\Repositories\Contracts\CarViewRepositoryInterface;
 class CarAnalyticsService
 {
     public function __construct(
+        protected CarRepositoryInterface                      $carRepository,
         protected CarViewRepositoryInterface                  $viewRepository,
         protected CarInteractionRepositoryInterface           $interactionRepository,
         protected CarLeadRepositoryInterface                  $leadRepository,
         protected CarPerformanceMetricRepositoryInterface     $performanceRepository,
         protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
+        protected SmartAdsRecommendationService               $smartAdsRecommendationService,
     ) {}
 
     public function show(Car $car): array
@@ -38,6 +41,9 @@ class CarAnalyticsService
         // ── Índice de Potencial de Venda (XPLDR-6) ────────────────────────────
         $latestScore   = $this->potentialScoreRepository->getLatest($car->id, $car->company_id);
         $scoreHistory  = $this->potentialScoreRepository->getHistory($car->id, $car->company_id, 90);
+        $aiAnalysis = $this->carRepository->getAiAnalysisData($car->id, $car->company_id);
+        $smartAdsRecommendation = $this->resolveRecommendation($car, $aiAnalysis);
+        $recommendedCreative = $this->resolveRecommendedCreative($car, $smartAdsRecommendation);
 
         return [
             'car' => [
@@ -83,10 +89,13 @@ class CarAnalyticsService
             'timeline'               => $this->buildTimeline($car),
 
             // ── Novos blocos ──────────────────────────────────────────────────
+            'ai_analysis' => $aiAnalysis,
             'performance' => [
                 'totals'     => $performanceSummary,
                 'by_channel' => $performanceByChannel,
             ],
+            'smart_ads_recommendation' => $smartAdsRecommendation,
+            'recommended_creative' => $recommendedCreative,
             'potential_score' => $latestScore ? [
                 'score'            => $latestScore->score,
                 'classification'   => $latestScore->classification,
@@ -101,6 +110,97 @@ class CarAnalyticsService
                     'triggered_by'   => $h->triggered_by,
                 ])->values(),
             ] : null,
+        ];
+    }
+
+    protected function resolveRecommendation(Car $car, ?array $aiAnalysis = null): ?array
+    {
+        $smartAds = $this->smartAdsRecommendationService->generate($car);
+
+        if ($smartAds) {
+            return [
+                ...$smartAds,
+                'platform' => $aiAnalysis['recommended_channel'] ?? null,
+            ];
+        }
+
+        if (!$aiAnalysis) {
+            return null;
+        }
+
+        $urgencyLevel = strtolower((string) ($aiAnalysis['urgency_level'] ?? ''));
+        $action = match (true) {
+            in_array($urgencyLevel, ['imediata', 'alta'], true) => 'test_campaign',
+            ($aiAnalysis['recommended_channel'] ?? null) === null => 'do_not_invest',
+            default => 'review_campaign',
+        };
+
+        $probability30d = (int) ($aiAnalysis['probability_30d'] ?? 0);
+        $expectedLeads = $probability30d >= 70
+            ? '6 a 10 leads'
+            : ($probability30d >= 40 ? '3 a 6 leads' : '1 a 3 leads');
+
+        return [
+            'action' => $action,
+            'platform' => $aiAnalysis['recommended_channel'] ?? null,
+            'total_budget' => 0,
+            'daily_budget' => 0,
+            'duration_days' => 0,
+            'confidence_score' => max(45, min(78, $probability30d)),
+            'expected_leads' => $expectedLeads,
+            'title' => 'Decisão suportada pela análise de inteligência',
+            'summary' => $aiAnalysis['recommended_action']
+                ?? 'A recomendação foi construída com base na análise estratégica atual desta viatura.',
+            'reason' => $aiAnalysis['recommended_channel_reason']
+                ?? ($aiAnalysis['score_justification'] ?? 'A análise identificou sinais relevantes para orientar a decisão desta viatura.'),
+            'next_step' => $aiAnalysis['recommended_action']
+                ?? 'Rever o contexto da viatura e decidir o próximo passo operacional.',
+            'creative_direction' => null,
+            'cta_primary_label' => 'Ver detalhe',
+            'cta_secondary_label' => 'Analisar contexto',
+            'source' => 'ai_analysis',
+            'is_fallback' => true,
+        ];
+    }
+
+    protected function resolveRecommendedCreative(Car $car, ?array $smartAdsRecommendation): ?array
+    {
+        if (!$smartAdsRecommendation || ($smartAdsRecommendation['action'] ?? null) === 'do_not_invest') {
+            return null;
+        }
+
+        $ideas = $this->carRepository->getMarketingIdeasData($car->id, $car->company_id);
+        if ($ideas->isEmpty()) {
+            return null;
+        }
+
+        $preferredTypes = match ($smartAdsRecommendation['action']) {
+            'scale_ads' => ['sale', 'engagement'],
+            'test_campaign' => ['engagement', 'sale'],
+            'review_campaign' => ['engagement', 'authority'],
+            default => [],
+        };
+
+        foreach ($preferredTypes as $contentType) {
+            $idea = $ideas->firstWhere('content_type', $contentType);
+            if ($idea) {
+                return $this->mapCreative($idea);
+            }
+        }
+
+        $fallbackIdea = $ideas->first();
+        return $fallbackIdea ? $this->mapCreative($fallbackIdea) : null;
+    }
+
+    protected function mapCreative($idea): array
+    {
+        return [
+            'content_type' => $idea->content_type,
+            'title' => $idea->title,
+            'hook' => $idea->hooks[0] ?? null,
+            'caption' => $idea->caption,
+            'cta' => $idea->cta,
+            'format' => $idea->formats[0] ?? null,
         ];
     }
 

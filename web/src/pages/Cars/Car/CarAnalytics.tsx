@@ -11,6 +11,7 @@ import { carAiAnalyses, carRecalculate } from "slices/car-ai-analises/thunk";
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarAnalyticsKpiStrip from "./components/CarAnalyticsKpiStrip";
+import SmartAdsRecommendationCard from "./components/SmartAdsRecommendationCard";
 import TabMetricas from "./components/TabMetricas";
 import TabAnaliseIA from "./components/TabAnaliseIA";
 import TabViatura from "./components/TabViatura";
@@ -109,6 +110,8 @@ export default function CarAnalytics() {
 
     const ipsRadialOptions = useMemo(() => buildIpsRadialOptions(ips), [ips]);
     const ipsHistoryOptions = useMemo(() => buildIpsHistoryOptions(ips), [ips]);
+    const recommendation = carAnalytics?.smart_ads_recommendation ?? null;
+    const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
 
     if (loading || !carAnalytics) return null;
 
@@ -148,30 +151,84 @@ export default function CarAnalytics() {
 
                 <Row className="mb-3">
                     <Col>
-                        <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
+                        <SmartAdsRecommendationCard
+                            recommendation={recommendation}
+                            recommendedPlatform={recommendedPlatform}
+                        />
+                    </Col>
+                </Row>
+
+                <Row className="mb-3">
+                    <Col>
+                        <div>
+                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                <div>
+                                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                        Estado atual
+                                    </p>
+                                    <h6 className="mb-0 fw-semibold">Indicadores principais da viatura</h6>
+                                </div>
+                                <span className="badge bg-light text-muted fs-12 px-3 py-2">
+                                    Atualizado com base na atividade do anúncio
+                                </span>
+                            </div>
+                            <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
+                        </div>
                     </Col>
                 </Row>
 
                 <Row>
                     <Col>
-                        <Card>
-                            <CardHeader className="p-0 border-bottom-0">
-                                <ul className="nav nav-tabs nav-tabs-custom nav-justified" style={{ borderBottom: "1px solid #e9ebec" }}>
+                        <Card
+                            className="border-0 overflow-hidden"
+                            style={{
+                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                            }}
+                        >
+                            <CardHeader
+                                className="border-bottom-0"
+                                style={{
+                                    padding: "1rem 1rem 0 1rem",
+                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                }}
+                            >
+                                <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3 px-2">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Análise detalhada
+                                        </p>
+                                        <h5 className="mb-1 fw-semibold">Explorar desempenho, inteligência e contexto da viatura</h5>
+                                        <p className="text-muted fs-13 mb-0">
+                                            Aprofunda a análise depois da recomendação e dos indicadores principais.
+                                        </p>
+                                    </div>
+                                </div>
+                                <ul
+                                    className="nav nav-tabs nav-tabs-custom nav-justified rounded-3 p-2 mb-0"
+                                    style={{
+                                        borderBottom: "none",
+                                        background: "#f8f9fa",
+                                        boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
+                                        gap: "0.35rem",
+                                    }}
+                                >
                                     {tabs.map((t) => (
                                         <li className="nav-item" key={t.key}>
                                             <button
-                                                className={`nav-link w-100 ${activeTab === t.key ? "active" : ""}`}
+                                                className={`nav-link w-100 ${activeTab === t.key ? "" : ""}`}
                                                 onClick={() => setActiveTab(t.key)}
                                                 style={{
-                                                    border: "none",
-                                                    borderBottom: activeTab === t.key ? "2px solid #405189" : "2px solid transparent",
-                                                    borderRadius: 0,
-                                                    background: "transparent",
+                                                    border: activeTab === t.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
+                                                    borderBottom: "none",
+                                                    borderRadius: "0.75rem",
+                                                    background: activeTab === t.key ? "#ffffff" : "transparent",
                                                     color: activeTab === t.key ? "#405189" : "#878a99",
                                                     fontWeight: activeTab === t.key ? 600 : 400,
-                                                    padding: "12px 16px",
+                                                    padding: "14px 16px",
                                                     fontSize: "13px",
-                                                    transition: "all .2s",
+                                                    boxShadow: activeTab === t.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
+                                                    transition: "all 0.2s ease",
                                                     cursor: "pointer",
                                                 }}
                                             >
@@ -183,7 +240,7 @@ export default function CarAnalytics() {
                                 </ul>
                             </CardHeader>
 
-                            <CardBody>
+                            <CardBody style={{ padding: "1.5rem" }}>
                                 {activeTab === "metricas" && (
                                     <TabMetricas
                                         companyId={companyId}
