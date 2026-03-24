@@ -302,7 +302,6 @@ const CarList = () => {
             cell: (cell: any) => (
                 <div>
                     <div className="fw-semibold text-body">{getMetricCount(cell.row.original.views)}</div>
-                    <div className="text-muted fs-12">visibilidade</div>
                 </div>
             )
         },
@@ -315,7 +314,6 @@ const CarList = () => {
                 return (
                     <div>
                         <div className={`fw-semibold ${leads > 0 ? "text-success" : "text-body"}`}>{leads}</div>
-                        <div className="text-muted fs-12">oportunidades</div>
                     </div>
                 );
             },
@@ -327,7 +325,6 @@ const CarList = () => {
             cell: (cell: any) => (
                 <div>
                     <div className="fw-semibold text-body">{getMetricCount(cell.row.original.interactions)}</div>
-                    <div className="text-muted fs-12">interações</div>
                 </div>
             )
         },
@@ -360,7 +357,6 @@ const CarList = () => {
                             title="Inteligência"
                         >
                             <i className="ri-brain-line me-1" />
-                            Ver Inteligência
                         </Link>
                         <Link
                             to={`/cars/${id}/marketing`}
@@ -368,7 +364,6 @@ const CarList = () => {
                             title="Marketing"
                         >
                             <i className="ri-megaphone-line me-1" />
-                            Marketing
                         </Link>
                         <Link
                             to={`/cars/${id}`}
