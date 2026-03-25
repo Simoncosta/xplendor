@@ -15,6 +15,7 @@ interface Props {
     companyId: number;
     onRecalculate: () => void;
     onGenerateAi: () => void;
+    generatingAi?: boolean;
 }
 
 export default function TabAnaliseIA({
@@ -24,6 +25,7 @@ export default function TabAnaliseIA({
     forecastOptions,
     fmtDate, carId, companyId,
     onRecalculate, onGenerateAi,
+    generatingAi = false,
 }: Props) {
     return (
         <Row className="g-3">
@@ -254,7 +256,9 @@ export default function TabAnaliseIA({
                         <i className="ri-cpu-line fs-1 d-block mb-3" />
                         <h5>Inteligência ainda não disponível</h5>
                         <p className="mb-3 fs-13">A análise será gerada automaticamente assim que existirem dados suficientes.</p>
-                        <XButton onClick={onGenerateAi}>Gerar análise</XButton>
+                        <XButton onClick={onGenerateAi} loading={generatingAi} disabled={generatingAi}>
+                            {generatingAi ? "A gerar análise..." : "Gerar análise"}
+                        </XButton>
                     </div>
                 </Col>
             )}

@@ -39,12 +39,14 @@ const tabs: { key: TabKey; label: string; icon: string }[] = [
 ];
 
 const selectCarState = (state: any) => state.Car;
+const selectCarAiAnalysesState = (state: any) => state.CarAiAnalyses;
 
 const selectCarAnalyticsViewModel = createSelector(
-    [selectCarState],
-    (carState) => ({
+    [selectCarState, selectCarAiAnalysesState],
+    (carState, carAiAnalysesState) => ({
         carAnalytics: carState.data.carAnalytics,
         loading: carState.loading.analytics,
+        generatingAi: carAiAnalysesState.loading.create,
     })
 );
 
@@ -56,7 +58,7 @@ export default function CarAnalytics() {
     const [activeTab, setActiveTab] = useState<TabKey>("metricas");
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const { carAnalytics, loading } = useSelector(selectCarAnalyticsViewModel);
+    const { carAnalytics, loading, generatingAi } = useSelector(selectCarAnalyticsViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -116,9 +118,16 @@ export default function CarAnalytics() {
     if (loading || !carAnalytics) return null;
 
     // ── Handlers ──────────────────────────────────────────────────────────────
-    const handleGenerateAi = () => {
-        dispatch(carAiAnalyses({ companyId, carId: Number(id) }));
-        toast("Gerando análises de viatura... Aguarde um pouco e recarregue a página.");
+    const handleGenerateAi = async () => {
+        if (!companyId || !id) return;
+
+        try {
+            await dispatch(carAiAnalyses({ companyId, carId: Number(id) })).unwrap();
+            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
+            toast.success("Análise gerada com sucesso.");
+        } catch (error: any) {
+            toast.error(error?.message ?? error ?? "Erro ao gerar análise.");
+        }
     };
 
     const handleRecalculate = () => {
@@ -276,6 +285,7 @@ export default function CarAnalytics() {
                                         companyId={companyId}
                                         onRecalculate={handleRecalculate}
                                         onGenerateAi={handleGenerateAi}
+                                        generatingAi={generatingAi}
                                     />
                                 )}
 

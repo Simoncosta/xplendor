@@ -356,22 +356,21 @@ const CarList = () => {
                             className="btn btn-soft-info btn-sm"
                             title="Inteligência"
                         >
-                            <i className="ri-brain-line me-1" />
+                            <i className="ri-brain-line" />
                         </Link>
                         <Link
                             to={`/cars/${id}/marketing`}
                             className="btn btn-soft-warning btn-sm"
                             title="Marketing"
                         >
-                            <i className="ri-megaphone-line me-1" />
+                            <i className="ri-megaphone-line" />
                         </Link>
                         <Link
                             to={`/cars/${id}`}
                             className="btn btn-soft-primary btn-sm"
                             title="Editar"
                         >
-                            <i className="ri-pencil-line me-1" />
-                            Editar
+                            <i className="ri-pencil-line" />
                         </Link>
                     </div>
                 );

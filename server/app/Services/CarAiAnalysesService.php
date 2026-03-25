@@ -148,14 +148,111 @@ class CarAiAnalysesService extends BaseService
 
     private function buildSystemPrompt(): string
     {
-        return "Você é um estrategista sénior de marketing automotivo e publicidade digital especializado no mercado português, com foco em performance, conversão e otimização de investimento em mídia paga.\n\nO seu papel é analisar dados técnicos e de performance de um veículo e entregar recomendações estratégicas precisas, assertivas e acionáveis — como se estivesse a orientar diretamente uma equipa de mídia e conteúdo digital.\n\nRegras obrigatórias:\n- Nunca use linguagem genérica ou neutra\n- Seja assertivo nas escolhas — evite 'pode ser' ou 'depende'\n- Considere sempre o contexto do mercado português (comportamento do consumidor, plataformas dominantes, sazonalidade)\n- Responda exclusivamente em JSON válido, sem texto fora do JSON\n- Respeite rigorosamente o schema de output definido";
+        $month = now()->locale('pt')->monthName; // ex: "março"
+        $year  = now()->year;
+
+        return <<<PROMPT
+Você é o Chief Automotive Marketing Strategist da Xplendor, plataforma líder de inteligência para concessionárias em Portugal. A sua especialidade é transformar dados brutos de performance de veículos em decisões de mídia paga com impacto direto em vendas.
+
+## PROCESSO OBRIGATÓRIO DE RACIOCÍNIO (siga esta ordem internamente antes de gerar o JSON)
+
+PASSO 1 — CLASSIFIQUE O SEGMENTO DO VEÍCULO
+Identifique o segmento: Citadino | Familiar | SUV Compacto | SUV Médio/Grande | Monovolume | Sedan Executivo | Premium/Luxo | Desportivo | Comercial | Eléctrico/Híbrido.
+O segmento determina canal, criativo e público — tudo deriva desta classificação.
+
+PASSO 2 — AVALIE A QUALIDADE DOS DADOS
+Conte quantos campos chegaram como N/D. Se 4 ou mais campos críticos (marca, modelo, preço, views, dias em stock) forem N/D, a confiança da análise é baixa — reflicta isso na justificação do score.
+
+PASSO 3 — CALCULE O SCORE DE CONVERSÃO COM A FÓRMULA EXACTA
+Use esta fórmula (não invente pesos diferentes):
+
+  base_interesse  = MIN(taxa_interesse / 3.0, 1.0) × 40
+  base_stock      = MAX(0, 1 - (dias_em_stock / 120)) × 30
+  base_views7d    = MIN(views_7d / 50, 1.0) × 20
+  base_mercado    = (se preco_vs_mercado disponível: 10 se na mediana ou abaixo, 5 se até +10%, 0 se acima +10%) ou 10 × (20/30 redistribuído) se N/D
+  score_final     = ROUND(base_interesse + base_stock + base_views7d + base_mercado)
+
+  Classificação:
+  0–20  → Crítico
+  21–40 → Baixo
+  41–60 → Médio
+  61–80 → Alto
+  81–100 → Excelente
+
+PASSO 4 — DETERMINE CANAL COM REGRA DE DECISÃO ESTRITA
+Não use julgamento livre — aplique esta matriz:
+
+  | Segmento              | Preço        | Canal Principal  | Canal Secundário |
+  |-----------------------|--------------|-----------------|-----------------|
+  | Citadino / Familiar   | ≤ €15.000    | Meta Ads         | Nenhum           |
+  | SUV Compacto/Médio    | €15k–€35k    | Meta Ads         | Google Search    |
+  | Sedan Exec / Premium  | > €35.000    | Google Search    | Meta Ads         |
+  | Eléctrico / Híbrido   | qualquer     | Google Search    | Meta Ads         |
+  | Desportivo            | qualquer     | Meta Ads (Reels) | Google Search    |
+  | Stock crítico (>90d)  | qualquer     | Meta Ads urgente | Google PMax      |
+
+PASSO 5 — CALIBRE PELA SAZONALIDADE ACTUAL
+Contexto de mercado actual: {$month} de {$year}.
+
+  Janeiro–Fevereiro: mercado lento, CPL mais barato, ideal para awareness
+  Março, Setembro: pico de matrículas PT — agressividade máxima em Search
+  Abril–Agosto: mercado estável, foco em usados e famílias
+  Outubro–Novembro: início de fim de ano, push em premium e oferta de Natal
+  Dezembro: mercado desacelera, só usados urgentes justificam investimento
+
+Ajuste urgência, canal e criativo com base neste contexto sazonal.
+
+PASSO 6 — GERE CONTEÚDO ESPECÍFICO, NUNCA GENÉRICO
+Título, hook e copy devem conter: marca, modelo, 1 argumento técnico concreto do veículo.
+Proibido: "Oportunidade única", "Não perca", "Condições especiais" — são copy de baixo nível.
+
+PASSO 7 — VERIFIQUE CONSISTÊNCIA ANTES DE ENTREGAR
+Confirme:
+✓ O canal principal é coerente com o segmento e preço?
+✓ A urgência é coerente com dias em stock e score?
+✓ As probabilidades de venda crescem de 7d → 14d → 30d?
+✓ Nenhum campo contém linguagem genérica proibida?
+✓ O JSON respeita exactamente o schema fornecido?
+Se alguma verificação falhar, corrija antes de responder.
+
+## REGRAS DE OUTPUT
+- Responda exclusivamente em JSON válido — sem texto fora do JSON, sem markdown fences
+- Nunca use: "pode ser", "depende", "poderá", "eventualmente", "em geral" — proibidos
+- Dados N/D: não invente — seja conservador e sinalize na justificação
+- Se preco_vs_mercado = N/D: alerta_preco.ativo = false, desvio_percentual = null, recomendacao = null
+
+## PSICOGRAFIA DO CONSUMIDOR AUTOMÓVEL PORTUGUÊS (use para público_alvo)
+- Citadino ≤ €12k: 22–35 anos, primeiro carro, urbano, sensível ao preço, decide em 1 semana
+- Familiar €12k–€22k: 30–45 anos, casal com filhos, prático, decide em 2–3 semanas por comparação
+- SUV €20k–€40k: 35–55 anos, PME ou quadro médio, valoriza status e espaço, decide após test drive
+- Premium > €40k: 45–65 anos, empresário, deduções fiscais são argumento, decide em 4–8 semanas
+- Eléctrico: 30–50 anos, early adopter, tech-savvy, condução urbana, altamente informado, decide por TCO
+- Desportivo: 28–45 anos, maioritariamente masculino, decisão emocional e rápida, altamente influenciado por vídeo
+
+## BENCHMARK DO MERCADO PORTUGUÊS
+- Taxa de interesse saudável: ≥ 1% (engagement / views)
+- Veículos > 60 dias em stock + taxa < 0.5%: urgência mínima "Alta", score máximo "Médio"
+- CPL referência Meta Ads PT: €8–€20 usados ≤ €15k; €20–€45 usados €15k–€35k; €45–€90 premium
+- Probabilidade venda 7d > 70% só com taxa de interesse > 3% E stock < 30 dias simultaneamente
+PROMPT;
     }
 
     private function buildUserPrompt(array $data): string
     {
         $fmt = fn($v) => $v ?? 'N/D';
 
-        return "Analise o seguinte veículo e gere as recomendações estratégicas de marketing.\n\n"
+        // Injectar contexto de qualidade dos dados para o modelo avaliar
+        $camposCriticos = ['marca', 'modelo', 'preco', 'views_total', 'dias_em_stock'];
+        $ndCount = collect($camposCriticos)->filter(fn($k) => is_null($data[$k]))->count();
+        $qualidadeDados = match (true) {
+            $ndCount === 0 => 'Completa — todos os campos críticos disponíveis',
+            $ndCount <= 2  => "Parcial — {$ndCount} campo(s) crítico(s) em falta",
+            default        => "Limitada — {$ndCount} campos críticos em falta; análise conservadora obrigatória",
+        };
+
+        return "Analise o seguinte veículo e entregue as recomendações estratégicas de marketing.\n\n"
+            . "## QUALIDADE DOS DADOS DE INPUT\n"
+            . "- Completude: {$qualidadeDados}\n\n"
             . "## DADOS DO VEÍCULO\n"
             . "- Marca: {$fmt($data['marca'])}\n"
             . "- Modelo: {$fmt($data['modelo'])}\n"
@@ -172,72 +269,71 @@ class CarAiAnalysesService extends BaseService
             . "- Views últimas 24h: {$fmt($data['views_24h'])}\n"
             . "- Views últimos 7 dias: {$fmt($data['views_7d'])}\n"
             . "- Leads gerados (formulário): {$fmt($data['leads'])}\n"
-            . "- Interações diretas (WhatsApp, chamadas, etc.): {$fmt($data['interacoes'])}\n"
+            . "- Interações diretas (WhatsApp, chamadas): {$fmt($data['interacoes'])}\n"
             . "- Engagement total (leads + interações): {$fmt($data['engagement_total'])}\n"
             . "- Taxa de interesse (engagement/views): {$fmt($data['taxa_interesse'])}%\n"
-            . "  ⚠️ Nota: a taxa de interesse inclui leads de formulário E interações diretas (WhatsApp, chamadas).\n"
-            . "     Um valor de 1% ou superior já é considerado saudável no mercado automóvel português.\n"
-            . "- Tempo em stock (dias): {$fmt($data['dias_em_stock'])}\n"
+            . "  ⚠️ Benchmark PT: ≥ 1% é saudável. Abaixo de 0.5% com >60 dias é sinal crítico.\n"
+            . "- Tempo em stock: {$fmt($data['dias_em_stock'])} dias\n"
             . "- Preço vs. mediana de mercado PT: {$fmt($data['preco_vs_mercado'])}\n\n"
-            . "## INSTRUÇÃO\n"
-            . "Com base nos dados acima, entregue a análise estratégica completa respeitando exatamente o seguinte schema JSON:\n\n"
+            . "## INSTRUÇÃO FINAL\n"
+            . "Execute os 7 passos de raciocínio definidos no system prompt.\n"
+            . "Depois entregue APENAS o JSON final com exactamente este schema:\n\n"
             . json_encode($this->outputSchema(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
     private function outputSchema(): array
     {
         return [
-            'veiculo_id' => 'string — identificador único do veículo',
             'score_conversao' => [
-                'valor'         => 'número de 0 a 100',
-                'classificacao' => 'Crítico | Baixo | Médio | Alto | Excelente',
-                'justificacao'  => 'string — 1 frase explicando o score',
+                'valor'         => 72,
+                'classificacao' => 'Alto',
+                'justificacao'  => 'Taxa de interesse de 2.3% acima da média com apenas 8 dias em stock.',
             ],
             'alerta_preco' => [
-                'ativo'               => 'boolean',
-                'desvio_percentual'   => 'número — positivo se acima do mercado, negativo se abaixo',
-                'recomendacao'        => 'string — ação concreta de preço ou null se não aplicável',
+                'ativo'             => false,
+                'desvio_percentual' => null,
+                'recomendacao'      => null,
             ],
             'publico_alvo' => [
-                'faixa_etaria'            => 'string — ex: 35–50 anos',
-                'genero_predominante'     => 'string — Masculino | Feminino | Neutro + justificação breve',
-                'perfil_profissional'     => 'string',
-                'estilo_de_vida'          => 'string',
-                'comportamento_de_compra' => 'string — como este perfil toma decisão de compra em PT',
+                'faixa_etaria'            => '35–50 anos',
+                'genero_predominante'     => 'Masculino — perfil dominante para SUV familiar no mercado PT',
+                'perfil_profissional'     => 'Quadro médio ou empresário de PME',
+                'estilo_de_vida'          => 'Família com filhos, viagens frequentes, valoriza conforto e segurança',
+                'comportamento_de_compra' => 'Pesquisa online 2–3 semanas antes, compara 3–5 opções, decide após test drive ou recomendação pessoal',
             ],
             'canal_principal' => [
-                'canal'       => 'Google Ads | Meta Ads',
-                'justificacao' => 'string — baseada em intenção, comportamento e tipo de veículo no mercado PT',
+                'canal'        => 'Meta Ads',
+                'justificacao' => 'Veículo de gama média com forte apelo visual; público-alvo 35–50 anos com alta atividade no Instagram PT.',
             ],
             'canal_secundario' => [
-                'canal'       => 'Google Ads | Meta Ads | Nenhum',
-                'justificacao' => 'string ou null',
+                'canal'        => 'Google Ads',
+                'justificacao' => 'Capturar procura ativa para termos como "comprar [modelo] [cidade]".',
             ],
             'criativo' => [
-                'formato_principal'   => 'string — ex: Reels, Carrossel, Imagem Estática, Search, Performance Max',
-                'formato_secundario'  => 'string ou null',
-                'tom_de_comunicacao'  => 'string — ex: Aspiracional, Racional, Urgência, Lifestyle',
-                'justificacao'        => 'string',
+                'formato_principal'  => 'Reels 9:16 com walkthrough exterior e interior',
+                'formato_secundario' => 'Carrossel com fotos de equipamento e preço destacado',
+                'tom_de_comunicacao' => 'Racional com toque aspiracional',
+                'justificacao'       => 'Perfil de comprador analítico — valoriza especificações antes da aspiração emocional.',
             ],
             'sugestao_conteudo' => [
-                'titulo_anuncio' => 'string — título pronto a usar no anúncio',
-                'hook_video'     => 'string — primeira frase/cena do vídeo para parar o scroll',
-                'copy_curto'     => 'string — 2-3 linhas para legenda ou descrição do anúncio',
+                'titulo_anuncio' => 'Peugeot 3008 GT Line — Equipado para tudo. Pronto para si.',
+                'hook_video'     => 'Câmera abre no ecrã panorâmico em movimento — voz off: "Isto não é só um carro. É o seu escritório móvel."',
+                'copy_curto'     => "Garantia transferível incluída. Revisões em dia.\nTest drive disponível esta semana — sem compromisso.",
             ],
             'argumentos_de_venda' => [
-                'string — argumento 1',
-                'string — argumento 2',
-                'string — argumento 3',
+                'Consumo homologado de 5.2L/100km — ideal para quem percorre longas distâncias diariamente',
+                'Câmera 360º e sensores de estacionamento de série nesta versão específica',
+                'Histórico de revisões verificado — 1 único proprietário desde novo',
             ],
             'recomendacao_urgencia' => [
-                'nivel'            => 'Imediata | Alta | Normal | Baixa',
-                'acao_recomendada' => 'string — próximo passo concreto para a loja',
+                'nivel'            => 'Alta',
+                'acao_recomendada' => 'Ativar campanha Meta Ads com orçamento de €15/dia por 7 dias e contactar leads que visitaram a ficha nas últimas 72h.',
             ],
             'previsao' => [
-                'probabilidade_venda_7d'  => 'número 0–100',
-                'probabilidade_venda_14d' => 'número 0–100',
-                'probabilidade_venda_30d' => 'número 0–100',
-                'condicao'                => 'string — o que pode mudar esta previsão',
+                'probabilidade_venda_7d'  => 35,
+                'probabilidade_venda_14d' => 58,
+                'probabilidade_venda_30d' => 76,
+                'condicao'                => 'Redução de €500 no preço ou ativação de campanha paga elevaria a probabilidade a 7 dias para ~50%.',
             ],
         ];
     }
@@ -253,9 +349,10 @@ class CarAiAnalysesService extends BaseService
         $response = Http::withToken($apiKey)
             ->timeout(90)
             ->post('https://api.openai.com/v1/chat/completions', [
-                'model'       => 'gpt-4o',
-                'temperature' => 0.4, // Mais determinístico para análises estratégicas
-                'messages'    => [
+                'model'           => 'gpt-4o',
+                'temperature'     => 0.2,
+                'response_format' => ['type' => 'json_object'],
+                'messages'        => [
                     [
                         'role'    => 'system',
                         'content' => $this->buildSystemPrompt(),
@@ -301,6 +398,9 @@ class CarAiAnalysesService extends BaseService
 
     private function persist(Car $car, array $inputData, string $rawJson, array $parsed): CarAiAnalysis
     {
+        // Garantir que veiculo_id é sempre o ID real — nunca deixar a IA definir isto
+        $parsed['veiculo_id'] = (string) $car->id;
+
         $score          = $parsed['score_conversao']['valor'] ?? null;
         $classificacao  = $parsed['score_conversao']['classificacao'] ?? null;
         $urgency        = $parsed['recomendacao_urgencia']['nivel'] ?? null;
