@@ -33,6 +33,7 @@ type CarEditorProps = {
     onCancel: () => void;
     loading?: boolean;
     saleLoading?: boolean;
+    companyId?: number;
 };
 
 const CarEditor = ({
@@ -42,6 +43,7 @@ const CarEditor = ({
     onCancel,
     loading = false,
     saleLoading = false,
+    companyId,
 }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
     const initialStatus = data.status ?? "draft";
@@ -199,7 +201,7 @@ const CarEditor = ({
                                         <CarPriceDataFields isEdit={isEdit} />
                                         <CarEquipmentDataFields isEdit={isEdit} />
                                         <CarDescriptionDataFields isEdit={isEdit} />
-                                        <CarImagesDataFields isEdit={isEdit} />
+                                        <CarImagesDataFields isEdit={isEdit} companyId={companyId} />
 
                                         <Col lg={12}>
                                             <div className="hstack gap-2 justify-content-end mt-4">

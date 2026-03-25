@@ -76,6 +76,11 @@ class Company extends Model
         return $this->hasMany(Car::class);
     }
 
+    public function carExternalImages(): HasMany
+    {
+        return $this->hasMany(CarExternalImage::class);
+    }
+
     public function initializeTrial(int $days = 30): void
     {
         $startsAt = now();

@@ -20,6 +20,7 @@ class CarmineConnectionService extends BaseService
         protected CarRepository $carRepository,
         protected CarBrandRepositoryInterface $carBrandRepository,
         protected CarModelRepositoryInterface $carModelRepository,
+        protected CarExternalImageService $carExternalImageService,
     ) {
         parent::__construct($carmineRepository);
     }
@@ -58,15 +59,20 @@ class CarmineConnectionService extends BaseService
         collect($response)->each(function ($item) use ($companyId, &$errors, &$imported, &$updated) {
             try {
                 $carmineMapData = $this->mapCarmineToXplendor($item, $companyId);
+                $externalImages = $this->mapCarmineExternalImages($item);
 
                 $carmine = $this->carRepository->findOrFail($carmineMapData['carmine_id'], 'carmine_id');
 
                 if (isset($carmine['message'])) {
-                    $this->carRepository->store($carmineMapData);
+                    $car = $this->carRepository->store($carmineMapData);
                     $imported++;
                 } else {
-                    $this->carRepository->update($carmine['id'], $carmineMapData);
+                    $car = $this->carRepository->update($carmine['id'], $carmineMapData);
                     $updated++;
+                }
+
+                if (isset($car->id)) {
+                    $this->carExternalImageService->syncForCar($car->id, $companyId, 'carmine', $externalImages);
                 }
             } catch (\Throwable $e) {
                 $errors[] = [
@@ -240,5 +246,17 @@ class CarmineConnectionService extends BaseService
         }
 
         return round((float) $normalized, 2);
+    }
+
+    private function mapCarmineExternalImages(array $data): array
+    {
+        return collect($data['Ficheiros'] ?? [])
+            ->map(fn($file) => [
+                'external_url' => $file['Ficheiro'] ?? null,
+                'external_index' => $file['Indice'] ?? null,
+                'is_primary' => (bool) ($file['Principal'] ?? false),
+                'sort_order' => $file['Ordenador'] ?? null,
+            ])
+            ->all();
     }
 }

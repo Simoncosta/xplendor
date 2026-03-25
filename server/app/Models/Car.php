@@ -112,6 +112,14 @@ class Car extends Model implements AuditableContract
         return $this->hasMany(CarImage::class);
     }
 
+    public function externalImages(): HasMany
+    {
+        return $this->hasMany(CarExternalImage::class)
+            ->orderByDesc('is_primary')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function car360ExteriorImages(): HasMany
     {
         return $this->hasMany(Car360ExteriorImage::class);

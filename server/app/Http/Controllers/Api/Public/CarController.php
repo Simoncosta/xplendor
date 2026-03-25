@@ -65,7 +65,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'car360ExteriorImages', 'brand', 'model'],
+            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model'],
             $paginate,
             $filters
         );
@@ -85,7 +85,7 @@ class CarController extends Controller
             $id,
             'id',
             ['*'],
-            ['images', 'brand', 'model']
+            ['images', 'externalImages', 'brand', 'model']
         );
 
         if ($cars->company_id !== $company->id) {
@@ -105,7 +105,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'brand', 'model'],
+            ['images', 'externalImages', 'brand', 'model'],
             null,
             ['company_id' => $company->id]
         );

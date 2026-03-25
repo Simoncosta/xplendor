@@ -57,6 +57,7 @@ export default function CarUpdate() {
                 data={car ?? CAR_CREATE_DEFAULTS}
                 loading={loadingUpdate}
                 saleLoading={loadingSale}
+                companyId={companyId}
                 onSubmit={async (values: any) => {
                     if (loadingUpdate) return;
 

@@ -98,6 +98,14 @@ export interface ICar {
     internal_notes: string | null;
 
     images?: any[];
+    external_images?: Array<{
+        id: number;
+        source: string;
+        external_url: string;
+        external_index?: number | null;
+        is_primary?: boolean;
+        sort_order?: number | null;
+    }>;
 
     youtube_url: string | null;
 

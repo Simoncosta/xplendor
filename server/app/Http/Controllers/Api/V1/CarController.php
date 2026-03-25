@@ -12,6 +12,7 @@ use App\Services\CarAiAnalysesService;
 use App\Services\CarService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Throwable;
 
 class CarController extends Controller
 {
@@ -56,7 +57,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
+            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
             $paginate,
             $filter,
             $orderBy
@@ -95,10 +96,29 @@ class CarController extends Controller
             $id,
             'id',
             ['*'],
-            ['images', 'brand', 'model', 'car360ExteriorImages', 'views', 'leads', 'analyses']
+            ['images', 'externalImages', 'brand', 'model', 'car360ExteriorImages', 'views', 'leads', 'analyses']
         );
 
         return ApiResponse::success($car, 'Car fetched successfully.');
+    }
+
+    public function downloadImages(int $companyId, int $carId)
+    {
+        $user = Auth::user();
+
+        if ($user->company_id !== $companyId && $user->role !== 'root') {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        try {
+            $archive = $this->carService->buildImagesDownloadArchive($companyId, $carId);
+
+            return response()->download($archive['path'], $archive['filename'])->deleteFileAfterSend(true);
+        } catch (\DomainException $exception) {
+            return ApiResponse::error($exception->getMessage(), 422);
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Não foi possível gerar o ficheiro ZIP.', 500);
+        }
     }
 
     public function update(CarRequest $request, int $companyId, int $id)

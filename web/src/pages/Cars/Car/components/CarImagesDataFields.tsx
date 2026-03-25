@@ -1,6 +1,7 @@
 import { Alert, Col, Row } from "reactstrap";
 import { useFormikContext } from "formik";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
 import { FilePond, registerPlugin } from "react-filepond";
 import "filepond/dist/filepond.min.css";
@@ -11,6 +12,7 @@ import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 
 import type { ICarUpdatePayload } from "common/models/car.model";
+import XButton from "Components/Common/XButton";
 import styles from "../../../../assets/scss/CarImagesDataFields.module.scss";
 
 
@@ -43,19 +45,117 @@ export type ICarFormValues = ICarUpdatePayload & {
 
     // existentes (vindas do backend)
     stored_images?: CarStoredImage[];
+    external_images?: Array<{
+        id: number;
+        external_url: string;
+        is_primary?: boolean;
+        sort_order?: number | null;
+    }>;
 };
 
-export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
+export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boolean; companyId?: number }) {
     const { values, setFieldValue } = useFormikContext<ICarFormValues>();
 
     // Estado UI do FilePond
     const [files, setFiles] = useState<PondFile[]>([]);
+    const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
     const API_BASE = process.env.REACT_APP_PUBLIC_URL ?? "http://localhost:8001";
+    const carId = Number((values as any)?.id ?? 0);
+    const internalStoredCount = ((values as any)?.stored_images as CarStoredImage[] | undefined)?.length ?? 0;
+    const externalImagesCount = ((values as any)?.external_images as ICarFormValues["external_images"] | undefined)?.length ?? 0;
+    const newImagesCount = Array.isArray(values.images) ? values.images.length : 0;
+    const hasInternalImages = internalStoredCount > 0 || newImagesCount > 0;
+    const hasExternalImages = externalImagesCount > 0;
 
     const toAbsoluteUrl = (storagePath: string) => {
         const normalized = storagePath.replace(/^\/storage\//, "");
         return `${API_BASE}/api/media/${normalized}`;
+    };
+
+    const totalImages = useMemo(() => {
+        if (files.length > 0) {
+            return files.length + externalImagesCount;
+        }
+
+        return internalStoredCount + newImagesCount + externalImagesCount;
+    }, [externalImagesCount, files.length, internalStoredCount, newImagesCount]);
+
+    const hasAnyImagesForDownload = hasInternalImages || hasExternalImages;
+    const canDownloadZip = isEdit && Number(companyId) > 0 && carId > 0 && hasAnyImagesForDownload;
+    const imagesCounterLabel = totalImages === 1
+        ? "1 imagem"
+        : `${totalImages} imagens`;
+    const imagesCounterDescription = !hasAnyImagesForDownload
+        ? imagesCounterLabel
+        : hasInternalImages && hasExternalImages
+            ? `${imagesCounterLabel} disponíveis (${internalStoredCount + newImagesCount} internas, ${externalImagesCount} externas)`
+            : hasExternalImages
+                ? `${imagesCounterLabel} (externas)`
+                : imagesCounterLabel;
+
+    const getDownloadFilename = (contentDisposition: string | null, fallbackCarId: number) => {
+        if (contentDisposition) {
+            const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+            if (utf8Match?.[1]) {
+                return decodeURIComponent(utf8Match[1]);
+            }
+
+            const asciiMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+            if (asciiMatch?.[1]) {
+                return asciiMatch[1];
+            }
+        }
+
+        return `carro-${fallbackCarId || "imagens"}.zip`;
+    };
+
+    const handleDownloadZip = async () => {
+        if (!canDownloadZip) {
+            return;
+        }
+
+        const authUser = sessionStorage.getItem("authUser");
+        const token = authUser ? JSON.parse(authUser)?.token : null;
+
+        setIsDownloadingZip(true);
+
+        try {
+            const response = await fetch(`${API_BASE}/api/v1/companies/${companyId}/cars/${carId}/images/download`, {
+                method: "GET",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            });
+
+            if (!response.ok) {
+                throw new Error("download_failed");
+            }
+
+            const blob = await response.blob();
+            const filename = getDownloadFilename(response.headers.get("content-disposition"), carId);
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+
+            link.href = downloadUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(downloadUrl);
+
+            toast("Download iniciado com sucesso", {
+                position: "top-right",
+                hideProgressBar: false,
+                className: "bg-success text-white",
+            });
+        } catch (error) {
+            toast("Erro ao gerar ficheiro", {
+                position: "top-right",
+                hideProgressBar: false,
+                className: "bg-danger text-white",
+            });
+        } finally {
+            setIsDownloadingZip(false);
+        }
     };
 
     // Inicializa FilePond com imagens já existentes (edição)
@@ -168,8 +268,23 @@ export default function CarImagesDataFields({ isEdit }: { isEdit: boolean }) {
 
     return (
         <div className="mt-4">
-            <div className="mb-2 border-bottom pb-2">
-                <h5 className="card-title">Imagens da Viatura</h5>
+            <div className="mb-2 border-bottom pb-2 d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                    <h5 className="card-title mb-1">Imagens da Viatura</h5>
+                    <p className="text-muted mb-0 fs-13">{imagesCounterDescription}</p>
+                </div>
+                <XButton
+                    type="button"
+                    variant="primary"
+                    soft
+                    rounded
+                    icon={<i className="ri-download-2-line" />}
+                    loading={isDownloadingZip}
+                    disabled={!hasAnyImagesForDownload || isDownloadingZip || !isEdit || Number(companyId) <= 0 || carId <= 0}
+                    onClick={handleDownloadZip}
+                >
+                    {isDownloadingZip ? "A preparar download..." : "Descarregar fotos (.zip)"}
+                </XButton>
             </div>
 
             <Row>

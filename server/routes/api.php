@@ -58,6 +58,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
                 Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
                 Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
+                Route::get('/cars/{carId}/images/download', [CarController::class, 'downloadImages']);
 
                 Route::get('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'index']);
                 Route::post('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'store']);

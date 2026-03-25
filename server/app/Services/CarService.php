@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\Car;
 use App\Repositories\Contracts\CarRepositoryInterface;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use ZipArchive;
 
 class CarService extends BaseService
 {
@@ -244,5 +247,165 @@ class CarService extends BaseService
         $car->loadMissing(['brand', 'model']);
 
         return $this->carAiAnalysesService->generate($car);
+    }
+
+    public function buildImagesDownloadArchive(int $companyId, int $carId): array
+    {
+        $car = $this->carRepository->findOrFail(
+            $carId,
+            'id',
+            ['*'],
+            ['images', 'externalImages', 'brand:id,name', 'model:id,name']
+        );
+
+        if ((int) $car->company_id !== $companyId) {
+            throw new \DomainException('Viatura não encontrada para esta empresa.');
+        }
+
+        $validImages = collect($car->images ?? [])
+            ->filter(function ($image) {
+                $relativePath = $this->normalizeImagePath($image->image ?? null);
+
+                return $relativePath !== null && Storage::disk('public')->exists($relativePath);
+            })
+            ->sortBy([
+                ['order', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+
+        $filename = $this->buildImagesArchiveFilename($car);
+        $archivePath = $this->makeTemporaryArchivePath($filename);
+        $temporaryFiles = [];
+
+        $zip = new ZipArchive();
+        $opened = $zip->open($archivePath, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+
+        if ($opened !== true) {
+            throw new \RuntimeException('Não foi possível criar o ficheiro ZIP temporário.');
+        }
+
+        $addedFiles = 0;
+
+        try {
+            if ($validImages->isNotEmpty()) {
+                foreach ($validImages as $index => $image) {
+                    $relativePath = $this->normalizeImagePath($image->image);
+                    if ($relativePath === null) {
+                        continue;
+                    }
+
+                    $absolutePath = Storage::disk('public')->path($relativePath);
+                    $zip->addFile($absolutePath, $this->buildArchiveEntryName($image->image, $index + 1));
+                    $addedFiles++;
+                }
+            } else {
+                $externalImages = collect($car->externalImages ?? []);
+
+                foreach ($externalImages as $index => $image) {
+                    $temporaryPath = $this->downloadExternalImageTemporarily($image->external_url ?? null, $index + 1);
+
+                    if ($temporaryPath === null) {
+                        continue;
+                    }
+
+                    $temporaryFiles[] = $temporaryPath;
+                    $zip->addFile($temporaryPath, $this->buildArchiveEntryName($image->external_url, $index + 1));
+                    $addedFiles++;
+                }
+            }
+        } finally {
+            $zip->close();
+
+            foreach ($temporaryFiles as $temporaryFile) {
+                if (is_string($temporaryFile) && file_exists($temporaryFile)) {
+                    @unlink($temporaryFile);
+                }
+            }
+        }
+
+        if ($addedFiles === 0) {
+            if (file_exists($archivePath)) {
+                @unlink($archivePath);
+            }
+
+            throw new \DomainException('Esta viatura não tem imagens disponíveis para download.');
+        }
+
+        return [
+            'path' => $archivePath,
+            'filename' => $filename,
+        ];
+    }
+
+    private function normalizeImagePath(?string $path): ?string
+    {
+        if (!$path) {
+            return null;
+        }
+
+        return ltrim(str_replace('storage/', '', $path), '/');
+    }
+
+    private function buildImagesArchiveFilename(Car $car): string
+    {
+        $licensePlate = strtolower((string) preg_replace('/[^A-Za-z0-9]+/', '', (string) ($car->license_plate ?? '')));
+        $base = implode('-', array_filter([
+            Str::slug((string) ($car->brand?->name ?? 'carro')),
+            Str::slug((string) ($car->model?->name ?? $car->version ?? 'viatura')),
+            $licensePlate !== '' ? $licensePlate : (string) $car->id,
+        ]));
+
+        return ($base !== '' ? $base : 'viatura-' . $car->id) . '.zip';
+    }
+
+    private function makeTemporaryArchivePath(string $filename): string
+    {
+        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . uniqid('car-images-', true) . '-' . $filename;
+    }
+
+    private function buildArchiveEntryName(string $imagePath, int $position): string
+    {
+        $basename = pathinfo($imagePath, PATHINFO_FILENAME);
+        $extension = pathinfo($imagePath, PATHINFO_EXTENSION);
+        $safeName = Str::slug($basename) ?: 'imagem';
+
+        return sprintf('%02d-%s%s', $position, $safeName, $extension ? '.' . strtolower($extension) : '');
+    }
+
+    private function downloadExternalImageTemporarily(?string $url, int $position): ?string
+    {
+        if (!$url || !filter_var($url, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        try {
+            $response = Http::timeout(20)->get($url);
+
+            if (!$response->successful() || trim($response->body()) === '') {
+                Log::warning('[Car Images ZIP] External image download failed', [
+                    'url' => $url,
+                    'status' => $response->status(),
+                ]);
+
+                return null;
+            }
+
+            $extension = pathinfo(parse_url($url, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION) ?: 'jpg';
+            $temporaryPath = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+                . DIRECTORY_SEPARATOR
+                . sprintf('car-external-image-%02d-%s.%s', $position, uniqid(), strtolower($extension));
+
+            file_put_contents($temporaryPath, $response->body());
+
+            return $temporaryPath;
+        } catch (\Throwable $exception) {
+            Log::warning('[Car Images ZIP] Exception downloading external image', [
+                'url' => $url,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 }

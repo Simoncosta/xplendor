@@ -82,6 +82,22 @@ const formatConversionRate = (views: number, leads: number) => {
     return `${rate.toFixed(rate >= 1 ? 1 : 2)}%`;
 };
 
+const getCarThumbnailUrl = (car: any) => {
+    const internalImage = Array.isArray(car.images) && car.images.length > 0
+        ? car.images[0]?.image
+        : null;
+
+    if (internalImage) {
+        return process.env.REACT_APP_PUBLIC_URL + internalImage;
+    }
+
+    const externalImage = Array.isArray(car.external_images) && car.external_images.length > 0
+        ? car.external_images[0]?.external_url
+        : null;
+
+    return externalImage || null;
+};
+
 const selectCarmineState = (state: any) => state.Carmine;
 const selectCarBrandState = (state: any) => state.CarBrand;
 const selectCarModelState = (state: any) => state.CarModel;
@@ -239,10 +255,10 @@ const CarList = () => {
 
                 return (
                     <div className="d-flex align-items-center">
-                        {car.images.length > 0 && (
+                        {getCarThumbnailUrl(car) && (
                             <div className="flex-shrink-0 me-3">
                                 <img
-                                    src={process.env.REACT_APP_PUBLIC_URL + car.images[0].image}
+                                    src={getCarThumbnailUrl(car) as string}
                                     alt=""
                                     className="img-thumbnail border-0"
                                     width={150}

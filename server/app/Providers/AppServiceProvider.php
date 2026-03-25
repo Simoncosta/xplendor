@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\{
     Blog,
     Car,
+    CarExternalImage,
     CarImage,
     CarLead,
     CarPerformanceMetric,
@@ -23,6 +24,7 @@ use App\Repositories\Contracts\{
     BlogRepositoryInterface,
     CarAiAnalysesRepositoryInterface,
     CarBrandRepositoryInterface,
+    CarExternalImageRepositoryInterface,
     CarInteractionRepositoryInterface,
     CarLeadRepositoryInterface,
     CarMarketingIdeaRepositoryInterface,
@@ -49,6 +51,7 @@ use App\Repositories\{
     BlogRepository,
     CarAiAnalysesRepository,
     CarBrandRepository,
+    CarExternalImageRepository,
     CarInteractionRepository,
     CarLeadRepository,
     CarMarketingIdeaRepository,
@@ -87,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
         $this->app->bind(CarAiAnalysesRepositoryInterface::class, CarAiAnalysesRepository::class);
         $this->app->bind(CarBrandRepositoryInterface::class, CarBrandRepository::class);
+        $this->app->bind(CarExternalImageRepositoryInterface::class, CarExternalImageRepository::class);
         $this->app->bind(CarInteractionRepositoryInterface::class, CarInteractionRepository::class);
         $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
         $this->app->bind(CarMarketingIdeaRepositoryInterface::class, CarMarketingIdeaRepository::class);
