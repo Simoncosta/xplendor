@@ -19,6 +19,7 @@ const selectUserUpdateViewModel = createSelector(
     (userState) => ({
         user: userState.data.user,
         loadingShow: userState.loading.show,
+        loadingUpdate: userState.loading.update,
     })
 );
 
@@ -32,7 +33,7 @@ export default function UserUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const { user, loadingShow } = useSelector(selectUserUpdateViewModel);
+    const { user, loadingShow, loadingUpdate } = useSelector(selectUserUpdateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -50,6 +51,7 @@ export default function UserUpdate() {
             <ToastContainer />
             <UserEditor
                 data={user ?? USER_CREATE_DEFAULTS}
+                loading={loadingUpdate}
                 onSubmit={(values) => {
                     const formData = new FormData();
 

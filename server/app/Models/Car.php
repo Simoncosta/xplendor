@@ -58,6 +58,7 @@ class Car extends Model implements AuditableContract
         'internal_notes',
         'youtube_url',
         'company_id',
+        'seller_user_id',
         'carmine_id',
         'car_created_at',
     ];
@@ -165,6 +166,11 @@ class Car extends Model implements AuditableContract
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_user_id');
     }
 
     public function marketingIdeas(): HasMany

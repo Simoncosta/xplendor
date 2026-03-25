@@ -65,10 +65,12 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model'],
+            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'seller'],
             $paginate,
             $filters
         );
+
+        $cars = $this->carService->appendPublicSellerContact($cars);
 
         return ApiResponse::success($cars, 'Cars fetched successfully.');
     }
@@ -85,12 +87,14 @@ class CarController extends Controller
             $id,
             'id',
             ['*'],
-            ['images', 'externalImages', 'brand', 'model']
+            ['images', 'externalImages', 'brand', 'model', 'seller']
         );
 
         if ($cars->company_id !== $company->id) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
+
+        $cars = $this->carService->appendPublicSellerContact($cars);
 
         return ApiResponse::success($cars, 'Car fetched successfully.');
     }

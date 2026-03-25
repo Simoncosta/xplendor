@@ -45,6 +45,7 @@ export default function CarCreate() {
             <CarEditor
                 data={CAR_CREATE_DEFAULTS}
                 loading={loadingCreate}
+                companyId={companyId}
                 onSubmit={async (values: any) => {
                     if (loadingCreate) return;
 

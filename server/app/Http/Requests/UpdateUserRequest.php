@@ -27,6 +27,8 @@ class UpdateUserRequest extends FormRequest
             'avatar' => ['nullable', 'file', 'image', 'max:2048'],
             'birthdate' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'in:male,female'],
+            'mobile' => ['nullable', 'string', 'max:50'],
+            'whatsapp' => ['nullable', 'string', 'max:50'],
 
             'password' => [
                 'sometimes',

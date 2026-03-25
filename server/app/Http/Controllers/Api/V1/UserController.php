@@ -41,6 +41,9 @@ class UserController extends Controller
                 "signature",
                 "email",
                 "gender",
+                "birthdate",
+                "mobile",
+                "whatsapp",
                 "email_verified_at",
                 "role",
                 "company_id"
@@ -102,7 +105,7 @@ class UserController extends Controller
         $user = $this->userService->findOrFail(
             $id,
             'id',
-            ['id', 'name', 'avatar', 'signature', 'email', 'role', 'gender', 'company_id'],
+            ['id', 'name', 'avatar', 'signature', 'email', 'role', 'gender', 'birthdate', 'mobile', 'whatsapp', 'company_id'],
             ['company']
         );
 

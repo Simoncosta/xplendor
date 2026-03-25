@@ -82,6 +82,7 @@ class CarRequest extends FormRequest
             'description_website_en' => ['nullable', 'string'],
             'internal_notes' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
+            'seller_user_id' => ['nullable', 'exists:users,id'],
 
             // Imagens normais (upload)
             'images' => ['nullable', 'array', 'max:60'],

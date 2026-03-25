@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -29,6 +30,8 @@ class User extends Authenticatable
         'role',
         'gender',
         'birthdate',
+        'mobile',
+        'whatsapp',
         'company_id',
     ];
 
@@ -59,5 +62,10 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function assignedCars(): HasMany
+    {
+        return $this->hasMany(Car::class, 'seller_user_id');
     }
 }

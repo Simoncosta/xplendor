@@ -16,6 +16,8 @@ class UserInvite extends Model
         "role",
         "gender",
         "birthdate",
+        "mobile",
+        "whatsapp",
         "company_id",
     ];
 }

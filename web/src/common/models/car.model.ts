@@ -108,6 +108,14 @@ export interface ICar {
     }>;
 
     youtube_url: string | null;
+    seller_user_id?: number | null;
+    seller_contact?: {
+        id: number;
+        name: string;
+        phone: string | null;
+        mobile: string | null;
+        whatsapp: string | null;
+    } | null;
 
     company_id: number;
 

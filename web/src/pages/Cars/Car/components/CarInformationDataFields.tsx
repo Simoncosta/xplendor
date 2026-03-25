@@ -1,6 +1,9 @@
 //React
+import { useEffect, useMemo } from "react";
 import { Col, Label, Row } from "reactstrap";
 import Select from "react-select";
+import { createSelector } from "reselect";
+import { useDispatch, useSelector } from "react-redux";
 
 // Components
 import XInput from "Components/Common/XInput";
@@ -13,15 +16,50 @@ import { statusOptions, originOptions } from "common/data/cars";
 
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
+import { getUsersPaginate } from "slices/users/thunk";
+
+const selectUserState = (state: any) => state.User;
+
+const selectSellerOptionsViewModel = createSelector(
+    [selectUserState],
+    (userState: any) => ({
+        users: userState.data.users || [],
+        loading: userState.loading.list,
+    })
+);
 
 export default function CarInformationDataFields({
     isEdit,
+    companyId,
     onStatusChange,
 }: {
     isEdit: boolean;
+    companyId?: number;
     onStatusChange?: (nextStatus: string | null, previousStatus: string | null) => void;
 }) {
+    const dispatch: any = useDispatch();
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
+    const { users, loading } = useSelector(selectSellerOptionsViewModel);
+    const authUserRaw = sessionStorage.getItem("authUser");
+    const authUser = authUserRaw ? JSON.parse(authUserRaw) : null;
+    const resolvedCompanyId = Number(companyId ?? authUser?.company_id ?? 0);
+
+    useEffect(() => {
+        if (!resolvedCompanyId) return;
+
+        dispatch(getUsersPaginate({
+            page: 1,
+            perPage: 200,
+            companyId: resolvedCompanyId,
+        }));
+    }, [dispatch, resolvedCompanyId]);
+
+    const sellerOptions = useMemo(() => (
+        (users || []).map((user: any) => ({
+            value: user.id,
+            label: `${user.name}${user.role === "admin" ? " (Admin)" : ""}`,
+        }))
+    ), [users]);
 
     return (
         <div>
@@ -64,7 +102,24 @@ export default function CarInformationDataFields({
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={3}>
+                <Col lg={2}>
+                    <Label className="form-label">
+                        Vendedor:
+                    </Label>
+                    <Select
+                        name="seller_user_id"
+                        options={sellerOptions}
+                        isClearable
+                        isLoading={loading}
+                        placeholder="Selecionar vendedor"
+                        value={sellerOptions.find((opt: any) => opt.value === values.seller_user_id) || null}
+                        onChange={(opt: any) => setFieldValue("seller_user_id", opt?.value ?? null)}
+                        onBlur={() => setFieldTouched("seller_user_id", true)}
+                        classNamePrefix="react-select"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
                     <XInput
                         name="license_plate"
                         label="Matrícula"
@@ -72,7 +127,7 @@ export default function CarInformationDataFields({
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={5}>
+                <Col lg={4}>
                     <XInput
                         name="vin"
                         label="Número de Identificação do Veículo (VIN)"

@@ -27,6 +27,8 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|string|email|max:255|unique:users',
             'gender' => 'nullable|string|in:male,female',
             'birthdate' => 'nullable|date',
+            'mobile' => 'nullable|string|max:50',
+            'whatsapp' => 'nullable|string|max:50',
         ];
     }
 }

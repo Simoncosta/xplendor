@@ -9,4 +9,6 @@ export const USER_CREATE_DEFAULTS: IUser = {
     avatar: "",
     gender: 'male',
     birthdate: "",
+    mobile: "",
+    whatsapp: "",
 }

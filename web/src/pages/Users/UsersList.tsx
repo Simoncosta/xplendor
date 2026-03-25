@@ -88,6 +88,18 @@ export default function UsersList() {
             enableColumnFilter: false,
         },
         {
+            header: "Telemóvel",
+            accessorKey: "mobile",
+            enableColumnFilter: false,
+            cell: (cell: any) => cell.row.original.mobile || "—",
+        },
+        {
+            header: "WhatsApp",
+            accessorKey: "whatsapp",
+            enableColumnFilter: false,
+            cell: (cell: any) => cell.row.original.whatsapp || "—",
+        },
+        {
             header: "Ação",
             cell: (cell: any) => {
                 return (

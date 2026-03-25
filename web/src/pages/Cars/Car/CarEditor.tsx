@@ -193,6 +193,7 @@ const CarEditor = ({
                                     <form onSubmit={formik.handleSubmit}>
                                         <CarInformationDataFields
                                             isEdit={isEdit}
+                                            companyId={companyId}
                                             onStatusChange={handleStatusChange}
                                         />
                                         <CarVehicleDataFields isEdit={isEdit} />

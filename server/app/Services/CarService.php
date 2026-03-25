@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Models\User;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Pagination\AbstractPaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use ZipArchive;
 
@@ -249,6 +252,24 @@ class CarService extends BaseService
         return $this->carAiAnalysesService->generate($car);
     }
 
+    public function appendPublicSellerContact(mixed $cars): mixed
+    {
+        if ($cars instanceof AbstractPaginator) {
+            $cars->setCollection($this->attachSellerContactToCollection($cars->getCollection()));
+            return $cars;
+        }
+
+        if ($cars instanceof Collection) {
+            return $this->attachSellerContactToCollection($cars);
+        }
+
+        if ($cars instanceof Car) {
+            return $this->attachSellerContactToCollection(collect([$cars]))->first();
+        }
+
+        return $cars;
+    }
+
     public function buildImagesDownloadArchive(int $companyId, int $carId): array
     {
         $car = $this->carRepository->findOrFail(
@@ -407,5 +428,52 @@ class CarService extends BaseService
 
             return null;
         }
+    }
+
+    private function attachSellerContactToCollection(Collection $cars): Collection
+    {
+        if ($cars->isEmpty()) {
+            return $cars;
+        }
+
+        $sellerIds = $cars->pluck('seller_user_id')->filter()->unique()->values();
+        $companyIds = $cars->pluck('company_id')->filter()->unique()->values();
+
+        $sellerMap = User::query()
+            ->whereIn('id', $sellerIds)
+            ->get(['id', 'name', 'mobile', 'whatsapp', 'company_id'])
+            ->keyBy('id');
+
+        $adminMap = User::query()
+            ->whereIn('company_id', $companyIds)
+            ->where('role', 'admin')
+            ->orderBy('id')
+            ->get(['id', 'name', 'mobile', 'whatsapp', 'company_id'])
+            ->groupBy('company_id')
+            ->map(fn(Collection $users) => $users->first());
+
+        return $cars->map(function ($car) use ($sellerMap, $adminMap) {
+            $seller = $car->seller_user_id
+                ? $sellerMap->get($car->seller_user_id)
+                : null;
+
+            if (!$seller) {
+                $seller = $adminMap->get($car->company_id);
+            }
+
+            $mobile = $seller?->mobile ?: null;
+            $phone = null;
+            $whatsapp = $mobile ?: null;
+
+            $car->seller_contact = $seller ? [
+                'id' => $seller->id,
+                'name' => $seller->name,
+                'phone' => $phone,
+                'mobile' => $mobile,
+                'whatsapp' => $whatsapp,
+            ] : null;
+
+            return $car;
+        });
     }
 }

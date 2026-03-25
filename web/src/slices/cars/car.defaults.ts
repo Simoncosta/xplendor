@@ -78,6 +78,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
     internal_notes: null,
 
     youtube_url: null,
+    seller_user_id: null,
 
     company_id: 0,
 };

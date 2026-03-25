@@ -13,6 +13,7 @@ import profileBg from "../../../assets/images/profile-employer-bg.jpg";
 import avatar1 from '../../../assets/images/users/avatar-company.jpg';
 import XButton from 'Components/Common/XButton';
 import XInput from 'Components/Common/XInput';
+import XInputMask from 'Components/Common/XInputMask';
 
 type UserEditorProps = {
     data: IUser
@@ -31,7 +32,7 @@ const roleOptions = [
     { value: "admin", label: "Administrador" },
 ];
 
-export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps) {
+export default function UserEditor({ data, onSubmit, onCancel, loading = false }: UserEditorProps) {
     const isEdit = Boolean((data as IUser)?.id);
 
     const [logoPreview, setLogoPreview] = useState<string | null>(
@@ -205,6 +206,32 @@ export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps
                                                         className="mb-3"
                                                     />
                                                 </Col>
+                                                <Col lg={6}>
+                                                    <XInputMask
+                                                        className='mb-2'
+                                                        name="mobile"
+                                                        label="Telemóvel"
+                                                        placeholder="123 456 789"
+                                                        options={{
+                                                            blocks: [3, 3, 3],
+                                                            delimiter: " ",
+                                                            numericOnly: true,
+                                                        }}
+                                                    />
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <XInputMask
+                                                        className='mb-2'
+                                                        name="whatsapp"
+                                                        label="WhatsApp"
+                                                        placeholder="123 456 789"
+                                                        options={{
+                                                            blocks: [3, 3, 3],
+                                                            delimiter: " ",
+                                                            numericOnly: true,
+                                                        }}
+                                                    />
+                                                </Col>
                                             </Row>
                                             <Col lg={12}>
                                                 <div className="hstack gap-2 justify-content-end">
@@ -214,6 +241,8 @@ export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps
                                                         outline
                                                         rounded
                                                         icon={<i className="ri-check-double-line" />}
+                                                        loading={loading}
+                                                        disabled={loading}
                                                     >
                                                         Salvar
                                                     </XButton>
@@ -222,6 +251,7 @@ export default function UserEditor({ data, onSubmit, onCancel }: UserEditorProps
                                                         outline
                                                         rounded
                                                         icon={<i className="ri-close-line" />}
+                                                        disabled={loading}
                                                         onClick={() => onCancel()}
                                                     >
                                                         Cancelar

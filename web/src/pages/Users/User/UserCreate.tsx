@@ -2,13 +2,23 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 // Redux
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { createSelector } from "reselect";
 // Slices
 import { USER_CREATE_DEFAULTS } from "slices/users/user.defaults";
 import { createUser } from "slices/thunks";
 // Components
 import UserEditor from "./UserEditor";
 import { toast, ToastContainer } from "react-toastify";
+
+const selectUserState = (state: any) => state.User;
+
+const selectUserCreateViewModel = createSelector(
+    [selectUserState],
+    (userState: any) => ({
+        loadingCreate: userState.loading.create,
+    })
+);
 
 export default function UserCreate() {
     const navigate = useNavigate();
@@ -18,6 +28,7 @@ export default function UserCreate() {
 
     // States
     const [companyId, setCompanyId] = useState(0);
+    const { loadingCreate } = useSelector(selectUserCreateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -32,6 +43,7 @@ export default function UserCreate() {
             <ToastContainer />
             <UserEditor
                 data={USER_CREATE_DEFAULTS}
+                loading={loadingCreate}
                 onSubmit={(values) => {
                     const formData = new FormData();
 
