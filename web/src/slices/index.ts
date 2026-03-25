@@ -5,6 +5,7 @@ import CarReducer from "./cars/reducer";
 import CarAiAnalysesReducer from "./car-ai-analises/reducer";
 import CarBrandReducer from "./car-brands/reducer";
 import CarModelsReducer from "./car-models/reducer";
+import CarSaleReducer from "./car-sales/reducer";
 import CarmineReducer from "./carmine/reducer";
 import CompanyReducer from "./companies/reducer";
 import DashboardReducer from "./dashboards/reducer";
@@ -28,6 +29,7 @@ const rootReducer = combineReducers({
     Blog: BlogReducer,
     Car: CarReducer,
     CarAiAnalyses: CarAiAnalysesReducer,
+    CarSale: CarSaleReducer,
     Carmine: CarmineReducer,
     CarBrand: CarBrandReducer,
     CarModel: CarModelsReducer,

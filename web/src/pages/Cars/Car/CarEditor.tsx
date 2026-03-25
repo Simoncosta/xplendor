@@ -8,6 +8,7 @@ import {
 } from "reactstrap";
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
+import { ICarSalePayload } from "common/models/car-sale.model";
 // Components
 import XButton from "Components/Common/XButton";
 import CarInformationDataFields from "./components/CarInformationDataFields";
@@ -18,20 +19,37 @@ import CarImagesDataFields from "./components/CarImagesDataFields";
 import CarPriceDataFields from "./components/CarPriceDataFields";
 import CarEquipmentDataFields from "./components/CarEquipmentDataFields";
 import CarDescriptionDataFields from "./components/CarDescriptionDataFields";
+import CarSaleClosingModal from "./components/CarSaleClosingModal";
 
 //formik
 import { FormikProvider, useFormik } from "formik";
+import { useMemo, useState } from "react";
 import * as Yup from "yup";
 
 type CarEditorProps = {
     data: ICarUpdatePayload;
     onSubmit: (data: ICarUpdatePayload) => void | Promise<void>;
+    onSubmitSold?: (carData: ICarUpdatePayload, saleData: ICarSalePayload) => void | Promise<void>;
     onCancel: () => void;
     loading?: boolean;
+    saleLoading?: boolean;
 };
 
-const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps) => {
+const CarEditor = ({
+    data,
+    onSubmit,
+    onSubmitSold,
+    onCancel,
+    loading = false,
+    saleLoading = false,
+}: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
+    const initialStatus = data.status ?? "draft";
+    const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+    const [saleDraft, setSaleDraft] = useState<ICarSalePayload | null>(null);
+    const [pendingSubmitValues, setPendingSubmitValues] = useState<ICarUpdatePayload | null>(null);
+    const [saleModalSource, setSaleModalSource] = useState<"status_change" | "submit" | null>(null);
+    const [statusBeforeSaleModal, setStatusBeforeSaleModal] = useState<string | null>(null);
 
     const emptyExtrasByGroup = {
         comfort_multimedia: [],
@@ -59,6 +77,11 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
         // exterior_color: Yup.string().required("Cor exterior é obrigatória"),
     });
 
+    const isSubmitting = useMemo(
+        () => loading || saleLoading,
+        [loading, saleLoading]
+    );
+
     const formik = useFormik({
         enableReinitialize: true,
         initialValues: {
@@ -81,11 +104,81 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
         },
         validationSchema,
         onSubmit: async (values) => {
-            if (loading) return;
+            if (isSubmitting) return;
+
+            const shouldCaptureSale = isEdit
+                && initialStatus !== "sold"
+                && values.status === "sold"
+                && Boolean(onSubmitSold);
+
+            if (shouldCaptureSale) {
+                if (!saleDraft) {
+                    setPendingSubmitValues(values);
+                    setSaleModalSource("submit");
+                    setStatusBeforeSaleModal(values.status ?? initialStatus);
+                    setIsSaleModalOpen(true);
+                    return;
+                }
+
+                await onSubmitSold?.(values, saleDraft);
+                return;
+            }
 
             await onSubmit?.(values);
         },
     });
+
+    const openSaleModalFromStatusChange = (previousStatus: string | null) => {
+        if (!isEdit || initialStatus === "sold" || !onSubmitSold) {
+            return;
+        }
+
+        setStatusBeforeSaleModal(previousStatus);
+        setSaleModalSource("status_change");
+        setIsSaleModalOpen(true);
+    };
+
+    const handleStatusChange = (nextStatus: string | null, previousStatus: string | null) => {
+        if (nextStatus === "sold" && previousStatus !== "sold") {
+            openSaleModalFromStatusChange(previousStatus);
+            return;
+        }
+
+        if (nextStatus !== "sold") {
+            setSaleDraft(null);
+        }
+    };
+
+    const closeSaleModal = () => {
+        if (saleModalSource === "status_change" && formik.values.status === "sold") {
+            formik.setFieldValue("status", statusBeforeSaleModal ?? initialStatus);
+        }
+
+        setPendingSubmitValues(null);
+        setSaleModalSource(null);
+        setStatusBeforeSaleModal(null);
+        setIsSaleModalOpen(false);
+    };
+
+    const handleSaleModalConfirm = async (saleData: ICarSalePayload, mode: "draft" | "submit") => {
+        if (mode === "submit" && onSubmitSold) {
+            const valuesToSubmit = pendingSubmitValues ?? formik.values;
+
+            await onSubmitSold(valuesToSubmit, saleData);
+            setSaleDraft(saleData);
+            setPendingSubmitValues(null);
+            setSaleModalSource(null);
+            setStatusBeforeSaleModal(null);
+            setIsSaleModalOpen(false);
+            return;
+        }
+
+        setSaleDraft(saleData);
+        setPendingSubmitValues(null);
+        setSaleModalSource(null);
+        setStatusBeforeSaleModal(null);
+        setIsSaleModalOpen(false);
+    };
 
     return (
         <div className="page-content">
@@ -96,7 +189,10 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
                             <CardBody>
                                 <FormikProvider value={formik}>
                                     <form onSubmit={formik.handleSubmit}>
-                                        <CarInformationDataFields isEdit={isEdit} />
+                                        <CarInformationDataFields
+                                            isEdit={isEdit}
+                                            onStatusChange={handleStatusChange}
+                                        />
                                         <CarVehicleDataFields isEdit={isEdit} />
                                         <CarVehicleDetailsDataFields isEdit={isEdit} />
                                         <CarAdditionalDataFields isEdit={isEdit} />
@@ -113,14 +209,16 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
                                                     outline
                                                     rounded
                                                     icon={<i className="ri-check-double-line" />}
-                                                    loading={loading}
-                                                    disabled={loading}
+                                                    loading={isSubmitting}
+                                                    disabled={isSubmitting}
                                                 >
-                                                    {loading
-                                                        ? isEdit
-                                                            ? "A guardar alterações..."
-                                                            : "A criar viatura..."
-                                                        : isEdit
+                                                    {saleLoading
+                                                        ? "A concluir venda..."
+                                                        : isSubmitting
+                                                            ? isEdit
+                                                                ? "A guardar alterações..."
+                                                                : "A criar viatura..."
+                                                            : isEdit
                                                             ? "Guardar alterações"
                                                             : "Criar viatura"}
                                                 </XButton>
@@ -129,6 +227,7 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
                                                     outline
                                                     rounded
                                                     icon={<i className="ri-close-line" />}
+                                                    disabled={isSubmitting}
                                                     onClick={() => onCancel()}
                                                 >
                                                     Cancelar
@@ -142,6 +241,15 @@ const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps
                     </Col>
                 </Row>
             </Container>
+
+            <CarSaleClosingModal
+                isOpen={isSaleModalOpen}
+                loading={saleLoading}
+                initialData={saleDraft}
+                defaultSalePrice={formik.values.price_gross ?? data.price_gross ?? null}
+                onClose={closeSaleModal}
+                onConfirm={handleSaleModalConfirm}
+            />
         </div>
     );
 };

@@ -14,7 +14,13 @@ import { statusOptions, originOptions } from "common/data/cars";
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
 
-export default function CarInformationDataFields({ isEdit }: { isEdit: boolean }) {
+export default function CarInformationDataFields({
+    isEdit,
+    onStatusChange,
+}: {
+    isEdit: boolean;
+    onStatusChange?: (nextStatus: string | null, previousStatus: string | null) => void;
+}) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
 
     return (
@@ -32,7 +38,13 @@ export default function CarInformationDataFields({ isEdit }: { isEdit: boolean }
                         name="status"
                         options={statusOptions}
                         value={statusOptions.find((opt) => opt.value === values.status) || null}
-                        onChange={(opt: any) => setFieldValue("status", opt?.value ?? null)}
+                        onChange={(opt: any) => {
+                            const previousStatus = values.status ?? null;
+                            const nextStatus = opt?.value ?? null;
+
+                            setFieldValue("status", nextStatus);
+                            onStatusChange?.(nextStatus, previousStatus);
+                        }}
                         onBlur={() => setFieldTouched("status", true)}
                         classNamePrefix="react-select"
                         className="mb-3"

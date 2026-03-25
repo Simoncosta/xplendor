@@ -6,6 +6,7 @@ export * from "./blogs/thunk";
 export * from "./leads/thunk";
 // Cars
 export * from "./cars/thunk";
+export * from "./car-sales/thunk";
 // Company
 export * from "./companies/thunk";
 // Users
