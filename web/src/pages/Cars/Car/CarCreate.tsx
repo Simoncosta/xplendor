@@ -1,8 +1,9 @@
 // React
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
+import { createSelector } from "reselect";
 // Slices
 import { CAR_CREATE_DEFAULTS } from "slices/cars/car.defaults";
 import { createCar } from "slices/cars/thunk";
@@ -10,6 +11,15 @@ import { createCar } from "slices/cars/thunk";
 import CarEditor from "./CarEditor";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
+
+const selectCarState = (state: any) => state.Car;
+
+const selectCarCreateViewModel = createSelector(
+    [selectCarState],
+    (carState) => ({
+        loadingCreate: carState.loading.create,
+    })
+);
 
 export default function CarCreate() {
     const navigate = useNavigate();
@@ -19,6 +29,7 @@ export default function CarCreate() {
 
     // States
     const [companyId, setCompanyId] = useState(0);
+    const { loadingCreate } = useSelector(selectCarCreateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -33,12 +44,19 @@ export default function CarCreate() {
             <ToastContainer />
             <CarEditor
                 data={CAR_CREATE_DEFAULTS}
-                onSubmit={(values: any) => {
+                loading={loadingCreate}
+                onSubmit={async (values: any) => {
+                    if (loadingCreate) return;
+
                     const fd = buildCarFormData(values, { isUpdate: false });
 
-                    dispatch(createCar({ companyId, formData: fd }));
-                    toast("Carro criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
-                    navigate(-1);
+                    try {
+                        await dispatch(createCar({ companyId, formData: fd })).unwrap();
+                        toast("Carro criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
+                        navigate(-1);
+                    } catch (error) {
+                        // Mantém o comportamento atual de erro sem navegação indevida.
+                    }
                 }}
                 onCancel={() => {
                     navigate(-1);

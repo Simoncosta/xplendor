@@ -18,7 +18,8 @@ const selectCarUpdateViewModel = createSelector(
     [selectCarState],
     (carState) => ({
         car: carState.data.car,
-        loading: carState.loading.show,
+        loadingShow: carState.loading.show,
+        loadingUpdate: carState.loading.update,
     })
 );
 
@@ -32,7 +33,7 @@ export default function CarUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const { car, loading } = useSelector(selectCarUpdateViewModel);
+    const { car, loadingShow, loadingUpdate } = useSelector(selectCarUpdateViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -43,19 +44,26 @@ export default function CarUpdate() {
         }
     }, [dispatch, id]);
 
-    if (loading) return null;
+    if (loadingShow) return null;
 
     return (
         <>
             <ToastContainer />
             <CompanyProfileEditor
                 data={car ?? CAR_CREATE_DEFAULTS}
-                onSubmit={(values: any) => {
+                loading={loadingUpdate}
+                onSubmit={async (values: any) => {
+                    if (loadingUpdate) return;
+
                     const fd = buildCarFormData(values);
                     fd.append("_method", "PUT");
 
-                    dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd }));
-                    toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    try {
+                        await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
+                        toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    } catch (error) {
+                        // Mantém o comportamento atual de erro sem toast de sucesso indevido.
+                    }
                 }}
                 onCancel={() => {
                     navigate(-1);

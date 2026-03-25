@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\{
     Blog,
+    Car,
     CarImage,
     CarLead,
     CarPerformanceMetric,
@@ -12,6 +13,7 @@ use App\Models\{
 };
 use App\Observers\{
     BlogObserver,
+    CarObserver,
     CarImageObserver,
     CarPerformanceMetricObserver,
     CompanyObserver,
@@ -111,6 +113,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Company::observe(CompanyObserver::class);
         Blog::observe(BlogObserver::class);
+        Car::observe(CarObserver::class);
         CarLead::observe(LeadObserver::class);
         CarPerformanceMetric::observe(CarPerformanceMetricObserver::class);
         CarImage::observe(CarImageObserver::class);

@@ -25,12 +25,12 @@ import * as Yup from "yup";
 
 type CarEditorProps = {
     data: ICarUpdatePayload;
-    onSubmit: (data: ICarUpdatePayload) => void;
+    onSubmit: (data: ICarUpdatePayload) => void | Promise<void>;
     onCancel: () => void;
     loading?: boolean;
 };
 
-const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
+const CarEditor = ({ data, onSubmit, onCancel, loading = false }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
 
     const emptyExtrasByGroup = {
@@ -80,7 +80,11 @@ const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
             images_meta: [],
         },
         validationSchema,
-        onSubmit: (values) => onSubmit?.(values),
+        onSubmit: async (values) => {
+            if (loading) return;
+
+            await onSubmit?.(values);
+        },
     });
 
     return (
@@ -109,8 +113,16 @@ const CarEditor = ({ data, onSubmit, onCancel }: CarEditorProps) => {
                                                     outline
                                                     rounded
                                                     icon={<i className="ri-check-double-line" />}
+                                                    loading={loading}
+                                                    disabled={loading}
                                                 >
-                                                    Salvar
+                                                    {loading
+                                                        ? isEdit
+                                                            ? "A guardar alterações..."
+                                                            : "A criar viatura..."
+                                                        : isEdit
+                                                            ? "Guardar alterações"
+                                                            : "Criar viatura"}
                                                 </XButton>
                                                 <XButton
                                                     variant="danger"
