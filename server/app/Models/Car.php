@@ -47,6 +47,7 @@ class Car extends Model implements AuditableContract
         'has_spare_key',
         'has_manuals',
         'price_gross',
+        'promo_price_gross',
         'price_net',
         'hide_price_online',
         'monthly_payment',
@@ -64,6 +65,12 @@ class Car extends Model implements AuditableContract
     protected $casts = [
         'extras' => 'array',
         'car_created_at' => 'datetime',
+    ];
+
+    protected $appends = [
+        'has_promo_price',
+        'promo_discount_value',
+        'promo_discount_pct',
     ];
 
     public function getExtrasAttribute($value)
@@ -155,5 +162,40 @@ class Car extends Model implements AuditableContract
     public function marketingIdeas(): HasMany
     {
         return $this->hasMany(CarMarketingIdea::class);
+    }
+
+    public function getPromoDiscountValueAttribute(): ?float
+    {
+        $priceGross = $this->price_gross;
+        $promoPriceGross = $this->promo_price_gross;
+
+        if ($priceGross === null || $promoPriceGross === null || $promoPriceGross >= $priceGross) {
+            return null;
+        }
+
+        return round((float) $priceGross - (float) $promoPriceGross, 2);
+    }
+
+    public function getHasPromoPriceAttribute(): bool
+    {
+        $priceGross = $this->price_gross;
+        $promoPriceGross = $this->promo_price_gross;
+
+        return $promoPriceGross !== null
+            && (float) $promoPriceGross > 0
+            && $priceGross !== null
+            && (float) $promoPriceGross < (float) $priceGross;
+    }
+
+    public function getPromoDiscountPctAttribute(): ?float
+    {
+        $discountValue = $this->promo_discount_value;
+        $priceGross = $this->price_gross;
+
+        if (!$this->has_promo_price || $discountValue === null || empty($priceGross) || (float) $priceGross <= 0) {
+            return null;
+        }
+
+        return round(($discountValue / (float) $priceGross) * 100, 2);
     }
 }

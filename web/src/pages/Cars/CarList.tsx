@@ -24,6 +24,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import { createSelector } from "reselect";
 // Slices
 import { showCarmine, syncCarmine } from "slices/thunks";
@@ -74,12 +75,6 @@ const getAttentionBadge = (car: any) => {
         icon: "ri-focus-3-line",
     };
 };
-
-const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-PT", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(value);
 
 const formatConversionRate = (views: number, leads: number) => {
     if (!views) return "0%";
@@ -289,11 +284,19 @@ const CarList = () => {
             header: "Preço",
             accessorKey: "price_gross",
             enableColumnFilter: false,
-            cell: (cell: any) => (
-                <span className="fw-semibold text-body">
-                    €{formatCurrency(cell.getValue())}
-                </span>
-            )
+            cell: (cell: any) => {
+                const car = cell.row.original;
+
+                return (
+                    <CarPriceDisplay
+                        priceGross={car.price_gross}
+                        promoPriceGross={car.promo_price_gross}
+                        promoDiscountPct={car.promo_discount_pct}
+                        size="sm"
+                        badgeLabel="Oportunidade"
+                    />
+                );
+            }
         },
         {
             header: "Views",

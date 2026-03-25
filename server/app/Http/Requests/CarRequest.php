@@ -68,6 +68,7 @@ class CarRequest extends FormRequest
 
             // Pricing
             'price_gross' => ['nullable', 'numeric', 'min:0'],
+            'promo_price_gross' => ['nullable', 'numeric', 'min:0'],
             'price_net' => ['nullable', 'numeric', 'min:0'],
             'hide_price_online' => ['boolean'],
             'monthly_payment' => ['nullable', 'numeric', 'min:0'],

@@ -22,17 +22,27 @@ class CarSalePotentialScoreService
         $car = Car::where('id', $carId)
             ->where('company_id', $companyId)
             ->firstOrFail();
+        $pricing = $this->resolvePricingContext($car);
 
         $breakdown = [
             'price_vs_market' => $this->scorePriceVsMarket($car),
+            'promo_effect'    => $this->scorePromoEffect($car),
             'engagement_rate' => $this->scoreEngagementRate($car),
             'days_in_stock'   => $this->scoreDaysInStock($car),
             'segment_demand'  => $this->scoreSegmentDemand($car),
             'listing_quality' => $this->scoreListingQuality($car),
             'model_history'   => $this->scoreModelHistory($car),
+            'pricing'         => [
+                'effective_price_gross' => $pricing['effective_price_gross'],
+                'has_promo_price' => $pricing['has_promo_price'],
+                'promo_discount_value' => $pricing['promo_discount_value'],
+                'promo_discount_pct' => $pricing['promo_discount_pct'],
+            ],
         ];
 
-        $score          = (int) array_sum($breakdown);
+        $score          = (int) collect($breakdown)
+            ->filter(fn ($value) => is_numeric($value))
+            ->sum();
         $score          = max(0, min(100, $score)); // garantir 0–100
         $daysInStock    = (int) Carbon::parse($car->created_at)->diffInDays(now());
         $priceVsMarket  = $this->getPriceVsMarketPercent($car);
@@ -67,6 +77,10 @@ class CarSalePotentialScoreService
             'classification' => $latest?->classification,
             'calculated_at'  => $latest?->calculated_at,
             'price_vs_market' => $latest?->price_vs_market,
+            'effective_price_gross' => $latest?->score_breakdown['pricing']['effective_price_gross'] ?? null,
+            'has_promo_price' => $latest?->score_breakdown['pricing']['has_promo_price'] ?? false,
+            'promo_discount_value' => $latest?->score_breakdown['pricing']['promo_discount_value'] ?? null,
+            'promo_discount_pct' => $latest?->score_breakdown['pricing']['promo_discount_pct'] ?? null,
             'breakdown'      => $latest?->score_breakdown,
             'history'        => $history->map(fn($h) => [
                 'score' => $h->score,
@@ -98,8 +112,15 @@ class CarSalePotentialScoreService
 
     private function getPriceVsMarketPercent(Car $car): ?float
     {
+        $pricing = $this->resolvePricingContext($car);
+        $effectivePrice = $pricing['effective_price_gross'];
+
+        if ($effectivePrice === null || $effectivePrice <= 0) {
+            return null;
+        }
+
         // Mediana de todos os carros ativos do mesmo modelo, ano ±1, excluindo o próprio
-        $median = DB::table('cars')
+        $marketPrices = DB::table('cars')
             ->where('car_model_id', $car->car_model_id)
             ->where('car_brand_id', $car->car_brand_id)
             ->whereBetween('registration_year', [
@@ -108,16 +129,25 @@ class CarSalePotentialScoreService
             ])
             ->where('status', 'active')
             ->where('id', '!=', $car->id)
-            ->whereNotNull('price_gross')
-            ->orderByRaw('price_gross')
-            ->pluck('price_gross')
-            ->pipe(fn($prices) => $this->median($prices->toArray()));
+            ->get(['price_gross', 'promo_price_gross'])
+            ->map(function ($marketCar) {
+                return $this->resolveEffectivePrice(
+                    $marketCar->price_gross,
+                    $marketCar->promo_price_gross ?? null
+                );
+            })
+            ->filter(fn ($price) => $price !== null && $price > 0)
+            ->sort()
+            ->values()
+            ->toArray();
+
+        $median = $this->median($marketPrices);
 
         if (! $median || $median == 0) {
             return null;
         }
 
-        return round((($car->price_gross - $median) / $median) * 100, 2);
+        return round((($effectivePrice - $median) / $median) * 100, 2);
     }
 
     // ── Fator 2: Velocidade de engajamento (20 pts) ───────────────────────────
@@ -247,6 +277,7 @@ class CarSalePotentialScoreService
     private function scoreListingQuality(Car $car): int
     {
         $pts = 0;
+        $pricing = $this->resolvePricingContext($car);
 
         // Fotos: ≥8 → 4pts, ≥4 → 2pts
         $photoCount = DB::table('car_images')
@@ -260,7 +291,7 @@ class CarSalePotentialScoreService
         if (! empty($car->description_website_pt)) $pts += 2;
 
         // Preço visível
-        if (! $car->hide_price_online && $car->price_gross > 0) $pts += 2;
+        if (! $car->hide_price_online && ($pricing['effective_price_gross'] ?? 0) > 0) $pts += 2;
 
         // Extras preenchidos (pelo menos um grupo com items)
         $hasExtras = collect($car->extras ?? [])
@@ -269,6 +300,48 @@ class CarSalePotentialScoreService
         if ($hasExtras) $pts += 2;
 
         return min(10, $pts);
+    }
+
+    private function scorePromoEffect(Car $car): int
+    {
+        $pricing = $this->resolvePricingContext($car);
+
+        if (! $pricing['has_promo_price']) {
+            return 0;
+        }
+
+        $discountPct = $pricing['promo_discount_pct'] ?? 0.0;
+        if ($discountPct < 3) {
+            return 0;
+        }
+
+        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $views = DB::table('car_views')->where('car_id', $car->id)->count();
+        $leads = DB::table('car_leads')->where('car_id', $car->id)->count();
+        $interactions = DB::table('car_interactions')->where('car_id', $car->id)->count();
+
+        $baseBoost = match (true) {
+            $discountPct >= 10 => 8,
+            $discountPct >= 5 => 5,
+            $discountPct >= 3 => 3,
+            default => 0,
+        };
+
+        $engagementSignal = $views >= 120 || $interactions >= 10 || $leads >= 2;
+        if ($engagementSignal) {
+            $baseBoost += 2;
+        }
+
+        $promoNotWorking = $daysInStock >= 21 && $leads === 0 && $interactions < 5;
+        if ($promoNotWorking) {
+            $baseBoost -= match (true) {
+                $discountPct >= 10 => 5,
+                $discountPct >= 5 => 3,
+                default => 2,
+            };
+        }
+
+        return max(0, min(10, $baseBoost));
     }
 
     // ── Fator 6: Histórico de conversão do modelo (10 pts) ───────────────────
@@ -307,5 +380,45 @@ class CarSalePotentialScoreService
         return $count % 2 === 0
             ? ($values[$mid - 1] + $values[$mid]) / 2
             : $values[$mid];
+    }
+
+    private function resolvePricingContext(Car $car): array
+    {
+        $effectivePrice = $this->resolveEffectivePrice($car->price_gross, $car->promo_price_gross);
+        $hasPromoPrice = $car->promo_price_gross !== null
+            && (float) $car->promo_price_gross > 0
+            && $car->price_gross !== null
+            && (float) $car->promo_price_gross < (float) $car->price_gross;
+
+        $promoDiscountValue = $hasPromoPrice
+            ? round((float) $car->price_gross - (float) $car->promo_price_gross, 2)
+            : 0.0;
+
+        $promoDiscountPct = $hasPromoPrice && (float) $car->price_gross > 0
+            ? round(($promoDiscountValue / (float) $car->price_gross) * 100, 2)
+            : 0.0;
+
+        return [
+            'effective_price_gross' => $effectivePrice,
+            'has_promo_price' => $hasPromoPrice,
+            'promo_discount_value' => $promoDiscountValue,
+            'promo_discount_pct' => $promoDiscountPct,
+        ];
+    }
+
+    private function resolveEffectivePrice(mixed $priceGross, mixed $promoPriceGross): ?float
+    {
+        if ($priceGross === null) {
+            return null;
+        }
+
+        $basePrice = (float) $priceGross;
+        $promoPrice = $promoPriceGross !== null ? (float) $promoPriceGross : null;
+
+        if ($promoPrice !== null && $promoPrice > 0 && $promoPrice < $basePrice) {
+            return $promoPrice;
+        }
+
+        return $basePrice > 0 ? $basePrice : null;
     }
 }

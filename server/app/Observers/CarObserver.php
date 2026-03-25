@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Jobs\CalculateCarSalePotentialScoreJob;
 use App\Mail\CarSoldNotificationMail;
 use App\Models\Car;
 use App\Models\CarPerformanceMetric;
@@ -16,6 +17,8 @@ class CarObserver
      */
     public function updated(Car $car): void
     {
+        $this->recalculatePotentialScoreIfPricingChanged($car);
+
         if (!$car->wasChanged('status') || $car->status !== 'sold' || $car->getOriginal('status') === 'sold') {
             return;
         }
@@ -41,5 +44,21 @@ class CarObserver
         $car->loadMissing(['company', 'brand', 'model']);
 
         Mail::to('simonfrtd@gmail.com')->send(new CarSoldNotificationMail($car));
+    }
+
+    private function recalculatePotentialScoreIfPricingChanged(Car $car): void
+    {
+        $priceChanged = $car->wasChanged('price_gross');
+        $promoPriceChanged = $car->wasChanged('promo_price_gross');
+
+        if (!$priceChanged && !$promoPriceChanged) {
+            return;
+        }
+
+        CalculateCarSalePotentialScoreJob::dispatch(
+            carId: $car->id,
+            companyId: $car->company_id,
+            triggeredBy: $promoPriceChanged ? 'promo_price_change' : 'price_change',
+        );
     }
 }

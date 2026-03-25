@@ -42,6 +42,7 @@ class CarSalePotentialScore extends Model
         'lead_created',
         'image_added',
         'manual',
+        'promo_price_change',
     ];
 
     public static function classify(int $score): string

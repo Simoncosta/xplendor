@@ -27,6 +27,14 @@ export default function CarPriceDataFields({ isEdit }: { isEdit: boolean }) {
                 <Col lg={2}>
                     <XInput
                         type="number"
+                        label="Preço promo (€)"
+                        name="promo_price_gross"
+                        step="0.01"
+                    />
+                </Col>
+                <Col lg={2}>
+                    <XInput
+                        type="number"
                         label="Preço (€) s/ IVA"
                         name="price_net"
                         step="0.01"

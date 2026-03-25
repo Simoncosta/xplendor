@@ -187,7 +187,8 @@ class CarmineConnectionService extends BaseService
             "interior_color"          => null,
             "condition"               => $condition,
             "mileage_km"              => $data['Km'] === "" ? 0 : $data['Km'],
-            "price_gross"             => $data['Preco'] === '' ? 0 : $data['Preco'],
+            "price_gross"             => $this->normalizeMoney($data['Preco'] ?? null),
+            "promo_price_gross"       => $this->normalizeMoney($data['PrecoPromo'] ?? null, true),
             "description_website_pt"  => $data['TextoGenericoAnuncios'],
             "youtube_url"             => $data['UrlVideo'],
             "company_id"              => $companyId,
@@ -218,5 +219,26 @@ class CarmineConnectionService extends BaseService
                 return null;
             }
         }
+    }
+
+    private function normalizeMoney(mixed $value, bool $nullableIfEmpty = false): ?float
+    {
+        if ($value === null || $value === '') {
+            return $nullableIfEmpty ? null : 0.0;
+        }
+
+        if (is_numeric($value)) {
+            return round((float) $value, 2);
+        }
+
+        $normalized = preg_replace('/[^\d,.-]/', '', (string) $value);
+        $normalized = str_replace('.', '', $normalized);
+        $normalized = str_replace(',', '.', $normalized);
+
+        if ($normalized === '' || !is_numeric($normalized)) {
+            return $nullableIfEmpty ? null : 0.0;
+        }
+
+        return round((float) $normalized, 2);
     }
 }

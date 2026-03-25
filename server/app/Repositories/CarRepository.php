@@ -133,9 +133,14 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
         $leads = (int) ($performance->leads ?? 0);
         $fallbackSpend = round((float) ($performance->fallback_spend ?? 0), 2);
         $spend = round($metaSpend > 0 ? $metaSpend : $fallbackSpend, 2);
+        $promo = $this->promotionMetrics($car);
 
         return [
             'status' => $car->status,
+            'price_gross' => $car->price_gross,
+            'promo_price_gross' => $car->promo_price_gross,
+            'promo_discount_value' => $promo['promo_discount_value'],
+            'promo_discount_pct' => $promo['promo_discount_pct'],
             'views' => $views,
             'leads' => $leads,
             'spend' => $spend,
@@ -200,5 +205,13 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
         }
 
         return null;
+    }
+
+    protected function promotionMetrics(Car $car): array
+    {
+        return [
+            'promo_discount_value' => $car->promo_discount_value,
+            'promo_discount_pct' => $car->promo_discount_pct,
+        ];
     }
 }

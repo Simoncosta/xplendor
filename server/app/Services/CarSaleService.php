@@ -92,6 +92,7 @@ class CarSaleService extends BaseService
             'has_spare_key' => $data['has_spare_key'] ?? false,
             'has_manuals' => $data['has_manuals'] ?? false,
             'price_gross' => $data['price_gross'] ?? null,
+            'promo_price_gross' => $data['promo_price_gross'] ?? null,
             'price_net' => $data['price_net'] ?? null,
             'hide_price_online' => $data['hide_price_online'] ?? false,
             'monthly_payment' => $data['monthly_payment'] ?? null,

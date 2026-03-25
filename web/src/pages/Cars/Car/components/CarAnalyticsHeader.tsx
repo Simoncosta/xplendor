@@ -1,17 +1,17 @@
 import { Link } from "react-router-dom";
 import { Card, CardBody } from "reactstrap";
+import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 
 interface Props {
     car: any;
     ips: any;
     ai: any;
     aiMeta: any;
-    fmt: (n: number) => string;
     fmtDate: (d: string) => string;
     ipsClassBadge: (cls: string) => string;
 }
 
-export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate, ipsClassBadge }: Props) {
+export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsClassBadge }: Props) {
     console.log(ips)
     return (
         <Card className="mb-0">
@@ -28,7 +28,16 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmt, fmtDate,
                         </h5>
                         <div className="hstack gap-3 flex-wrap">
                             <span className="text-muted fs-13">
-                                Preço: <span className="text-dark fw-semibold">€{fmt(car?.price_gross ?? car?.price)}</span>
+                                Preço:
+                                <span className="ms-2 d-inline-flex align-middle">
+                                    <CarPriceDisplay
+                                        priceGross={car?.price_gross ?? car?.price}
+                                        promoPriceGross={car?.promo_price_gross}
+                                        promoDiscountPct={car?.promo_discount_pct}
+                                        size="sm"
+                                        badgeLabel="Oportunidade"
+                                    />
+                                </span>
                             </span>
                             <span className="vr" />
                             <span className="text-muted fs-13">

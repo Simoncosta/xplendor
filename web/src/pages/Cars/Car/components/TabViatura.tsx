@@ -1,11 +1,11 @@
 import { Col, Row } from "reactstrap";
+import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 
 interface Props {
     car: any;
-    fmt: (n: number) => string;
 }
 
-export default function TabViatura({ car, fmt }: Props) {
+export default function TabViatura({ car }: Props) {
     return (
         <Row className="g-3">
 
@@ -70,7 +70,14 @@ export default function TabViatura({ car, fmt }: Props) {
                 </h6>
                 <div className="bg-primary-subtle rounded p-3 mb-3 text-center">
                     <p className="text-muted fs-12 mb-1">Preço de venda</p>
-                    <div className="fs-24 fw-bold text-primary">€{fmt(car?.price_gross)}</div>
+                    <CarPriceDisplay
+                        priceGross={car?.price_gross}
+                        promoPriceGross={car?.promo_price_gross}
+                        promoDiscountPct={car?.promo_discount_pct}
+                        align="center"
+                        size="lg"
+                        badgeLabel="Em promoção"
+                    />
                 </div>
                 {car?.description_website_pt && (
                     <>

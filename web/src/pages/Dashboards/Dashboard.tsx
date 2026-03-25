@@ -59,6 +59,26 @@ const Dashboard = () => {
     );
     const marketingRoi = safeAnalytics.marketing_roi || emptyMarketingRoi;
 
+    useEffect(() => {
+        if (process.env.NODE_ENV === "production") return;
+
+        console.debug("[Dashboard] Raw action-required payload", {
+            urgent_action_cars: safeAnalytics.urgent_action_cars,
+            high_interest_low_conversion_cars: safeAnalytics.high_interest_low_conversion_cars,
+            highest_stuck_capital_cars: safeAnalytics.highest_stuck_capital_cars,
+        });
+    }, [
+        safeAnalytics.urgent_action_cars,
+        safeAnalytics.high_interest_low_conversion_cars,
+        safeAnalytics.highest_stuck_capital_cars,
+    ]);
+
+    useEffect(() => {
+        if (process.env.NODE_ENV === "production") return;
+
+        console.debug("[Dashboard] buildActionRequiredCars output", actionRequiredCars);
+    }, [actionRequiredCars]);
+
     if (loading) return null;
     if (!analytics) return null;
 
@@ -147,12 +167,19 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
         interactions_count: car.interactions_count || 0,
         days_in_stock: car.days_in_stock ?? null,
         price_gross: Number(car.price_gross || 0),
+        promo_price_gross: car.promo_price_gross !== null && car.promo_price_gross !== undefined
+            ? Number(car.promo_price_gross)
+            : null,
+        promo_discount_pct: car.promo_discount_pct !== null && car.promo_discount_pct !== undefined
+            ? Number(car.promo_discount_pct)
+            : null,
+        has_promo_price: Boolean(car.has_promo_price),
         reason: car.reason || "Ação urgente",
         suggestion: car.priority >= 2 ? "Rever preço e destacar anúncio" : "Melhorar fotos e rever copy",
         source: "urgent" as const,
         priority: car.priority || 1,
-        ips_score: car.ips_score ?? null,           // ← NOVO
-        ips_classification: car.ips_classification ?? null, // ← NOVO
+        ips_score: car.ips_score ?? null,
+        ips_classification: car.ips_classification ?? null,
     }));
 
     const lowConversionCars = (analytics.high_interest_low_conversion_cars || []).map((car) => ({
@@ -163,6 +190,13 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
         interactions_count: car.interactions_count || 0,
         days_in_stock: car.days_in_stock ?? null,
         price_gross: Number(car.price_gross || 0),
+        promo_price_gross: car.promo_price_gross !== null && car.promo_price_gross !== undefined
+            ? Number(car.promo_price_gross)
+            : null,
+        promo_discount_pct: car.promo_discount_pct !== null && car.promo_discount_pct !== undefined
+            ? Number(car.promo_discount_pct)
+            : null,
+        has_promo_price: Boolean(car.has_promo_price),
         reason: "Interesse alto / conversão baixa",
         suggestion: Array.isArray(car.suggestions)
             ? car.suggestions.join(", ")
@@ -181,6 +215,13 @@ const buildActionRequiredCars = (analytics: TAnalytics) => {
         interactions_count: 0,
         days_in_stock: car.days_in_stock ?? null,
         price_gross: Number(car.price_gross || 0),
+        promo_price_gross: car.promo_price_gross !== null && car.promo_price_gross !== undefined
+            ? Number(car.promo_price_gross)
+            : null,
+        promo_discount_pct: car.promo_discount_pct !== null && car.promo_discount_pct !== undefined
+            ? Number(car.promo_discount_pct)
+            : null,
+        has_promo_price: Boolean(car.has_promo_price),
         reason: `${car.days_in_stock} dias em stock / capital parado`,
         suggestion: "Rever preço e destacar anúncio",
         source: "stuck_capital" as const,

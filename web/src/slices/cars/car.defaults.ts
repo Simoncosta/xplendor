@@ -56,6 +56,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
     has_manuals: false,
 
     price_gross: null,
+    promo_price_gross: null,
     price_net: null,
 
     hide_price_online: false,

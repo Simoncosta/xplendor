@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, CardHeader, Col, Table, Badge } from "reactstrap";
 
@@ -9,6 +10,9 @@ interface IActionRequiredCar {
     interactions_count: number;
     days_in_stock: number | null;
     price_gross: number;
+    promo_price_gross?: number | null;
+    promo_discount_pct?: number | null;
+    has_promo_price?: boolean;
     reason: string;
     suggestion: string;
     source: "urgent" | "low_conversion" | "stuck_capital";
@@ -85,10 +89,64 @@ const getRowClass = (priority: number) => {
     return ""
 }
 
+const formatPrice = (value: number) => (
+    value.toLocaleString("pt-PT", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 0,
+    })
+);
+
+const PriceCell = ({ car }: { car: IActionRequiredCar }) => {
+    const hasPromotion = Boolean(
+        car.has_promo_price
+        || (
+            car.promo_price_gross !== null
+            && car.promo_price_gross !== undefined
+            && car.promo_price_gross > 0
+            && car.promo_price_gross < car.price_gross
+        )
+    );
+
+    if (!hasPromotion || !car.promo_price_gross) {
+        return (
+            <span className="fw-semibold text-body">
+                {formatPrice(car.price_gross)}
+            </span>
+        );
+    }
+
+    const discountPct = car.promo_discount_pct ? Math.round(Number(car.promo_discount_pct)) : null;
+    const badgeLabel = discountPct && discountPct >= 5
+        ? "Promoção"
+        : "Oportunidade";
+
+    return (
+        <div className="d-flex flex-column gap-1">
+            <span className="text-muted text-decoration-line-through fs-12">
+                {formatPrice(car.price_gross)}
+            </span>
+            <span className="fw-bold text-danger">
+                {formatPrice(car.promo_price_gross)}
+            </span>
+            <span className="badge bg-danger-subtle text-danger align-self-start">
+                {badgeLabel}
+                {discountPct ? ` -${discountPct}%` : ""}
+            </span>
+        </div>
+    );
+};
+
 export default function ActionRequiredCarsDashboard({
     cars,
 }: ActionRequiredCarsDashboardProps) {
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (process.env.NODE_ENV === "production") return;
+
+        console.debug("[ActionRequiredCarsDashboard] props.cars", cars);
+    }, [cars]);
 
     return (
         <Col xl={12}>
@@ -138,11 +196,7 @@ export default function ActionRequiredCarsDashboard({
                                             <td>{car.interactions_count}</td>
                                             <td>{car.days_in_stock ?? "—"}</td>
                                             <td>
-                                                {Number(car.price_gross).toLocaleString("pt-PT", {
-                                                    style: "currency",
-                                                    currency: "EUR",
-                                                    maximumFractionDigits: 0,
-                                                })}
+                                                <PriceCell car={car} />
                                             </td>
                                             <td>
                                                 <span className="fw-medium">

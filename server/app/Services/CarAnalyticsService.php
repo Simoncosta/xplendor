@@ -44,11 +44,20 @@ class CarAnalyticsService
         $aiAnalysis = $this->carRepository->getAiAnalysisData($car->id, $car->company_id);
         $smartAdsRecommendation = $this->resolveRecommendation($car, $aiAnalysis);
         $recommendedCreative = $this->resolveRecommendedCreative($car, $smartAdsRecommendation);
+        $promoDiscountValue = $car->promo_discount_value;
+        $promoDiscountPct = $car->promo_discount_pct;
 
         return [
             'car' => [
                 'id'                     => $car->id,
                 'price_gross'            => $car->price_gross,
+                'promo_price_gross'      => $car->promo_price_gross,
+                'effective_price_gross'  => $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross
+                    ? $car->promo_price_gross
+                    : $car->price_gross,
+                'has_promo_price'        => $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross,
+                'promo_discount_value'   => $promoDiscountValue,
+                'promo_discount_pct'     => $promoDiscountPct,
                 'price'                  => $car->price_gross,
                 'brand'                  => $car->brand,
                 'model'                  => $car->model,
@@ -101,6 +110,10 @@ class CarAnalyticsService
                 'classification'   => $latestScore->classification,
                 'calculated_at'    => $latestScore->calculated_at,
                 'price_vs_market'  => $latestScore->price_vs_market,
+                'effective_price_gross' => $latestScore->score_breakdown['pricing']['effective_price_gross'] ?? null,
+                'has_promo_price' => $latestScore->score_breakdown['pricing']['has_promo_price'] ?? false,
+                'promo_discount_value' => $latestScore->score_breakdown['pricing']['promo_discount_value'] ?? null,
+                'promo_discount_pct' => $latestScore->score_breakdown['pricing']['promo_discount_pct'] ?? null,
                 'breakdown'        => $latestScore->score_breakdown,
                 'triggered_by'     => $latestScore->triggered_by,
                 'history'          => $scoreHistory->map(fn($h) => [

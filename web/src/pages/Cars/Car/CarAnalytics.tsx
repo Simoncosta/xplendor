@@ -151,7 +151,6 @@ export default function CarAnalytics() {
                             ips={ips}
                             ai={ai}
                             aiMeta={aiMeta}
-                            fmt={fmt}
                             fmtDate={fmtDate}
                             ipsClassBadge={ipsClassBadge}
                         />
@@ -290,7 +289,7 @@ export default function CarAnalytics() {
                                 )}
 
                                 {activeTab === "viatura" && (
-                                    <TabViatura car={car} fmt={fmt} />
+                                    <TabViatura car={car} />
                                 )}
                             </CardBody>
                         </Card>

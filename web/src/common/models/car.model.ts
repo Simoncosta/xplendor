@@ -74,7 +74,10 @@ export interface ICar {
     has_manuals: boolean;
 
     price_gross: number | null;
+    promo_price_gross: number | null;
     price_net: number | null;
+    promo_discount_value?: number | null;
+    promo_discount_pct?: number | null;
 
     hide_price_online: boolean;
 
