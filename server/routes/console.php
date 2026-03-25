@@ -8,6 +8,7 @@ use App\Jobs\{
     GenerateWeeklyMarketingIdeasJob,
     RecalculateAllCarScoresJob,
     FetchMetaAdsMetricsJob,
+    SyncCarmineCarsJob,
 };
 
 Artisan::command('inspire', function () {
@@ -44,3 +45,11 @@ Schedule::job(new GenerateWeeklyMarketingIdeasJob())
     ->at('03:00')
     ->name('generate-weekly-marketing-ideas')
     ->withoutOverlapping();
+
+Schedule::job(new SyncCarmineCarsJob())
+    ->hourly()
+    ->name('sync-carmine-cars')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Carmine Sync] Job falhou no scheduler');
+    });

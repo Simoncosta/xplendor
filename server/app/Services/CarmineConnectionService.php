@@ -26,6 +26,18 @@ class CarmineConnectionService extends BaseService
 
     public function getListaDetalhesViatura(int $companyId)
     {
+        $this->syncCompanyCars($companyId);
+
+        return $this->carRepository->getAll(
+            ['*'],
+            [],
+            null,
+            ['company_id' => $companyId],
+        );
+    }
+
+    public function syncCompanyCars(int $companyId): array
+    {
         $connection = $this->carmineRepository->findOrFail($companyId, 'company_id', ['*'], []);
         if (!isset($connection->id)) {
             throw new Exception('Não há dados com estes parâmetros.');
@@ -37,6 +49,7 @@ class CarmineConnectionService extends BaseService
         );
 
         $response = $api->getListaDetalhesViatura();
+        $totalFetched = count($response);
 
         $errors = [];
         $imported = 0;
@@ -70,6 +83,7 @@ class CarmineConnectionService extends BaseService
 
         Log::info('[Carmine Import] Concluído', [
             'company_id' => $companyId,
+            'total_recebidos' => $totalFetched,
             'importados' => $imported,
             'atualizados' => $updated,
             'erros'      => count($errors),
@@ -79,12 +93,13 @@ class CarmineConnectionService extends BaseService
             Log::warning('[Carmine Import] Viaturas com erro', $errors);
         }
 
-        return $this->carRepository->getAll(
-            ['*'],
-            [],
-            null,
-            ['company_id' => $companyId],
-        );
+        return [
+            'company_id' => $companyId,
+            'total_received' => $totalFetched,
+            'imported' => $imported,
+            'updated' => $updated,
+            'errors' => $errors,
+        ];
     }
 
     public function mapCarmineToXplendor(array $data, int $companyId)
