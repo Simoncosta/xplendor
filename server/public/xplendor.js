@@ -5,6 +5,7 @@
         firstTouch: "xpl_first_touch",
         lastTouch: "xpl_last_touch",
         lastCarView: "xpl_last_car_view",
+        activeCarView: "xpl_active_car_view",
     };
 
     const state = {
@@ -13,6 +14,7 @@
         api_base: null,
         endpoint_path: "/api/public/track",
         debug: false,
+        listenersBound: false,
     };
 
     const safeStorage = (storage) => {
@@ -209,6 +211,19 @@
         ls.removeItem(STORAGE_KEYS.lastCarView);
     };
 
+    const saveActiveCarView = (data = {}) => {
+        ss.setItem(STORAGE_KEYS.activeCarView, JSON.stringify(data));
+    };
+
+    const getActiveCarView = () => {
+        try {
+            const raw = ss.getItem(STORAGE_KEYS.activeCarView);
+            return raw ? JSON.parse(raw) : null;
+        } catch {
+            return null;
+        }
+    };
+
     const shouldCount = (key, ttlMs) => {
         const k = `xpl_dedupe_${key}`;
         const last = ss.getItem(k);
@@ -276,10 +291,23 @@
         tracking: getTrackingPayload(),
     });
 
-    const post = async (payload) => {
+    const post = async (payload, options = {}) => {
         if (!state.api_base || !state.token) return;
 
         const url = `${state.api_base}${state.endpoint_path}?token=${encodeURIComponent(state.token)}`;
+        const preferBeacon = options.preferBeacon === true;
+
+        if (preferBeacon && navigator.sendBeacon) {
+            try {
+                const body = new Blob([JSON.stringify(payload)], { type: "application/json" });
+                navigator.sendBeacon(url, body);
+                return;
+            } catch (error) {
+                if (state.debug) {
+                    console.error("[xplendor] sendBeacon error", error, payload);
+                }
+            }
+        }
 
         try {
             const res = await fetch(url, {
@@ -302,6 +330,86 @@
         }
     };
 
+    const createActiveCarView = (carId) => {
+        const active = {
+            car_id: carId,
+            client_view_key: uuid(),
+            page_url: window.location.pathname + window.location.search,
+            started_at_ms: Date.now(),
+            accumulated_seconds: 0,
+            is_visible: !document.hidden,
+        };
+
+        saveActiveCarView(active);
+
+        return active;
+    };
+
+    const flushActiveCarViewDuration = (reason) => {
+        const active = getActiveCarView();
+        const currentPageUrl = window.location.pathname + window.location.search;
+
+        if (!active || !active.car_id || active.page_url !== currentPageUrl) {
+            return;
+        }
+
+        const now = Date.now();
+        const elapsedSeconds = active.is_visible && active.started_at_ms
+            ? Math.max(0, Math.round((now - active.started_at_ms) / 1000))
+            : 0;
+
+        const totalSeconds = Math.max(0, (active.accumulated_seconds || 0) + elapsedSeconds);
+
+        active.accumulated_seconds = totalSeconds;
+        active.started_at_ms = now;
+        active.is_visible = false;
+        saveActiveCarView(active);
+
+        post(buildEventPayload("car_view_duration", {
+            car_id: active.car_id,
+            client_view_key: active.client_view_key,
+            view_duration_seconds: totalSeconds,
+            meta: {
+                flush_reason: reason,
+            },
+            ...getPageContext(),
+        }), { preferBeacon: true });
+    };
+
+    const resumeActiveCarView = () => {
+        const active = getActiveCarView();
+        const currentPageUrl = window.location.pathname + window.location.search;
+
+        if (!active || active.page_url !== currentPageUrl || active.is_visible) {
+            return;
+        }
+
+        active.started_at_ms = Date.now();
+        active.is_visible = true;
+        saveActiveCarView(active);
+    };
+
+    const bindLifecycleEvents = () => {
+        if (state.listenersBound) return;
+        state.listenersBound = true;
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                flushActiveCarViewDuration("hidden");
+            } else {
+                resumeActiveCarView();
+            }
+        });
+
+        window.addEventListener("pagehide", () => {
+            flushActiveCarViewDuration("pagehide");
+        });
+
+        window.addEventListener("beforeunload", () => {
+            flushActiveCarViewDuration("beforeunload");
+        });
+    };
+
     const handleInit = (cfg = {}) => {
         state.token = cfg.token || null;
         state.api_base = cfg.api_base || window.__XPLENDOR_API_BASE__ || "http://localhost:8001";
@@ -310,6 +418,7 @@
         state.inited = true;
 
         ensureTouch();
+        bindLifecycleEvents();
 
         if (cfg.auto_page_view !== false) {
             const dedupeKey = `page_view_${window.location.pathname}${window.location.search}`;
@@ -340,6 +449,8 @@
             if (!carId) return;
             if (!shouldCount(`car_view_${carId}`, 60000)) return;
 
+            const activeCarView = createActiveCarView(carId);
+            payloadData.client_view_key = activeCarView.client_view_key;
             saveLastCarView(payloadData);
         }
 

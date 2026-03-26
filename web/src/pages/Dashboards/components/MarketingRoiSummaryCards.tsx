@@ -1,5 +1,4 @@
-import React from "react";
-import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
+import { Col } from "reactstrap";
 import { IMarketingRoi } from "./marketingRoi.types";
 import { formatCurrency, formatCurrencyWithFallback } from "./marketingRoi.utils";
 
@@ -9,83 +8,51 @@ type MarketingRoiSummaryCardsProps = {
 
 const executiveCards = (marketingRoi: IMarketingRoi) => [
     {
-        label: "Investimento 7 dias",
+        label: "Investimento",
         value: formatCurrency(marketingRoi.summary.total_spend),
-        icon: "ri-funds-line",
-        accentClass: "text-primary",
     },
     {
-        label: "Leads 7 dias",
+        label: "Leads",
         value: marketingRoi.summary.total_leads.toLocaleString("pt-PT"),
-        icon: "ri-user-shared-line",
-        accentClass: "text-success",
     },
     {
-        label: "CPL médio",
+        label: "CPL medio",
         value: formatCurrencyWithFallback(marketingRoi.summary.avg_cost_per_lead),
-        icon: "ri-price-tag-3-line",
-        accentClass: "text-warning",
     },
     {
-        label: "Melhor canal pago",
+        label: "Melhor canal",
         value: marketingRoi.summary.best_channel || "Sem dados",
-        icon: "ri-rocket-line",
-        accentClass: "text-info",
     },
 ];
 
-export default function MarketingRoiSummaryCards({
-    marketingRoi,
-}: MarketingRoiSummaryCardsProps) {
+export default function MarketingRoiSummaryCards({ marketingRoi }: MarketingRoiSummaryCardsProps) {
     const cards = executiveCards(marketingRoi);
 
     return (
-        <Col xl={12}>
-            <Card className="card-height-100 border-0 shadow-sm">
-                <CardHeader className="bg-white border-0 pb-0">
-                    <div className="d-flex flex-column flex-lg-row align-items-lg-center gap-3">
-                        <div className="flex-grow-1">
-                            <span className="badge bg-dark-subtle text-dark text-uppercase mb-2">
-                                Marketing Intelligence
-                            </span>
-                            <h4 className="card-title mb-1">
-                                ROI e decisão de investimento
-                            </h4>
-                            <p className="text-muted mb-0">
-                                Quanto investiste, quantas leads geraste e em que canal pago faz mais sentido escalar.
-                            </p>
-                        </div>
-
-                        <div className="border rounded-3 px-3 py-2 bg-light-subtle">
-                            <p className="text-muted mb-1 fs-12 text-uppercase">Melhor campanha</p>
-                            <h6 className="mb-0">{marketingRoi.summary.best_campaign || "Sem campanha vencedora"}</h6>
-                        </div>
+        <Col xs={12}>
+            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                    <div>
+                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                            Marketing intelligence
+                        </p>
+                        <h5 className="mb-1 fw-semibold">ROI e decisao de investimento</h5>
                     </div>
-                </CardHeader>
-
-                <CardBody>
-                    <Row>
-                        {cards.map((card) => (
-                            <Col xl={3} md={6} key={card.label}>
-                                <div className="border rounded-3 p-3 h-100 bg-light bg-opacity-50">
-                                    <div className="d-flex align-items-start justify-content-between gap-3">
-                                        <div>
-                                            <p className="text-muted text-uppercase fw-semibold mb-2 fs-12">
-                                                {card.label}
-                                            </p>
-                                            <h4 className="mb-0">{card.value}</h4>
-                                        </div>
-
-                                        <div className={`fs-2 ${card.accentClass}`}>
-                                            <i className={card.icon} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </Col>
-                        ))}
-                    </Row>
-                </CardBody>
-            </Card>
+                    <span className="badge bg-light text-dark px-3 py-2">
+                        {marketingRoi.summary.best_campaign || "Sem campanha vencedora"}
+                    </span>
+                </div>
+                <div className="row g-2">
+                    {cards.map((card) => (
+                        <div className="col-xl-3 col-md-6" key={card.label}>
+                            <div className="rounded-3 bg-light-subtle h-100" style={{ padding: "14px 16px" }}>
+                                <div className="text-muted fs-12 text-uppercase fw-semibold mb-1">{card.label}</div>
+                                <div className="fw-semibold">{card.value}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
         </Col>
     );
 }

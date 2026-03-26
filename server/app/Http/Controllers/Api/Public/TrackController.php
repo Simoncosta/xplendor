@@ -47,6 +47,7 @@ class TrackController extends Controller
         $allowedTypes = array_merge([
             'page_view',
             'car_view',
+            'car_view_duration',
             'car_lead',
         ], $interactionTypes);
 
@@ -55,6 +56,8 @@ class TrackController extends Controller
 
             'data' => ['nullable', 'array'],
             'data.car_id' => ['nullable', 'integer'],
+            'data.client_view_key' => ['nullable', 'uuid'],
+            'data.view_duration_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
             'data.name' => ['nullable', 'string', 'max:255'],
             'data.email' => ['nullable', 'email', 'max:255'],
             'data.phone' => ['nullable', 'string', 'max:30'],
@@ -90,6 +93,7 @@ class TrackController extends Controller
             'channel'      => $t['channel'] ?? null,
             'visitor_id'   => $t['visitor_id'] ?? null,
             'session_id'   => $t['session_id'] ?? null,
+            'client_view_key' => $data['client_view_key'] ?? null,
             'utm_source'   => $t['utm_source'] ?? null,
             'utm_medium'   => $t['utm_medium'] ?? null,
             'utm_campaign' => $t['utm_campaign'] ?? null,
@@ -124,6 +128,7 @@ class TrackController extends Controller
                 'user_id' => null,
                 'ip_address' => (string) $request->ip(),
                 'user_agent' => (string) ($request->userAgent() ?? ''),
+                'view_duration_seconds' => $data['view_duration_seconds'] ?? null,
                 ...$trackingCols,
             ]);
 
@@ -132,6 +137,51 @@ class TrackController extends Controller
                 'type' => $type,
                 'id' => $view->id,
             ], 201);
+        }
+
+        if ($type === 'car_view_duration') {
+            if (!$carId) {
+                return response()->json([
+                    'message' => 'data.car_id é obrigatório.',
+                ], 422);
+            }
+
+            if (empty($data['client_view_key'])) {
+                return response()->json([
+                    'message' => 'data.client_view_key é obrigatório.',
+                ], 422);
+            }
+
+            $view = CarView::query()
+                ->where('company_id', $companyId)
+                ->where('car_id', $carId)
+                ->where('visitor_id', $trackingCols['visitor_id'])
+                ->where('session_id', $trackingCols['session_id'])
+                ->where('client_view_key', $data['client_view_key'])
+                ->latest('id')
+                ->first();
+
+            if (!$view) {
+                return response()->json([
+                    'ok' => true,
+                    'type' => $type,
+                    'updated' => false,
+                ], 202);
+            }
+
+            $view->update([
+                'view_duration_seconds' => max(
+                    (int) ($view->view_duration_seconds ?? 0),
+                    (int) ($data['view_duration_seconds'] ?? 0)
+                ),
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'type' => $type,
+                'id' => $view->id,
+                'updated' => true,
+            ], 200);
         }
 
         if ($type === 'car_lead') {

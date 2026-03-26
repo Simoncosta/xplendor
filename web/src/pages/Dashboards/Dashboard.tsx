@@ -7,7 +7,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Container, Row } from 'reactstrap';
 import SummaryDashboard from './components/SummaryDashboard';
 import { getAnalyticsDashboard } from 'slices/dashboards/thunk';
-import HighDemandOpportunityChart from './components/HighDemandOpportunityChart';
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
 import MarketingTrafficDonutChart from './components/MarketingTrafficDonutChart';
 import DashboardInsightsCard from './components/DashboardInsightsCard';
@@ -17,6 +16,7 @@ import MarketingRoiInsightsCard from './components/MarketingRoiInsightsCard';
 import MarketingTopCampaignsCard from './components/MarketingTopCampaignsCard';
 import TopCarsToPromoteCard from './components/TopCarsToPromoteCard';
 import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
+import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import { IMarketingRoi } from './components/marketingRoi.types';
 
 const selectDashboardState = (state: any) => state.Dashboard;
@@ -45,10 +45,6 @@ const Dashboard = () => {
 
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
     }, [dispatch]);
-    const highDemandCars = useMemo(
-        () => (safeAnalytics.high_demand_opportunity_cars || []).filter((car: any) => car.views_count > 0),
-        [safeAnalytics]
-    );
     const actionRequiredCars = useMemo(
         () => buildActionRequiredCars({
             urgent_action_cars: safeAnalytics.urgent_action_cars,
@@ -86,32 +82,33 @@ const Dashboard = () => {
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
-                    <Row className="mb-3">
+                    <Row className="g-3 mb-3">
+                        <SummaryDashboard summary={analytics.summary} />
+                    </Row>
+                    <Row className="g-3 mb-3">
                         <SubscriptionTrialBanner />
                     </Row>
-                    <Row className="row">
-                        <SummaryDashboard summary={analytics.summary} />
-                        <HighDemandOpportunityChart
-                            data={highDemandCars}
-                            dataColors='["--vz-primary", "--vz-success", "--vz-warning"]'
-                        />
-                    </Row>
-                    <Row className='tow'>
+                    <Row className="g-3 mb-3">
                         <ActionRequiredCarsDashboard cars={actionRequiredCars} />
+                    </Row>
+                    <Row className="g-3 mb-3">
+                        <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
+                        <DashboardInsightsCard insights={analytics.insights || []} />
+                    </Row>
+                    <Row className="g-3 mb-3">
                         <MarketingTrafficDonutChart
                             marketingPerformance={analytics.marketing_performance}
                             dataColors='["--vz-primary", "--vz-success", "--vz-warning"]'
                         />
-                        <DashboardInsightsCard insights={analytics.insights || []} />
                     </Row>
-                    <Row>
+                    <Row className="g-3 mb-3">
                         <MarketingRoiSummaryCards marketingRoi={marketingRoi} />
                     </Row>
-                    <Row>
+                    <Row className="g-3 mb-3">
                         <MarketingRoiChannelTable channels={marketingRoi.by_channel} />
                         <MarketingRoiInsightsCard insights={marketingRoi.insights} />
                     </Row>
-                    <Row>
+                    <Row className="g-3">
                         <MarketingTopCampaignsCard campaigns={marketingRoi.top_campaigns} />
                         <TopCarsToPromoteCard cars={marketingRoi.top_cars_to_promote} />
                     </Row>
@@ -145,6 +142,7 @@ type TAnalytics = {
     marketing_performance?: any;
     insights?: any[];
     marketing_roi?: IMarketingRoi | null;
+    silent_buyers?: any;
 };
 
 const emptyAnalytics: TAnalytics = {
@@ -156,6 +154,7 @@ const emptyAnalytics: TAnalytics = {
     marketing_performance: undefined,
     insights: [],
     marketing_roi: emptyMarketingRoi,
+    silent_buyers: null,
 };
 
 const buildActionRequiredCars = (analytics: TAnalytics) => {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
+import { Col, Row } from "reactstrap";
 import XButton from "Components/Common/XButton";
 import MarketingIdeaCard, { MarketingContentType, MarketingIdea } from "./MarketingIdeaCard";
 
@@ -11,16 +11,16 @@ interface Props {
 type TabKey = MarketingContentType;
 
 const tabs: { key: TabKey; label: string; icon: string; color: string; description: string }[] = [
-    { key: "sale", label: "Venda", icon: "ri-shopping-bag-3-line", color: "primary", description: "Conteúdo orientado a conversão e leads." },
-    { key: "authority", label: "Autoridade", icon: "ri-award-line", color: "warning", description: "Ideias para reforçar credibilidade e expertise." },
-    { key: "engagement", label: "Engagement", icon: "ri-heart-pulse-line", color: "danger", description: "Conteúdo pensado para alcance e interação." },
+    { key: "sale", label: "Venda", icon: "ri-shopping-bag-3-line", color: "primary", description: "Conteudo orientado a conversao e leads." },
+    { key: "authority", label: "Autoridade", icon: "ri-award-line", color: "warning", description: "Ideias para reforcar credibilidade e expertise." },
+    { key: "engagement", label: "Engagement", icon: "ri-heart-pulse-line", color: "danger", description: "Conteudo pensado para alcance e interacao." },
 ];
 
-const shellStyle = {
-    border: "1px dashed #e9ebec",
-    borderRadius: "0.4rem",
+const sectionStyle = {
+    border: "1px solid #e9ebec",
+    borderRadius: "18px",
     background: "#fff",
-};
+} as const;
 
 export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
     const [activeTab, setActiveTab] = useState<TabKey>("sale");
@@ -38,111 +38,96 @@ export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
     return (
         <Row className="g-3">
             <Col xs={12}>
-                <Card
-                    className="mb-0 border-0 overflow-hidden"
-                    style={{
-                        boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                        background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
-                    }}
-                >
-                    <CardHeader
-                        className="border-bottom-0"
-                        style={{
-                            padding: "1rem 1rem 0 1rem",
-                            background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
-                        }}
-                    >
-                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3 px-2">
+                <section style={sectionStyle}>
+                    <div style={{ padding: "18px 20px 0 20px", borderBottom: "1px solid #e9ebec" }}>
+                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                             <div>
                                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Briefing Editorial
+                                    Briefing editorial
                                 </p>
-                                <h5 className="mb-1 fw-semibold">
-                                    <i className="ri-megaphone-line me-2 text-primary" />
-                                    Inteligência de Marketing
-                                </h5>
-                                <p className="fs-12 text-muted mb-0">Ideias de conteúdo organizadas por intenção para este carro.</p>
+                                <h5 className="mb-1 fw-semibold">Inteligencia de Marketing</h5>
+                                <p className="fs-13 text-muted mb-0">Um briefing por intencao, pronto para leitura, adaptacao e execucao.</p>
                             </div>
                             <span className="badge bg-light text-muted fs-12 px-3 py-2">
                                 {totalIdeas} ideia{totalIdeas !== 1 ? "s" : ""} gerada{totalIdeas !== 1 ? "s" : ""}
                             </span>
                         </div>
 
-                        <ul
-                            className="nav nav-tabs nav-tabs-custom nav-justified rounded-3 p-2 mb-0"
-                            style={{
-                                borderBottom: "none",
-                                background: "#f8f9fa",
-                                boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
-                                gap: "0.35rem",
-                            }}
-                        >
-                            {tabs.map((tab) => (
-                                <li className="nav-item" key={tab.key}>
+                        <div className="d-flex gap-2 flex-wrap pb-3">
+                            {tabs.map((tab) => {
+                                const isActive = activeTab === tab.key;
+                                return (
                                     <button
-                                        className="nav-link w-100"
+                                        key={tab.key}
+                                        type="button"
                                         onClick={() => setActiveTab(tab.key)}
+                                        className="btn"
                                         style={{
-                                            border: activeTab === tab.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
-                                            borderBottom: "none",
-                                            borderRadius: "0.75rem",
-                                            background: activeTab === tab.key ? "#ffffff" : "transparent",
-                                            color: activeTab === tab.key ? "#405189" : "#878a99",
-                                            fontWeight: activeTab === tab.key ? 600 : 400,
-                                            padding: "14px 16px",
+                                            border: isActive ? "1px solid #dbe4ff" : "1px solid #e9ebec",
+                                            borderRadius: "999px",
+                                            background: isActive ? "#f5f8ff" : "#fff",
+                                            color: isActive ? "#405189" : "#6c757d",
+                                            fontWeight: isActive ? 600 : 500,
+                                            padding: "10px 14px",
                                             fontSize: "13px",
-                                            boxShadow: activeTab === tab.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
-                                            transition: "all 0.2s ease",
-                                            cursor: "pointer",
                                         }}
                                     >
-                                        <i className={`${tab.icon} me-2`} />
+                                        <i className={`${tab.icon} me-2 text-${isActive ? tab.color : "muted"}`} />
                                         {tab.label}
                                     </button>
-                                </li>
-                            ))}
-                        </ul>
-                    </CardHeader>
-
-                    <CardBody style={{ padding: "1.5rem" }}>
-                        {/* Sub-header da tab activa */}
-                        <div className="mb-4 p-3 rounded-3" style={{ background: "#f8f9fa", border: "1px dashed #e9ebec" }}>
-                            <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
-                                <div>
-                                    <p className="fw-semibold text-muted text-uppercase mb-1" style={{ fontSize: 11, letterSpacing: "0.5px" }}>
-                                        <i className={`${activeMeta.icon} me-1 text-${activeMeta.color}`} />
-                                        {activeMeta.label}
-                                    </p>
-                                    <p className="fs-13 mb-0">{activeMeta.description}</p>
-                                </div>
-                                {/* Badge accionável em vez de "Ideia disponível" */}
-                                {ideasByType[activeTab] ? (
-                                    <span className="badge badge-soft-success fs-11 d-flex align-items-center gap-1 px-3 py-2">
-                                        <i className="ri-check-line" />
-                                        Pronto a usar
-                                    </span>
-                                ) : (
-                                    <span className="badge badge-soft-secondary fs-11 px-3 py-2">
-                                        Sem ideia
-                                    </span>
-                                )}
-                            </div>
+                                );
+                            })}
                         </div>
+                    </div>
+
+                    <div style={{ padding: "18px 20px 20px 20px" }}>
+                        <section
+                            className="mb-4"
+                            style={{
+                                border: "1px solid #e9ebec",
+                                borderRadius: "18px",
+                                background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+                                padding: "18px 20px",
+                            }}
+                        >
+                            <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                                <div>
+                                    <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                        <span className={`badge bg-${activeMeta.color}-subtle text-${activeMeta.color} px-3 py-2`}>
+                                            <i className={`${activeMeta.icon} me-1`} />
+                                            {activeMeta.label}
+                                        </span>
+                                        {activeIdea ? (
+                                            <span className="badge bg-success-subtle text-success px-3 py-2">Pronto a usar</span>
+                                        ) : (
+                                            <span className="badge bg-light text-muted px-3 py-2">Sem ideia</span>
+                                        )}
+                                    </div>
+                                    <p className="text-muted fs-13 mb-2">{activeMeta.description}</p>
+                                    <h3 className="mb-0 fw-semibold" style={{ maxWidth: 860 }}>
+                                        {activeIdea?.title || `Briefing de ${activeMeta.label.toLowerCase()} para esta viatura`}
+                                    </h3>
+                                </div>
+                            </div>
+                        </section>
 
                         {activeIdea ? (
                             <MarketingIdeaCard idea={activeIdea} />
                         ) : (
-                            <div className="text-center py-5 text-muted" style={shellStyle}>
+                            <div
+                                className="text-center py-5 text-muted"
+                                style={{ border: "1px solid #e9ebec", borderRadius: 16, background: "#fff" }}
+                            >
                                 <i className="ri-megaphone-line fs-1 d-block mb-3 text-primary" />
-                                <h5 className="mb-2">Ainda não existem ideias de conteúdo para este tipo</h5>
-                                <p className="mb-3 fs-13">Assim que houver contexto suficiente, esta área passa a sugerir ângulos, hooks e formatos.</p>
+                                <h5 className="mb-2">Ainda nao existem ideias de conteudo para este tipo</h5>
+                                <p className="mb-3 fs-13">Assim que houver contexto suficiente, esta area passa a sugerir angulos, hooks e formatos.</p>
                                 {onGenerateIdeas && (
                                     <XButton onClick={onGenerateIdeas}>Gerar ideias</XButton>
                                 )}
                             </div>
                         )}
-                    </CardBody>
-                </Card>
+                    </div>
+                </section>
             </Col>
         </Row>
     );

@@ -1,40 +1,33 @@
-import { Card, CardBody, CardHeader, Col } from "reactstrap";
+import { Col } from "reactstrap";
 
 type MarketingRoiInsightsCardProps = {
     insights: string[];
 };
 
-export default function MarketingRoiInsightsCard({
-    insights,
-}: MarketingRoiInsightsCardProps) {
+export default function MarketingRoiInsightsCard({ insights }: MarketingRoiInsightsCardProps) {
+    const safeInsights = (insights || []).slice(0, 3);
+
     return (
         <Col xl={4}>
-            <Card className="card-height-100 border-0 shadow-sm bg-opacity-50">
-                <CardHeader className="bg-transparent border-0">
-                    <h4 className="card-title mb-0">Insights automáticos</h4>
-                </CardHeader>
+            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                    ROI insights
+                </p>
+                <h6 className="mb-3 fw-semibold">Leitura rapida</h6>
 
-                <CardBody>
-                    {insights.length > 0 ? (
-                        <div className="vstack gap-3">
-                            {insights.map((insight, index) => (
-                                <div key={`${insight}-${index}`} className="border rounded-3 p-3 bg-white">
-                                    <div className="d-flex gap-3">
-                                        <div className="flex-shrink-0 text-primary fs-4">
-                                            <i className="ri-focus-3-line" />
-                                        </div>
-                                        <p className="mb-0 text-muted">{insight}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-muted mb-0">
-                            Assim que houver histórico de campanhas e leads suficientes, os insights aparecem aqui automaticamente.
-                        </p>
-                    )}
-                </CardBody>
-            </Card>
+                {safeInsights.length > 0 ? (
+                    <div className="vstack gap-2">
+                        {safeInsights.map((insight, index) => (
+                            <div key={`${insight}-${index}`} className="d-flex gap-2 py-2 border-top">
+                                <i className="ri-focus-3-line text-primary fs-5 flex-shrink-0" />
+                                <p className="mb-0 text-muted fs-13">{insight}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-muted mb-0 fs-13">Assim que houver historico suficiente, os insights aparecem aqui automaticamente.</p>
+                )}
+            </section>
         </Col>
     );
 }

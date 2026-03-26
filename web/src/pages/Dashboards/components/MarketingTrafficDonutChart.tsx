@@ -1,6 +1,6 @@
 import React from "react";
 import ReactApexChart from "react-apexcharts";
-import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
+import { Col, Row } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 
 interface IMarketingPerformance {
@@ -28,55 +28,38 @@ export default function MarketingTrafficDonutChart({
     marketingPerformance,
     dataColors = '["--vz-primary", "--vz-success", "--vz-warning", "--vz-info", "--vz-danger", "--vz-secondary", "--vz-dark"]',
 }: MarketingTrafficDonutChartProps) {
-    const defaultDistribution = [
-        { channel: "paid", label: "Trafego pago", count: 0, percentage: 0 },
-        { channel: "organic_search", label: "Pesquisa organica", count: 0, percentage: 0 },
-        { channel: "direct", label: "Direto", count: 0, percentage: 0 },
-    ];
     const distribution = marketingPerformance?.traffic_distribution?.length
-        ? marketingPerformance.traffic_distribution
-        : defaultDistribution;
-    const chartColors = getChartColorsArray(dataColors).slice(0, distribution.length);
+        ? marketingPerformance.traffic_distribution.map((item) => ({
+            label: String(item?.label || "Canal"),
+            percentage: Number(item?.percentage || 0),
+        }))
+        : [];
 
-    const series = distribution.map((item) => item.percentage || 0);
+    const chartColors = getChartColorsArray(dataColors).slice(0, Math.max(distribution.length, 1));
+    const series = distribution.map((item) => Number(item.percentage || 0));
     const labels = distribution.map((item) => item.label);
     const hasMarketingSignals = series.some((value) => value > 0);
+    const views = Number(marketingPerformance?.views_last_7_days || 0);
+    const leads = Number(marketingPerformance?.leads_last_7_days || 0);
+    const conversion = Number(marketingPerformance?.interest_rate || 0);
 
     const options: ApexCharts.ApexOptions = {
-        chart: {
-            height: 280,
-            type: "donut",
-        },
+        chart: { height: 220, type: "donut", toolbar: { show: false } },
         labels,
-        legend: {
-            position: "bottom",
-            horizontalAlign: "center",
-        },
-        dataLabels: {
-            enabled: true,
-            formatter: (val: number) => `${val.toFixed(1)}%`,
-            dropShadow: {
-                enabled: false,
-            },
-        },
+        legend: { show: false },
+        dataLabels: { enabled: false },
         colors: chartColors,
-        stroke: {
-            width: 0,
-        },
-        tooltip: {
-            y: {
-                formatter: (val: number) => `${val.toFixed(1)}%`,
-            },
-        },
+        stroke: { width: 0 },
+        tooltip: { y: { formatter: (val: number) => `${Number(val || 0).toFixed(1)}%` } },
         plotOptions: {
             pie: {
                 donut: {
-                    size: "72%",
+                    size: "74%",
                     labels: {
                         show: true,
                         total: {
                             show: true,
-                            label: "Canais",
+                            label: "Mix",
                             formatter: () => hasMarketingSignals ? "100%" : "0%",
                         },
                     },
@@ -86,77 +69,61 @@ export default function MarketingTrafficDonutChart({
     };
 
     return (
-        <Col xl={6}>
-            <Card className="card-height-100">
-                <CardHeader className="align-items-center d-flex">
-                    <h4 className="card-title mb-0 flex-grow-1">
-                        📈 Performance de Marketing
-                    </h4>
-                </CardHeader>
+        <Col xs={12}>
+            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                    <div>
+                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                            Performance
+                        </p>
+                        <h5 className="mb-1 fw-semibold">Leitura rapida de marketing</h5>
+                    </div>
+                </div>
 
-                <CardBody>
-                    <Row className="align-items-center">
-                        <Col lg={7}>
-                            {hasMarketingSignals ? (
-                                <ReactApexChart
-                                    dir="ltr"
-                                    className="apex-charts"
-                                    series={series}
-                                    options={options}
-                                    type="donut"
-                                    height={280}
-                                />
-                            ) : (
-                                <div className="h-100 d-flex align-items-center justify-content-center">
-                                    <div className="text-center px-3">
-                                        <div className="avatar-sm mx-auto mb-3">
-                                            <div className="avatar-title bg-light text-muted rounded-circle fs-3">
-                                                <i className="ri-pie-chart-line" />
-                                            </div>
-                                        </div>
-                                        <h6 className="mb-1">Sem sinais de marketing</h6>
-                                        <p className="text-muted mb-0">
-                                            O gráfico aparece automaticamente quando existirem sinais em views, interações, leads ou Meta Ads no período.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </Col>
-
-                        <Col lg={5}>
-                            <div className="vstack gap-3">
-                                <div className="border rounded p-3">
-                                    <p className="text-muted mb-1">Views 7 dias</p>
-                                    <h5 className="mb-0">
-                                        {marketingPerformance?.views_last_7_days?.toLocaleString("pt-PT")}
-                                    </h5>
-                                </div>
-
-                                <div className="border rounded p-3">
-                                    <p className="text-muted mb-1">Leads 7 dias</p>
-                                    <h5 className="mb-0">
-                                        {marketingPerformance?.leads_last_7_days?.toLocaleString("pt-PT")}
-                                    </h5>
-                                </div>
-
-                                <div className="border rounded p-3">
-                                    <p className="text-muted mb-1">Interações 7 dias</p>
-                                    <h5 className="mb-0">
-                                        {marketingPerformance?.interactions_last_7_days?.toLocaleString("pt-PT")}
-                                    </h5>
-                                </div>
-
-                                <div className="border rounded p-3">
-                                    <p className="text-muted mb-1">Taxa de interesse</p>
-                                    <h5 className="mb-0">
-                                        {marketingPerformance?.interest_rate?.toFixed(2)}%
-                                    </h5>
-                                </div>
+                <Row className="align-items-center g-3">
+                    <Col xl={4} lg={5}>
+                        {hasMarketingSignals ? (
+                            <ReactApexChart series={series} options={options} type="donut" height={220} />
+                        ) : (
+                            <div className="text-center py-4 text-muted">
+                                <i className="ri-pie-chart-line fs-1 d-block mb-2" />
+                                <p className="mb-0 fs-13">Sem sinais de marketing</p>
                             </div>
-                        </Col>
-                    </Row>
-                </CardBody>
-            </Card>
+                        )}
+                    </Col>
+                    <Col xl={8} lg={7}>
+                        <div className="row g-2">
+                            <div className="col-md-4">
+                                <Metric label="Views" value={views.toLocaleString("pt-PT")} />
+                            </div>
+                            <div className="col-md-4">
+                                <Metric label="Leads" value={leads.toLocaleString("pt-PT")} />
+                            </div>
+                            <div className="col-md-4">
+                                <Metric label="Conversao" value={`${conversion.toFixed(2)}%`} />
+                            </div>
+                        </div>
+                        {hasMarketingSignals && (
+                            <div className="d-flex flex-wrap gap-2 mt-3">
+                                {distribution.slice(0, 4).map((item, index) => (
+                                    <span key={`${item.label}-${index}`} className="badge bg-light text-dark px-3 py-2">
+                                        {item.label} {item.percentage.toFixed(1)}%
+                                    </span>
+                                ))}
+                            </div>
+                        )}
+                    </Col>
+                </Row>
+            </section>
         </Col>
+    );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="d-flex align-items-center justify-content-between rounded-3 bg-light-subtle" style={{ padding: "14px 16px" }}>
+            <span className="text-muted fs-13">{label}</span>
+            <span className="fw-semibold">{value}</span>
+        </div>
     );
 }

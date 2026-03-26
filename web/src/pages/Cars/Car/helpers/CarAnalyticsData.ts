@@ -41,30 +41,41 @@ export const interestRateColor = (r: number) =>
 export const interestRateBadge = (r: number) =>
     r >= 10 ? "ri-arrow-up-line text-success" : r >= 3 ? "ri-subtract-line text-warning" : "ri-arrow-down-line text-muted";
 
-export const buildKpiItems = (m: any) => [
-    { id: 1, label: "Views", counter: m.views, icon: "ri-eye-line", iconClass: "text-primary", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-    { id: 2, label: "Views 24h", counter: m.views_24h, icon: "ri-time-line", iconClass: m.views_24h > 0 ? "text-info" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-    { id: 3, label: "Views 7 dias", counter: m.views_7d, icon: "ri-calendar-line", iconClass: m.views_7d > 0 ? "text-secondary" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-    { id: 4, label: "Interações", counter: m.interactions, icon: "ri-cursor-line", iconClass: m.interactions > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: m.interactions > 0 ? "text-success" : "text-body", badge: "" },
-    { id: 5, label: "Leads", counter: m.leads, icon: "ri-user-follow-line", iconClass: m.leads > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: m.leads > 0 ? "text-success" : "text-body", badge: "" },
-    { id: 6, label: "Taxa de Interesse", counter: m.interest_rate, icon: "ri-line-chart-line", iconClass: interestRateColor(m.interest_rate), suffix: "%", decimals: 1, valueClass: interestRateColor(m.interest_rate), badge: interestRateBadge(m.interest_rate) },
-];
+export const buildKpiItems = (m?: any) => {
+    const metrics = {
+        views: Number(m?.views || 0),
+        views_24h: Number(m?.views_24h || 0),
+        views_7d: Number(m?.views_7d || 0),
+        interactions: Number(m?.interactions || 0),
+        leads: Number(m?.leads || 0),
+        interest_rate: Number(m?.interest_rate || 0),
+    };
+
+    return [
+        { id: 1, label: "Views", counter: metrics.views, icon: "ri-eye-line", iconClass: "text-primary", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
+        { id: 2, label: "Views 24h", counter: metrics.views_24h, icon: "ri-time-line", iconClass: metrics.views_24h > 0 ? "text-info" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
+        { id: 3, label: "Views 7 dias", counter: metrics.views_7d, icon: "ri-calendar-line", iconClass: metrics.views_7d > 0 ? "text-secondary" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
+        { id: 4, label: "Interações", counter: metrics.interactions, icon: "ri-cursor-line", iconClass: metrics.interactions > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.interactions > 0 ? "text-success" : "text-body", badge: "" },
+        { id: 5, label: "Leads", counter: metrics.leads, icon: "ri-user-follow-line", iconClass: metrics.leads > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.leads > 0 ? "text-success" : "text-body", badge: "" },
+        { id: 6, label: "Taxa de Interesse", counter: metrics.interest_rate, icon: "ri-line-chart-line", iconClass: interestRateColor(metrics.interest_rate), suffix: "%", decimals: 1, valueClass: interestRateColor(metrics.interest_rate), badge: interestRateBadge(metrics.interest_rate) },
+    ];
+};
 
 // ─── Traffic sources ──────────────────────────────────────────────────────────
 
 export const buildTrafficSources = (rawSources: any[]) =>
     [...(rawSources || [])]
         .map((item: any) => ({
-            key: item.channel,
-            label: channelLabels[item.channel] || item.channel,
+            key: String(item?.channel || "unknown"),
+            label: channelLabels[String(item?.channel || "unknown")] || String(item?.channel || "Desconhecido"),
             total: Number(item.total || 0),
-            color: channelColors[item.channel] || "#adb5bd",
+            color: channelColors[String(item?.channel || "unknown")] || "#adb5bd",
         }))
         .sort((a, b) => b.total - a.total);
 
 export const buildDonutOptions = (trafficSources: any[], totalTraffic: number): any => ({
     chart: { type: "donut", toolbar: { show: false } },
-    labels: trafficSources.map((i) => i.label),
+    labels: trafficSources.map((i) => String(i?.label || "Desconhecido")),
     colors: trafficSources.map((i) => i.color),
     legend: { show: false },
     dataLabels: { enabled: false },
@@ -76,13 +87,13 @@ export const buildDonutOptions = (trafficSources: any[], totalTraffic: number): 
                 labels: {
                     show: true,
                     name: { show: true, offsetY: 18 },
-                    value: { show: true, fontSize: "22px", fontWeight: 700, offsetY: -10, formatter: (v: any) => parseInt(v) },
-                    total: { show: true, label: "Views", fontSize: "14px", fontWeight: 500, formatter: () => totalTraffic },
+                    value: { show: true, fontSize: "22px", fontWeight: 700, offsetY: -10, formatter: (v: any) => parseInt(String(v ?? 0), 10) || 0 },
+                    total: { show: true, label: "Views", fontSize: "14px", fontWeight: 500, formatter: () => Number(totalTraffic || 0) },
                 },
             },
         },
     },
-    tooltip: { y: { formatter: (v: any) => `${v} views (${totalTraffic > 0 ? ((v / totalTraffic) * 100).toFixed(1) : 0}%)` } },
+    tooltip: { y: { formatter: (v: any) => `${Number(v || 0)} views (${totalTraffic > 0 ? ((Number(v || 0) / totalTraffic) * 100).toFixed(1) : 0}%)` } },
 });
 
 // ─── Interactions ─────────────────────────────────────────────────────────────
@@ -106,11 +117,11 @@ const interactionColors: Record<string, string> = {
 export const buildInteractions = (raw: any[]) =>
     [...(raw || [])]
         .map((item: any) => ({
-            key: item.interaction_type,
-            label: interactionLabels[item.interaction_type] || item.interaction_type,
+            key: String(item?.interaction_type || "unknown"),
+            label: interactionLabels[String(item?.interaction_type || "unknown")] || String(item?.interaction_type || "Interação"),
             total: Number(item.total || 0),
-            icon: interactionIcons[item.interaction_type] || "ri-cursor-line",
-            color: interactionColors[item.interaction_type] || "muted",
+            icon: interactionIcons[String(item?.interaction_type || "unknown")] || "ri-cursor-line",
+            color: interactionColors[String(item?.interaction_type || "unknown")] || "muted",
         }))
         .sort((a, b) => b.total - a.total);
 

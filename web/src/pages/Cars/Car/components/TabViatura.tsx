@@ -3,9 +3,14 @@ import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 
 interface Props {
     car: any;
+    ips?: any;
+    timeline?: any[];
+    fmtDate?: (d: string) => string;
+    fmtTime?: (d: string) => string;
+    timelineDesc?: (item: any) => string;
 }
 
-export default function TabViatura({ car }: Props) {
+export default function TabViatura({ car, ips, timeline = [], fmtDate, fmtTime, timelineDesc }: Props) {
     return (
         <Row className="g-3">
 
@@ -88,6 +93,59 @@ export default function TabViatura({ car }: Props) {
                             dangerouslySetInnerHTML={{ __html: car.description_website_pt }}
                         />
                     </>
+                )}
+            </Col>
+
+            <Col xl={6}>
+                <h6 className="fs-13 fw-semibold mb-3">
+                    <i className="ri-scales-3-line me-2 text-info" />
+                    Preço vs mercado
+                </h6>
+                <div className="vstack gap-2">
+                    <div className="d-flex align-items-center justify-content-between fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.75rem", background: "#fff" }}>
+                        <span className="text-muted">IPS atual</span>
+                        <span className="fw-semibold">{ips?.score ? `${ips.score}/100` : "—"}</span>
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.75rem", background: "#fff" }}>
+                        <span className="text-muted">Posição vs mercado</span>
+                        <span className={`fw-semibold ${Number(ips?.price_vs_market) <= 0 ? "text-success" : "text-danger"}`}>
+                            {ips?.price_vs_market !== null && ips?.price_vs_market !== undefined ? `${Number(ips.price_vs_market) > 0 ? "+" : ""}${Number(ips.price_vs_market).toFixed(1)}%` : "—"}
+                        </span>
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.75rem", background: "#fff" }}>
+                        <span className="text-muted">Último cálculo</span>
+                        <span className="fw-semibold">{ips?.calculated_at && fmtDate ? fmtDate(ips.calculated_at) : "—"}</span>
+                    </div>
+                </div>
+            </Col>
+
+            <Col xl={6}>
+                <h6 className="fs-13 fw-semibold mb-3">
+                    <i className="ri-time-line me-2 text-primary" />
+                    Histórico
+                </h6>
+                {!timeline.length || !fmtDate || !fmtTime || !timelineDesc ? (
+                    <div className="text-center py-4 text-muted bg-light-subtle rounded">
+                        <i className="ri-time-line fs-1 d-block mb-2" />
+                        <p className="fs-13 mb-0">Ainda sem histórico registado</p>
+                    </div>
+                ) : (
+                    <div className="vstack gap-2" style={{ maxHeight: 360, overflowY: "auto" }}>
+                        {timeline.slice(0, 12).map((item: any, idx: number) => (
+                            <div key={idx} className="d-flex align-items-start gap-3" style={{ border: "1px dashed #e9ebec", borderRadius: "0.5rem", padding: "0.75rem", background: "#fff" }}>
+                                <div className={`avatar-title rounded-circle bg-${item.color}-subtle text-${item.color}`} style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                    <i className={`${item.icon} fs-16`} />
+                                </div>
+                                <div style={{ minWidth: 0 }}>
+                                    <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                        <span className="fw-semibold fs-13">{item.label}</span>
+                                        <span className="text-muted fs-12">{fmtDate(item.created_at)} às {fmtTime(item.created_at)}</span>
+                                    </div>
+                                    <p className="text-muted fs-12 mb-0">{timelineDesc(item)}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 )}
             </Col>
 

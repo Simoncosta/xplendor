@@ -20,6 +20,7 @@ class CarAnalyticsService
         protected CarPerformanceMetricRepositoryInterface     $performanceRepository,
         protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
+        protected SilentBuyerDetectionService                 $silentBuyerDetectionService,
     ) {}
 
     public function show(Car $car): array
@@ -123,6 +124,7 @@ class CarAnalyticsService
                     'triggered_by'   => $h->triggered_by,
                 ])->values(),
             ] : null,
+            'silent_buyers' => $this->silentBuyerDetectionService->getCarSummary($car->company_id, $car->id),
         ];
     }
 

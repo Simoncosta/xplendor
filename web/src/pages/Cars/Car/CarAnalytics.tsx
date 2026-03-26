@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { Card, CardBody, CardHeader, Col, Container, Row } from "reactstrap";
+import { Col, Container, Row } from "reactstrap";
 import { createSelector } from "reselect";
 import { toast, ToastContainer } from "react-toastify";
 
@@ -11,8 +11,9 @@ import { carAiAnalyses, carRecalculate } from "slices/car-ai-analises/thunk";
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarAnalyticsKpiStrip from "./components/CarAnalyticsKpiStrip";
-import SmartAdsRecommendationCard from "./components/SmartAdsRecommendationCard";
-import TabMetricas from "./components/TabMetricas";
+import SilentBuyerIntentCard from "./components/SilentBuyerIntentCard";
+import TabOverview from "./components/TabOverview";
+import TabPerformance from "./components/TabPerformance";
 import TabAnaliseIA from "./components/TabAnaliseIA";
 import TabViatura from "./components/TabViatura";
 
@@ -30,11 +31,12 @@ import {
     forecastOptions,
 } from "./helpers/CarAnalyticsData";
 
-type TabKey = "metricas" | "analise" | "viatura";
+type TabKey = "overview" | "performance" | "inteligencia" | "viatura";
 
 const tabs: { key: TabKey; label: string; icon: string }[] = [
-    { key: "metricas", label: "Métricas", icon: "ri-bar-chart-line" },
-    { key: "analise", label: "Inteligência", icon: "ri-cpu-line" },
+    { key: "overview", label: "Overview", icon: "ri-dashboard-line" },
+    { key: "performance", label: "Performance", icon: "ri-bar-chart-grouped-line" },
+    { key: "inteligencia", label: "Inteligência", icon: "ri-cpu-line" },
     { key: "viatura", label: "Viatura", icon: "ri-car-line" },
 ];
 
@@ -55,7 +57,7 @@ export default function CarAnalytics() {
 
     const dispatch: any = useDispatch();
     const { id } = useParams();
-    const [activeTab, setActiveTab] = useState<TabKey>("metricas");
+    const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [companyId, setCompanyId] = useState<number>(0);
 
     const { carAnalytics, loading, generatingAi } = useSelector(selectCarAnalyticsViewModel);
@@ -114,6 +116,8 @@ export default function CarAnalytics() {
     const ipsHistoryOptions = useMemo(() => buildIpsHistoryOptions(ips), [ips]);
     const recommendation = carAnalytics?.smart_ads_recommendation ?? null;
     const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
+    const silentBuyers = carAnalytics?.silent_buyers ?? null;
+    const overviewKpiStrip = <CarAnalyticsKpiStrip items={buildKpiItems(m)} />;
 
     if (loading || !carAnalytics) return null;
 
@@ -157,48 +161,19 @@ export default function CarAnalytics() {
                     </Col>
                 </Row>
 
-                <Row className="mb-3">
-                    <Col>
-                        <SmartAdsRecommendationCard
-                            recommendation={recommendation}
-                            recommendedPlatform={recommendedPlatform}
-                        />
-                    </Col>
-                </Row>
-
-                <Row className="mb-3">
-                    <Col>
-                        <div>
-                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-                                <div>
-                                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                        Estado atual
-                                    </p>
-                                    <h6 className="mb-0 fw-semibold">Indicadores principais da viatura</h6>
-                                </div>
-                                <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                    Atualizado com base na atividade do anúncio
-                                </span>
-                            </div>
-                            <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
-                        </div>
-                    </Col>
-                </Row>
-
                 <Row>
                     <Col>
-                        <Card
-                            className="border-0 overflow-hidden"
+                        <div
                             style={{
-                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                                border: "1px solid #e9ebec",
+                                borderRadius: "18px",
+                                background: "#fff",
                             }}
                         >
-                            <CardHeader
-                                className="border-bottom-0"
+                            <div
                                 style={{
-                                    padding: "1rem 1rem 0 1rem",
-                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                    padding: "16px 16px 0 16px",
+                                    borderBottom: "1px solid #e9ebec",
                                 }}
                             >
                                 <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3 px-2">
@@ -206,9 +181,9 @@ export default function CarAnalytics() {
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                             Análise detalhada
                                         </p>
-                                        <h5 className="mb-1 fw-semibold">Explorar desempenho, inteligência e contexto da viatura</h5>
+                                        <h5 className="mb-1 fw-semibold">Painel estratégico com leitura clara por contexto</h5>
                                         <p className="text-muted fs-13 mb-0">
-                                            Aprofunda a análise depois da recomendação e dos indicadores principais.
+                                            Cada tab organiza a decisão por foco, sem sobrecarga visual nem repetição desnecessária.
                                         </p>
                                     </div>
                                 </div>
@@ -216,8 +191,7 @@ export default function CarAnalytics() {
                                     className="nav nav-tabs nav-tabs-custom nav-justified rounded-3 p-2 mb-0"
                                     style={{
                                         borderBottom: "none",
-                                        background: "#f8f9fa",
-                                        boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
+                                        background: "#fff",
                                         gap: "0.35rem",
                                     }}
                                 >
@@ -227,15 +201,14 @@ export default function CarAnalytics() {
                                                 className={`nav-link w-100 ${activeTab === t.key ? "" : ""}`}
                                                 onClick={() => setActiveTab(t.key)}
                                                 style={{
-                                                    border: activeTab === t.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
+                                                    border: activeTab === t.key ? "1px solid #e9ebec" : "1px solid transparent",
                                                     borderBottom: "none",
                                                     borderRadius: "0.75rem",
-                                                    background: activeTab === t.key ? "#ffffff" : "transparent",
+                                                    background: activeTab === t.key ? "#f8f9fa" : "transparent",
                                                     color: activeTab === t.key ? "#405189" : "#878a99",
                                                     fontWeight: activeTab === t.key ? 600 : 400,
-                                                    padding: "14px 16px",
+                                                    padding: "12px 14px",
                                                     fontSize: "13px",
-                                                    boxShadow: activeTab === t.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
                                                     transition: "all 0.2s ease",
                                                     cursor: "pointer",
                                                 }}
@@ -246,11 +219,23 @@ export default function CarAnalytics() {
                                         </li>
                                     ))}
                                 </ul>
-                            </CardHeader>
+                            </div>
 
-                            <CardBody style={{ padding: "1.5rem" }}>
-                                {activeTab === "metricas" && (
-                                    <TabMetricas
+                            <div style={{ padding: "16px" }}>
+                                {activeTab === "overview" && (
+                                    <TabOverview
+                                        recommendation={recommendation}
+                                        recommendedPlatform={recommendedPlatform}
+                                        silentBuyers={silentBuyers}
+                                        metrics={m}
+                                        insight={insight}
+                                        kpiStrip={overviewKpiStrip}
+                                        onOpenIntelligence={() => setActiveTab("inteligencia")}
+                                    />
+                                )}
+
+                                {activeTab === "performance" && (
+                                    <TabPerformance
                                         companyId={companyId}
                                         carId={Number(id)}
                                         trafficSources={trafficSources}
@@ -258,41 +243,49 @@ export default function CarAnalytics() {
                                         donutOptions={donutOptions}
                                         interactions={interactions}
                                         totalInteractions={totalInteractions}
-                                        insight={insight}
-                                        m={m}
-                                        timeline={carAnalytics.timeline}
                                         perfTotals={perfTotals}
                                         perfChannels={perfChannels}
-                                        fmtDate={fmtDate}
-                                        fmtTime={fmtTime}
                                         fmt={fmt}
-                                        timelineDesc={timelineDesc}
                                     />
                                 )}
 
-                                {activeTab === "analise" && (
-                                    <TabAnaliseIA
-                                        ips={ips}
-                                        ai={ai}
-                                        ipsRadialOptions={ipsRadialOptions}
-                                        ipsHistoryOptions={ipsHistoryOptions}
-                                        ipsClassBadge={ipsClassBadge}
-                                        ipsFactorLabels={ipsFactorLabels}
-                                        forecastOptions={forecastOptions}
-                                        fmtDate={fmtDate}
-                                        carId={id}
-                                        companyId={companyId}
-                                        onRecalculate={handleRecalculate}
-                                        onGenerateAi={handleGenerateAi}
-                                        generatingAi={generatingAi}
-                                    />
+                                {activeTab === "inteligencia" && (
+                                    <Row className="g-3">
+                                        <Col xs={12}>
+                                            <SilentBuyerIntentCard summary={silentBuyers} />
+                                        </Col>
+                                        <Col xs={12}>
+                                            <TabAnaliseIA
+                                                ips={ips}
+                                                ai={ai}
+                                                ipsRadialOptions={ipsRadialOptions}
+                                                ipsHistoryOptions={ipsHistoryOptions}
+                                                ipsClassBadge={ipsClassBadge}
+                                                ipsFactorLabels={ipsFactorLabels}
+                                                forecastOptions={forecastOptions}
+                                                fmtDate={fmtDate}
+                                                carId={id}
+                                                companyId={companyId}
+                                                onRecalculate={handleRecalculate}
+                                                onGenerateAi={handleGenerateAi}
+                                                generatingAi={generatingAi}
+                                            />
+                                        </Col>
+                                    </Row>
                                 )}
 
                                 {activeTab === "viatura" && (
-                                    <TabViatura car={car} />
+                                    <TabViatura
+                                        car={car}
+                                        ips={ips}
+                                        timeline={carAnalytics.timeline}
+                                        fmtDate={fmtDate}
+                                        fmtTime={fmtTime}
+                                        timelineDesc={timelineDesc}
+                                    />
                                 )}
-                            </CardBody>
-                        </Card>
+                            </div>
+                        </div>
                     </Col>
                 </Row>
 

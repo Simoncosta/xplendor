@@ -12,6 +12,7 @@ class DashboardService extends BaseService
         protected DashboardRepositoryInterface               $dashboardRepository,
         protected CarSalePotentialScoreRepositoryInterface   $potentialScoreRepository,
         protected CarMarketingRoiService                     $carMarketingRoiService,
+        protected SilentBuyerDetectionService                $silentBuyerDetectionService,
     ) {}
 
     public function getDashboard(int $companyId): array
@@ -55,6 +56,7 @@ class DashboardService extends BaseService
             'marketing_performance'            => $this->dashboardRepository->getMarketingPerformance($companyId),
             'marketing_roi'                    => $this->carMarketingRoiService->getCompanyMarketingRoi($companyId),
             'insights'                         => $this->dashboardRepository->getCompanyInsights($companyId),
+            'silent_buyers'                    => $this->silentBuyerDetectionService->getDashboardSummary($companyId),
         ];
     }
 

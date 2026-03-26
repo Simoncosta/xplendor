@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardBody, CardHeader, Col, Table, Badge } from "reactstrap";
+import { Col } from "reactstrap";
 
 interface IActionRequiredCar {
     id: number;
@@ -25,204 +24,110 @@ type ActionRequiredCarsDashboardProps = {
     cars: IActionRequiredCar[];
 };
 
-const getPriorityBadge = (priority: number) => {
-
-    if (priority >= 3) return <Badge color="danger">Alta</Badge>
-
-    if (priority === 2) return <Badge color="warning">Média</Badge>
-
-    return <Badge color="secondary">Baixa</Badge>
-};
-
-const getIpsBadge = (score?: number | null, classification?: string | null) => {
-    if (score === null || score === undefined) {
-        return <span className="text-muted fs-12">—</span>;
-    }
-
-    const color =
-        classification === "hot" ? "success" :
-            classification === "warm" ? "warning" : "danger";
-
-    const label =
-        classification === "hot" ? "🔥" :
-            classification === "warm" ? "●" : "⚠️";
-
-    return (
-        <span className={`fw-semibold text-${color} fs-13`}>
-            {label} {score}
-            <span className="text-muted fw-normal fs-11">/100</span>
-        </span>
-    );
-};
-
-const getReasonIcon = (reason: string) => {
-
-    if (!reason) return "⚠️"
-
-    const r = reason.toLowerCase()
-
-    if (r.includes("conversão")) return "🔥"
-    if (r.includes("interesse")) return "👀"
-    if (r.includes("visibilidade")) return "📉"
-    if (r.includes("inventário")) return "⏳"
-    if (r.includes("capital")) return "💰"
-
-    return "⚠️"
-};
-
-const formatSuggestion = (suggestion: string) => {
-
-    if (!suggestion) return null
-
-    return (
-        <span className="text-muted fs-12">
-            {suggestion}
-        </span>
-    )
-}
-
-const getRowClass = (priority: number) => {
-
-    if (priority >= 3) return "table-danger"
-    if (priority === 2) return "table-warning"
-
-    return ""
-}
-
-const formatPrice = (value: number) => (
-    value.toLocaleString("pt-PT", {
+const formatPrice = (value: number) =>
+    Number(value || 0).toLocaleString("pt-PT", {
         style: "currency",
         currency: "EUR",
         maximumFractionDigits: 0,
-    })
-);
+    });
 
-const PriceCell = ({ car }: { car: IActionRequiredCar }) => {
-    const hasPromotion = Boolean(
-        car.has_promo_price
-        || (
-            car.promo_price_gross !== null
-            && car.promo_price_gross !== undefined
-            && car.promo_price_gross > 0
-            && car.promo_price_gross < car.price_gross
-        )
-    );
-
-    if (!hasPromotion || !car.promo_price_gross) {
-        return (
-            <span className="fw-semibold text-body">
-                {formatPrice(car.price_gross)}
-            </span>
-        );
-    }
-
-    const discountPct = car.promo_discount_pct ? Math.round(Number(car.promo_discount_pct)) : null;
-    const badgeLabel = discountPct && discountPct >= 5
-        ? "Promoção"
-        : "Oportunidade";
-
-    return (
-        <div className="d-flex flex-column gap-1">
-            <span className="text-muted text-decoration-line-through fs-12">
-                {formatPrice(car.price_gross)}
-            </span>
-            <span className="fw-bold text-danger">
-                {formatPrice(car.promo_price_gross)}
-            </span>
-            <span className="badge bg-danger-subtle text-danger align-self-start">
-                {badgeLabel}
-                {discountPct ? ` -${discountPct}%` : ""}
-            </span>
-        </div>
-    );
+const getPriorityLabel = (priority: number) => {
+    if (priority >= 3) return { label: "Alta", bg: "#fde8e4", color: "#d63939" };
+    if (priority === 2) return { label: "Media", bg: "#fff3cd", color: "#8a6d1d" };
+    return { label: "Baixa", bg: "#eef2f7", color: "#64748b" };
 };
 
-export default function ActionRequiredCarsDashboard({
-    cars,
-}: ActionRequiredCarsDashboardProps) {
+const getRowTint = (priority: number) => {
+    if (priority >= 3) return "#fff5f3";
+    if (priority === 2) return "#fffaf0";
+    return "#ffffff";
+};
+
+export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCarsDashboardProps) {
     const navigate = useNavigate();
 
-    useEffect(() => {
-        if (process.env.NODE_ENV === "production") return;
-
-        console.debug("[ActionRequiredCarsDashboard] props.cars", cars);
-    }, [cars]);
-
     return (
-        <Col xl={12}>
-            <Card className="card-height-100">
-                <CardHeader className="align-items-center d-flex">
-                    <h4 className="card-title mb-0 flex-grow-1">
-                        🚨 Problemas no stock
-                    </h4>
-                </CardHeader>
+        <Col xs={12}>
+            <section
+                style={{
+                    border: "1px solid #e9ebec",
+                    borderRadius: 16,
+                    background: "#fff",
+                    overflow: "hidden",
+                }}
+            >
+                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap" style={{ padding: "16px 18px", borderBottom: "1px solid #e9ebec" }}>
+                    <div>
+                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                            Acao imediata
+                        </p>
+                        <h5 className="mb-1 fw-semibold">Problemas no stock</h5>
+                        <p className="text-muted fs-13 mb-0">Os carros que pedem decisao agora aparecem primeiro. Clica numa linha para abrir a analise.</p>
+                    </div>
+                    <span className="badge bg-light text-dark fs-12 px-3 py-2">
+                        {cars.length} viatura{cars.length === 1 ? "" : "s"}
+                    </span>
+                </div>
 
                 {cars.length > 0 ? (
-                    <CardBody>
-                        <div className="table-responsive table-card">
-                            <Table className="table table-centered table-hover align-middle table-nowrap mb-0">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th>Carro</th>
-                                        <th>IPS</th>
-                                        <th>Views</th>
-                                        <th>Leads</th>
-                                        <th>Interações</th>
-                                        <th>Dias em stock</th>
-                                        <th>Preço</th>
-                                        <th>Motivo</th>
-                                        <th>Sugestão</th>
-                                        <th>Prioridade</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {cars.map((car) => (
+                    <div className="table-responsive">
+                        <table className="table align-middle mb-0">
+                            <thead style={{ background: "#f8fafc" }}>
+                                <tr>
+                                    <th className="ps-3">Carro</th>
+                                    <th>Prioridade</th>
+                                    <th>Views</th>
+                                    <th>Leads</th>
+                                    <th>Interacoes</th>
+                                    <th>Dias</th>
+                                    <th>Preco</th>
+                                    <th>O que fazer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {cars.map((car) => {
+                                    const priority = getPriorityLabel(car.priority);
+                                    return (
                                         <tr
-                                            className={getRowClass(car.priority)}
                                             key={car.id}
-                                            style={{ cursor: "pointer" }}
                                             onClick={() => navigate(`/cars/${car.id}/analytics`)}
+                                            style={{
+                                                cursor: "pointer",
+                                                background: getRowTint(car.priority),
+                                                boxShadow: car.priority >= 3 ? "inset 4px 0 0 #d63939" : car.priority === 2 ? "inset 4px 0 0 #f7b84b" : "inset 4px 0 0 #cbd5e1",
+                                            }}
                                         >
-                                            <td>
-                                                <h6 className="mb-0 text-primary fw-semibold">
-                                                    {car.car_name}
-                                                </h6>
+                                            <td className="ps-3 py-3">
+                                                <div>
+                                                    <div className="fw-semibold text-body">{car.car_name}</div>
+                                                    <div className="text-muted fs-12">{car.reason}</div>
+                                                </div>
                                             </td>
                                             <td>
-                                                {getIpsBadge(car.ips_score, car.ips_classification)}
-                                            </td>
-                                            <td>{car.views_count}</td>
-                                            <td>{car.leads_count}</td>
-                                            <td>{car.interactions_count}</td>
-                                            <td>{car.days_in_stock ?? "—"}</td>
-                                            <td>
-                                                <PriceCell car={car} />
-                                            </td>
-                                            <td>
-                                                <span className="fw-medium">
-                                                    {getReasonIcon(car.reason)} {car.reason}
+                                                <span className="badge rounded-pill" style={{ background: priority.bg, color: priority.color }}>
+                                                    {priority.label}
                                                 </span>
                                             </td>
-                                            <td>
-                                                {formatSuggestion(car.suggestion)}
+                                            <td>{Number(car.views_count || 0)}</td>
+                                            <td>{Number(car.leads_count || 0)}</td>
+                                            <td>{Number(car.interactions_count || 0)}</td>
+                                            <td>{car.days_in_stock ?? "—"}</td>
+                                            <td className="fw-semibold">
+                                                {formatPrice(car.promo_price_gross && car.promo_price_gross > 0 ? car.promo_price_gross : car.price_gross)}
                                             </td>
-                                            <td>{getPriorityBadge(car.priority)}</td>
+                                            <td className="text-muted">{car.suggestion}</td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </Table>
-                        </div>
-                    </CardBody>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : (
-                    <div className="p-3">
-                        <p className="fs-16 lh-base">
-                            Nenhum carro exige atenção imediata neste momento.
-                            À medida que o stock envelhecer ou surgirem padrões de baixa conversão,
-                            a Xplendor vai destacar os veículos que precisam de ação.
-                        </p>
+                    <div style={{ padding: "16px 18px" }} className="text-muted">
+                        Nenhuma viatura exige atencao imediata neste momento.
                     </div>
                 )}
-            </Card>
+            </section>
         </Col>
     );
 }

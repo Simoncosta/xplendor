@@ -32,6 +32,8 @@ class CarViewRequest extends FormRequest
 
             'visitor_id' => ['nullable', 'uuid'],
             'session_id' => ['nullable', 'uuid'],
+            'client_view_key' => ['nullable', 'uuid'],
+            'view_duration_seconds' => ['nullable', 'integer', 'min:0', 'max:86400'],
 
             'utm_source'   => ['nullable', 'string', 'max:120'],
             'utm_medium'   => ['nullable', 'string', 'max:120'],
