@@ -5,11 +5,18 @@ namespace App\Services;
 use App\Models\Car;
 use App\Models\CarAiAnalysis;
 use App\Repositories\Contracts\CarAiAnalysesRepositoryInterface;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class CarAiAnalysesService extends BaseService
 {
+    private const OPENAI_TIMEOUT_SECONDS = 45;
+    private const OPENAI_CONNECT_TIMEOUT_SECONDS = 10;
+    private const OPENAI_MAX_ATTEMPTS = 3;
+    private const OPENAI_BACKOFF_MS = [800, 1800];
+
     public function __construct(
         protected CarAiAnalysesRepositoryInterface $carAiAnalysesRepository
     ) {
@@ -27,10 +34,19 @@ class CarAiAnalysesService extends BaseService
     public function generate(Car $car): CarAiAnalysis
     {
         $inputData  = $this->buildInputData($car);
-        $rawJson    = $this->callOpenAi($inputData);
-        $parsed     = $this->parseResponse($rawJson);
+        $rawJson    = null;
 
-        return $this->persist($car, $inputData, $rawJson, $parsed);
+        try {
+            $rawJson = $this->callOpenAi($car, $inputData);
+            $parsed = $this->parseResponse($rawJson, $car);
+
+            return $this->persist($car, $inputData, $rawJson, $parsed);
+        } catch (\Throwable $exception) {
+            $this->persistFailure($car, $inputData, $rawJson, $exception);
+            throw new \RuntimeException(
+                'Nao foi possivel gerar a analise IA desta viatura neste momento. Tenta novamente dentro de instantes.'
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -152,88 +168,114 @@ class CarAiAnalysesService extends BaseService
         $year  = now()->year;
 
         return <<<PROMPT
-Você é o Chief Automotive Marketing Strategist da Xplendor, plataforma líder de inteligência para concessionárias em Portugal. A sua especialidade é transformar dados brutos de performance de veículos em decisões de mídia paga com impacto direto em vendas.
+És o estratega de marketing automóvel da Xplendor para o mercado português. A tua função é transformar dados de viatura e performance em uma análise comercial clara, accionável e consistente, com foco em venda mais rápida e investimento inteligente.
 
-## PROCESSO OBRIGATÓRIO DE RACIOCÍNIO (siga esta ordem internamente antes de gerar o JSON)
+## MISSÃO
+Gerar uma análise JSON que ajude um stand a decidir:
+- quão forte é o potencial comercial da viatura
+- se existe alerta de preço
+- quem é o público mais provável
+- onde investir (canal principal e secundário)
+- que direção criativa usar
+- qual o nível de urgência
+- qual a previsão de venda
 
-PASSO 1 — CLASSIFIQUE O SEGMENTO DO VEÍCULO
-Identifique o segmento: Citadino | Familiar | SUV Compacto | SUV Médio/Grande | Monovolume | Sedan Executivo | Premium/Luxo | Desportivo | Comercial | Eléctrico/Híbrido.
-O segmento determina canal, criativo e público — tudo deriva desta classificação.
+## REGRAS DE RACIOCÍNIO (executa internamente nesta ordem)
 
-PASSO 2 — AVALIE A QUALIDADE DOS DADOS
-Conte quantos campos chegaram como N/D. Se 4 ou mais campos críticos (marca, modelo, preço, views, dias em stock) forem N/D, a confiança da análise é baixa — reflicta isso na justificação do score.
+1. CLASSIFICA O VEÍCULO
+Enquadra mentalmente a viatura num perfil comercial plausível:
+- citadino / económico
+- familiar / station wagon
+- SUV
+- executivo / premium
+- eléctrico / híbrido
+- desportivo
+- comercial
 
-PASSO 3 — CALCULE O SCORE DE CONVERSÃO COM A FÓRMULA EXACTA
-Use esta fórmula (não invente pesos diferentes):
+2. AVALIA QUALIDADE DOS DADOS
+Se faltarem dados críticos, sê conservador. Nunca inventes contexto, mercado, equipamento ou performance.
 
-  base_interesse  = MIN(taxa_interesse / 3.0, 1.0) × 40
-  base_stock      = MAX(0, 1 - (dias_em_stock / 120)) × 30
-  base_views7d    = MIN(views_7d / 50, 1.0) × 20
-  base_mercado    = (se preco_vs_mercado disponível: 10 se na mediana ou abaixo, 5 se até +10%, 0 se acima +10%) ou 10 × (20/30 redistribuído) se N/D
-  score_final     = ROUND(base_interesse + base_stock + base_views7d + base_mercado)
+3. CALCULA O SCORE COMERCIAL DE FORMA COERENTE
+Baseia a avaliação em 4 sinais principais:
+- taxa de interesse
+- dias em stock
+- views recentes
+- preço vs mercado (se existir)
 
-  Classificação:
-  0–20  → Crítico
-  21–40 → Baixo
-  41–60 → Médio
-  61–80 → Alto
-  81–100 → Excelente
+Heurística obrigatória:
+- taxa de interesse >= 1% é saudável
+- >60 dias em stock com taxa <0.5% implica urgência alta
+- views recentes fortes + stock curto aumentam score
+- preço alinhado ou abaixo do mercado melhora score
+- se preço_vs_mercado não existir, não penalizar em excesso
 
-PASSO 4 — DETERMINE CANAL COM REGRA DE DECISÃO ESTRITA
-Não use julgamento livre — aplique esta matriz:
+Classificação do score:
+- 0–20: Crítico
+- 21–40: Baixo
+- 41–60: Médio
+- 61–80: Alto
+- 81–100: Excelente
 
-  | Segmento              | Preço        | Canal Principal  | Canal Secundário |
-  |-----------------------|--------------|-----------------|-----------------|
-  | Citadino / Familiar   | ≤ €15.000    | Meta Ads         | Nenhum           |
-  | SUV Compacto/Médio    | €15k–€35k    | Meta Ads         | Google Search    |
-  | Sedan Exec / Premium  | > €35.000    | Google Search    | Meta Ads         |
-  | Eléctrico / Híbrido   | qualquer     | Google Search    | Meta Ads         |
-  | Desportivo            | qualquer     | Meta Ads (Reels) | Google Search    |
-  | Stock crítico (>90d)  | qualquer     | Meta Ads urgente | Google PMax      |
+4. ESCOLHE CANAL COM LÓGICA COMERCIAL
+Usa estas orientações:
+- citadino / familiar até ~15k → Meta Ads
+- gama média visual / SUV → Meta Ads + Google Search
+- premium / executivo / eléctrico → Google Search + Meta Ads
+- stock crítico ou baixa conversão → Meta Ads para acelerar atenção
+- procura ativa e intenção alta → Google Search ganha força
 
-PASSO 5 — CALIBRE PELA SAZONALIDADE ACTUAL
-Contexto de mercado actual: {$month} de {$year}.
+Nunca escolhas canais sem justificar com:
+- segmento
+- preço
+- tipo de comprador
+- estado atual da performance
 
-  Janeiro–Fevereiro: mercado lento, CPL mais barato, ideal para awareness
-  Março, Setembro: pico de matrículas PT — agressividade máxima em Search
-  Abril–Agosto: mercado estável, foco em usados e famílias
-  Outubro–Novembro: início de fim de ano, push em premium e oferta de Natal
-  Dezembro: mercado desacelera, só usados urgentes justificam investimento
+5. DEFINE O PÚBLICO-ALVO COM BASE NO CONTEXTO
+Usa psicografia plausível para Portugal:
+- comprador económico → sensível a preço, decisão rápida
+- comprador familiar → compara mais, valoriza segurança e espaço
+- comprador SUV → quer presença, conforto e test drive
+- premium → decisão mais lenta, maior peso racional/fiscal
+- eléctrico → comprador informado, tecnológico, atento a TCO
 
-Ajuste urgência, canal e criativo com base neste contexto sazonal.
+6. GERA CRIATIVO ESPECÍFICO
+Título, hook e copy devem ser concretos e ligados à viatura.
+Evitar linguagem fraca ou genérica:
+- "oportunidade única"
+- "não perca"
+- "condições especiais"
+- "stock limitado"
 
-PASSO 6 — GERE CONTEÚDO ESPECÍFICO, NUNCA GENÉRICO
-Título, hook e copy devem conter: marca, modelo, 1 argumento técnico concreto do veículo.
-Proibido: "Oportunidade única", "Não perca", "Condições especiais" — são copy de baixo nível.
+Quero especificidade, não cliché.
 
-PASSO 7 — VERIFIQUE CONSISTÊNCIA ANTES DE ENTREGAR
-Confirme:
-✓ O canal principal é coerente com o segmento e preço?
-✓ A urgência é coerente com dias em stock e score?
-✓ As probabilidades de venda crescem de 7d → 14d → 30d?
-✓ Nenhum campo contém linguagem genérica proibida?
-✓ O JSON respeita exactamente o schema fornecido?
-Se alguma verificação falhar, corrija antes de responder.
+7. GARANTE CONSISTÊNCIA FINAL
+Antes de responder, confirma:
+- canal principal coerente com segmento e preço
+- urgência coerente com stock e score
+- probabilidade 7d <= 14d <= 30d
+- nenhum campo contradiz outro
+- JSON final respeita exatamente o schema fornecido
 
 ## REGRAS DE OUTPUT
-- Responda exclusivamente em JSON válido — sem texto fora do JSON, sem markdown fences
-- Nunca use: "pode ser", "depende", "poderá", "eventualmente", "em geral" — proibidos
-- Dados N/D: não invente — seja conservador e sinalize na justificação
-- Se preco_vs_mercado = N/D: alerta_preco.ativo = false, desvio_percentual = null, recomendacao = null
+- responder apenas em JSON válido
+- sem markdown
+- sem texto antes ou depois
+- português de Portugal
+- sem “depende”, “pode ser”, “eventualmente”, “em geral”
+- se `preco_vs_mercado` for N/D:
+  - `alerta_preco.ativo = false`
+  - `desvio_percentual = null`
+  - `recomendacao = null`
 
-## PSICOGRAFIA DO CONSUMIDOR AUTOMÓVEL PORTUGUÊS (use para público_alvo)
-- Citadino ≤ €12k: 22–35 anos, primeiro carro, urbano, sensível ao preço, decide em 1 semana
-- Familiar €12k–€22k: 30–45 anos, casal com filhos, prático, decide em 2–3 semanas por comparação
-- SUV €20k–€40k: 35–55 anos, PME ou quadro médio, valoriza status e espaço, decide após test drive
-- Premium > €40k: 45–65 anos, empresário, deduções fiscais são argumento, decide em 4–8 semanas
-- Eléctrico: 30–50 anos, early adopter, tech-savvy, condução urbana, altamente informado, decide por TCO
-- Desportivo: 28–45 anos, maioritariamente masculino, decisão emocional e rápida, altamente influenciado por vídeo
+## BENCHMARKS ÚTEIS
+- taxa de interesse saudável: >= 1%
+- abaixo de 0.5% com muito tempo em stock = sinal crítico
+- premium tende a precisar de mais confiança e procura ativa
+- Meta Ads funciona bem em viaturas com apelo visual
+- Google Search funciona bem em viaturas com procura intencional
+- previsão de venda a 7 dias só deve ser alta se houver interesse forte e contexto favorável
 
-## BENCHMARK DO MERCADO PORTUGUÊS
-- Taxa de interesse saudável: ≥ 1% (engagement / views)
-- Veículos > 60 dias em stock + taxa < 0.5%: urgência mínima "Alta", score máximo "Médio"
-- CPL referência Meta Ads PT: €8–€20 usados ≤ €15k; €20–€45 usados €15k–€35k; €45–€90 premium
-- Probabilidade venda 7d > 70% só com taxa de interesse > 3% E stock < 30 dias simultaneamente
+Mantém a análise estratégica, objetiva e utilizável por um gestor comercial.
 PROMPT;
     }
 
@@ -251,9 +293,8 @@ PROMPT;
         };
 
         return "Analise o seguinte veículo e entregue as recomendações estratégicas de marketing.\n\n"
-            . "## QUALIDADE DOS DADOS DE INPUT\n"
-            . "- Completude: {$qualidadeDados}\n\n"
-            . "## DADOS DO VEÍCULO\n"
+            . "Qualidade dos dados: {$qualidadeDados}\n\n"
+            . "Veículo:\n"
             . "- Marca: {$fmt($data['marca'])}\n"
             . "- Modelo: {$fmt($data['modelo'])}\n"
             . "- Versão: {$fmt($data['versao'])}\n"
@@ -263,8 +304,8 @@ PROMPT;
             . "- Quilometragem: {$fmt($data['quilometragem'])} km\n"
             . "- Cor: {$fmt($data['cor'])}\n"
             . "- Preço: €{$fmt($data['preco'])}\n"
-            . "- Extras/Equipamentos: {$fmt($data['extras'])}\n\n"
-            . "## DADOS DE PERFORMANCE\n"
+            . "- Extras: {$fmt($data['extras'])}\n\n"
+            . "Performance:\n"
             . "- Views totais: {$fmt($data['views_total'])}\n"
             . "- Views últimas 24h: {$fmt($data['views_24h'])}\n"
             . "- Views últimos 7 dias: {$fmt($data['views_7d'])}\n"
@@ -272,12 +313,9 @@ PROMPT;
             . "- Interações diretas (WhatsApp, chamadas): {$fmt($data['interacoes'])}\n"
             . "- Engagement total (leads + interações): {$fmt($data['engagement_total'])}\n"
             . "- Taxa de interesse (engagement/views): {$fmt($data['taxa_interesse'])}%\n"
-            . "  ⚠️ Benchmark PT: ≥ 1% é saudável. Abaixo de 0.5% com >60 dias é sinal crítico.\n"
             . "- Tempo em stock: {$fmt($data['dias_em_stock'])} dias\n"
             . "- Preço vs. mediana de mercado PT: {$fmt($data['preco_vs_mercado'])}\n\n"
-            . "## INSTRUÇÃO FINAL\n"
-            . "Execute os 7 passos de raciocínio definidos no system prompt.\n"
-            . "Depois entregue APENAS o JSON final com exactamente este schema:\n\n"
+            . "Entregue apenas o JSON final com exactamente este schema:\n\n"
             . json_encode($this->outputSchema(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
@@ -287,7 +325,7 @@ PROMPT;
             'score_conversao' => [
                 'valor'         => 72,
                 'classificacao' => 'Alto',
-                'justificacao'  => 'Taxa de interesse de 2.3% acima da média com apenas 8 dias em stock.',
+                'justificacao'  => 'Interesse acima da média com pouco tempo em stock.',
             ],
             'alerta_preco' => [
                 'ativo'             => false,
@@ -295,45 +333,45 @@ PROMPT;
                 'recomendacao'      => null,
             ],
             'publico_alvo' => [
-                'faixa_etaria'            => '35–50 anos',
-                'genero_predominante'     => 'Masculino — perfil dominante para SUV familiar no mercado PT',
-                'perfil_profissional'     => 'Quadro médio ou empresário de PME',
-                'estilo_de_vida'          => 'Família com filhos, viagens frequentes, valoriza conforto e segurança',
-                'comportamento_de_compra' => 'Pesquisa online 2–3 semanas antes, compara 3–5 opções, decide após test drive ou recomendação pessoal',
+                'faixa_etaria'            => '35-50 anos',
+                'genero_predominante'     => 'Masculino',
+                'perfil_profissional'     => 'Quadro medio ou empresario',
+                'estilo_de_vida'          => 'Familia e deslocacoes frequentes',
+                'comportamento_de_compra' => 'Pesquisa, compara e decide apos test drive',
             ],
             'canal_principal' => [
                 'canal'        => 'Meta Ads',
-                'justificacao' => 'Veículo de gama média com forte apelo visual; público-alvo 35–50 anos com alta atividade no Instagram PT.',
+                'justificacao' => 'Boa combinacao entre apelo visual e publico-alvo.',
             ],
             'canal_secundario' => [
                 'canal'        => 'Google Ads',
-                'justificacao' => 'Capturar procura ativa para termos como "comprar [modelo] [cidade]".',
+                'justificacao' => 'Capta procura ativa de quem ja esta a comparar.',
             ],
             'criativo' => [
-                'formato_principal'  => 'Reels 9:16 com walkthrough exterior e interior',
-                'formato_secundario' => 'Carrossel com fotos de equipamento e preço destacado',
-                'tom_de_comunicacao' => 'Racional com toque aspiracional',
-                'justificacao'       => 'Perfil de comprador analítico — valoriza especificações antes da aspiração emocional.',
+                'formato_principal'  => 'Reels 9:16',
+                'formato_secundario' => 'Carrossel',
+                'tom_de_comunicacao' => 'Racional com aspiracional',
+                'justificacao'       => 'Adequado ao perfil comprador e ao estado atual da viatura.',
             ],
             'sugestao_conteudo' => [
-                'titulo_anuncio' => 'Peugeot 3008 GT Line — Equipado para tudo. Pronto para si.',
-                'hook_video'     => 'Câmera abre no ecrã panorâmico em movimento — voz off: "Isto não é só um carro. É o seu escritório móvel."',
-                'copy_curto'     => "Garantia transferível incluída. Revisões em dia.\nTest drive disponível esta semana — sem compromisso.",
+                'titulo_anuncio' => 'Peugeot 3008 GT Line pronto a usar',
+                'hook_video'     => 'Abrir no detalhe mais forte da viatura nos primeiros segundos.',
+                'copy_curto'     => "Revisoes em dia.\nTest drive disponivel esta semana.",
             ],
             'argumentos_de_venda' => [
-                'Consumo homologado de 5.2L/100km — ideal para quem percorre longas distâncias diariamente',
-                'Câmera 360º e sensores de estacionamento de série nesta versão específica',
-                'Histórico de revisões verificado — 1 único proprietário desde novo',
+                'Consumo competitivo no segmento',
+                'Equipamento valorizado pelo comprador',
+                'Historico e estado ajudam a reduzir objecoes',
             ],
             'recomendacao_urgencia' => [
                 'nivel'            => 'Alta',
-                'acao_recomendada' => 'Ativar campanha Meta Ads com orçamento de €15/dia por 7 dias e contactar leads que visitaram a ficha nas últimas 72h.',
+                'acao_recomendada' => 'Ativar campanha paga e acelerar follow-up.',
             ],
             'previsao' => [
                 'probabilidade_venda_7d'  => 35,
                 'probabilidade_venda_14d' => 58,
                 'probabilidade_venda_30d' => 76,
-                'condicao'                => 'Redução de €500 no preço ou ativação de campanha paga elevaria a probabilidade a 7 dias para ~50%.',
+                'condicao'                => 'Ajustes de preco ou distribuicao podem acelerar a venda.',
             ],
         ];
     }
@@ -342,54 +380,128 @@ PROMPT;
     // Chamada à API
     // -------------------------------------------------------------------------
 
-    private function callOpenAi(array $inputData): string
+    private function callOpenAi(Car $car, array $inputData): string
     {
         $apiKey = config('services.openai.key');
+        $systemPrompt = $this->buildSystemPrompt();
+        $userPrompt = $this->buildUserPrompt($inputData);
+        $promptSize = mb_strlen($systemPrompt) + mb_strlen($userPrompt);
+        $lastException = null;
 
-        $response = Http::withToken($apiKey)
-            ->timeout(90)
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model'           => 'gpt-4o',
-                'temperature'     => 0.2,
-                'response_format' => ['type' => 'json_object'],
-                'messages'        => [
-                    [
-                        'role'    => 'system',
-                        'content' => $this->buildSystemPrompt(),
-                    ],
-                    [
-                        'role'    => 'user',
-                        'content' => $this->buildUserPrompt($inputData),
-                    ],
-                ],
-            ]);
+        for ($attempt = 1; $attempt <= self::OPENAI_MAX_ATTEMPTS; $attempt++) {
+            try {
+                $response = Http::withToken($apiKey)
+                    ->connectTimeout(self::OPENAI_CONNECT_TIMEOUT_SECONDS)
+                    ->timeout(self::OPENAI_TIMEOUT_SECONDS)
+                    ->acceptJson()
+                    ->post('https://api.openai.com/v1/chat/completions', [
+                        'model'       => 'gpt-4o',
+                        'temperature' => 0.2,
+                        'max_tokens'  => 1800,
+                        'messages'    => [
+                            [
+                                'role'    => 'system',
+                                'content' => $systemPrompt,
+                            ],
+                            [
+                                'role'    => 'user',
+                                'content' => $userPrompt,
+                            ],
+                        ],
+                    ]);
 
-        $response->throw();
+                if ($response->failed()) {
+                    $status = $response->status();
+                    $body = $this->truncateForLog($response->body());
 
-        return $response->json('choices.0.message.content');
+                    Log::warning('CarAiAnalysesService: OpenAI request failed', [
+                        'car_id' => $car->id,
+                        'company_id' => $car->company_id,
+                        'attempt' => $attempt,
+                        'prompt_size' => $promptSize,
+                        'status_code' => $status,
+                        'response_body' => $body,
+                    ]);
+
+                    if ($this->shouldRetryStatus($status) && $attempt < self::OPENAI_MAX_ATTEMPTS) {
+                        usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
+                        continue;
+                    }
+
+                    $response->throw();
+                }
+
+                $content = $response->json('choices.0.message.content');
+                if (!is_string($content) || trim($content) === '') {
+                    throw new \RuntimeException('OpenAI devolveu conteúdo vazio.');
+                }
+
+                return $content;
+            } catch (ConnectionException | RequestException | \RuntimeException $exception) {
+                $lastException = $exception;
+
+                Log::warning('CarAiAnalysesService: OpenAI attempt exception', [
+                    'car_id' => $car->id,
+                    'company_id' => $car->company_id,
+                    'attempt' => $attempt,
+                    'prompt_size' => $promptSize,
+                    'exception' => $exception->getMessage(),
+                ]);
+
+                if (!$this->shouldRetryException($exception) || $attempt === self::OPENAI_MAX_ATTEMPTS) {
+                    break;
+                }
+
+                usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
+            }
+        }
+
+        throw new \RuntimeException(
+            'OpenAI indisponivel ou instavel ao gerar a analise.',
+            previous: $lastException
+        );
     }
 
     // -------------------------------------------------------------------------
     // Parse e validação
     // -------------------------------------------------------------------------
 
-    private function parseResponse(string $rawJson): array
+    private function parseResponse(string $rawJson, Car $car): array
     {
-        // Remove possíveis markdown fences (```json ... ```)
-        $clean = preg_replace('/^```json\s*/i', '', trim($rawJson));
-        $clean = preg_replace('/\s*```$/i', '', $clean);
-
-        $parsed = json_decode($clean, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            Log::error('CarAiAnalysesService: JSON inválido da OpenAI', [
-                'error' => json_last_error_msg(),
-                'raw'   => substr($rawJson, 0, 500),
+        $clean = trim($rawJson);
+        if ($clean === '') {
+            Log::error('CarAiAnalysesService: resposta vazia da OpenAI', [
+                'car_id' => $car->id,
+                'company_id' => $car->company_id,
             ]);
-            throw new \RuntimeException('A IA devolveu uma resposta inválida. Tente novamente.');
+            throw new \RuntimeException('A IA devolveu uma resposta vazia.');
         }
 
-        return $parsed;
+        $clean = preg_replace('/^```(?:json)?\s*/i', '', $clean) ?? $clean;
+        $clean = preg_replace('/\s*```$/i', '', $clean) ?? $clean;
+        $clean = trim($clean);
+
+        $parsed = json_decode($clean, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
+            return $parsed;
+        }
+
+        $jsonChunk = $this->extractJsonObject($clean);
+        if ($jsonChunk !== null) {
+            $parsed = json_decode($jsonChunk, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($parsed)) {
+                return $parsed;
+            }
+        }
+
+        Log::error('CarAiAnalysesService: JSON invalido da OpenAI', [
+            'car_id' => $car->id,
+            'company_id' => $car->company_id,
+            'error' => json_last_error_msg(),
+            'raw' => $this->truncateForLog($rawJson, 1000),
+        ]);
+
+        throw new \RuntimeException('A IA devolveu uma resposta invalida e nao foi possivel interpreta-la.');
     }
 
     // -------------------------------------------------------------------------
@@ -424,5 +536,84 @@ PROMPT;
         );
 
         return $analysis->fresh();
+    }
+
+    private function persistFailure(Car $car, array $inputData, ?string $rawJson, \Throwable $exception): void
+    {
+        try {
+            CarAiAnalysis::updateOrCreate(
+                ['car_id' => $car->id],
+                [
+                    'input_data' => $inputData,
+                    'analysis_raw' => $rawJson,
+                    'analysis' => [
+                        'error' => true,
+                        'message' => $exception->getMessage(),
+                    ],
+                    'score_conversao' => null,
+                    'score_classificacao' => null,
+                    'urgency_level' => null,
+                    'price_alert' => false,
+                    'status' => 'failed',
+                    'feedback' => null,
+                    'company_id' => $car->company_id,
+                ]
+            );
+        } catch (\Throwable $persistException) {
+            Log::warning('CarAiAnalysesService: falha ao persistir estado failed', [
+                'car_id' => $car->id,
+                'company_id' => $car->company_id,
+                'error' => $persistException->getMessage(),
+            ]);
+        }
+
+        Log::error('CarAiAnalysesService: analise falhou', [
+            'car_id' => $car->id,
+            'company_id' => $car->company_id,
+            'error' => $exception->getMessage(),
+            'raw' => $this->truncateForLog($rawJson),
+        ]);
+    }
+
+    private function shouldRetryStatus(int $status): bool
+    {
+        return in_array($status, [408, 409, 429, 500, 502, 503, 504], true);
+    }
+
+    private function shouldRetryException(\Throwable $exception): bool
+    {
+        if ($exception instanceof ConnectionException) {
+            return true;
+        }
+
+        if ($exception instanceof RequestException) {
+            $status = $exception->response?->status();
+            return $status !== null && $this->shouldRetryStatus($status);
+        }
+
+        return str_contains(strtolower($exception->getMessage()), 'conteúdo vazio');
+    }
+
+    private function extractJsonObject(string $raw): ?string
+    {
+        $start = strpos($raw, '{');
+        $end = strrpos($raw, '}');
+
+        if ($start === false || $end === false || $end <= $start) {
+            return null;
+        }
+
+        return substr($raw, $start, $end - $start + 1);
+    }
+
+    private function truncateForLog(?string $value, int $limit = 600): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return mb_strlen($value) > $limit
+            ? mb_substr($value, 0, $limit) . '...'
+            : $value;
     }
 }

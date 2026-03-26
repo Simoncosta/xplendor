@@ -158,18 +158,24 @@ class CarController extends Controller
 
     public function generateAiAnalyses(int $companyId, int $carId)
     {
-        $car = $this->carService->findOrFail(
-            $carId,
-            'id',
-            ['*'],
-            ['brand', 'model', 'views', 'leads', 'interactions']
-        );
-        $car['company_id'] = $companyId;
-        $car['car_id'] = $carId;
+        try {
+            $car = $this->carService->findOrFail(
+                $carId,
+                'id',
+                ['*'],
+                ['brand', 'model', 'views', 'leads', 'interactions']
+            );
+            $car['company_id'] = $companyId;
+            $car['car_id'] = $carId;
 
-        $analyses = $this->carService->generateAiAnalyses($car);
+            $analyses = $this->carService->generateAiAnalyses($car);
 
-        return ApiResponse::success($analyses, 'Analyses generated successfully.');
+            return ApiResponse::success($analyses, 'Analyses generated successfully.');
+        } catch (\RuntimeException $exception) {
+            return ApiResponse::error($exception->getMessage(), 503);
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Nao foi possivel gerar a analise IA desta viatura.', 500);
+        }
     }
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)
