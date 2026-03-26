@@ -35,6 +35,10 @@ class CarController extends Controller
             $filter['status'] = $request->input('status');
         }
 
+        if ($request->has('is_resume') && $request->input('is_resume') !== '') {
+            $filter['is_resume'] = $request->boolean('is_resume');
+        }
+
         if ($request->filled('car_brand_id')) {
             $filter['car_brand_id'] = explode(',', $request->input('car_brand_id'));
         }

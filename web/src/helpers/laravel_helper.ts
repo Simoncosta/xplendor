@@ -90,7 +90,8 @@ export const getCarsPaginate = (
         perPage: number;
         page: number;
         companyId: number;
-        status?: 'active' | 'sold' | 'draft';
+        status?: 'active' | 'sold' | 'draft' | 'available_soon';
+        is_resume?: boolean;
         carBrandIds?: number[];
         carModelIds?: number[];
         mincost?: number;
@@ -102,6 +103,7 @@ export const getCarsPaginate = (
             perPage: params.perPage,
             page: params.page,
             status: params.status,
+            is_resume: params.is_resume,
             car_brand_id: params.carBrandIds?.join(",") ?? undefined,
             car_model_id: params.carModelIds?.join(",") ?? undefined,
             mincost: params.mincost,

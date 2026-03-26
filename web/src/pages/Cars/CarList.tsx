@@ -2,8 +2,6 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 
 import {
     Container,
-    Nav,
-    NavItem,
     Row,
     Card,
     CardHeader,
@@ -11,7 +9,6 @@ import {
     Col,
     Label,
 } from "reactstrap";
-import classnames from "classnames";
 
 // Select Form
 import Select from "react-select";
@@ -32,11 +29,22 @@ import { getCarsPaginate } from "slices/cars/thunk";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { getCarModels } from "slices/car-models/thunk";
 
-const tabOptions = [
-    { key: "active", label: "Ativos" },
-    { key: "sold", label: "Vendidos" },
-    { key: "available_soon", label: "Disponível Brevemente" },
-    { key: "draft", label: "Em Rascunho" },
+type CarStatusFilter = "active" | "sold" | "available_soon" | "draft";
+type StatusFilterOption = { value: CarStatusFilter | null; label: string };
+type StockTypeOption = { value: boolean | null; label: string };
+
+const statusFilterOptions: StatusFilterOption[] = [
+    { value: null, label: "Todos" },
+    { value: "active", label: "Ativos" },
+    { value: "sold", label: "Vendidos" },
+    { value: "available_soon", label: "Disponível Brevemente" },
+    { value: "draft", label: "Em Rascunho" },
+];
+
+const stockTypeOptions: StockTypeOption[] = [
+    { value: null, label: "Todos" },
+    { value: true, label: "Retoma" },
+    { value: false, label: "Stock proprio" },
 ];
 
 const getMetricCount = (items: any) => (Array.isArray(items) ? items.length : Number(items ?? 0));
@@ -145,11 +153,12 @@ const CarList = () => {
     const { cars, meta, loading } = useSelector(selectCarListViewModel);
 
     // State
-    const [activeTab, setActiveTab] = useState<any>("active");
     const [isMobile, setIsMobile] = useState(window.innerWidth < 680);
     const [companyId, setCompanyId] = useState<any>(null);
     const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
+    const [statusFilter, setStatusFilter] = useState<CarStatusFilter | null>("active");
+    const [isResumeFilter, setIsResumeFilter] = useState<boolean | null>(null);
     const [mincost, setMincost] = useState<number | undefined>(undefined);
     const [maxcost, setMaxcost] = useState<number | undefined>(undefined);
     const [sort, setSort] = useState<{
@@ -179,12 +188,6 @@ const CarList = () => {
         });
     }, []);
 
-    const toggleTab = (tab: any) => {
-        if (activeTab !== tab) {
-            setActiveTab(tab);
-        }
-    };
-
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
         pageIndex: 0,
@@ -203,7 +206,8 @@ const CarList = () => {
                     page: pagination.pageIndex + 1,
                     perPage: pagination.pageSize,
                     companyId: obj.company_id,
-                    status: activeTab,
+                    status: statusFilter ?? undefined,
+                    is_resume: isResumeFilter ?? undefined,
                     carBrandIds: carBrandIds,
                     carModelIds: carModelIds,
                     mincost: mincost,
@@ -218,9 +222,10 @@ const CarList = () => {
         }
     }, [
         dispatch,
-        activeTab,
         carBrandIds,
         carModelIds,
+        statusFilter,
+        isResumeFilter,
         mincost,
         maxcost,
         sort,
@@ -462,6 +467,8 @@ const CarList = () => {
                                                 setCarModelIds([]);
                                                 setMincost(undefined);
                                                 setMaxcost(undefined);
+                                                setStatusFilter(null);
+                                                setIsResumeFilter(null);
                                                 setSort({
                                                     field: null,
                                                     direction: null,
@@ -502,6 +509,32 @@ const CarList = () => {
                                             setCarModelIds(selected ? selected.map((item: any) => item.id) : []);
                                         }}
                                         isDisabled={carBrandIds.length === 0}
+                                    />
+                                </div>
+                                <div className="filter-choices-input mb-4">
+                                    <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
+                                    <Select
+                                        inputId="car_status"
+                                        placeholder="Todos os estados"
+                                        options={statusFilterOptions}
+                                        isClearable={false}
+                                        value={statusFilterOptions.find((option) => option.value === statusFilter) ?? statusFilterOptions[0]}
+                                        onChange={(selected: StatusFilterOption | null) => {
+                                            setStatusFilter(selected?.value ?? null);
+                                        }}
+                                    />
+                                </div>
+                                <div className="filter-choices-input mb-4">
+                                    <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
+                                    <Select
+                                        inputId="car_stock_type"
+                                        placeholder="Todo o stock"
+                                        options={stockTypeOptions}
+                                        isClearable={false}
+                                        value={stockTypeOptions.find((option) => option.value === isResumeFilter) ?? stockTypeOptions[0]}
+                                        onChange={(selected: StockTypeOption | null) => {
+                                            setIsResumeFilter(selected?.value ?? null);
+                                        }}
                                     />
                                 </div>
                                 <div className="filter-choices-input">
@@ -550,57 +583,17 @@ const CarList = () => {
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                             Gestão de Stock
                                         </p>
-                                        <h5 className="mb-1 fw-semibold">Viaturas acompanhadas por estado e desempenho</h5>
+                                        <h5 className="mb-1 fw-semibold">Viaturas acompanhadas por filtros e desempenho</h5>
                                         <p className="text-muted fs-13 mb-0">
-                                            Prioriza rapidamente os carros com mais procura, menos conversão ou menor visibilidade.
+                                            Encontra rapidamente as viaturas certas e prioriza as que pedem mais atenção comercial.
                                         </p>
                                     </div>
                                     <span className="badge bg-light text-muted fs-12 px-3 py-2">
                                         {meta?.total ?? 0} viatura{meta?.total === 1 ? "" : "s"}
                                     </span>
                                 </div>
-                                <Nav
-                                    className="nav-tabs-custom card-header-tabs border-bottom-0 rounded-3 p-2"
-                                    role="tablist"
-                                    style={{
-                                        background: "#f8f9fa",
-                                        boxShadow: "inset 0 0 0 1px rgba(233,235,236,0.95)",
-                                        gap: "0.35rem",
-                                    }}
-                                >
-                                    {tabOptions.map((tab) => (
-                                        <NavItem key={tab.key} className="flex-fill">
-                                            <button
-                                                type="button"
-                                                className={classnames("nav-link w-100")}
-                                                onClick={() => {
-                                                    toggleTab(tab.key);
-                                                }}
-                                                style={{
-                                                    border: activeTab === tab.key ? "1px solid rgba(64,81,137,0.12)" : "1px solid transparent",
-                                                    borderBottom: "none",
-                                                    borderRadius: "0.75rem",
-                                                    background: activeTab === tab.key ? "#ffffff" : "transparent",
-                                                    color: activeTab === tab.key ? "#405189" : "#878a99",
-                                                    fontWeight: activeTab === tab.key ? 600 : 400,
-                                                    padding: "14px 16px",
-                                                    fontSize: "13px",
-                                                    boxShadow: activeTab === tab.key ? "0 6px 18px rgba(15, 23, 42, 0.06)" : "none",
-                                                    transition: "all 0.2s ease",
-                                                }}
-                                            >
-                                                {tab.label}
-                                                {activeTab === tab.key && (
-                                                    <span className="badge bg-danger-subtle text-danger align-middle rounded-pill ms-2">
-                                                        {meta?.total}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        </NavItem>
-                                    ))}
-                                </Nav>
                             </CardHeader>
-                            <CardBody className="pt-4">
+                            <CardBody className="pt-3">
                                 <div className="mb-3 px-1">
                                     <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                         <div>

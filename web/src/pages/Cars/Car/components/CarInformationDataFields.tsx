@@ -49,7 +49,7 @@ export default function CarInformationDataFields({
 
         dispatch(getUsersPaginate({
             page: 1,
-            perPage: 200,
+            perPage: 99,
             companyId: resolvedCompanyId,
         }));
     }, [dispatch, resolvedCompanyId]);
