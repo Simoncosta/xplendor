@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { Col, Container, Row } from "reactstrap";
 import { createSelector } from "reselect";
 import { toast, ToastContainer } from "react-toastify";
+import XButton from "Components/Common/XButton";
 import { generateCarMarketing, getCarMarketing } from "slices/thunks";
 import TabMarketing from "./components/TabMarketing";
 
@@ -16,7 +17,8 @@ const selectCarMarketingViewModel = createSelector(
     [selectCarState],
     (carState) => ({
         carMarketing: carState.data.carMarketing,
-        loading: carState.loading.marketing || carState.loading.generate,
+        loadingInitialPage: carState.loading.marketing,
+        loadingGenerateIdeas: carState.loading.generate,
     })
 );
 
@@ -33,7 +35,7 @@ export default function CarMarketing() {
     const { id } = useParams();
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const { carMarketing, loading } = useSelector(selectCarMarketingViewModel);
+    const { carMarketing, loadingInitialPage, loadingGenerateIdeas } = useSelector(selectCarMarketingViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -43,7 +45,13 @@ export default function CarMarketing() {
         dispatch(getCarMarketing({ companyId: obj.company_id, id: Number(id) }));
     }, [dispatch, id]);
 
-    if (loading || !carMarketing) return null;
+    const hasMarketingData =
+        !!carMarketing
+        && !Array.isArray(carMarketing)
+        && Object.keys(carMarketing).length > 0;
+
+    if (loadingInitialPage && !hasMarketingData) return null;
+    if (!hasMarketingData) return null;
 
     const ips = carMarketing.ips;
     const ideas = carMarketing.marketing_ideas ?? [];
@@ -144,13 +152,15 @@ export default function CarMarketing() {
                                     <p className="text-muted mb-4 fs-13 mx-auto" style={{ maxWidth: 540 }}>
                                         Gera um primeiro briefing criativo para este carro e passa a ter sugestoes prontas para formatos, hooks, copy e CTA.
                                     </p>
-                                    <button
-                                        className="btn btn-primary btn-lg"
+                                    <XButton
+                                        variant="primary"
+                                        size="lg"
                                         onClick={handleGenerateIdeas}
-                                        disabled={loading}
+                                        loading={loadingGenerateIdeas}
+                                        disabled={loadingGenerateIdeas}
                                     >
-                                        <i className="ri-magic-line me-1" /> Gerar ideias
-                                    </button>
+                                        {loadingGenerateIdeas ? "A gerar ideias..." : "Gerar ideias"}
+                                    </XButton>
                                 </div>
                             </section>
                         </Col>

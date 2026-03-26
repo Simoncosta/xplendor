@@ -142,6 +142,9 @@ class CarMarketingIdeaService extends BaseService
             'goal' => $decoded['goal'] ?? null,
             'target_audience' => $decoded['target_audience'] ?? null,
             'formats' => $this->normalizeArray($decoded['formats'] ?? []),
+            'primary_texts' => $this->normalizeArray($decoded['primary_texts'] ?? []),
+            'headlines' => $this->normalizeArray($decoded['headlines'] ?? []),
+            'descriptions' => $this->normalizeArray($decoded['descriptions'] ?? []),
             'caption' => $decoded['caption'] ?? null,
             'hooks' => $this->normalizeArray($decoded['hooks'] ?? []),
             'cta' => $decoded['cta'] ?? null,
@@ -265,6 +268,9 @@ Se alguma verificação falhar — reescreve antes de responder.
 - Zero inventar contexto que não está nos dados (não inventar promoções, épocas, campanhas)
 - Cada hook deve ser radicalmente diferente dos outros — ângulos distintos, não variações da mesma frase
 - A legenda deve ter entre 3 e 6 linhas — nem tweet nem artigo
+- Para assets de ads, gera variações realmente utilizáveis em Meta Ads: `primary_texts`, `headlines` e `descriptions`
+- Headlines devem ser curtas, específicas e clicáveis
+- Descriptions devem ser compactas e complementares, não repetir a headline
 PROMPT;
     }
 
@@ -330,6 +336,20 @@ PROMPT;
                 'goal'            => 'Gerar contacto directo — chamada, WhatsApp ou pedido de test drive',
                 'target_audience' => 'Homem 35–50 anos, quadro médio ou empresário, pesquisou online mas ainda não contactou',
                 'formats'         => ['reels', 'anuncio_meta'],
+                'primary_texts'   => [
+                    'Este BMW 318d Touring junta o que mais importa: motor certo, historico verificado e confianca para avancar sem duvidas.',
+                    'Se procuras um diesel executivo que ainda faz sentido em Portugal, este BMW 318d merece entrar na tua shortlist hoje.',
+                    'Ha carros que parecem bons no anuncio. E ha carros que continuam a fazer sentido quando olhas para historico, estado e utilizacao real.',
+                ],
+                'headlines'       => [
+                    'BMW 318d Touring pronto a decidir',
+                    'Executivo diesel com historico verificado',
+                    'O BMW certo para avancar esta semana',
+                ],
+                'descriptions'    => [
+                    'Mais confianca. Menos friccao na decisao.',
+                    'Ideal para test drive e contacto imediato.',
+                ],
                 'hooks'           => [
                     'Há 3 meses que estás a adiar. Este BMW não vai esperar mais.',
                     'Diesel, automático, 147cv. €18.900. Quando é que tens tempo para o ver?',
@@ -346,6 +366,17 @@ PROMPT;
                 'goal'            => 'Posicionar o stand como referência de conhecimento no segmento e gerar seguidores qualificados',
                 'target_audience' => 'Comprador informado, 30–55 anos, que pesquisa antes de decidir e desconfia de vendedores tradicionais',
                 'formats'         => ['carrossel_instagram', 'artigo_blog'],
+                'primary_texts'   => [
+                    'Antes de escolheres entre diesel e hibrido, convem perceberes quantos quilometros fazes e em que contexto conduzes.',
+                    'Nem sempre o motor mais moderno e o motor certo. O criterio certo continua a ser o uso real.',
+                ],
+                'headlines'       => [
+                    'Diesel ou hibrido: decide com dados',
+                    'O motor certo depende do teu uso',
+                ],
+                'descriptions'    => [
+                    'Educacao automovel sem ruido comercial.',
+                ],
                 'hooks'           => [
                     'Se fazes mais de 20.000km por ano, o híbrido pode estar a custar-te dinheiro.',
                     'A maioria escolhe o motor errado. Aqui está como não cometer o mesmo erro.',
@@ -362,6 +393,19 @@ PROMPT;
                 'goal'            => 'Maximizar comentários, partilhas e alcance orgânico com audiência qualificada',
                 'target_audience' => 'Entusiastas automóvel e compradores em fase de consideração, 25–50 anos, activos nas redes',
                 'formats'         => ['post_feed', 'stories_instagram'],
+                'primary_texts'   => [
+                    'SUV ou familiar? A resposta parece simples ate chegares ao momento de decidir com dinheiro real.',
+                    'Dois carros, duas prioridades e uma discussao que divide condutores em segundos.',
+                    'Se tivesses de escolher hoje, ias pela imagem e versatilidade ou pela racionalidade e espaco real?',
+                ],
+                'headlines'       => [
+                    'SUV ou familiar: qual escolhias?',
+                    'O debate que divide compradores',
+                    'Que carro levavas para casa hoje?',
+                ],
+                'descriptions'    => [
+                    'Conteudo para gerar comentarios qualificados.',
+                ],
                 'hooks'           => [
                     'SUV ou familiar? Uma pergunta que divide famílias inteiras.',
                     'Gastaste €25.000 em que carro? Lê os comentários — as respostas vão surpreender-te.',

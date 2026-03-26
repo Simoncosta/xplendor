@@ -10,6 +10,9 @@ export interface MarketingIdea {
     goal?: string;
     target_audience?: string;
     formats?: string[];
+    primary_texts?: string[];
+    headlines?: string[];
+    descriptions?: string[];
     hooks?: string[];
     caption?: string;
     cta?: string;
@@ -51,23 +54,31 @@ export default function MarketingIdeaCard({ idea }: Props) {
     const hooks = idea.hooks || [];
     const formats = idea.formats || [];
     const pillars = idea.content_pillars || [];
+    const primaryTexts = idea.primary_texts || [];
+    const headlines = idea.headlines || [];
+    const descriptions = idea.descriptions || [];
 
-    const handleCopyCaption = async () => {
-        if (!idea.caption) return;
+    const copyText = async (value?: string | null, onSuccess?: () => void) => {
+        if (!value) return;
         try {
-            await navigator.clipboard.writeText(idea.caption);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            await navigator.clipboard.writeText(value);
+            onSuccess?.();
         } catch {
             const ta = document.createElement("textarea");
-            ta.value = idea.caption;
+            ta.value = value;
             document.body.appendChild(ta);
             ta.select();
             document.execCommand("copy");
             document.body.removeChild(ta);
+            onSuccess?.();
+        }
+    };
+
+    const handleCopyCaption = async () => {
+        await copyText(idea.caption, () => {
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
-        }
+        });
     };
 
     return (
@@ -119,6 +130,44 @@ export default function MarketingIdeaCard({ idea }: Props) {
                                 <p className="fs-12 text-muted mb-0">Ainda sem pilares definidos.</p>
                             )}
                         </div>
+                    </Col>
+                </Row>
+            </section>
+
+            <section style={sectionStyle}>
+                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                    <div>
+                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                            Variacoes para anuncio
+                        </p>
+                        <h5 className="mb-0 fw-semibold">Assets prontos para campanha</h5>
+                    </div>
+                </div>
+
+                <Row className="g-3">
+                    <Col lg={4}>
+                        <AssetList
+                            title="Headlines"
+                            items={headlines}
+                            emptyLabel="Ainda sem headlines geradas."
+                            onCopy={copyText}
+                        />
+                    </Col>
+                    <Col lg={5}>
+                        <AssetList
+                            title="Primary texts"
+                            items={primaryTexts}
+                            emptyLabel="Ainda sem primary texts gerados."
+                            onCopy={copyText}
+                        />
+                    </Col>
+                    <Col lg={3}>
+                        <AssetList
+                            title="Descriptions"
+                            items={descriptions}
+                            emptyLabel="Ainda sem descriptions geradas."
+                            onCopy={copyText}
+                        />
                     </Col>
                 </Row>
             </section>
@@ -239,6 +288,50 @@ export default function MarketingIdeaCard({ idea }: Props) {
                     </Col>
                 </Row>
             </section>
+        </div>
+    );
+}
+
+function AssetList({
+    title,
+    items,
+    emptyLabel,
+    onCopy,
+}: {
+    title: string;
+    items: string[];
+    emptyLabel: string;
+    onCopy: (value?: string | null) => Promise<void>;
+}) {
+    return (
+        <div className="h-100 rounded-3 bg-light-subtle" style={{ padding: "14px 16px" }}>
+            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+                <p className="fs-11 text-muted fw-semibold text-uppercase mb-0">{title}</p>
+                <span className="badge bg-light text-dark fs-11">{items.length}</span>
+            </div>
+
+            {items.length > 0 ? (
+                <div className="vstack gap-2">
+                    {items.map((item, index) => (
+                        <div key={`${title}-${item}-${index}`} className="rounded-3 bg-white border" style={{ padding: "12px 14px" }}>
+                            <div className="d-flex align-items-start justify-content-between gap-2">
+                                <p className="mb-0 fs-13 text-body" style={{ lineHeight: 1.6 }}>
+                                    {item}
+                                </p>
+                                <button
+                                    type="button"
+                                    className="btn btn-sm btn-soft-secondary flex-shrink-0"
+                                    onClick={() => void onCopy(item)}
+                                >
+                                    <i className="ri-file-copy-line" />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p className="fs-12 text-muted mb-0">{emptyLabel}</p>
+            )}
         </div>
     );
 }

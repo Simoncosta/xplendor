@@ -1,51 +1,38 @@
 import { Col, Row } from "reactstrap";
+import SmartAdsRecommendationCard from "./SmartAdsRecommendationCard";
 
 interface Props {
     recommendation: any;
+    recommendedCreative?: any;
     recommendedPlatform?: "meta" | "google" | null;
     silentBuyers: any;
     metrics: any;
     insight: any;
     kpiStrip: React.ReactNode;
     onOpenIntelligence: () => void;
+    marketingUrl: string;
 }
 
 export default function TabOverview({
     recommendation,
+    recommendedCreative,
     recommendedPlatform,
     silentBuyers,
     metrics,
     insight,
     kpiStrip,
     onOpenIntelligence,
+    marketingUrl,
 }: Props) {
-    const decisionTitle = recommendation?.title ?? "Ainda não existe recomendação automática para esta viatura";
-    const decisionSummary = recommendation?.summary ?? "Assim que o motor de recomendação estiver disponível, este espaço vai apresentar a melhor decisão de investimento para este anúncio.";
-    const decisionReason = recommendation?.reason ?? "Continuar a acompanhar sinais de procura e intenção.";
-    const channelLabel = recommendedPlatform === "meta" ? "Meta Ads" : recommendedPlatform === "google" ? "Google Ads" : "Sem canal prioritário";
-
     return (
         <div className="d-grid gap-3">
-            <section style={sectionStyle}>
-                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap">
-                    <div style={{ maxWidth: 760 }}>
-                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Decisão recomendada
-                        </p>
-                        <h3 className="mb-2 fw-semibold" style={{ lineHeight: 1.15 }}>{decisionTitle}</h3>
-                        <p className="text-muted fs-14 mb-2" style={{ lineHeight: 1.6 }}>{decisionSummary}</p>
-                        <p className="mb-0 fs-13 text-body">
-                            <span className="fw-semibold">Porque agora:</span> {decisionReason}
-                        </p>
-                    </div>
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                        <span className="badge bg-light text-dark fs-12 px-3 py-2">{channelLabel}</span>
-                        <span className="badge bg-dark-subtle text-dark fs-12 px-3 py-2">
-                            {recommendation?.confidence_score ? `${recommendation.confidence_score}/100 confiança` : "Acompanhamento ativo"}
-                        </span>
-                    </div>
-                </div>
-            </section>
+            <SmartAdsRecommendationCard
+                recommendation={recommendation}
+                recommendedCreative={recommendedCreative}
+                recommendedPlatform={recommendedPlatform}
+                marketingUrl={marketingUrl}
+                metrics={metrics}
+            />
 
             <section style={sectionStyle}>
                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">

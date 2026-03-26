@@ -1,6 +1,4 @@
-import { Card, CardBody, Col, Row } from "reactstrap";
-
-export type SmartAdsRecommendation = {
+type SmartAdsRecommendation = {
     action: "scale_ads" | "test_campaign" | "review_campaign" | "do_not_invest";
     total_budget: number;
     daily_budget: number;
@@ -16,24 +14,34 @@ export type SmartAdsRecommendation = {
     cta_secondary_label?: string;
 };
 
-const sourceMeta = {
-    smart_ads: {
-        label: "Decisão automática",
-        badgeClass: "bg-dark-subtle text-dark",
-        cardOpacity: 1,
-    },
-    ai_analysis: {
-        label: "Baseado em análise",
-        badgeClass: "bg-light text-muted",
-        cardOpacity: 0.88,
-    },
-} as const;
+export type RecommendedCreative = {
+    source_idea_id: number;
+    content_type: "sale" | "authority" | "engagement";
+    title?: string | null;
+    hook?: string | null;
+    primary_texts?: string[];
+    headlines?: string[];
+    descriptions?: string[];
+    cta?: string | null;
+    format?: string | null;
+    caption?: string | null;
+    angle?: string | null;
+    goal?: string | null;
+    why_now?: string | null;
+    reason?: string | null;
+};
 
 type Props = {
     recommendation: SmartAdsRecommendation | null;
+    recommendedCreative?: RecommendedCreative | null;
     recommendedPlatform?: "meta" | "google" | null;
-    onPrimaryAction?: () => void;
-    onSecondaryAction?: () => void;
+    marketingUrl?: string;
+    metrics?: {
+        views?: number;
+        leads?: number;
+        interactions?: number;
+        interest_rate?: number;
+    } | null;
 };
 
 type ToneConfig = {
@@ -42,7 +50,6 @@ type ToneConfig = {
     urgencyLabel: string;
     accent: string;
     softBackground: string;
-    iconWrapClass: string;
     heroIcon: string;
 };
 
@@ -50,10 +57,9 @@ const actionConfig: Record<SmartAdsRecommendation["action"], ToneConfig> = {
     scale_ads: {
         badgeClass: "bg-success-subtle text-success",
         badgeIcon: "ri-rocket-line",
-        urgencyLabel: "Alta prioridade",
+        urgencyLabel: "Escalar investimento",
         accent: "#0ab39c",
-        softBackground: "linear-gradient(135deg, rgba(10,179,156,0.16) 0%, rgba(10,179,156,0.03) 100%)",
-        iconWrapClass: "bg-success-subtle text-success",
+        softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(10,179,156,0.04) 100%)",
         heroIcon: "ri-line-chart-line",
     },
     test_campaign: {
@@ -61,8 +67,7 @@ const actionConfig: Record<SmartAdsRecommendation["action"], ToneConfig> = {
         badgeIcon: "ri-flask-line",
         urgencyLabel: "Testar campanha",
         accent: "#405189",
-        softBackground: "linear-gradient(135deg, rgba(64,81,137,0.14) 0%, rgba(64,81,137,0.03) 100%)",
-        iconWrapClass: "bg-primary-subtle text-primary",
+        softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(64,81,137,0.04) 100%)",
         heroIcon: "ri-megaphone-line",
     },
     review_campaign: {
@@ -70,20 +75,29 @@ const actionConfig: Record<SmartAdsRecommendation["action"], ToneConfig> = {
         badgeIcon: "ri-error-warning-line",
         urgencyLabel: "Rever campanha",
         accent: "#f7b84b",
-        softBackground: "linear-gradient(135deg, rgba(247,184,75,0.18) 0%, rgba(247,184,75,0.04) 100%)",
-        iconWrapClass: "bg-warning-subtle text-warning",
+        softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(247,184,75,0.05) 100%)",
         heroIcon: "ri-search-eye-line",
     },
     do_not_invest: {
         badgeClass: "bg-light text-muted",
         badgeIcon: "ri-pause-circle-line",
-        urgencyLabel: "Sem investimento recomendado",
+        urgencyLabel: "Sem investimento",
         accent: "#6c757d",
-        softBackground: "linear-gradient(135deg, rgba(108,117,125,0.14) 0%, rgba(108,117,125,0.03) 100%)",
-        iconWrapClass: "bg-light text-muted",
+        softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(108,117,125,0.04) 100%)",
         heroIcon: "ri-shield-check-line",
     },
 };
+
+const sourceMeta = {
+    smart_ads: {
+        label: "Decisão automática",
+        badgeClass: "bg-dark-subtle text-dark",
+    },
+    ai_analysis: {
+        label: "Baseado em análise",
+        badgeClass: "bg-light text-muted",
+    },
+} as const;
 
 const platformMeta = {
     meta: {
@@ -95,7 +109,7 @@ const platformMeta = {
         icon: "ri-google-line",
     },
     none: {
-        label: "Sem investimento recomendado",
+        label: "Sem canal prioritário",
         icon: "ri-subtract-line",
     },
 } as const;
@@ -108,252 +122,297 @@ const formatCurrency = (value: number) =>
         maximumFractionDigits: 0,
     }).format(value || 0);
 
-const metricCardStyle = {
-    border: "1px solid rgba(233, 235, 236, 0.9)",
-    borderRadius: "0.85rem",
-    background: "rgba(255,255,255,0.82)",
-    padding: "0.8rem 0.95rem",
-    height: "100%",
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
+const shellStyle = {
+    border: "1px solid #e9ebec",
+    borderRadius: "18px",
+    background: "#fff",
+    overflow: "hidden",
 } as const;
 
 export default function SmartAdsRecommendationCard({
     recommendation,
+    recommendedCreative,
     recommendedPlatform,
-    onPrimaryAction,
-    onSecondaryAction,
+    marketingUrl,
+    metrics,
 }: Props) {
     if (!recommendation) {
         return (
-            <Card
-                className="mb-0 border-0"
-                style={{
-                    background: "linear-gradient(135deg, rgba(64,81,137,0.08) 0%, rgba(64,81,137,0.02) 100%)",
-                    boxShadow: "0 18px 42px rgba(15, 23, 42, 0.08)",
-                }}
-            >
-                <CardBody className="p-4">
-                    <div className="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-4">
-                        <div className="d-flex align-items-start gap-3">
-                            <div
-                                className="avatar-md rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"
-                                style={{ width: 56, height: 56 }}
-                            >
-                                <i className="ri-brain-line fs-3" />
-                            </div>
-                            <div>
-                                <span className="badge bg-primary-subtle text-primary mb-2">SmartAds Assistido</span>
-                                <h5 className="mb-2">Ainda não existe recomendação automática para esta viatura</h5>
-                                <p className="text-muted mb-0 fs-13">
-                                    Assim que o motor de recomendação estiver disponível, este espaço vai apresentar a melhor
-                                    decisão de investimento para este anúncio.
-                                </p>
-                            </div>
-                        </div>
+            <section style={shellStyle}>
+                <div style={{ padding: "18px 20px" }}>
+                    <div className="d-flex align-items-start gap-3">
                         <div
-                            className="rounded-3 px-3 py-2 text-muted fs-13"
-                            style={{ border: "1px dashed #d0d6e1", background: "rgba(255,255,255,0.72)" }}
+                            className="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{ width: 52, height: 52 }}
                         >
-                            Bloco preparado para integração com backend
+                            <i className="ri-brain-line fs-3" />
+                        </div>
+                        <div>
+                            <span className="badge bg-primary-subtle text-primary mb-2">Decisão recomendada</span>
+                            <h5 className="mb-2">Ainda não existe recomendação automática para esta viatura</h5>
+                            <p className="text-muted mb-0 fs-13">
+                                Assim que o motor de recomendação estiver disponível, este espaço vai apresentar a melhor decisão de investimento e o criativo recomendado.
+                            </p>
                         </div>
                     </div>
-                </CardBody>
-            </Card>
+                </div>
+            </section>
         );
     }
 
     const config = actionConfig[recommendation.action];
     const source = recommendation.source ?? "smart_ads";
     const sourceConfig = sourceMeta[source];
-    const platform = recommendedPlatform ? platformMeta[recommendedPlatform] : null;
+    const platform = recommendedPlatform ? platformMeta[recommendedPlatform] : platformMeta.none;
+    const headlines = (recommendedCreative?.headlines || []).slice(0, 3);
+    const primaryTexts = (recommendedCreative?.primary_texts || []).slice(0, 3);
+    const descriptions = (recommendedCreative?.descriptions || []).slice(0, 2);
 
     return (
-        <Card
-            className="mb-0 border-0 overflow-hidden"
-            style={{
-                background: config.softBackground,
-                boxShadow: "0 18px 46px rgba(15, 23, 42, 0.1)",
-                opacity: sourceConfig.cardOpacity,
-            }}
-        >
-            <CardBody className="p-4">
-                <Row className="g-3 g-xl-4 align-items-stretch">
-                    <Col xl={5}>
-                        <div className="h-100 d-flex flex-column">
-                            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                                <span className={`badge ${config.badgeClass} fs-12 px-3 py-2`}>
-                                    <i className={`${config.badgeIcon} me-1`} />
-                                    {config.urgencyLabel}
-                                </span>
-                                <div className="d-flex align-items-center gap-2 flex-wrap justify-content-end">
-                                    <span className={`badge ${sourceConfig.badgeClass} fs-11 px-3 py-2`}>
-                                        {sourceConfig.label}
-                                    </span>
-                                    <span className="text-muted fs-12 text-uppercase fw-semibold" style={{ letterSpacing: "0.08em" }}>
-                                        SmartAds Assistido
-                                    </span>
-                                </div>
-                            </div>
+        <section style={{ ...shellStyle, background: config.softBackground }}>
+            <div className="row g-0">
+                <div className="col-xl-5" style={{ borderRight: "1px solid #e9ebec" }}>
+                    <div style={{ padding: "20px" }}>
+                        <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+                            <span className={`badge ${config.badgeClass} px-3 py-2 fs-12`}>
+                                <i className={`${config.badgeIcon} me-1`} />
+                                Decisão recomendada
+                            </span>
+                            <span className={`badge ${sourceConfig.badgeClass} px-3 py-2 fs-11`}>
+                                {sourceConfig.label}
+                            </span>
+                        </div>
 
-                            <div className="d-flex align-items-start gap-3 mb-3">
-                                <div
-                                    className={`rounded-circle d-flex align-items-center justify-content-center flex-shrink-0 ${config.iconWrapClass}`}
-                                    style={{ width: 54, height: 54 }}
-                                >
-                                    <i className={`${config.heroIcon} fs-2`} />
-                                </div>
-                                <div>
-                                    <p className="text-muted text-uppercase fw-semibold mb-2 fs-11" style={{ letterSpacing: "0.08em" }}>
-                                        Decisão recomendada
-                                    </p>
-                                    <h3 className="mb-2 fw-semibold" style={{ lineHeight: 1.15 }}>{recommendation.title}</h3>
-                                    <p className="text-muted fs-14 mb-0" style={{ lineHeight: 1.7 }}>
-                                        {recommendation.summary}
-                                    </p>
-                                </div>
-                            </div>
-
+                        <div className="d-flex align-items-start gap-3 mb-3">
                             <div
-                                className="rounded-3 p-3 p-xl-4 mb-2"
+                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                                 style={{
-                                    borderLeft: `5px solid ${config.accent}`,
-                                    background: "rgba(255,255,255,0.88)",
-                                    boxShadow: "0 12px 30px rgba(15, 23, 42, 0.06)",
+                                    width: 50,
+                                    height: 50,
+                                    background: `${config.accent}16`,
+                                    color: config.accent,
                                 }}
                             >
-                                <p className="text-muted text-uppercase fw-semibold mb-2 fs-11" style={{ letterSpacing: "0.08em" }}>
-                                    💡 Porque esta decisão?
+                                <i className={`${config.heroIcon} fs-2`} />
+                            </div>
+                            <div>
+                                <p className="text-muted text-uppercase fw-semibold mb-1 fs-11" style={{ letterSpacing: "0.08em" }}>
+                                    SmartAds Assistido
                                 </p>
-                                <p className="mb-0 fs-14 text-body" style={{ lineHeight: 1.7 }}>
-                                    {recommendation.reason}
+                                <h3 className="mb-2 fw-semibold" style={{ lineHeight: 1.15 }}>{recommendation.title}</h3>
+                                <p className="text-muted fs-14 mb-0" style={{ lineHeight: 1.6 }}>
+                                    {recommendation.summary}
                                 </p>
                             </div>
                         </div>
-                    </Col>
 
-                    <Col xl={7}>
-                        <div
-                            className="h-100 rounded-4 p-3"
-                            style={{
-                                background: "rgba(255,255,255,0.6)",
-                                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.55)",
-                            }}
-                        >
-                            <Row className="g-3">
-                                <Col xs={12}>
-                                    <div
-                                        style={{
-                                            ...metricCardStyle,
-                                            border: `1px solid ${config.accent}22`,
-                                            background: "rgba(255,255,255,0.94)",
-                                        }}
-                                    >
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Canal recomendado
-                                        </p>
-                                        {platform ? (
-                                            <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                                <div className="d-flex align-items-center gap-3">
-                                                    <div
-                                                        className="rounded-circle d-flex align-items-center justify-content-center"
-                                                        style={{
-                                                            width: 48,
-                                                            height: 48,
-                                                            background: `${config.accent}18`,
-                                                            color: config.accent,
-                                                        }}
-                                                    >
-                                                        <i className={`${platform.icon} fs-2`} />
-                                                    </div>
-                                                    <div>
-                                                        <div className="fs-5 fw-semibold text-body">{platform.label}</div>
-                                                        <p className="mb-0 fs-12 text-muted">Baseado em análise inteligente</p>
-                                                    </div>
-                                                </div>
-                                                <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                                    <i className="ri-brain-line me-1" />
-                                                    Fonte: IA
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                                <div>
-                                                    <div className="fs-6 fw-semibold text-body">Canal ainda não definido</div>
-                                                    <p className="mb-0 fs-12 text-muted">Necessário gerar análise para definir o canal recomendado.</p>
-                                                </div>
-                                                <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                                    <i className="ri-information-line me-1" />
-                                                    Aguardando IA
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </Col>
-
-                                <Col sm={6}>
-                                    <div
-                                        style={{
-                                            ...metricCardStyle,
-                                            border: `1px solid ${config.accent}26`,
-                                            background: "rgba(255,255,255,0.94)",
-                                        }}
-                                    >
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Budget total
-                                        </p>
-                                        <div className="fs-1 fw-bold" style={{ color: config.accent, lineHeight: 1 }}>
-                                            {formatCurrency(recommendation.total_budget)}
-                                        </div>
-                                        <p className="mb-0 fs-12 text-muted mt-2">Investimento sugerido para esta ação</p>
-                                    </div>
-                                </Col>
-                                <Col sm={6}>
-                                    <div
-                                        style={{
-                                            ...metricCardStyle,
-                                            border: `1px solid ${config.accent}26`,
-                                            background: "rgba(255,255,255,0.94)",
-                                        }}
-                                    >
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Leads esperados
-                                        </p>
-                                        <div className="fs-2 fw-bold" style={{ color: config.accent, lineHeight: 1 }}>
-                                            {recommendation.expected_leads}
-                                        </div>
-                                        <p className="mb-0 fs-12 text-muted mt-2">Resultado estimado com esta recomendação</p>
-                                    </div>
-                                </Col>
-
-                                <Col sm={4}>
-                                    <div style={metricCardStyle}>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Budget diário
-                                        </p>
-                                        <div className="fs-4 fw-semibold text-body">{formatCurrency(recommendation.daily_budget)}</div>
-                                    </div>
-                                </Col>
-                                <Col sm={4}>
-                                    <div style={metricCardStyle}>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Duração
-                                        </p>
-                                        <div className="fs-4 fw-semibold text-body">{recommendation.duration_days} dias</div>
-                                    </div>
-                                </Col>
-                                <Col sm={4}>
-                                    <div style={metricCardStyle}>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                            Confiança
-                                        </p>
-                                        <div className="fs-4 fw-semibold text-body">{recommendation.confidence_score}%</div>
-                                    </div>
-                                </Col>
-                            </Row>
+                        <div className="mb-4">
+                            <div className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                Porque
+                            </div>
+                            <p className="mb-0 fs-14 text-body" style={{ lineHeight: 1.65 }}>
+                                {recommendation.reason}
+                            </p>
                         </div>
-                    </Col>
-                </Row>
-            </CardBody>
-        </Card>
+
+                        <div className="d-flex gap-2 flex-wrap">
+                            <KpiPill label="Views" value={metrics?.views ?? 0} />
+                            <KpiPill label="Leads" value={metrics?.leads ?? 0} />
+                            <KpiPill label="Interações" value={metrics?.interactions ?? 0} />
+                            <KpiPill label="Conversão" value={`${Number(metrics?.interest_rate ?? 0).toFixed(2)}%`} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="col-xl-7">
+                    <div style={{ padding: "20px" }}>
+                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
+                            <div>
+                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                    Ação
+                                </p>
+                                <div className="d-flex align-items-center gap-3">
+                                    <div
+                                        className="rounded-circle d-flex align-items-center justify-content-center"
+                                        style={{
+                                            width: 44,
+                                            height: 44,
+                                            background: `${config.accent}16`,
+                                            color: config.accent,
+                                        }}
+                                    >
+                                        <i className={`${platform.icon} fs-3`} />
+                                    </div>
+                                    <div>
+                                        <div className="fw-semibold text-body">{platform.label}</div>
+                                        <div className="text-muted fs-12">Canal recomendado para executar agora</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="d-flex gap-2 flex-wrap">
+                                <InlineMetric label="Budget" value={formatCurrency(recommendation.total_budget)} />
+                                <InlineMetric label="Leads esperados" value={recommendation.expected_leads} />
+                                <InlineMetric label="Confiança" value={`${recommendation.confidence_score}%`} />
+                            </div>
+                        </div>
+
+                        {recommendedCreative && (
+                            <div>
+                                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Criativo recomendado
+                                        </p>
+                                        <h5 className="mb-1 fw-semibold">{recommendedCreative.title || "Criativo pronto a usar"}</h5>
+                                        <p className="text-muted fs-12 mb-0">
+                                            {recommendedCreative.reason || "Criativo alinhado com a decisão de investimento atual."}
+                                        </p>
+                                    </div>
+                                    {marketingUrl && (
+                                        <a href={marketingUrl} className="btn btn-sm btn-primary">
+                                            <i className="ri-arrow-right-line me-1" />
+                                            Ver briefing completo
+                                        </a>
+                                    )}
+                                </div>
+
+                                <div
+                                    style={{
+                                        borderTop: "1px solid #e9ebec",
+                                        paddingTop: "16px",
+                                    }}
+                                >
+                                    <div className="mb-3">
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
+                                            Criativo pronto a usar
+                                        </p>
+                                        <div className="row g-2">
+                                            <div className="col-md-7">
+                                                <HighlightBlock
+                                                    label="Hook"
+                                                    value={recommendedCreative.hook || "Sem hook definido."}
+                                                />
+                                            </div>
+                                            <div className="col-md-5">
+                                                <HighlightBlock
+                                                    label="CTA"
+                                                    value={recommendedCreative.cta || "Sem CTA definido."}
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <MetaBlock
+                                                    label="Formato"
+                                                    value={recommendedCreative.format || "Sem formato definido."}
+                                                />
+                                            </div>
+                                            <div className="col-md-6">
+                                                <MetaBlock
+                                                    label="Tipo"
+                                                    value={recommendedCreative.content_type}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {(headlines.length > 0 || primaryTexts.length > 0 || descriptions.length > 0) && (
+                                        <div>
+                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
+                                                Variações
+                                            </p>
+
+                                            {headlines.length > 0 && (
+                                                <div className="mb-3">
+                                                    <div className="text-muted fs-12 fw-semibold mb-2">Headlines</div>
+                                                    <div className="d-flex flex-wrap gap-2">
+                                                        {headlines.map((headline, index) => (
+                                                            <span key={`${headline}-${index}`} className="badge rounded-pill bg-light text-body px-3 py-2 fs-12">
+                                                                {headline}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {primaryTexts.length > 0 && (
+                                                <div className="mb-3">
+                                                    <div className="text-muted fs-12 fw-semibold mb-2">Primary texts</div>
+                                                    <div className="vstack gap-2">
+                                                        {primaryTexts.map((text, index) => (
+                                                            <div key={`${text}-${index}`} className="fs-13 text-body py-2 border-top">
+                                                                {text}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {descriptions.length > 0 && (
+                                                <div>
+                                                    <div className="text-muted fs-12 fw-semibold mb-2">Descriptions</div>
+                                                    <div className="vstack gap-2">
+                                                        {descriptions.map((description, index) => (
+                                                            <div key={`${description}-${index}`} className="fs-13 text-muted">
+                                                                {description}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+function KpiPill({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div
+            className="d-inline-flex align-items-center gap-2 rounded-pill"
+            style={{ padding: "10px 12px", background: "rgba(255,255,255,0.85)", border: "1px solid #e9ebec" }}
+        >
+            <span className="text-muted fs-12">{label}</span>
+            <span className="fw-semibold fs-13 text-body">{value}</span>
+        </div>
+    );
+}
+
+function InlineMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div
+            className="rounded-pill"
+            style={{ padding: "10px 12px", background: "rgba(255,255,255,0.85)", border: "1px solid #e9ebec" }}
+        >
+            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1">{label}</div>
+            <div className="fw-semibold fs-13 text-body">{value}</div>
+        </div>
+    );
+}
+
+function HighlightBlock({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-3" style={{ padding: "14px 16px", background: "#f8fafc", border: "1px solid #e9ebec" }}>
+            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.08em" }}>
+                {label}
+            </div>
+            <div className="fs-14 text-body fw-medium">{value}</div>
+        </div>
+    );
+}
+
+function MetaBlock({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-3" style={{ padding: "12px 14px", background: "#fff", border: "1px solid #e9ebec" }}>
+            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.08em" }}>
+                {label}
+            </div>
+            <div className="fs-13 text-body">{value}</div>
+        </div>
     );
 }

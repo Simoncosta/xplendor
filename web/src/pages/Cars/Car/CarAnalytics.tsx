@@ -115,6 +115,7 @@ export default function CarAnalytics() {
     const ipsRadialOptions = useMemo(() => buildIpsRadialOptions(ips), [ips]);
     const ipsHistoryOptions = useMemo(() => buildIpsHistoryOptions(ips), [ips]);
     const recommendation = carAnalytics?.smart_ads_recommendation ?? null;
+    const recommendedCreative = carAnalytics?.recommended_creative ?? null;
     const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
     const silentBuyers = carAnalytics?.silent_buyers ?? null;
     const overviewKpiStrip = <CarAnalyticsKpiStrip items={buildKpiItems(m)} />;
@@ -225,12 +226,14 @@ export default function CarAnalytics() {
                                 {activeTab === "overview" && (
                                     <TabOverview
                                         recommendation={recommendation}
+                                        recommendedCreative={recommendedCreative}
                                         recommendedPlatform={recommendedPlatform}
                                         silentBuyers={silentBuyers}
                                         metrics={m}
                                         insight={insight}
                                         kpiStrip={overviewKpiStrip}
                                         onOpenIntelligence={() => setActiveTab("inteligencia")}
+                                        marketingUrl={`/cars/${id}/marketing`}
                                     />
                                 )}
 

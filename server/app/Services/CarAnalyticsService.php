@@ -6,6 +6,7 @@ use App\Models\Car;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use App\Repositories\Contracts\CarInteractionRepositoryInterface;
 use App\Repositories\Contracts\CarLeadRepositoryInterface;
+use App\Repositories\Contracts\CarMarketingIdeaRepositoryInterface;
 use App\Repositories\Contracts\CarPerformanceMetricRepositoryInterface;
 use App\Repositories\Contracts\CarSalePotentialScoreRepositoryInterface;
 use App\Repositories\Contracts\CarViewRepositoryInterface;
@@ -17,6 +18,7 @@ class CarAnalyticsService
         protected CarViewRepositoryInterface                  $viewRepository,
         protected CarInteractionRepositoryInterface           $interactionRepository,
         protected CarLeadRepositoryInterface                  $leadRepository,
+        protected CarMarketingIdeaRepositoryInterface         $carMarketingIdeaRepository,
         protected CarPerformanceMetricRepositoryInterface     $performanceRepository,
         protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
@@ -180,42 +182,94 @@ class CarAnalyticsService
 
     protected function resolveRecommendedCreative(Car $car, ?array $smartAdsRecommendation): ?array
     {
-        if (!$smartAdsRecommendation || ($smartAdsRecommendation['action'] ?? null) === 'do_not_invest') {
+        $action = $smartAdsRecommendation['action'] ?? null;
+
+        if (!$smartAdsRecommendation || $action === 'do_not_invest') {
             return null;
         }
 
-        $ideas = $this->carRepository->getMarketingIdeasData($car->id, $car->company_id);
+        $ideas = $this->carMarketingIdeaRepository
+            ->getIdeasForCar($car->company_id, $car->id)
+            ->filter(function ($idea) {
+                if (!$idea) {
+                    return false;
+                }
+
+                if (isset($idea->status) && $idea->status === 'failed') {
+                    return false;
+                }
+
+                return !empty($idea->title)
+                    || !empty($idea->caption)
+                    || !empty($idea->cta)
+                    || !empty($idea->hooks)
+                    || !empty($idea->formats);
+            })
+            ->values();
+
         if ($ideas->isEmpty()) {
             return null;
         }
 
-        $preferredTypes = match ($smartAdsRecommendation['action']) {
-            'scale_ads' => ['sale', 'engagement'],
-            'test_campaign' => ['engagement', 'sale'],
-            'review_campaign' => ['engagement', 'authority'],
+        $preferredTypes = match ($action) {
+            'scale_ads' => ['sale', 'engagement', 'authority'],
+            'test_campaign' => ['sale', 'engagement', 'authority'],
+            'review_campaign' => ['engagement', 'sale', 'authority'],
             default => [],
         };
 
         foreach ($preferredTypes as $contentType) {
             $idea = $ideas->firstWhere('content_type', $contentType);
             if ($idea) {
-                return $this->mapCreative($idea);
+                return $this->mapCreative($idea, $action);
             }
         }
 
-        $fallbackIdea = $ideas->first();
-        return $fallbackIdea ? $this->mapCreative($fallbackIdea) : null;
+        return null;
     }
 
-    protected function mapCreative($idea): array
+    protected function mapCreative($idea, string $action): array
     {
+        $firstHook = collect($idea->hooks ?? [])
+            ->first(fn($hook) => is_string($hook) && trim($hook) !== '');
+
+        $firstFormat = collect($idea->formats ?? [])
+            ->first(fn($format) => is_string($format) && trim($format) !== '');
+
+        $reason = match ($action) {
+            'scale_ads' => 'Criativo alinhado com a acao scale_ads e orientado para conversao.',
+            'test_campaign' => 'Criativo alinhado com a acao test_campaign e pensado para gerar conversao inicial.',
+            'review_campaign' => 'Criativo alinhado com a acao review_campaign e orientado para recuperar atencao e interacao.',
+            default => 'Criativo alinhado com a decisao de investimento atual.',
+        };
+
         return [
+            'source_idea_id' => $idea->id,
             'content_type' => $idea->content_type,
             'title' => $idea->title,
-            'hook' => $idea->hooks[0] ?? null,
+            'hook' => $firstHook,
+            'primary_texts' => collect($idea->primary_texts ?? [])
+                ->filter(fn($item) => is_string($item) && trim($item) !== '')
+                ->values()
+                ->take(3)
+                ->all(),
+            'headlines' => collect($idea->headlines ?? [])
+                ->filter(fn($item) => is_string($item) && trim($item) !== '')
+                ->values()
+                ->take(3)
+                ->all(),
+            'descriptions' => collect($idea->descriptions ?? [])
+                ->filter(fn($item) => is_string($item) && trim($item) !== '')
+                ->values()
+                ->take(2)
+                ->all(),
             'caption' => $idea->caption,
             'cta' => $idea->cta,
-            'format' => $idea->formats[0] ?? null,
+            'format' => $firstFormat,
+            'angle' => $idea->angle,
+            'goal' => $idea->goal,
+            'why_now' => $idea->why_now,
+            'reason' => $reason,
         ];
     }
 
