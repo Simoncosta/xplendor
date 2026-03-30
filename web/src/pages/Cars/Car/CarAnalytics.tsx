@@ -146,7 +146,7 @@ export default function CarAnalytics() {
 
     // ── Render ────────────────────────────────────────────────────────────────
     return (
-        <div className="page-content">
+        <div className="page-content mb-3">
             <ToastContainer />
             <Container fluid>
 
