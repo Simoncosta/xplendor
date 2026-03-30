@@ -1,10 +1,12 @@
 import { Col, Row } from "reactstrap";
+import MarketIntelligenceCard from "./MarketIntelligenceCard";
 import SmartAdsRecommendationCard from "./SmartAdsRecommendationCard";
 
 interface Props {
     recommendation: any;
     recommendedCreative?: any;
     recommendedPlatform?: "meta" | "google" | null;
+    marketIntelligence?: any;
     silentBuyers: any;
     metrics: any;
     insight: any;
@@ -17,6 +19,7 @@ export default function TabOverview({
     recommendation,
     recommendedCreative,
     recommendedPlatform,
+    marketIntelligence,
     silentBuyers,
     metrics,
     insight,
@@ -46,6 +49,8 @@ export default function TabOverview({
                 </div>
                 {kpiStrip}
             </section>
+
+            <MarketIntelligenceCard data={marketIntelligence} />
 
             <section style={sectionStyle}>
                 <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">

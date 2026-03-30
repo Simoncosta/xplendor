@@ -26,7 +26,7 @@ import {
     buildInsight,
     timelineDesc,
     channelLabels, channelColors,
-    ipsClassBadge, ipsFactorLabels,
+    ipsClassBadge, ipsFactorLabels, marketPositionMeta,
     buildIpsRadialOptions, buildIpsHistoryOptions,
     forecastOptions,
 } from "./helpers/CarAnalyticsData";
@@ -117,6 +117,7 @@ export default function CarAnalytics() {
     const recommendation = carAnalytics?.smart_ads_recommendation ?? null;
     const recommendedCreative = carAnalytics?.recommended_creative ?? null;
     const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
+    const marketIntelligence = carAnalytics?.market_intelligence ?? null;
     const silentBuyers = carAnalytics?.silent_buyers ?? null;
     const overviewKpiStrip = <CarAnalyticsKpiStrip items={buildKpiItems(m)} />;
 
@@ -228,6 +229,7 @@ export default function CarAnalytics() {
                                         recommendation={recommendation}
                                         recommendedCreative={recommendedCreative}
                                         recommendedPlatform={recommendedPlatform}
+                                        marketIntelligence={marketIntelligence}
                                         silentBuyers={silentBuyers}
                                         metrics={m}
                                         insight={insight}
@@ -260,11 +262,13 @@ export default function CarAnalytics() {
                                         <Col xs={12}>
                                             <TabAnaliseIA
                                                 ips={ips}
+                                                marketIntelligence={marketIntelligence}
                                                 ai={ai}
                                                 ipsRadialOptions={ipsRadialOptions}
                                                 ipsHistoryOptions={ipsHistoryOptions}
                                                 ipsClassBadge={ipsClassBadge}
                                                 ipsFactorLabels={ipsFactorLabels}
+                                                marketPositionMeta={marketPositionMeta}
                                                 forecastOptions={forecastOptions}
                                                 fmtDate={fmtDate}
                                                 carId={id}

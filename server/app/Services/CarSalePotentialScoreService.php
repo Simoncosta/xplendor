@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Log;
 class CarSalePotentialScoreService
 {
     public function __construct(
-        private CarSalePotentialScoreRepositoryInterface $repository
+        private CarSalePotentialScoreRepositoryInterface $repository,
+        private CarMarketIntelligenceService $carMarketIntelligenceService,
     ) {}
 
     // ── Entrada pública ───────────────────────────────────────────────────────
@@ -23,9 +24,11 @@ class CarSalePotentialScoreService
             ->where('company_id', $companyId)
             ->firstOrFail();
         $pricing = $this->resolvePricingContext($car);
+        $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
+        $priceVsMarket = $this->getPriceVsMarketPercent($marketIntelligence);
 
         $breakdown = [
-            'price_vs_market' => $this->scorePriceVsMarket($car),
+            'price_vs_market' => $this->scorePriceVsMarket($marketIntelligence),
             'promo_effect'    => $this->scorePromoEffect($car),
             'engagement_rate' => $this->scoreEngagementRate($car),
             'days_in_stock'   => $this->scoreDaysInStock($car),
@@ -37,6 +40,14 @@ class CarSalePotentialScoreService
                 'has_promo_price' => $pricing['has_promo_price'],
                 'promo_discount_value' => $pricing['promo_discount_value'],
                 'promo_discount_pct' => $pricing['promo_discount_pct'],
+                'market_position' => $marketIntelligence['market_position'] ?? 'insufficient_data',
+                'pricing_signal' => $marketIntelligence['pricing_signal'] ?? 'neutral',
+                'competitors_count' => $marketIntelligence['competitors_count'] ?? 0,
+                'market_median_price' => $marketIntelligence['market_median_price'] ?? null,
+                'market_p25_price' => $marketIntelligence['market_p25_price'] ?? null,
+                'market_p75_price' => $marketIntelligence['market_p75_price'] ?? null,
+                'recommended_price' => $marketIntelligence['recommended_price'] ?? $pricing['effective_price_gross'],
+                'car_price_vs_median_pct' => $priceVsMarket,
             ],
         ];
 
@@ -45,7 +56,6 @@ class CarSalePotentialScoreService
             ->sum();
         $score          = max(0, min(100, $score)); // garantir 0–100
         $daysInStock    = (int) Carbon::parse($car->created_at)->diffInDays(now());
-        $priceVsMarket  = $this->getPriceVsMarketPercent($car);
 
         Log::info('[IPS] Carro calculado', [
             'car_id'      => $carId,
@@ -92,62 +102,43 @@ class CarSalePotentialScoreService
     }
 
     // ── Fator 1: Preço vs mercado (25 pts) ───────────────────────────────────
-    // Compara price_gross com a mediana dos carros do mesmo modelo e ano ±1
-    // que estão activos noutros stands (ou no histórico da plataforma)
+    // Usa inteligência de mercado externa para ajustar o potencial comercial
+    // da viatura sem dominar o score total.
 
-    private function scorePriceVsMarket(Car $car): int
+    private function scorePriceVsMarket(array $marketIntelligence): int
     {
-        $deviation = $this->getPriceVsMarketPercent($car);
+        $marketPosition = $marketIntelligence['market_position'] ?? 'insufficient_data';
+        $deviation = $this->getPriceVsMarketPercent($marketIntelligence);
 
-        if ($deviation === null) {
+        if ($marketPosition === 'insufficient_data' || $deviation === null) {
             return 15; // sem dados de mercado → valor neutro
         }
 
-        if ($deviation <= -10) return 25; // preço >10% abaixo da mediana
-        if ($deviation <= -5)  return 20;
-        if ($deviation <= 0)   return 15; // na mediana
-        if ($deviation <= 5)   return 8;
-        return 5;                          // acima 5%+ → penaliza
+        if ($marketPosition === 'below_market') {
+            if ($deviation <= -10) return 25;
+            if ($deviation <= -5)  return 22;
+            return 18;
+        }
+
+        if ($marketPosition === 'aligned_market') {
+            if ($deviation < 0) return 17;
+            return 15;
+        }
+
+        if ($marketPosition === 'above_market') {
+            if ($deviation > 10) return 4;
+            if ($deviation > 5)  return 7;
+            return 10;
+        }
+
+        return 15;
     }
 
-    private function getPriceVsMarketPercent(Car $car): ?float
+    private function getPriceVsMarketPercent(array $marketIntelligence): ?float
     {
-        $pricing = $this->resolvePricingContext($car);
-        $effectivePrice = $pricing['effective_price_gross'];
+        $deviation = $marketIntelligence['car_price_vs_median_pct'] ?? null;
 
-        if ($effectivePrice === null || $effectivePrice <= 0) {
-            return null;
-        }
-
-        // Mediana de todos os carros ativos do mesmo modelo, ano ±1, excluindo o próprio
-        $marketPrices = DB::table('cars')
-            ->where('car_model_id', $car->car_model_id)
-            ->where('car_brand_id', $car->car_brand_id)
-            ->whereBetween('registration_year', [
-                $car->registration_year - 1,
-                $car->registration_year + 1,
-            ])
-            ->where('status', 'active')
-            ->where('id', '!=', $car->id)
-            ->get(['price_gross', 'promo_price_gross'])
-            ->map(function ($marketCar) {
-                return $this->resolveEffectivePrice(
-                    $marketCar->price_gross,
-                    $marketCar->promo_price_gross ?? null
-                );
-            })
-            ->filter(fn ($price) => $price !== null && $price > 0)
-            ->sort()
-            ->values()
-            ->toArray();
-
-        $median = $this->median($marketPrices);
-
-        if (! $median || $median == 0) {
-            return null;
-        }
-
-        return round((($effectivePrice - $median) / $median) * 100, 2);
+        return $deviation === null ? null : round((float) $deviation, 2);
     }
 
     // ── Fator 2: Velocidade de engajamento (20 pts) ───────────────────────────
@@ -368,19 +359,6 @@ class CarSalePotentialScoreService
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private function median(array $values): ?float
-    {
-        if (empty($values)) return null;
-
-        sort($values);
-        $count = count($values);
-        $mid   = (int) floor($count / 2);
-
-        return $count % 2 === 0
-            ? ($values[$mid - 1] + $values[$mid]) / 2
-            : $values[$mid];
-    }
 
     private function resolvePricingContext(Car $car): array
     {

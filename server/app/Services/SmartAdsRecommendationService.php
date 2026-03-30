@@ -9,11 +9,13 @@ class SmartAdsRecommendationService
 {
     public function __construct(
         protected CarRepositoryInterface $carRepository,
+        protected CarMarketIntelligenceService $carMarketIntelligenceService,
     ) {}
 
     public function generate(Car $car): ?array
     {
         $context = $this->carRepository->getSmartAdsContext($car->id, $car->company_id);
+        $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
 
         $recommendation = $this->resolveRecommendation(
             status: $context['status'],
@@ -24,6 +26,12 @@ class SmartAdsRecommendationService
             costPerLead: $context['cost_per_lead'],
             ipsScore: $context['ips_score'],
             daysInStock: $context['days_in_stock'],
+        );
+
+        $recommendation = $this->applyMarketIntelligenceAdjustment(
+            $recommendation,
+            $marketIntelligence,
+            $context,
         );
 
         return [
@@ -182,5 +190,145 @@ class SmartAdsRecommendationService
     protected function clamp(int $value, int $min, int $max): int
     {
         return max($min, min($max, $value));
+    }
+
+    protected function applyMarketIntelligenceAdjustment(
+        array $recommendation,
+        array $marketIntelligence,
+        array $context,
+    ): array {
+        $marketPosition = $marketIntelligence['market_position'] ?? 'insufficient_data';
+        $vsMedianPct = $marketIntelligence['car_price_vs_median_pct'] ?? null;
+        $recommendedPrice = $marketIntelligence['recommended_price'] ?? null;
+        $medianPrice = $marketIntelligence['market_median_price'] ?? null;
+        $hasStrongDemand = (int) ($context['leads'] ?? 0) >= 2 || (int) ($context['views'] ?? 0) >= 100;
+
+        if ($marketPosition === 'insufficient_data' || $vsMedianPct === null) {
+            return $recommendation;
+        }
+
+        if ($marketPosition === 'above_market' && $vsMedianPct > 5) {
+            $baseAction = $recommendation['action'] ?? 'review_campaign';
+            $nextAction = $baseAction === 'scale_ads'
+                ? 'review_campaign'
+                : ($baseAction === 'test_campaign' ? 'review_campaign' : $baseAction);
+
+            if (
+                $baseAction === 'review_campaign'
+                && (int) ($context['leads'] ?? 0) === 0
+                && (int) ($context['views'] ?? 0) < 100
+            ) {
+                $nextAction = 'do_not_invest';
+            }
+
+            $recommendation['action'] = $nextAction;
+            $recommendation['confidence_score'] = $this->clamp(
+                (int) ($recommendation['confidence_score'] ?? 60) - 10,
+                35,
+                90
+            );
+            $recommendation['summary'] = 'O preço está acima da mediana do mercado e isso reduz a margem para recomendar investimento agressivo neste momento.';
+            $recommendation['reason'] = $this->buildAboveMarketReason($vsMedianPct, $medianPrice, $recommendedPrice);
+            $recommendation['next_step'] = $nextAction === 'do_not_invest'
+                ? 'Rever o preço e o posicionamento antes de voltar a investir.'
+                : 'Rever preço, criativo e proposta antes de reinvestir.';
+            $recommendation['creative_direction'] = $nextAction === 'do_not_invest'
+                ? null
+                : 'Criativo de revisão orientado a reduzir fricção comercial enquanto o preço não é corrigido.';
+
+            if ($nextAction === 'do_not_invest') {
+                $recommendation['total_budget'] = 0;
+                $recommendation['daily_budget'] = 0;
+                $recommendation['duration_days'] = 0;
+            }
+
+            return $recommendation;
+        }
+
+        if ($marketPosition === 'below_market' && $hasStrongDemand) {
+            $recommendation['confidence_score'] = $this->clamp(
+                (int) ($recommendation['confidence_score'] ?? 60) + 6,
+                35,
+                92
+            );
+
+            if (($recommendation['action'] ?? null) === 'review_campaign') {
+                $recommendation['action'] = 'test_campaign';
+                $recommendation['title'] = 'Testar investimento com vantagem competitiva';
+                $recommendation['summary'] = 'O preço está competitivo face ao mercado e reforça a oportunidade de validar ou acelerar investimento.';
+                $recommendation['next_step'] = 'Ativar campanha com criativo direto e medir resposta comercial.';
+            }
+
+            if (($recommendation['action'] ?? null) === 'test_campaign') {
+                $recommendation['summary'] = 'O preço está competitivo face ao mercado, o que reforça a margem para testar investimento com mais confiança.';
+            }
+
+            if (($recommendation['action'] ?? null) === 'scale_ads') {
+                $recommendation['summary'] = 'A viatura já mostra tração e o preço competitivo reforça a oportunidade de escalar investimento.';
+            }
+
+            $recommendation['reason'] = $this->buildBelowMarketReason($vsMedianPct, $medianPrice);
+
+            return $recommendation;
+        }
+
+        if ($marketPosition === 'aligned_market') {
+            $recommendation['reason'] = $this->appendMarketReason(
+                (string) ($recommendation['reason'] ?? ''),
+                'O preço está alinhado com a mediana do mercado, sem penalização relevante para investimento.'
+            );
+        }
+
+        return $recommendation;
+    }
+
+    protected function buildAboveMarketReason(?float $vsMedianPct, ?float $medianPrice, ?float $recommendedPrice): string
+    {
+        $delta = $vsMedianPct !== null ? round($vsMedianPct, 1) : null;
+        $median = $medianPrice !== null ? number_format((float) $medianPrice, 0, ',', '.') : null;
+        $recommended = $recommendedPrice !== null ? number_format((float) $recommendedPrice, 0, ',', '.') : null;
+
+        $reason = $delta !== null
+            ? "O carro está {$delta}% acima da mediana do mercado"
+            : "O carro está acima da mediana do mercado";
+
+        if ($median) {
+            $reason .= " (mediana ~ {$median} EUR)";
+        }
+
+        $reason .= ' e isso pode estar a travar conversão.';
+
+        if ($recommended) {
+            $reason .= " O preço recomendado aproxima-se de {$recommended} EUR.";
+        }
+
+        return $reason;
+    }
+
+    protected function buildBelowMarketReason(?float $vsMedianPct, ?float $medianPrice): string
+    {
+        $delta = $vsMedianPct !== null ? abs(round($vsMedianPct, 1)) : null;
+        $median = $medianPrice !== null ? number_format((float) $medianPrice, 0, ',', '.') : null;
+
+        $reason = $delta !== null
+            ? "O carro está {$delta}% abaixo da mediana do mercado"
+            : 'O carro está competitivo face ao mercado';
+
+        if ($median) {
+            $reason .= " (mediana ~ {$median} EUR)";
+        }
+
+        return $reason . ' e isso reforça a oportunidade comercial desta viatura.';
+    }
+
+    protected function appendMarketReason(string $baseReason, string $marketReason): string
+    {
+        $baseReason = trim($baseReason);
+
+        if ($baseReason === '') {
+            return $marketReason;
+        }
+
+        return rtrim($baseReason, '.') . '. ' . $marketReason;
     }
 }

@@ -171,6 +171,33 @@ export const ipsFactorLabels: Record<string, { label: string; max: number; icon:
     model_history: { label: "Histórico do Modelo", max: 10, icon: "ri-history-line", color: "secondary" },
 };
 
+export const marketPositionMeta: Record<string, { label: string; className: string; impact: string; description: string }> = {
+    below_market: {
+        label: "Abaixo do mercado",
+        className: "bg-success-subtle text-success",
+        impact: "positivo",
+        description: "Preço competitivo face ao mercado.",
+    },
+    aligned_market: {
+        label: "Alinhado com o mercado",
+        className: "bg-info-subtle text-info",
+        impact: "neutro",
+        description: "Preço alinhado com o mercado.",
+    },
+    above_market: {
+        label: "Acima do mercado",
+        className: "bg-warning-subtle text-warning",
+        impact: "negativo",
+        description: "Preço acima da mediana e pode travar conversão.",
+    },
+    insufficient_data: {
+        label: "Dados insuficientes",
+        className: "bg-secondary-subtle text-secondary",
+        impact: "neutro",
+        description: "Ainda não existe massa crítica para leitura fiável.",
+    },
+};
+
 export const buildIpsRadialOptions = (ips: any): any => ({
     chart: { type: "radialBar", sparkline: { enabled: true } },
     plotOptions: {

@@ -23,6 +23,7 @@ class CarAnalyticsService
         protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
         protected SilentBuyerDetectionService                 $silentBuyerDetectionService,
+        protected CarMarketIntelligenceService                $carMarketIntelligenceService,
     ) {}
 
     public function show(Car $car): array
@@ -49,6 +50,7 @@ class CarAnalyticsService
         $recommendedCreative = $this->resolveRecommendedCreative($car, $smartAdsRecommendation);
         $promoDiscountValue = $car->promo_discount_value;
         $promoDiscountPct = $car->promo_discount_pct;
+        $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
 
         return [
             'car' => [
@@ -108,6 +110,7 @@ class CarAnalyticsService
             ],
             'smart_ads_recommendation' => $smartAdsRecommendation,
             'recommended_creative' => $recommendedCreative,
+            'market_intelligence' => $marketIntelligence,
             'potential_score' => $latestScore ? [
                 'score'            => $latestScore->score,
                 'classification'   => $latestScore->classification,

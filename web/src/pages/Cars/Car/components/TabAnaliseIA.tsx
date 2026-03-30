@@ -4,11 +4,13 @@ import XButton from "Components/Common/XButton";
 
 interface Props {
     ips: any;
+    marketIntelligence?: any;
     ai: any;
     ipsRadialOptions: any;
     ipsHistoryOptions: any;
     ipsClassBadge: (cls: string) => string;
     ipsFactorLabels: Record<string, { label: string; max: number; icon: string; color: string }>;
+    marketPositionMeta: Record<string, { label: string; className: string; impact: string; description: string }>;
     forecastOptions: any;
     fmtDate: (d: string) => string;
     carId: string | undefined;
@@ -27,11 +29,13 @@ const sectionStyle = {
 
 export default function TabAnaliseIA({
     ips,
+    marketIntelligence,
     ai,
     ipsRadialOptions,
     ipsHistoryOptions,
     ipsClassBadge,
     ipsFactorLabels,
+    marketPositionMeta,
     forecastOptions,
     fmtDate,
     carId,
@@ -40,6 +44,9 @@ export default function TabAnaliseIA({
     onGenerateAi,
     generatingAi = false,
 }: Props) {
+    const marketMeta = marketPositionMeta[marketIntelligence?.market_position ?? "insufficient_data"]
+        ?? marketPositionMeta.insufficient_data;
+
     return (
         <Row className="g-3">
             <Col lg={4}>
@@ -70,6 +77,43 @@ export default function TabAnaliseIA({
                                 </div>
                             </div>
 
+                            <div className="rounded-3 mt-3 mb-3" style={{ border: "1px solid #eef0f2", background: "#fcfcfd", padding: "14px 16px" }}>
+                                <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-2">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Posição no Mercado
+                                        </p>
+                                        <h6 className="mb-0 fw-semibold fs-14">{marketMeta.label}</h6>
+                                    </div>
+                                    <span className={`badge rounded-pill px-3 py-2 fs-11 ${marketMeta.className}`}>
+                                        Impacto {marketMeta.impact}
+                                    </span>
+                                </div>
+
+                                <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                    <span className={`badge rounded-pill px-3 py-2 fs-12 ${marketMeta.className}`}>
+                                        {formatPercent(marketIntelligence?.car_price_vs_median_pct)} vs mediana
+                                    </span>
+                                </div>
+
+                                <p className="text-muted fs-12 mb-3">{marketMeta.description}</p>
+
+                                <div className="row g-2">
+                                    <div className="col-6">
+                                        <div className="bg-white rounded-3 px-3 py-2 h-100" style={{ border: "1px solid #eef0f2" }}>
+                                            <span className="text-muted fs-11 d-block mb-1">Preço médio mercado</span>
+                                            <span className="fw-semibold fs-13">{formatCurrency(marketIntelligence?.market_median_price)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="col-6">
+                                        <div className="bg-white rounded-3 px-3 py-2 h-100" style={{ border: "1px solid #eef0f2" }}>
+                                            <span className="text-muted fs-11 d-block mb-1">Preço sugerido</span>
+                                            <span className="fw-semibold fs-13">{formatCurrency(marketIntelligence?.recommended_price)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="vstack gap-2 mt-3">
                                 {Object.entries(ips.breakdown || {}).map(([key, pts]: any) => {
                                     const factor = ipsFactorLabels[key];
@@ -88,6 +132,16 @@ export default function TabAnaliseIA({
                                                 </span>
                                             </div>
                                             <Progress color={pct >= 70 ? "success" : pct >= 40 ? "warning" : "danger"} value={pct} style={{ height: "4px" }} />
+                                            {key === "price_vs_market" && (
+                                                <div className="d-flex align-items-center justify-content-between gap-2 mt-2 flex-wrap">
+                                                    <span className="text-muted fs-11">
+                                                        {marketMeta.description}
+                                                    </span>
+                                                    <span className={`badge rounded-pill fs-10 px-2 py-1 ${marketMeta.className}`}>
+                                                        {marketMeta.label}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -280,4 +334,27 @@ export default function TabAnaliseIA({
             )}
         </Row>
     );
+}
+
+function formatCurrency(value?: number | null) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "—";
+    }
+
+    return new Intl.NumberFormat("pt-PT", {
+        style: "currency",
+        currency: "EUR",
+        maximumFractionDigits: 0,
+    }).format(Number(value));
+}
+
+function formatPercent(value?: number | null) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return "—";
+    }
+
+    const amount = Number(value);
+    const sign = amount > 0 ? "+" : "";
+
+    return `${sign}${amount.toFixed(1)}%`;
 }
