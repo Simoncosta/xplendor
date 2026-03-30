@@ -44,4 +44,8 @@ return [
     'openai' => [
         'key' => env('OPENAI_KEY'),
     ],
+
+    'scraper' => [
+        'token' => env('SCRAPER_API_TOKEN'),
+    ],
 ];

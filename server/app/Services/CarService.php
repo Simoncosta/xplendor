@@ -441,14 +441,14 @@ class CarService extends BaseService
 
         $sellerMap = User::query()
             ->whereIn('id', $sellerIds)
-            ->get(['id', 'name', 'mobile', 'whatsapp', 'company_id'])
+            ->get(['id', 'name', 'avatar', 'mobile', 'whatsapp', 'company_id'])
             ->keyBy('id');
 
         $adminMap = User::query()
             ->whereIn('company_id', $companyIds)
             ->where('role', 'admin')
             ->orderBy('id')
-            ->get(['id', 'name', 'mobile', 'whatsapp', 'company_id'])
+            ->get(['id', 'name', 'avatar', 'mobile', 'whatsapp', 'company_id'])
             ->groupBy('company_id')
             ->map(fn(Collection $users) => $users->first());
 
@@ -468,6 +468,7 @@ class CarService extends BaseService
             $car->seller_contact = $seller ? [
                 'id' => $seller->id,
                 'name' => $seller->name,
+                'avatar' => $seller->avatar,
                 'phone' => $phone,
                 'mobile' => $mobile,
                 'whatsapp' => $whatsapp,

@@ -27,6 +27,7 @@ use App\Repositories\Contracts\{
     CarExternalImageRepositoryInterface,
     CarInteractionRepositoryInterface,
     CarLeadRepositoryInterface,
+    CarMarketSnapshotRepositoryInterface,
     CarMarketingIdeaRepositoryInterface,
     CarMarketingRoiRepositoryInterface,
     CompanyIntegrationRepositoryInterface,
@@ -55,6 +56,7 @@ use App\Repositories\{
     CarExternalImageRepository,
     CarInteractionRepository,
     CarLeadRepository,
+    CarMarketSnapshotRepository,
     CarMarketingIdeaRepository,
     CarMarketingRoiRepository,
     CompanyIntegrationRepository,
@@ -80,6 +82,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckCompanyApiToken;
 use App\Http\Middleware\CheckCompanySubscription;
+use App\Http\Middleware\CheckScraperApiToken;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -95,6 +98,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarExternalImageRepositoryInterface::class, CarExternalImageRepository::class);
         $this->app->bind(CarInteractionRepositoryInterface::class, CarInteractionRepository::class);
         $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
+        $this->app->bind(CarMarketSnapshotRepositoryInterface::class, CarMarketSnapshotRepository::class);
         $this->app->bind(CarMarketingIdeaRepositoryInterface::class, CarMarketingIdeaRepository::class);
         $this->app->bind(CarMarketingRoiRepositoryInterface::class, CarMarketingRoiRepository::class);
         $this->app->bind(CompanyIntegrationRepositoryInterface::class, CompanyIntegrationRepository::class);
@@ -130,5 +134,6 @@ class AppServiceProvider extends ServiceProvider
 
         Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
         Route::aliasMiddleware('check_company_subscription', CheckCompanySubscription::class);
+        Route::aliasMiddleware('check_scraper_api_token', CheckScraperApiToken::class);
     }
 }

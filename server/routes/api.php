@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\MarketSnapshotController;
 use App\Http\Controllers\Api\Public\{
     BlogController as PublicBlogController,
     CarController as PublicCarController,
@@ -33,6 +34,10 @@ use App\Http\Controllers\Api\V1\{
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Route;
+
+Route::middleware(['check_scraper_api_token'])->group(function () {
+    Route::post('/market/snapshots', [MarketSnapshotController::class, 'store']);
+});
 
 Route::prefix('v1')->group(function () {
     Route::post('/register', [UserController::class, 'store']);
