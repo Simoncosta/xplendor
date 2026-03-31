@@ -8,17 +8,12 @@ import { Container, Row } from 'reactstrap';
 import SummaryDashboard from './components/SummaryDashboard';
 import { getAnalyticsDashboard } from 'slices/dashboards/thunk';
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
-import MarketingTrafficDonutChart from './components/MarketingTrafficDonutChart';
 import DashboardInsightsCard from './components/DashboardInsightsCard';
-import MarketingRoiSummaryCards from './components/MarketingRoiSummaryCards';
-import MarketingRoiChannelTable from './components/MarketingRoiChannelTable';
-import MarketingRoiInsightsCard from './components/MarketingRoiInsightsCard';
-import MarketingTopCampaignsCard from './components/MarketingTopCampaignsCard';
-import TopCarsToPromoteCard from './components/TopCarsToPromoteCard';
 import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockIntelligenceDashboardCard from './components/StockIntelligenceDashboardCard';
-import { IMarketingRoi } from './components/marketingRoi.types';
+import MarketingWorkspaceTabs from './components/MarketingWorkspaceTabs';
+import { IAdsPriorityRankedCar, IMarketingRoi } from './components/marketingRoi.types';
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
@@ -75,21 +70,11 @@ const Dashboard = () => {
                         />
                     </Row>
                     <Row className="g-3 mb-3">
-                        <MarketingTrafficDonutChart
+                        <MarketingWorkspaceTabs
                             marketingPerformance={analytics.marketing_performance}
-                            dataColors='["--vz-primary", "--vz-success", "--vz-warning"]'
+                            marketingRoi={marketingRoi}
+                            rankingCars={analytics.ads_priority_ranking?.cars_ranked_for_ads || []}
                         />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <MarketingRoiSummaryCards marketingRoi={marketingRoi} />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <MarketingRoiChannelTable channels={marketingRoi.by_channel} />
-                        <MarketingRoiInsightsCard insights={marketingRoi.insights} />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <MarketingTopCampaignsCard campaigns={marketingRoi.top_campaigns} />
-                        <TopCarsToPromoteCard cars={marketingRoi.top_cars_to_promote} />
                     </Row>
                 </Container>
             </div>
@@ -122,6 +107,9 @@ type TAnalytics = {
     marketing_performance?: any;
     insights?: any[];
     marketing_roi?: IMarketingRoi | null;
+    ads_priority_ranking?: {
+        cars_ranked_for_ads?: IAdsPriorityRankedCar[];
+    } | null;
     silent_buyers?: any;
     stock_intelligence?: {
         opportunities?: any[];
@@ -139,6 +127,7 @@ const emptyAnalytics: TAnalytics = {
     marketing_performance: undefined,
     insights: [],
     marketing_roi: emptyMarketingRoi,
+    ads_priority_ranking: null,
     silent_buyers: null,
     stock_intelligence: null,
 };

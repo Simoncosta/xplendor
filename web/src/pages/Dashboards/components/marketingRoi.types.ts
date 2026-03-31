@@ -41,6 +41,20 @@ export interface IMarketingRoiCar {
     recommendation: string;
 }
 
+export interface IAdsPriorityRankedCar {
+    position: number;
+    car_id: number;
+    car_name: string;
+    price_gross: number | null;
+    priority_score: number;
+    confidence_score: number;
+    investment_label: "high_priority" | "medium_priority" | "low_priority" | "avoid_investment";
+    reason: string | null;
+    why_now: string | null;
+    risk_note: string | null;
+    smartads_decision: "scale_ads" | "test_campaign" | "review_campaign" | "do_not_invest" | null;
+}
+
 export interface IMarketingRoi {
     summary: IMarketingRoiSummary;
     by_channel: IMarketingRoiChannel[];

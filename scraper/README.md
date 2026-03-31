@@ -91,6 +91,8 @@ python3 -m py_compile scraper/main.py scraper/config.py scraper/scraper.py scrap
 cd scraper && python3 main.py preview 2 --brand BMW --fuel diesel --price-from 10000 --price-to 20000
 cd scraper && python3 main.py preview 2 --brand BMW --year-from 2020 --year-to 2021
 
+COMPLETO: python3 main.py --brand Mercedes-Benz --year-from 2017 --year-to 2017 --fuel diesel --model "C 200" --gearbox automatic
+
 ---
 
 ## Setup Laravel

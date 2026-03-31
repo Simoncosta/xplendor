@@ -15,6 +15,7 @@ class DashboardService extends BaseService
         protected SilentBuyerDetectionService                $silentBuyerDetectionService,
         protected StockIntelligenceService                   $stockIntelligenceService,
         protected CarIssueEngine                             $carIssueEngine,
+        protected StockAdRankingService                      $stockAdRankingService,
     ) {}
 
     public function getDashboard(int $companyId): array
@@ -58,6 +59,7 @@ class DashboardService extends BaseService
             'high_interest_low_conversion_cars' => $this->dashboardRepository->getHighInterestLowConversionCars($companyId),
             'marketing_performance'            => $this->dashboardRepository->getMarketingPerformance($companyId),
             'marketing_roi'                    => $this->carMarketingRoiService->getCompanyMarketingRoi($companyId),
+            'ads_priority_ranking'             => $this->stockAdRankingService->rankActiveCarsForAds($companyId),
             'insights'                         => $this->dashboardRepository->getCompanyInsights($companyId),
             'silent_buyers'                    => $this->silentBuyerDetectionService->getDashboardSummary($companyId),
             'stock_intelligence'               => $this->getStockIntelligenceSummary($companyId),
