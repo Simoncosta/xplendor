@@ -14,9 +14,6 @@ const limitOptions = [
     { label: "Todos", value: "all" as const },
 ];
 
-const MIN_PRIORITY_FOR_READY = 55;
-const MIN_CONFIDENCE_FOR_READY = 50;
-
 const formatCurrency = (value: number | null) => {
     if (value === null || value === undefined) return "—";
 
@@ -144,35 +141,17 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
     const [selectedCar, setSelectedCar] = useState<IAdsPriorityRankedCar | null>(null);
 
     const visibleState = useMemo(() => {
-        const readyCars = cars.filter((car) =>
-            car.investment_label !== "avoid_investment"
-            && car.investment_label !== "low_priority"
-            && car.smartads_decision !== "do_not_invest"
-            && car.priority_score >= MIN_PRIORITY_FOR_READY
-            && car.confidence_score >= MIN_CONFIDENCE_FOR_READY
-        );
-
-        const goodCandidates = readyCars.filter((car) => car.investment_label === "medium_priority");
-        const strongReadyCars = readyCars.filter((car) => car.investment_label === "high_priority");
-
-        const watchlistCars = cars.filter((car) =>
-            !readyCars.some((readyCar) => readyCar.car_id === car.car_id)
-            && car.investment_label !== "avoid_investment"
-        );
-
-        const avoidCars = cars.filter((car) =>
-            car.investment_label === "avoid_investment"
-            || car.smartads_decision === "do_not_invest"
-        );
-
-        const applyLimit = (items: IAdsPriorityRankedCar[]) => limit === "all" ? items : items.slice(0, limit);
+        const limitedCars = limit === "all" ? cars : cars.slice(0, limit);
 
         return {
-            readyCars: applyLimit(strongReadyCars),
-            goodCandidates: applyLimit(goodCandidates),
-            watchlistCars: applyLimit(watchlistCars),
-            avoidCars: applyLimit(avoidCars),
-            hasStrongOpportunities: strongReadyCars.length > 0 || goodCandidates.length > 0,
+            readyCars: limitedCars.filter((car) => car.smartads_decision === "scale_ads"),
+            goodCandidates: limitedCars.filter((car) => car.smartads_decision === "test_campaign"),
+            explorationCars: limitedCars.filter((car) => car.smartads_decision === "test_campaign_seed"),
+            reviewCars: limitedCars.filter((car) => car.smartads_decision === "review_campaign"),
+            avoidCars: limitedCars.filter((car) => car.smartads_decision === "do_not_invest"),
+            hasStrongOpportunities: limitedCars.some((car) =>
+                car.smartads_decision === "scale_ads" || car.smartads_decision === "test_campaign"
+            ),
         };
     }, [cars, limit]);
 
@@ -370,10 +349,17 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
                             "campaign",
                         )}
 
-                        {visibleState.watchlistCars.length > 0 && renderSection(
+                        {visibleState.explorationCars.length > 0 && renderSection(
                             "Em observação",
                             "Ainda sem dados suficientes para justificar investimento. Acompanhar evolução.",
-                            visibleState.watchlistCars,
+                            visibleState.explorationCars,
+                            "analytics_only",
+                        )}
+
+                        {visibleState.reviewCars.length > 0 && renderSection(
+                            "Rever antes de investir",
+                            "Carros que precisam de correção de proposta, preço ou criativo antes de receber mais budget.",
+                            visibleState.reviewCars,
                             "analytics_only",
                         )}
 

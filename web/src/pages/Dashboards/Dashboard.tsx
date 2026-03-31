@@ -109,6 +109,11 @@ type TAnalytics = {
     marketing_roi?: IMarketingRoi | null;
     ads_priority_ranking?: {
         cars_ranked_for_ads?: IAdsPriorityRankedCar[];
+        ready?: IAdsPriorityRankedCar[];
+        test?: IAdsPriorityRankedCar[];
+        exploration?: IAdsPriorityRankedCar[];
+        review?: IAdsPriorityRankedCar[];
+        avoid?: IAdsPriorityRankedCar[];
     } | null;
     silent_buyers?: any;
     stock_intelligence?: {

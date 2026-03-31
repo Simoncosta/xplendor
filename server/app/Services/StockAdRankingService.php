@@ -72,6 +72,11 @@ class StockAdRankingService
 
         return [
             'cars_ranked_for_ads' => $ranked,
+            'ready' => array_values(array_filter($ranked, fn($car) => ($car['smartads_decision'] ?? null) === 'scale_ads')),
+            'test' => array_values(array_filter($ranked, fn($car) => ($car['smartads_decision'] ?? null) === 'test_campaign')),
+            'exploration' => array_values(array_filter($ranked, fn($car) => ($car['smartads_decision'] ?? null) === 'test_campaign_seed')),
+            'review' => array_values(array_filter($ranked, fn($car) => ($car['smartads_decision'] ?? null) === 'review_campaign')),
+            'avoid' => array_values(array_filter($ranked, fn($car) => ($car['smartads_decision'] ?? null) === 'do_not_invest')),
         ];
     }
 
