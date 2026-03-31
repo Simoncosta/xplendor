@@ -24,8 +24,9 @@ class CarDecisionEngineService
 
         $weights = $this->resolveWeights($context, $breakdown);
         $decisionScore = $this->weightedScore($breakdown, $weights);
-        $confidenceScore = $this->resolveConfidenceScore($context, $breakdown);
-        $decision = $this->resolveDecision($context, $breakdown, $decisionScore, $confidenceScore);
+        $baseConfidenceScore = $this->resolveConfidenceScore($context, $breakdown);
+        $decision = $this->resolveDecision($context, $breakdown, $decisionScore, $baseConfidenceScore);
+        $confidenceScore = $this->resolveDecisionConfidenceScore($decision, $context, $baseConfidenceScore);
         $expectedLeads = $this->resolveExpectedLeads($context, $breakdown, $decisionScore, $confidenceScore, $decision);
 
         return [
@@ -36,11 +37,14 @@ class CarDecisionEngineService
             'title' => $this->resolveTitle($decision),
             'summary' => $this->buildSummary($decision, $context, $breakdown),
             'reason' => $this->buildReason($decision, $context, $breakdown),
+            'why_now' => $this->buildWhyNow($decision, $context),
+            'risk_note' => $this->buildRiskNote($decision, $context, $confidenceScore),
             'next_step' => $this->buildNextStep($decision, $context),
             'creative_direction' => $this->buildCreativeDirection($decision, $context),
             'total_budget' => $this->resolveBudget($decision, $decisionScore, $confidenceScore),
             'daily_budget' => $this->resolveDailyBudget($decision, $decisionScore, $confidenceScore),
             'duration_days' => $this->resolveDurationDays($decision),
+            'recommended_budget' => $this->resolveRecommendedBudget($decision, $decisionScore, $confidenceScore),
             'cta_primary_label' => $decision === 'review_campaign' ? 'Rever campanha' : ($decision === 'do_not_invest' ? 'Ver detalhe' : 'Criar campanha'),
             'cta_secondary_label' => $decision === 'do_not_invest' ? 'Acompanhar evolução' : 'Ver detalhe',
             'breakdown' => $breakdown,
@@ -267,8 +271,14 @@ class CarDecisionEngineService
         $performance = $context['performance'];
         $market = $context['market_intelligence'];
         $views30 = (int) ($performance['views_30d'] ?? 0);
+        $views7d = (int) ($performance['views_7d'] ?? 0);
         $leads30 = (int) ($performance['leads_30d'] ?? 0);
+        $leads7d = (int) ($performance['leads_7d'] ?? 0);
+        $daysInStock = (int) ($performance['days_in_stock'] ?? 0);
         $delta = (float) ($market['car_price_vs_median_pct'] ?? 0);
+        $coldStartConfig = config('smartads.cold_start', []);
+        $minViewsThreshold = (int) ($coldStartConfig['min_views_threshold'] ?? 20);
+        $maxDaysForTest = (int) ($coldStartConfig['max_days_for_test'] ?? 30);
 
         if (
             ($market['market_position'] ?? null) === 'above_market'
@@ -277,6 +287,15 @@ class CarDecisionEngineService
             && $views30 >= 60
         ) {
             return 'review_campaign';
+        }
+
+        if (
+            ($market['market_position'] ?? null) !== 'above_market'
+            && $views7d < $minViewsThreshold
+            && $leads7d === 0
+            && $daysInStock <= $maxDaysForTest
+        ) {
+            return 'test_campaign_seed';
         }
 
         if ($confidenceScore < 35 && $decisionScore < 55) {
@@ -309,6 +328,10 @@ class CarDecisionEngineService
             return '0-1';
         }
 
+        if ($decision === 'test_campaign_seed') {
+            return '0-1';
+        }
+
         $benchmarkLeads = (float) ($context['stock_benchmark']['avg_leads'] ?? 0);
         $rawPotential = (
             ($decisionScore * 0.45)
@@ -334,11 +357,30 @@ class CarDecisionEngineService
         return '0-1';
     }
 
+    private function resolveDecisionConfidenceScore(string $decision, array $context, int $baseConfidenceScore): int
+    {
+        if ($decision !== 'test_campaign_seed') {
+            return $baseConfidenceScore;
+        }
+
+        $marketPosition = $context['market_intelligence']['market_position'] ?? 'insufficient_data';
+        $signalVolume = (int) ($context['data_quality']['signal_volume_score'] ?? 0);
+
+        $score = 35 + min(10, (int) round($signalVolume * 0.12));
+
+        if (in_array($marketPosition, ['below_market', 'aligned_market'], true)) {
+            $score += 5;
+        }
+
+        return max(35, min(50, $score));
+    }
+
     private function resolveTitle(string $decision): string
     {
         return match ($decision) {
             'scale_ads' => 'Escalar investimento nesta viatura',
             'test_campaign' => 'Testar campanha com contexto favoravel',
+            'test_campaign_seed' => 'Testar para gerar procura',
             'review_campaign' => 'Rever campanha antes de investir mais',
             default => 'Nao investir em ads nesta fase',
         };
@@ -354,6 +396,7 @@ class CarDecisionEngineService
             'test_campaign' => !empty($context['data_quality']['has_cold_start'])
                 ? 'Ainda ha poucos dados proprios, mas benchmark e contexto de mercado justificam um teste prudente.'
                 : 'Ha sinais suficientes para validar investimento com budget controlado e ganhar mais aprendizagem.',
+            'test_campaign_seed' => 'Gerar procura inicial para validar interesse.',
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market'
                 ? 'Existe interesse, mas o preco acima do mercado esta a reduzir a capacidade de conversao.'
                 : 'O carro precisa de correccoes em proposta, criativo ou segmentacao antes de receber novo investimento.',
@@ -365,6 +408,10 @@ class CarDecisionEngineService
 
     private function buildReason(string $decision, array $context, array $breakdown): string
     {
+        if ($decision === 'test_campaign_seed') {
+            return 'Viatura sem dados suficientes — necessario testar mercado para gerar sinais reais.';
+        }
+
         $market = $context['market_intelligence'];
         $trend = $context['historical_trend'];
         $delta = $market['car_price_vs_median_pct'] ?? null;
@@ -398,6 +445,41 @@ class CarDecisionEngineService
         return ucfirst(implode(', ', array_slice($reasons, 0, 3))) . '.';
     }
 
+    private function buildWhyNow(string $decision, array $context): string
+    {
+        if ($decision === 'test_campaign_seed') {
+            return 'Sem investimento, este carro nao vai gerar dados nem leads.';
+        }
+
+        $trend = $context['historical_trend'];
+
+        return match ($decision) {
+            'scale_ads' => ($trend['trend_views'] ?? null) === 'rising'
+                ? 'Tracao crescente nos ultimos dias e janela favoravel para converter.'
+                : 'Existe procura real suficiente para acelerar investimento agora.',
+            'test_campaign' => 'O contexto atual justifica um teste curto para validar resposta comercial.',
+            'review_campaign' => 'Primeiro corrigir friccao comercial para nao desperdiçar budget.',
+            default => 'Sem sinais suficientes para investir com confianca neste momento.',
+        };
+    }
+
+    private function buildRiskNote(string $decision, array $context, int $confidenceScore): ?string
+    {
+        if ($decision === 'test_campaign_seed') {
+            return 'Baixa previsibilidade — campanha usada apenas para aprendizagem.';
+        }
+
+        if ($decision === 'do_not_invest') {
+            return 'Investimento com probabilidade reduzida de retorno.';
+        }
+
+        if ($confidenceScore < 45) {
+            return 'Decisao com base de dados ainda limitada.';
+        }
+
+        return null;
+    }
+
     private function buildNextStep(string $decision, array $context): string
     {
         $market = $context['market_intelligence'];
@@ -405,6 +487,7 @@ class CarDecisionEngineService
         return match ($decision) {
             'scale_ads' => 'Aumentar investimento e ativar criativo orientado a resposta imediata.',
             'test_campaign' => 'Lancar teste curto com budget controlado e medir resposta comercial.',
+            'test_campaign_seed' => 'Iniciar campanha com budget reduzido para recolher dados.',
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market' && !empty($market['recommended_price'])
                 ? 'Rever preco e criativo antes de novo spend.'
                 : 'Rever criativo, CTA e proposta antes de reinvestir.',
@@ -417,6 +500,7 @@ class CarDecisionEngineService
         return match ($decision) {
             'scale_ads' => 'Criativo comercial direto, com foco em conversao e urgencia real.',
             'test_campaign' => 'Criativo de validacao com gancho forte e proposta clara.',
+            'test_campaign_seed' => 'Criativo de exploracao leve, focado em gerar primeiras respostas e aprendizagem.',
             'review_campaign' => 'Criativo de revisao orientado a remover friccao e recuperar atencao.',
             default => null,
         };
@@ -426,6 +510,10 @@ class CarDecisionEngineService
     {
         if ($decision === 'do_not_invest' || $decision === 'review_campaign') {
             return 0;
+        }
+
+        if ($decision === 'test_campaign_seed') {
+            return (int) config('smartads.cold_start.default_test_budget', 5) * 5;
         }
 
         if ($decision === 'scale_ads') {
@@ -448,8 +536,30 @@ class CarDecisionEngineService
         return match ($decision) {
             'scale_ads' => 5,
             'test_campaign' => 5,
+            'test_campaign_seed' => 5,
             default => 0,
         };
+    }
+
+    private function resolveRecommendedBudget(string $decision, int $decisionScore, int $confidenceScore): ?array
+    {
+        if ($decision === 'test_campaign_seed') {
+            return [
+                'type' => 'daily',
+                'value' => (int) config('smartads.cold_start.default_test_budget', 5),
+            ];
+        }
+
+        $daily = $this->resolveDailyBudget($decision, $decisionScore, $confidenceScore);
+
+        if ($daily <= 0) {
+            return null;
+        }
+
+        return [
+            'type' => 'daily',
+            'value' => $daily,
+        ];
     }
 
     private function safeRatio(float $value, float $benchmark): float

@@ -55,6 +55,8 @@ const decisionLabel = (
             return "Escalar ads";
         case "test_campaign":
             return "Testar campanha";
+        case "test_campaign_seed":
+            return "Testar para gerar procura";
         case "review_campaign":
             return "Rever campanha";
         case "do_not_invest":
@@ -64,12 +66,23 @@ const decisionLabel = (
     }
 };
 
+const decisionBadgeMeta = (decision: IAdsPriorityRankedCar["smartads_decision"]) => {
+    switch (decision) {
+        case "test_campaign_seed":
+            return { bg: "#e0f2fe", color: "#0369a1", label: "Exploração" };
+        default:
+            return null;
+    }
+};
+
 const getObjective = (car: IAdsPriorityRankedCar) => {
     switch (car.smartads_decision) {
         case "scale_ads":
             return "Conversão direta";
         case "test_campaign":
             return "Validação de procura";
+        case "test_campaign_seed":
+            return "Exploração inicial";
         case "review_campaign":
             return "Recuperar atenção";
         default:
@@ -95,6 +108,8 @@ const getCreativeSuggestion = (car: IAdsPriorityRankedCar) => {
             return "Criativo comercial direto com CTA forte e foco em conversão.";
         case "test_campaign":
             return "Criativo de descoberta com gancho claro e promessa objetiva.";
+        case "test_campaign_seed":
+            return "Criativo leve para gerar procura inicial e recolher sinais reais do mercado.";
         case "review_campaign":
             return "Criativo de revisão para reduzir fricção e clarificar valor.";
         default:
@@ -103,6 +118,7 @@ const getCreativeSuggestion = (car: IAdsPriorityRankedCar) => {
 };
 
 const getSuggestedDailyBudget = (car: IAdsPriorityRankedCar) => {
+    if (car.smartads_decision === "test_campaign_seed") return "5€/dia";
     if (car.investment_label === "high_priority") return "25€/dia";
     if (car.investment_label === "medium_priority") return "12€/dia";
     return "Sem budget sugerido";
@@ -179,6 +195,7 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
 
     const renderCarItem = (car: IAdsPriorityRankedCar, mode: "campaign" | "analytics_only") => {
         const badge = priorityMeta(car.investment_label);
+        const decisionBadge = decisionBadgeMeta(car.smartads_decision);
 
         return (
             <div
@@ -200,6 +217,11 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
                             <span className="badge bg-light text-muted fs-12 px-3 py-2">
                                 {decisionLabel(car.smartads_decision, car.investment_label)}
                             </span>
+                            {decisionBadge && (
+                                <span className="badge fs-12 px-3 py-2" style={{ background: decisionBadge.bg, color: decisionBadge.color }}>
+                                    {decisionBadge.label}
+                                </span>
+                            )}
                         </div>
                         <h6 className="mb-1 fw-semibold text-body">
                             {car.car_name} · {formatCurrency(car.price_gross)}

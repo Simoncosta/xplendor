@@ -217,6 +217,7 @@ class CarAnalyticsService
         $preferredTypes = match ($action) {
             'scale_ads' => ['sale', 'engagement', 'authority'],
             'test_campaign' => ['sale', 'engagement', 'authority'],
+            'test_campaign_seed' => ['sale', 'engagement', 'authority'],
             'review_campaign' => ['engagement', 'sale', 'authority'],
             default => [],
         };
@@ -242,6 +243,7 @@ class CarAnalyticsService
         $reason = match ($action) {
             'scale_ads' => 'Criativo alinhado com a acao scale_ads e orientado para conversao.',
             'test_campaign' => 'Criativo alinhado com a acao test_campaign e pensado para gerar conversao inicial.',
+            'test_campaign_seed' => 'Criativo alinhado com a acao test_campaign_seed e pensado para gerar procura inicial e aprendizagem.',
             'review_campaign' => 'Criativo alinhado com a acao review_campaign e orientado para recuperar atencao e interacao.',
             default => 'Criativo alinhado com a decisao de investimento atual.',
         };

@@ -52,7 +52,7 @@ export interface IAdsPriorityRankedCar {
     reason: string | null;
     why_now: string | null;
     risk_note: string | null;
-    smartads_decision: "scale_ads" | "test_campaign" | "review_campaign" | "do_not_invest" | null;
+    smartads_decision: "scale_ads" | "test_campaign" | "test_campaign_seed" | "review_campaign" | "do_not_invest" | null;
 }
 
 export interface IMarketingRoi {

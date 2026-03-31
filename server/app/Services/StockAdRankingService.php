@@ -44,12 +44,19 @@ class StockAdRankingService
                     'confidence_score' => (int) ($decision['confidence_score'] ?? 0),
                     'investment_label' => $investmentLabel,
                     'reason' => $decision['reason'] ?? null,
-                    'why_now' => $decision['summary'] ?? null,
-                    'risk_note' => $this->resolveRiskNote($decision),
+                    'why_now' => $decision['why_now'] ?? ($decision['summary'] ?? null),
+                    'risk_note' => $decision['risk_note'] ?? $this->resolveRiskNote($decision),
                     'smartads_decision' => $decision['action'] ?? null,
                 ];
             })
             ->sort(function (array $a, array $b) {
+                $orderA = $this->resolveActionOrder($a['smartads_decision'] ?? null);
+                $orderB = $this->resolveActionOrder($b['smartads_decision'] ?? null);
+
+                if ($orderA !== $orderB) {
+                    return $orderA <=> $orderB;
+                }
+
                 if ($b['priority_score'] !== $a['priority_score']) {
                     return $b['priority_score'] <=> $a['priority_score'];
                 }
@@ -77,12 +84,20 @@ class StockAdRankingService
         $actionAdjustment = match ($action) {
             'scale_ads' => 10,
             'test_campaign' => 4,
+            'test_campaign_seed' => 1,
             'review_campaign' => -8,
             'do_not_invest' => -20,
             default => 0,
         };
 
         $score = $base + $actionAdjustment + (int) round(($confidence - 50) * 0.2);
+
+        if (
+            $action === 'test_campaign_seed'
+            && str_contains(strtolower((string) ($decision['reason'] ?? '')), 'preco competitivo')
+        ) {
+            $score += 15;
+        }
 
         return max(0, min(100, $score));
     }
@@ -101,7 +116,23 @@ class StockAdRankingService
             return 'medium_priority';
         }
 
+        if ($action === 'test_campaign_seed') {
+            return 'medium_priority';
+        }
+
         return 'low_priority';
+    }
+
+    private function resolveActionOrder(?string $action): int
+    {
+        return match ($action) {
+            'scale_ads' => 1,
+            'test_campaign' => 2,
+            'test_campaign_seed' => 3,
+            'review_campaign' => 4,
+            'do_not_invest' => 5,
+            default => 6,
+        };
     }
 
     private function resolveRiskNote(array $decision): ?string

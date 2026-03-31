@@ -1,5 +1,5 @@
 type SmartAdsRecommendation = {
-    action: "scale_ads" | "test_campaign" | "review_campaign" | "do_not_invest";
+    action: "scale_ads" | "test_campaign" | "test_campaign_seed" | "review_campaign" | "do_not_invest";
     total_budget: number;
     daily_budget: number;
     duration_days: number;
@@ -69,6 +69,14 @@ const actionConfig: Record<SmartAdsRecommendation["action"], ToneConfig> = {
         accent: "#405189",
         softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(64,81,137,0.04) 100%)",
         heroIcon: "ri-megaphone-line",
+    },
+    test_campaign_seed: {
+        badgeClass: "bg-info-subtle text-info",
+        badgeIcon: "ri-radar-line",
+        urgencyLabel: "Testar para gerar procura",
+        accent: "#0ea5e9",
+        softBackground: "linear-gradient(180deg, #ffffff 0%, rgba(14,165,233,0.05) 100%)",
+        heroIcon: "ri-seedling-line",
     },
     review_campaign: {
         badgeClass: "bg-warning-subtle text-warning",
