@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\V1\{
     MetaOAuthController,
     NewsletterController,
     PlanController,
+    ScraperController,
     UserController
 };
 use Illuminate\Http\Request;
@@ -76,6 +77,10 @@ Route::prefix('v1')->group(function () {
                 Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
+
+                Route::post('/scraper/run', [ScraperController::class, 'run']);
+                Route::get('/scraper/executions', [ScraperController::class, 'executions']);
+                Route::get('/scraper/executions/{runId}', [ScraperController::class, 'show']);
 
                 Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
                 Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);

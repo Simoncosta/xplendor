@@ -46,6 +46,7 @@ use App\Repositories\Contracts\{
     NewsletterRepositoryInterface,
     ParishRepositoryInterface,
     PlanRepositoryInterface,
+    ScraperExecutionRepositoryInterface,
     SilentBuyerDetectionRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
@@ -76,6 +77,7 @@ use App\Repositories\{
     NewsletterRepository,
     ParishRepository,
     PlanRepository,
+    ScraperExecutionRepository,
     SilentBuyerDetectionRepository,
     UserInviteRepository,
     UserRepository
@@ -118,6 +120,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(NewsletterRepositoryInterface::class, NewsletterRepository::class);
         $this->app->bind(ParishRepositoryInterface::class, ParishRepository::class);
         $this->app->bind(PlanRepositoryInterface::class, PlanRepository::class);
+        $this->app->bind(ScraperExecutionRepositoryInterface::class, ScraperExecutionRepository::class);
         $this->app->bind(SilentBuyerDetectionRepositoryInterface::class, SilentBuyerDetectionRepository::class);
         $this->app->bind(UserRepositoryInterface::class, UserRepository::class);
         $this->app->bind(UserInviteRepositoryInterface::class, UserInviteRepository::class);

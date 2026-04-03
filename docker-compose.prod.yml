@@ -13,6 +13,7 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - php
+      - redis
     networks:
       - xplendor
 
@@ -111,9 +112,23 @@ services:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
       - xplendor_composer_cache:/tmp/composer
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - db
       - redis
+      - scraper
+    networks:
+      - xplendor
+
+  scraper:
+    build:
+      context: .
+      dockerfile: docker/scraper/Dockerfile
+    container_name: xplendor-scraper
+    restart: unless-stopped
+    volumes:
+      - ./scraper:/scraper
+      - ./docker/scraper:/app
     networks:
       - xplendor
 
