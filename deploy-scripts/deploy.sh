@@ -26,6 +26,8 @@ docker exec -it xplendor-php php artisan route:cache
 echo "⚛️ Frontend build"
 cd "$APP_DIR/web"
 yarn install --frozen-lockfile || yarn install
+echo "⚛️ Frontend build"
+rm -rf build/
 yarn build
 
 echo "🔁 Reload nginx (docker)"

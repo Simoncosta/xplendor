@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Models\CarAdCampaign;
+use App\Models\MetaAudienceInsight;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use App\Repositories\Contracts\CarInteractionRepositoryInterface;
 use App\Repositories\Contracts\CarLeadRepositoryInterface;
@@ -111,6 +113,7 @@ class CarAnalyticsService
             'smart_ads_recommendation' => $smartAdsRecommendation,
             'recommended_creative' => $recommendedCreative,
             'market_intelligence' => $marketIntelligence,
+            'meta_ads_targeting_status' => $this->resolveMetaAdsTargetingStatus($car),
             'potential_score' => $latestScore ? [
                 'score'            => $latestScore->score,
                 'classification'   => $latestScore->classification,
@@ -131,6 +134,81 @@ class CarAnalyticsService
             ] : null,
             'silent_buyers' => $this->silentBuyerDetectionService->getCarSummary($car->company_id, $car->id),
         ];
+    }
+
+    protected function resolveMetaAdsTargetingStatus(Car $car): array
+    {
+        $mapping = CarAdCampaign::query()
+            ->active()
+            ->platform('meta')
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        $resolvedAdsetId = $this->resolveAdsetId($mapping);
+
+        if (!$mapping || !$resolvedAdsetId) {
+            return [
+                'status' => 'campaign_without_adset',
+                'label' => 'Campanha sem ad set resolvido',
+                'has_targeting' => false,
+                'has_metrics' => false,
+                'has_breakdown' => false,
+                'mapping_level' => $mapping?->level,
+                'resolved_adset_id' => null,
+            ];
+        }
+
+        $hasMetrics = \App\Models\CarPerformanceMetric::query()
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->where('channel', 'paid')
+            ->exists();
+
+        $latestInsight = MetaAudienceInsight::query()
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->orderByDesc('period_end')
+            ->orderByDesc('id')
+            ->first();
+
+        $hasTargeting = !empty($latestInsight?->campaign_targeting_json);
+        $hasBreakdown = MetaAudienceInsight::query()
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->where(function ($query) {
+                $query->where('age_range', '!=', 'unknown')
+                    ->orWhere('gender', '!=', 'unknown');
+            })
+            ->exists();
+
+        return [
+            'status' => $hasTargeting ? 'available' : 'unavailable',
+            'label' => $hasTargeting ? 'Targeting disponível' : 'Targeting indisponível',
+            'has_targeting' => $hasTargeting,
+            'has_metrics' => $hasMetrics,
+            'has_breakdown' => $hasBreakdown,
+            'mapping_level' => $mapping->level,
+            'resolved_adset_id' => $resolvedAdsetId,
+        ];
+    }
+
+    protected function resolveAdsetId(?CarAdCampaign $mapping): ?string
+    {
+        if (!$mapping) {
+            return null;
+        }
+
+        if (!empty($mapping->adset_id)) {
+            return $mapping->adset_id;
+        }
+
+        if ($mapping->level === 'adset' && !empty($mapping->external_id)) {
+            return $mapping->external_id;
+        }
+
+        return null;
     }
 
     protected function resolveRecommendation(Car $car, ?array $aiAnalysis = null): ?array

@@ -10,6 +10,7 @@ use App\Http\Requests\PaginateRequest;
 use App\Models\Car;
 use App\Services\CarAiAnalysesService;
 use App\Services\CarService;
+use App\Services\MetaAdsCarSyncService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Throwable;
@@ -18,7 +19,8 @@ class CarController extends Controller
 {
     public function __construct(
         protected CarService $carService,
-        protected CarAiAnalysesService $carAiAnalysesService
+        protected CarAiAnalysesService $carAiAnalysesService,
+        protected MetaAdsCarSyncService $metaAdsCarSyncService,
     ) {}
 
     public function index(PaginateRequest $request, int $companyId)
@@ -159,14 +161,8 @@ class CarController extends Controller
     public function generateAiAnalyses(int $companyId, int $carId)
     {
         try {
-            $car = $this->carService->findOrFail(
-                $carId,
-                'id',
-                ['*'],
-                ['brand', 'model', 'views', 'leads', 'interactions']
-            );
-            $car['company_id'] = $companyId;
-            $car['car_id'] = $carId;
+            $this->authorizeCompanyAccess($companyId);
+            $car = $this->resolveCarForCompany($companyId, $carId);
 
             $analyses = $this->carService->generateAiAnalyses($car);
 
@@ -175,6 +171,44 @@ class CarController extends Controller
             return ApiResponse::error($exception->getMessage(), 503);
         } catch (Throwable $exception) {
             return ApiResponse::error('Nao foi possivel gerar a analise IA desta viatura.', 500);
+        }
+    }
+
+    public function refreshMetaAds(int $companyId, int $carId)
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        try {
+            $car = $this->resolveCarForCompany($companyId, $carId);
+
+            $result = $this->metaAdsCarSyncService->refreshCar($car);
+
+            return ApiResponse::success($result, 'Dados Meta Ads atualizados com sucesso.');
+        } catch (\DomainException $exception) {
+            return ApiResponse::error($exception->getMessage(), 422);
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Nao foi possivel atualizar os dados Meta Ads desta viatura.', 500);
+        }
+    }
+
+    public function regenerateAiAnalysis(int $companyId, int $carId)
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        try {
+            $car = $this->resolveCarForCompany($companyId, $carId);
+
+            $analysis = $this->carService->generateAiAnalyses($car);
+
+            return ApiResponse::success($analysis, 'Analise regenerada com sucesso.');
+        } catch (\RuntimeException $exception) {
+            return ApiResponse::error($exception->getMessage(), 503);
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Nao foi possivel regenerar a analise desta viatura.', 500);
         }
     }
 
@@ -188,5 +222,29 @@ class CarController extends Controller
         $analysis = $this->carAiAnalysesService->findOrFail($carAiAnalysisId, 'id', ['*']);
 
         return ApiResponse::success($analysis, 'Feedback saved successfully.');
+    }
+
+    private function authorizeCompanyAccess(int $companyId): bool
+    {
+        $user = Auth::user();
+
+        return $user->company_id === $companyId || $user->role === 'root';
+    }
+
+    private function resolveCarForCompany(int $companyId, int $carId): Car
+    {
+        /** @var Car $car */
+        $car = $this->carService->findOrFail(
+            $carId,
+            'id',
+            ['*'],
+            ['brand', 'model', 'views', 'leads', 'interactions']
+        );
+
+        if ((int) $car->company_id !== $companyId) {
+            throw new \DomainException('Viatura nao encontrada.');
+        }
+
+        return $car;
     }
 }

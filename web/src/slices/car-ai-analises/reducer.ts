@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { carAiAnalyses, carRecalculate } from "./thunk";
+import { carAiAnalyses, carRecalculate, refreshCarMetaAds, regenerateCarAnalysis } from "./thunk";
 
 const initialState = {
     data: {
@@ -8,10 +8,14 @@ const initialState = {
     loading: {
         create: false,
         update: false,
+        refreshMeta: false,
+        regenerate: false,
     },
     error: {
         create: null as any,
         update: null as any,
+        refreshMeta: null as any,
+        regenerate: null as any,
     },
 };
 
@@ -49,6 +53,36 @@ const CarSlice = createSlice({
             .addCase(carRecalculate.rejected, (state, action) => {
                 state.loading.update = false;
                 state.error.update = action.payload || action.error;
+            });
+
+        builder
+            .addCase(refreshCarMetaAds.pending, (state) => {
+                state.loading.refreshMeta = true;
+                state.error.refreshMeta = null;
+            })
+            .addCase(refreshCarMetaAds.fulfilled, (state, action) => {
+                state.loading.refreshMeta = false;
+                state.error.refreshMeta = null;
+                state.data.analytics = action.payload.data;
+            })
+            .addCase(refreshCarMetaAds.rejected, (state, action) => {
+                state.loading.refreshMeta = false;
+                state.error.refreshMeta = action.payload || action.error;
+            });
+
+        builder
+            .addCase(regenerateCarAnalysis.pending, (state) => {
+                state.loading.regenerate = true;
+                state.error.regenerate = null;
+            })
+            .addCase(regenerateCarAnalysis.fulfilled, (state, action) => {
+                state.loading.regenerate = false;
+                state.error.regenerate = null;
+                state.data.analytics = action.payload.data;
+            })
+            .addCase(regenerateCarAnalysis.rejected, (state, action) => {
+                state.loading.regenerate = false;
+                state.error.regenerate = action.payload || action.error;
             });
 
     },

@@ -6,7 +6,7 @@ import { createSelector } from "reselect";
 import { toast, ToastContainer } from "react-toastify";
 
 import { analyticsCar } from "slices/cars/thunk";
-import { carAiAnalyses, carRecalculate } from "slices/car-ai-analises/thunk";
+import { carRecalculate, refreshCarMetaAds, regenerateCarAnalysis } from "slices/car-ai-analises/thunk";
 
 // ── Sub-componentes ────────────────────────────────────────────────────────────
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
@@ -49,6 +49,8 @@ const selectCarAnalyticsViewModel = createSelector(
         carAnalytics: carState.data.carAnalytics,
         loading: carState.loading.analytics,
         generatingAi: carAiAnalysesState.loading.create,
+        refreshingMetaAds: carAiAnalysesState.loading.refreshMeta,
+        regeneratingAnalysis: carAiAnalysesState.loading.regenerate,
     })
 );
 
@@ -60,7 +62,8 @@ export default function CarAnalytics() {
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
     const [companyId, setCompanyId] = useState<number>(0);
 
-    const { carAnalytics, loading, generatingAi } = useSelector(selectCarAnalyticsViewModel);
+    const { carAnalytics, loading, generatingAi, refreshingMetaAds, regeneratingAnalysis } = useSelector(selectCarAnalyticsViewModel);
+    const [refreshingAndReanalyzing, setRefreshingAndReanalyzing] = useState(false);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -118,21 +121,51 @@ export default function CarAnalytics() {
     const recommendedCreative = carAnalytics?.recommended_creative ?? null;
     const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
     const marketIntelligence = carAnalytics?.market_intelligence ?? null;
+    const metaAdsTargetingStatus = carAnalytics?.meta_ads_targeting_status ?? null;
     const silentBuyers = carAnalytics?.silent_buyers ?? null;
     const overviewKpiStrip = <CarAnalyticsKpiStrip items={buildKpiItems(m)} />;
 
     if (loading || !carAnalytics) return null;
 
     // ── Handlers ──────────────────────────────────────────────────────────────
-    const handleGenerateAi = async () => {
+    const handleRefreshMetaAds = async () => {
         if (!companyId || !id) return;
 
         try {
-            await dispatch(carAiAnalyses({ companyId, carId: Number(id) })).unwrap();
+            await dispatch(refreshCarMetaAds({ companyId, carId: Number(id) })).unwrap();
             await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
-            toast.success("Análise gerada com sucesso.");
+            toast.success("Dados Meta Ads atualizados com sucesso.");
         } catch (error: any) {
-            toast.error(error?.message ?? error ?? "Erro ao gerar análise.");
+            toast.error(error?.message ?? error ?? "Nao foi possivel atualizar os dados Meta Ads.");
+        }
+    };
+
+    const handleRegenerateAnalysis = async () => {
+        if (!companyId || !id) return;
+
+        try {
+            await dispatch(regenerateCarAnalysis({ companyId, carId: Number(id) })).unwrap();
+            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
+            toast.success("Analise regenerada com sucesso.");
+        } catch (error: any) {
+            toast.error(error?.message ?? error ?? "Nao foi possivel regenerar a analise.");
+        }
+    };
+
+    const handleRefreshAndReanalyze = async () => {
+        if (!companyId || !id) return;
+
+        setRefreshingAndReanalyzing(true);
+
+        try {
+            await dispatch(refreshCarMetaAds({ companyId, carId: Number(id) })).unwrap();
+            await dispatch(regenerateCarAnalysis({ companyId, carId: Number(id) })).unwrap();
+            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
+            toast.success("Dados Meta Ads e analise atualizados com sucesso.");
+        } catch (error: any) {
+            toast.error(error?.message ?? error ?? "Nao foi possivel atualizar e reanalisar esta viatura.");
+        } finally {
+            setRefreshingAndReanalyzing(false);
         }
     };
 
@@ -263,6 +296,7 @@ export default function CarAnalytics() {
                                             <TabAnaliseIA
                                                 ips={ips}
                                                 marketIntelligence={marketIntelligence}
+                                                metaAdsTargetingStatus={metaAdsTargetingStatus}
                                                 ai={ai}
                                                 ipsRadialOptions={ipsRadialOptions}
                                                 ipsHistoryOptions={ipsHistoryOptions}
@@ -274,8 +308,13 @@ export default function CarAnalytics() {
                                                 carId={id}
                                                 companyId={companyId}
                                                 onRecalculate={handleRecalculate}
-                                                onGenerateAi={handleGenerateAi}
+                                                onRefreshMetaAds={handleRefreshMetaAds}
+                                                onRegenerateAnalysis={handleRegenerateAnalysis}
+                                                onRefreshAndReanalyze={handleRefreshAndReanalyze}
                                                 generatingAi={generatingAi}
+                                                refreshingMetaAds={refreshingMetaAds}
+                                                regeneratingAnalysis={regeneratingAnalysis}
+                                                refreshingAndReanalyzing={refreshingAndReanalyzing}
                                             />
                                         </Col>
                                     </Row>

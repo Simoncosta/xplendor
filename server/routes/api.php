@@ -74,6 +74,8 @@ Route::prefix('v1')->group(function () {
 
                 Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
                 Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
+                Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
+                Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
 
                 Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
                 Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);

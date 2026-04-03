@@ -127,6 +127,10 @@ export const getCarMarketingApi = (companyId: number, carId: number) => api.get(
 // CAR AI ANALISES
 export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {});
 export const postCarRecalculate = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/potential-score/recalculate`, {});
+export const postCarMetaAdsRefresh = (companyId: number, carId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_META_ADS_REFRESH, {});
+export const postCarAnalysisRegenerate = (companyId: number, carId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_ANALYSIS_REGENERATE, {});
 
 // USERS
 export const getUsersPaginate = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_USERS_APIS, { params });

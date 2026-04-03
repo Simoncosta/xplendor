@@ -5,6 +5,7 @@ import XButton from "Components/Common/XButton";
 interface Props {
     ips: any;
     marketIntelligence?: any;
+    metaAdsTargetingStatus?: any;
     ai: any;
     ipsRadialOptions: any;
     ipsHistoryOptions: any;
@@ -16,8 +17,13 @@ interface Props {
     carId: string | undefined;
     companyId: number;
     onRecalculate: () => void;
-    onGenerateAi: () => void;
+    onRefreshMetaAds: () => void;
+    onRegenerateAnalysis: () => void;
+    onRefreshAndReanalyze: () => void;
     generatingAi?: boolean;
+    refreshingMetaAds?: boolean;
+    regeneratingAnalysis?: boolean;
+    refreshingAndReanalyzing?: boolean;
 }
 
 const sectionStyle = {
@@ -30,6 +36,7 @@ const sectionStyle = {
 export default function TabAnaliseIA({
     ips,
     marketIntelligence,
+    metaAdsTargetingStatus,
     ai,
     ipsRadialOptions,
     ipsHistoryOptions,
@@ -41,14 +48,151 @@ export default function TabAnaliseIA({
     carId,
     companyId,
     onRecalculate,
-    onGenerateAi,
+    onRefreshMetaAds,
+    onRegenerateAnalysis,
+    onRefreshAndReanalyze,
     generatingAi = false,
+    refreshingMetaAds = false,
+    regeneratingAnalysis = false,
+    refreshingAndReanalyzing = false,
 }: Props) {
     const marketMeta = marketPositionMeta[marketIntelligence?.market_position ?? "insufficient_data"]
         ?? marketPositionMeta.insufficient_data;
+    const targetingMeta = getTargetingMeta(metaAdsTargetingStatus?.status);
+    const metricsMeta = getDataStepMeta(Boolean(metaAdsTargetingStatus?.has_metrics), "Métricas disponíveis", "Métricas indisponíveis");
+    const breakdownMeta = getDataStepMeta(Boolean(metaAdsTargetingStatus?.has_breakdown), "Breakdown disponível", "Breakdown indisponível");
 
     return (
         <Row className="g-3">
+            <Col xs={12}>
+                <section style={{ ...sectionStyle, padding: "14px 16px" }}>
+                    <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                        <div>
+                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                Pipeline operacional
+                            </p>
+                            <h6 className="mb-1 fw-semibold">Sincronizar campanha e gerar leitura IA</h6>
+                            <p className="text-muted fs-13 mb-0">
+                                Primeiro sincronizas a campanha, depois confirmas o estado dos dados e só então geras a leitura IA com contexto atualizado.
+                            </p>
+                        </div>
+
+                        <XButton
+                            variant="primary"
+                            soft
+                            onClick={onRefreshAndReanalyze}
+                            loading={refreshingAndReanalyzing}
+                            disabled={refreshingAndReanalyzing || refreshingMetaAds || regeneratingAnalysis}
+                        >
+                            {refreshingAndReanalyzing ? "A sincronizar e gerar leitura..." : "Sincronizar e gerar leitura"}
+                        </XButton>
+                    </div>
+
+                    <div className="row g-3">
+                        <div className="col-lg-4">
+                            <div className="h-100 rounded-3" style={{ border: "1px solid #eef0f2", background: "#fcfcfd", padding: "14px 16px" }}>
+                                <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Passo 1
+                                        </p>
+                                        <h6 className="mb-1 fw-semibold fs-14">Sincronizar campanha</h6>
+                                        <p className="text-muted fs-12 mb-0">
+                                            Vai buscar métricas atuais, tenta resolver o ad set e atualiza o targeting guardado.
+                                        </p>
+                                    </div>
+                                    <i className="ri-refresh-line text-info fs-20" />
+                                </div>
+
+                                <div className="d-flex align-items-center gap-2 flex-wrap mb-3">
+                                    <span className={`badge rounded-pill px-3 py-2 fs-12 ${targetingMeta.className}`}>
+                                        {targetingMeta.label}
+                                    </span>
+                                    {metaAdsTargetingStatus?.resolved_adset_id ? (
+                                        <span className="text-muted fs-12">Ad set: {metaAdsTargetingStatus.resolved_adset_id}</span>
+                                    ) : (
+                                        <span className="text-muted fs-12">Sem ad set resolvido</span>
+                                    )}
+                                </div>
+
+                                <XButton
+                                    variant="info"
+                                    soft
+                                    onClick={onRefreshMetaAds}
+                                    loading={refreshingMetaAds}
+                                    disabled={refreshingAndReanalyzing || refreshingMetaAds}
+                                >
+                                    {refreshingMetaAds ? "A sincronizar campanha..." : "Sincronizar campanha"}
+                                </XButton>
+                            </div>
+                        </div>
+
+                        <div className="col-lg-4">
+                            <div className="h-100 rounded-3" style={{ border: "1px solid #eef0f2", background: "#fcfcfd", padding: "14px 16px" }}>
+                                <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Passo 2
+                                        </p>
+                                        <h6 className="mb-1 fw-semibold fs-14">Estado dos dados</h6>
+                                        <p className="text-muted fs-12 mb-0">
+                                            Confirma rapidamente se já existem métricas, targeting e breakdown suficientes para uma leitura mais forte.
+                                        </p>
+                                    </div>
+                                    <i className="ri-database-2-line text-primary fs-20" />
+                                </div>
+
+                                <div className="vstack gap-2">
+                                    {[
+                                        { label: "Métricas", meta: metricsMeta },
+                                        { label: "Targeting", meta: targetingMeta },
+                                        { label: "Breakdown", meta: breakdownMeta },
+                                    ].map((item) => (
+                                        <div key={item.label} className="d-flex align-items-center justify-content-between gap-2 bg-white rounded-3 px-3 py-2" style={{ border: "1px solid #eef0f2" }}>
+                                            <span className="fs-13 text-body">{item.label}</span>
+                                            <span className={`badge rounded-pill px-3 py-2 fs-11 ${item.meta.className}`}>
+                                                {item.meta.label}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-lg-4">
+                            <div className="h-100 rounded-3" style={{ border: "1px solid #eef0f2", background: "#fcfcfd", padding: "14px 16px" }}>
+                                <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Passo 3
+                                        </p>
+                                        <h6 className="mb-1 fw-semibold fs-14">Gerar leitura IA</h6>
+                                        <p className="text-muted fs-12 mb-0">
+                                            Reprocessa a análise com os dados mais recentes de performance, targeting e contexto comercial.
+                                        </p>
+                                    </div>
+                                    <i className="ri-cpu-line text-secondary fs-20" />
+                                </div>
+
+                                <div className="text-muted fs-12 mb-3">
+                                    {ai ? "Já existe uma leitura guardada. Podes regenerar para refletir os dados mais recentes." : "Ainda não existe leitura IA para esta viatura."}
+                                </div>
+
+                                <XButton
+                                    variant="secondary"
+                                    soft
+                                    onClick={onRegenerateAnalysis}
+                                    loading={regeneratingAnalysis || generatingAi}
+                                    disabled={refreshingAndReanalyzing || regeneratingAnalysis || generatingAi}
+                                >
+                                    {regeneratingAnalysis || generatingAi ? "A gerar leitura IA..." : "Gerar leitura IA"}
+                                </XButton>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </Col>
+
             <Col lg={4}>
                 <section style={sectionStyle}>
                     <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
@@ -283,6 +427,35 @@ export default function TabAnaliseIA({
                                 height={140}
                             />
 
+                            {ai?.campaign_diagnosis && (
+                                <div
+                                    className="rounded-3 px-3 py-3 mt-3"
+                                    style={{ border: "1px solid #fde8e4", background: "#fff" }}
+                                >
+                                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-2">
+                                        Diagnóstico da campanha
+                                    </p>
+
+                                    <h6 className="fw-semibold mb-2 text-danger fs-14">
+                                        {ai.campaign_diagnosis.main_problem === "targeting" && "Público mal definido"}
+                                        {ai.campaign_diagnosis.main_problem === "copy" && "Mensagem fraca"}
+                                        {ai.campaign_diagnosis.main_problem === "offer" && "Oferta desalinhada"}
+                                        {ai.campaign_diagnosis.main_problem === "mixed" && "Problema misto"}
+                                    </h6>
+
+                                    <p className="mb-2 fs-13">
+                                        {ai.campaign_diagnosis.message}
+                                    </p>
+
+                                    <div
+                                        className="rounded-2 px-2 py-2 fs-13 fw-semibold"
+                                        style={{ background: "#e7f8ee", color: "#0f8a4b" }}
+                                    >
+                                        👉 {ai.campaign_diagnosis.action}
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="vstack gap-2 mt-3">
                                 {[
                                     { data: ai.canal_principal, badge: "Principal", badgeClass: "bg-primary-subtle text-primary" },
@@ -322,8 +495,8 @@ export default function TabAnaliseIA({
                             <i className="ri-cpu-line fs-1 d-block mb-3" />
                             <h5>Inteligencia ainda nao disponivel</h5>
                             <p className="mb-3 fs-13">A analise sera gerada automaticamente assim que existirem dados suficientes.</p>
-                            <XButton onClick={onGenerateAi} loading={generatingAi} disabled={generatingAi}>
-                                {generatingAi ? "A gerar analise..." : "Gerar analise"}
+                            <XButton onClick={onRegenerateAnalysis} loading={generatingAi || regeneratingAnalysis} disabled={generatingAi || regeneratingAnalysis}>
+                                {generatingAi || regeneratingAnalysis ? "A gerar leitura IA..." : "Gerar leitura IA"}
                             </XButton>
                             {!!carId && !!companyId && (
                                 <p className="text-muted fs-11 mt-3 mb-0">Viatura #{carId} ligada a empresa {companyId}</p>
@@ -357,4 +530,36 @@ function formatPercent(value?: number | null) {
     const sign = amount > 0 ? "+" : "";
 
     return `${sign}${amount.toFixed(1)}%`;
+}
+
+function getTargetingMeta(status?: string) {
+    switch (status) {
+        case "available":
+            return {
+                label: "Targeting disponível",
+                className: "bg-success-subtle text-success",
+            };
+        case "campaign_without_adset":
+            return {
+                label: "Campanha sem ad set resolvido",
+                className: "bg-warning-subtle text-warning",
+            };
+        default:
+            return {
+                label: "Targeting indisponível",
+                className: "bg-secondary-subtle text-secondary",
+            };
+    }
+}
+
+function getDataStepMeta(isAvailable: boolean, availableLabel: string, unavailableLabel: string) {
+    return isAvailable
+        ? {
+            label: availableLabel,
+            className: "bg-success-subtle text-success",
+        }
+        : {
+            label: unavailableLabel,
+            className: "bg-secondary-subtle text-secondary",
+        };
 }

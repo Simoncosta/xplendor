@@ -18,12 +18,14 @@ class MetaAudienceInsight extends Model
         'clicks',
         'spend',
         'reach',
+        'campaign_targeting_json',
     ];
 
     protected $casts = [
         'period_start' => 'date',
         'period_end'   => 'date',
         'spend'        => 'decimal:2',
+        'campaign_targeting_json' => 'array',
     ];
 
     public function car(): BelongsTo

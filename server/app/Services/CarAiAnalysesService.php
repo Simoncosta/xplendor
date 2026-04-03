@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Models\Car;
 use App\Models\CarAiAnalysis;
+use App\Models\MetaAudienceInsight;
 use App\Repositories\Contracts\CarAiAnalysesRepositoryInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class CarAiAnalysesService extends BaseService
 {
@@ -18,7 +20,8 @@ class CarAiAnalysesService extends BaseService
     private const OPENAI_BACKOFF_MS = [800, 1800];
 
     public function __construct(
-        protected CarAiAnalysesRepositoryInterface $carAiAnalysesRepository
+        protected CarAiAnalysesRepositoryInterface $carAiAnalysesRepository,
+        protected CarMarketIntelligenceService $carMarketIntelligenceService,
     ) {
         parent::__construct($carAiAnalysesRepository);
     }
@@ -58,104 +61,310 @@ class CarAiAnalysesService extends BaseService
      */
     private function buildInputData(Car $car): array
     {
-        // Performance — carregada via withCount nas relations do CarService
         $viewsTotal        = $car->views_count        ?? $car->views()->count();
         $leadsTotal        = $car->leads_count        ?? $car->leads()->count();
         $interactionsTotal = $car->interactions_count ?? $car->interactions()->count();
+        $views7d           = $car->views()->where('created_at', '>=', now()->subDays(7))->count();
+        $views14d          = $car->views()->where('created_at', '>=', now()->subDays(14))->count();
+        $views30d          = $car->views()->where('created_at', '>=', now()->subDays(30))->count();
+        $views24h          = $car->views()->where('created_at', '>=', now()->subDay())->count();
+        $leads7d           = $car->leads()->where('created_at', '>=', now()->subDays(7))->count();
+        $leads14d          = $car->leads()->where('created_at', '>=', now()->subDays(14))->count();
+        $leads30d          = $car->leads()->where('created_at', '>=', now()->subDays(30))->count();
+        $interactions7d    = $car->interactions()->where('created_at', '>=', now()->subDays(7))->count();
+        $interactions14d   = $car->interactions()->where('created_at', '>=', now()->subDays(14))->count();
+        $interactions30d   = $car->interactions()->where('created_at', '>=', now()->subDays(30))->count();
+        $daysInStock       = $car->created_at ? (int) $car->created_at->diffInDays(now()) : null;
+        $engagementTotal   = $leadsTotal + $interactionsTotal;
+        $taxaInteresse     = $viewsTotal > 0 ? round(($engagementTotal / $viewsTotal) * 100, 2) : 0;
 
-        $views7d  = $car->views()->where('created_at', '>=', now()->subDays(7))->count();
-        $views24h = $car->views()->where('created_at', '>=', now()->subDay())->count();
-
-        $daysInStock = $car->created_at
-            ? (int) $car->created_at->diffInDays(now())
-            : null;
-
-        // Taxa de interesse = (leads + interações) / views
-        // Interações incluem cliques WhatsApp, chamadas, etc.
-        // É um sinal de intenção mais completo do que só leads de formulário
-        $engagementTotal  = $leadsTotal + $interactionsTotal;
-        $taxaInteresse    = $viewsTotal > 0
-            ? round(($engagementTotal / $viewsTotal) * 100, 2)
-            : 0;
-
-        // Extras — flatten para string legível
         $extrasFlat = collect($car->extras ?? [])
             ->flatMap(fn($group) => $group['items'] ?? [])
             ->filter()
             ->values()
             ->implode(', ') ?: null;
 
+        $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
+        $campaignTargeting = $this->getCampaignTargeting($car);
+        $campaignPerformance = $this->getCampaignPerformance($car);
+        $campaignDiagnostics = $this->buildCampaignDiagnostics($car, $campaignPerformance, $campaignTargeting, $marketIntelligence);
+        $roiInsights = $this->buildRoiInsights($car, $campaignPerformance);
+
         return [
-            // Dados técnicos
-            'marca'         => $car->brand->name ?? null,
-            'modelo'        => $car->model->name ?? null,
-            'versao'        => $car->version ?? null,
-            'ano'           => $car->registration_year,
-            'combustivel'   => $car->fuel_type,
-            'cambio'        => $car->transmission,
-            'quilometragem' => $car->mileage_km,
-            'cor'           => $car->exterior_color,
-            'preco'         => $car->price_gross ? (float) $car->price_gross : null,
-            'extras'        => $extrasFlat,
-
-            // Dados de performance
-            'views_total'        => $viewsTotal,
-            'views_24h'          => $views24h,
-            'views_7d'           => $views7d,
-            'leads'              => $leadsTotal,
-            'interacoes'         => $interactionsTotal,   // ← novo campo
-            'engagement_total'   => $engagementTotal,     // ← leads + interacções
-            'taxa_interesse'     => $taxaInteresse,        // ← agora inclui interacções
-            'dias_em_stock'      => $daysInStock,
-
-            // Tráfego — placeholder; preencher via integração futura
-            'trafego_pago'     => null,
-            'trafego_direto'   => null,
-            'trafego_organico' => null,
-
-            // Benchmark de mercado
-            'preco_vs_mercado' => $this->getPriceVsMarket($car),
-            'benchmark_leads'  => null,
+            'car' => [
+                'marca' => $car->brand->name ?? null,
+                'modelo' => $car->model->name ?? null,
+                'versao' => $car->version ?? null,
+                'ano' => $car->registration_year,
+                'combustivel' => $car->fuel_type,
+                'cambio' => $car->transmission,
+                'quilometragem' => $car->mileage_km,
+                'cor' => $car->exterior_color,
+                'preco' => $car->price_gross ? (float) $car->price_gross : null,
+                'extras' => $extrasFlat,
+                'segmento' => $car->segment,
+            ],
+            'performance' => [
+                'views_total' => $viewsTotal,
+                'views_24h' => $views24h,
+                'views_7d' => $views7d,
+                'views_14d' => $views14d,
+                'views_30d' => $views30d,
+                'leads_total' => $leadsTotal,
+                'leads_7d' => $leads7d,
+                'leads_14d' => $leads14d,
+                'leads_30d' => $leads30d,
+                'interacoes_total' => $interactionsTotal,
+                'interacoes_7d' => $interactions7d,
+                'interacoes_14d' => $interactions14d,
+                'interacoes_30d' => $interactions30d,
+                'engagement_total' => $engagementTotal,
+                'taxa_interesse' => $taxaInteresse,
+                'dias_em_stock' => $daysInStock,
+            ],
+            'market_intelligence' => $marketIntelligence,
+            'campaign_targeting' => $campaignTargeting,
+            'campaign_targeting_context' => $this->buildTargetingContext($campaignTargeting),
+            'suggested_targeting_fixes' => $this->buildTargetingFixes($campaignTargeting, $car),
+            'campaign_performance' => $campaignPerformance,
+            'campaign_diagnostics' => $campaignDiagnostics,
+            'roi_insights' => $roiInsights,
         ];
     }
 
-    /**
-     * Calcula desvio do preço do carro vs mediana de mercado (se existir snapshot).
-     * Retorna string como '+8%', '-3%', 'na mediana' ou null.
-     */
-    private function getPriceVsMarket(Car $car): ?string
+    private function buildTargetingContext(array $targeting): array
     {
-        return null;
-        // todo: implementar snapshot standvirtual
-        // try {
-        //     $snapshot = \App\Models\CarMarketSnapshot::query()
-        //         ->whereRaw('LOWER(brand) = ?', [strtolower($car->brand->name ?? '')])
-        //         ->whereRaw('LOWER(model) LIKE ?', ['%' . strtolower($car->model->name ?? '') . '%'])
-        //         ->whereBetween('year', [
-        //             ($car->registration_year ?? 2000) - 2,
-        //             ($car->registration_year ?? 2030) + 2,
-        //         ])
-        //         ->whereNotNull('price_cents')
-        //         ->where('price_cents', '>', 0)
-        //         ->where('scraped_at', '>=', now()->subDays(30))
-        //         ->pluck('price_cents')
-        //         ->sort()
-        //         ->values();
+        $interests = $targeting['interests'] ?? [];
+        $genders = $targeting['genders'] ?? [];
+        $ageMin = $targeting['age_min'] ?? null;
+        $ageMax = $targeting['age_max'] ?? null;
 
-        //     if ($snapshot->isEmpty() || ! $car->price_gross) {
-        //         return null;
-        //     }
+        return [
+            'is_broad' => empty($interests),
+            'is_gender_restricted' => count($genders) === 1,
+            'interest_count' => count($interests),
+            'age_span' => ($ageMin !== null && $ageMax !== null)
+                ? ((int)$ageMax - (int)$ageMin)
+                : null,
+        ];
+    }
 
-        //     $count  = $snapshot->count();
-        //     $median = $snapshot[(int) floor($count / 2)] / 100;
-        //     $price  = (float) $car->price_gross;
-        //     $diff   = round((($price - $median) / $median) * 100, 1);
+    private function getCampaignTargeting(Car $car): array
+    {
+        $latest = MetaAudienceInsight::query()
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->whereNotNull('campaign_targeting_json')
+            ->orderByDesc('period_end')
+            ->orderByDesc('id')
+            ->first();
 
-        //     if (abs($diff) < 2) return 'na mediana';
-        //     return ($diff > 0 ? '+' : '') . $diff . '%';
-        // } catch (\Throwable $e) {
-        //     return null;
-        // }
+        return $latest?->campaign_targeting_json ?? [
+            'location' => [],
+            'age_min' => null,
+            'age_max' => null,
+            'genders' => [],
+            'interests' => [],
+            'audience_mode' => null,
+        ];
+    }
+
+    private function getCampaignPerformance(Car $car): array
+    {
+        $from = now()->subDays(6)->toDateString();
+        $to = now()->toDateString();
+
+        $metrics = DB::table('car_performance_metrics')
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->where('channel', 'paid')
+            ->whereDate('period_start', '<=', $to)
+            ->whereDate('period_end', '>=', $from)
+            ->selectRaw('
+                COALESCE(SUM(impressions), 0) as impressions,
+                COALESCE(SUM(clicks), 0) as clicks,
+                COALESCE(SUM(sessions), 0) as sessions,
+                COALESCE(SUM(leads_count), 0) as leads,
+                COALESCE(SUM(interactions_count), 0) as interactions,
+                COALESCE(SUM(spend_amount), 0) as spend
+            ')
+            ->first();
+
+        $audience = DB::table('meta_audience_insights')
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->whereDate('period_start', '<=', $to)
+            ->whereDate('period_end', '>=', $from)
+            ->selectRaw('
+                COALESCE(SUM(reach), 0) as reach,
+                COALESCE(SUM(clicks), 0) as audience_clicks,
+                COALESCE(SUM(impressions), 0) as audience_impressions,
+                COALESCE(SUM(spend), 0) as audience_spend
+            ')
+            ->first();
+
+        $impressions = (int) ($metrics->impressions ?? 0);
+        $clicks = (int) ($metrics->clicks ?? 0);
+        $reach = (int) ($audience->reach ?? 0);
+        $spend = round((float) ($metrics->spend ?? 0), 2);
+        $ctr = $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : 0.0;
+        $cpc = $clicks > 0 ? round($spend / $clicks, 2) : null;
+        $frequency = $reach > 0 ? round($impressions / $reach, 2) : null;
+
+        return [
+            'impressions' => $impressions,
+            'clicks' => $clicks,
+            'reach' => $reach,
+            'spend' => $spend,
+            'ctr' => $ctr,
+            'cpc' => $cpc,
+            'frequency' => $frequency,
+            'sessions' => (int) ($metrics->sessions ?? 0),
+            'leads' => (int) ($metrics->leads ?? 0),
+            'interactions' => max(
+                (int) ($metrics->interactions ?? 0),
+                (int) ($car->interactions_count ?? $car->interactions()->count())
+            ),
+        ];
+    }
+
+    private function buildCampaignDiagnostics(
+        Car $car,
+        array $campaignPerformance,
+        array $campaignTargeting,
+        array $marketIntelligence
+    ): array {
+        $impressions = (int) ($campaignPerformance['impressions'] ?? 0);
+        $clicks = (int) ($campaignPerformance['clicks'] ?? 0);
+        $reach = (int) ($campaignPerformance['reach'] ?? 0);
+        $spend = (float) ($campaignPerformance['spend'] ?? 0);
+        $ctr = (float) ($campaignPerformance['ctr'] ?? 0);
+        $sessions = (int) ($campaignPerformance['sessions'] ?? 0);
+        $leads = (int) ($campaignPerformance['leads'] ?? 0);
+        $interactions = (int) ($campaignPerformance['interactions'] ?? 0);
+
+        $genderRestricted = count($campaignTargeting['genders'] ?? []) === 1;
+        $ageSpan = (
+            isset($campaignTargeting['age_min'], $campaignTargeting['age_max'])
+            && $campaignTargeting['age_min'] !== null
+            && $campaignTargeting['age_max'] !== null
+        )
+            ? ((int) $campaignTargeting['age_max'] - (int) $campaignTargeting['age_min'])
+            : null;
+        $interestCount = count($campaignTargeting['interests'] ?? []);
+        $generalistCar = !in_array((string) ($car->segment ?? ''), ['premium', 'executive', 'luxury', 'sports'], true)
+            && (float) ($car->price_gross ?? 0) <= 30000;
+
+        $diagnostics = [
+            'impressions' => $impressions,
+            'clicks' => $clicks,
+            'reach' => $reach,
+            'spend' => $spend,
+            'ctr' => $ctr,
+            'cpc' => $campaignPerformance['cpc'],
+            'frequency' => $campaignPerformance['frequency'],
+            'engagement_signals' => [
+                'high_impressions_low_clicks' => $impressions >= 5000 && $ctr < 1.0,
+                'low_visibility' => $reach > 0 ? $reach < 1500 : $impressions < 1500,
+                'high_spend_low_result' => $spend >= 10 && $interactions === 0,
+                'targeting_may_be_too_narrow' => (
+                    ($generalistCar && $genderRestricted)
+                    || ($generalistCar && $interestCount >= 2)
+                    || ($ageSpan !== null && $ageSpan <= 10)
+                ),
+            ],
+        ];
+
+        $mainProblem = 'mixed';
+
+        // REGRA CRÍTICA: boa entrega (CTR >= 2 e clicks >= 100) — targeting nunca pode ser o problema
+        if ($ctr >= 2 && $clicks >= 100) {
+            if ($sessions >= 40 && $interactions === 0) {
+                // Sessões altas sem conversão → problema de oferta
+                $mainProblem = 'offer';
+            } elseif ($interactions >= 1) {
+                // Já tem interações reais → não forçar offer, deixar em mixed
+                $mainProblem = 'mixed';
+            } else {
+                // Boa entrega sem conversão → problema de oferta
+                $mainProblem = 'offer';
+            }
+        } else {
+            $mainProblem = 'mixed';
+
+            if ($diagnostics['engagement_signals']['targeting_may_be_too_narrow'] && $ctr < 1.0) {
+                $mainProblem = 'targeting';
+            } elseif ($clicks >= 100 && $sessions >= 40 && $leads === 0 && $interactions === 0) {
+                $mainProblem = 'offer';
+            } elseif ($sessions >= 40 && $interactions === 0 && ($marketIntelligence['market_position'] ?? null) === 'above_market') {
+                $mainProblem = 'offer';
+            } elseif ($impressions >= 3000 && $clicks <= 20) {
+                $mainProblem = 'copy';
+            } elseif ($impressions < 1000 && $reach < 800) {
+                $mainProblem = 'low_signal';
+            }
+        }
+
+        $diagnostics['main_problem'] = $mainProblem;
+
+        return $diagnostics;
+    }
+
+    private function buildTargetingFixes(array $targeting, Car $car): array
+    {
+        $actions = [];
+
+        $interests = $targeting['interests'] ?? [];
+        $genders = $targeting['genders'] ?? [];
+        $ageMin = $targeting['age_min'] ?? null;
+        $ageMax = $targeting['age_max'] ?? null;
+
+        $isGeneralist = (float) ($car->price_gross ?? 0) <= 30000;
+
+        if ($isGeneralist && count($genders) === 1) {
+            $actions[] = 'Remover restrição de género';
+        }
+
+        if ($isGeneralist && count($interests) >= 2) {
+            $names = collect($interests)
+                ->map(fn($i) => is_array($i) ? ($i['name'] ?? null) : $i)
+                ->filter()
+                ->take(3)
+                ->map(fn($name) => "'{$name}'")
+                ->implode(', ');
+
+            $actions[] = $names
+                ? "Remover interesses {$names} e testar público broad"
+                : "Remover interesses e testar público broad";
+        }
+
+        if ($ageMin !== null && $ageMax !== null && ($ageMax - $ageMin) <= 10) {
+            $actions[] = 'Alargar intervalo de idades';
+        }
+
+        return $actions;
+    }
+
+    private function buildRoiInsights(Car $car, array $campaignPerformance): array
+    {
+        $leads = (int) ($campaignPerformance['leads'] ?? 0);
+        $spend = (float) ($campaignPerformance['spend'] ?? 0);
+        $sessions = (int) ($campaignPerformance['sessions'] ?? 0);
+        $costPerLead = $leads > 0 ? round($spend / $leads, 2) : null;
+        $conversionRate = $sessions > 0 ? round(($leads / $sessions) * 100, 2) : null;
+
+        return [
+            'cost_per_lead' => $costPerLead,
+            'conversion_rate' => $conversionRate,
+            'paid_sessions' => $sessions,
+            'paid_leads' => $leads,
+            'paid_spend' => round($spend, 2),
+            'signal_strength' => match (true) {
+                $sessions >= 60 || $leads >= 3 => 'strong',
+                $sessions >= 20 || $leads >= 1 => 'moderate',
+                default => 'weak',
+            },
+        ];
     }
 
     // -------------------------------------------------------------------------
@@ -168,7 +377,7 @@ class CarAiAnalysesService extends BaseService
         $year  = now()->year;
 
         return <<<PROMPT
-És o estratega de marketing automóvel da Xplendor para o mercado português. A tua função é transformar dados de viatura e performance em uma análise comercial clara, accionável e consistente, com foco em venda mais rápida e investimento inteligente.
+És o estratega de marketing automóvel da Xplendor para o mercado português. Transformas dados reais de viatura, campanha e mercado numa análise comercial cirúrgica, clara e accionável.
 
 ## MISSÃO
 Gerar uma análise JSON que ajude um stand a decidir:
@@ -183,31 +392,25 @@ Gerar uma análise JSON que ajude um stand a decidir:
 ## REGRAS DE RACIOCÍNIO (executa internamente nesta ordem)
 
 1. CLASSIFICA O VEÍCULO
-Enquadra mentalmente a viatura num perfil comercial plausível:
-- citadino / económico
-- familiar / station wagon
-- SUV
-- executivo / premium
-- eléctrico / híbrido
-- desportivo
-- comercial
+Enquadra mentalmente a viatura num perfil comercial plausível e no tipo de comprador mais provável.
 
 2. AVALIA QUALIDADE DOS DADOS
-Se faltarem dados críticos, sê conservador. Nunca inventes contexto, mercado, equipamento ou performance.
+Se faltarem dados críticos, sê conservador. Nunca inventes contexto, mercado, equipamento, targeting ou performance.
 
 3. CALCULA O SCORE COMERCIAL DE FORMA COERENTE
-Baseia a avaliação em 4 sinais principais:
+Baseia a avaliação em 5 sinais principais:
 - taxa de interesse
 - dias em stock
 - views recentes
-- preço vs mercado (se existir)
+- preço vs mercado
+- sinais de campanha paga, se existirem
 
 Heurística obrigatória:
 - taxa de interesse >= 1% é saudável
 - >60 dias em stock com taxa <0.5% implica urgência alta
 - views recentes fortes + stock curto aumentam score
 - preço alinhado ou abaixo do mercado melhora score
-- se preço_vs_mercado não existir, não penalizar em excesso
+- se não houver massa crítica de dados, baixa a confiança, não inventes convicção
 
 Classificação do score:
 - 0–20: Crítico
@@ -217,44 +420,122 @@ Classificação do score:
 - 81–100: Excelente
 
 4. ESCOLHE CANAL COM LÓGICA COMERCIAL
-Usa estas orientações:
-- citadino / familiar até ~15k → Meta Ads
-- gama média visual / SUV → Meta Ads + Google Search
-- premium / executivo / eléctrico → Google Search + Meta Ads
-- stock crítico ou baixa conversão → Meta Ads para acelerar atenção
-- procura ativa e intenção alta → Google Search ganha força
-
-Nunca escolhas canais sem justificar com:
-- segmento
-- preço
-- tipo de comprador
-- estado atual da performance
+Escolhe canal principal e secundário com lógica comercial. Justifica sempre com segmento, preço, intenção de compra e estado actual da performance.
 
 5. DEFINE O PÚBLICO-ALVO COM BASE NO CONTEXTO
-Usa psicografia plausível para Portugal:
-- comprador económico → sensível a preço, decisão rápida
-- comprador familiar → compara mais, valoriza segurança e espaço
-- comprador SUV → quer presença, conforto e test drive
-- premium → decisão mais lenta, maior peso racional/fiscal
-- eléctrico → comprador informado, tecnológico, atento a TCO
+Usa psicografia plausível para Portugal sem inventar detalhes específicos que não estejam apoiados pelo contexto.
 
-6. GERA CRIATIVO ESPECÍFICO
-Título, hook e copy devem ser concretos e ligados à viatura.
-Evitar linguagem fraca ou genérica:
-- "oportunidade única"
-- "não perca"
-- "condições especiais"
-- "stock limitado"
+6. ANALISA A CAMPANHA E O PROBLEMA PRINCIPAL
+Recebes métricas reais da campanha e um bloco `campaign_diagnostics`.
+Avalia se o problema principal parece ser:
+- targeting
+- offer
+- copy
+- low_signal
+- mixed
 
-Quero especificidade, não cliché.
+Sinais úteis:
+- muitas impressões e poucos cliques -> problema de atratividade, mensagem ou targeting
+- pouco reach -> problema de distribuição ou público demasiado restrito
+- spend com zero leads/interações -> problema sério de proposta, público ou campanha
+- sessões razoáveis com fraca interação -> suspeitar de proposta, preço ou fricção
 
-7. GARANTE CONSISTÊNCIA FINAL
+7. ANALISA O TARGETING DA CAMPANHA
+Recebes também dados do público configurado.
+Deves avaliar:
+- se o público está demasiado restrito
+- se a idade faz sentido para o tipo de carro
+- se o género está a limitar desnecessariamente
+- se os interesses estão a ajudar ou a bloquear distribuição
+- se o modo Advantage+ está bem aplicado
+
+Regras:
+- público muito restrito + baixa interação -> sugerir alargar
+- género único em carros generalistas -> potencial limitação
+- interesses muito específicos -> podem bloquear entrega
+- carros generalistas -> preferir público mais aberto
+- carros premium -> público mais qualificado pode fazer sentido
+- nunca inventar interesses que não existam no contexto
+- se sugerires alteração, deve ser estrutural:
+  - alargar idade
+  - remover género
+  - remover interesses
+  - manter Advantage+
+  - testar broad
+
+8. GERA CRIATIVO E DIREÇÃO COMERCIAL
+Título, hook e copy devem ser concretos e ligados à viatura. Evita cliché e responde ao problema principal identificado.
+
+9. GARANTE CONSISTÊNCIA FINAL
 Antes de responder, confirma:
 - canal principal coerente com segmento e preço
 - urgência coerente com stock e score
 - probabilidade 7d <= 14d <= 30d
 - nenhum campo contradiz outro
+- `audience_analysis.status` coerente com o targeting recebido
+- `campaign_diagnosis.main_problem` coerente com métricas e diagnósticos
 - JSON final respeita exatamente o schema fornecido
+
+10. DIAGNÓSTICO OBRIGATÓRIO DE CAMPANHA
+Deves SEMPRE gerar um bloco "campaign_diagnosis" com:
+- main_problem: targeting | copy | creative | offer | low_signal | mixed
+- message: explicação clara, direta e comercial do problema principal
+- action: ação concreta e executável imediatamente
+
+As interações (WhatsApp ou chamada) são o principal sinal de conversão. 
+Se existirem cliques e sessões mas zero interações, assume problema de oferta, proposta ou fricção no contacto.
+
+Regras obrigatórias:
+- Se existir campaign_targeting:
+  - és obrigado a avaliar se o público está demasiado restrito
+  - nunca ignores targeting
+  - nunca sejas neutro
+- Se existir:
+  - género único em carro generalista → assume limitação
+  - interesses específicos → pode limitar entrega
+  - CTR baixo com impressões altas → suspeitar de targeting ou criativo
+- Tens de tomar posição clara:
+  - não usar linguagem vaga
+  - não dizer "pode ser"
+  - não ficar neutro
+- A ação deve ser prática, exemplo:
+  - remover interesses
+  - alargar idade
+  - remover género
+  - testar público aberto com Advantage+
+
+No bloco campaign_diagnosis:
+
+- A action deve ser específica e executável.
+- Não usar linguagem genérica.
+- Deve referir exatamente o que mudar no targeting atual.
+
+Exemplos obrigatórios:
+
+ERRADO:
+"Remover interesses"
+
+CERTO:
+"Remover interesses 'Família' e 'Peugeot (veículos)' e testar público broad sem interesses"
+
+ERRADO:
+"Eliminar restrição de género"
+
+CERTO:
+"Remover restrição de género (atualmente masculino) para aumentar alcance"
+
+Se existir campaign_targeting:
+- tens de referir explicitamente os valores atuais
+- tens de dizer o que manter vs remover vs alterar
+
+Se existir suggested_targeting_fixes:
+- usa essas sugestões como base principal
+- não substituas por recomendações mais genéricas
+- refina e torna mais específicas com base no targeting real
+- nunca ignores estas sugestões
+
+Nunca responder de forma genérica.
+
 
 ## REGRAS DE OUTPUT
 - responder apenas em JSON válido
@@ -262,60 +543,64 @@ Antes de responder, confirma:
 - sem texto antes ou depois
 - português de Portugal
 - sem “depende”, “pode ser”, “eventualmente”, “em geral”
-- se `preco_vs_mercado` for N/D:
+- se faltarem dados de targeting:
+  - `audience_analysis.status = "insufficient_data"`
+  - não inventes problemas de público
+- se `preco_vs_mercado` não existir:
   - `alerta_preco.ativo = false`
   - `desvio_percentual = null`
   - `recomendacao = null`
+Se CTR >= 2% e existem mais de 100 cliques:
+- É PROIBIDO classificar o problema como targeting
+- Assume obrigatoriamente problema de "offer" ou "conversion"
 
-## BENCHMARKS ÚTEIS
-- taxa de interesse saudável: >= 1%
-- abaixo de 0.5% com muito tempo em stock = sinal crítico
-- premium tende a precisar de mais confiança e procura ativa
-- Meta Ads funciona bem em viaturas com apelo visual
-- Google Search funciona bem em viaturas com procura intencional
-- previsão de venda a 7 dias só deve ser alta se houver interesse forte e contexto favorável
+Se existem sessões >= 40 e interações = 0:
+- Define obrigatoriamente main_problem como "offer"
+- Ignora sinais de targeting, mesmo que existam
+Nesse caso, prioriza hipótese de problema de oferta, proposta, preço ou fricção pós-clique.
 
-Mantém a análise estratégica, objetiva e utilizável por um gestor comercial.
+REGRA CRÍTICA (PRIORIDADE MÁXIMA):
+Se:
+- ctr >= 2
+- clicks >= 100
+Então:
+- main_problem NUNCA pode ser "targeting"
+- Ignorar completamente qualquer sinal de targeting
+- Forçar análise para "offer" ou "conversion"
+
+Esta regra sobrepõe-se a TODAS as outras.
+
+Contexto temporal: {$month} de {$year}
+Mantém a análise objetiva, comercial e utilizável por um gestor.
 PROMPT;
     }
 
     private function buildUserPrompt(array $data): string
     {
-        $fmt = fn($v) => $v ?? 'N/D';
+        $criticalPaths = [
+            'car.marca',
+            'car.modelo',
+            'car.preco',
+            'performance.views_total',
+            'performance.dias_em_stock',
+            'market_intelligence.market_position',
+        ];
 
-        // Injectar contexto de qualidade dos dados para o modelo avaliar
-        $camposCriticos = ['marca', 'modelo', 'preco', 'views_total', 'dias_em_stock'];
-        $ndCount = collect($camposCriticos)->filter(fn($k) => is_null($data[$k]))->count();
-        $qualidadeDados = match (true) {
-            $ndCount === 0 => 'Completa — todos os campos críticos disponíveis',
-            $ndCount <= 2  => "Parcial — {$ndCount} campo(s) crítico(s) em falta",
-            default        => "Limitada — {$ndCount} campos críticos em falta; análise conservadora obrigatória",
+        $missingCritical = collect($criticalPaths)
+            ->filter(fn($path) => $this->dataGet($data, $path) === null)
+            ->count();
+
+        $qualityNote = match (true) {
+            $missingCritical === 0 => 'Alta — contexto comercial completo',
+            $missingCritical <= 2 => 'Média — existem algumas lacunas, mas há base suficiente para diagnóstico',
+            default => 'Baixa — faltam sinais críticos, mantém análise conservadora',
         };
 
-        return "Analise o seguinte veículo e entregue as recomendações estratégicas de marketing.\n\n"
-            . "Qualidade dos dados: {$qualidadeDados}\n\n"
-            . "Veículo:\n"
-            . "- Marca: {$fmt($data['marca'])}\n"
-            . "- Modelo: {$fmt($data['modelo'])}\n"
-            . "- Versão: {$fmt($data['versao'])}\n"
-            . "- Ano: {$fmt($data['ano'])}\n"
-            . "- Combustível: {$fmt($data['combustivel'])}\n"
-            . "- Câmbio: {$fmt($data['cambio'])}\n"
-            . "- Quilometragem: {$fmt($data['quilometragem'])} km\n"
-            . "- Cor: {$fmt($data['cor'])}\n"
-            . "- Preço: €{$fmt($data['preco'])}\n"
-            . "- Extras: {$fmt($data['extras'])}\n\n"
-            . "Performance:\n"
-            . "- Views totais: {$fmt($data['views_total'])}\n"
-            . "- Views últimas 24h: {$fmt($data['views_24h'])}\n"
-            . "- Views últimos 7 dias: {$fmt($data['views_7d'])}\n"
-            . "- Leads gerados (formulário): {$fmt($data['leads'])}\n"
-            . "- Interações diretas (WhatsApp, chamadas): {$fmt($data['interacoes'])}\n"
-            . "- Engagement total (leads + interações): {$fmt($data['engagement_total'])}\n"
-            . "- Taxa de interesse (engagement/views): {$fmt($data['taxa_interesse'])}%\n"
-            . "- Tempo em stock: {$fmt($data['dias_em_stock'])} dias\n"
-            . "- Preço vs. mediana de mercado PT: {$fmt($data['preco_vs_mercado'])}\n\n"
-            . "Entregue apenas o JSON final com exactamente este schema:\n\n"
+        return "Analisa esta viatura e a campanha associada. Usa os diagnósticos fornecidos para identificar o problema principal e o que deve ser mudado.\n\n"
+            . "Qualidade dos dados: {$qualityNote}\n\n"
+            . "Contexto estruturado:\n"
+            . json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+            . "\n\nEntrega apenas o JSON final com exactamente este schema:\n\n"
             . json_encode($this->outputSchema(), JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
@@ -373,7 +658,36 @@ PROMPT;
                 'probabilidade_venda_30d' => 76,
                 'condicao'                => 'Ajustes de preco ou distribuicao podem acelerar a venda.',
             ],
+            'audience_analysis' => [
+                'status' => 'too_narrow',
+                'issues' => [
+                    'Segmentacao por genero limita alcance.',
+                    'Interesses demasiado restritivos para este tipo de viatura.',
+                ],
+                'recommendation' => 'Alargar publico, remover interesses e manter Advantage+ para ganhar distribuicao.',
+            ],
+            'campaign_diagnosis' => [
+                'main_problem' => 'targeting',
+                'message' => 'Segmentação demasiado restrita está a limitar a entrega da campanha.',
+                'action' => 'Remover interesses, eliminar restrição por género e testar público mais aberto com Advantage+.'
+            ],
         ];
+    }
+
+    private function dataGet(array $data, string $path): mixed
+    {
+        $segments = explode('.', $path);
+        $current = $data;
+
+        foreach ($segments as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                return null;
+            }
+
+            $current = $current[$segment];
+        }
+
+        return $current;
     }
 
     // -------------------------------------------------------------------------
@@ -508,10 +822,57 @@ PROMPT;
     // Persistência
     // -------------------------------------------------------------------------
 
+    /**
+     * Applies deterministic business rules to the AI-parsed output before persistence.
+     * Prevents the AI from returning "targeting" as main_problem when campaign delivery
+     * metrics already prove the audience is working.
+     */
+    private function enforceCampaignDiagnosisRules(array &$parsed, array $inputData): void
+    {
+        $ctr          = (float) ($inputData['campaign_performance']['ctr']          ?? 0);
+        $clicks       = (int)   ($inputData['campaign_performance']['clicks']       ?? 0);
+        $sessions     = (int)   ($inputData['campaign_performance']['sessions']     ?? 0);
+        $interactions = (int)   ($inputData['campaign_performance']['interactions'] ?? 0);
+
+        $goodDelivery = $ctr >= 2.0 && $clicks >= 100;
+
+        if (!$goodDelivery) {
+            return;
+        }
+
+        $mainProblem = $parsed['campaign_diagnosis']['main_problem'] ?? null;
+
+        // Rule A: high sessions, zero interactions → force "offer" regardless of AI output
+        if ($sessions >= 40 && $interactions === 0) {
+            if ($mainProblem !== 'offer') {
+                $parsed['campaign_diagnosis']['main_problem'] = 'offer';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e sessoes relevantes, mas nao esta a gerar contactos. O problema esta na oferta, preco ou friccao pos-clique.';
+                $parsed['campaign_diagnosis']['action']       = 'Rever preco, melhorar proposta de valor e reduzir friccao no processo de contacto.';
+            }
+            return;
+        }
+
+        // Rule B: good delivery — "targeting" is never the main problem
+        if ($mainProblem === 'targeting') {
+            if ($interactions >= 1) {
+                $parsed['campaign_diagnosis']['main_problem'] = 'mixed';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e ja gerou interacoes reais. Ha margem para optimizar, mas o targeting nao e o problema principal.';
+                $parsed['campaign_diagnosis']['action']       = 'Manter campanha ativa e focar na qualidade da proposta e do anuncio.';
+            } else {
+                $parsed['campaign_diagnosis']['main_problem'] = 'offer';
+                $parsed['campaign_diagnosis']['message']      = 'A campanha tem boa entrega e cliques relevantes, mas nao esta a converter. O problema esta na oferta ou friccao pos-clique.';
+                $parsed['campaign_diagnosis']['action']       = 'Rever preco, melhorar proposta de valor e analisar a experiencia pos-clique.';
+            }
+        }
+    }
+
     private function persist(Car $car, array $inputData, string $rawJson, array $parsed): CarAiAnalysis
     {
         // Garantir que veiculo_id é sempre o ID real — nunca deixar a IA definir isto
         $parsed['veiculo_id'] = (string) $car->id;
+
+        // Enforce deterministic campaign diagnosis rules — override AI output when necessary
+        $this->enforceCampaignDiagnosisRules($parsed, $inputData);
 
         $score          = $parsed['score_conversao']['valor'] ?? null;
         $classificacao  = $parsed['score_conversao']['classificacao'] ?? null;
