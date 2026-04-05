@@ -21,6 +21,9 @@ import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
 import CarAnalytics from "pages/Cars/Car/CarAnalytics";
 import CarMarketing from "pages/Cars/Car/CarMarketing";
+import CarIntelligencePage from "pages/Cars/Car/CarIntelligencePage";
+import CarAdsPage from "pages/Cars/Car/CarAdsPage";
+import CarFichaPage from "pages/Cars/Car/CarFichaPage";
 
 // Users
 import UsersList from "pages/Users/UsersList";
@@ -59,6 +62,9 @@ const authProtectedRoutes = [
     { path: "/cars/create", component: <CarCreate /> },
     { path: "/cars/:id", component: <CarUpdate /> },
     { path: "/cars/:id/analytics", component: <CarAnalytics /> },
+    { path: "/cars/:id/intelligence", component: <CarIntelligencePage /> },
+    { path: "/cars/:id/ads", component: <CarAdsPage /> },
+    { path: "/cars/:id/ficha", component: <CarFichaPage /> },
     { path: "/cars/:id/marketing", component: <CarMarketing /> },
 
     // Leads

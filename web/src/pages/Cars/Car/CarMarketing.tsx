@@ -7,6 +7,7 @@ import { toast, ToastContainer } from "react-toastify";
 import XButton from "Components/Common/XButton";
 import { generateCarMarketing, getCarMarketing } from "slices/thunks";
 import TabMarketing from "./components/TabMarketing";
+import CarPageNav from "./components/CarPageNav";
 
 const ipsClassBadge = (cls: string) =>
     cls === "hot" ? "bg-success-subtle text-success" : cls === "warm" ? "bg-warning-subtle text-warning" : "bg-danger-subtle text-danger";
@@ -75,7 +76,7 @@ export default function CarMarketing() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3">
+                <Row className="mb-2">
                     <Col>
                         <section style={shellStyle}>
                             <div className="d-flex align-items-start justify-content-between flex-wrap gap-3" style={{ padding: "18px 20px" }}>
@@ -120,15 +121,18 @@ export default function CarMarketing() {
                                 </div>
 
                                 <div className="d-flex gap-2 flex-wrap">
-                                    <Link to={`/cars/${carMarketing?.id}/analytics`} className="btn btn-soft-secondary btn-sm">
-                                        <i className="ri-brain-line me-1" /> Analises
-                                    </Link>
                                     <Link to={`/cars/${carMarketing?.id}`} className="btn btn-soft-primary btn-sm">
                                         <i className="ri-pencil-fill me-1" /> Editar viatura
                                     </Link>
                                 </div>
                             </div>
                         </section>
+                    </Col>
+                </Row>
+
+                <Row className="mb-3">
+                    <Col>
+                        <CarPageNav active="marketing" />
                     </Col>
                 </Row>
 

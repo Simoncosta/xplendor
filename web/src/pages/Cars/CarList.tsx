@@ -55,7 +55,7 @@ const getAttentionBadge = (car: any) => {
 
     if (views > 500 && leads === 0) {
         return {
-            label: "Sem conversao",
+            label: "Interesse sem acção",
             className: "bg-warning-subtle text-warning",
             icon: "ri-error-warning-line",
         };
@@ -63,7 +63,7 @@ const getAttentionBadge = (car: any) => {
 
     if (leads > 2) {
         return {
-            label: "Bom desempenho",
+            label: "A converter bem",
             className: "bg-success-subtle text-success",
             icon: "ri-checkbox-circle-line",
         };
@@ -71,7 +71,7 @@ const getAttentionBadge = (car: any) => {
 
     if (views < 50) {
         return {
-            label: "Baixa visibilidade",
+            label: "Ninguém está a ver",
             className: "bg-secondary-subtle text-secondary",
             icon: "ri-radar-line",
         };

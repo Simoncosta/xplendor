@@ -1,16 +1,13 @@
 import { Col, Row } from "reactstrap";
-import MarketIntelligenceCard from "./MarketIntelligenceCard";
 import SmartAdsRecommendationCard from "./SmartAdsRecommendationCard";
 
 interface Props {
     recommendation: any;
     recommendedCreative?: any;
     recommendedPlatform?: "meta" | "google" | null;
-    marketIntelligence?: any;
     silentBuyers: any;
     metrics: any;
     insight: any;
-    kpiStrip: React.ReactNode;
     onOpenIntelligence: () => void;
     marketingUrl: string;
 }
@@ -19,11 +16,9 @@ export default function TabOverview({
     recommendation,
     recommendedCreative,
     recommendedPlatform,
-    marketIntelligence,
     silentBuyers,
     metrics,
     insight,
-    kpiStrip,
     onOpenIntelligence,
     marketingUrl,
 }: Props) {
@@ -36,21 +31,6 @@ export default function TabOverview({
                 marketingUrl={marketingUrl}
                 metrics={metrics}
             />
-
-            <section style={sectionStyle}>
-                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                    <div>
-                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            KPIs
-                        </p>
-                        <h6 className="mb-0 fw-semibold">Leitura rápida do anúncio</h6>
-                    </div>
-                    <span className="text-muted fs-12">4 indicadores chave</span>
-                </div>
-                {kpiStrip}
-            </section>
-
-            <MarketIntelligenceCard data={marketIntelligence} />
 
             <section style={sectionStyle}>
                 <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">

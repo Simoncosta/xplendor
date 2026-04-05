@@ -78,9 +78,6 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
                     </div>
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
-                    <Link to={`/cars/${car?.id}/marketing`} className="btn btn-soft-secondary btn-sm">
-                        <i className="ri-megaphone-line me-1" /> Marketing
-                    </Link>
                     <Link to={`/cars/${car?.id}`} className="btn btn-soft-primary btn-sm">
                         <i className="ri-pencil-fill me-1" /> Editar viatura
                     </Link>

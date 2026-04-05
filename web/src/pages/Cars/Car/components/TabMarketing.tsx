@@ -43,9 +43,9 @@ export default function TabMarketing({ ideas, onGenerateIdeas }: Props) {
                         <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                             <div>
                                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Briefing editorial
+                                    Conteúdo da semana
                                 </p>
-                                <h5 className="mb-1 fw-semibold">Inteligencia de Marketing</h5>
+                                <h5 className="mb-1 fw-semibold">Ideias prontas a usar</h5>
                                 <p className="fs-13 text-muted mb-0">Um briefing por intencao, pronto para leitura, adaptacao e execucao.</p>
                             </div>
                             <span className="badge bg-light text-muted fs-12 px-3 py-2">

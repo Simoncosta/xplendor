@@ -1,85 +1,63 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { Col, Container, Row } from "reactstrap";
 import { createSelector } from "reselect";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
+import ReactApexChart from "react-apexcharts";
 
 import { analyticsCar } from "slices/cars/thunk";
-import { carRecalculate, refreshCarMetaAds, regenerateCarAnalysis } from "slices/car-ai-analises/thunk";
 
-// ── Sub-componentes ────────────────────────────────────────────────────────────
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
+import CarPageNav from "./components/CarPageNav";
 import CarAnalyticsKpiStrip from "./components/CarAnalyticsKpiStrip";
-import SilentBuyerIntentCard from "./components/SilentBuyerIntentCard";
-import TabOverview from "./components/TabOverview";
-import TabPerformance from "./components/TabPerformance";
-import TabAnaliseIA from "./components/TabAnaliseIA";
-import TabViatura from "./components/TabViatura";
 
-// ── Helpers / data ─────────────────────────────────────────────────────────────
 import {
     fmt, fmtDate, fmtTime,
     buildKpiItems,
     buildTrafficSources, buildDonutOptions,
     buildInteractions,
-    buildInsight,
-    timelineDesc,
     channelLabels, channelColors,
-    ipsClassBadge, ipsFactorLabels, marketPositionMeta,
-    buildIpsRadialOptions, buildIpsHistoryOptions,
-    forecastOptions,
+    ipsClassBadge, timelineDesc,
 } from "./helpers/CarAnalyticsData";
 
-type TabKey = "overview" | "performance" | "inteligencia" | "viatura";
-
-const tabs: { key: TabKey; label: string; icon: string }[] = [
-    { key: "overview", label: "Overview", icon: "ri-dashboard-line" },
-    { key: "performance", label: "Performance", icon: "ri-bar-chart-grouped-line" },
-    { key: "inteligencia", label: "Inteligência", icon: "ri-cpu-line" },
-    { key: "viatura", label: "Viatura", icon: "ri-car-line" },
-];
+const sectionStyle = {
+    padding: "16px 18px",
+    border: "1px solid #e9ebec",
+    borderRadius: "16px",
+    background: "#fff",
+};
 
 const selectCarState = (state: any) => state.Car;
-const selectCarAiAnalysesState = (state: any) => state.CarAiAnalyses;
-
 const selectCarAnalyticsViewModel = createSelector(
-    [selectCarState, selectCarAiAnalysesState],
-    (carState, carAiAnalysesState) => ({
+    [selectCarState],
+    (carState) => ({
         carAnalytics: carState.data.carAnalytics,
         loading: carState.loading.analytics,
-        generatingAi: carAiAnalysesState.loading.create,
-        refreshingMetaAds: carAiAnalysesState.loading.refreshMeta,
-        regeneratingAnalysis: carAiAnalysesState.loading.regenerate,
     })
 );
 
 export default function CarAnalytics() {
-    document.title = "Análises do Carro | Xplendor";
+    document.title = "Analytics | Xplendor";
 
     const dispatch: any = useDispatch();
     const { id } = useParams();
-    const [activeTab, setActiveTab] = useState<TabKey>("overview");
-    const [companyId, setCompanyId] = useState<number>(0);
-
-    const { carAnalytics, loading, generatingAi, refreshingMetaAds, regeneratingAnalysis } = useSelector(selectCarAnalyticsViewModel);
-    const [refreshingAndReanalyzing, setRefreshingAndReanalyzing] = useState(false);
+    const { carAnalytics, loading } = useSelector(selectCarAnalyticsViewModel);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
-        const obj = JSON.parse(authUser);
-        setCompanyId(Number(obj.company_id));
-        dispatch(analyticsCar({ companyId: obj.company_id, id: Number(id) }));
+        const { company_id } = JSON.parse(authUser);
+        dispatch(analyticsCar({ companyId: company_id, id: Number(id) }));
     }, [dispatch, id]);
 
-    // ── Dados derivados ────────────────────────────────────────────────────────
     const car = carAnalytics?.car;
     const m = carAnalytics?.metrics;
     const ai = car?.analyses?.analysis;
     const aiMeta = car?.analyses;
     const ips = carAnalytics?.potential_score;
     const perf = carAnalytics?.performance;
+    const timeline = carAnalytics?.timeline || [];
 
     const trafficSources = useMemo(
         () => buildTrafficSources(carAnalytics?.traffic_sources),
@@ -93,7 +71,6 @@ export default function CarAnalytics() {
         () => buildDonutOptions(trafficSources, totalTraffic),
         [trafficSources, totalTraffic]
     );
-
     const interactions = useMemo(
         () => buildInteractions(carAnalytics?.interactions_breakdown),
         [carAnalytics?.interactions_breakdown]
@@ -102,9 +79,6 @@ export default function CarAnalytics() {
         () => interactions.reduce((s: number, i: any) => s + i.total, 0),
         [interactions]
     );
-
-    const insight = useMemo(() => buildInsight(m), [m]);
-
     const perfTotals = perf?.totals;
     const perfChannels = useMemo(
         () => (perf?.by_channel || []).map((ch: any) => ({
@@ -115,75 +89,14 @@ export default function CarAnalytics() {
         [perf?.by_channel]
     );
 
-    const ipsRadialOptions = useMemo(() => buildIpsRadialOptions(ips), [ips]);
-    const ipsHistoryOptions = useMemo(() => buildIpsHistoryOptions(ips), [ips]);
-    const recommendation = carAnalytics?.smart_ads_recommendation ?? null;
-    const recommendedCreative = carAnalytics?.recommended_creative ?? null;
-    const recommendedPlatform = carAnalytics?.ai_analysis?.recommended_channel ?? null;
-    const marketIntelligence = carAnalytics?.market_intelligence ?? null;
-    const metaAdsTargetingStatus = carAnalytics?.meta_ads_targeting_status ?? null;
-    const silentBuyers = carAnalytics?.silent_buyers ?? null;
-    const overviewKpiStrip = <CarAnalyticsKpiStrip items={buildKpiItems(m)} />;
-
     if (loading || !carAnalytics) return null;
 
-    // ── Handlers ──────────────────────────────────────────────────────────────
-    const handleRefreshMetaAds = async () => {
-        if (!companyId || !id) return;
-
-        try {
-            await dispatch(refreshCarMetaAds({ companyId, carId: Number(id) })).unwrap();
-            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
-            toast.success("Dados Meta Ads atualizados com sucesso.");
-        } catch (error: any) {
-            toast.error(error?.message ?? error ?? "Nao foi possivel atualizar os dados Meta Ads.");
-        }
-    };
-
-    const handleRegenerateAnalysis = async () => {
-        if (!companyId || !id) return;
-
-        try {
-            await dispatch(regenerateCarAnalysis({ companyId, carId: Number(id) })).unwrap();
-            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
-            toast.success("Analise regenerada com sucesso.");
-        } catch (error: any) {
-            toast.error(error?.message ?? error ?? "Nao foi possivel regenerar a analise.");
-        }
-    };
-
-    const handleRefreshAndReanalyze = async () => {
-        if (!companyId || !id) return;
-
-        setRefreshingAndReanalyzing(true);
-
-        try {
-            await dispatch(refreshCarMetaAds({ companyId, carId: Number(id) })).unwrap();
-            await dispatch(regenerateCarAnalysis({ companyId, carId: Number(id) })).unwrap();
-            await dispatch(analyticsCar({ companyId, id: Number(id) })).unwrap();
-            toast.success("Dados Meta Ads e analise atualizados com sucesso.");
-        } catch (error: any) {
-            toast.error(error?.message ?? error ?? "Nao foi possivel atualizar e reanalisar esta viatura.");
-        } finally {
-            setRefreshingAndReanalyzing(false);
-        }
-    };
-
-    const handleRecalculate = () => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-        const { company_id } = JSON.parse(authUser);
-        dispatch(carRecalculate({ companyId: company_id, carId: Number(id) }));
-        toast("Recalculando análise de viatura... Aguarde um pouco e recarregue a página.");
-    };
-
-    // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="page-content mb-3">
             <ToastContainer />
             <Container fluid>
 
-                <Row className="mb-3">
+                <Row className="mb-2">
                     <Col>
                         <CarAnalyticsHeader
                             car={car}
@@ -196,146 +109,165 @@ export default function CarAnalytics() {
                     </Col>
                 </Row>
 
+                <Row className="mb-3">
+                    <Col>
+                        <CarPageNav active="analytics" />
+                    </Col>
+                </Row>
+
                 <Row>
                     <Col>
-                        <div
-                            style={{
-                                border: "1px solid #e9ebec",
-                                borderRadius: "18px",
-                                background: "#fff",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    padding: "16px 16px 0 16px",
-                                    borderBottom: "1px solid #e9ebec",
-                                }}
-                            >
-                                <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3 px-2">
+                        <div className="d-grid gap-3">
+
+                            <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
+
+                            <section style={sectionStyle}>
+                                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                            Análise detalhada
+                                            Gráfico principal
                                         </p>
-                                        <h5 className="mb-1 fw-semibold">Painel estratégico com leitura clara por contexto</h5>
-                                        <p className="text-muted fs-13 mb-0">
-                                            Cada tab organiza a decisão por foco, sem sobrecarga visual nem repetição desnecessária.
-                                        </p>
+                                        <h6 className="mb-0 fw-semibold">Distribuição de tráfego</h6>
                                     </div>
+                                    <span className="text-muted fs-12">{totalTraffic} sessões monitorizadas</span>
                                 </div>
-                                <ul
-                                    className="nav nav-tabs nav-tabs-custom nav-justified rounded-3 p-2 mb-0"
-                                    style={{
-                                        borderBottom: "none",
-                                        background: "#fff",
-                                        gap: "0.35rem",
-                                    }}
-                                >
-                                    {tabs.map((t) => (
-                                        <li className="nav-item" key={t.key}>
-                                            <button
-                                                className={`nav-link w-100 ${activeTab === t.key ? "" : ""}`}
-                                                onClick={() => setActiveTab(t.key)}
-                                                style={{
-                                                    border: activeTab === t.key ? "1px solid #e9ebec" : "1px solid transparent",
-                                                    borderBottom: "none",
-                                                    borderRadius: "0.75rem",
-                                                    background: activeTab === t.key ? "#f8f9fa" : "transparent",
-                                                    color: activeTab === t.key ? "#405189" : "#878a99",
-                                                    fontWeight: activeTab === t.key ? 600 : 400,
-                                                    padding: "12px 14px",
-                                                    fontSize: "13px",
-                                                    transition: "all 0.2s ease",
-                                                    cursor: "pointer",
-                                                }}
-                                            >
-                                                <i className={`${t.icon} me-2`} />
-                                                {t.label}
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-
-                            <div style={{ padding: "16px" }}>
-                                {activeTab === "overview" && (
-                                    <TabOverview
-                                        recommendation={recommendation}
-                                        recommendedCreative={recommendedCreative}
-                                        recommendedPlatform={recommendedPlatform}
-                                        marketIntelligence={marketIntelligence}
-                                        silentBuyers={silentBuyers}
-                                        metrics={m}
-                                        insight={insight}
-                                        kpiStrip={overviewKpiStrip}
-                                        onOpenIntelligence={() => setActiveTab("inteligencia")}
-                                        marketingUrl={`/cars/${id}/marketing`}
-                                    />
-                                )}
-
-                                {activeTab === "performance" && (
-                                    <TabPerformance
-                                        companyId={companyId}
-                                        carId={Number(id)}
-                                        trafficSources={trafficSources}
-                                        totalTraffic={totalTraffic}
-                                        donutOptions={donutOptions}
-                                        interactions={interactions}
-                                        totalInteractions={totalInteractions}
-                                        perfTotals={perfTotals}
-                                        perfChannels={perfChannels}
-                                        fmt={fmt}
-                                    />
-                                )}
-
-                                {activeTab === "inteligencia" && (
-                                    <Row className="g-3">
-                                        <Col xs={12}>
-                                            <SilentBuyerIntentCard summary={silentBuyers} />
-                                        </Col>
-                                        <Col xs={12}>
-                                            <TabAnaliseIA
-                                                ips={ips}
-                                                marketIntelligence={marketIntelligence}
-                                                metaAdsTargetingStatus={metaAdsTargetingStatus}
-                                                ai={ai}
-                                                ipsRadialOptions={ipsRadialOptions}
-                                                ipsHistoryOptions={ipsHistoryOptions}
-                                                ipsClassBadge={ipsClassBadge}
-                                                ipsFactorLabels={ipsFactorLabels}
-                                                marketPositionMeta={marketPositionMeta}
-                                                forecastOptions={forecastOptions}
-                                                fmtDate={fmtDate}
-                                                carId={id}
-                                                companyId={companyId}
-                                                onRecalculate={handleRecalculate}
-                                                onRefreshMetaAds={handleRefreshMetaAds}
-                                                onRegenerateAnalysis={handleRegenerateAnalysis}
-                                                onRefreshAndReanalyze={handleRefreshAndReanalyze}
-                                                generatingAi={generatingAi}
-                                                refreshingMetaAds={refreshingMetaAds}
-                                                regeneratingAnalysis={regeneratingAnalysis}
-                                                refreshingAndReanalyzing={refreshingAndReanalyzing}
+                                {trafficSources.length === 0 ? (
+                                    <div className="text-center py-4 text-muted">
+                                        <i className="ri-pie-chart-line fs-1 d-block mb-2" />
+                                        <p className="mb-0 fs-13">Ainda sem dados de tráfego</p>
+                                    </div>
+                                ) : (
+                                    <Row className="align-items-center g-3">
+                                        <Col lg={6}>
+                                            <ReactApexChart
+                                                options={donutOptions}
+                                                series={trafficSources.map((i) => Number(i.total || 0))}
+                                                type="donut"
+                                                height={260}
                                             />
+                                        </Col>
+                                        <Col lg={6}>
+                                            <div className="vstack gap-2">
+                                                {trafficSources.map((item, idx) => {
+                                                    const pct = totalTraffic > 0 ? ((item.total / totalTraffic) * 100).toFixed(1) : "0.0";
+                                                    return (
+                                                        <div key={idx} className="d-flex align-items-center justify-content-between fs-13 py-2 border-bottom">
+                                                            <div className="d-flex align-items-center gap-2">
+                                                                <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, display: "inline-block", flexShrink: 0 }} />
+                                                                <span>{item.label}</span>
+                                                            </div>
+                                                            <span className="fw-semibold">{item.total} <span className="text-muted fw-normal">({pct}%)</span></span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </Col>
                                     </Row>
                                 )}
+                            </section>
 
-                                {activeTab === "viatura" && (
-                                    <TabViatura
-                                        car={car}
-                                        ips={ips}
-                                        timeline={carAnalytics.timeline}
-                                        fmtDate={fmtDate}
-                                        fmtTime={fmtTime}
-                                        timelineDesc={timelineDesc}
-                                    />
+                            <section style={sectionStyle}>
+                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
+                                    Métricas resumidas
+                                </p>
+                                <div className="row g-2">
+                                    <div className="col-lg-3 col-sm-6"><Metric label="Sessões" value={perfTotals?.total_sessions ?? 0} /></div>
+                                    <div className="col-lg-3 col-sm-6"><Metric label="Leads" value={perfTotals?.total_leads ?? 0} /></div>
+                                    <div className="col-lg-3 col-sm-6"><Metric label="WhatsApp" value={perfTotals?.total_whatsapp_clicks ?? 0} /></div>
+                                    <div className="col-lg-3 col-sm-6"><Metric label="Conversão" value={perfTotals?.avg_conversion_rate ? `${perfTotals.avg_conversion_rate}%` : "—"} /></div>
+                                </div>
+                            </section>
+
+                            <section style={sectionStyle}>
+                                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Tabela por canal
+                                        </p>
+                                        <h6 className="mb-0 fw-semibold">Performance consolidada</h6>
+                                    </div>
+                                    <span className="text-muted fs-12">{totalInteractions} interações totais</span>
+                                </div>
+                                <div className="table-responsive">
+                                    <table className="table table-sm align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th className="ps-0">Canal</th>
+                                                <th className="text-end">Sessões</th>
+                                                <th className="text-end">Leads</th>
+                                                <th className="text-end">WhatsApp</th>
+                                                <th className="text-end">Interações</th>
+                                                <th className="text-end">Investimento</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {perfChannels.map((ch: any, idx: number) => (
+                                                <tr key={idx}>
+                                                    <td className="ps-0">
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: ch.color, display: "inline-block" }} />
+                                                            <span className="fw-medium">{ch.label}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-end">{ch.total_sessions}</td>
+                                                    <td className="text-end">{ch.total_leads}</td>
+                                                    <td className="text-end">{ch.total_whatsapp_clicks}</td>
+                                                    <td className="text-end">{ch.total_interactions}</td>
+                                                    <td className="text-end">{ch.total_spend > 0 ? `€${fmt(ch.total_spend)}` : "—"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+
+                            <section style={sectionStyle}>
+                                <h6 className="fs-13 fw-semibold mb-3">
+                                    <i className="ri-time-line me-2 text-primary" />
+                                    Timeline de actividade
+                                </h6>
+                                {!timeline.length ? (
+                                    <div className="text-center py-4 text-muted bg-light-subtle rounded">
+                                        <i className="ri-time-line fs-1 d-block mb-2" />
+                                        <p className="fs-13 mb-0">Ainda sem histórico registado</p>
+                                    </div>
+                                ) : (
+                                    <div className="vstack gap-2">
+                                        {timeline.slice(0, 12).map((item: any, idx: number) => (
+                                            <div key={idx} className="d-flex align-items-start gap-3" style={{ border: "1px dashed #e9ebec", borderRadius: "0.5rem", padding: "0.75rem", background: "#fff" }}>
+                                                <div
+                                                    className={`avatar-title rounded-circle bg-${item.color}-subtle text-${item.color}`}
+                                                    style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                                >
+                                                    <i className={`${item.icon} fs-16`} />
+                                                </div>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                                        <span className="fw-semibold fs-13">{item.label}</span>
+                                                        <span className="text-muted fs-12">{fmtDate(item.created_at)} às {fmtTime(item.created_at)}</span>
+                                                    </div>
+                                                    <p className="text-muted fs-12 mb-0">{timelineDesc(item)}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 )}
-                            </div>
+                            </section>
+
                         </div>
                     </Col>
                 </Row>
 
             </Container>
+        </div>
+    );
+}
+
+function Metric({ label, value }: { label: string; value: string | number }) {
+    return (
+        <div className="d-flex align-items-center justify-content-between px-3 py-3 rounded-3 bg-light-subtle">
+            <span className="text-muted fs-13">{label}</span>
+            <span className="fw-semibold">{value}</span>
         </div>
     );
 }

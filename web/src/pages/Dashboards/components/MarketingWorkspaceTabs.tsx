@@ -19,8 +19,8 @@ type Props = {
 type TabKey = "overview" | "ranking";
 
 const tabs: { key: TabKey; label: string }[] = [
-    { key: "overview", label: "Resumo marketing" },
-    { key: "ranking", label: "Ranking para anunciar" },
+    { key: "overview", label: "O que fazer hoje" },
+    { key: "ranking", label: "Onde investir agora" },
 ];
 
 export default function MarketingWorkspaceTabs({ marketingPerformance, marketingRoi, rankingCars }: Props) {
