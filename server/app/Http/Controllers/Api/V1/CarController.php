@@ -8,6 +8,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CarRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Models\Car;
+use App\Services\Ads\AudienceSuggestionService;
+use App\Services\Ads\AudienceGapAnalysisService;
 use App\Services\CarAiAnalysesService;
 use App\Services\CarService;
 use App\Services\MetaAdsCarSyncService;
@@ -21,6 +23,8 @@ class CarController extends Controller
         protected CarService $carService,
         protected CarAiAnalysesService $carAiAnalysesService,
         protected MetaAdsCarSyncService $metaAdsCarSyncService,
+        protected AudienceSuggestionService $audienceSuggestionService,
+        protected AudienceGapAnalysisService $audienceGapAnalysisService,
     ) {}
 
     public function index(PaginateRequest $request, int $companyId)
@@ -213,6 +217,40 @@ class CarController extends Controller
             return ApiResponse::error($exception->getMessage(), 503);
         } catch (Throwable $exception) {
             return ApiResponse::error('Nao foi possivel regenerar a analise desta viatura.', 500);
+        }
+    }
+
+    public function audience(int $companyId, int $carId)
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        try {
+            $car = $this->resolveCarForCompany($companyId, $carId);
+            $interests = $this->audienceSuggestionService->suggestForCar($car);
+
+            return ApiResponse::success([
+                'interests' => $interests,
+            ], 'Publico recomendado carregado com sucesso.');
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Nao foi possivel carregar o publico recomendado desta viatura.', 500);
+        }
+    }
+
+    public function audienceAnalysis(int $companyId, int $carId)
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        try {
+            $car = $this->resolveCarForCompany($companyId, $carId);
+            $analysis = $this->audienceGapAnalysisService->analyze($car);
+
+            return ApiResponse::success($analysis, 'Analise do publico carregada com sucesso.');
+        } catch (Throwable $exception) {
+            return ApiResponse::error('Nao foi possivel carregar a analise do publico desta viatura.', 500);
         }
     }
 

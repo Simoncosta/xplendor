@@ -125,6 +125,10 @@ export const generateCarMarketingApi = (companyId: number, carId?: number) =>
         carId ? { car_id: carId } : {}
     );
 export const getCarMarketingApi = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/marketing");
+export const getCarAudienceSuggestionsApi = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AUDIENCE);
+export const getCarAudienceAnalysisApi = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AUDIENCE_ANALYSIS);
 
 // CAR AI ANALISES
 export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {});

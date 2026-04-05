@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import { Col, Container, Row } from "reactstrap";
@@ -7,10 +7,12 @@ import { ToastContainer } from "react-toastify";
 import CarAdCampaignMapper from "pages/Companies/CompanyProfile/components/CarAdCampaignMapper";
 
 import { analyticsCar } from "slices/cars/thunk";
+import { getCarAudienceAnalysisApi } from "helpers/laravel_helper";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
 import SmartAdsRecommendationCard from "./components/SmartAdsRecommendationCard";
+import AudienceSuggestionCard from "./components/AudienceSuggestionCard";
 
 import {
     fmt,
@@ -42,6 +44,8 @@ export default function CarAdsPage() {
     const { id } = useParams();
 
     const { carAnalytics, loading } = useSelector(selectViewModel);
+    const [audienceAnalysis, setAudienceAnalysis] = useState<any | null>(null);
+    const [loadingAudience, setLoadingAudience] = useState(false);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -65,6 +69,25 @@ export default function CarAdsPage() {
         if (!authUser) return 0;
         return Number(JSON.parse(authUser).company_id);
     }, []);
+
+    useEffect(() => {
+        if (!companyId || !id) {
+            return;
+        }
+
+        setLoadingAudience(true);
+
+        getCarAudienceAnalysisApi(companyId, Number(id))
+            .then((response: any) => {
+                setAudienceAnalysis(response?.data ?? null);
+            })
+            .catch(() => {
+                setAudienceAnalysis(null);
+            })
+            .finally(() => {
+                setLoadingAudience(false);
+            });
+    }, [companyId, id]);
 
     const perfChannels = useMemo(
         () => (perf?.by_channel || []).map((ch: any) => ({
@@ -111,6 +134,11 @@ export default function CarAdsPage() {
                                 recommendedPlatform={recommendedPlatform}
                                 marketingUrl={`/cars/${id}/marketing`}
                                 metrics={m}
+                            />
+
+                            <AudienceSuggestionCard
+                                analysis={audienceAnalysis}
+                                loading={loadingAudience}
                             />
 
                             <section style={sectionStyle}>
