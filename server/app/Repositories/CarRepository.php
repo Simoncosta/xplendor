@@ -39,6 +39,16 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
                 continue;
             }
 
+            if ($field === 'has_active_campaign') {
+                if ((bool) $value) {
+                    $query->whereHas('adCampaigns', function ($campaignQuery) {
+                        $campaignQuery->where('is_active', 1);
+                    });
+                }
+
+                continue;
+            }
+
             if (is_array($value) && isset($value['like'])) {
                 $query->where($field, 'LIKE', '%' . $value['like'] . '%');
                 continue;

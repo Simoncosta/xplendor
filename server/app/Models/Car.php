@@ -178,6 +178,11 @@ class Car extends Model implements AuditableContract
         return $this->hasMany(CarMarketingIdea::class);
     }
 
+    public function adCampaigns(): HasMany
+    {
+        return $this->hasMany(CarAdCampaign::class, 'car_id');
+    }
+
     public function getPromoDiscountValueAttribute(): ?float
     {
         $priceGross = $this->price_gross;

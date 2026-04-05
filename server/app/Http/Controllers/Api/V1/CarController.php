@@ -49,6 +49,10 @@ class CarController extends Controller
             $filter['car_model_id'] = explode(',', $request->input('car_model_id'));
         }
 
+        if ($request->has('has_active_campaign') && $request->input('has_active_campaign') !== '') {
+            $filter['has_active_campaign'] = $request->boolean('has_active_campaign');
+        }
+
         if ($request->filled('mincost') && $request->filled('maxcost')) {
             $filter['price_gross'] = ['between' => [$request->input('mincost'), $request->input('maxcost')]];
         }

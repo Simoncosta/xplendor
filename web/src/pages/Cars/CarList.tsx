@@ -32,6 +32,7 @@ import { getCarModels } from "slices/car-models/thunk";
 type CarStatusFilter = "active" | "sold" | "available_soon" | "draft";
 type StatusFilterOption = { value: CarStatusFilter | null; label: string };
 type StockTypeOption = { value: boolean | null; label: string };
+type InvestmentFilterOption = { value: boolean | null; label: string };
 
 const statusFilterOptions: StatusFilterOption[] = [
     { value: null, label: "Todos" },
@@ -45,6 +46,11 @@ const stockTypeOptions: StockTypeOption[] = [
     { value: null, label: "Todos" },
     { value: true, label: "Retoma" },
     { value: false, label: "Stock proprio" },
+];
+
+const investmentFilterOptions: InvestmentFilterOption[] = [
+    { value: null, label: "Todos" },
+    { value: true, label: "Com investimento activo" },
 ];
 
 const getMetricCount = (items: any) => (Array.isArray(items) ? items.length : Number(items ?? 0));
@@ -159,6 +165,7 @@ const CarList = () => {
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
     const [statusFilter, setStatusFilter] = useState<CarStatusFilter | null>("active");
     const [isResumeFilter, setIsResumeFilter] = useState<boolean | null>(null);
+    const [hasActiveCampaignFilter, setHasActiveCampaignFilter] = useState<boolean | null>(null);
     const [mincost, setMincost] = useState<number | undefined>(undefined);
     const [maxcost, setMaxcost] = useState<number | undefined>(undefined);
     const [sort, setSort] = useState<{
@@ -208,6 +215,7 @@ const CarList = () => {
                     companyId: obj.company_id,
                     status: statusFilter ?? undefined,
                     is_resume: isResumeFilter ?? undefined,
+                    has_active_campaign: hasActiveCampaignFilter ?? undefined,
                     carBrandIds: carBrandIds,
                     carModelIds: carModelIds,
                     mincost: mincost,
@@ -226,6 +234,7 @@ const CarList = () => {
         carModelIds,
         statusFilter,
         isResumeFilter,
+        hasActiveCampaignFilter,
         mincost,
         maxcost,
         sort,
@@ -462,6 +471,7 @@ const CarList = () => {
                                                 setMaxcost(undefined);
                                                 setStatusFilter(null);
                                                 setIsResumeFilter(null);
+                                                setHasActiveCampaignFilter(null);
                                                 setSort({
                                                     field: null,
                                                     direction: null,
@@ -527,6 +537,19 @@ const CarList = () => {
                                         value={stockTypeOptions.find((option) => option.value === isResumeFilter) ?? stockTypeOptions[0]}
                                         onChange={(selected: StockTypeOption | null) => {
                                             setIsResumeFilter(selected?.value ?? null);
+                                        }}
+                                    />
+                                </div>
+                                <div className="filter-choices-input mb-4">
+                                    <Label for="car_investment_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Investimento</Label>
+                                    <Select
+                                        inputId="car_investment_status"
+                                        placeholder="Todo o stock"
+                                        options={investmentFilterOptions}
+                                        isClearable={false}
+                                        value={investmentFilterOptions.find((option) => option.value === hasActiveCampaignFilter) ?? investmentFilterOptions[0]}
+                                        onChange={(selected: InvestmentFilterOption | null) => {
+                                            setHasActiveCampaignFilter(selected?.value ?? null);
                                         }}
                                     />
                                 </div>

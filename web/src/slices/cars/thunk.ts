@@ -18,6 +18,7 @@ export const getCarsPaginate = createAsyncThunk(
             companyId: number;
             status?: 'active' | 'sold' | 'draft' | 'available_soon';
             is_resume?: boolean;
+            has_active_campaign?: boolean;
             carBrandIds?: number[];
             carModelIds?: number[];
             mincost?: number;
@@ -34,6 +35,7 @@ export const getCarsPaginate = createAsyncThunk(
                 companyId: params.companyId,
                 status: params.status,
                 is_resume: params.is_resume,
+                has_active_campaign: params.has_active_campaign,
                 carBrandIds: params.carBrandIds,
                 carModelIds: params.carModelIds,
                 mincost: params.mincost,
