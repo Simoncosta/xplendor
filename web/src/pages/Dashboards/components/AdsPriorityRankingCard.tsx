@@ -29,13 +29,13 @@ const formatConfidence = (value: number) => `${value}%`;
 const priorityMeta = (label: IAdsPriorityRankedCar["investment_label"]) => {
     switch (label) {
         case "high_priority":
-            return { label: "Alta prioridade", bg: "#e7f8ee", color: "#0f8a4b" };
+            return { label: "Precisa de atenção agora", bg: "#e7f8ee", color: "#0f8a4b" };
         case "medium_priority":
-            return { label: "Bom candidato", bg: "#fff4d6", color: "#a16207" };
+            return { label: "Acompanhar esta semana", bg: "#fff4d6", color: "#a16207" };
         case "avoid_investment":
             return { label: "Evitar investimento", bg: "#fde8e4", color: "#c2410c" };
         default:
-            return { label: "Em observação", bg: "#eef2f7", color: "#475569" };
+            return { label: "Monitorizar", bg: "#eef2f7", color: "#475569" };
     }
 };
 

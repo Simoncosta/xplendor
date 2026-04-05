@@ -11,6 +11,12 @@ interface Props {
 }
 
 export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsClassBadge }: Props) {
+    const ipsLabel = ips?.classification === "hot"
+        ? "Probabilidade forte"
+        : ips?.classification === "warm"
+            ? "Acompanhar esta semana"
+            : "Precisa de atenção agora";
+
     return (
         <div
             style={{
@@ -60,13 +66,18 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
                         {ips && (
                             <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
                                 <i className="ri-award-line me-1" />
-                                IPS {ips.score}/100
+                                Probabilidade de venda {ips.score}/100
+                            </span>
+                        )}
+                        {ips && (
+                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
+                                {ipsLabel}
                             </span>
                         )}
                         {ai && (
                             <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"} rounded-pill`}>
                                 <i className="ri-alarm-warning-line me-1" />
-                                Urgência {aiMeta?.urgency_level}
+                                {aiMeta?.urgency_level === "Alta" ? "Precisa de atenção agora" : "Acompanhar esta semana"}
                             </span>
                         )}
                         {aiMeta?.price_alert && (

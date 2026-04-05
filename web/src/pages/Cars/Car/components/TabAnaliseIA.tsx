@@ -1,6 +1,7 @@
 import { Col, Row, Progress } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
 import XButton from "Components/Common/XButton";
+import { ipsExecutiveLabel } from "../helpers/CarAnalyticsData";
 
 interface Props {
     ips: any;
@@ -71,7 +72,7 @@ export default function TabAnaliseIA({
                             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                 Pipeline operacional
                             </p>
-                            <h6 className="mb-1 fw-semibold">Sincronizar campanha e gerar leitura IA</h6>
+                            <h6 className="mb-1 fw-semibold">Passos para análise completa</h6>
                             <p className="text-muted fs-13 mb-0">
                                 Primeiro sincronizas a campanha, depois confirmas o estado dos dados e só então geras a leitura IA com contexto atualizado.
                             </p>
@@ -96,9 +97,9 @@ export default function TabAnaliseIA({
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                             Passo 1
                                         </p>
-                                        <h6 className="mb-1 fw-semibold fs-14">Sincronizar campanha</h6>
+                                        <h6 className="mb-1 fw-semibold fs-14">Buscar dados do Meta</h6>
                                         <p className="text-muted fs-12 mb-0">
-                                            Vai buscar métricas atuais, tenta resolver o ad set e atualiza o targeting guardado.
+                                            Vai buscar métricas atuais, tenta resolver o ad set e atualiza o público guardado.
                                         </p>
                                     </div>
                                     <i className="ri-refresh-line text-info fs-20" />
@@ -122,7 +123,7 @@ export default function TabAnaliseIA({
                                     loading={refreshingMetaAds}
                                     disabled={refreshingAndReanalyzing || refreshingMetaAds}
                                 >
-                                    {refreshingMetaAds ? "A sincronizar campanha..." : "Sincronizar campanha"}
+                                    {refreshingMetaAds ? "A buscar dados do Meta..." : "Buscar dados do Meta"}
                                 </XButton>
                             </div>
                         </div>
@@ -166,7 +167,7 @@ export default function TabAnaliseIA({
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                             Passo 3
                                         </p>
-                                        <h6 className="mb-1 fw-semibold fs-14">Gerar leitura IA</h6>
+                                        <h6 className="mb-1 fw-semibold fs-14">Analisar com IA</h6>
                                         <p className="text-muted fs-12 mb-0">
                                             Reprocessa a análise com os dados mais recentes de performance, targeting e contexto comercial.
                                         </p>
@@ -185,7 +186,7 @@ export default function TabAnaliseIA({
                                     loading={regeneratingAnalysis || generatingAi}
                                     disabled={refreshingAndReanalyzing || regeneratingAnalysis || generatingAi}
                                 >
-                                    {regeneratingAnalysis || generatingAi ? "A gerar leitura IA..." : "Gerar leitura IA"}
+                                    {regeneratingAnalysis || generatingAi ? "A analisar com IA..." : "Analisar com IA"}
                                 </XButton>
                             </div>
                         </div>
@@ -200,7 +201,7 @@ export default function TabAnaliseIA({
                             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                 Score
                             </p>
-                            <h6 className="fs-15 fw-semibold mb-0">Indice de Potencial de Venda</h6>
+                            <h6 className="fs-15 fw-semibold mb-0">Probabilidade de venda</h6>
                         </div>
                         <i className="ri-award-line text-primary fs-20" />
                     </div>
@@ -211,7 +212,7 @@ export default function TabAnaliseIA({
                                 <ReactApexChart options={ipsRadialOptions} series={[ips.score]} type="radialBar" height={200} />
                                 <div className="d-flex align-items-center justify-content-center gap-2 mt-1 flex-wrap">
                                     <span className={`badge rounded-pill fs-12 px-3 py-2 text-dark ${ipsClassBadge(ips.classification)}`}>
-                                        {ips.classification === "hot" ? "Hot" : ips.classification === "warm" ? "Warm" : "Cold"}
+                                        {ipsExecutiveLabel(ips.classification)}
                                     </span>
                                     {ips.price_vs_market !== null && (
                                         <span className={`badge rounded-pill fs-11 text-dark ${Number(ips.price_vs_market) < 0 ? "badge-soft-success" : "badge-soft-danger"}`}>
@@ -236,7 +237,7 @@ export default function TabAnaliseIA({
 
                                 <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
                                     <span className={`badge rounded-pill px-3 py-2 fs-12 ${marketMeta.className}`}>
-                                        {formatPercent(marketIntelligence?.car_price_vs_median_pct)} vs mediana
+                                        {formatPercent(marketIntelligence?.car_price_vs_median_pct)} vs mercado
                                     </span>
                                 </div>
 
@@ -265,7 +266,14 @@ export default function TabAnaliseIA({
                                     const pct = Math.round((pts / factor.max) * 100);
 
                                     return (
-                                        <div key={key} className="bg-light-subtle rounded-3 px-3 py-2">
+                                        <div
+                                            key={key}
+                                            className="rounded-3 px-3 py-2"
+                                            style={{
+                                                background: pct < 50 ? (pct < 35 ? "#fde8e4" : "#fff7e6") : "#f8f9fa",
+                                                border: pct < 50 ? `1px solid ${pct < 35 ? "#f06548" : "#f7b84b"}` : "1px solid transparent",
+                                            }}
+                                        >
                                             <div className="d-flex align-items-center justify-content-between mb-1">
                                                 <div className="d-flex align-items-center gap-2">
                                                     <i className={`${factor.icon} text-${factor.color} fs-14`} />
@@ -286,6 +294,11 @@ export default function TabAnaliseIA({
                                                     </span>
                                                 </div>
                                             )}
+                                            {pct < 50 && (
+                                                <div className="fs-11 fw-semibold mt-2" style={{ color: pct < 35 ? "#c2410c" : "#a16207" }}>
+                                                    {pct < 35 ? "Este fator está a travar a venda agora." : "Convém acompanhar este fator esta semana."}
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -293,9 +306,9 @@ export default function TabAnaliseIA({
 
                             <div className="mt-3">
                                 <div className="d-flex align-items-center justify-content-between mb-2">
-                                    <span className="fs-12 fw-semibold text-muted text-uppercase">Historico 90 dias</span>
+                                    <span className="fs-12 fw-semibold text-muted text-uppercase">Histórico 90 dias</span>
                                     <span className="fs-11 text-muted">
-                                        {ips.history?.length || 0} calculo{(ips.history?.length || 0) !== 1 ? "s" : ""}
+                                        {ips.history?.length || 0} cálculo{(ips.history?.length || 0) !== 1 ? "s" : ""}
                                     </span>
                                 </div>
                                 {ips.history && ips.history.length > 1 ? (
@@ -307,7 +320,7 @@ export default function TabAnaliseIA({
                                     />
                                 ) : (
                                     <div className="bg-light-subtle rounded-3 px-3 py-3">
-                                        <p className="fs-12 text-muted mb-0 text-center">Historico a construir com novos recalculos</p>
+                                        <p className="fs-12 text-muted mb-0 text-center">A calcular o potencial de venda. Volta amanhã.</p>
                                     </div>
                                 )}
                             </div>
@@ -315,16 +328,16 @@ export default function TabAnaliseIA({
                             <div className="mt-3 d-flex align-items-center justify-content-between gap-2 flex-wrap">
                                 <span className="fs-11 text-muted">Calculado {fmtDate(ips.calculated_at)}</span>
                                 <button className="btn btn-soft-primary btn-sm" onClick={onRecalculate}>
-                                    <i className="ri-refresh-line me-1" /> Recalcular
+                                    <i className="ri-refresh-line me-1" /> Atualizar análise
                                 </button>
                             </div>
                         </>
                     ) : (
                         <div className="text-center py-4 text-muted">
                             <i className="ri-award-line fs-1 d-block mb-2" />
-                            <p className="fs-13 mb-2">Score ainda nao calculado</p>
+                            <p className="fs-13 mb-2">A calcular o potencial de venda. Volta amanhã.</p>
                             <button className="btn btn-soft-primary btn-sm" onClick={onRecalculate}>
-                                <i className="ri-play-line me-1" /> Calcular agora
+                                <i className="ri-play-line me-1" /> Atualizar análise
                             </button>
                         </div>
                     )}
@@ -338,9 +351,9 @@ export default function TabAnaliseIA({
                             <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
                                 <div>
                                     <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                        Recomendacoes
+                                        Quem vai comprar
                                     </p>
-                                    <h6 className="fs-15 fw-semibold mb-0">Publico e argumentos</h6>
+                                    <h6 className="fs-15 fw-semibold mb-0">Público e argumentos</h6>
                                 </div>
                                 <i className="ri-user-heart-line text-info fs-20" />
                             </div>
@@ -348,8 +361,8 @@ export default function TabAnaliseIA({
                             {ai.publico_alvo && (
                                 <div className="vstack gap-2 mb-3">
                                     {[
-                                        { label: "Faixa etaria", val: ai.publico_alvo.faixa_etaria },
-                                        { label: "Genero", val: ai.publico_alvo.genero_predominante },
+                                        { label: "Faixa etária", val: ai.publico_alvo.faixa_etaria },
+                                        { label: "Género", val: ai.publico_alvo.genero_predominante },
                                         { label: "Perfil profissional", val: ai.publico_alvo.perfil_profissional },
                                         { label: "Estilo de vida", val: ai.publico_alvo.estilo_de_vida },
                                         { label: "Comportamento", val: ai.publico_alvo.comportamento_de_compra },
@@ -364,7 +377,7 @@ export default function TabAnaliseIA({
 
                             <div>
                                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                    Argumentos de venda
+                                    O que ajuda a vender
                                 </p>
                                 <div className="vstack gap-2">
                                     {(ai.argumentos_de_venda || []).map((arg: string, idx: number) => (
@@ -383,9 +396,9 @@ export default function TabAnaliseIA({
                             <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
                                 <div>
                                     <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                        IA
+                                    Leitura IA
                                     </p>
-                                    <h6 className="fs-15 fw-semibold mb-0">Plano recomendado</h6>
+                                    <h6 className="fs-15 fw-semibold mb-0">Leitura comercial</h6>
                                 </div>
                                 <i className="ri-cpu-line text-primary fs-20" />
                             </div>
@@ -407,10 +420,10 @@ export default function TabAnaliseIA({
 
                             <div className="bg-light-subtle rounded-3 px-3 py-3 mb-3">
                                 <p className="fw-semibold text-muted text-uppercase mb-2" style={{ fontSize: 11, letterSpacing: "0.08em" }}>
-                                    Leitura rapida
+                                    Leitura rápida
                                 </p>
                                 <p className="text-muted fs-12 mb-0">
-                                    Probabilidade estimada de venda com base em preco vs mercado, engagement, tempo em stock e historico do modelo.
+                                    Probabilidade estimada de venda com base em preço, procura, tempo em stock e comportamento recente.
                                 </p>
                                 {ai.previsao?.condicao && (
                                     <p className="text-muted fs-12 mb-0 mt-2">
@@ -433,25 +446,26 @@ export default function TabAnaliseIA({
                                     style={{ border: "1px solid #fde8e4", background: "#fff" }}
                                 >
                                     <p className="text-muted text-uppercase fw-semibold fs-11 mb-2">
-                                        Diagnóstico da campanha
+                                        O que está a travar a venda
                                     </p>
 
                                     <h6 className="fw-semibold mb-2 text-danger fs-14">
                                         {ai.campaign_diagnosis.main_problem === "targeting" && "Público mal definido"}
-                                        {ai.campaign_diagnosis.main_problem === "copy" && "Mensagem fraca"}
+                                        {ai.campaign_diagnosis.main_problem === "copy" && "Mensagem pouco convincente"}
                                         {ai.campaign_diagnosis.main_problem === "offer" && "Oferta desalinhada"}
                                         {ai.campaign_diagnosis.main_problem === "mixed" && "Problema misto"}
+                                        {ai.campaign_diagnosis.main_problem === "low_signal" && "Ainda a recolher dados"}
                                     </h6>
 
                                     <p className="mb-2 fs-13">
-                                        {ai.campaign_diagnosis.message}
+                                        {ai.campaign_diagnosis.summary || ai.campaign_diagnosis.message}
                                     </p>
 
                                     <div
                                         className="rounded-2 px-2 py-2 fs-13 fw-semibold"
                                         style={{ background: "#e7f8ee", color: "#0f8a4b" }}
                                     >
-                                        👉 {ai.campaign_diagnosis.action}
+                                        {ai.campaign_diagnosis.recommended_action || ai.campaign_diagnosis.action}
                                     </div>
                                 </div>
                             )}
@@ -474,7 +488,7 @@ export default function TabAnaliseIA({
                             {ai.sugestao_conteudo && (
                                 <div className="vstack gap-2 mt-3">
                                     {[
-                                        { label: "Titulo do anuncio", val: ai.sugestao_conteudo.titulo_anuncio },
+                                        { label: "Título do anúncio", val: ai.sugestao_conteudo.titulo_anuncio },
                                         { label: "Hook de video", val: ai.sugestao_conteudo.hook_video },
                                         { label: "Copy curto", val: ai.sugestao_conteudo.copy_curto },
                                     ].map((item, idx) => (
@@ -493,10 +507,10 @@ export default function TabAnaliseIA({
                     <section style={sectionStyle}>
                         <div className="text-center py-5 text-muted">
                             <i className="ri-cpu-line fs-1 d-block mb-3" />
-                            <h5>Inteligencia ainda nao disponivel</h5>
-                            <p className="mb-3 fs-13">A analise sera gerada automaticamente assim que existirem dados suficientes.</p>
+                            <h5>Inteligência ainda não disponível</h5>
+                            <p className="mb-3 fs-13">A calcular o potencial de venda. Volta amanhã.</p>
                             <XButton onClick={onRegenerateAnalysis} loading={generatingAi || regeneratingAnalysis} disabled={generatingAi || regeneratingAnalysis}>
-                                {generatingAi || regeneratingAnalysis ? "A gerar leitura IA..." : "Gerar leitura IA"}
+                                {generatingAi || regeneratingAnalysis ? "A analisar com IA..." : "Analisar com IA"}
                             </XButton>
                             {!!carId && !!companyId && (
                                 <p className="text-muted fs-11 mt-3 mb-0">Viatura #{carId} ligada a empresa {companyId}</p>

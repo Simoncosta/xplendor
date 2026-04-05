@@ -114,7 +114,7 @@ export default function CarMarketing() {
                                         {ips && (
                                             <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill px-3 py-2 fs-12`} style={{ minHeight: 38, display: "inline-flex", alignItems: "center" }}>
                                                 <i className="ri-award-line me-1" />
-                                                IPS {ips.score}/100
+                                                Probabilidade de venda {ips.score}/100
                                             </span>
                                         )}
                                     </div>
@@ -150,11 +150,11 @@ export default function CarMarketing() {
                                         <i className="ri-lightbulb-flash-line fs-1 text-primary" />
                                     </div>
                                     <p className="text-muted text-uppercase fw-semibold mb-2" style={{ fontSize: 11, letterSpacing: ".08em" }}>
-                                        Inteligencia de Marketing
+                                        Inteligência de Marketing
                                     </p>
-                                    <h5 className="mb-2 fw-semibold">Ainda nao existem ideias para esta viatura</h5>
+                                    <h5 className="mb-2 fw-semibold">Este carro ainda não tem conteúdo desta semana</h5>
                                     <p className="text-muted mb-4 fs-13 mx-auto" style={{ maxWidth: 540 }}>
-                                        Gera um primeiro briefing criativo para este carro e passa a ter sugestoes prontas para formatos, hooks, copy e CTA.
+                                        Gera um briefing criativo para começar a testar mensagens, formatos e CTA para esta viatura.
                                     </p>
                                     <XButton
                                         variant="primary"

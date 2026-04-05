@@ -175,6 +175,12 @@ export default function SmartAdsRecommendationCard({
     const headlines = (recommendedCreative?.headlines || []).slice(0, 3);
     const primaryTexts = (recommendedCreative?.primary_texts || []).slice(0, 3);
     const descriptions = (recommendedCreative?.descriptions || []).slice(0, 2);
+    const mainDecision = recommendation.action === "do_not_invest" ? "Não investir ainda" : "Investir agora";
+    const decisionClass = recommendation.action === "do_not_invest"
+        ? "bg-danger-subtle text-danger"
+        : recommendation.action === "review_campaign"
+            ? "bg-warning-subtle text-warning"
+            : "bg-success-subtle text-success";
 
     return (
         <section style={{ ...shellStyle, background: config.softBackground }}>
@@ -191,32 +197,32 @@ export default function SmartAdsRecommendationCard({
                             </span>
                         </div>
 
-                        <div className="d-flex align-items-start gap-3 mb-3">
-                            <div
-                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                style={{
-                                    width: 50,
-                                    height: 50,
-                                    background: `${config.accent}16`,
-                                    color: config.accent,
-                                }}
-                            >
-                                <i className={`${config.heroIcon} fs-2`} />
-                            </div>
-                            <div>
-                                <p className="text-muted text-uppercase fw-semibold mb-1 fs-11" style={{ letterSpacing: "0.08em" }}>
-                                    SmartAds Assistido
-                                </p>
-                                <h3 className="mb-2 fw-semibold" style={{ lineHeight: 1.15 }}>{recommendation.title}</h3>
-                                <p className="text-muted fs-14 mb-0" style={{ lineHeight: 1.6 }}>
-                                    {recommendation.summary}
-                                </p>
+                        <div className={`rounded-4 p-3 mb-3 ${decisionClass}`} style={{ border: "1px solid rgba(0,0,0,0.04)" }}>
+                            <p className="text-uppercase fw-semibold mb-1 fs-11" style={{ letterSpacing: "0.08em" }}>
+                                Decisão principal
+                            </p>
+                            <div className="d-flex align-items-start gap-3">
+                                <div
+                                    className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                    style={{
+                                        width: 50,
+                                        height: 50,
+                                        background: `${config.accent}16`,
+                                        color: config.accent,
+                                    }}
+                                >
+                                    <i className={`${config.heroIcon} fs-2`} />
+                                </div>
+                                <div>
+                                    <h3 className="mb-1 fw-semibold" style={{ lineHeight: 1.1 }}>{mainDecision}</h3>
+                                    <div className="fw-medium fs-14">{config.urgencyLabel}</div>
+                                </div>
                             </div>
                         </div>
 
                         <div className="mb-4">
                             <div className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                Porque
+                                Porquê
                             </div>
                             <p className="mb-0 fs-14 text-body" style={{ lineHeight: 1.65 }}>
                                 {recommendation.reason}
@@ -237,7 +243,7 @@ export default function SmartAdsRecommendationCard({
                         <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
                             <div>
                                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Ação
+                                    Se investir
                                 </p>
                                 <div className="d-flex align-items-center gap-3">
                                     <div
@@ -253,7 +259,7 @@ export default function SmartAdsRecommendationCard({
                                     </div>
                                     <div>
                                         <div className="fw-semibold text-body">{platform.label}</div>
-                                        <div className="text-muted fs-12">Canal recomendado para executar agora</div>
+                                        <div className="text-muted fs-12">Onde concentrar investimento agora</div>
                                     </div>
                                 </div>
                             </div>

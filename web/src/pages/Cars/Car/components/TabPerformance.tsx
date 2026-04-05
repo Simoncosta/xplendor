@@ -54,14 +54,14 @@ export default function TabPerformance({
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Gráfico principal
                         </p>
-                        <h6 className="mb-0 fw-semibold">Distribuição de tráfego</h6>
+                        <h6 className="mb-0 fw-semibold">Distribuição do tráfego</h6>
                     </div>
                     <span className="text-muted fs-12">{safeTotalTraffic} sessões monitorizadas</span>
                 </div>
                 {safeTrafficSources.length === 0 ? (
                     <div className="text-center py-4 text-muted">
                         <i className="ri-pie-chart-line fs-1 d-block mb-2" />
-                        <p className="mb-0 fs-13">Ainda sem dados de tráfego</p>
+                        <p className="mb-0 fs-13">Este carro ainda não foi visto. Partilha o link ou cria um anúncio.</p>
                     </div>
                 ) : (
                     <Row className="align-items-center g-3">
@@ -90,13 +90,13 @@ export default function TabPerformance({
 
             <section style={sectionStyle}>
                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                    Métricas resumidas
+                    Leitura rápida
                 </p>
                 <div className="row g-2">
                     <div className="col-lg-3 col-sm-6"><Metric label="Sessões" value={perfTotals?.total_sessions ?? 0} /></div>
                     <div className="col-lg-3 col-sm-6"><Metric label="Leads" value={perfTotals?.total_leads ?? 0} /></div>
                     <div className="col-lg-3 col-sm-6"><Metric label="WhatsApp" value={perfTotals?.total_whatsapp_clicks ?? 0} /></div>
-                    <div className="col-lg-3 col-sm-6"><Metric label="Conversão" value={perfTotals?.avg_conversion_rate ? `${perfTotals.avg_conversion_rate}%` : "—"} /></div>
+                    <div className="col-lg-3 col-sm-6"><Metric label="Envolvimento real" value={perfTotals?.avg_conversion_rate ? `${perfTotals.avg_conversion_rate}%` : "—"} /></div>
                 </div>
             </section>
 
@@ -147,9 +147,9 @@ export default function TabPerformance({
                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Campanhas
+                            Investimento activo
                         </p>
-                        <h6 className="mb-0 fw-semibold">Mapa operacional</h6>
+                        <h6 className="mb-0 fw-semibold">Campanhas ligadas a esta viatura</h6>
                     </div>
                 </div>
                 <CarAdCampaignMapper companyId={companyId} carId={carId} />

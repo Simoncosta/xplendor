@@ -15,7 +15,7 @@ const positionMap: Record<string, { label: string; className: string }> = {
     below_market: { label: "Abaixo do mercado", className: "bg-success-subtle text-success" },
     aligned_market: { label: "Alinhado com o mercado", className: "bg-info-subtle text-info" },
     above_market: { label: "Acima do mercado", className: "bg-warning-subtle text-warning" },
-    insufficient_data: { label: "Dados insuficientes", className: "bg-secondary-subtle text-secondary" },
+    insufficient_data: { label: "A recolher dados", className: "bg-secondary-subtle text-secondary" },
 };
 
 const signalMap: Record<string, { label: string; className: string }> = {

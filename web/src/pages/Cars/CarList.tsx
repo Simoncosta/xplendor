@@ -383,13 +383,6 @@ const CarList = () => {
                             <i className="ri-brain-line" />
                         </Link>
                         <Link
-                            to={`/cars/${id}/marketing`}
-                            className="btn btn-soft-warning btn-sm"
-                            title="Marketing"
-                        >
-                            <i className="ri-megaphone-line" />
-                        </Link>
-                        <Link
                             to={`/cars/${id}`}
                             className="btn btn-soft-primary btn-sm"
                             title="Editar"
@@ -600,12 +593,12 @@ const CarList = () => {
                                             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                                 Prioridade Comercial
                                             </p>
-                                            <h6 className="mb-0 fw-semibold">Que carros precisam de atenção agora?</h6>
+                                            <h6 className="mb-0 fw-semibold">Que carros pedem decisão agora?</h6>
                                         </div>
                                         <div className="d-flex gap-2 flex-wrap">
-                                            <span className="badge bg-warning-subtle text-warning px-3 py-2 fs-12">Sem conversao</span>
-                                            <span className="badge bg-success-subtle text-success px-3 py-2 fs-12">Bom desempenho</span>
-                                            <span className="badge bg-secondary-subtle text-secondary px-3 py-2 fs-12">Baixa visibilidade</span>
+                                            <span className="badge bg-danger-subtle text-danger px-3 py-2 fs-12">Precisa de atenção agora</span>
+                                            <span className="badge bg-warning-subtle text-warning px-3 py-2 fs-12">Acompanhar esta semana</span>
+                                            <span className="badge bg-secondary-subtle text-secondary px-3 py-2 fs-12">Monitorizar</span>
                                         </div>
                                     </div>
                                 </div>

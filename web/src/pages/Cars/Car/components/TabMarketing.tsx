@@ -11,9 +11,9 @@ interface Props {
 type TabKey = MarketingContentType;
 
 const tabs: { key: TabKey; label: string; icon: string; color: string; description: string }[] = [
-    { key: "sale", label: "Venda", icon: "ri-shopping-bag-3-line", color: "primary", description: "Conteudo orientado a conversao e leads." },
-    { key: "authority", label: "Autoridade", icon: "ri-award-line", color: "warning", description: "Ideias para reforcar credibilidade e expertise." },
-    { key: "engagement", label: "Engagement", icon: "ri-heart-pulse-line", color: "danger", description: "Conteudo pensado para alcance e interacao." },
+    { key: "sale", label: "Venda", icon: "ri-shopping-bag-3-line", color: "success", description: "Conteúdo orientado a conversão e contactos." },
+    { key: "authority", label: "Autoridade", icon: "ri-award-line", color: "warning", description: "Ideias para reforçar credibilidade e confiança." },
+    { key: "engagement", label: "Atenção", icon: "ri-heart-pulse-line", color: "info", description: "Conteúdo pensado para alcance e envolvimento real." },
 ];
 
 const sectionStyle = {

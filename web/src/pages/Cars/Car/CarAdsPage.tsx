@@ -117,9 +117,9 @@ export default function CarAdsPage() {
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                            Campanhas
+                                            Campanhas activas
                                         </p>
-                                        <h6 className="mb-0 fw-semibold">Mapa operacional</h6>
+                                        <h6 className="mb-0 fw-semibold">Investimento em curso</h6>
                                     </div>
                                 </div>
                                 <CarAdCampaignMapper companyId={companyId} carId={Number(id)} />
@@ -129,10 +129,10 @@ export default function CarAdsPage() {
                                 <section style={sectionStyle}>
                                     <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                         <div>
-                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                Investimento vs leads
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                                Contexto de investimento
                                             </p>
-                                            <h6 className="mb-0 fw-semibold">Spend e leads por canal</h6>
+                                            <h6 className="mb-0 fw-semibold">Quanto foi investido e o que trouxe</h6>
                                         </div>
                                     </div>
                                     <div className="table-responsive">

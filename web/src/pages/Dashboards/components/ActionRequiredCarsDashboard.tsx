@@ -38,24 +38,27 @@ const formatPrice = (value?: number | null) => {
 const getPriorityMeta = (score: number) => {
     if (score >= 80) {
         return {
-            label: "Alta",
+            label: "Precisa de atenção agora",
             tone: { bg: "#fde8e4", color: "#c2410c" },
-            border: "#f97316",
+            border: "#ef4444",
+            cardBg: "#fff6f5",
         };
     }
 
     if (score >= 60) {
         return {
-            label: "Media",
+            label: "Acompanhar esta semana",
             tone: { bg: "#fff4d6", color: "#a16207" },
             border: "#f7b84b",
+            cardBg: "#fffdf5",
         };
     }
 
     return {
-        label: "Baixa",
+        label: "Monitorizar",
         tone: { bg: "#eef2f7", color: "#475569" },
         border: "#cbd5e1",
+        cardBg: "#f8fafc",
     };
 };
 
@@ -114,7 +117,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                             border: "1px solid #e9ebec",
                                             borderLeft: `4px solid ${priority.border}`,
                                             borderRadius: 14,
-                                            background: "#fff",
+                                            background: priority.cardBg,
                                             padding: 16,
                                             transition: "all 0.2s ease",
                                         }}
@@ -130,7 +133,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                                             fontWeight: 600,
                                                         }}
                                                     >
-                                                        Prioridade {priority.label}
+                                                        {priority.label}
                                                     </span>
                                                     <span className="text-muted fs-12">{car.problem}</span>
                                                 </div>
@@ -154,10 +157,10 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                         <div className="row g-3 align-items-stretch">
                                             <div className="col-lg-7">
                                                 <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                    Diagnostico
+                                                    Diagnóstico
                                                 </p>
                                                 <p className="mb-2 text-body fs-14">{car.diagnosis}</p>
-                                                <p className="mb-0 text-muted fs-13">{car.action.suggestion}</p>
+                                                <p className="mb-0 fs-13 fw-semibold" style={{ color: priority.tone.color }}>{car.action.suggestion}</p>
                                             </div>
 
                                             <div className="col-lg-5">

@@ -57,7 +57,7 @@ export const buildKpiItems = (m?: any) => {
         { id: 3, label: "Views 7 dias", counter: metrics.views_7d, icon: "ri-calendar-line", iconClass: metrics.views_7d > 0 ? "text-secondary" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
         { id: 4, label: "Interações", counter: metrics.interactions, icon: "ri-cursor-line", iconClass: metrics.interactions > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.interactions > 0 ? "text-success" : "text-body", badge: "" },
         { id: 5, label: "Leads", counter: metrics.leads, icon: "ri-user-follow-line", iconClass: metrics.leads > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.leads > 0 ? "text-success" : "text-body", badge: "" },
-        { id: 6, label: "Taxa de Interesse", counter: metrics.interest_rate, icon: "ri-line-chart-line", iconClass: interestRateColor(metrics.interest_rate), suffix: "%", decimals: 1, valueClass: interestRateColor(metrics.interest_rate), badge: interestRateBadge(metrics.interest_rate) },
+        { id: 6, label: "Interesse do mercado", counter: metrics.interest_rate, icon: "ri-line-chart-line", iconClass: interestRateColor(metrics.interest_rate), suffix: "%", decimals: 1, valueClass: interestRateColor(metrics.interest_rate), badge: interestRateBadge(metrics.interest_rate) },
     ];
 };
 
@@ -129,14 +129,14 @@ export const buildInteractions = (raw: any[]) =>
 
 export const buildInsight = (met: any) => {
     if (!met || met.views === 0)
-        return { title: "Sem dados suficientes", text: "Este carro ainda não gerou tráfego suficiente.", rec: "Reforce a divulgação do anúncio.", icon: "ri-search-eye-line", color: "muted", bg: "bg-light" };
+        return { title: "Este carro ainda não foi visto", text: "Este carro ainda não foi visto. Partilha o link ou cria um anúncio.", rec: "Distribui a viatura para começar a gerar sinais reais.", icon: "ri-search-eye-line", color: "muted", bg: "bg-light" };
     if (met.views > 0 && met.interactions === 0)
-        return { title: "Tráfego sem intenção", text: "Recebe visualizações, mas sem interações de contacto ainda.", rec: "Reveja preço, fotos e descrição. Se continuar, reforce a distribuição.", icon: "ri-eye-line", color: "warning", bg: "bg-warning-subtle" };
+        return { title: "Há visualizações mas pouco envolvimento real", text: "Este carro está a receber atenção, mas ainda sem sinais claros de contacto.", rec: "Revê preço, fotos e proposta antes de reforçar investimento.", icon: "ri-eye-line", color: "warning", bg: "bg-warning-subtle" };
     if (met.interactions > 0 && met.leads === 0)
-        return { title: "Interesse do mercado", text: "Está a gerar ações de contacto, mas ainda sem leads.", rec: "Acompanhe os contactos via WhatsApp e chamada. Este carro demonstra intenção comercial.", icon: "ri-cursor-line", color: "info", bg: "bg-info-subtle" };
+        return { title: "Há interesse mas ninguém contactou ainda", text: "Há sinais de intenção, mas ainda sem lead formal.", rec: "Verifica o preço, as fotos e o tempo de resposta comercial.", icon: "ri-cursor-line", color: "info", bg: "bg-info-subtle" };
     if (met.leads > 0)
-        return { title: "Conversão registada", text: "Este carro está a converter visitas em leads.", rec: "Mantenha a promoção ativa e acompanhe rapidamente os contactos.", icon: "ri-checkbox-circle-line", color: "success", bg: "bg-success-subtle" };
-    return { title: "Análise em curso", text: "Os dados estão a ser analisados.", rec: "Continue a acompanhar a evolução do anúncio.", icon: "ri-line-chart-line", color: "muted", bg: "bg-light" };
+        return { title: "O mercado está a responder", text: "Este carro já está a transformar atenção em contactos.", rec: "Mantém o ritmo e acelera o follow-up comercial.", icon: "ri-checkbox-circle-line", color: "success", bg: "bg-success-subtle" };
+    return { title: "A recolher dados", text: "Ainda não existe padrão suficiente para uma leitura firme.", rec: "Continua a acompanhar a evolução desta viatura.", icon: "ri-line-chart-line", color: "muted", bg: "bg-light" };
 };
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
@@ -161,6 +161,9 @@ export const ipsScoreColor = (score: number) =>
 
 export const ipsClassBadge = (cls: string) =>
     cls === "hot" ? "bg-success-subtle text-success" : cls === "warm" ? "bg-warning-subtle text-warning" : "bg-danger-subtle text-danger";
+
+export const ipsExecutiveLabel = (cls?: string) =>
+    cls === "hot" ? "Probabilidade forte" : cls === "warm" ? "Acompanhar esta semana" : "Precisa de atenção agora";
 
 export const ipsFactorLabels: Record<string, { label: string; max: number; icon: string; color: string }> = {
     price_vs_market: { label: "Preço vs Mercado", max: 25, icon: "ri-price-tag-3-line", color: "primary" },
@@ -191,7 +194,7 @@ export const marketPositionMeta: Record<string, { label: string; className: stri
         description: "Preço acima da mediana e pode travar conversão.",
     },
     insufficient_data: {
-        label: "Dados insuficientes",
+        label: "A recolher dados",
         className: "bg-secondary-subtle text-secondary",
         impact: "neutro",
         description: "Ainda não existe massa crítica para leitura fiável.",

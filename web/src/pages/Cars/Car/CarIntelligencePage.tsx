@@ -115,7 +115,7 @@ export default function CarIntelligencePage() {
         if (!authUser) return;
         const { company_id } = JSON.parse(authUser);
         dispatch(carRecalculate({ companyId: company_id, carId: Number(id) }));
-        toast("Recalculando análise de viatura... Aguarde um pouco e recarregue a página.");
+        toast("A atualizar análise da viatura...");
     };
 
     if (loading || !carAnalytics) return null;
@@ -145,10 +145,6 @@ export default function CarIntelligencePage() {
                 </Row>
 
                 <Row className="g-3">
-                    <Col xs={12}>
-                        <SilentBuyerIntentCard summary={silentBuyers} />
-                    </Col>
-
                     <Col xs={12}>
                         <TabAnaliseIA
                             ips={ips}
@@ -199,6 +195,10 @@ export default function CarIntelligencePage() {
                             </section>
                         </Col>
                     )}
+
+                    <Col xs={12}>
+                        <SilentBuyerIntentCard summary={silentBuyers} />
+                    </Col>
                 </Row>
 
             </Container>
