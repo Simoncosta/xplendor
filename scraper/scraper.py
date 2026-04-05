@@ -299,6 +299,8 @@ class StandvirtualScraper:
         """
         url = f"{config.base_url}{config.search_path}"
         params = config.build_search_params(self.filters)
+
+        logger.info(f"PARAMS USADOS NA REQUEST: {params}")
         params["page"] = 1
 
         logger.info(f"A iniciar scraping: {url}")

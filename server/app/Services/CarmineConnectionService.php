@@ -185,7 +185,7 @@ class CarmineConnectionService extends BaseService
             "power_hp"                => $data['Potencia'],
             "engine_capacity_cc"      => $data['Cilindrada'],
             "doors"                   => $data['Porta']['Nome'],
-            "transmission"            => $data['Transmissao']['Nome'] === 'Automática' ? 'automatic' : 'manual',
+            "transmission"            => $data['Transmissao']['Nome'] === 'Automática ' || $data['Transmissao']['Nome'] === 'Automática' ? 'automatic' : 'manual',
             "segment"                 => $segment,
             "seats"                   => (int) preg_replace('/\D/', '', $data['Lugares']['Nome'] ?? ''),
             "exterior_color"          => $exteriorColor,

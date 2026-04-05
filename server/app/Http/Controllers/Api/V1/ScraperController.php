@@ -29,7 +29,7 @@ class ScraperController extends Controller
 
         $validated = $request->validate([
             'source'  => ['required', 'string'],
-            'mode'    => ['required', 'string', 'in:preview,persist'],
+            'mode'    => ['required', 'string', 'in:preview,run'],
             'filters' => ['sometimes', 'array'],
         ]);
 
@@ -68,6 +68,25 @@ class ScraperController extends Controller
         $executions = ScraperExecution::where('company_id', $id)
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
+
+        $executions->getCollection()->transform(function ($execution) {
+            $duration = ($execution->started_at && $execution->finished_at)
+                ? (int) $execution->started_at->diffInSeconds($execution->finished_at)
+                : null;
+
+            return [
+                'id'               => $execution->id,
+                'source'           => $execution->source,
+                'mode'             => $execution->mode,
+                'status'           => $execution->status,
+                'total_raw'        => $execution->total_raw,
+                'total_normalized' => $execution->total_normalized,
+                'total_sent'       => $execution->total_sent,
+                'total_failed'     => $execution->total_failed,
+                'duration_seconds' => $duration,
+                'created_at'       => $execution->created_at->toIso8601String(),
+            ];
+        });
 
         return ApiResponse::success($executions);
     }

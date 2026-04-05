@@ -1,0 +1,155 @@
+2026-04-03 20:45:12 [INFO] main: ============================================================
+2026-04-03 20:45:12 [INFO] main: MODO PREVIEW — os dados NÃO são enviados ao Laravel
+2026-04-03 20:45:12 [INFO] main: A mostrar os primeiros 10 anúncios em JSON
+2026-04-03 20:45:12 [INFO] main: Filtros de pesquisa: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 20:45:12 [INFO] main: ============================================================
+2026-04-03 20:45:12 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 20:45:12 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 20:45:12 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 20:45:12 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 20:45:13 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 20:45:13 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
+2026-04-03 20:45:13 [INFO] scraper: Página 1/1: 0 anúncios
+2026-04-03 20:57:27 [INFO] main: ============================================================
+2026-04-03 20:57:27 [INFO] main: MODO PREVIEW — os dados NÃO são enviados ao Laravel
+2026-04-03 20:57:27 [INFO] main: A mostrar os primeiros 10 anúncios em JSON
+2026-04-03 20:57:27 [INFO] main: Filtros de pesquisa: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 20:57:27 [INFO] main: ============================================================
+2026-04-03 20:57:27 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 20:57:27 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 20:57:27 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 20:57:27 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 20:57:28 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 20:57:28 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:02:19 [INFO] main: ============================================================
+2026-04-03 21:02:19 [INFO] main: MODO PREVIEW — os dados NÃO são enviados ao Laravel
+2026-04-03 21:02:19 [INFO] main: A mostrar os primeiros 10 anúncios em JSON
+2026-04-03 21:02:19 [INFO] main: Filtros de pesquisa: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:02:19 [INFO] main: ============================================================
+2026-04-03 21:02:19 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:02:19 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:02:19 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:02:19 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:02:20 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:02:20 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:06:43 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:06:43 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:06:43 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:06:43 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:06:45 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:06:45 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:12:04 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:12:04 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:12:04 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:12:04 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:12:05 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:12:05 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:12:18 [ERROR] sender: Não foi possível ligar ao Laravel em http://localhost:8001/api/market/snapshots. Verificar LARAVEL_API_URL.
+2026-04-03 21:12:28 [ERROR] sender: Não foi possível ligar ao Laravel em http://localhost:8001/api/market/snapshots. Verificar LARAVEL_API_URL.
+2026-04-03 21:12:38 [ERROR] sender: Não foi possível ligar ao Laravel em http://localhost:8001/api/market/snapshots. Verificar LARAVEL_API_URL.
+2026-04-03 21:12:38 [ERROR] sender: Falhou batch de 7 snapshots. Total falhas: 7
+2026-04-03 21:16:09 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:16:09 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:16:09 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:16:09 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:16:10 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:16:10 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:16:24 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:17:09 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:17:09 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:17:09 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:17:09 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:17:10 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:17:10 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:17:30 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:25:35 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:35 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:35 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:25:35 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:25:36 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:25:36 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:25:56 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:25:56 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:56 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:56 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:25:56 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:25:57 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:25:57 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:25:58 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:58 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:25:58 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:25:58 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:25:59 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:25:59 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:26:26 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:26:38 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:26:38 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:26:38 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:26:38 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:26:41 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:26:41 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:27:16 [ERROR] scraper: Erro de rede em https://www.standvirtual.com/carros/anuncio/fiat-500e-ver-42kwh-icon-ID8PXEln.html: HTTPSConnectionPool(host='www.standvirtual.com', port=443): Read timed out. (read timeout=15)
+2026-04-03 21:27:47 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:27:48 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:27:48 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:27:48 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:27:48 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:27:49 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:27:49 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:28:10 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:28:10 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:28:10 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat', 'search[filter_enum_model][0]': '500e', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'electric', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:28:10 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:28:10 [INFO] scraper: Filtros ativos: {'brand': 'Fiat', 'model': '500e', 'year_from': 2021, 'year_to': 2021, 'fuel': 'electric', 'gearbox': 'automatic'}
+2026-04-03 21:28:11 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:28:11 [INFO] scraper: Página 1/1: 10 anúncios
+2026-04-03 21:28:31 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-04-03 21:29:34 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:29:34 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:29:34 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:29:34 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:29:35 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:29:35 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:29:49 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:29:49 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:29:49 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:29:49 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:29:49 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:29:50 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:29:50 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:30:04 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:30:04 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:30:04 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:30:04 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:30:04 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:30:05 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:30:05 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:30:18 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:31:19 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:31:19 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:31:19 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:31:19 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:31:20 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:31:20 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:31:35 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:34:47 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:34:47 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:34:47 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:34:47 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:34:48 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:34:48 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:35:02 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-03 21:37:33 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:37:33 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-03 21:37:33 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-03 21:37:33 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-03 21:37:34 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-03 21:37:34 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-03 21:37:48 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-04-04 10:25:48 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-04 10:25:48 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'diesel', 'search[filter_enum_gearbox][0]': 'automatic'}
+2026-04-04 10:25:48 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-04-04 10:25:48 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2017, 'year_to': 2017, 'fuel': 'diesel', 'gearbox': 'automatic'}
+2026-04-04 10:25:49 [INFO] scraper: Total de páginas a scraper: 1
+2026-04-04 10:25:49 [INFO] scraper: Página 1/1: 7 anúncios
+2026-04-04 10:26:03 [INFO] sender: Batch enviado: 7 snapshots. Total: 7

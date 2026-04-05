@@ -157,6 +157,14 @@ export const getCarModels = (brandId: number | number[]) => api.get(url.GET_CAR_
 // DISTRICTS
 export const getDistricts = () => api.get(url.GET_DISTRICTS);
 
+// SCRAPER
+export const runScraperApi = (companyId: number, data: { source: string; mode: string; filters: Record<string, any> }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SCRAPER + "/run", data, { headers: { "Content-Type": "application/json" } });
+export const getScraperExecutionsApi = (companyId: number, params?: { per_page?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SCRAPER + "/executions", params);
+export const getScraperExecutionApi = (companyId: number, runId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SCRAPER + "/executions/" + runId);
+
 // MUNICIPALITIES
 export const getMunicipalities = (districtId: number) => api.get(`${url.GET_DISTRICTS}/${districtId}/municipalities`);
 export const getParishes = (municipalityId: number) => api.get(`/municipalities/${municipalityId}/parishes`);

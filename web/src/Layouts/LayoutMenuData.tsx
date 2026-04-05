@@ -25,6 +25,7 @@ const Navdata = () => {
         if (authUser) {
             const obj = JSON.parse(authUser);
             setIsRoot(obj.role === 'root');
+            console.log(obj.role);
         }
     }, []);
 
@@ -153,6 +154,23 @@ const Navdata = () => {
                 setIscurrentState('Users');
             }
         },
+        // ── Ferramentas internas — visível apenas para role root ──────────────
+        ...(isRoot ? [
+            {
+                label: "Ferramentas",
+                isHeader: true,
+            },
+            {
+                id: "scraper-runner",
+                label: "Scraper Runner",
+                icon: "ri-terminal-box-line",
+                link: "/internal/scraper",
+                click: function (e: any) {
+                    e.preventDefault();
+                    setIscurrentState('ScraperRunner');
+                },
+            },
+        ] : []),
         // {
         //     id: "dashboard",
         //     label: "Dashboards",

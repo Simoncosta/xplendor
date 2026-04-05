@@ -14,7 +14,7 @@ import sys
 def main() -> int:
     parser = argparse.ArgumentParser(description="Xplendor scraper adapter")
     parser.add_argument("--source", required=True, help="Data source (e.g. standvirtual)")
-    parser.add_argument("--mode", required=True, choices=["preview", "persist"], help="preview: print only; persist: send to Laravel")
+    parser.add_argument("--mode", required=True, choices=["preview", "run"], help="preview: print only; run: send to Laravel")
     parser.add_argument("--filters", required=True, help="JSON-encoded filter object")
 
     args = parser.parse_args()

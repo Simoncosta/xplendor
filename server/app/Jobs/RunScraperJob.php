@@ -34,33 +34,77 @@ class RunScraperJob implements ShouldQueue
             'started_at' => now(),
         ]);
 
-        $process = new Process([
-            'docker', 'exec', env('SCRAPER_CONTAINER', 'xplendor-scraper'),
-            'python', '/app/scraper.py',
-            '--source', $this->source,
-            '--mode', $this->mode,
-            '--filters', json_encode($this->filters),
-        ]);
+        Log::info('RunScraperJob: filtros recebidos', $this->filters);
 
+        $command = [
+            'docker',
+            'exec',
+            env('SCRAPER_CONTAINER', 'xplendor-scraper'),
+            'python',
+            '/scraper/main.py',
+            '--source',
+            $this->source,
+            '--mode',
+            $this->mode,
+        ];
+
+        if ($this->mode === 'preview') {
+            $command[] = '--preview-limit';
+            $command[] = '10';
+        }
+
+        foreach (
+            [
+                'brand' => '--brand',
+                'model' => '--model',
+                'year_from' => '--year-from',
+                'year_to' => '--year-to',
+                'fuel' => '--fuel',
+                'gearbox' => '--gearbox',
+                'price_from' => '--price-from',
+                'price_to' => '--price-to',
+            ] as $key => $flag
+        ) {
+            if (!empty($this->filters[$key])) {
+                $command[] = $flag;
+                $command[] = (string) $this->filters[$key];
+            }
+        }
+
+        Log::info('RunScraperJob: comando final', $command);
+
+        $process = new Process($command);
         $process->setTimeout($this->timeout);
         $process->run();
 
         $output = $process->getOutput();
         $error  = $process->getErrorOutput();
 
+        Log::info('RunScraperJob: output bruto', ['output' => $output]);
+
+        // 🔥 Extrair apenas JSON do output (mesmo com logs misturados)
+        $json = $this->extractJson($output);
+        $data = $json ? json_decode($json, true) : null;
+
         if ($process->isSuccessful()) {
+
             $execution->update([
-                'status'      => 'success',
-                'output'      => $output ?: null,
-                'error'       => $error ?: null,
-                'finished_at' => now(),
+                'status'            => 'success',
+                'total_raw'         => $data['total_raw'] ?? 0,
+                'total_normalized'  => $data['total_normalized'] ?? 0,
+                'total_sent'        => $data['total_sent'] ?? 0,
+                'total_failed'      => $data['total_failed'] ?? 0,
+                'output'            => $output ?: null,
+                'error'             => $error ?: null,
+                'finished_at'       => now(),
             ]);
 
             Log::info('RunScraperJob: concluido', [
                 'execution_id' => $this->executionId,
-                'source'       => $this->source,
+                'stats'        => $data,
             ]);
         } else {
+
             $execution->update([
                 'status'      => 'failed',
                 'output'      => $output ?: null,
@@ -70,15 +114,29 @@ class RunScraperJob implements ShouldQueue
 
             Log::error('RunScraperJob: falhou', [
                 'execution_id' => $this->executionId,
-                'source'       => $this->source,
                 'exit_code'    => $process->getExitCode(),
                 'error'        => $error,
             ]);
 
             throw new \RuntimeException(
-                "Scraper falhou para source '{$this->source}' (exit {$process->getExitCode()}): {$error}"
+                "Scraper falhou ({$process->getExitCode()}): {$error}"
             );
         }
+    }
+
+    /**
+     * Extrai JSON válido do meio de logs
+     */
+    private function extractJson(string $output): ?string
+    {
+        $start = strpos($output, '{');
+        $end   = strrpos($output, '}');
+
+        if ($start === false || $end === false) {
+            return null;
+        }
+
+        return substr($output, $start, $end - $start + 1);
     }
 
     public function failed(\Throwable $exception): void
@@ -93,7 +151,6 @@ class RunScraperJob implements ShouldQueue
 
         Log::error('RunScraperJob: todas as tentativas esgotadas', [
             'execution_id' => $this->executionId,
-            'source'       => $this->source,
             'error'        => $exception->getMessage(),
         ]);
     }

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('source')->index();
             $table->json('filters')->nullable();
             $table->enum('status', ['pending', 'running', 'success', 'failed'])->default('pending')->index();
-            $table->enum('mode', ['preview', 'persist'])->default('preview');
+            $table->enum('mode', ['preview', 'run'])->default('preview');
             $table->integer('total_raw')->default(0);
             $table->integer('total_normalized')->default(0);
             $table->integer('total_sent')->default(0);

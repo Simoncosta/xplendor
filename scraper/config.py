@@ -9,6 +9,7 @@ load_dotenv()
 def _slugify_search_value(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     cleaned = normalized.strip().lower().replace("/", " ").replace("_", " ")
+    
     return "-".join(part for part in cleaned.split() if part)
 
 
@@ -127,6 +128,10 @@ class ScraperConfig:
         params = dict(self.search_params)
         if filters:
             params.update(filters.to_query_params())
+
+        import logging
+        logging.getLogger("debug").info(f"QUERY PARAMS FINAL: {params}")
+
         return params
 
 

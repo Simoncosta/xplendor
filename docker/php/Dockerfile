@@ -1,7 +1,7 @@
 FROM php:8.2-fpm
 
 # Copy docker CLI binary so the worker can call `docker exec` on the scraper container
-COPY --from=docker:24 /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker:27 /usr/local/bin/docker /usr/local/bin/docker
 
 # Instala dependências necessárias
 RUN apt-get update && apt-get install -y \

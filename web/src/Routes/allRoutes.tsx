@@ -39,6 +39,9 @@ import BlogShow from "pages/Blogs/Blog/BlogShow";
 // Leads
 import LeadList from "pages/Leads/LeadList";
 
+// Internal tools
+import ScraperRunner from "pages/Internal/ScraperRunner";
+
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
 import IntegrationsSettings from "pages/Companies/CompanyProfile/IntegrationsSettings";
@@ -71,6 +74,9 @@ const authProtectedRoutes = [
     { path: "/blogs/create", component: <BlogCreate /> },
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
+
+    // Internal tools
+    { path: "/internal/scraper", component: <ScraperRunner /> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

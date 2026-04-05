@@ -51,3 +51,6 @@ export const GET_CAR_MODELS = "/car-models";
 
 // DISTRICTS
 export const GET_DISTRICTS = "/districts";
+
+// SCRAPER
+export const GET_SCRAPER = "/scraper";
