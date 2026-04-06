@@ -63,6 +63,7 @@ class DashboardService extends BaseService
             'insights'                         => $this->dashboardRepository->getCompanyInsights($companyId),
             'silent_buyers'                    => $this->silentBuyerDetectionService->getDashboardSummary($companyId),
             'stock_intelligence'               => $this->getStockIntelligenceSummary($companyId),
+            'personas'                         => $this->dashboardRepository->groupCarsByPersona($companyId),
         ];
     }
 

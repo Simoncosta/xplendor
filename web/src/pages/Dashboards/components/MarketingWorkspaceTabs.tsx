@@ -8,22 +8,25 @@ import MarketingRoiInsightsCard from "./MarketingRoiInsightsCard";
 import MarketingTopCampaignsCard from "./MarketingTopCampaignsCard";
 import TopCarsToPromoteCard from "./TopCarsToPromoteCard";
 import AdsPriorityRankingCard from "./AdsPriorityRankingCard";
+import PersonaGroupCard, { PersonaGroup } from "./PersonaGroupCard";
 import { IAdsPriorityRankedCar, IMarketingRoi } from "./marketingRoi.types";
 
 type Props = {
     marketingPerformance: any;
     marketingRoi: IMarketingRoi;
     rankingCars: IAdsPriorityRankedCar[];
+    personas: PersonaGroup[];
 };
 
-type TabKey = "overview" | "ranking";
+type TabKey = "overview" | "ranking" | "personas";
 
 const tabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "O que fazer hoje" },
     { key: "ranking", label: "Onde investir agora" },
+    { key: "personas", label: "Por persona" },
 ];
 
-export default function MarketingWorkspaceTabs({ marketingPerformance, marketingRoi, rankingCars }: Props) {
+export default function MarketingWorkspaceTabs({ marketingPerformance, marketingRoi, rankingCars, personas }: Props) {
     const [activeTab, setActiveTab] = useState<TabKey>("overview");
 
     return (
@@ -80,10 +83,23 @@ export default function MarketingWorkspaceTabs({ marketingPerformance, marketing
                             <MarketingTopCampaignsCard campaigns={marketingRoi.top_campaigns} />
                             <TopCarsToPromoteCard cars={marketingRoi.top_cars_to_promote} />
                         </Row>
-                    ) : (
+                    ) : activeTab === "ranking" ? (
                         <Row className="g-3">
                             <AdsPriorityRankingCard cars={rankingCars} />
                         </Row>
+                    ) : (
+                        <div className="d-grid gap-3">
+                            {personas.length === 0 ? (
+                                <div className="text-center py-5 text-muted">
+                                    <i className="ri-group-line fs-1 d-block mb-2" />
+                                    <p className="fs-13 mb-0">Sem dados de persona disponíveis</p>
+                                </div>
+                            ) : (
+                                personas.map((group) => (
+                                    <PersonaGroupCard key={group.persona} group={group} />
+                                ))
+                            )}
+                        </div>
                     )}
                 </div>
             </section>

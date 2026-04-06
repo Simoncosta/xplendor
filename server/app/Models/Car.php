@@ -128,17 +128,17 @@ class Car extends Model implements AuditableContract
 
     public function views(): HasMany
     {
-        return $this->hasMany(CarView::class);
+        return $this->hasMany(CarView::class, 'car_id', 'id');
     }
 
     public function leads(): HasMany
     {
-        return $this->hasMany(CarLead::class);
+        return $this->hasMany(CarLead::class, 'car_id', 'id');
     }
 
     public function interactions(): HasMany
     {
-        return $this->hasMany(CarInteraction::class);
+        return $this->hasMany(CarInteraction::class, 'car_id', 'id');
     }
 
     public function whatsappInteractions(): HasMany

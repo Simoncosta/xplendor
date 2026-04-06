@@ -45,6 +45,40 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
      */
     public function getTopInterestCars(int $companyId, int $limit = 5)
     {
+        $cars = $this->model->where('company_id', $companyId)
+            ->where('status', 'active')
+            ->select([
+                'id',
+                'car_brand_id',
+                'car_model_id',
+                'version',
+                'price_gross',
+                'created_at'
+            ])
+            ->with([
+                'brand:id,name',
+                'model:id,name'
+            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
+            ->orderByDesc('views_count')
+            ->limit($limit)
+            ->get();
+
+        logger()->info('DEBUG COUNTS', $cars->map(fn($c) => [
+            'id' => $c->id,
+            'views' => $c->views_count,
+            'leads' => $c->leads_count,
+            'interactions' => $c->interactions_count,
+        ])->toArray());
+
+        return $cars;
+    }
+
+    /**
+     * Interesse alto / conversão baixa
+     */
+    public function getLowLeadCars(int $companyId, int $limit = 5)
+    {
         return $this->model->where('company_id', $companyId)
             ->where('status', 'active')
             ->select([
@@ -59,43 +93,12 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'brand:id,name',
                 'model:id,name'
             ])
-            ->withCount([
-                'views',
-                'leads',
-                'interactions',
-            ])
-            ->orderByDesc('views_count')
-            ->limit($limit)
-            ->get();
-    }
-
-    /**
-     * Interesse alto / conversão baixa
-     */
-    public function getLowLeadCars(int $companyId, int $limit = 5)
-    {
-        return $this->model->where('company_id', $companyId)
-            ->where('status', 'active')
-            ->withCount([
-                'views',
-                'leads'
-            ])
-            ->with([
-                'brand:id,name',
-                'model:id,name'
-            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
             ->having('views_count', '>', 20)
             ->orderBy('leads_count')
             ->orderByDesc('views_count')
             ->limit($limit)
-            ->get([
-                'id',
-                'car_brand_id',
-                'car_model_id',
-                'version',
-                'price_gross',
-                'created_at'
-            ]);
+            ->get();
     }
 
     /**
@@ -142,10 +145,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'brand:id,name',
                 'model:id,name'
             ])
-            ->withCount([
-                'views',
-                'interactions'
-            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
             ->having('views_count', '>=', 10)
             ->orderByRaw("
             CASE
@@ -237,11 +237,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'brand:id,name',
                 'model:id,name',
             ])
-            ->withCount([
-                'views',
-                'leads',
-                'interactions'
-            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
             ->get();
 
         if ($cars->isEmpty()) {
@@ -326,11 +322,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'brand:id,name',
                 'model:id,name',
             ])
-            ->withCount([
-                'views',
-                'leads',
-                'interactions',
-            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
             ->get()
             ->map(function ($car) {
                 $car->brand_name = $car->brand?->name;
@@ -394,11 +386,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'brand:id,name',
                 'model:id,name',
             ])
-            ->withCount([
-                'views',
-                'interactions',
-                'leads',
-            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
             ->get()
             ->map(function ($car) {
 
@@ -583,6 +571,127 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
         ];
     }
 
+    public function groupCarsByPersona(int $companyId): array
+    {
+        $personaMeta = [
+            'performance' => ['label' => 'Performance', 'description' => 'Condutores que procuram potência e dinamismo'],
+            'executivo'   => ['label' => 'Executivo',   'description' => 'Profissionais que valorizam prestígio e conforto'],
+            'familia'     => ['label' => 'Família',     'description' => 'Famílias que procuram espaço e versatilidade'],
+            'jovem'       => ['label' => 'Jovem',       'description' => 'Jovens condutores com budget limitado'],
+            'geral'       => ['label' => 'Geral',       'description' => 'Stock com perfil de comprador diversificado'],
+        ];
+
+        $cars = $this->model
+            ->where('company_id', $companyId)
+            ->where('status', 'active')
+            ->with(['brand:id,name', 'model:id,name'])
+            ->select([
+                'id',
+                'car_brand_id',
+                'car_model_id',
+                'version',
+                'price_gross',
+                'power_hp',
+                'segment',
+                'seats',
+                'company_id'
+            ])
+            ->tap(fn($query) => $this->applyEngagementCounts($query, $companyId))
+            ->get();
+
+        if ($cars->isEmpty()) {
+            return [];
+        }
+
+        // Batch-load latest IPS scores
+        $carIds = $cars->pluck('id')->all();
+
+        $ipsRows = DB::table('car_sale_potential_scores as s')
+            ->where('s.company_id', $companyId)
+            ->whereIn('s.car_id', $carIds)
+            ->whereRaw(
+                's.id = (SELECT MAX(s2.id) FROM car_sale_potential_scores s2 WHERE s2.car_id = s.car_id AND s2.company_id = ?)',
+                [$companyId]
+            )
+            ->select('s.car_id', 's.score', 's.classification')
+            ->get()
+            ->keyBy('car_id');
+
+        // Classify each car into a persona group
+        $groups = [];
+
+        foreach ($cars as $car) {
+            $persona = $this->classifyPersona($car);
+            $ips     = $ipsRows->get($car->id);
+
+            $groups[$persona][] = [
+                'id'                 => $car->id,
+                'brand_name'         => $car->brand?->name,
+                'model_name'         => $car->model?->name,
+                'version'            => $car->version,
+                'price_gross'        => (float) ($car->price_gross ?? 0),
+                'ips_score'          => $ips?->score ?? null,
+                'ips_classification' => $ips?->classification ?? null,
+                'views_count'        => (int) $car->views_count,
+                'leads_count'        => (int) $car->leads_count,
+                'interactions_count' => (int) $car->interactions_count,
+            ];
+        }
+
+        $result = [];
+
+        foreach ($personaMeta as $key => $meta) {
+            if (!isset($groups[$key])) {
+                continue;
+            }
+
+            $groupCars   = $groups[$key];
+            $carsCount   = count($groupCars);
+            $ipsScores   = array_filter(array_column($groupCars, 'ips_score'), fn($s) => $s !== null);
+            $avgIps      = count($ipsScores) > 0 ? (int) round(array_sum($ipsScores) / count($ipsScores)) : null;
+            $totalViews  = array_sum(array_column($groupCars, 'views_count'));
+            $totalLeads  = array_sum(array_column($groupCars, 'leads_count'));
+            $totalInteractions  = array_sum(array_column($groupCars, 'interactions_count'));
+
+            $result[] = [
+                'persona'             => $key,
+                'label'               => $meta['label'],
+                'description'         => $meta['description'],
+                'cars_count'          => $carsCount,
+                'avg_ips'             => $avgIps,
+                'total_views'         => $totalViews,
+                'total_leads'         => $totalLeads,
+                'interactions_count'  => $totalInteractions,
+                'is_campanha_viable'  => $carsCount >= 2,
+                'cars'                => $groupCars,
+            ];
+        }
+
+        return $result;
+    }
+
+    private function classifyPersona(Car $car): string
+    {
+        $price = (float) ($car->price_gross ?? 0);
+        $hp    = $car->power_hp ?? 0;
+        $seg   = $car->segment ?? '';
+
+        if ($hp >= 150 || str_contains(strtolower($car->version ?? ''), 'm') || str_contains(strtolower($car->version ?? ''), 'sport')) {
+            return 'performance';
+        }
+        if ($price >= 20000 && in_array($seg, ['sedan', 'suv_tt'])) {
+            return 'executivo';
+        }
+        if (in_array($seg, ['station_wagon', 'suv_tt']) && ($car->seats ?? 0) >= 5) {
+            return 'familia';
+        }
+        if ($price <= 12000 && in_array($seg, ['city_car', 'hatchback'])) {
+            return 'jovem';
+        }
+
+        return 'geral';
+    }
+
     private function normalizeMarketingChannelLabel(string $channel): string
     {
         return match ($channel) {
@@ -595,6 +704,24 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             'utm' => 'UTM',
             default => ucfirst(str_replace('_', ' ', $channel)),
         };
+    }
+
+    private function applyEngagementCounts($query, int $companyId)
+    {
+        return $query->addSelect([
+            'views_count' => DB::table('car_views')
+                ->selectRaw('COUNT(*)')
+                ->whereColumn('car_views.car_id', 'cars.id')
+                ->where('company_id', $companyId),
+            'leads_count' => DB::table('car_leads')
+                ->selectRaw('COUNT(*)')
+                ->whereColumn('car_leads.car_id', 'cars.id')
+                ->where('company_id', $companyId),
+            'interactions_count' => DB::table('car_interactions')
+                ->selectRaw('COUNT(*)')
+                ->whereColumn('car_interactions.car_id', 'cars.id')
+                ->where('company_id', $companyId),
+        ]);
     }
 
     public function getCompanyInsights(int $companyId): array

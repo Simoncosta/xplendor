@@ -16,4 +16,5 @@ interface DashboardRepositoryInterface extends BaseRepositoryInterface
     public function getHighInterestLowConversionCars(int $companyId, int $limit = 5);
     public function getMarketingPerformance(int $companyId): array;
     public function getCompanyInsights(int $companyId): array;
+    public function groupCarsByPersona(int $companyId): array;
 }

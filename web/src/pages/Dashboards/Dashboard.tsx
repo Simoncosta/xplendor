@@ -14,6 +14,7 @@ import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockIntelligenceDashboardCard from './components/StockIntelligenceDashboardCard';
 import MarketingWorkspaceTabs from './components/MarketingWorkspaceTabs';
 import { IAdsPriorityRankedCar, IMarketingRoi } from './components/marketingRoi.types';
+import { PersonaGroup } from './components/PersonaGroupCard';
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
@@ -74,6 +75,7 @@ const Dashboard = () => {
                             marketingPerformance={analytics.marketing_performance}
                             marketingRoi={marketingRoi}
                             rankingCars={analytics.ads_priority_ranking?.cars_ranked_for_ads || []}
+                            personas={analytics.personas || []}
                         />
                     </Row>
                 </Container>
@@ -120,6 +122,7 @@ type TAnalytics = {
         opportunities?: any[];
         saturated_segments?: any[];
     } | null;
+    personas?: PersonaGroup[];
 };
 
 const emptyAnalytics: TAnalytics = {
@@ -135,6 +138,7 @@ const emptyAnalytics: TAnalytics = {
     ads_priority_ranking: null,
     silent_buyers: null,
     stock_intelligence: null,
+    personas: [],
 };
 
 export default Dashboard;
