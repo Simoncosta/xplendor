@@ -37,40 +37,32 @@ class CarAdCampaignController extends Controller
             'spend_split_pct' => 'required|numeric|min:1|max:100',
         ]);
 
-        // Validar que o split total para o mesmo adset não ultrapassa 100%
-        if ($request->adset_id) {
-            $existingSplit = CarAdCampaign::where('company_id', $companyId)
-                ->where('platform', $request->platform)
-                ->where('adset_id', $request->adset_id)
-                ->where('car_id', '!=', $carId)
-                ->sum('spend_split_pct');
+        $exactMappingExists = CarAdCampaign::query()
+            ->where('company_id', $companyId)
+            ->where('car_id', $carId)
+            ->where('platform', $request->platform)
+            ->where('campaign_id', $request->campaign_id)
+            ->where('adset_id', $request->adset_id)
+            ->exists();
 
-            if ($existingSplit + $request->spend_split_pct > 100) {
-                return ApiResponse::error(
-                    "O split total para este adset já é {$existingSplit}%. Não podes adicionar {$request->spend_split_pct}%.",
-                    422
-                );
-            }
+        if ($exactMappingExists) {
+            return ApiResponse::error('Este conjunto de anúncios já está mapeado para esta viatura.', 422);
         }
 
-        $campaign = CarAdCampaign::updateOrCreate(
-            [
-                'company_id' => $companyId,
-                'car_id'     => $carId,
-                'platform'   => $request->platform,
-                'adset_id'   => $request->adset_id,
-            ],
-            [
-                'campaign_id'     => $request->campaign_id,
-                'campaign_name'   => $request->campaign_name,
-                'adset_name'      => $request->adset_name,
-                'ad_id'           => $request->ad_id,
-                'ad_name'         => $request->ad_name,
-                'level'           => $request->level,
-                'spend_split_pct' => $request->spend_split_pct,
-                'is_active'       => true,
-            ]
-        );
+        $campaign = CarAdCampaign::create([
+            'company_id' => $companyId,
+            'car_id' => $carId,
+            'platform' => $request->platform,
+            'campaign_id' => $request->campaign_id,
+            'campaign_name' => $request->campaign_name,
+            'adset_id' => $request->adset_id,
+            'adset_name' => $request->adset_name,
+            'ad_id' => $request->ad_id,
+            'ad_name' => $request->ad_name,
+            'level' => $request->level,
+            'spend_split_pct' => $request->spend_split_pct,
+            'is_active' => true,
+        ]);
 
         return ApiResponse::success($campaign, 'Campanha mapeada com sucesso.');
     }

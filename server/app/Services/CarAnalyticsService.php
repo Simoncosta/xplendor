@@ -138,13 +138,17 @@ class CarAnalyticsService
 
     protected function resolveMetaAdsTargetingStatus(Car $car): array
     {
-        $mapping = CarAdCampaign::query()
+        $mappings = CarAdCampaign::query()
             ->active()
             ->platform('meta')
             ->where('company_id', $car->company_id)
             ->where('car_id', $car->id)
             ->orderByDesc('updated_at')
-            ->first();
+            ->get();
+
+        $mapping = $mappings->first(function (CarAdCampaign $mapping) {
+            return $this->resolveAdsetId($mapping) !== null;
+        }) ?? $mappings->first();
 
         $resolvedAdsetId = $this->resolveAdsetId($mapping);
 
@@ -157,6 +161,7 @@ class CarAnalyticsService
                 'has_breakdown' => false,
                 'mapping_level' => $mapping?->level,
                 'resolved_adset_id' => null,
+                'active_campaigns_count' => $mappings->count(),
             ];
         }
 
@@ -191,6 +196,7 @@ class CarAnalyticsService
             'has_breakdown' => $hasBreakdown,
             'mapping_level' => $mapping->level,
             'resolved_adset_id' => $resolvedAdsetId,
+            'active_campaigns_count' => $mappings->count(),
         ];
     }
 

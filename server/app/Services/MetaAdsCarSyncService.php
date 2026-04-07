@@ -98,7 +98,7 @@ class MetaAdsCarSyncService
             $dateStr
         );
 
-        $splitFactor = (float) $mapping->spend_split_pct / 100;
+        $splitFactor = $this->resolveAllocationFactor($mapping);
         $spend = round((float) ($insights['spend'] ?? 0) * $splitFactor, 2);
         $impressions = (int) round((float) ($insights['impressions'] ?? 0) * $splitFactor);
         $clicks = (int) round((float) ($insights['clicks'] ?? 0) * $splitFactor);
@@ -248,10 +248,9 @@ class MetaAdsCarSyncService
         }
 
         $persistedInsightIds = [];
+        $splitFactor = $this->resolveAllocationFactor($mapping);
 
         foreach ($breakdown as $row) {
-            $splitFactor = (float) $mapping->spend_split_pct / 100;
-
             $insight = MetaAudienceInsight::updateOrCreate(
                 [
                     'company_id' => $mapping->company_id,
@@ -313,5 +312,25 @@ class MetaAdsCarSyncService
         }
 
         return null;
+    }
+
+    private function resolveAllocationFactor(CarAdCampaign $mapping): float
+    {
+        if (empty($mapping->adset_id)) {
+            return 1.0;
+        }
+
+        $totalWeight = (float) CarAdCampaign::query()
+            ->active()
+            ->where('company_id', $mapping->company_id)
+            ->where('platform', $mapping->platform)
+            ->where('adset_id', $mapping->adset_id)
+            ->sum('spend_split_pct');
+
+        if ($totalWeight <= 0) {
+            return 1.0;
+        }
+
+        return (float) $mapping->spend_split_pct / $totalWeight;
     }
 }

@@ -159,7 +159,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                                     </div>
                                     <div className="d-flex gap-3 fs-12 text-muted">
                                         <span>Conjunto de anúncios</span>
-                                        <span>{m.spend_split_pct}% do spend</span>
+                                        <span>Peso {m.spend_split_pct}% na atribuição</span>
                                     </div>
                                 </div>
                                 <div className="d-flex gap-1">
@@ -233,7 +233,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                     {selected && (
                         <div className="mt-3">
                             <label className="fs-12 text-muted fw-semibold text-uppercase mb-1" style={{ letterSpacing: ".05em" }}>
-                                % do spend atribuída a este carro
+                                Peso relativo deste carro no conjunto
                             </label>
                             <div className="d-flex align-items-center gap-3">
                                 <input
@@ -249,7 +249,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                             </div>
                             {splitPct < 100 && (
                                 <p className="fs-12 text-muted mt-1 mb-0">
-                                    Os restantes {100 - splitPct}% podem ser atribuídos a outro carro no mesmo conjunto.
+                                    Este valor passa a funcionar como peso relativo para repartir métricas e spend entre carros do mesmo conjunto.
                                 </p>
                             )}
                         </div>
