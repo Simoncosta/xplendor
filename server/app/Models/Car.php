@@ -158,6 +158,11 @@ class Car extends Model implements AuditableContract
         return $this->hasOne(CarAiAnalysis::class);
     }
 
+    public function attributes(): HasOne
+    {
+        return $this->hasOne(VehicleAttribute::class, 'car_id');
+    }
+
     public function sale(): HasOne
     {
         return $this->hasOne(CarSale::class);
