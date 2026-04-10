@@ -33,6 +33,7 @@ class CarService extends BaseService
 
     public function store(array $data): mixed
     {
+        $hasVehicleAttributes = !empty($data['vehicle_attributes']);
         $vehicleAttributes = $this->extractVehicleAttributes($data);
         unset($data['vehicle_attributes']);
 
@@ -70,10 +71,12 @@ class CarService extends BaseService
             }
         }
 
-        $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
+        if ($hasVehicleAttributes) {
+            $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
 
-        if ($vehicleAttribute) {
-            $car->setRelation('vehicleAttribute', $vehicleAttribute);
+            if ($vehicleAttribute) {
+                $car->setRelation('vehicleAttribute', $vehicleAttribute);
+            }
         }
 
         return $car->loadMissing('vehicleAttribute');
@@ -81,6 +84,7 @@ class CarService extends BaseService
 
     public function update(int $id, array $data): mixed
     {
+        $shouldSyncVehicleAttributes = array_key_exists('vehicle_attributes', $data);
         $vehicleAttributes = $this->extractVehicleAttributes($data);
         unset($data['vehicle_attributes']);
 
@@ -220,12 +224,14 @@ class CarService extends BaseService
             }
         }
 
-        $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
+        if ($shouldSyncVehicleAttributes) {
+            $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
 
-        if ($vehicleAttribute) {
-            $car->setRelation('vehicleAttribute', $vehicleAttribute);
-        } else {
-            $car->loadMissing('vehicleAttribute');
+            if ($vehicleAttribute) {
+                $car->setRelation('vehicleAttribute', $vehicleAttribute);
+            } else {
+                $car->loadMissing('vehicleAttribute');
+            }
         }
 
         return $car;
