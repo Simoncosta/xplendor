@@ -23,6 +23,8 @@ class Car extends Model implements AuditableContract
         'registration_year',
         'car_brand_id',
         'car_model_id',
+        'vehicle_type',
+        'car_category_id',
         'version',
         'public_version_name',
         'fuel_type',
@@ -106,6 +108,11 @@ class Car extends Model implements AuditableContract
     public function model(): BelongsTo
     {
         return $this->belongsTo(CarModel::class, 'car_model_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(CarCategory::class, 'car_category_id');
     }
 
     public function images(): HasMany

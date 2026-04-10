@@ -2,4 +2,9 @@
 
 namespace App\Repositories\Contracts;
 
-interface CarModelRepositoryInterface extends BaseRepositoryInterface {}
+use Illuminate\Support\Collection;
+
+interface CarModelRepositoryInterface extends BaseRepositoryInterface
+{
+    public function getModelsByBrandAndType(int $brandId, string $vehicleType): Collection;
+}

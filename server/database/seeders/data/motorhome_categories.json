@@ -1,0 +1,35 @@
+[
+    {
+        "vehicle_type": "motorhome",
+        "categories": [
+            {
+                "name": "Atrelado Tenda",
+                "slug": "atrelado-tenda"
+            },
+            {
+                "name": "Capucine",
+                "slug": "capucine"
+            },
+            {
+                "name": "Caravana",
+                "slug": "caravana"
+            },
+            {
+                "name": "Caravana Pickup",
+                "slug": "caravana-pickup"
+            },
+            {
+                "name": "Furgão",
+                "slug": "furgao"
+            },
+            {
+                "name": "Integral",
+                "slug": "integral"
+            },
+            {
+                "name": "Perfilada",
+                "slug": "perfilada"
+            }
+        ]
+    }
+]

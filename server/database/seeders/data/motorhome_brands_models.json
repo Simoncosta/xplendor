@@ -1,0 +1,2736 @@
+[
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "ABI",
+            "slug": "abi"
+        },
+        "models_recommended": [
+            "Supreme"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Adria",
+            "slug": "adria"
+        },
+        "models_recommended": [
+            "A",
+            "Action",
+            "Adiva",
+            "Adora",
+            "Adria KA",
+            "Adriatik",
+            "Alpina",
+            "Altea",
+            "Astela",
+            "Aviva",
+            "Compact",
+            "Coral",
+            "Coral Compact",
+            "Coral Sport",
+            "Forma",
+            "Izola",
+            "Matrix",
+            "Mistral",
+            "Mode",
+            "Optima",
+            "Sonic",
+            "Stargo",
+            "Supersonic",
+            "Twin",
+            "Twin Max",
+            "Twin Sports",
+            "Unica B",
+            "Uni D",
+            "Van"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Affinity",
+            "slug": "affinity"
+        },
+        "models_recommended": [
+            "Duo",
+            "Five",
+            "M Duo",
+            "M Four",
+            "M Three",
+            "M Two",
+            "One",
+            "Three"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ahorn",
+            "slug": "ahorn"
+        },
+        "models_recommended": [
+            "Alaska Series",
+            "Black Edition",
+            "Camp Series",
+            "Campervans Series",
+            "Canada Series",
+            "Eco Series"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Airstream",
+            "slug": "airstream"
+        },
+        "models_recommended": [
+            "Atlas",
+            "Bambi",
+            "Basecamp",
+            "Caravel",
+            "Classic",
+            "Flying Cloud",
+            "Globetrotter",
+            "International",
+            "Interstate",
+            "Pottery Barn Special Edition",
+            "Rangeline",
+            "REI Special Edition",
+            "Trade Win"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Andrade",
+            "slug": "andrade"
+        },
+        "models_recommended": [
+            "Alfa",
+            "Pristol",
+            "Rigel",
+            "Vega"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Arca",
+            "slug": "arca"
+        },
+        "models_recommended": [
+            "Arca"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Atlas",
+            "slug": "atlas"
+        },
+        "models_recommended": [
+            "Florida"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Autoroller",
+            "slug": "autoroller"
+        },
+        "models_recommended": [
+            "ABI",
+            "Adria",
+            "Affinity",
+            "Ahorn",
+            "Airstream",
+            "Andrade",
+            "Arca",
+            "Atlas",
+            "Autoroller",
+            "Autostar",
+            "Aventure",
+            "Axxor",
+            "Basoglu",
+            "Bavaria",
+            "Bawemo",
+            "Benimar",
+            "Bimobil",
+            "BK Bluebird",
+            "Blucamp",
+            "Burstner",
+            "CA-MO-CAR",
+            "Camper Way",
+            "Campérêve",
+            "Carado",
+            "Caravelair",
+            "Carnaby",
+            "Caro",
+            "Carthago",
+            "Challenger",
+            "Chausson",
+            "CI International",
+            "Citroen",
+            "Clever Vans",
+            "CNW",
+            "Coachmen",
+            "Concorde",
+            "Cosalt",
+            "Cristall",
+            "CS Reisemobile",
+            "Dehler",
+            "Delta",
+            "Dethleffs",
+            "Dodge",
+            "Dreamer",
+            "Due Erre",
+            "Eifelland",
+            "Elnagh",
+            "Eriba",
+            "Esterel",
+            "Etrusco",
+            "Euramobil",
+            "Euro Liner",
+            "Fendt",
+            "FFB - Tabbert",
+            "Fiat",
+            "Fleetwood",
+            "Fleurette",
+            "Florium",
+            "Font Vendôme",
+            "Ford",
+            "Ford / Reimo",
+            "Forever",
+            "Forster",
+            "Frankia",
+            "Freeline",
+            "Giottiline",
+            "Globecar",
+            "Granduca",
+            "Hehn",
+            "Heku",
+            "Hergo",
+            "Hobby",
+            "Holiday Rambler",
+            "Hymer",
+            "Ilusion",
+            "Itineo",
+            "Iveco",
+            "Joint",
+            "Karmann",
+            "Kentucky",
+            "Kia",
+            "Kip",
+            "Knaus",
+            "La Strada",
+            "Laika",
+            "Le Voyageur",
+            "LMC",
+            "M+M Mobile",
+            "MA-BU",
+            "Mazda",
+            "McLouis",
+            "Mercedes-Benz",
+            "Miller",
+            "Mirage",
+            "Mitsubishi",
+            "Mobilvetta",
+            "Moncayo",
+            "Mooveo",
+            "Niesmann+Bischoff",
+            "Nordstar",
+            "Notin",
+            "Opel",
+            "Ormocar",
+            "Outra não listada",
+            "Peugeot",
+            "Phoenix",
+            "Pilote",
+            "PLA",
+            "Pluma",
+            "Pössl",
+            "Pyc",
+            "Raclet",
+            "Rapido",
+            "Renault",
+            "Rimor",
+            "Riviera",
+            "RMB",
+            "Roadcar",
+            "Rockwood",
+            "Roller Team",
+            "Saurium",
+            "SEA",
+            "Sky",
+            "Sterckeman",
+            "Sterling",
+            "Stylevan",
+            "Sun Living",
+            "Sun Roller",
+            "Sunlight",
+            "TAB",
+            "Tabbert",
+            "TEC",
+            "Tischer",
+            "Toyota",
+            "Trigano",
+            "Vila Mobil",
+            "Vimara",
+            "VW",
+            "Weinsberg",
+            "Weippert",
+            "Westfalia",
+            "Wilk",
+            "Willerby",
+            "Winnebago",
+            "Winner",
+            "XGO"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Autostar",
+            "slug": "autostar"
+        },
+        "models_recommended": [
+            "ARYAL",
+            "Athénor",
+            "Auros",
+            "Autostar",
+            "Celtic",
+            "Passion",
+            "Performance",
+            "Premice",
+            "Prestige",
+            "Privilege",
+            "Van"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Aventure",
+            "slug": "aventure"
+        },
+        "models_recommended": [
+            "C15"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Axxor",
+            "slug": "axxor"
+        },
+        "models_recommended": [
+            "Samoa"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Basoglu",
+            "slug": "basoglu"
+        },
+        "models_recommended": [
+            "Caretta Offroad"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Bavaria",
+            "slug": "bavaria"
+        },
+        "models_recommended": [
+            "Allure",
+            "Arctic",
+            "Baltic",
+            "Class",
+            "I70",
+            "S70",
+            "Sol y L",
+            "Style",
+            "T"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Bawerno",
+            "slug": "bawerno"
+        },
+        "models_recommended": [
+            "Dreamliner",
+            "Icebird",
+            "Powerliner",
+            "Starliner",
+            "Streamliner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Benimar",
+            "slug": "benimar"
+        },
+        "models_recommended": [
+            "Aereo",
+            "Aero Top",
+            "Amphitryon",
+            "Anthus",
+            "Aristeo",
+            "Athico",
+            "Benivan",
+            "Europa",
+            "Europe",
+            "Junior",
+            "Mileo",
+            "Perseo",
+            "Sport",
+            "Tesseo",
+            "Tessoro",
+            "Yrteo"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Bimobil",
+            "slug": "bimobil"
+        },
+        "models_recommended": [
+            "AX 575",
+            "BJ 330",
+            "buddy joe",
+            "HD 370",
+            "husky 230",
+            "husky 235",
+            "husky 240",
+            "husky 258",
+            "husky piccolo",
+            "LB 355",
+            "LB 365",
+            "LB 458",
+            "mona lisa",
+            "ST 702",
+            "VD 280",
+            "VL 326"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "BK Bluebird",
+            "slug": "bk-bluebird"
+        },
+        "models_recommended": [
+            "Super Caprice"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Blucamp",
+            "slug": "blucamp"
+        },
+        "models_recommended": [
+            "Fly",
+            "OCEAN",
+            "Optimist",
+            "RIVER",
+            "SKY"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Burstner",
+            "slug": "burstner"
+        },
+        "models_recommended": [
+            "A 2",
+            "A-Modell",
+            "A530",
+            "A535-2",
+            "A590",
+            "Akzent",
+            "Amara",
+            "Amara Ambiente",
+            "Amara Luxus",
+            "Aresa",
+            "Argos",
+            "Avantgarde",
+            "Averso",
+            "Aviano",
+            "Belcanto",
+            "Brevio",
+            "Campeo",
+            "City",
+            "Club",
+            "Delfin",
+            "Delfin Performance",
+            "Elegance",
+            "Eliseo",
+            "Flipper",
+            "Flipper Sportiv",
+            "Flirt",
+            "Fun",
+            "Fun Sportiv",
+            "Ixeo",
+            "Levanto",
+            "Lux",
+            "Lyseo",
+            "Marano",
+            "Mega Van",
+            "Nexxo",
+            "Nexxo Family",
+            "Premio",
+            "Privilége",
+            "Quadro",
+            "Scala",
+            "Skyline",
+            "Solano",
+            "Star",
+            "T-Modelo",
+            "Travel Van",
+            "Trecento",
+            "Ventana",
+            "Ventana Avantgarde",
+            "Ventana Komfort",
+            "Viseo",
+            "Winner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "CA-MO-CAR",
+            "slug": "ca-mo-car"
+        },
+        "models_recommended": [
+            "Ca-mo-car"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Camper Way",
+            "slug": "camper-way"
+        },
+        "models_recommended": [
+            "Roma"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Campérêve",
+            "slug": "campereve"
+        },
+        "models_recommended": [
+            "Camper Van XL",
+            "Family Van",
+            "Magellan",
+            "Miramar"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Carado",
+            "slug": "carado"
+        },
+        "models_recommended": [
+            "160L",
+            "C",
+            "I",
+            "T"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Caravelair",
+            "slug": "caravelair"
+        },
+        "models_recommended": [
+            "425",
+            "436",
+            "485",
+            "5007",
+            "Alba",
+            "Alba 496",
+            "Ambiance Style",
+            "Antares",
+            "Antares Luxe",
+            "Bahia",
+            "Bamba",
+            "Brasilia",
+            "ELDORADO",
+            "Osiris",
+            "Palma",
+            "Silver",
+            "Soleria"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Carnaby",
+            "slug": "carnaby"
+        },
+        "models_recommended": [
+            "Belvedere"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Caro",
+            "slug": "caro"
+        },
+        "models_recommended": [
+            "Caro"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Carthago",
+            "slug": "carthago"
+        },
+        "models_recommended": [
+            "C-Compactline",
+            "C-Tourer",
+            "Chic",
+            "M-Liner",
+            "Malibu",
+            "Mega-Liner",
+            "Mondial",
+            "Opus"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Challenger",
+            "slug": "challenger"
+        },
+        "models_recommended": [
+            "100",
+            "101",
+            "102",
+            "103",
+            "105",
+            "110",
+            "151",
+            "264",
+            "302",
+            "307",
+            "308",
+            "311",
+            "328",
+            "450",
+            "Eden",
+            "Elitis",
+            "Flash06",
+            "Genesis",
+            "Graphite",
+            "Mageo",
+            "Prium",
+            "Quartz",
+            "Sirius",
+            "Slim",
+            "Sunset Edition",
+            "Vany",
+            "X150"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Chausson",
+            "slug": "chausson"
+        },
+        "models_recommended": [
+            "Allegro",
+            "Alteo",
+            "Best of 30",
+            "Exaltis",
+            "Exaltis I778",
+            "Flash",
+            "Korus",
+            "Odyssee",
+            "Sweet Cosy",
+            "Titanium",
+            "Trigano",
+            "Twist",
+            "Welcome"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "CI International",
+            "slug": "ci-international"
+        },
+        "models_recommended": [],
+        "models_other": [
+            "Autoroller",
+            "Carioca",
+            "Cipro",
+            "Cipro 35",
+            "Elliot",
+            "Granduca",
+            "Horon",
+            "Kyros",
+            "Magis",
+            "Manoa",
+            "Mizar",
+            "Nacre",
+            "Riviera",
+            "X-Til"
+        ]
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Citroen",
+            "slug": "citroen"
+        },
+        "models_recommended": [
+            "HZ",
+            "Jumper",
+            "Jumpy"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Clever Vans",
+            "slug": "clever-vans"
+        },
+        "models_recommended": [
+            "Celebration",
+            "Flex",
+            "Runner",
+            "Tous",
+            "Vario Kids"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "CNW",
+            "slug": "cnw"
+        },
+        "models_recommended": [
+            "CNW"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Coachmen",
+            "slug": "coachmen"
+        },
+        "models_recommended": [
+            "Blast",
+            "Captiva",
+            "Chaparral",
+            "clipper",
+            "Concord",
+            "Freelander",
+            "Leprechau",
+            "Mirada",
+            "Prism",
+            "Shasta",
+            "Spirit of america",
+            "Surge",
+            "Wyoming"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Concorde",
+            "slug": "concorde"
+        },
+        "models_recommended": [
+            "C1",
+            "Carma",
+            "Carver",
+            "Charisma",
+            "Compact",
+            "Concerto",
+            "Concorde",
+            "Credo",
+            "Cruiser",
+            "Liner",
+            "Sport"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Cosalt",
+            "slug": "cosalt"
+        },
+        "models_recommended": [
+            "Capri Super",
+            "Vienna"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Cristall",
+            "slug": "cristall"
+        },
+        "models_recommended": [
+            "430",
+            "Aventure",
+            "Carotel",
+            "Champ",
+            "H-Serie",
+            "Modelos A",
+            "Moorea",
+            "Samoa",
+            "Serie A",
+            "Sonstige",
+            "Sprint",
+            "Wenge",
+            "Winner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "CS Reisemobile",
+            "slug": "cs-reisemobile"
+        },
+        "models_recommended": [
+            "Amigo",
+            "Apollo",
+            "Corona",
+            "Cosmo",
+            "DUO",
+            "Luxor",
+            "Rondo",
+            "Rondo XL"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Dehler",
+            "slug": "dehler"
+        },
+        "models_recommended": [
+            "Optima"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Delta",
+            "slug": "delta"
+        },
+        "models_recommended": [
+            "Aero",
+            "Euroliner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Dethleffs",
+            "slug": "dethleffs"
+        },
+        "models_recommended": [
+            "330",
+            "450",
+            "460",
+            "470",
+            "A 501",
+            "A 512",
+            "A 520",
+            "A 5202",
+            "A 522",
+            "A 5250",
+            "A 5252",
+            "A 532",
+            "A 5420",
+            "A 5431",
+            "A 560",
+            "A 5812",
+            "A 5830",
+            "Advantage",
+            "Aero Tourist",
+            "Arist",
+            "Beduin",
+            "Beduin Emotion",
+            "Bike & Camp",
+            "Bolero",
+            "Bus",
+            "Camper",
+            "Camper Lifestyle",
+            "Camper Snow",
+            "Camper Young Family",
+            "Campy",
+            "Comfort",
+            "Esprit",
+            "Esprit RT",
+            "Exclusiv",
+            "Exclusiv Emotion",
+            "Fortero",
+            "Globe S",
+            "Globe4",
+            "Globebus",
+            "Globetrail",
+            "Globetrotter",
+            "Globetrotter XXL",
+            "Globevan",
+            "Joint X",
+            "Jubilar",
+            "Jubivan",
+            "Just",
+            "Megaron",
+            "New Line",
+            "Nomad",
+            "Pirat",
+            "Premium Class",
+            "Pulse",
+            "Rally Nomad",
+            "Rondo",
+            "Summer Edition",
+            "Summer Edition 03",
+            "Summer Edition 05",
+            "Summer Edition Van",
+            "Sun Roller Living",
+            "T 7052",
+            "T 7151",
+            "Tec Tour Line",
+            "Tourist Light",
+            "Trend",
+            "Vari"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Dodge",
+            "slug": "dodge"
+        },
+        "models_recommended": [
+            "RAM"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Dreamer",
+            "slug": "dreamer"
+        },
+        "models_recommended": [
+            "Camper Five",
+            "Camper Van XL",
+            "Cap Coast",
+            "Cap Land",
+            "D42",
+            "D43",
+            "D51",
+            "D53",
+            "D55",
+            "D60",
+            "D62",
+            "D68",
+            "Family Van",
+            "Living Van"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Due Erre",
+            "slug": "due-erre"
+        },
+        "models_recommended": [
+            "Dreams",
+            "Star"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Eifelland",
+            "slug": "eifelland"
+        },
+        "models_recommended": [
+            "Deseo",
+            "Deseo Active",
+            "Deseo Lifestyle",
+            "Deseo Plus",
+            "Holiday",
+            "Holiday Family Line",
+            "Sonstige"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Elnagh",
+            "slug": "elnagh"
+        },
+        "models_recommended": [
+            "Baron",
+            "Clipper",
+            "Doral",
+            "Duke",
+            "I-Loft",
+            "Joxy",
+            "King",
+            "Magnum",
+            "Marlin",
+            "Prince",
+            "Sleek",
+            "Slim",
+            "Super D",
+            "T-Loft",
+            "Trophy"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Eriba",
+            "slug": "eriba"
+        },
+        "models_recommended": [
+            "Touring"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Esterel",
+            "slug": "esterel"
+        },
+        "models_recommended": [
+            "Exclusive 43E"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Etrusco",
+            "slug": "etrusco"
+        },
+        "models_recommended": [
+            "CV 540 DB",
+            "CV 600 DB",
+            "CV 600 DF",
+            "CV 600 DF 4x4",
+            "T 6900 SB",
+            "T 7400 SB",
+            "V 5.9 DF",
+            "V 6.6 SF"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Euramobil",
+            "slug": "euramobil"
+        },
+        "models_recommended": [
+            "Activa",
+            "Contura",
+            "Euramobil",
+            "Integra",
+            "Profila",
+            "Quixta",
+            "Sport",
+            "Terrestra"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Euro Liner",
+            "slug": "euro-liner"
+        },
+        "models_recommended": [
+            "Euro liner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Fendt",
+            "slug": "fendt"
+        },
+        "models_recommended": [
+            "Apero",
+            "Bianco",
+            "Diamant",
+            "Diamant VIP",
+            "Fendt 620",
+            "Fendt 660",
+            "Fendt 680",
+            "Festival",
+            "Joker",
+            "K-Mobil",
+            "Karat",
+            "Line 3",
+            "Mobil-T",
+            "Next",
+            "Platin",
+            "Saphir",
+            "Tendenz",
+            "Topas"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "FFB - Tabbert",
+            "slug": "ffb-tabbert"
+        },
+        "models_recommended": [
+            "Classic"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Fiat",
+            "slug": "fiat"
+        },
+        "models_recommended": [
+            "Ducato",
+            "Giottline",
+            "Talento"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Fleetwood",
+            "slug": "fleetwood"
+        },
+        "models_recommended": [
+            "American Flyer",
+            "Discovery",
+            "Flair",
+            "Jamboree",
+            "Pace Arrow",
+            "Prowler",
+            "Revolution",
+            "Terra",
+            "Terry Expo"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Fleurette",
+            "slug": "fleurette"
+        },
+        "models_recommended": [
+            "Discover",
+            "Elister",
+            "Le Chipeau",
+            "Le Grebe",
+            "Magister",
+            "Migrateur"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Florium",
+            "slug": "florium"
+        },
+        "models_recommended": [
+            "Baxter",
+            "Mayflower",
+            "Wincester"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Font Vendôme",
+            "slug": "font-vendome"
+        },
+        "models_recommended": [
+            "Auto Camp",
+            "Auto Camp XL",
+            "Auto Camper",
+            "Bel Horizon",
+            "Duo Van",
+            "Fortyvan 4x4",
+            "Leader Camp",
+            "Leader Van",
+            "Leader Van Duo",
+            "Master Van Duo",
+            "Master Van XS",
+            "Mondéa",
+            "Rando Camp",
+            "Rando Van",
+            "Terra Van",
+            "Vandome"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ford",
+            "slug": "ford"
+        },
+        "models_recommended": [
+            "Nugget",
+            "Transit",
+            "Trigano"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ford / Reimo",
+            "slug": "ford-reimo"
+        },
+        "models_recommended": [
+            "Transit"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Forever",
+            "slug": "forever"
+        },
+        "models_recommended": [
+            "Forever"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Forster",
+            "slug": "forster"
+        },
+        "models_recommended": [
+            "A699",
+            "I745",
+            "T599",
+            "T649",
+            "T659",
+            "T699",
+            "T745",
+            "V599",
+            "V636"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Frankia",
+            "slug": "frankia"
+        },
+        "models_recommended": [
+            "Bavaria",
+            "Comfort Class",
+            "Comfort Class/Vario Space",
+            "Compact Class",
+            "Exclusiv",
+            "Holiday Class",
+            "Luxury Class",
+            "Royal Class"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "FreeLine",
+            "slug": "freeline"
+        },
+        "models_recommended": [
+            "Freeline"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Giottiline",
+            "slug": "giottiline"
+        },
+        "models_recommended": [
+            "G-Line 936",
+            "G-Line 937",
+            "G-Line 938",
+            "Genetics",
+            "Giottivan",
+            "Graal",
+            "Ilusion",
+            "Siena",
+            "Therry",
+            "Top Cruiser",
+            "Windy"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Globecar",
+            "slug": "globecar"
+        },
+        "models_recommended": [
+            "Campscout",
+            "Familyscout",
+            "Familyscout L",
+            "Fortscout",
+            "Globescout",
+            "Globescout Style",
+            "Roadscout",
+            "Travelscout",
+            "Travelscout L",
+            "Trendscout",
+            "Twinscout"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Granduca",
+            "slug": "granduca"
+        },
+        "models_recommended": [
+            "12",
+            "46",
+            "54"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Hehn",
+            "slug": "hehn"
+        },
+        "models_recommended": [
+            "HS",
+            "Rheinstar Ford FT"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Heku",
+            "slug": "heku"
+        },
+        "models_recommended": [
+            "Heku"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Hergo",
+            "slug": "hergo"
+        },
+        "models_recommended": [
+            "Hergo"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Hobby",
+            "slug": "hobby"
+        },
+        "models_recommended": [
+            "Alkoven",
+            "Classic",
+            "De Luxe",
+            "De Luxe Easy",
+            "Elegance",
+            "Excellent",
+            "Excellent Easy",
+            "Excelsior",
+            "Exclusive",
+            "Hobby 500",
+            "Hobby 600",
+            "Hobby 700",
+            "Landhaus",
+            "Linie D",
+            "Premium",
+            "Prestige",
+            "Siesta",
+            "Sonstige",
+            "Sphinx",
+            "T-600",
+            "T-Alkoven",
+            "Toskana",
+            "Toskana Exclusive",
+            "Transit",
+            "Van",
+            "Van Exclusive"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Holiday Rambler",
+            "slug": "holiday-rambler"
+        },
+        "models_recommended": [
+            "Holiday Rambler"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ilusion",
+            "slug": "ilusion"
+        },
+        "models_recommended": [
+            "B Classic",
+            "B-Star-Line",
+            "BMC-I",
+            "BMC-T",
+            "Camp",
+            "Camp CL",
+            "Camp Classic",
+            "Camp GT",
+            "Camp SL",
+            "Camp Star Line",
+            "Camp Swing",
+            "Car",
+            "Classe B",
+            "Classe B CL",
+            "Classe B SL",
+            "Classe E",
+            "Classe S",
+            "Eriba Feeling",
+            "Eriba Future",
+            "Eriba Living",
+            "Eriba Living Pulse",
+            "Eriba Nova",
+            "Eriba Nova S",
+            "Eriba Touring",
+            "Eriba Touring Familia",
+            "Eriba Touring GT",
+            "Eriba Touring Pontos",
+            "Eriba Touring Puck",
+            "Eriba Touring Triton",
+            "Eriba Touring Troll",
+            "Excl Line",
+            "Exsis",
+            "Exsis I",
+            "Grand Canyon",
+            "Grand Canyon S",
+            "Living",
+            "ML - I",
+            "ML-T",
+            "Moving",
+            "Nova",
+            "Nova GL",
+            "Nova SL",
+            "Signo",
+            "Sonstige",
+            "Swing",
+            "T698",
+            "Tramp",
+            "Tramp CL",
+            "Tramp R",
+            "Tramp S",
+            "Tramp SL",
+            "Tramp-Classic",
+            "Van",
+            "Venture S"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ilusion",
+            "slug": "ilusion"
+        },
+        "models_recommended": [
+            "I",
+            "Irius",
+            "XMK"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Iltineo",
+            "slug": "iltineo"
+        },
+        "models_recommended": [
+            "FC 650",
+            "JB 700",
+            "JC 740",
+            "LB 690",
+            "MB 690",
+            "MB 700",
+            "MB 740",
+            "MB 800",
+            "MC 740",
+            "Nomad CM660",
+            "PJ 740",
+            "PM 740",
+            "SB 700",
+            "SB 740",
+            "SD 610",
+            "SLB 700",
+            "TC 740"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Iveco",
+            "slug": "iveco"
+        },
+        "models_recommended": [
+            "Daily"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Joint",
+            "slug": "joint"
+        },
+        "models_recommended": [
+            "Elegance",
+            "Spaceline",
+            "Van Aventura",
+            "Z"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Karmann",
+            "slug": "karmann"
+        },
+        "models_recommended": [
+            "Cheetah T 4",
+            "Colorado",
+            "Davis",
+            "Dexter",
+            "Missouri",
+            "Ontario",
+            "Volkswagen LT Distance Wide"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Kentucky",
+            "slug": "kentucky"
+        },
+        "models_recommended": [
+            "Camargue"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Kia",
+            "slug": "kia"
+        },
+        "models_recommended": [
+            "Pregio"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Kip",
+            "slug": "kip"
+        },
+        "models_recommended": [
+            "Deluxe",
+            "Grey Line",
+            "KV Spezial",
+            "Shuttle",
+            "Sunline"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Knaus",
+            "slug": "knaus"
+        },
+        "models_recommended": [
+            "Azur",
+            "Blue Line",
+            "Box Star",
+            "Boxlife",
+            "C-Liner",
+            "Country",
+            "Eifelland",
+            "Eurostar",
+            "Eurostar Style",
+            "Imperiale",
+            "Ked",
+            "Royale",
+            "S-Liner",
+            "Sky Ti",
+            "Sky TR",
+            "Sky Traveller",
+            "Sky Wave",
+            "Sonstige",
+            "Sport",
+            "Sport & Fun",
+            "Sport Liner",
+            "Sport TI",
+            "Sport Traveller",
+            "Südwind",
+            "Südwind Blue",
+            "Südwind M",
+            "Südwind Sport",
+            "Sun Liner",
+            "Sun TI",
+            "Sun Travel Liner",
+            "Sun Traveller",
+            "Sun Traveller TI",
+            "Travel Liner",
+            "Travel Liner C",
+            "Traveller",
+            "V-Liner",
+            "Van",
+            "Van TI",
+            "YAMC",
+            "YAT B"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "La Strada",
+            "slug": "la-strada"
+        },
+        "models_recommended": [
+            "Avanti",
+            "Carat",
+            "Nova",
+            "Sonstige"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Laika",
+            "slug": "laika"
+        },
+        "models_recommended": [
+            "Ecovip",
+            "Kosmo",
+            "Kreos",
+            "Rexosline",
+            "Serie X"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Le Voyageur",
+            "slug": "le-voyageur"
+        },
+        "models_recommended": [
+            "Eterna",
+            "Héritage"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "LMC",
+            "slug": "lmc"
+        },
+        "models_recommended": [
+            "Ambassador",
+            "Breezer",
+            "Casa Familia",
+            "Cruiser",
+            "Dominant",
+            "Explorer",
+            "Favorit",
+            "Finish",
+            "Innovan",
+            "Liberty",
+            "Liberty Basic",
+            "Liberty Finish",
+            "Lord",
+            "Lord Ambassador",
+            "Lord Exquisit",
+            "Luxus Design",
+            "Luxus Favorit",
+            "Luxus Sport",
+            "Münsterland",
+            "Münsterland Europa",
+            "Münsterland Luxus",
+            "Start",
+            "XKlusiv"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "M+M Mobile",
+            "slug": "m-m-mobile"
+        },
+        "models_recommended": [
+            "M+M Mobile"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "MA-BU",
+            "slug": "ma-bu"
+        },
+        "models_recommended": [
+            "Mabu"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mazda",
+            "slug": "mazda"
+        },
+        "models_recommended": [
+            "E 2200"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "McLouis",
+            "slug": "mclouis"
+        },
+        "models_recommended": [
+            "Glamys",
+            "Glen",
+            "Lagan",
+            "M110",
+            "MC2",
+            "MC4",
+            "Menfys Van",
+            "Ness",
+            "Nevis",
+            "Steel",
+            "Stirling",
+            "Tandy",
+            "Yearland 68",
+            "Yearling"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mercedes-Benz",
+            "slug": "mercedes-benz"
+        },
+        "models_recommended": [
+            "James Cook",
+            "Marco Polo",
+            "Sprinter",
+            "Vito"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Miller",
+            "slug": "miller"
+        },
+        "models_recommended": [
+            "Alabama",
+            "Arizona",
+            "Erie",
+            "Illinois",
+            "Manitoba",
+            "Maryland",
+            "Michigan",
+            "New Jersey",
+            "Oklahoma",
+            "Ontario",
+            "Snake",
+            "Victoria",
+            "Winnipeg"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mirage",
+            "slug": "mirage"
+        },
+        "models_recommended": [
+            "Giubileo",
+            "Mir",
+            "Mirage"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mitsubishi",
+            "slug": "mitsubishi"
+        },
+        "models_recommended": [
+            "L300"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mobilvetta",
+            "slug": "mobilvetta"
+        },
+        "models_recommended": [
+            "Blueline",
+            "Euroyacht",
+            "Icaro",
+            "K Silver I",
+            "K-Yacht",
+            "Kea",
+            "Krosser",
+            "Skipper",
+            "Top Driver"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Moncayo",
+            "slug": "moncayo"
+        },
+        "models_recommended": [
+            "Eco",
+            "Halcon",
+            "Liberty Van",
+            "Mediterrano",
+            "silver"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Mooveo",
+            "slug": "mooveo"
+        },
+        "models_recommended": [
+            "i647",
+            "i683",
+            "P 673",
+            "P 719",
+            "P6",
+            "P660",
+            "P7"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Niesmann+Bischoff",
+            "slug": "niesmann-bischoff"
+        },
+        "models_recommended": [
+            "Arto",
+            "Clou",
+            "ClouLINER",
+            "ClouTREND",
+            "Flair"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Nordstar",
+            "slug": "nordstar"
+        },
+        "models_recommended": [
+            "6L",
+            "8L",
+            "Pickup"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Notin",
+            "slug": "notin"
+        },
+        "models_recommended": [
+            "Excel Intégraux",
+            "I.Progress",
+            "Notinliner",
+            "Progress"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Opel",
+            "slug": "opel"
+        },
+        "models_recommended": [
+            "Movano",
+            "Vivaro"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Ormocar",
+            "slug": "ormocar"
+        },
+        "models_recommended": [
+            "Ormocar"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Outra não listada",
+            "slug": "outra-nao-listada"
+        },
+        "models_recommended": [
+            "Autocaravana Nacional",
+            "Caravana Nacional",
+            "Citroen",
+            "Fortuna",
+            "Iveco",
+            "Kabe",
+            "Monaco",
+            "Niewiadów",
+            "Outra não listada",
+            "PLA",
+            "Residencial",
+            "Silmecar"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Peugeot",
+            "slug": "peugeot"
+        },
+        "models_recommended": [
+            "Boxer",
+            "J5"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Phoenix",
+            "slug": "phoenix"
+        },
+        "models_recommended": [
+            "A",
+            "Alkoven",
+            "Iveco Daily",
+            "Liner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Pilote",
+            "slug": "pilote"
+        },
+        "models_recommended": [
+            "Atlantis",
+            "Atlas",
+            "Aventura",
+            "Essential",
+            "Évidence",
+            "Explorateur",
+            "Expression",
+            "First",
+            "Galaxy",
+            "Pacific",
+            "Reference",
+            "Sensation",
+            "V600",
+            "Van"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "PLA",
+            "slug": "pla"
+        },
+        "models_recommended": [
+            "Happy",
+            "Mister",
+            "Plasy"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Pluma",
+            "slug": "pluma"
+        },
+        "models_recommended": [
+            "244",
+            "350",
+            "360",
+            "425",
+            "440",
+            "460",
+            "500",
+            "530",
+            "560",
+            "California",
+            "Golden Gate",
+            "Grou",
+            "Sky",
+            "Vasco da gama",
+            "Weekend"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Pössl",
+            "slug": "possl"
+        },
+        "models_recommended": [
+            "2Win",
+            "4Family",
+            "Duett",
+            "Duett L",
+            "Duo",
+            "Duo Van",
+            "For2",
+            "Fortuna",
+            "Roadcamp",
+            "RoadCar",
+            "Roadcruiser",
+            "Roadmaster",
+            "Roadmaster L",
+            "Roadstar",
+            "Summit",
+            "Trenta"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Pyc",
+            "slug": "pyc"
+        },
+        "models_recommended": [
+            "Aventure",
+            "Pycline"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Raclet",
+            "slug": "raclet"
+        },
+        "models_recommended": [
+            "Cortina",
+            "Solena"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Rapido",
+            "slug": "rapido"
+        },
+        "models_recommended": [
+            "681",
+            "696F",
+            "Club",
+            "Distinction",
+            "Le Randonneur",
+            "Randonneur",
+            "Serie 6F",
+            "Serie 70",
+            "Serie 80dF",
+            "Serie 8F",
+            "Serie 90dF",
+            "Serie 941M",
+            "Serie 9m",
+            "Serie C",
+            "Van"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Renault",
+            "slug": "renault"
+        },
+        "models_recommended": [
+            "Kangoo",
+            "Master",
+            "Trafic"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Rimor",
+            "slug": "rimor"
+        },
+        "models_recommended": [
+            "Blucamp",
+            "Europeo",
+            "Horus",
+            "Katamarano",
+            "Kayak",
+            "Kivi",
+            "Koala",
+            "Sailer",
+            "Seal",
+            "Silverline",
+            "Super Brig",
+            "Unico"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Riviera",
+            "slug": "riviera"
+        },
+        "models_recommended": [
+            "550",
+            "Sonstige"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "RMB",
+            "slug": "rmb"
+        },
+        "models_recommended": [
+            "Blue Star",
+            "Silver Star",
+            "Sonstige",
+            "White Star"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Roadcar",
+            "slug": "roadcar"
+        },
+        "models_recommended": [
+            "R 540",
+            "R 600",
+            "R 640"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Rockwood",
+            "slug": "rockwood"
+        },
+        "models_recommended": [
+            "Regent",
+            "Sonstige"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Roller Team",
+            "slug": "roller-team"
+        },
+        "models_recommended": [
+            "Auto-Roller",
+            "Corfu",
+            "Granduca",
+            "Kronos",
+            "Livingstone",
+            "Pegaso",
+            "Sirio",
+            "Tango",
+            "Zefiro"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Saurium",
+            "slug": "saurium"
+        },
+        "models_recommended": [
+            "360",
+            "400BF"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "SEA",
+            "slug": "sea"
+        },
+        "models_recommended": [
+            "Dinghy",
+            "Winner",
+            "ZGVC"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sky",
+            "slug": "sky"
+        },
+        "models_recommended": [
+            "Capuchine",
+            "Perfiladas"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sterckeman",
+            "slug": "sterckeman"
+        },
+        "models_recommended": [
+            "Datcha Executive",
+            "Novastar",
+            "Sonstige",
+            "Star Deluxe",
+            "Starlet",
+            "Starlet Evolution",
+            "Starplus",
+            "Sunstar"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sterling",
+            "slug": "sterling"
+        },
+        "models_recommended": [
+            "Eccles",
+            "Elite",
+            "Europa"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Stylevan",
+            "slug": "stylevan"
+        },
+        "models_recommended": [
+            "Belize",
+            "Durban",
+            "Melbourne"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sun Living",
+            "slug": "sun-living"
+        },
+        "models_recommended": [
+            "A60SP",
+            "A70DK",
+            "A75DP",
+            "C60SP",
+            "Flexo SP",
+            "Lido",
+            "Lido A12",
+            "S60SP",
+            "S65SL",
+            "S70DF",
+            "S70DK",
+            "S70SC",
+            "S70SL",
+            "S70SP",
+            "S75SC",
+            "S75SL",
+            "V60SP",
+            "V65SL"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sun Roller",
+            "slug": "sun-roller"
+        },
+        "models_recommended": [
+            "Adagio",
+            "Blue Line",
+            "Jazz",
+            "Princess",
+            "Red Line",
+            "Tango"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Sunlight",
+            "slug": "sunlight"
+        },
+        "models_recommended": [
+            "A",
+            "C",
+            "Cliff",
+            "T",
+            "Vans"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "TAB",
+            "slug": "tab"
+        },
+        "models_recommended": [
+            "L",
+            "Offroad",
+            "RS",
+            "XL"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Tabbert",
+            "slug": "tabbert"
+        },
+        "models_recommended": [
+            "230",
+            "Baronesse",
+            "Classic",
+            "Comtesse",
+            "Comtesse Verde",
+            "Da Vinci",
+            "Diadem",
+            "Exclusiv",
+            "Jeunesse",
+            "Puccini",
+            "Rossini",
+            "Vivaldi"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "TEC",
+            "slug": "tec"
+        },
+        "models_recommended": [
+            "AdvanTEC",
+            "FreeTEC",
+            "FreeTEC XS",
+            "I-TEC",
+            "RoTEC",
+            "Sonstige",
+            "Sprinter",
+            "Sprinter Saphir",
+            "T.E.C. King",
+            "TEC.Star",
+            "Tour",
+            "Tour live",
+            "Tour Rubin",
+            "Travel King",
+            "Travelbird",
+            "Vans",
+            "Weltbummler",
+            "Weltbummler Creation"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Tischer",
+            "slug": "tischer"
+        },
+        "models_recommended": [
+            "Tischer"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Toyota",
+            "slug": "toyota"
+        },
+        "models_recommended": [
+            "Hiace",
+            "Hilux",
+            "Land Cruiser"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Trigano",
+            "slug": "trigano"
+        },
+        "models_recommended": [
+            "Auto-Roller Garage P",
+            "Carioca",
+            "Cheverny",
+            "Eurocamp",
+            "Rubis",
+            "Sinfonia",
+            "Vendome GL"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Villa Mobil",
+            "slug": "villa-mobil"
+        },
+        "models_recommended": [
+            "Athenia 393",
+            "Olympia 565"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Vimara",
+            "slug": "vimara"
+        },
+        "models_recommended": [
+            "310",
+            "320",
+            "340",
+            "350",
+            "360",
+            "370",
+            "390",
+            "400",
+            "410",
+            "420",
+            "430",
+            "450",
+            "500",
+            "520",
+            "530",
+            "Sport",
+            "Vip"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "VW",
+            "slug": "vw"
+        },
+        "models_recommended": [
+            "California Beach",
+            "California Coach",
+            "California Coast",
+            "California Comfortline T5",
+            "California Exclusive",
+            "California Ocean",
+            "California T4",
+            "California T5",
+            "Coach",
+            "Florida",
+            "Grand California",
+            "Jocker",
+            "LT",
+            "Malibu",
+            "T1",
+            "T2",
+            "T3",
+            "T4",
+            "T5",
+            "T6",
+            "Westfalia"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Weinsberg",
+            "slug": "weinsberg"
+        },
+        "models_recommended": [
+            "Carabus",
+            "CaraSuite",
+            "Comet",
+            "Cosmos",
+            "Imperiale",
+            "Imperiale S",
+            "Imperiale V",
+            "LEV",
+            "Meteor",
+            "Orbiter",
+            "Scout",
+            "Toscana",
+            "Trendline"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Weippert",
+            "slug": "weippert"
+        },
+        "models_recommended": [
+            "Isabella",
+            "Luxus",
+            "Nevada",
+            "Spezial Rustikal",
+            "Touring"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Westfalia",
+            "slug": "westfalia"
+        },
+        "models_recommended": [
+            "Amundsen",
+            "Big-NUGGET",
+            "Club Joker City",
+            "James Cook",
+            "Kepler",
+            "Marco Polo",
+            "Sven Hedin"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Wilk",
+            "slug": "wilk"
+        },
+        "models_recommended": [
+            "Aventura",
+            "Deluxe",
+            "Design",
+            "Polar Stern",
+            "S3",
+            "S4",
+            "S5",
+            "Stern S"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Willerby",
+            "slug": "willerby"
+        },
+        "models_recommended": [
+            "Chelsea",
+            "Granada",
+            "Lyndhurst",
+            "Salisbury",
+            "Westmorland"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Winnebago",
+            "slug": "winnebago"
+        },
+        "models_recommended": [
+            "Brave",
+            "Suncruiser"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "Winner",
+            "slug": "winner"
+        },
+        "models_recommended": [
+            "Winner"
+        ],
+        "models_other": []
+    },
+    {
+        "vehicle_type": "motorhome",
+        "brand": {
+            "name": "XGO",
+            "slug": "xgo"
+        },
+        "models_recommended": [
+            "Dynamic",
+            "X-Van"
+        ],
+        "models_other": []
+    }
+]

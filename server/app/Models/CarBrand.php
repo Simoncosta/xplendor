@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CarBrand extends Model
 {
-    protected $fillable = ['name', 'slug', 'logo'];
+    protected $fillable = ['name', 'slug', 'vehicle_type', 'logo'];
 
     public function models(): HasMany
     {

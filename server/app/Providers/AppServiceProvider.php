@@ -24,6 +24,7 @@ use App\Repositories\Contracts\{
     BlogRepositoryInterface,
     CarAiAnalysesRepositoryInterface,
     CarBrandRepositoryInterface,
+    CarCategoryRepositoryInterface,
     CarDecisionRepositoryInterface,
     CarExternalImageRepositoryInterface,
     CarInteractionRepositoryInterface,
@@ -56,6 +57,7 @@ use App\Repositories\{
     BlogRepository,
     CarAiAnalysesRepository,
     CarBrandRepository,
+    CarCategoryRepository,
     CarDecisionRepository,
     CarExternalImageRepository,
     CarInteractionRepository,
@@ -101,6 +103,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
         $this->app->bind(CarAiAnalysesRepositoryInterface::class, CarAiAnalysesRepository::class);
         $this->app->bind(CarBrandRepositoryInterface::class, CarBrandRepository::class);
+        $this->app->bind(CarCategoryRepositoryInterface::class, CarCategoryRepository::class);
         $this->app->bind(CarDecisionRepositoryInterface::class, CarDecisionRepository::class);
         $this->app->bind(CarExternalImageRepositoryInterface::class, CarExternalImageRepository::class);
         $this->app->bind(CarInteractionRepositoryInterface::class, CarInteractionRepository::class);

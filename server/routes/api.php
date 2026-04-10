@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\{
     CarAdCampaignController,
     CarAnalyticsController,
     CarBrandController,
+    CarCategoryController,
     CarController,
     CarLeadController,
     CarMarketingIdeaController,
@@ -118,6 +119,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/districts/{id}/municipalities', [DistrictController::class, 'getMunicipalities']);
             Route::get('/municipalities/{id}/parishes', [DistrictController::class, 'getParishes']);
 
+            Route::apiResource('/car-categories', CarCategoryController::class)->only(['index']);
             Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
             Route::apiResource('/car-models', CarModelController::class)->only(['index']);
         });

@@ -7,7 +7,6 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\PaginateRequest;
 use App\Services\CarBrandService;
-use Illuminate\Http\Request;
 
 class CarBrandController extends Controller
 {
@@ -15,14 +14,30 @@ class CarBrandController extends Controller
 
     public function index(PaginateRequest $request)
     {
+        $data = $request->validate([
+            'vehicle_type' => ['nullable', 'in:car,motorhome'],
+        ]);
+
+        $filters = [];
+
+        if ($request->filled('vehicle_type')) {
+            $filters['vehicle_type'] = $data['vehicle_type'];
+        }
+
         $paginate = $request->input('perPage')
             ? ApiPaginate::perPage($request)
             : null;
 
+        $columns = !empty($filters)
+            ? ['id', 'name', 'slug']
+            : ['*'];
+
         $carBrands = $this->carBrandService->getAll(
-            ['*'],
+            $columns,
             [],
             $paginate,
+            $filters,
+            ['name' => 'asc'],
         );
 
         return ApiResponse::success($carBrands, 'Car Brands fetched successfully.');
