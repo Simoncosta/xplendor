@@ -14,6 +14,7 @@ class CarSalePotentialScoreService
     public function __construct(
         private CarSalePotentialScoreRepositoryInterface $repository,
         private CarMarketIntelligenceService $carMarketIntelligenceService,
+        private VehicleIpsService $vehicleIpsService,
     ) {}
 
     // ── Entrada pública ───────────────────────────────────────────────────────
@@ -26,6 +27,9 @@ class CarSalePotentialScoreService
         $pricing = $this->resolvePricingContext($car);
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
         $priceVsMarket = $this->getPriceVsMarketPercent($marketIntelligence);
+        $viewsTotal = (int) DB::table('car_views')->where('car_id', $car->id)->count();
+        $interactionsTotal = (int) DB::table('car_interactions')->where('car_id', $car->id)->count();
+        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
 
         $breakdown = [
             'price_vs_market' => $this->scorePriceVsMarket($marketIntelligence),
@@ -48,14 +52,16 @@ class CarSalePotentialScoreService
                 'market_p75_price' => $marketIntelligence['market_p75_price'] ?? null,
                 'recommended_price' => $marketIntelligence['recommended_price'] ?? $pricing['effective_price_gross'],
                 'car_price_vs_median_pct' => $priceVsMarket,
+                'ips_strategy' => $car->vehicle_type === 'motorhome' ? 'motorhome' : 'car',
             ],
         ];
 
-        $score          = (int) collect($breakdown)
-            ->filter(fn ($value) => is_numeric($value))
-            ->sum();
-        $score          = max(0, min(100, $score)); // garantir 0–100
-        $daysInStock    = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $score = (int) $this->vehicleIpsService->calculate($car, [
+            'views_total' => $viewsTotal,
+            'interactions_total' => $interactionsTotal,
+            'dias_em_stock' => $daysInStock,
+            'market_position' => $marketIntelligence['market_position'] ?? null,
+        ]);
 
         Log::info('[IPS] Carro calculado', [
             'car_id'      => $carId,
