@@ -12,12 +12,12 @@ class VehicleAttributeRepository extends BaseRepository implements VehicleAttrib
         parent::__construct($model);
     }
 
-    public function findByCarId(int $carId): ?VehicleAttribute
+    public function getByCarId(int $carId): ?array
     {
-        return $this->model->where('car_id', $carId)->first();
+        return $this->model->where('car_id', $carId)->first()?->attributes;
     }
 
-    public function createOrUpdate(int $carId, array $attributes): VehicleAttribute
+    public function upsert(int $carId, array $attributes): VehicleAttribute
     {
         return $this->model->updateOrCreate(
             ['car_id' => $carId],

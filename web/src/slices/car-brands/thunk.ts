@@ -6,11 +6,11 @@ import {
 export const getCarBrands = createAsyncThunk(
     "car-brands/getCarBrands",
     async (
-        _,
+        vehicleType: string | undefined = undefined,
         { rejectWithValue }
     ) => {
         try {
-            const response = await getCarBrandsApi();
+            const response = await getCarBrandsApi(vehicleType);
             return response;
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);

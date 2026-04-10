@@ -151,14 +151,38 @@ export const updateCarmine = (companyId: number, id: number, data: FormData | an
 export const syncCarmine = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARMINE_APIS + "/sync", {});
 
 // CAR BRANDS
-export const getCarBrands = () => api.get(url.GET_CAR_BRANDS);
-
-// CAR MODELS
-export const getCarModels = (brandId: number | number[]) => api.get(url.GET_CAR_MODELS, {
+export const getCarBrands = (vehicleType?: string) => api.get(url.GET_CAR_BRANDS, {
     params: {
-        car_brand_id: typeof brandId === "number" ? brandId.toString() : brandId.join(","),
+        vehicle_type: vehicleType || undefined,
     }
 });
+
+// CAR MODELS
+export const getCarModels = (
+    paramsOrBrandId: number | number[] | { brand_id?: number | number[]; vehicle_type?: string; car_brand_id?: number | number[]; }
+) => {
+    const brandId = typeof paramsOrBrandId === "object" && !Array.isArray(paramsOrBrandId)
+        ? (paramsOrBrandId.brand_id ?? paramsOrBrandId.car_brand_id)
+        : paramsOrBrandId;
+
+    const vehicleType = typeof paramsOrBrandId === "object" && !Array.isArray(paramsOrBrandId)
+        ? paramsOrBrandId.vehicle_type
+        : undefined;
+
+    return api.get(url.GET_CAR_MODELS, {
+        params: {
+            car_brand_id: typeof brandId === "number"
+                ? brandId.toString()
+                : Array.isArray(brandId)
+                    ? brandId.join(",")
+                    : undefined,
+            brand_id: typeof brandId === "number"
+                ? brandId
+                : undefined,
+            vehicle_type: vehicleType || undefined,
+        }
+    });
+};
 
 // DISTRICTS
 export const getDistricts = () => api.get(url.GET_DISTRICTS);

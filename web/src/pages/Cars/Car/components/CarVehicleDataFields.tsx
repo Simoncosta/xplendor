@@ -14,7 +14,7 @@ import { ICarUpdatePayload } from "common/models/car.model";
 
 // Redux
 import { getCarBrands } from "slices/car-brands/thunk";
-import { useEffect } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { getCarModels } from "slices/car-models/thunk";
 import { fuelTypeOptions, monthsOptions, transmissionOptions } from "common/data/cars";
 import { createSelector } from "reselect";
@@ -41,21 +41,53 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const dispatch: any = useDispatch();
 
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
+    const previousVehicleTypeRef = useRef(values.vehicle_type);
 
-    // Redux direto, sem reselect desnecessário
     const { brands, loading } = useSelector(selectCarBrandOptionsState);
-
-    // Fetch sempre que mudar de tamanho
-    useEffect(() => {
-        dispatch(getCarBrands());
-    }, [dispatch]);
-
     const { models } = useSelector(selectCarModelOptionsState);
 
+    const brandOptions = useMemo(() => brands.map((brand: any) => ({
+        value: brand.id,
+        label: brand.name,
+    })), [brands]);
+
     useEffect(() => {
-        if (!values.car_brand_id) return;
-        dispatch(getCarModels(values.car_brand_id));
-    }, [dispatch, values.car_brand_id]);
+        dispatch(getCarBrands(values.vehicle_type));
+    }, [dispatch, values.vehicle_type]);
+
+    useEffect(() => {
+        const previousVehicleType = previousVehicleTypeRef.current;
+
+        if (previousVehicleType && previousVehicleType !== values.vehicle_type) {
+            setFieldValue("car_brand_id", null);
+            setFieldValue("car_model_id", null);
+        }
+
+        previousVehicleTypeRef.current = values.vehicle_type;
+    }, [setFieldValue, values.vehicle_type]);
+
+    const modelOptions = useMemo(() => {
+        if (!values.car_brand_id) {
+            return [];
+        }
+
+        return models.map((model: any) => ({
+            value: model.id,
+            label: model.name,
+        }));
+    }, [models, values.car_brand_id]);
+
+    useEffect(() => {
+        if (!values.car_brand_id) {
+            setFieldValue("car_model_id", null);
+            return;
+        }
+
+        dispatch(getCarModels({
+            brand_id: values.car_brand_id,
+            vehicle_type: values.vehicle_type,
+        }));
+    }, [dispatch, setFieldValue, values.car_brand_id, values.vehicle_type]);
 
     return (
         <div className="mt-4">
@@ -71,24 +103,16 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                     <Select
                         id="car_brand_id"
                         name="car_brand_id"
-                        options={brands.map((brand: any) => ({
-                            value: brand.id,
-                            label: brand.name,
-                        }))}
-                        value={brands
-                            .map((brand: any) => ({
-                                value: brand.id,
-                                label: brand.name,
-                            }))
-                            .find((option: any) => option.value === values.car_brand_id) || null}
+                        options={brandOptions}
+                        value={brandOptions.find((option: any) => option.value === values.car_brand_id) || null}
                         onChange={(option: any) => {
                             setFieldValue("car_brand_id", option?.value || null);
                             setFieldTouched("car_brand_id", true);
-                            // Limpar modelo ao mudar marca
                             setFieldValue("car_model_id", null);
                             setFieldTouched("car_model_id", false);
                         }}
-                        isDisabled={isEdit} // Marca não editável
+                        isDisabled={isEdit}
+                        isLoading={loading}
                         className="mb-3"
                     />
                 </Col>
@@ -99,21 +123,13 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                     <Select
                         id="car_model_id"
                         name="car_model_id"
-                        options={models.map((model: any) => ({
-                            value: model.id,
-                            label: model.name,
-                        }))}
-                        value={models
-                            .map((model: any) => ({
-                                value: model.id,
-                                label: model.name,
-                            }))
-                            .find((option: any) => option.value === values.car_model_id) || null}
+                        options={modelOptions}
+                        value={modelOptions.find((option: any) => option.value === values.car_model_id) || null}
                         onChange={(option: any) => {
                             setFieldValue("car_model_id", option?.value || null);
                             setFieldTouched("car_model_id", true);
                         }}
-                        isDisabled={isEdit || models.length === 0} // Modelo não editável
+                        isDisabled={isEdit || modelOptions.length === 0}
                         className="mb-3"
                     />
                 </Col>

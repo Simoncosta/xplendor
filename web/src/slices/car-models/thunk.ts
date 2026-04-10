@@ -6,11 +6,11 @@ import {
 export const getCarModels = createAsyncThunk(
     "car-models/getCarModels",
     async (
-        brandId: number | number[],
+        params: number | number[] | { brand_id?: number | number[]; vehicle_type?: string; car_brand_id?: number | number[]; },
         { rejectWithValue }
     ) => {
         try {
-            const response = await getCarModelsApi(brandId);
+            const response = await getCarModelsApi(params);
             return response;
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);

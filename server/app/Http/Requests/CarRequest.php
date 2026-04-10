@@ -38,6 +38,7 @@ class CarRequest extends FormRequest
             // Core vehicle data
             'vehicle_type' => ['nullable', Rule::in(['car', 'motorhome'])],
             'car_category_id' => ['nullable', 'exists:car_categories,id'],
+            'vehicle_attributes' => ['nullable', 'array'],
             'car_brand_id' => ['required', 'exists:car_brands,id'],
             'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],

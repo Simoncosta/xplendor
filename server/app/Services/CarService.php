@@ -17,6 +17,7 @@ class CarService extends BaseService
 {
     public function __construct(
         protected CarRepositoryInterface $carRepository,
+        protected VehicleAttributeService $vehicleAttributeService,
         // Service
         protected CarImageService $carImageService,
         protected Car360ExteriorImageService $car360ExteriorImageService,
@@ -32,6 +33,9 @@ class CarService extends BaseService
 
     public function store(array $data): mixed
     {
+        $vehicleAttributes = $this->extractVehicleAttributes($data);
+        unset($data['vehicle_attributes']);
+
         $car = $this->repository->store($data); // Cria carro e retorna ID
         $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
 
@@ -66,11 +70,20 @@ class CarService extends BaseService
             }
         }
 
-        return $car;
+        $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
+
+        if ($vehicleAttribute) {
+            $car->setRelation('vehicleAttribute', $vehicleAttribute);
+        }
+
+        return $car->loadMissing('vehicleAttribute');
     }
 
     public function update(int $id, array $data): mixed
     {
+        $vehicleAttributes = $this->extractVehicleAttributes($data);
+        unset($data['vehicle_attributes']);
+
         $car = $this->carRepository->findOrFail($id, 'id');
         $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
 
@@ -205,6 +218,14 @@ class CarService extends BaseService
                     'order' => $metaAtual['order'] ?? $img->order,
                 ]);
             }
+        }
+
+        $vehicleAttribute = $this->vehicleAttributeService->setAttributes($car, $vehicleAttributes);
+
+        if ($vehicleAttribute) {
+            $car->setRelation('vehicleAttribute', $vehicleAttribute);
+        } else {
+            $car->loadMissing('vehicleAttribute');
         }
 
         return $car;
@@ -476,5 +497,12 @@ class CarService extends BaseService
 
             return $car;
         });
+    }
+
+    private function extractVehicleAttributes(array $data): array
+    {
+        $vehicleAttributes = $data['vehicle_attributes'] ?? [];
+
+        return is_array($vehicleAttributes) ? $vehicleAttributes : [];
     }
 }

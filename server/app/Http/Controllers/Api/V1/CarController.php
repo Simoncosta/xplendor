@@ -71,7 +71,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
+            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'vehicleAttribute', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
             $paginate,
             $filter,
             $orderBy
@@ -110,7 +110,7 @@ class CarController extends Controller
             $id,
             'id',
             ['*'],
-            ['images', 'externalImages', 'brand', 'model', 'car360ExteriorImages', 'views', 'leads', 'analyses']
+            ['images', 'externalImages', 'brand', 'model', 'vehicleAttribute', 'car360ExteriorImages', 'views', 'leads', 'analyses']
         );
 
         return ApiResponse::success($car, 'Car fetched successfully.');

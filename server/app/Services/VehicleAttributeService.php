@@ -14,23 +14,25 @@ class VehicleAttributeService extends BaseService
         parent::__construct($vehicleAttributeRepository);
     }
 
-    public function getAttributes(Car $car): array
+    public function getAttributes(Car $car): ?array
     {
-        $vehicleAttribute = $this->vehicleAttributeRepository->findByCarId($car->id);
-
-        return $vehicleAttribute?->attributes ?? [];
+        return $this->vehicleAttributeRepository->getByCarId($car->id);
     }
 
-    public function setAttributes(Car $car, array $data): VehicleAttribute
+    public function setAttributes(Car $car, array $data): ?VehicleAttribute
     {
-        return $this->vehicleAttributeRepository->createOrUpdate($car->id, $data);
+        if ($data === []) {
+            return null;
+        }
+
+        return $this->vehicleAttributeRepository->upsert($car->id, $data);
     }
 
     public function mergeAttributes(Car $car, array $data): VehicleAttribute
     {
-        $currentAttributes = $this->getAttributes($car);
+        $currentAttributes = $this->getAttributes($car) ?? [];
 
-        return $this->vehicleAttributeRepository->createOrUpdate(
+        return $this->vehicleAttributeRepository->upsert(
             $car->id,
             array_merge($currentAttributes, $data)
         );

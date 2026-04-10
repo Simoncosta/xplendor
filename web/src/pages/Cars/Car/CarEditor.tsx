@@ -88,6 +88,7 @@ const CarEditor = ({
         enableReinitialize: true,
         initialValues: {
             ...data,
+            vehicle_type: data.vehicle_type ?? "car",
             extras: data.extras ?? [],
             extrasByGroup: arrayToMap(data.extras),
 

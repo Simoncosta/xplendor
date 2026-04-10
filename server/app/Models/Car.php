@@ -74,6 +74,7 @@ class Car extends Model implements AuditableContract
         'has_promo_price',
         'promo_discount_value',
         'promo_discount_pct',
+        'vehicle_attributes',
     ];
 
     public function getExtrasAttribute($value)
@@ -165,9 +166,18 @@ class Car extends Model implements AuditableContract
         return $this->hasOne(CarAiAnalysis::class);
     }
 
-    public function attributes(): HasOne
+    public function vehicleAttribute(): HasOne
     {
         return $this->hasOne(VehicleAttribute::class, 'car_id');
+    }
+
+    public function getVehicleAttributesAttribute(): ?array
+    {
+        if ($this->relationLoaded('vehicleAttribute')) {
+            return $this->vehicleAttribute?->attributes;
+        }
+
+        return $this->vehicleAttribute()->first()?->attributes;
     }
 
     public function sale(): HasOne

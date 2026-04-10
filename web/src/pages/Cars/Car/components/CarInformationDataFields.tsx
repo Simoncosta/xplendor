@@ -28,6 +28,11 @@ const selectSellerOptionsViewModel = createSelector(
     })
 );
 
+const vehicleTypeOptions = [
+    { value: "car", label: "Carro" },
+    { value: "motorhome", label: "Autocaravana" },
+];
+
 export default function CarInformationDataFields({
     isEdit,
     companyId,
@@ -120,6 +125,20 @@ export default function CarInformationDataFields({
                     />
                 </Col>
                 <Col lg={2}>
+                    <Label className="form-label">
+                        Tipo de veículo:
+                    </Label>
+                    <Select
+                        name="vehicle_type"
+                        options={vehicleTypeOptions}
+                        value={vehicleTypeOptions.find((opt) => opt.value === values.vehicle_type) || vehicleTypeOptions[0]}
+                        onChange={(opt: any) => setFieldValue("vehicle_type", opt?.value ?? "car")}
+                        onBlur={() => setFieldTouched("vehicle_type", true)}
+                        classNamePrefix="react-select"
+                        className="mb-3"
+                    />
+                </Col>
+                <Col lg={2}>
                     <XInput
                         name="license_plate"
                         label="Matrícula"
@@ -127,11 +146,11 @@ export default function CarInformationDataFields({
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={4}>
+                <Col lg={2}>
                     <XInput
                         name="vin"
-                        label="Número de Identificação do Veículo (VIN)"
-                        placeholder="Número de Identificação do Veículo (VIN)"
+                        label="VIN"
+                        placeholder="VIN"
                         className="mb-3"
                     />
                 </Col>

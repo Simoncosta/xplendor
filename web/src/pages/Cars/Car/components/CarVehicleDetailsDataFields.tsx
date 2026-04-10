@@ -110,6 +110,48 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                     />
                 </Col>
             </Row>
+
+            {values.vehicle_type === "motorhome" && (
+                <Row>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="sleeping_places"
+                            label="Dormidas"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="length"
+                            label="Comprimento"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="bathroom"
+                            label="Casa de banho"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="kitchen"
+                            label="Cozinha"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            name="autonomy"
+                            label="Autonomia"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+            )}
         </div>
     )
 }

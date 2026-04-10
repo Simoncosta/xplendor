@@ -1,5 +1,6 @@
 export type CarStatus = "draft" | "active" | "inactive" | "sold";
 export type CarOrigin = "national" | "imported";
+export type VehicleType = "car" | "motorhome";
 
 export type CarCondition =
     | "new"
@@ -29,6 +30,7 @@ export interface ICar {
 
     status: CarStatus;
     origin: CarOrigin;
+    vehicle_type: VehicleType;
 
     license_plate: string | null;
     vin: string | null;
@@ -38,6 +40,7 @@ export interface ICar {
 
     car_brand_id: number;
     car_model_id: number;
+    car_category_id?: number | null;
 
     version: string;
     public_version_name: string | null;
@@ -118,6 +121,11 @@ export interface ICar {
     } | null;
 
     company_id: number;
+    sleeping_places?: number | null;
+    length?: number | null;
+    bathroom?: boolean | null;
+    kitchen?: boolean | null;
+    autonomy?: string | null;
 
     created_at: string | null;
     updated_at: string | null;
