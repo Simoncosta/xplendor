@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Car;
 use App\Models\CarAdCampaign;
+use App\Models\CampaignCarMetricDaily;
 use App\Models\CarPerformanceMetric;
 use App\Models\CompanyIntegration;
 use App\Models\MetaAudienceInsight;
@@ -102,6 +103,25 @@ class MetaAdsCarSyncService
         $spend = round((float) ($insights['spend'] ?? 0) * $splitFactor, 2);
         $impressions = (int) round((float) ($insights['impressions'] ?? 0) * $splitFactor);
         $clicks = (int) round((float) ($insights['clicks'] ?? 0) * $splitFactor);
+        $this->persistCampaignMetricDaily(
+            $mapping,
+            $dateStr,
+            $splitFactor,
+            $impressions,
+            $clicks,
+            $spend
+        );
+
+        $dailyAggregate = CampaignCarMetricDaily::query()
+            ->where('company_id', $mapping->company_id)
+            ->where('car_id', $mapping->car_id)
+            ->whereDate('date', $dateStr)
+            ->selectRaw('
+                COALESCE(SUM(impressions), 0) as impressions,
+                COALESCE(SUM(clicks), 0) as clicks,
+                COALESCE(SUM(spend_normalized), 0) as spend
+            ')
+            ->first();
 
         $metric = CarPerformanceMetric::firstOrCreate(
             [
@@ -123,9 +143,9 @@ class MetaAdsCarSyncService
         );
 
         $metric->update([
-            'spend_amount' => $spend,
-            'impressions' => $impressions,
-            'clicks' => $clicks,
+            'spend_amount' => round((float) ($dailyAggregate->spend ?? 0), 2),
+            'impressions' => (int) ($dailyAggregate->impressions ?? 0),
+            'clicks' => (int) ($dailyAggregate->clicks ?? 0),
             'data_source' => 'meta_ads',
         ]);
 
@@ -316,21 +336,93 @@ class MetaAdsCarSyncService
 
     private function resolveAllocationFactor(CarAdCampaign $mapping): float
     {
-        if (empty($mapping->adset_id)) {
+        $allocationScope = $this->resolveAllocationScope($mapping);
+
+        if ($allocationScope === null) {
             return 1.0;
         }
 
-        $totalWeight = (float) CarAdCampaign::query()
+        $activeMappings = CarAdCampaign::query()
             ->active()
             ->where('company_id', $mapping->company_id)
             ->where('platform', $mapping->platform)
-            ->where('adset_id', $mapping->adset_id)
-            ->sum('spend_split_pct');
+            ->where('level', $mapping->level)
+            ->where($allocationScope['column'], $allocationScope['value'])
+            ->get(['id', 'spend_split_pct']);
 
-        if ($totalWeight <= 0) {
+        if ($activeMappings->count() <= 1) {
             return 1.0;
         }
 
-        return (float) $mapping->spend_split_pct / $totalWeight;
+        $currentWeight = (float) ($mapping->spend_split_pct ?? 0);
+        $totalWeight = (float) $activeMappings
+            ->sum(fn(CarAdCampaign $item) => max(0.0, (float) ($item->spend_split_pct ?? 0)));
+
+        if ($totalWeight > 0) {
+            if ($currentWeight <= 0) {
+                return 0.0;
+            }
+
+            return $currentWeight / $totalWeight;
+        }
+
+        return round(1 / $activeMappings->count(), 6);
+    }
+
+    private function persistCampaignMetricDaily(
+        CarAdCampaign $mapping,
+        string $dateStr,
+        float $splitFactor,
+        int $impressions,
+        int $clicks,
+        float $spend
+    ): void {
+        $snapshot = $this->buildCampaignMetricSnapshot($impressions, $clicks, $spend);
+
+        CampaignCarMetricDaily::updateOrCreate(
+            [
+                'mapping_id' => $mapping->id,
+                'date' => $dateStr,
+            ],
+            [
+                'company_id' => $mapping->company_id,
+                'car_id' => $mapping->car_id,
+                'campaign_id' => $mapping->campaign_id,
+                'adset_id' => $mapping->adset_id,
+                'impressions' => $impressions,
+                'clicks' => $clicks,
+                'spend_normalized' => $spend,
+                'ctr' => $snapshot['ctr'],
+                'cpc' => $snapshot['cpc'],
+                'cpm' => $snapshot['cpm'],
+                'allocation_factor' => round($splitFactor, 6),
+            ]
+        );
+    }
+
+    private function resolveAllocationScope(CarAdCampaign $mapping): ?array
+    {
+        return match ($mapping->level) {
+            'ad' => !empty($mapping->ad_id)
+                ? ['column' => 'ad_id', 'value' => $mapping->ad_id]
+                : null,
+            'campaign' => !empty($mapping->campaign_id)
+                ? ['column' => 'campaign_id', 'value' => $mapping->campaign_id]
+                : null,
+            default => !empty($mapping->adset_id)
+                ? ['column' => 'adset_id', 'value' => $mapping->adset_id]
+                : (!empty($mapping->campaign_id)
+                    ? ['column' => 'campaign_id', 'value' => $mapping->campaign_id]
+                    : null),
+        };
+    }
+
+    private function buildCampaignMetricSnapshot(int $impressions, int $clicks, float $spend): array
+    {
+        return [
+            'ctr' => $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : null,
+            'cpc' => $clicks > 0 ? round($spend / $clicks, 4) : null,
+            'cpm' => $impressions > 0 ? round(($spend / $impressions) * 1000, 2) : null,
+        ];
     }
 }
