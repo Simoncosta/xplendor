@@ -2,6 +2,7 @@ const statusOptions = [
     { value: "draft", label: "Rascunho" },
     { value: "active", label: "Ativo" },
     { value: "inactive", label: "Inativo" },
+    { value: "available_soon", label: "Disponível Brevemente" },
     { value: "sold", label: "Vendido" },
 ];
 
