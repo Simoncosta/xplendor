@@ -54,15 +54,19 @@ export const getMetaAdsetsApi = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_ADSETS);
 export const getCarAdCampaignsApi = (companyId: number, carId: number | string) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS);
+export const getCarAdCampaignActiveTargetsApi = (companyId: number, carId: number | string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGN_ACTIVE_TARGETS);
 export const storeCarAdCampaignApi = (
     companyId: number,
     carId: number | string,
     data: {
         platform: string;
         campaign_id: string;
-        campaign_name: string;
-        adset_id: string;
-        adset_name: string;
+        campaign_name?: string;
+        adset_id?: string | null;
+        adset_name?: string | null;
+        ad_id?: string | null;
+        ad_name?: string | null;
         level: string;
         spend_split_pct: number;
     }

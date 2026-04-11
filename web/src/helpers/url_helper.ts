@@ -26,6 +26,7 @@ export const GET_BLOGS_APIS = "/blogs";
 // CARS
 export const GET_CARS = "/cars";
 export const GET_CAR_AD_CAMPAIGNS = "/ad-campaigns";
+export const GET_CAR_AD_CAMPAIGN_ACTIVE_TARGETS = "/ad-campaigns/active-targets";
 export const GET_CAR_SALES = "/sales";
 export const GET_CAR_AUDIENCE = "/audience";
 export const GET_CAR_AUDIENCE_ANALYSIS = "/audience-analysis";

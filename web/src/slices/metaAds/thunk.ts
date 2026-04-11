@@ -89,9 +89,11 @@ export const storeCarAdCampaign = createAsyncThunk(
             data: {
                 platform: string;
                 campaign_id: string;
-                campaign_name: string;
-                adset_id: string;
-                adset_name: string;
+                campaign_name?: string;
+                adset_id?: string | null;
+                adset_name?: string | null;
+                ad_id?: string | null;
+                ad_name?: string | null;
                 level: string;
                 spend_split_pct: number;
             };

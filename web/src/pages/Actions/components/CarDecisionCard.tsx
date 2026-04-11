@@ -20,6 +20,11 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
     const handleExecuted = async (result: ActionExecutionResponse) => {
         setLastExecution(result);
 
+        // Para WhatsApp, mantemos o modal aberto para permitir copiar/abrir o link.
+        if (result.action === "notify_client_whatsapp") {
+            return;
+        }
+
         // 🔥 força refresh da página (MVP rápido e eficaz)
         window.location.reload();
     };

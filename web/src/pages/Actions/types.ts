@@ -9,7 +9,23 @@ export type ActionExecutionKey =
     | "swap_creative"
     | "mark_lead_low_quality";
 
-export type ActionExecutionStatus = "executed" | "prepared" | "stub";
+export type ActionExecutionStatus = "executed" | "partial" | "prepared" | "stub" | "selection_required";
+
+export interface PauseTargetOption {
+    mapping_id: number;
+    is_active?: boolean;
+    meta_status?: string;
+    level: "ad" | "adset" | "campaign";
+    target_id: string;
+    campaign_id: string | null;
+    adset_id: string | null;
+    ad_id: string | null;
+    campaign_name: string | null;
+    adset_name: string | null;
+    ad_name: string | null;
+    shared_with_other_cars: boolean;
+    affected_cars_count: number;
+}
 
 export interface CarDecisionResponse {
     car_id: number;
@@ -32,10 +48,16 @@ export interface ActionExecutionResponse {
     action: ActionExecutionKey;
     status: ActionExecutionStatus;
     message: string;
+    warning?: string;
+    success?: boolean;
+    code?: string;
     data: {
         action: ActionExecutionKey;
         status: ActionExecutionStatus;
         execution_mode?: string;
+        target_level?: "ad" | "adset" | "campaign";
+        target_id?: string;
+        options?: PauseTargetOption[];
         campaign?: {
             id: number;
             campaign_id: string;

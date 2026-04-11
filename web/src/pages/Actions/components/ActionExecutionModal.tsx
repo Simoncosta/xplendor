@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
     Alert,
     Badge,
@@ -14,19 +14,21 @@ import {
 } from "reactstrap";
 import { toast } from "react-toastify";
 
-import { executeCarActionApi } from "../../../helpers/laravel_helper";
+import ConfirmModal from "../../../Components/Common/ConfirmModal";
+import { executeCarActionApi, getCarAdCampaignActiveTargetsApi } from "../../../helpers/laravel_helper";
 import {
     ActionCenterCarItem,
     ActionExecutionOption,
     ActionExecutionResponse,
     DecisionType,
+    PauseTargetOption,
 } from "../types";
 
 const actionOptions: ActionExecutionOption[] = [
     {
         key: "pause_campaign",
         label: "Pausar campanha",
-        description: "Pausa o mapeamento ativo da campanha desta viatura.",
+        description: "Pausa o target ativo na Meta Ads e reflete o estado localmente.",
         implemented: true,
     },
     {
@@ -110,24 +112,60 @@ export default function ActionExecutionModal({
 }: ActionExecutionModalProps) {
     const [selectedAction, setSelectedAction] = useState(getDefaultAction(item.decision));
     const [loading, setLoading] = useState(false);
+    const [loadingTargets, setLoadingTargets] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [result, setResult] = useState<ActionExecutionResponse | null>(null);
+    const [pauseTargets, setPauseTargets] = useState<PauseTargetOption[]>([]);
+    const [selectedMappingId, setSelectedMappingId] = useState<number | null>(null);
+    const [confirmPauseOpen, setConfirmPauseOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setSelectedAction(getDefaultAction(item.decision));
             setLoading(false);
+            setLoadingTargets(false);
             setError(null);
             setResult(null);
+            setPauseTargets([]);
+            setSelectedMappingId(null);
+            setConfirmPauseOpen(false);
         }
     }, [isOpen, item.decision]);
+
+    useEffect(() => {
+        const companyId = readCompanyId();
+
+        if (!isOpen || selectedAction !== "pause_campaign" || !companyId) {
+            return;
+        }
+
+        setLoadingTargets(true);
+        setError(null);
+
+        getCarAdCampaignActiveTargetsApi(companyId, item.id)
+            .then((response: any) => {
+                const targets = ((response?.data ?? []) as PauseTargetOption[])
+                    .filter((target) => target.is_active !== false)
+                    .filter((target) => (target.meta_status ?? "unknown") !== "PAUSED");
+                setPauseTargets(targets);
+                setSelectedMappingId(targets.length === 1 ? targets[0].mapping_id : null);
+            })
+            .catch(() => {
+                setPauseTargets([]);
+                setSelectedMappingId(null);
+                setError("Não foi possível carregar os targets ativos desta viatura.");
+            })
+            .finally(() => {
+                setLoadingTargets(false);
+            });
+    }, [isOpen, item.id, selectedAction]);
 
     const selectedOption = useMemo(
         () => actionOptions.find((option) => option.key === selectedAction) ?? actionOptions[0],
         [selectedAction]
     );
 
-    const executeAction = async () => {
+    const performExecuteAction = async () => {
         const companyId = readCompanyId();
 
         if (!companyId) {
@@ -140,11 +178,19 @@ export default function ActionExecutionModal({
         }
 
         if (selectedOption.key === "pause_campaign") {
-            const confirmed = window.confirm(
-                "Tens a certeza que queres pausar esta campanha? Isto não pausa na Meta ainda."
-            );
+            if (loadingTargets) {
+                return;
+            }
 
-            if (!confirmed) return;
+            if (pauseTargets.length === 0) {
+                setError("Esta viatura não tem targets Meta Ads ativos para pausar.");
+                return;
+            }
+
+            if (!selectedMappingId) {
+                setError("Escolhe explicitamente o anúncio, conjunto ou campanha que queres pausar.");
+                return;
+            }
         }
 
         setLoading(true);
@@ -158,10 +204,23 @@ export default function ActionExecutionModal({
                     decision: item.decision,
                     confidence: item.confidence,
                     reason: item.reason,
+                    mapping_id: selectedOption.key === "pause_campaign" ? selectedMappingId : undefined,
                 },
             });
 
             const payload = response?.data as ActionExecutionResponse;
+
+            if (payload?.code === "selection_required") {
+                const options = (payload?.data?.options ?? [])
+                    .filter((target: PauseTargetOption) => target.is_active !== false)
+                    .filter((target: PauseTargetOption) => (target.meta_status ?? "unknown") !== "PAUSED");
+                setPauseTargets(options);
+                setSelectedMappingId(options.length === 1 ? options[0].mapping_id : null);
+                setResult(payload);
+                setError(payload.message);
+                return;
+            }
+
             setResult(payload);
             onExecuted(payload);
             toast.success(payload.message || "Ação executada com sucesso.");
@@ -173,6 +232,55 @@ export default function ActionExecutionModal({
             setLoading(false);
             onExecutionStateChange?.(false);
         }
+    };
+
+    const executeAction = async () => {
+        if (selectedOption.key === "pause_campaign") {
+            setConfirmPauseOpen(true);
+            return;
+        }
+
+        await performExecuteAction();
+    };
+
+    const getPauseOptionTitle = (option: PauseTargetOption) => {
+        if (option.level === "ad") {
+            return `Pausar anúncio [${option.ad_name || option.ad_id || option.target_id}]`;
+        }
+
+        if (option.level === "adset") {
+            return `Pausar conjunto [${option.adset_name || option.adset_id || option.target_id}]`;
+        }
+
+        return `Pausar campanha [${option.campaign_name || option.campaign_id || option.target_id}]`;
+    };
+
+    const getPauseOptionWarning = (option: PauseTargetOption) => {
+        if ((option.meta_status ?? "unknown") === "unknown") {
+            return "Não foi possível confirmar o estado real deste target na Meta. Verifica antes de executar.";
+        }
+
+        if (!option.shared_with_other_cars) {
+            return null;
+        }
+
+        const extraCars = Math.max(option.affected_cars_count - 1, 0);
+
+        if (option.level === "ad") {
+            return extraCars === 1
+                ? "Este anúncio está ligado a mais 1 carro."
+                : `Este anúncio está ligado a mais ${extraCars} carros.`;
+        }
+
+        if (option.level === "adset") {
+            return extraCars === 1
+                ? "Este conjunto está ligado a mais 1 carro."
+                : `Este conjunto está ligado a mais ${extraCars} carros.`;
+        }
+
+        return option.affected_cars_count === 1
+            ? "Esta campanha afeta 1 carro."
+            : `Esta campanha afeta ${option.affected_cars_count} carros.`;
     };
 
     const copyText = async (value?: string | null) => {
@@ -187,6 +295,7 @@ export default function ActionExecutionModal({
     };
 
     return (
+        <Fragment>
         <Modal isOpen={isOpen} toggle={!loading ? toggle : undefined} centered size="lg">
             <ModalHeader toggle={!loading ? toggle : undefined}>
                 Executar ação para {item.car_name}
@@ -233,8 +342,79 @@ export default function ActionExecutionModal({
                         ))}
                     </div>
 
+                    {selectedAction === "pause_campaign" && (
+                        <div className="d-grid gap-2">
+                            <div className="fw-semibold">Target a pausar</div>
+                            <div className="text-muted fs-13">
+                                Escolhe exatamente o anúncio, conjunto ou campanha que queres pausar.
+                            </div>
+
+                            {loadingTargets ? (
+                                <div className="border rounded-3 p-3 text-muted">
+                                    <Spinner size="sm" className="me-2" />
+                                    A carregar targets ativos...
+                                </div>
+                            ) : pauseTargets.length === 0 ? (
+                                <Alert color="warning" className="mb-0">
+                                    Esta viatura não tem targets Meta Ads ativos disponíveis.
+                                </Alert>
+                            ) : (
+                                <div className="d-grid gap-2">
+                                    {pauseTargets.map((option) => {
+                                        const warning = getPauseOptionWarning(option);
+
+                                        return (
+                                            <FormGroup
+                                                check
+                                                key={option.mapping_id}
+                                                className="border rounded-3 px-3 py-2"
+                                                style={{
+                                                    background: selectedMappingId === option.mapping_id ? "#f8fafc" : "#fff",
+                                                }}
+                                            >
+                                                <Input
+                                                    type="radio"
+                                                    id={`pause-target-${option.mapping_id}`}
+                                                    name="pauseTarget"
+                                                    checked={selectedMappingId === option.mapping_id}
+                                                    onChange={() => setSelectedMappingId(option.mapping_id)}
+                                                    disabled={loading}
+                                                />
+                                                <Label for={`pause-target-${option.mapping_id}`} check className="w-100">
+                                                    <div className="d-flex align-items-start justify-content-between gap-2">
+                                                        <div>
+                                                            <div className="fw-semibold">{getPauseOptionTitle(option)}</div>
+                                                            <div className="text-muted fs-13">
+                                                                {option.level === "ad" ? "Anúncio" : option.level === "adset" ? "Conjunto" : "Campanha"}
+                                                            </div>
+                                                            {warning && (
+                                                                <div className="text-warning fs-13 mt-1">{warning}</div>
+                                                            )}
+                                                        </div>
+                                                        {option.shared_with_other_cars && (
+                                                            <Badge color="warning" className="text-dark">
+                                                                Partilhado
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </Label>
+                                            </FormGroup>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {error && <Alert color="danger" className="mb-0">{error}</Alert>}
-                    {result && <Alert color="success" className="mb-0">{result.message}</Alert>}
+                    {result && (
+                        <Alert color={result.status === "partial" || result.status === "selection_required" ? "warning" : "success"} className="mb-0">
+                            <div>{result.message}</div>
+                            {result.warning && (
+                                <div className="fs-13 mt-1">{result.warning}</div>
+                            )}
+                        </Alert>
+                    )}
 
                     {result?.data?.campaign && (
                         <div className="border rounded-3 p-3 bg-light-subtle">
@@ -306,10 +486,29 @@ export default function ActionExecutionModal({
                 <Button color="light" className="border" onClick={toggle} disabled={loading}>
                     Fechar
                 </Button>
-                <Button color="primary" onClick={executeAction} disabled={!selectedOption.implemented || loading}>
+                <Button
+                    color="primary"
+                    onClick={executeAction}
+                    disabled={!selectedOption.implemented || loading || (selectedAction === "pause_campaign" && (loadingTargets || pauseTargets.length === 0 || !selectedMappingId))}
+                >
                     {loading ? <><Spinner size="sm" className="me-2" />A executar...</> : "Executar agora"}
                 </Button>
             </ModalFooter>
         </Modal>
+        <ConfirmModal
+            isOpen={confirmPauseOpen}
+            title="Pausar campanha"
+            message="Esta ação vai parar o investimento na Meta Ads imediatamente."
+            confirmText="Sim, pausar"
+            cancelText="Cancelar"
+            variant="danger"
+            loading={loading}
+            onCancel={() => setConfirmPauseOpen(false)}
+            onConfirm={() => {
+                setConfirmPauseOpen(false);
+                void performExecuteAction();
+            }}
+        />
+        </Fragment>
     );
 }

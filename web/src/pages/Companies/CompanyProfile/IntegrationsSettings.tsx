@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
+import ConfirmModal from "Components/Common/ConfirmModal";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
 
@@ -41,6 +42,7 @@ const selectMetaAdsViewModel = createSelector(
     (metaAdsState) => ({
         integrations: metaAdsState.data.integrations as Integration[],
         loadingIntegrations: metaAdsState.loading.list,
+        disconnectingIntegration: metaAdsState.loading.disconnect,
     })
 );
 
@@ -52,7 +54,9 @@ const selectMetaIntegration = createSelector(
 export default function IntegrationsSettings() {
     const dispatch: any = useDispatch();
     const [companyId, setCompanyId] = useState<number>(0);
-    const { loadingIntegrations } = useSelector(selectMetaAdsViewModel);
+    const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
+    const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
+    const { loadingIntegrations, disconnectingIntegration } = useSelector(selectMetaAdsViewModel);
     const metaIntegration = useSelector(selectMetaIntegration);
 
     const fetchIntegrations = useCallback(async (cId: number) => {
@@ -72,13 +76,22 @@ export default function IntegrationsSettings() {
     }, [fetchIntegrations]);
 
     const handleDisconnect = async (platform: string) => {
-        if (!window.confirm(`Tens a certeza que queres desconectar o ${platform}?`)) return;
+        setPendingPlatform(platform);
+        setConfirmDisconnectOpen(true);
+    };
+
+    const confirmDisconnect = async () => {
+        if (!pendingPlatform) return;
+
         try {
-            await dispatch(disconnectMetaAds({ companyId, platform })).unwrap();
+            await dispatch(disconnectMetaAds({ companyId, platform: pendingPlatform })).unwrap();
             toast.success("Integração desconectada.");
             await fetchIntegrations(companyId);
         } catch {
             toast.error("Erro ao desconectar integração.");
+        } finally {
+            setConfirmDisconnectOpen(false);
+            setPendingPlatform(null);
         }
     };
 
@@ -96,6 +109,22 @@ export default function IntegrationsSettings() {
     return (
         <Row>
             <ToastContainer />
+            <ConfirmModal
+                isOpen={confirmDisconnectOpen}
+                title="Desconectar integração"
+                message={`Vais perder ligação com ${pendingPlatform ?? "esta integração"}.`}
+                confirmText="Desconectar"
+                cancelText="Cancelar"
+                variant="danger"
+                loading={disconnectingIntegration}
+                onCancel={() => {
+                    setConfirmDisconnectOpen(false);
+                    setPendingPlatform(null);
+                }}
+                onConfirm={() => {
+                    void confirmDisconnect();
+                }}
+            />
             <Container fluid>
                 <Row className="mb-3">
                     <Col>
