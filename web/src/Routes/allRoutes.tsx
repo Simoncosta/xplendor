@@ -24,6 +24,7 @@ import CarMarketing from "pages/Cars/Car/CarMarketing";
 import CarIntelligencePage from "pages/Cars/Car/CarIntelligencePage";
 import CarAdsPage from "pages/Cars/Car/CarAdsPage";
 import CarFichaPage from "pages/Cars/Car/CarFichaPage";
+import ActionCenterPage from "pages/Actions/ActionCenterPage";
 
 // Users
 import UsersList from "pages/Users/UsersList";
@@ -47,7 +48,6 @@ import ScraperRunner from "pages/Internal/ScraperRunner";
 
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
-import IntegrationsSettings from "pages/Companies/CompanyProfile/IntegrationsSettings";
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
@@ -59,6 +59,7 @@ const authProtectedRoutes = [
 
     // Cars
     { path: "/cars", component: <CarList /> },
+    { path: "/actions", component: <ActionCenterPage /> },
     { path: "/cars/create", component: <CarCreate /> },
     { path: "/cars/:id", component: <CarUpdate /> },
     { path: "/cars/:id/analytics", component: <CarAnalytics /> },

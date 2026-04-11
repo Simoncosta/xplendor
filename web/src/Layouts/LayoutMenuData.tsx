@@ -114,6 +114,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "actions",
+            label: "Ações",
+            icon: "ri-flashlight-line",
+            link: "/actions",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Actions');
+            }
+        },
+        {
             id: "leads",
             label: "Leads",
             icon: "ri-folder-user-line",

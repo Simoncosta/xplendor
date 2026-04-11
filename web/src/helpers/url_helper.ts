@@ -8,6 +8,7 @@ export const POST_REGISTER_BY_INVITE = "/register-by-invite";
 export const GET_COMPANIES = "/companies";
 export const GET_INTEGRATIONS = "/integrations";
 export const GET_META_INTEGRATIONS = "/integrations/meta";
+export const GET_DECISIONS = "/decisions";
 
 // DASHBOARDS
 export const GET_DASHBOARD_APIS = "/dashboard";
@@ -28,6 +29,7 @@ export const GET_CAR_AD_CAMPAIGNS = "/ad-campaigns";
 export const GET_CAR_SALES = "/sales";
 export const GET_CAR_AUDIENCE = "/audience";
 export const GET_CAR_AUDIENCE_ANALYSIS = "/audience-analysis";
+export const GET_CAR_DECISION = "/decision";
 export const POST_CAR_META_ADS_REFRESH = "/meta-ads/refresh";
 export const POST_CAR_ANALYSIS_REGENERATE = "/analysis/regenerate";
 

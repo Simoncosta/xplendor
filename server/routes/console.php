@@ -17,7 +17,7 @@ Artisan::command('inspire', function () {
 
 // 00:30 — agrega dados comportamentais (views, leads, interactions)
 Schedule::job(new AggregateCarPerformanceMetricsJob())
-    ->dailyAt('00:30')
+    ->hourly()
     ->name('aggregate-car-performance-metrics')
     ->withoutOverlapping()
     ->onFailure(function () {
@@ -26,7 +26,7 @@ Schedule::job(new AggregateCarPerformanceMetricsJob())
 
 // 00:45 — puxa dados do Meta Ads (spend, impressions, clicks)
 Schedule::job(new FetchMetaAdsMetricsJob())
-    ->dailyAt('00:45')
+    ->everyThirtyMinutes()
     ->name('fetch-meta-ads-metrics')
     ->withoutOverlapping()
     ->onFailure(function () {

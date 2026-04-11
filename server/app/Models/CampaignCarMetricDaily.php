@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CampaignCarMetricDaily extends Model
 {
+    use HasFactory;
+
     protected $table = 'campaign_car_metrics_daily';
 
     protected $fillable = [
