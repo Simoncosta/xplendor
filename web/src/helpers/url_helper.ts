@@ -30,6 +30,7 @@ export const GET_CAR_SALES = "/sales";
 export const GET_CAR_AUDIENCE = "/audience";
 export const GET_CAR_AUDIENCE_ANALYSIS = "/audience-analysis";
 export const GET_CAR_DECISION = "/decision";
+export const POST_CAR_EXECUTE_ACTION = "/execute-action";
 export const POST_CAR_META_ADS_REFRESH = "/meta-ads/refresh";
 export const POST_CAR_ANALYSIS_REGENERATE = "/analysis/regenerate";
 

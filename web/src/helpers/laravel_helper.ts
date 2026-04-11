@@ -132,6 +132,15 @@ export const getCarAudienceAnalysisApi = (companyId: number, carId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AUDIENCE_ANALYSIS);
 export const getCarDecisionApi = (companyId: number, carId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_DECISION);
+export const executeCarActionApi = (
+    companyId: number,
+    carId: number,
+    payload: { action: string; context?: Record<string, any>; }
+) => api.create(
+    url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_EXECUTE_ACTION,
+    payload,
+    { headers: { "Content-Type": "application/json" } }
+);
 
 // CAR AI ANALISES
 export const postCarAiAnalyses = (companyId: number, carId: number) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS_ANALYSES + `/${carId}`, {});
