@@ -1,4 +1,5 @@
-export type DecisionType = "ESCALAR" | "MANTER" | "CORRIGIR" | "PARAR";
+export type DecisionType = "ESCALAR" | "MANTER" | "CORRIGIR" | "PARAR" | "NO_ACTIVE_CAMPAIGN";
+export type GuardrailSeverity = "high" | "medium" | "low";
 export type ActionExecutionKey =
     | "pause_campaign"
     | "notify_client_whatsapp"
@@ -27,6 +28,15 @@ export interface PauseTargetOption {
     affected_cars_count: number;
 }
 
+export interface GuardrailAlert {
+    type: "spend_without_qualified_lead" | "creative_fatigue" | "high_spend_low_intent" | "unanswered_leads";
+    severity: GuardrailSeverity;
+    title: string;
+    message: string;
+    recommended_action: string;
+    manual_only: boolean;
+}
+
 export interface CarDecisionResponse {
     car_id: number;
     car_name: string;
@@ -37,6 +47,7 @@ export interface CarDecisionResponse {
     actions: string[];
     scores?: Record<string, number>;
     funnel?: Record<string, unknown>;
+    guardrails?: GuardrailAlert[];
 }
 
 export interface ActionCenterCarItem extends CarDecisionResponse {

@@ -3,18 +3,28 @@ import { Container, Row, Col, Button, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 
 import { getCompanyDecisionsApi } from "../../helpers/laravel_helper";
+import { getDecisionLabel } from "./components/DecisionBadge";
 import CarDecisionCard from "./components/CarDecisionCard";
-import { ActionCenterCarItem, CarDecisionResponse, DecisionType } from "./types";
+import { ActionCenterCarItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
     CORRIGIR: 2,
     MANTER: 3,
     ESCALAR: 4,
+    NO_ACTIVE_CAMPAIGN: 5,
+};
+
+const summaryOrder: DecisionType[] = ["PARAR", "CORRIGIR", "MANTER", "ESCALAR", "NO_ACTIVE_CAMPAIGN"];
+
+const guardrailSeverityOrder: Record<GuardrailSeverity, number> = {
+    high: 3,
+    medium: 2,
+    low: 1,
 };
 
 const isActionDecision = (decision: string): decision is DecisionType =>
-    ["ESCALAR", "MANTER", "CORRIGIR", "PARAR"].includes(decision);
+    ["NO_ACTIVE_CAMPAIGN", "ESCALAR", "MANTER", "CORRIGIR", "PARAR"].includes(decision);
 
 const readCompanyId = () => {
     const authUser = sessionStorage.getItem("authUser");
@@ -71,6 +81,21 @@ export default function ActionCenterPage() {
                             const orderB = decisionOrder[b.decision as DecisionType] ?? 99;
 
                             if (orderA !== orderB) return orderA - orderB;
+
+                            const guardrailA = Math.max(
+                                0,
+                                ...(a.guardrails ?? []).map((guardrail) => guardrailSeverityOrder[guardrail.severity] ?? 0)
+                            );
+                            const guardrailB = Math.max(
+                                0,
+                                ...(b.guardrails ?? []).map((guardrail) => guardrailSeverityOrder[guardrail.severity] ?? 0)
+                            );
+
+                            if (guardrailA !== guardrailB) return guardrailB - guardrailA;
+                            if ((a.guardrails?.length ?? 0) !== (b.guardrails?.length ?? 0)) {
+                                return (b.guardrails?.length ?? 0) - (a.guardrails?.length ?? 0);
+                            }
+
                             return b.confidence - a.confidence;
                         })
                 );
@@ -98,7 +123,7 @@ export default function ActionCenterPage() {
                 acc[item.decision as DecisionType] += 1;
                 return acc;
             },
-            { PARAR: 0, CORRIGIR: 0, MANTER: 0, ESCALAR: 0 }
+            { NO_ACTIVE_CAMPAIGN: 0, PARAR: 0, CORRIGIR: 0, MANTER: 0, ESCALAR: 0 }
         );
     }, [items]);
 
@@ -132,9 +157,9 @@ export default function ActionCenterPage() {
                             </div>
 
                             <div className="d-flex gap-2 flex-wrap">
-                                {Object.entries(summary).map(([decision, total]) => (
+                                {summaryOrder.map((decision) => (
                                     <span key={decision} className="badge bg-light text-dark px-3 py-2 fs-12">
-                                        {decision}: {total}
+                                        {getDecisionLabel(decision)}: {summary[decision]}
                                     </span>
                                 ))}
                             </div>

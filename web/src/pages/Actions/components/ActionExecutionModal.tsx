@@ -92,6 +92,8 @@ const readCompanyId = () => {
 
 const getDefaultAction = (decision: DecisionType | "INSUFFICIENT_DATA") => {
     switch (decision) {
+        case "NO_ACTIVE_CAMPAIGN":
+            return "notify_client_whatsapp";
         case "PARAR":
             return "pause_campaign";
         case "ESCALAR":
@@ -164,6 +166,13 @@ export default function ActionExecutionModal({
         () => actionOptions.find((option) => option.key === selectedAction) ?? actionOptions[0],
         [selectedAction]
     );
+    const visibleActionOptions = useMemo(() => {
+        if (item.decision === "NO_ACTIVE_CAMPAIGN") {
+            return actionOptions.filter((option) => !["pause_campaign", "swap_creative"].includes(option.key));
+        }
+
+        return actionOptions;
+    }, [item.decision]);
 
     const performExecuteAction = async () => {
         const companyId = readCompanyId();
@@ -307,7 +316,7 @@ export default function ActionExecutionModal({
                     </div>
 
                     <div className="d-grid gap-2">
-                        {actionOptions.map((option) => (
+                        {visibleActionOptions.map((option) => (
                             <FormGroup
                                 check
                                 key={option.key}

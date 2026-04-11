@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Models\CarAdCampaign;
 use Illuminate\Support\Collection;
 
 class CarDecisionService
@@ -32,12 +33,13 @@ class CarDecisionService
 
     public function __construct(
         protected CarFunnelAnalyzer $carFunnelAnalyzer,
+        protected AdsGuardrailService $adsGuardrailService,
     ) {}
 
     public function resolve(Car $car, ?string $from = null, ?string $to = null): array
     {
         $analysis = $this->carFunnelAnalyzer->analyzeForCar($car, $from, $to);
-        return $this->buildDecisionPayload($car, $analysis);
+        return $this->buildDecisionPayload($car, $analysis, $from, $to);
     }
 
     public function resolveForCars(Collection $cars, ?string $from = null, ?string $to = null): array
@@ -48,18 +50,39 @@ class CarDecisionService
 
         $analyses = $this->carFunnelAnalyzer->analyzeForCars($cars, $from, $to);
 
-        return $cars->map(function (Car $car) use ($analyses) {
-            return $this->buildDecisionPayload($car, $analyses[$car->id] ?? []);
+        return $cars->map(function (Car $car) use ($analyses, $from, $to) {
+            return $this->buildDecisionPayload($car, $analyses[$car->id] ?? [], $from, $to);
         })->all();
     }
 
-    private function buildDecisionPayload(Car $car, array $analysis): array
+    private function buildDecisionPayload(Car $car, array $analysis, ?string $from = null, ?string $to = null): array
     {
         $phases = $analysis['phases'] ?? [];
         $metrics = $analysis['metrics'] ?? [];
         $vehicleType = $this->resolveVehicleType($car);
         $thresholds = $this->resolveThresholds($vehicleType);
         $isMatureCampaign = $this->isMatureCampaign($metrics, $thresholds);
+        $scores = $this->buildScores($phases);
+
+        if (!$this->hasActiveCampaigns($car)) {
+            return [
+                'car_id' => $car->id,
+                'car_name' => $this->buildCarName($car),
+                'decision' => 'NO_ACTIVE_CAMPAIGN',
+                'confidence' => 100,
+                'reason' => 'Não existem campanhas ativas para esta viatura.',
+                'main_metric' => 'Sem investimento ativo',
+                'actions' => [
+                    'Criar nova campanha',
+                    'Reativar campanha anterior',
+                ],
+                'scores' => $scores,
+                'funnel' => $phases,
+                'guardrails' => [],
+            ];
+        }
+
+        $guardrails = $this->adsGuardrailService->evaluate($car, $analysis, $from, $to);
 
         if ($this->hasInsufficientData($metrics)) {
             return [
@@ -73,12 +96,12 @@ class CarDecisionService
                     'Gerar tráfego inicial para recolher sinais',
                     'Aguardar mais dados de navegação e intenção',
                 ],
-                'scores' => $this->buildScores($phases),
+                'scores' => $scores,
                 'funnel' => $phases,
+                'guardrails' => $guardrails,
             ];
         }
 
-        $scores = $this->buildScores($phases);
         $worstPhase = $this->resolveWorstPhase($scores);
         $decision = $this->resolveDecision($phases, $scores, $metrics, $isMatureCampaign, $vehicleType, $thresholds);
 
@@ -92,6 +115,7 @@ class CarDecisionService
             'actions' => $this->buildActions($decision, $worstPhase, $car, $vehicleType),
             'scores' => $scores,
             'funnel' => $phases,
+            'guardrails' => $guardrails,
         ];
     }
 
@@ -103,6 +127,15 @@ class CarDecisionService
             && (int) ($metrics['leads'] ?? 0) === 0
             && (int) ($metrics['whatsapp_clicks'] ?? 0) === 0
             && (int) ($metrics['form_opens'] ?? 0) === 0;
+    }
+
+    private function hasActiveCampaigns(Car $car): bool
+    {
+        return CarAdCampaign::query()
+            ->where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->where('is_active', true)
+            ->exists();
     }
 
     private function buildScores(array $phases): array
