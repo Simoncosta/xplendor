@@ -10,6 +10,13 @@ class CarAdCampaign extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $mapping) {
+            $mapping->level = $mapping->inferLevel();
+        });
+    }
+
     protected $fillable = [
         'company_id',
         'car_id',
@@ -43,12 +50,25 @@ class CarAdCampaign extends Model
     // O ID externo relevante consoante o nível de mapeamento
     public function getExternalIdAttribute(): string
     {
-        return match ($this->level) {
-            'ad'       => $this->ad_id       ?? $this->adset_id ?? $this->campaign_id,
-            'adset'    => $this->adset_id    ?? $this->campaign_id,
-            'campaign' => $this->campaign_id,
-            default    => $this->campaign_id,
-        };
+        return (string) ($this->ad_id ?? $this->adset_id ?? $this->campaign_id);
+    }
+
+    public function getResolvedLevelAttribute(): string
+    {
+        return $this->inferLevel();
+    }
+
+    public function inferLevel(): string
+    {
+        if (!empty($this->ad_id)) {
+            return 'ad';
+        }
+
+        if (!empty($this->adset_id)) {
+            return 'adset';
+        }
+
+        return 'campaign';
     }
 
     public function scopeActive($query)

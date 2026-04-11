@@ -9,12 +9,14 @@ use App\Models\CarPerformanceMetric;
 use App\Models\CompanyIntegration;
 use App\Models\MetaAudienceInsight;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
 class MetaAdsCarSyncService
 {
     public function __construct(
         protected MetaAdsService $metaAdsService,
+        protected MetaAdsTargetResolver $targetResolver,
     ) {}
 
     public function refreshCar(Car $car, ?Carbon $date = null): array
@@ -48,10 +50,18 @@ class MetaAdsCarSyncService
 
         $processed = [];
         $errors = [];
+        $normalizedWeights = $this->resolveNormalizedWeights(
+            $this->loadNormalizationPeerMappings($mappings)
+        );
 
         foreach ($mappings as $mapping) {
             try {
-                $processed[] = $this->refreshMappingForDay($integration, $mapping, $dateStr);
+                $processed[] = $this->refreshMappingForDay(
+                    $integration,
+                    $mapping,
+                    $dateStr,
+                    (float) ($normalizedWeights->get($mapping->id) ?? 1.0)
+                );
             } catch (\Throwable $exception) {
                 $errors[] = [
                     'mapping_id' => $mapping->id,
@@ -88,18 +98,21 @@ class MetaAdsCarSyncService
     public function refreshMappingForDay(
         CompanyIntegration $integration,
         CarAdCampaign $mapping,
-        string $dateStr
+        string $dateStr,
+        ?float $allocationFactor = null
     ): array {
-        $resolvedAdsetId = $this->resolveAdsetId($mapping);
+        $resolvedTarget = $this->targetResolver->resolveMetaTarget($mapping);
+        $resolvedAdsetId = $this->targetResolver->resolveAdsetId($mapping);
 
-        $insights = $this->metaAdsService->getAdsetInsights(
+        $insights = $this->metaAdsService->getInsights(
             $integration->access_token,
-            $mapping->external_id,
+            $resolvedTarget['id'],
+            $resolvedTarget['level'],
             $dateStr,
             $dateStr
         );
 
-        $splitFactor = $this->resolveAllocationFactor($mapping);
+        $splitFactor = $allocationFactor ?? $this->resolveNormalizedWeight($mapping);
         $spend = round((float) ($insights['spend'] ?? 0) * $splitFactor, 2);
         $impressions = (int) round((float) ($insights['impressions'] ?? 0) * $splitFactor);
         $clicks = (int) round((float) ($insights['clicks'] ?? 0) * $splitFactor);
@@ -160,8 +173,8 @@ class MetaAdsCarSyncService
 
         return [
             'mapping_id' => $mapping->id,
-            'mapping_level' => $mapping->level,
-            'external_id_used_for_metrics' => $mapping->external_id,
+            'mapping_level' => $resolvedTarget['level'],
+            'external_id_used_for_metrics' => $resolvedTarget['id'],
             'resolved_adset_id' => $resolvedAdsetId,
             'metric_updated' => true,
             'targeting_updated' => (bool) ($targetingResult['updated'] ?? false),
@@ -182,7 +195,7 @@ class MetaAdsCarSyncService
                 'company_id' => $mapping->company_id,
                 'car_id' => $mapping->car_id,
                 'mapping_id' => $mapping->id,
-                'mapping_level' => $mapping->level,
+                'mapping_level' => $this->targetResolver->resolveMetaTarget($mapping)['level'],
                 'campaign_id' => $mapping->campaign_id,
                 'adset_id' => $mapping->adset_id,
                 'external_id' => $mapping->external_id,
@@ -268,7 +281,7 @@ class MetaAdsCarSyncService
         }
 
         $persistedInsightIds = [];
-        $splitFactor = $this->resolveAllocationFactor($mapping);
+        $splitFactor = $this->resolveNormalizedWeight($mapping);
 
         foreach ($breakdown as $row) {
             $insight = MetaAudienceInsight::updateOrCreate(
@@ -321,52 +334,52 @@ class MetaAdsCarSyncService
         return $hasTargeting ? 'available' : 'unavailable';
     }
 
-    private function resolveAdsetId(CarAdCampaign $mapping): ?string
+    public function resolveNormalizedWeights(Collection $mappings): Collection
     {
-        if (!empty($mapping->adset_id)) {
-            return $mapping->adset_id;
+        if ($mappings->isEmpty()) {
+            return collect();
         }
 
-        if ($mapping->level === 'adset' && !empty($mapping->external_id)) {
-            return $mapping->external_id;
-        }
+        $normalized = collect();
 
-        return null;
-    }
+        $mappings
+            ->groupBy(fn(CarAdCampaign $mapping) => $this->buildNormalizationScopeKey($mapping))
+            ->each(function (Collection $scopeMappings) use ($normalized) {
+                if ($scopeMappings->count() === 1) {
+                    $mapping = $scopeMappings->first();
+                    $normalized->put($mapping->id, 1.0);
 
-    private function resolveAllocationFactor(CarAdCampaign $mapping): float
-    {
-        $allocationScope = $this->resolveAllocationScope($mapping);
+                    return;
+                }
 
-        if ($allocationScope === null) {
-            return 1.0;
-        }
+                $carGroups = $scopeMappings->groupBy(fn(CarAdCampaign $mapping) => (string) $mapping->car_id);
+                $carWeightTotals = $carGroups->map(
+                    fn(Collection $carMappings) => (float) $carMappings
+                        ->sum(fn(CarAdCampaign $item) => max(0.0, (float) ($item->spend_split_pct ?? 0)))
+                );
+                $scopeTotalWeight = (float) $carWeightTotals->sum();
 
-        $activeMappings = CarAdCampaign::query()
-            ->active()
-            ->where('company_id', $mapping->company_id)
-            ->where('platform', $mapping->platform)
-            ->where('level', $mapping->level)
-            ->where($allocationScope['column'], $allocationScope['value'])
-            ->get(['id', 'spend_split_pct']);
+                $carGroups->each(function (Collection $carMappings, string $carId) use ($carWeightTotals, $scopeTotalWeight, $normalized) {
+                    $carWeight = (float) ($carWeightTotals->get($carId) ?? 0.0);
+                    $carShare = $scopeTotalWeight > 0
+                        ? $carWeight / $scopeTotalWeight
+                        : (1 / max($carWeightTotals->count(), 1));
 
-        if ($activeMappings->count() <= 1) {
-            return 1.0;
-        }
+                    $mappingTotalWeight = (float) $carMappings
+                        ->sum(fn(CarAdCampaign $item) => max(0.0, (float) ($item->spend_split_pct ?? 0)));
 
-        $currentWeight = (float) ($mapping->spend_split_pct ?? 0);
-        $totalWeight = (float) $activeMappings
-            ->sum(fn(CarAdCampaign $item) => max(0.0, (float) ($item->spend_split_pct ?? 0)));
+                    $carMappings->each(function (CarAdCampaign $mapping) use ($carMappings, $carShare, $mappingTotalWeight, $normalized) {
+                        $mappingWeight = max(0.0, (float) ($mapping->spend_split_pct ?? 0));
+                        $intraCarShare = $mappingTotalWeight > 0
+                            ? $mappingWeight / $mappingTotalWeight
+                            : (1 / max($carMappings->count(), 1));
 
-        if ($totalWeight > 0) {
-            if ($currentWeight <= 0) {
-                return 0.0;
-            }
+                        $normalized->put($mapping->id, round($carShare * $intraCarShare, 6));
+                    });
+                });
+            });
 
-            return $currentWeight / $totalWeight;
-        }
-
-        return round(1 / $activeMappings->count(), 6);
+        return $normalized;
     }
 
     private function persistCampaignMetricDaily(
@@ -400,21 +413,75 @@ class MetaAdsCarSyncService
         );
     }
 
-    private function resolveAllocationScope(CarAdCampaign $mapping): ?array
+    private function resolveNormalizedWeight(CarAdCampaign $mapping): float
     {
-        return match ($mapping->level) {
-            'ad' => !empty($mapping->ad_id)
-                ? ['column' => 'ad_id', 'value' => $mapping->ad_id]
-                : null,
-            'campaign' => !empty($mapping->campaign_id)
-                ? ['column' => 'campaign_id', 'value' => $mapping->campaign_id]
-                : null,
-            default => !empty($mapping->adset_id)
-                ? ['column' => 'adset_id', 'value' => $mapping->adset_id]
-                : (!empty($mapping->campaign_id)
-                    ? ['column' => 'campaign_id', 'value' => $mapping->campaign_id]
-                    : null),
-        };
+        $normalized = $this->resolveNormalizedWeights(
+            $this->loadNormalizationPeerMappings(collect([$mapping]))
+        );
+
+        return (float) ($normalized->get($mapping->id) ?? 1.0);
+    }
+
+    private function loadNormalizationPeerMappings(Collection $mappings): Collection
+    {
+        if ($mappings->isEmpty()) {
+            return collect();
+        }
+
+        $scopeQueries = $mappings
+            ->map(fn(CarAdCampaign $mapping) => [
+                'company_id' => $mapping->company_id,
+                'platform' => $mapping->platform,
+                'adset_id' => $mapping->adset_id,
+                'campaign_id' => $mapping->campaign_id,
+            ])
+            ->unique(fn(array $scope) => implode('|', [
+                $scope['company_id'],
+                $scope['platform'],
+                $scope['adset_id'] ?? 'null',
+                $scope['campaign_id'] ?? 'null',
+            ]))
+            ->values();
+
+        return CarAdCampaign::query()
+            ->active()
+            ->where(function ($query) use ($scopeQueries) {
+                foreach ($scopeQueries as $scope) {
+                    $query->orWhere(function ($subQuery) use ($scope) {
+                        $subQuery
+                            ->where('company_id', $scope['company_id'])
+                            ->where('platform', $scope['platform']);
+
+                        if (!empty($scope['adset_id'])) {
+                            $subQuery->where('adset_id', $scope['adset_id']);
+                        } else {
+                            $subQuery
+                                ->whereNull('adset_id')
+                                ->where('campaign_id', $scope['campaign_id']);
+                        }
+                    });
+                }
+            })
+            ->get(['id', 'company_id', 'car_id', 'platform', 'campaign_id', 'adset_id', 'spend_split_pct']);
+    }
+
+    private function buildNormalizationScopeKey(CarAdCampaign $mapping): string
+    {
+        if (!empty($mapping->adset_id)) {
+            return implode(':', [
+                'adset',
+                $mapping->company_id,
+                $mapping->platform,
+                $mapping->adset_id,
+            ]);
+        }
+
+        return implode(':', [
+            'campaign',
+            $mapping->company_id,
+            $mapping->platform,
+            $mapping->campaign_id,
+        ]);
     }
 
     private function buildCampaignMetricSnapshot(int $impressions, int $clicks, float $spend): array

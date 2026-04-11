@@ -27,7 +27,9 @@ echo "⚛️ Frontend build"
 cd "$APP_DIR/web"
 yarn install --frozen-lockfile || yarn install
 echo "⚛️ Frontend build"
+echo "⚛️ Delete old build"
 rm -rf build/
+echo "⚛️ Build new build"
 yarn build
 
 echo "🔁 Reload nginx (docker)"

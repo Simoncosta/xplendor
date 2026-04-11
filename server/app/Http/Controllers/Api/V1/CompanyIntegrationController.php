@@ -79,7 +79,7 @@ class CompanyIntegrationController extends Controller
     }
 
     // GET /companies/{id}/integrations/meta/adsets
-    // Lista os adsets disponíveis na conta do Meta para mapeamento
+    // Lista a hierarquia Meta disponível na conta para mapeamento
     public function listMetaAdsets(int $companyId): JsonResponse
     {
         $integration = CompanyIntegration::where('company_id', $companyId)
@@ -96,11 +96,11 @@ class CompanyIntegrationController extends Controller
             return ApiResponse::error('Token Meta expirado. Reconecta a conta.', 401);
         }
 
-        $adsets = $this->metaAds->getAdsets(
+        $campaigns = $this->metaAds->getCampaignHierarchy(
             $integration->access_token,
             $integration->account_id
         );
 
-        return ApiResponse::success($adsets);
+        return ApiResponse::success($campaigns);
     }
 }

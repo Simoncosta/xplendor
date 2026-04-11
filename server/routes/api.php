@@ -75,6 +75,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/cars/{carId}/images/download', [CarController::class, 'downloadImages']);
 
                 Route::get('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'index']);
+                Route::get('/cars/{carId}/ad-campaigns/active-targets', [CarAdCampaignController::class, 'activeTargets']);
                 Route::post('/cars/{carId}/ad-campaigns', [CarAdCampaignController::class, 'store']);
                 Route::delete('/cars/{carId}/ad-campaigns/{campaign}', [CarAdCampaignController::class, 'destroy']);
                 Route::patch('/cars/{carId}/ad-campaigns/{campaign}/toggle', [CarAdCampaignController::class, 'toggle']);

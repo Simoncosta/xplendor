@@ -26,6 +26,7 @@ class CarAnalyticsService
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
         protected SilentBuyerDetectionService                 $silentBuyerDetectionService,
         protected CarMarketIntelligenceService                $carMarketIntelligenceService,
+        protected MetaAdsTargetResolver                       $targetResolver,
     ) {}
 
     public function show(Car $car): array
@@ -147,10 +148,10 @@ class CarAnalyticsService
             ->get();
 
         $mapping = $mappings->first(function (CarAdCampaign $mapping) {
-            return $this->resolveAdsetId($mapping) !== null;
+            return $this->targetResolver->resolveAdsetId($mapping) !== null;
         }) ?? $mappings->first();
 
-        $resolvedAdsetId = $this->resolveAdsetId($mapping);
+        $resolvedAdsetId = $this->targetResolver->resolveAdsetId($mapping);
 
         if (!$mapping || !$resolvedAdsetId) {
             return [
@@ -159,7 +160,7 @@ class CarAnalyticsService
                 'has_targeting' => false,
                 'has_metrics' => false,
                 'has_breakdown' => false,
-                'mapping_level' => $mapping?->level,
+                'mapping_level' => $mapping?->resolved_level,
                 'resolved_adset_id' => null,
                 'active_campaigns_count' => $mappings->count(),
             ];
@@ -194,27 +195,10 @@ class CarAnalyticsService
             'has_targeting' => $hasTargeting,
             'has_metrics' => $hasMetrics,
             'has_breakdown' => $hasBreakdown,
-            'mapping_level' => $mapping->level,
+            'mapping_level' => $mapping->resolved_level,
             'resolved_adset_id' => $resolvedAdsetId,
             'active_campaigns_count' => $mappings->count(),
         ];
-    }
-
-    protected function resolveAdsetId(?CarAdCampaign $mapping): ?string
-    {
-        if (!$mapping) {
-            return null;
-        }
-
-        if (!empty($mapping->adset_id)) {
-            return $mapping->adset_id;
-        }
-
-        if ($mapping->level === 'adset' && !empty($mapping->external_id)) {
-            return $mapping->external_id;
-        }
-
-        return null;
     }
 
     protected function resolveRecommendation(Car $car, ?array $aiAnalysis = null): ?array
