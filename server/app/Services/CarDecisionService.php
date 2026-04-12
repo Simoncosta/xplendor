@@ -34,12 +34,17 @@ class CarDecisionService
     public function __construct(
         protected CarFunnelAnalyzer $carFunnelAnalyzer,
         protected AdsGuardrailService $adsGuardrailService,
+        protected IntentAnalysisService $intentAnalysisService,
+        protected LeadRealityGapService $leadRealityGapService,
     ) {}
 
     public function resolve(Car $car, ?string $from = null, ?string $to = null): array
     {
         $analysis = $this->carFunnelAnalyzer->analyzeForCar($car, $from, $to);
-        return $this->buildDecisionPayload($car, $analysis, $from, $to);
+        $intelligence = $this->intentAnalysisService->analyzeForCar($car, $from, $to);
+        $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, $analysis, $intelligence, $from, $to);
+
+        return $this->buildDecisionPayload($car, $analysis, $intelligence, $leadRealityGap, $from, $to);
     }
 
     public function resolveForCars(Collection $cars, ?string $from = null, ?string $to = null): array
@@ -49,13 +54,29 @@ class CarDecisionService
         }
 
         $analyses = $this->carFunnelAnalyzer->analyzeForCars($cars, $from, $to);
+        $intentAnalyses = $this->intentAnalysisService->analyzeForCars($cars, $from, $to);
+        $leadRealityGaps = $this->leadRealityGapService->analyzeForCars($cars, $analyses, $intentAnalyses, $from, $to);
 
-        return $cars->map(function (Car $car) use ($analyses, $from, $to) {
-            return $this->buildDecisionPayload($car, $analyses[$car->id] ?? [], $from, $to);
+        return $cars->map(function (Car $car) use ($analyses, $intentAnalyses, $leadRealityGaps, $from, $to) {
+            return $this->buildDecisionPayload(
+                $car,
+                $analyses[$car->id] ?? [],
+                $intentAnalyses[$car->id] ?? [],
+                $leadRealityGaps[$car->id] ?? [],
+                $from,
+                $to
+            );
         })->all();
     }
 
-    private function buildDecisionPayload(Car $car, array $analysis, ?string $from = null, ?string $to = null): array
+    private function buildDecisionPayload(
+        Car $car,
+        array $analysis,
+        array $intelligence = [],
+        array $leadRealityGap = [],
+        ?string $from = null,
+        ?string $to = null
+    ): array
     {
         $phases = $analysis['phases'] ?? [];
         $metrics = $analysis['metrics'] ?? [];
@@ -63,6 +84,7 @@ class CarDecisionService
         $thresholds = $this->resolveThresholds($vehicleType);
         $isMatureCampaign = $this->isMatureCampaign($metrics, $thresholds);
         $scores = $this->buildScores($phases);
+        $guardrails = $this->adsGuardrailService->evaluate($car, $analysis, $from, $to, $intelligence, $leadRealityGap);
 
         if (!$this->hasActiveCampaigns($car)) {
             return [
@@ -78,11 +100,11 @@ class CarDecisionService
                 ],
                 'scores' => $scores,
                 'funnel' => $phases,
-                'guardrails' => [],
+                'guardrails' => $guardrails,
+                'intelligence' => $intelligence,
+                'lead_reality_gap' => $leadRealityGap,
             ];
         }
-
-        $guardrails = $this->adsGuardrailService->evaluate($car, $analysis, $from, $to);
 
         if ($this->hasInsufficientData($metrics)) {
             return [
@@ -99,6 +121,8 @@ class CarDecisionService
                 'scores' => $scores,
                 'funnel' => $phases,
                 'guardrails' => $guardrails,
+                'intelligence' => $intelligence,
+                'lead_reality_gap' => $leadRealityGap,
             ];
         }
 
@@ -116,6 +140,8 @@ class CarDecisionService
             'scores' => $scores,
             'funnel' => $phases,
             'guardrails' => $guardrails,
+            'intelligence' => $intelligence,
+            'lead_reality_gap' => $leadRealityGap,
         ];
     }
 

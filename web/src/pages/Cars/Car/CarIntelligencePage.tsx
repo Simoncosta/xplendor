@@ -10,6 +10,8 @@ import { carRecalculate, refreshCarMetaAds, regenerateCarAnalysis } from "slices
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
+import ContactPerformanceCard from "./components/ContactPerformanceCard";
+import LeadRealityGapCard from "./components/LeadRealityGapCard";
 import SilentBuyerIntentCard from "./components/SilentBuyerIntentCard";
 import TabAnaliseIA from "./components/TabAnaliseIA";
 
@@ -66,6 +68,8 @@ export default function CarIntelligencePage() {
     const aiMeta = car?.analyses;
     const ips = carAnalytics?.potential_score;
     const marketIntelligence = carAnalytics?.market_intelligence ?? null;
+    const intentAnalysis = carAnalytics?.intent_analysis ?? null;
+    const leadRealityGap = carAnalytics?.lead_reality_gap ?? null;
     const metaAdsTargetingStatus = carAnalytics?.meta_ads_targeting_status ?? null;
     const silentBuyers = carAnalytics?.silent_buyers ?? null;
 
@@ -195,6 +199,14 @@ export default function CarIntelligencePage() {
                             </section>
                         </Col>
                     )}
+
+                    <Col xs={12}>
+                        <ContactPerformanceCard analysis={intentAnalysis} />
+                    </Col>
+
+                    <Col xs={12}>
+                        <LeadRealityGapCard gap={leadRealityGap} />
+                    </Col>
 
                     <Col xs={12}>
                         <SilentBuyerIntentCard summary={silentBuyers} />

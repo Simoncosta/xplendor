@@ -136,8 +136,8 @@ class AlertService
     private function mapAlertType(?string $guardrailType): ?string
     {
         return match ($guardrailType) {
-            'spend_without_qualified_lead', 'unanswered_leads' => 'urgent',
-            'creative_fatigue', 'high_spend_low_intent' => 'warning',
+            'spend_without_qualified_lead', 'unanswered_leads', 'no_response' => 'urgent',
+            'creative_fatigue', 'high_spend_low_intent', 'decision_friction', 'contact_loss', 'contact_capture_failure' => 'warning',
             default => null,
         };
     }

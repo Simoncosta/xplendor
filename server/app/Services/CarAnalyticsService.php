@@ -26,6 +26,8 @@ class CarAnalyticsService
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
         protected SilentBuyerDetectionService                 $silentBuyerDetectionService,
         protected CarMarketIntelligenceService                $carMarketIntelligenceService,
+        protected IntentAnalysisService                       $intentAnalysisService,
+        protected LeadRealityGapService                       $leadRealityGapService,
         protected MetaAdsTargetResolver                       $targetResolver,
     ) {}
 
@@ -54,6 +56,8 @@ class CarAnalyticsService
         $promoDiscountValue = $car->promo_discount_value;
         $promoDiscountPct = $car->promo_discount_pct;
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
+        $intentAnalysis = $this->intentAnalysisService->analyzeForCar($car);
+        $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, [], $intentAnalysis);
 
         return [
             'car' => [
@@ -114,6 +118,8 @@ class CarAnalyticsService
             'smart_ads_recommendation' => $smartAdsRecommendation,
             'recommended_creative' => $recommendedCreative,
             'market_intelligence' => $marketIntelligence,
+            'intent_analysis' => $intentAnalysis,
+            'lead_reality_gap' => $leadRealityGap,
             'meta_ads_targeting_status' => $this->resolveMetaAdsTargetingStatus($car),
             'potential_score' => $latestScore ? [
                 'score'            => $latestScore->score,

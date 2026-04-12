@@ -13,7 +13,14 @@ class AdsGuardrailService
 {
     private const DEFAULT_WINDOW_DAYS = 7;
 
-    public function evaluate(Car $car, array $analysis, ?string $from = null, ?string $to = null): array
+    public function evaluate(
+        Car $car,
+        array $analysis,
+        ?string $from = null,
+        ?string $to = null,
+        array $intelligence = [],
+        array $leadRealityGap = []
+    ): array
     {
         $period = $analysis['period'] ?? [];
         $from ??= $period['from'] ?? now()->subDays(self::DEFAULT_WINDOW_DAYS - 1)->toDateString();
@@ -26,7 +33,7 @@ class AdsGuardrailService
             $this->detectSpendWithoutQualifiedLead($snapshot, $thresholds),
             $this->detectCreativeFatigue($snapshot, $thresholds),
             $this->detectHighSpendLowIntent($snapshot, $thresholds),
-            $this->detectUnansweredLeads($snapshot),
+            $this->detectGapGuardrail($leadRealityGap),
         ]));
 
         usort($alerts, function (array $left, array $right) {
@@ -332,5 +339,98 @@ class AdsGuardrailService
             'recommended_action' => 'Responder às leads antes de aumentar investimento neste funil.',
             'manual_only' => true,
         ];
+    }
+
+    private function detectDecisionFriction(array $intelligence): ?array
+    {
+        if (
+            (int) ($intelligence['intent_score'] ?? 0) < 70
+            || (int) ($intelligence['strong_intent_users'] ?? 0) < 2
+            || (int) ($intelligence['leads'] ?? 0) > 0
+            || (int) ($intelligence['confidence_score'] ?? 0) < 70
+        ) {
+            return null;
+        }
+
+        return [
+            'type' => 'decision_friction',
+            'severity' => 'high',
+            'title' => 'Interesse forte sem contacto',
+            'message' => 'Há utilizadores com forte intenção, mas sem lead capturada.',
+            'recommended_action' => 'Rever CTA, proposta, preço ou fricção de contacto.',
+            'manual_only' => true,
+        ];
+    }
+
+    private function detectContactLoss(array $intelligence): ?array
+    {
+        if (
+            (int) ($intelligence['strong_intent_users'] ?? 0) < 3
+            || (float) ($intelligence['contact_efficiency'] ?? -1) !== 0.0
+            || (int) ($intelligence['confidence_score'] ?? 0) < 70
+        ) {
+            return null;
+        }
+
+        return [
+            'type' => 'contact_loss',
+            'severity' => 'high',
+            'title' => 'Perda de contacto provável',
+            'message' => 'Há sinais fortes de contacto, mas o sistema não capturou leads.',
+            'recommended_action' => 'Validar fluxo WhatsApp, proposta de contacto e confiança comercial.',
+            'manual_only' => true,
+        ];
+    }
+
+    private function detectNoResponse(array $snapshot, array $intelligence): ?array
+    {
+        $count = (int) ($snapshot['unanswered_lead_count'] ?? 0);
+        $oldestLeadAt = $snapshot['oldest_unanswered_lead_at'] ?? null;
+
+        if ($count === 0 || !$oldestLeadAt instanceof Carbon) {
+            return null;
+        }
+
+        return [
+            'type' => 'no_response',
+            'severity' => 'high',
+            'title' => 'Leads sem resposta',
+            'message' => 'O stand ainda não respondeu a leads existentes.',
+            'recommended_action' => 'Responder e evitar escalar investimento antes disso.',
+            'manual_only' => true,
+        ];
+    }
+
+    private function detectGapGuardrail(array $leadRealityGap): ?array
+    {
+        $primaryState = (string) ($leadRealityGap['primary_gap_state'] ?? '');
+
+        return match ($primaryState) {
+            'decision_friction' => [
+                'type' => 'decision_friction',
+                'severity' => 'high',
+                'title' => 'Interesse forte sem contacto',
+                'message' => 'Há utilizadores com forte intenção, mas sem contacto capturado.',
+                'recommended_action' => 'Rever CTA, proposta, preço ou fricção de contacto.',
+                'manual_only' => true,
+            ],
+            'contact_capture_failure' => [
+                'type' => 'contact_capture_failure',
+                'severity' => 'high',
+                'title' => 'Perda de contacto provável',
+                'message' => 'Há sinais fortes de contacto, mas o sistema não capturou leads.',
+                'recommended_action' => 'Validar fluxo WhatsApp, proposta de contacto e confiança comercial.',
+                'manual_only' => true,
+            ],
+            'no_response' => [
+                'type' => 'no_response',
+                'severity' => 'high',
+                'title' => 'Leads sem resposta',
+                'message' => 'O stand ainda não respondeu a leads existentes.',
+                'recommended_action' => 'Responder e evitar escalar investimento antes disso.',
+                'manual_only' => true,
+            ],
+            default => null,
+        };
     }
 }

@@ -24,9 +24,8 @@ docker exec -it xplendor-php php artisan config:cache
 docker exec -it xplendor-php php artisan route:cache
 
 echo "⚛️ Frontend build"
-cd "$APP_DIR/web"
+cd "./web"
 yarn install --frozen-lockfile || yarn install
-echo "⚛️ Frontend build"
 echo "⚛️ Delete old build"
 rm -rf build/
 echo "⚛️ Build new build"
