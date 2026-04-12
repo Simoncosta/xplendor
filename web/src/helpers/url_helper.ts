@@ -9,6 +9,10 @@ export const GET_COMPANIES = "/companies";
 export const GET_INTEGRATIONS = "/integrations";
 export const GET_META_INTEGRATIONS = "/integrations/meta";
 export const GET_DECISIONS = "/decisions";
+export const GET_ALERTS = "/alerts";
+export const GET_ALERTS_UNREAD_COUNT = "/alerts/unread-count";
+export const PATCH_ALERTS_READ = "/alerts/read";
+export const POST_ALERT_READ = "/read";
 
 // DASHBOARDS
 export const GET_DASHBOARD_APIS = "/dashboard";

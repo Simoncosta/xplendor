@@ -1,5 +1,6 @@
 export type DecisionType = "ESCALAR" | "MANTER" | "CORRIGIR" | "PARAR" | "NO_ACTIVE_CAMPAIGN";
 export type GuardrailSeverity = "high" | "medium" | "low";
+export type AlertType = "urgent" | "warning" | "opportunity";
 export type ActionExecutionKey =
     | "pause_campaign"
     | "notify_client_whatsapp"
@@ -35,6 +36,20 @@ export interface GuardrailAlert {
     message: string;
     recommended_action: string;
     manual_only: boolean;
+}
+
+export interface AlertItem {
+    id: number;
+    company_id: number;
+    car_id: number;
+    car_name: string;
+    type: AlertType;
+    title: string;
+    message: string;
+    severity: GuardrailSeverity;
+    is_read: boolean;
+    created_at: string;
+    detail_path: string;
 }
 
 export interface CarDecisionResponse {

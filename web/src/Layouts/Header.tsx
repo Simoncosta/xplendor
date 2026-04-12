@@ -11,6 +11,7 @@ import LanguageDropdown from '../Components/Common/LanguageDropdown';
 import FullScreenDropdown from '../Components/Common/FullScreenDropdown';
 import ProfileDropdown from '../Components/Common/ProfileDropdown';
 import LightDark from '../Components/Common/LightDark';
+import NotificationDropdown from '../Components/Common/NotificationDropdown';
 
 import { changeSidebarVisibility } from '../slices/thunks';
 import { useSelector, useDispatch } from "react-redux";
@@ -67,7 +68,7 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                         <div className="d-flex">
 
                             <div className="navbar-brand-box horizontal-logo">
-                                <Link to="/" className="logo logo-dark">
+                                <Link to="/dashboard" className="logo logo-dark">
                                     <span className="logo-sm">
                                         <img src={logoSm} alt="" height="22" />
                                     </span>
@@ -76,7 +77,7 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                                     </span>
                                 </Link>
 
-                                <Link to="/" className="logo logo-light">
+                                <Link to="/dashboard" className="logo logo-light">
                                     <span className="logo-sm">
                                         <img src={logoSm} alt="" height="22" />
                                     </span>
@@ -140,8 +141,7 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                                 onChangeLayoutMode={onChangeLayoutMode}
                             />
 
-                            {/* NotificationDropdown */}
-                            {/* <NotificationDropdown /> */}
+                            <NotificationDropdown />
 
                             {/* ProfileDropdown */}
                             <ProfileDropdown />

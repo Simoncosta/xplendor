@@ -37,6 +37,14 @@ export const showCompany = (params: { id: number }) => api.get(url.GET_COMPANIES
 export const createCompany = (data: FormData | any) => api.create(url.GET_COMPANIES, data);
 export const updateCompany = (id: number, data: FormData | any) => api.create(url.GET_COMPANIES + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const getCompanyDecisionsApi = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DECISIONS);
+export const getCompanyAlertsApi = (companyId: number, params?: { unread_only?: boolean; limit?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_ALERTS, params);
+export const getCompanyAlertsUnreadCountApi = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_ALERTS_UNREAD_COUNT);
+export const markCompanyAlertsReadApi = (companyId: number, data?: { ids?: number[] }) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.PATCH_ALERTS_READ, data ?? {});
+export const markCompanyAlertReadApi = (companyId: number, alertId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_ALERTS + `/${alertId}` + url.POST_ALERT_READ, {});
 
 // DASHBOARDS
 export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS);

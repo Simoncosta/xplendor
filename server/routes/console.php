@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\{
     AggregateCarPerformanceMetricsJob,
+    GenerateDailyAlertsEmailJob,
     GenerateWeeklyMarketingIdeasJob,
     RecalculateAllCarScoresJob,
     FetchMetaAdsMetricsJob,
@@ -45,6 +46,14 @@ Schedule::job(new GenerateWeeklyMarketingIdeasJob())
     ->at('03:00')
     ->name('generate-weekly-marketing-ideas')
     ->withoutOverlapping();
+
+Schedule::job(new GenerateDailyAlertsEmailJob())
+    ->dailyAt('09:00')
+    ->name('generate-daily-alerts-email')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[DailyAlerts] Job falhou no scheduler');
+    });
 
 Schedule::job(new SyncCarmineCarsJob())
     ->hourly()

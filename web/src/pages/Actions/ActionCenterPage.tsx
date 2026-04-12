@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Container, Row, Col, Button, Spinner } from "reactstrap";
-import { ToastContainer } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 
-import { getCompanyDecisionsApi } from "../../helpers/laravel_helper";
+import { getCompanyAlertsApi, getCompanyDecisionsApi, markCompanyAlertsReadApi } from "../../helpers/laravel_helper";
 import { getDecisionLabel } from "./components/DecisionBadge";
 import CarDecisionCard from "./components/CarDecisionCard";
-import { ActionCenterCarItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
+import { ActionCenterCarItem, AlertItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
@@ -41,6 +41,7 @@ export default function ActionCenterPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [alerts, setAlerts] = useState<AlertItem[]>([]);
 
     useEffect(() => {
         setCompanyId(readCompanyId());
@@ -63,10 +64,15 @@ export default function ActionCenterPage() {
             setError(null);
 
             try {
-                const res: any = await getCompanyDecisionsApi(companyId);
+                const [res, alertsRes]: any = await Promise.all([
+                    getCompanyDecisionsApi(companyId),
+                    getCompanyAlertsApi(companyId, { limit: 12 }),
+                ]);
                 const decisions = (res?.data ?? []) as CarDecisionResponse[];
+                const nextAlerts = (alertsRes?.data ?? []) as AlertItem[];
 
                 if (!active) return;
+                setAlerts(nextAlerts);
 
                 setItems(
                     decisions
@@ -116,6 +122,35 @@ export default function ActionCenterPage() {
             active = false;
         };
     }, [companyId, refreshKey]);
+
+    useEffect(() => {
+        const unreadAlerts = alerts.filter((alert) => !alert.is_read);
+
+        if (unreadAlerts.length === 0 || !companyId) {
+            return;
+        }
+
+        unreadAlerts.slice(0, 3).forEach((alert) => {
+            toast.warn(`${alert.car_name || "Viatura"}: ${alert.title}`, {
+                toastId: `alert-${alert.id}`,
+            });
+        });
+
+        if (unreadAlerts.length > 3) {
+            toast.info(`Existem mais ${unreadAlerts.length - 3} alertas por rever.`);
+        }
+
+        markCompanyAlertsReadApi(companyId, { ids: unreadAlerts.map((alert) => alert.id) })
+            .then(() => {
+                setAlerts((current) => current.map((alert) => unreadAlerts.some((item) => item.id === alert.id)
+                    ? { ...alert, is_read: true }
+                    : alert));
+                window.dispatchEvent(new Event("xplendor-alerts-updated"));
+            })
+            .catch(() => {
+                // silencioso: não queremos bloquear a UX do Action Center
+            });
+    }, [alerts, companyId]);
 
     const summary = useMemo(() => {
         return items.reduce<Record<DecisionType, number>>(
@@ -167,6 +202,57 @@ export default function ActionCenterPage() {
                     </Col>
                 </Row>
 
+                {alerts.length > 0 && (
+                    <Row className="mb-4">
+                        <Col>
+                            <section
+                                style={{
+                                    borderRadius: 20,
+                                    padding: "20px 22px",
+                                    background: "#fff",
+                                    border: "1px solid #e9ebec",
+                                }}
+                            >
+                                <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
+                                    <div>
+                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                            Alertas
+                                        </p>
+                                        <h5 className="mb-0">Inbox operacional</h5>
+                                    </div>
+                                    <span className="badge bg-light text-dark px-3 py-2 fs-12">
+                                        {alerts.filter((alert) => !alert.is_read).length} por ler
+                                    </span>
+                                </div>
+
+                                <div className="d-grid gap-2">
+                                    {alerts.map((alert) => (
+                                        <a
+                                            key={alert.id}
+                                            href={alert.detail_path}
+                                            className="text-decoration-none text-reset"
+                                        >
+                                            <div className="border rounded-3 px-3 py-3 d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                                                <div>
+                                                    <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                                                        <span className={`badge ${resolveAlertBadgeClass(alert)}`}>{resolveAlertTypeLabel(alert.type)}</span>
+                                                        <span className="fw-semibold fs-14">{alert.car_name}</span>
+                                                    </div>
+                                                    <div className="fw-semibold fs-13 mb-1">{alert.title}</div>
+                                                    <div className="text-muted fs-13">{alert.message}</div>
+                                                </div>
+                                                <div className="text-muted fs-12">
+                                                    {formatAlertDate(alert.created_at)}
+                                                </div>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            </section>
+                        </Col>
+                    </Row>
+                )}
+
                 {loading ? (
                     <Row>
                         <Col>
@@ -204,4 +290,27 @@ export default function ActionCenterPage() {
             </Container>
         </div>
     );
+}
+
+function resolveAlertBadgeClass(alert: AlertItem): string {
+    return {
+        urgent: "bg-danger-subtle text-danger",
+        warning: "bg-warning-subtle text-warning",
+        opportunity: "bg-success-subtle text-success",
+    }[alert.type];
+}
+
+function resolveAlertTypeLabel(type: AlertItem["type"]): string {
+    return {
+        urgent: "Urgente",
+        warning: "Warning",
+        opportunity: "Oportunidade",
+    }[type];
+}
+
+function formatAlertDate(value: string): string {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? ""
+        : date.toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }

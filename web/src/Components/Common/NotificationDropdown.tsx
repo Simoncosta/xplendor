@@ -1,50 +1,122 @@
-import React, { useState } from 'react';
-import { Col, Dropdown, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+    Col,
+    Dropdown,
+    DropdownMenu,
+    DropdownToggle,
+    Nav,
+    NavItem,
+    NavLink,
+    Row,
+    TabContent,
+    TabPane
+} from 'reactstrap';
+import { Link, useLocation } from 'react-router-dom';
 import classnames from 'classnames';
 
-//import images
-import avatar2 from "../../assets/images/users/avatar-2.jpg";
-import avatar8 from "../../assets/images/users/avatar-8.jpg";
-import avatar3 from "../../assets/images/users/avatar-3.jpg";
-import avatar6 from "../../assets/images/users/avatar-6.jpg";
 import bell from "../../assets/images/svg/bell.svg";
-
-//SimpleBar
 import SimpleBar from "simplebar-react";
 
+import { getCompanyAlertsApi, markCompanyAlertReadApi } from '../../helpers/laravel_helper';
+import { AlertItem } from '../../pages/Actions/types';
+
 const NotificationDropdown = () => {
-    //Dropdown Toggle
+    const location = useLocation();
     const [isNotificationDropdown, setIsNotificationDropdown] = useState(false);
+    const [activeTab, setActiveTab] = useState('1');
+    const [alerts, setAlerts] = useState<AlertItem[]>([]);
+    const [markingAlertId, setMarkingAlertId] = useState<number | null>(null);
+
+    const companyId = useMemo(() => {
+        const authUser = sessionStorage.getItem("authUser");
+
+        if (!authUser) return 0;
+
+        return Number(JSON.parse(authUser).company_id || 0);
+    }, []);
+
+    const unreadCount = alerts.filter((alert) => !alert.is_read).length;
+    const unreadAlerts = alerts.filter((alert) => !alert.is_read);
+
     const toggleNotificationDropdown = () => {
         setIsNotificationDropdown(!isNotificationDropdown);
     };
 
-    //Tab 
-    const [activeTab, setActiveTab] = useState('1');
-    const toggleTab = (tab : any) => {
+    const toggleTab = (tab: string) => {
         if (activeTab !== tab) {
             setActiveTab(tab);
         }
     };
+
+    useEffect(() => {
+        if (!companyId) {
+            setAlerts([]);
+            return;
+        }
+
+        const fetchAlerts = async () => {
+            try {
+                const response: any = await getCompanyAlertsApi(companyId, { limit: 12 });
+                setAlerts(response?.data ?? []);
+            } catch {
+                setAlerts([]);
+            }
+        };
+
+        fetchAlerts();
+
+        const handleAlertsUpdated = () => {
+            fetchAlerts();
+        };
+
+        window.addEventListener("xplendor-alerts-updated", handleAlertsUpdated);
+
+        return () => {
+            window.removeEventListener("xplendor-alerts-updated", handleAlertsUpdated);
+        };
+    }, [companyId, location.pathname]);
+
+    const handleMarkAsRead = async (alertId: number) => {
+        if (!companyId || markingAlertId === alertId) {
+            return;
+        }
+
+        setMarkingAlertId(alertId);
+
+        try {
+            await markCompanyAlertReadApi(companyId, alertId);
+            setAlerts((current) => current.map((alert) => (
+                alert.id === alertId ? { ...alert, is_read: true } : alert
+            )));
+            window.dispatchEvent(new Event("xplendor-alerts-updated"));
+        } finally {
+            setMarkingAlertId(null);
+        }
+    };
+
+    const visibleAlerts = activeTab === '2' ? unreadAlerts : alerts;
+
     return (
         <React.Fragment>
             <Dropdown isOpen={isNotificationDropdown} toggle={toggleNotificationDropdown} className="topbar-head-dropdown ms-1 header-item">
-                <DropdownToggle type="button" tag="button" className="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle">
+                <DropdownToggle type="button" tag="button" className="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle position-relative">
                     <i className='bx bx-bell fs-22'></i>
-                    <span
-                        className="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger">3<span
-                            className="visually-hidden">unread messages</span></span>
+                    {unreadCount > 0 && (
+                        <span className="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger">
+                            {unreadCount > 9 ? "9+" : unreadCount}
+                            <span className="visually-hidden">unread alerts</span>
+                        </span>
+                    )}
                 </DropdownToggle>
                 <DropdownMenu className="dropdown-menu-lg dropdown-menu-end p-0">
                     <div className="dropdown-head bg-primary bg-pattern rounded-top">
                         <div className="p-3">
                             <Row className="align-items-center">
                                 <Col>
-                                    <h6 className="m-0 fs-16 fw-semibold text-white"> Notifications </h6>
+                                    <h6 className="m-0 fs-16 fw-semibold text-white"> Alertas </h6>
                                 </Col>
                                 <div className="col-auto dropdown-tabs">
-                                    <span className="badge bg-light-subtle text-body fs-13"> 4 New</span>
+                                    <span className="badge bg-light-subtle text-body fs-13"> {unreadCount} por ler</span>
                                 </div>
                             </Row>
                         </div>
@@ -55,252 +127,45 @@ const NotificationDropdown = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '1' })}
-                                        onClick={() => { toggleTab('1'); }}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            toggleTab('1');
+                                        }}
                                     >
-                                        All (4)
+                                        All ({alerts.length})
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '2' })}
-                                        onClick={() => { toggleTab('2'); }}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            toggleTab('2');
+                                        }}
                                     >
-                                        Messages
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink
-                                        href="#"
-                                        className={classnames({ active: activeTab === '3' })}
-                                        onClick={() => { toggleTab('3'); }}
-                                    >
-                                        Alerts
+                                        Alerts ({unreadCount})
                                     </NavLink>
                                 </NavItem>
                             </Nav>
                         </div>
-
                     </div>
 
                     <TabContent activeTab={activeTab}>
                         <TabPane tabId="1" className="py-2 ps-2">
-                            <SimpleBar style={{ maxHeight: "300px" }} className="pe-2">
-                                <div className="text-reset notification-item d-block dropdown-item position-relative">
-                                    <div className="d-flex">
-                                        <div className="avatar-xs me-3">
-                                            <span className="avatar-title bg-info-subtle text-info rounded-circle fs-16">
-                                                <i className="bx bx-badge-check"></i>
-                                            </span>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link">
-                                                <h6 className="mt-0 mb-2 lh-base">Your <b>Elite</b> author Graphic
-                                                    Optimization <span className="text-secondary">reward</span> is ready!
-                                                </h6>
-                                            </Link>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> Just 30 sec ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                            <div className="form-check notification-check">
-                                                <input className="form-check-input" type="checkbox" value="" id="all-notification-check01" />
-                                                <label className="form-check-label" htmlFor="all-notification-check01"></label>
-                                            </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item position-relative active">
-                                    <div className="d-flex">
-                                        <img src={avatar2}
-                                            className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">Angela Bernier</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">Answered to your comment on the cash flow forecast's
-                                                    graph 🔔.</p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 48 min ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                            <div className="form-check notification-check">
-                                                <input className="form-check-input" type="checkbox" value="" id="all-notification-check02"/>
-                                                <label className="form-check-label" htmlFor="all-notification-check02"></label>
-                                            </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item position-relative">
-                                    <div className="d-flex">
-                                        <div className="avatar-xs me-3">
-                                            <span
-                                                className="avatar-title bg-danger-subtle text-danger rounded-circle fs-16">
-                                                <i className='bx bx-message-square-dots'></i>
-                                            </span>
-                                        </div>
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link">
-                                                <h6 className="mt-0 mb-2 fs-13 lh-base">You have received <b className="text-success">20</b> new messages in the conversation</h6>
-                                            </Link>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 2 hrs ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                            <div className="form-check notification-check">
-                                                <input className="form-check-input" type="checkbox" value="" id="all-notification-check03" />
-                                                <label className="form-check-label" htmlFor="all-notification-check03"></label>
-                                            </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item position-relative">
-                                    <div className="d-flex">
-                                        <img src={avatar8} className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">Maureen Gibson</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">We talked about a project on linkedin.</p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 4 hrs ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                            <div className="form-check notification-check">
-                                                <input className="form-check-input" type="checkbox" value="" id="all-notification-check04" />
-                                                <label className="form-check-label" htmlFor="all-notification-check04"></label>
-                                            </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="my-3 text-center">
-                                    <button type="button" className="btn btn-soft-success waves-effect waves-light">View
-                                        All Notifications <i className="ri-arrow-right-line align-middle"></i></button>
-                                </div>
-                            </SimpleBar>
-
+                            <AlertsList
+                                alerts={visibleAlerts}
+                                markingAlertId={markingAlertId}
+                                onMarkAsRead={handleMarkAsRead}
+                            />
                         </TabPane>
 
                         <TabPane tabId="2" className="py-2 ps-2">
-                            <SimpleBar style={{ maxHeight: "300px" }} className="pe-2">
-                                <div className="text-reset notification-item d-block dropdown-item">
-                                    <div className="d-flex">
-                                        <img src={avatar3}
-                                            className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">James Lemire</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">We talked about a project on linkedin.</p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 30 min ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                        <div className="form-check notification-check">
-                                                    <input className="form-check-input" type="checkbox" value="" id="messages-notification-check01" />
-                                                    <label className="form-check-label" htmlFor="messages-notification-check01"></label>
-                                                </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item">
-                                    <div className="d-flex">
-                                        <img src={avatar2}
-                                            className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">Angela Bernier</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">Answered to your comment on the cash flow forecast's
-                                                    graph 🔔.</p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 2 hrs ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                        <div className="form-check notification-check">
-                                                    <input className="form-check-input" type="checkbox" value="" id="messages-notification-check02" />
-                                                    <label className="form-check-label" htmlFor="messages-notification-check02"></label>
-                                                </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item">
-                                    <div className="d-flex">
-                                        <img src={avatar6}
-                                            className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">Kenneth Brown</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">Mentionned you in his comment on 📃 invoice #12501. </p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 10 hrs ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                        <div className="form-check notification-check">
-                                                    <input className="form-check-input" type="checkbox" value="" id="messages-notification-check03" />
-                                                    <label className="form-check-label" htmlFor="messages-notification-check03"></label>
-                                                </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="text-reset notification-item d-block dropdown-item">
-                                    <div className="d-flex">
-                                        <img src={avatar8}
-                                            className="me-3 rounded-circle avatar-xs" alt="user-pic" />
-                                        <div className="flex-grow-1">
-                                            <Link to="#" className="stretched-link"><h6 className="mt-0 mb-1 fs-13 fw-semibold">Maureen Gibson</h6></Link>
-                                            <div className="fs-13 text-muted">
-                                                <p className="mb-1">We talked about a project on linkedin.</p>
-                                            </div>
-                                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                                <span><i className="mdi mdi-clock-outline"></i> 3 days ago</span>
-                                            </p>
-                                        </div>
-                                        <div className="px-2 fs-15">
-                                        <div className="form-check notification-check">
-                                                    <input className="form-check-input" type="checkbox" value="" id="messages-notification-check04" />
-                                                    <label className="form-check-label" htmlFor="messages-notification-check04"></label>
-                                                </div>
-                                            {/* <input className="form-check-input" type="checkbox" /> */}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="my-3 text-center">
-                                    <button type="button" className="btn btn-soft-success waves-effect waves-light">View
-                                        All Messages <i className="ri-arrow-right-line align-middle"></i></button>
-                                </div>
-                            </SimpleBar>
-                        </TabPane>
-                        <TabPane tabId="3" className="p-4">
-                            <div className="w-25 w-sm-50 pt-3 mx-auto">
-                                <img src={bell} className="img-fluid" alt="user-pic" />
-                            </div>
-                            <div className="text-center pb-5 mt-2">
-                                <h6 className="fs-18 fw-semibold lh-base">Hey! You have no any notifications </h6>
-                            </div>
+                            <AlertsList
+                                alerts={visibleAlerts}
+                                markingAlertId={markingAlertId}
+                                onMarkAsRead={handleMarkAsRead}
+                            />
                         </TabPane>
                     </TabContent>
                 </DropdownMenu>
@@ -308,5 +173,119 @@ const NotificationDropdown = () => {
         </React.Fragment>
     );
 };
+
+interface AlertsListProps {
+    alerts: AlertItem[];
+    markingAlertId: number | null;
+    onMarkAsRead: (alertId: number) => void;
+}
+
+function AlertsList({ alerts, markingAlertId, onMarkAsRead }: AlertsListProps) {
+    if (alerts.length === 0) {
+        return (
+            <TabPane tabId="empty" className="p-4 d-block">
+                <div className="w-25 w-sm-50 pt-3 mx-auto">
+                    <img src={bell} className="img-fluid" alt="Sem alertas" />
+                </div>
+                <div className="text-center pb-4 mt-2">
+                    <h6 className="fs-18 fw-semibold lh-base mb-1">Sem alertas neste momento</h6>
+                    <p className="text-muted mb-0">Quando houver risco ou oportunidade, aparece aqui.</p>
+                </div>
+            </TabPane>
+        );
+    }
+
+    return (
+        <SimpleBar style={{ maxHeight: "300px" }} className="pe-2">
+            {alerts.map((alert) => (
+                <div
+                    key={alert.id}
+                    className={classnames("text-reset notification-item d-block dropdown-item position-relative", {
+                        active: !alert.is_read,
+                    })}
+                >
+                    <div className="d-flex">
+                        <div className="avatar-xs me-3">
+                            <span className={`avatar-title rounded-circle fs-16 ${resolveAlertTone(alert)}`}>
+                                <i className={resolveAlertIcon(alert)}></i>
+                            </span>
+                        </div>
+                        <div className="flex-grow-1">
+                            <Link to={`/cars/${alert.car_id}`} className="stretched-link">
+                                <h6 className="mt-0 mb-1 fs-13 fw-semibold">{alert.title}</h6>
+                            </Link>
+                            <div className="fs-13 text-muted">
+                                <p className="mb-1">{alert.message}</p>
+                                <p className="mb-1 fw-medium">{alert.car_name}</p>
+                            </div>
+                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
+                                <span><i className="mdi mdi-clock-outline"></i> {formatRelativeDate(alert.created_at)}</span>
+                            </p>
+                        </div>
+                        <div className="px-2 fs-15">
+                            <div className="form-check notification-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={alert.is_read}
+                                    disabled={alert.is_read || markingAlertId === alert.id}
+                                    onChange={() => onMarkAsRead(alert.id)}
+                                    id={`notification-alert-check-${alert.id}`}
+                                />
+                                <label className="form-check-label" htmlFor={`notification-alert-check-${alert.id}`}></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ))}
+
+            <div className="my-3 text-center">
+                <Link to="/actions" className="btn btn-soft-success waves-effect waves-light">
+                    Ver Action Center <i className="ri-arrow-right-line align-middle"></i>
+                </Link>
+            </div>
+        </SimpleBar>
+    );
+}
+
+function resolveAlertTone(alert: AlertItem): string {
+    return {
+        urgent: "bg-danger-subtle text-danger",
+        warning: "bg-warning-subtle text-warning",
+        opportunity: "bg-success-subtle text-success",
+    }[alert.type];
+}
+
+function resolveAlertIcon(alert: AlertItem): string {
+    return {
+        urgent: "ri-alarm-warning-line",
+        warning: "ri-error-warning-line",
+        opportunity: "ri-checkbox-circle-line",
+    }[alert.type];
+}
+
+function formatRelativeDate(value: string): string {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return "";
+    }
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
+
+    if (diffMinutes < 60) {
+        return `${diffMinutes} min atrás`;
+    }
+
+    const diffHours = Math.floor(diffMinutes / 60);
+
+    if (diffHours < 24) {
+        return `${diffHours} h atrás`;
+    }
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} dia${diffDays > 1 ? "s" : ""} atrás`;
+}
 
 export default NotificationDropdown;

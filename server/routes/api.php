@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Public\{
 };
 use App\Http\Controllers\Api\V1\{
     ActionExecutionController,
+    AlertController,
     BlogController,
     CarAdCampaignController,
     CarAnalyticsController,
@@ -64,6 +65,10 @@ Route::prefix('v1')->group(function () {
 
             Route::prefix('/companies/{id}')->group(function () {
                 Route::get('/decisions', [CarDecisionController::class, 'index']);
+                Route::get('/alerts', [AlertController::class, 'index']);
+                Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
+                Route::patch('/alerts/read', [AlertController::class, 'markRead']);
+                Route::post('/alerts/{alertId}/read', [AlertController::class, 'markOneRead']);
                 Route::post('/blogs/build-rss-url', [BlogController::class, 'buildRssUrl']);
                 Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
                 Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
