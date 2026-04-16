@@ -24,4 +24,9 @@ class VehicleAttributeRepository extends BaseRepository implements VehicleAttrib
             ['attributes' => $attributes]
         );
     }
+
+    public function deleteByCarId(int $carId): void
+    {
+        $this->model->where('car_id', $carId)->delete();
+    }
 }

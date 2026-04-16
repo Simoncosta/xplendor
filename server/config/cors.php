@@ -33,6 +33,7 @@ return [
         'https://0833-2001-818-c523-5900-d8c5-9e4a-97e9-1b60.ngrok-free.app',
 
         'http://localhost:3000',
+        'http://localhost:3001',
         'http://localhost:8001',
         'http://localhost:5173',
         'http://127.0.0.1:5500',

@@ -1,5 +1,5 @@
 // slices/cars/car.defaults.ts
-import type { ICarUpdatePayload, CarExtrasGroup } from "common/models/car.model";
+import type { ICarUpdatePayload, CarExtrasGroup, VehicleAttributes } from "common/models/car.model";
 
 const DEFAULT_EXTRAS: CarExtrasGroup[] = [
     { group: "comfort_multimedia", items: [] },
@@ -7,6 +7,16 @@ const DEFAULT_EXTRAS: CarExtrasGroup[] = [
     { group: "interior_equipment", items: [] },
     { group: "safety_performance", items: [] },
 ];
+
+export const DEFAULT_VEHICLE_ATTRIBUTES: VehicleAttributes = {
+    length: "",
+    width: "",
+    height: "",
+    beds: "",
+    has_bathroom: false,
+    has_kitchen: false,
+    autonomy_km: "",
+};
 
 export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
     status: "draft",
@@ -79,6 +89,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
 
     youtube_url: null,
     seller_user_id: null,
+    vehicle_attributes: { ...DEFAULT_VEHICLE_ATTRIBUTES },
 
     company_id: 0,
 };

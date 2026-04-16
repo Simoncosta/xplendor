@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use ZipArchive;
 
@@ -76,6 +77,8 @@ class CarService extends BaseService
 
             if ($vehicleAttribute) {
                 $car->setRelation('vehicleAttribute', $vehicleAttribute);
+            } else {
+                $car->setRelation('vehicleAttribute', null);
             }
         }
 
@@ -230,7 +233,7 @@ class CarService extends BaseService
             if ($vehicleAttribute) {
                 $car->setRelation('vehicleAttribute', $vehicleAttribute);
             } else {
-                $car->loadMissing('vehicleAttribute');
+                $car->setRelation('vehicleAttribute', null);
             }
         }
 
@@ -509,6 +512,54 @@ class CarService extends BaseService
     {
         $vehicleAttributes = $data['vehicle_attributes'] ?? [];
 
-        return is_array($vehicleAttributes) ? $vehicleAttributes : [];
+        if (!is_array($vehicleAttributes)) {
+            return [];
+        }
+
+        $booleanKeys = [
+            'has_bathroom',
+            'has_kitchen',
+        ];
+
+        $normalized = [];
+
+        foreach ($vehicleAttributes as $key => $value) {
+            if (!is_string($key) || $key === '' || str_starts_with($key, '_')) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                continue;
+            }
+
+            if (is_string($value)) {
+                $value = trim($value);
+            }
+
+            if ($value === '' || $value === null) {
+                continue;
+            }
+
+            if (in_array($key, $booleanKeys, true)) {
+                $normalized[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+                continue;
+            }
+
+            if (is_bool($value)) {
+                $normalized[$key] = $value ? 1 : 0;
+                continue;
+            }
+
+            if (is_numeric($value)) {
+                $normalized[$key] = str_contains((string) $value, '.')
+                    ? (float) $value
+                    : (int) $value;
+                continue;
+            }
+
+            $normalized[$key] = $value;
+        }
+
+        return Arr::sortRecursive($normalized);
     }
 }

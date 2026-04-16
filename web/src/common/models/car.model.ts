@@ -25,6 +25,17 @@ export interface CarExtrasGroup {
     items: string[];
 }
 
+export interface VehicleAttributes {
+    length?: number | string | null;
+    width?: number | string | null;
+    height?: number | string | null;
+    beds?: number | string | null;
+    has_bathroom?: boolean | number | null;
+    has_kitchen?: boolean | number | null;
+    autonomy_km?: number | string | null;
+    [key: string]: string | number | boolean | null | undefined;
+}
+
 export interface ICar {
     id: number;
 
@@ -121,11 +132,7 @@ export interface ICar {
     } | null;
 
     company_id: number;
-    sleeping_places?: number | null;
-    length?: number | null;
-    bathroom?: boolean | null;
-    kitchen?: boolean | null;
-    autonomy?: string | null;
+    vehicle_attributes?: VehicleAttributes | null;
 
     created_at: string | null;
     updated_at: string | null;

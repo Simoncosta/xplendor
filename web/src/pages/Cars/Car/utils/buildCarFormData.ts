@@ -26,6 +26,7 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
 
         "extras",
         "lifestyle",
+        "vehicle_attributes",
 
         "exterior_360_images",
         "exterior_360_meta",
@@ -73,6 +74,25 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
                 fd.append(`extras[${i}][items][${j}]`, String(item));
             });
         });
+    }
+
+    const vehicleAttributes = values.vehicle_attributes ?? {};
+
+    if (values.vehicle_type === "motorhome") {
+        fd.append("vehicle_attributes[_sync]", "1");
+
+        Object.entries(vehicleAttributes).forEach(([key, value]) => {
+            if (isNil(value) || value === "") return;
+
+            if (typeof value === "boolean") {
+                fd.append(`vehicle_attributes[${key}]`, value ? "1" : "0");
+                return;
+            }
+
+            fd.append(`vehicle_attributes[${key}]`, String(value));
+        });
+    } else if (isUpdate) {
+        fd.append("vehicle_attributes[_sync]", "1");
     }
 
     // lifestyle

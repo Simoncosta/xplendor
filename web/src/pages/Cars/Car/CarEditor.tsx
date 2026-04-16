@@ -25,6 +25,7 @@ import CarSaleClosingModal from "./components/CarSaleClosingModal";
 import { FormikProvider, useFormik } from "formik";
 import { useMemo, useState } from "react";
 import * as Yup from "yup";
+import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
 
 type CarEditorProps = {
     data: ICarUpdatePayload;
@@ -68,6 +69,19 @@ const CarEditor = ({
         return map;
     };
 
+    const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => ({
+        ...DEFAULT_VEHICLE_ATTRIBUTES,
+        ...(attributes ?? {}),
+        has_bathroom:
+            attributes?.has_bathroom === true
+            || attributes?.has_bathroom === 1
+            || String(attributes?.has_bathroom ?? "") === "1",
+        has_kitchen:
+            attributes?.has_kitchen === true
+            || attributes?.has_kitchen === 1
+            || String(attributes?.has_kitchen ?? "") === "1",
+    });
+
     const validationSchema = Yup.object({
         // car_brand_id: Yup.number().min(1, "Marca é obrigatória").required(),
         // car_model_id: Yup.number().min(1, "Modelo é obrigatório").required(),
@@ -91,6 +105,7 @@ const CarEditor = ({
             vehicle_type: data.vehicle_type ?? "car",
             extras: data.extras ?? [],
             extrasByGroup: arrayToMap(data.extras),
+            vehicle_attributes: normalizeVehicleAttributes(data.vehicle_attributes),
 
             stored_images: data.images,
 

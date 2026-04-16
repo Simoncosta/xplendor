@@ -16,6 +16,7 @@ import { ICarUpdatePayload } from "common/models/car.model";
 import { colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "common/data/cars";
 import { getCarCategories } from "helpers/laravel_helper";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
+import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
 
 export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
@@ -26,6 +27,10 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
     useEffect(() => {
         if (prevVehicleTypeRef.current !== values.vehicle_type) {
             setFieldValue("segment", null);
+
+            if (values.vehicle_type !== "motorhome") {
+                setFieldValue("vehicle_attributes", { ...DEFAULT_VEHICLE_ATTRIBUTES });
+            }
         }
 
         prevVehicleTypeRef.current = values.vehicle_type;
@@ -171,37 +176,57 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                     <Col lg={2}>
                         <XInput
                             type="number"
-                            name="sleeping_places"
-                            label="Dormidas"
+                            step="0.1"
+                            name="vehicle_attributes.length"
+                            label="Comprimento (cm)"
                             className="mb-3"
                         />
                     </Col>
                     <Col lg={2}>
                         <XInput
                             type="number"
-                            name="length"
-                            label="Comprimento"
+                            step="0.1"
+                            name="vehicle_attributes.width"
+                            label="Largura (cm)"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            step="0.1"
+                            name="vehicle_attributes.height"
+                            label="Altura (cm)"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="vehicle_attributes.beds"
+                            label="Dormidas"
                             className="mb-3"
                         />
                     </Col>
                     <Col lg={2}>
                         <XInputCheckbox
-                            name="bathroom"
+                            name="vehicle_attributes.has_bathroom"
                             label="Casa de banho"
                             className="mb-3"
                         />
                     </Col>
                     <Col lg={2}>
                         <XInputCheckbox
-                            name="kitchen"
+                            name="vehicle_attributes.has_kitchen"
                             label="Cozinha"
                             className="mb-3"
                         />
                     </Col>
                     <Col lg={2}>
                         <XInput
-                            name="autonomy"
-                            label="Autonomia"
+                            type="number"
+                            name="vehicle_attributes.autonomy_km"
+                            label="Autonomia (km)"
                             className="mb-3"
                         />
                     </Col>

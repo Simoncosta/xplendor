@@ -22,6 +22,7 @@ class VehicleAttributeService extends BaseService
     public function setAttributes(Car $car, array $data): ?VehicleAttribute
     {
         if ($data === []) {
+            $this->vehicleAttributeRepository->deleteByCarId($car->id);
             return null;
         }
 

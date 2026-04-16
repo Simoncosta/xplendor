@@ -174,11 +174,17 @@ class Car extends Model implements AuditableContract
 
     public function getVehicleAttributesAttribute(): ?array
     {
-        if ($this->relationLoaded('vehicleAttribute')) {
-            return $this->vehicleAttribute?->attributes;
+        $vehicleAttribute = $this->relationLoaded('vehicleAttribute')
+            ? $this->getRelation('vehicleAttribute')
+            : $this->vehicleAttribute()->first();
+
+        if (!$vehicleAttribute) {
+            return null;
         }
 
-        return $this->vehicleAttribute()->first()?->attributes;
+        $attributes = $vehicleAttribute->getAttribute('attributes');
+
+        return is_array($attributes) ? $attributes : null;
     }
 
     public function sale(): HasOne
