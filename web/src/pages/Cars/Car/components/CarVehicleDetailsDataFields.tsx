@@ -1,4 +1,5 @@
 //React
+import { useEffect, useRef, useState } from "react";
 import Select from "react-select";
 import { Col, Label, Row } from "reactstrap";
 
@@ -13,10 +14,63 @@ import { ICarUpdatePayload } from "common/models/car.model";
 
 // Redux
 import { colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "common/data/cars";
+import { getCarCategories } from "helpers/laravel_helper";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 
 export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
+    const [dynamicOptions, setDynamicOptions] = useState<{ value: string; label: string }[]>([]);
+    const [loadingCategories, setLoadingCategories] = useState(false);
+    const prevVehicleTypeRef = useRef(values.vehicle_type);
+
+    useEffect(() => {
+        if (prevVehicleTypeRef.current !== values.vehicle_type) {
+            setFieldValue("segment", null);
+        }
+
+        prevVehicleTypeRef.current = values.vehicle_type;
+    }, [values.vehicle_type, setFieldValue]);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchCategories = async () => {
+            if (values.vehicle_type !== "motorhome") {
+                setDynamicOptions([]);
+                return;
+            }
+
+            setLoadingCategories(true);
+
+            try {
+                const response = await getCarCategories("motorhome");
+                const categories = (response?.data || []).map((category: any) => ({
+                    value: category.slug ?? category.id,
+                    label: category.name ?? String(category.slug ?? category.id),
+                }));
+
+                if (isMounted) {
+                    setDynamicOptions(categories);
+                }
+            } catch (error) {
+                if (isMounted) {
+                    setDynamicOptions([]);
+                }
+            } finally {
+                if (isMounted) {
+                    setLoadingCategories(false);
+                }
+            }
+        };
+
+        fetchCategories();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [values.vehicle_type]);
+
+    const finalOptions = values.vehicle_type === "motorhome" ? dynamicOptions : segmentOptions;
 
     return (
         <div className="mt-4">
@@ -32,8 +86,9 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                     <Select
                         id="segment"
                         name="segment"
-                        options={segmentOptions}
-                        value={segmentOptions.find((option: any) => option.value === values.segment) || null}
+                        options={finalOptions}
+                        isLoading={loadingCategories}
+                        value={finalOptions.find((option: any) => option.value === values.segment) || null}
                         onChange={(option: any) => {
                             setFieldValue("segment", option?.value || null);
                             setFieldTouched("segment", true);

@@ -1,9 +1,10 @@
 const statusOptions = [
     { value: "draft", label: "Rascunho" },
-    { value: "active", label: "Ativo" },
-    { value: "inactive", label: "Inativo" },
     { value: "available_soon", label: "Disponível Brevemente" },
+    { value: "active", label: "Ativo" },
+    { value: "reserved", label: "Reservado" },
     { value: "sold", label: "Vendido" },
+    { value: "inactive", label: "Inativo" },
 ];
 
 const originOptions = [

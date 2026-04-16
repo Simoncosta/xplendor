@@ -58,6 +58,7 @@ export const GET_CAR_BRANDS = "/car-brands";
 
 // CAR MODELS
 export const GET_CAR_MODELS = "/car-models";
+export const GET_CAR_CATEGORIES = "/car-categories";
 
 // DISTRICTS
 export const GET_DISTRICTS = "/districts";

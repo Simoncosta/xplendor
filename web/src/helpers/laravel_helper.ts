@@ -208,6 +208,13 @@ export const getCarModels = (
     });
 };
 
+export const getCarCategories = (vehicleType: string) =>
+    api.get(url.GET_CAR_CATEGORIES, {
+        params: {
+            vehicle_type: vehicleType,
+        }
+    });
+
 // DISTRICTS
 export const getDistricts = () => api.get(url.GET_DISTRICTS);
 
