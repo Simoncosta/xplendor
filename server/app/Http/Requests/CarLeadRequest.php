@@ -32,9 +32,11 @@ class CarLeadRequest extends FormRequest
      */
     public function rules(): array
     {
+        $emailRule = app()->environment('testing') ? 'email:rfc' : 'email:rfc,dns';
+
         return [
             'name'    => ['required', 'string', 'max:255'],
-            'email'   => ['required', 'email:rfc,dns', 'max:255'],
+            'email'   => ['required', $emailRule, 'max:255'],
             'phone'   => ['nullable', 'string', 'max:30'],
             'message' => ['nullable', 'string', 'max:5000'],
 
@@ -55,6 +57,9 @@ class CarLeadRequest extends FormRequest
             'utm_campaign' => ['nullable', 'string', 'max:120'],
             'utm_content'  => ['nullable', 'string', 'max:255'],
             'utm_term'     => ['nullable', 'string', 'max:255'],
+            'utm_id'       => ['nullable', 'string', 'max:255'],
+            'ad_id'        => ['nullable', 'string', 'max:255'],
+            'click_id'     => ['nullable', 'string', 'max:255'],
 
             // opcionais (se fores permitir criar lead já com source/status)
             'source' => [

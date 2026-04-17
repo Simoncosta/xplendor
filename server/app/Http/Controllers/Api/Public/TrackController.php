@@ -7,11 +7,14 @@ use App\Models\Car;
 use App\Models\CarInteraction;
 use App\Models\CarLead;
 use App\Models\CarView;
+use App\Services\AttributionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class TrackController extends Controller
 {
+    public function __construct(protected AttributionService $attributionService) {}
+
     public function store(Request $request)
     {
         return $this->handleStore($request, false);
@@ -81,6 +84,9 @@ class TrackController extends Controller
             'tracking.utm_campaign' => ['nullable', 'string', 'max:255'],
             'tracking.utm_content' => ['nullable', 'string', 'max:255'],
             'tracking.utm_term' => ['nullable', 'string', 'max:255'],
+            'tracking.utm_id' => ['nullable', 'string', 'max:255'],
+            'tracking.ad_id' => ['nullable', 'string', 'max:255'],
+            'tracking.click_id' => ['nullable', 'string', 'max:255'],
         ]);
 
         $type = $validated['type'];
@@ -99,6 +105,14 @@ class TrackController extends Controller
             'utm_campaign' => $t['utm_campaign'] ?? null,
             'utm_content'  => $t['utm_content'] ?? null,
             'utm_term'     => $t['utm_term'] ?? null,
+        ];
+
+        $attributionContext = [
+            ...$trackingCols,
+            'utm_id' => $t['utm_id'] ?? null,
+            'ad_id' => $t['ad_id'] ?? null,
+            'click_id' => $t['click_id'] ?? null,
+            'page_url' => $data['page_url'] ?? null,
         ];
 
         $carId = $this->resolveCarId(
@@ -131,6 +145,11 @@ class TrackController extends Controller
                 'view_duration_seconds' => $data['view_duration_seconds'] ?? null,
                 ...$trackingCols,
             ]);
+
+            $car = Car::query()->where('company_id', $companyId)->find($carId);
+            if ($car) {
+                $this->attributionService->trackVisit($car, $request);
+            }
 
             return response()->json([
                 'ok' => true,
@@ -209,6 +228,11 @@ class TrackController extends Controller
                 ...$trackingCols,
             ]);
 
+            $car = Car::query()->where('company_id', $companyId)->find($carId);
+            if ($car) {
+                $this->attributionService->trackLead($car, $request);
+            }
+
             return response()->json([
                 'ok' => true,
                 'type' => $type,
@@ -239,6 +263,16 @@ class TrackController extends Controller
 
                 ...$trackingCols,
             ]);
+
+            if ($carId) {
+                $car = Car::query()->where('company_id', $companyId)->find($carId);
+                if ($car) {
+                    $this->attributionService->trackInteraction($car, $type, [
+                        ...$attributionContext,
+                        'request' => $request,
+                    ]);
+                }
+            }
 
             return response()->json([
                 'ok' => true,

@@ -64,6 +64,9 @@
             utm_campaign: g("utm_campaign"),
             utm_content: g("utm_content"),
             utm_term: g("utm_term"),
+            utm_id: g("utm_id"),
+            ad_id: g("ad_id"),
+            click_id: g("fbclid") || g("gclid") || g("msclkid"),
         };
     };
 
@@ -177,6 +180,9 @@
             utm_campaign: t.utm_campaign ?? null,
             utm_content: t.utm_content ?? null,
             utm_term: t.utm_term ?? null,
+            utm_id: t.utm_id ?? null,
+            ad_id: t.ad_id ?? null,
+            click_id: t.click_id ?? null,
         };
     };
 

@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\DB;
 
 class IntentAnalysisService
 {
+    public function __construct(protected AttributionService $attributionService) {}
+
     private const DEFAULT_WINDOW_DAYS = 30;
     private const MIN_BENCHMARK_VISITORS = 5;
     private const MIN_BENCHMARK_SESSIONS = 8;
@@ -95,6 +97,10 @@ class IntentAnalysisService
 
         return $targetCars->mapWithKeys(function (Car $car) use ($benchmarkAnalyses, $averageIntentScore, $averageLeads, $hasSufficientBenchmark, $benchmarkEligible) {
             $analysis = $benchmarkAnalyses->get($car->id, $this->emptyAnalysis());
+            $this->syncStrongIntentAttributions(
+                $car->id,
+                $analysis['visitor_intent_scores'] ?? []
+            );
             $analysis['relative_performance'] = $this->buildRelativePerformance(
                 $analysis['intent_score'] ?? 0,
                 (int) ($analysis['leads'] ?? 0),
@@ -103,6 +109,7 @@ class IntentAnalysisService
                 $hasSufficientBenchmark,
                 $benchmarkEligible->count()
             );
+            unset($analysis['visitor_intent_scores']);
 
             return [$car->id => $analysis];
         })->all();
@@ -307,6 +314,7 @@ class IntentAnalysisService
             'intent_distribution' => $intentDistribution,
             'diagnostic' => $diagnostic,
             'tags' => $tags,
+            'visitor_intent_scores' => $visitorIntentScores,
             'relative_performance' => [
                 'intent_vs_avg' => null,
                 'conversion_vs_avg' => null,
@@ -385,6 +393,18 @@ class IntentAnalysisService
             'medium' => 0,
             'low' => 0,
         ]);
+    }
+
+    private function syncStrongIntentAttributions(int $carId, array $visitorIntentScores): void
+    {
+        collect($visitorIntentScores)
+            ->filter(function (array $visitor) {
+                return (int) ($visitor['sessions_count'] ?? 0) >= 2
+                    && (int) ($visitor['total_view_duration_seconds'] ?? 0) >= 60
+                    && (int) ($visitor['whatsapp_clicks'] ?? 0) >= 1;
+            })
+            ->keys()
+            ->each(fn (string $visitorId) => $this->attributionService->markStrongIntent($visitorId, $carId));
     }
 
     private function resolveConfidenceScore(int $uniqueVisitors, int $strongIntentUsers, int $whatsappClicks, int $sessions): int

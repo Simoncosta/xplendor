@@ -40,6 +40,9 @@ class CarViewRequest extends FormRequest
             'utm_campaign' => ['nullable', 'string', 'max:120'],
             'utm_content'  => ['nullable', 'string', 'max:255'],
             'utm_term'     => ['nullable', 'string', 'max:255'],
+            'utm_id'       => ['nullable', 'string', 'max:255'],
+            'ad_id'        => ['nullable', 'string', 'max:255'],
+            'click_id'     => ['nullable', 'string', 'max:255'],
         ];
     }
 }

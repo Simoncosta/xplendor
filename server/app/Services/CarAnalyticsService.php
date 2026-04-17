@@ -29,6 +29,7 @@ class CarAnalyticsService
         protected IntentAnalysisService                       $intentAnalysisService,
         protected LeadRealityGapService                       $leadRealityGapService,
         protected MetaAdsTargetResolver                       $targetResolver,
+        protected AttributionService                         $attributionService,
     ) {}
 
     public function show(Car $car): array
@@ -58,6 +59,7 @@ class CarAnalyticsService
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
         $intentAnalysis = $this->intentAnalysisService->analyzeForCar($car);
         $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, [], $intentAnalysis);
+        $attributionSummary = $this->attributionService->getAttributionSummary($car->id);
 
         return [
             'car' => [
@@ -119,6 +121,7 @@ class CarAnalyticsService
             'recommended_creative' => $recommendedCreative,
             'market_intelligence' => $marketIntelligence,
             'intent_analysis' => $intentAnalysis,
+            'attribution_summary' => $attributionSummary,
             'lead_reality_gap' => $leadRealityGap,
             'meta_ads_targeting_status' => $this->resolveMetaAdsTargetingStatus($car),
             'potential_score' => $latestScore ? [

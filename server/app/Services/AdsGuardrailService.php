@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class AdsGuardrailService
 {
+    public function __construct(protected AttributionService $attributionService) {}
+
     private const DEFAULT_WINDOW_DAYS = 7;
 
     public function evaluate(
@@ -70,6 +72,9 @@ class AdsGuardrailService
         $currentTotals = $this->aggregateCampaignMetrics($car, $fromDate, $toDate);
         $previousTotals = $this->aggregateCampaignMetrics($car, $previousFrom, $previousTo);
         $dailyRiskRows = $this->loadDailyRiskRows($car, $fromDate, $toDate);
+        $attributionSummary = $this->attributionService->getAttributionSummary($car->id);
+        $attributionTotals = $attributionSummary['totals'] ?? [];
+        $hasAttributedFunnelData = !empty($attributionSummary['rows']);
 
         $qualifiedLeadCount = CarLead::query()
             ->where('company_id', $car->company_id)
@@ -118,9 +123,16 @@ class AdsGuardrailService
                 'ctr' => $ctr,
                 'avg_time_on_page' => $metrics['avg_time_on_page'] ?? null,
                 'scroll' => $metrics['scroll'] ?? null,
-                'whatsapp_clicks' => (int) ($metrics['whatsapp_clicks'] ?? 0),
+                'whatsapp_clicks' => $hasAttributedFunnelData
+                    ? (int) ($attributionTotals['whatsapp_clicks'] ?? 0)
+                    : (int) ($metrics['whatsapp_clicks'] ?? 0),
                 'form_opens' => (int) ($metrics['form_opens'] ?? 0),
-                'leads' => (int) ($metrics['leads'] ?? 0),
+                'leads' => $hasAttributedFunnelData
+                    ? (int) ($attributionTotals['leads'] ?? 0)
+                    : (int) ($metrics['leads'] ?? 0),
+                'strong_intent_users' => $hasAttributedFunnelData
+                    ? (int) ($attributionTotals['strong_intent_users'] ?? 0)
+                    : 0,
             ],
             'previous_ctr' => $previousCtr,
             'frequency' => $frequency,
