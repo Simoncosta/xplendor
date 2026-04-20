@@ -528,7 +528,17 @@ class CarService extends BaseService
                 continue;
             }
 
+            if ($key === 'autonomy_km') {
+                $key = 'autonomy';
+            }
+
             if (is_array($value)) {
+                $arrayValue = $this->normalizeVehicleAttributeArray($key, $value);
+
+                if ($arrayValue !== []) {
+                    $normalized[$key] = $arrayValue;
+                }
+
                 continue;
             }
 
@@ -541,12 +551,12 @@ class CarService extends BaseService
             }
 
             if (in_array($key, $booleanKeys, true)) {
-                $normalized[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
+                $normalized[$key] = filter_var($value, FILTER_VALIDATE_BOOLEAN);
                 continue;
             }
 
             if (is_bool($value)) {
-                $normalized[$key] = $value ? 1 : 0;
+                $normalized[$key] = $value;
                 continue;
             }
 
@@ -561,5 +571,28 @@ class CarService extends BaseService
         }
 
         return Arr::sortRecursive($normalized);
+    }
+
+    private function normalizeVehicleAttributeArray(string $key, array $value): array
+    {
+        if ($key !== 'beds') {
+            return Arr::sortRecursive(array_filter($value, fn ($item) => $item !== null && $item !== ''));
+        }
+
+        return collect($value)
+            ->map(function ($bed) {
+                $type = is_array($bed)
+                    ? ($bed['type'] ?? null)
+                    : $bed;
+
+                if (is_string($type)) {
+                    $type = trim($type);
+                }
+
+                return $type ? ['type' => $type] : null;
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 }

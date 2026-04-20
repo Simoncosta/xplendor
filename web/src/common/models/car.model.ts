@@ -1,6 +1,8 @@
 export type CarStatus = "draft" | "active" | "inactive" | "sold";
 export type CarOrigin = "national" | "imported";
 export type VehicleType = "car" | "motorhome";
+export type MotorhomeSubsegment = "autocaravana" | "caravana" | "residencial";
+export type MotorhomeBedType = "central" | "rebatível na cabine" | "beliche" | "transversal" | "outra";
 
 export type CarCondition =
     | "new"
@@ -29,11 +31,13 @@ export interface VehicleAttributes {
     length?: number | string | null;
     width?: number | string | null;
     height?: number | string | null;
-    beds?: number | string | null;
+    gross_weight?: number | string | null;
+    beds?: Array<{ type?: MotorhomeBedType | string | null }> | null;
     has_bathroom?: boolean | number | null;
     has_kitchen?: boolean | number | null;
+    autonomy?: number | string | null;
     autonomy_km?: number | string | null;
-    [key: string]: string | number | boolean | null | undefined;
+    [key: string]: string | number | boolean | Array<{ type?: string | null }> | null | undefined;
 }
 
 export interface ICar {
@@ -42,6 +46,7 @@ export interface ICar {
     status: CarStatus;
     origin: CarOrigin;
     vehicle_type: VehicleType;
+    subsegment?: MotorhomeSubsegment | null;
 
     license_plate: string | null;
     vin: string | null;

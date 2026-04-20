@@ -69,18 +69,38 @@ const CarEditor = ({
         return map;
     };
 
-    const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => ({
-        ...DEFAULT_VEHICLE_ATTRIBUTES,
-        ...(attributes ?? {}),
-        has_bathroom:
-            attributes?.has_bathroom === true
-            || attributes?.has_bathroom === 1
-            || String(attributes?.has_bathroom ?? "") === "1",
-        has_kitchen:
-            attributes?.has_kitchen === true
-            || attributes?.has_kitchen === 1
-            || String(attributes?.has_kitchen ?? "") === "1",
-    });
+    const normalizeBeds = (beds: any) => {
+        if (!Array.isArray(beds)) {
+            return [];
+        }
+
+        return beds
+            .map((bed) => {
+                const type = typeof bed === "string" ? bed : bed?.type;
+
+                return type ? { type } : null;
+            })
+            .filter((bed): bed is { type: string } => bed !== null);
+    };
+
+    const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => {
+        const { autonomy_km, ...restAttributes } = attributes ?? {};
+
+        return {
+            ...DEFAULT_VEHICLE_ATTRIBUTES,
+            ...restAttributes,
+            autonomy: restAttributes.autonomy ?? autonomy_km ?? "",
+            beds: normalizeBeds(restAttributes.beds),
+            has_bathroom:
+                attributes?.has_bathroom === true
+                || attributes?.has_bathroom === 1
+                || String(attributes?.has_bathroom ?? "") === "1",
+            has_kitchen:
+                attributes?.has_kitchen === true
+                || attributes?.has_kitchen === 1
+                || String(attributes?.has_kitchen ?? "") === "1",
+        };
+    };
 
     const validationSchema = Yup.object({
         // car_brand_id: Yup.number().min(1, "Marca é obrigatória").required(),
@@ -91,6 +111,16 @@ const CarEditor = ({
         // transmission: Yup.string().required("Transmissão é obrigatória"),
         // segment: Yup.string().required("Segmento é obrigatório"),
         // exterior_color: Yup.string().required("Cor exterior é obrigatória"),
+        subsegment: Yup.string()
+            .nullable()
+            .when("vehicle_type", {
+                is: "motorhome",
+                then: (schema) => schema
+                    .oneOf(["autocaravana", "caravana", "residencial"], "Tipo de Autocaravana inválido")
+                    .required("Tipo de Autocaravana é obrigatório"),
+                otherwise: (schema) => schema.nullable(),
+            }),
+        car_category_id: Yup.number().nullable(),
     });
 
     const isSubmitting = useMemo(
@@ -103,6 +133,10 @@ const CarEditor = ({
         initialValues: {
             ...data,
             vehicle_type: data.vehicle_type ?? "car",
+            subsegment: data.subsegment ?? null,
+            segment: data.vehicle_type === "motorhome"
+                ? (data.subsegment ?? data.segment)
+                : data.segment,
             extras: data.extras ?? [],
             extrasByGroup: arrayToMap(data.extras),
             vehicle_attributes: normalizeVehicleAttributes(data.vehicle_attributes),

@@ -37,6 +37,11 @@ class CarRequest extends FormRequest
 
             // Core vehicle data
             'vehicle_type' => ['nullable', Rule::in(['car', 'motorhome'])],
+            'subsegment' => ['nullable', 'required_if:vehicle_type,motorhome', Rule::in([
+                'autocaravana',
+                'caravana',
+                'residencial',
+            ])],
             'car_category_id' => ['nullable', 'exists:car_categories,id'],
             'vehicle_attributes' => ['nullable', 'array'],
             'car_brand_id' => ['required', 'exists:car_brands,id'],

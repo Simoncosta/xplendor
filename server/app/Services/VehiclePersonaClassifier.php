@@ -88,7 +88,7 @@ class VehiclePersonaClassifier
         $hasWorkspaceSignal = $this->containsAny($version, ['office', 'remote', 'work', 'nomad', 'business'])
             || $this->containsAttributeText($attributes, ['workspace', 'desk', 'office', 'remote', 'usb', 'inverter', 'solar']);
 
-        $adventureSignal = $this->containsAny($segment, ['4x4', 'offroad', 'off-road', 'campervan'])
+        $adventureSignal = $this->containsAny($segment, ['4x4', 'offroad', 'off-road'])
             || $this->containsAny($version, ['4x4', 'offroad', 'off-road', 'adventure'])
             || $this->containsAttributeText($attributes, ['solar', 'bike', 'outdoor', 'offgrid', 'off-grid', 'all terrain']);
 
@@ -144,6 +144,10 @@ class VehiclePersonaClassifier
 
             if (is_numeric($value)) {
                 return (float) $value;
+            }
+
+            if (is_array($value) && $key === 'beds') {
+                return (float) count($value);
             }
 
             if (is_string($value) && preg_match('/(\d+[.,]?\d*)/', $value, $matches)) {

@@ -25,6 +25,7 @@ class Car extends Model implements AuditableContract
         'car_brand_id',
         'car_model_id',
         'vehicle_type',
+        'subsegment',
         'car_category_id',
         'version',
         'public_version_name',
@@ -69,6 +70,7 @@ class Car extends Model implements AuditableContract
     protected $casts = [
         'extras' => 'array',
         'car_created_at' => 'datetime',
+        'subsegment' => 'string',
     ];
 
     protected $appends = [

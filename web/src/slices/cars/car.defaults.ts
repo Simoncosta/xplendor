@@ -12,10 +12,11 @@ export const DEFAULT_VEHICLE_ATTRIBUTES: VehicleAttributes = {
     length: "",
     width: "",
     height: "",
-    beds: "",
+    gross_weight: "",
+    beds: [],
     has_bathroom: false,
     has_kitchen: false,
-    autonomy_km: "",
+    autonomy: "",
 };
 
 export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {

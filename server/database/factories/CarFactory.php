@@ -28,6 +28,8 @@ class CarFactory extends Factory
         return [
             'status' => 'active',
             'origin' => 'national',
+            'vehicle_type' => 'car',
+            'subsegment' => null,
             'car_brand_id' => $brand?->id,
             'car_model_id' => $model?->id,
             'car_category_id' => $category?->id,

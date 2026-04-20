@@ -84,6 +84,25 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         Object.entries(vehicleAttributes).forEach(([key, value]) => {
             if (isNil(value) || value === "") return;
 
+            if (key === "autonomy_km") return;
+
+            if (Array.isArray(value)) {
+                value.forEach((item: any, i: number) => {
+                    if (isNil(item) || item === "") return;
+
+                    if (typeof item === "object") {
+                        Object.entries(item).forEach(([childKey, childValue]) => {
+                            if (isNil(childValue) || childValue === "") return;
+                            fd.append(`vehicle_attributes[${key}][${i}][${childKey}]`, String(childValue));
+                        });
+                        return;
+                    }
+
+                    fd.append(`vehicle_attributes[${key}][${i}]`, String(item));
+                });
+                return;
+            }
+
             if (typeof value === "boolean") {
                 fd.append(`vehicle_attributes[${key}]`, value ? "1" : "0");
                 return;
