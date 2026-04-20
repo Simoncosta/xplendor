@@ -36,6 +36,7 @@ class CarDecisionService
         protected AdsGuardrailService $adsGuardrailService,
         protected IntentAnalysisService $intentAnalysisService,
         protected LeadRealityGapService $leadRealityGapService,
+        protected SmartAdsOptimizerService $smartAdsOptimizerService,
     ) {}
 
     public function resolve(Car $car, ?string $from = null, ?string $to = null): array
@@ -128,6 +129,14 @@ class CarDecisionService
 
         $worstPhase = $this->resolveWorstPhase($scores);
         $decision = $this->resolveDecision($phases, $scores, $metrics, $isMatureCampaign, $vehicleType, $thresholds);
+        $recommendations = $this->smartAdsOptimizerService->generateRecommendationsForCar(
+            $car,
+            $analysis,
+            $intelligence,
+            $leadRealityGap,
+            $guardrails,
+            $decision
+        );
 
         return [
             'car_id' => $car->id,
@@ -142,6 +151,7 @@ class CarDecisionService
             'guardrails' => $guardrails,
             'intelligence' => $intelligence,
             'lead_reality_gap' => $leadRealityGap,
+            'recommendations' => $recommendations,
         ];
     }
 

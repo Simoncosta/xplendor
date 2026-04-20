@@ -1,10 +1,13 @@
 export type DecisionType = "ESCALAR" | "MANTER" | "CORRIGIR" | "PARAR" | "NO_ACTIVE_CAMPAIGN";
 export type GuardrailSeverity = "high" | "medium" | "low";
 export type AlertType = "urgent" | "warning" | "opportunity";
+export type RecommendationUrgency = "low" | "medium" | "high";
+export type RecommendationBucket = "cut" | "scale" | "fix" | "test";
 export type ActionExecutionKey =
     | "pause_campaign"
     | "notify_client_whatsapp"
     | "generate_new_copy"
+    | "duplicate_campaign"
     | "suggest_new_vehicle"
     | "launch_template_campaign"
     | "duplicate_winning_campaign"
@@ -125,11 +128,58 @@ export interface CarDecisionResponse {
     guardrails?: GuardrailAlert[];
     intelligence?: IntentAnalysis;
     lead_reality_gap?: LeadRealityGap;
+    recommendations?: SmartAdsRecommendations;
 }
 
 export interface ActionCenterCarItem extends CarDecisionResponse {
     id: number;
     detailPath: string;
+}
+
+export interface SmartAdsRecommendation {
+    type: string;
+    target_level: string;
+    target_id: string;
+    reason: string;
+    data: {
+        spend?: number;
+        leads?: number;
+        intent_score?: number;
+        ctr?: number | null;
+        frequency?: number | null;
+    };
+    impact: {
+        estimated_loss?: number;
+        estimated_gain?: number;
+        urgency: RecommendationUrgency;
+    };
+    why: string;
+    next_step: string;
+    action_key?: string | null;
+    confidence: number;
+    hypothesis?: string;
+    based_on?: string;
+}
+
+export interface SmartAdsRecommendations {
+    cut: SmartAdsRecommendation[];
+    scale: SmartAdsRecommendation[];
+    fix: SmartAdsRecommendation[];
+    test: SmartAdsRecommendation[];
+    state?: string;
+    primary_action?: Partial<SmartAdsRecommendation> & {
+        type: string;
+        reason: string;
+        why: string;
+        next_step: string;
+        action_key?: string | null;
+        confidence: number;
+        impact?: {
+            estimated_loss?: number;
+            estimated_gain?: number;
+            urgency?: RecommendationUrgency;
+        };
+    };
 }
 
 export interface ActionExecutionResponse {
