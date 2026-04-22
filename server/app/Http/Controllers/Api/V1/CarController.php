@@ -11,6 +11,7 @@ use App\Models\Car;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
 use App\Services\CarAiAnalysesService;
+use App\Services\CarSaleService;
 use App\Services\CarService;
 use App\Services\MetaAdsCarSyncService;
 use Illuminate\Support\Facades\Auth;
@@ -21,6 +22,7 @@ class CarController extends Controller
 {
     public function __construct(
         protected CarService $carService,
+        protected CarSaleService $carSaleService,
         protected CarAiAnalysesService $carAiAnalysesService,
         protected MetaAdsCarSyncService $metaAdsCarSyncService,
         protected AudienceSuggestionService $audienceSuggestionService,
@@ -148,6 +150,15 @@ class CarController extends Controller
         $data['company_id'] = $companyId;
 
         $car = $this->carService->update($id, $data);
+
+        if (($data['status'] ?? null) === 'sold' && !empty($data['sold_at'])) {
+            $this->carSaleService->markAsSold($car, [
+                'sold_at' => $data['sold_at'],
+                'skip_notification' => true,
+            ]);
+
+            $car->refresh();
+        }
 
         return ApiResponse::success($car, 'Car updated successfully.');
     }

@@ -128,6 +128,8 @@ export interface CarDecisionResponse {
     guardrails?: GuardrailAlert[];
     intelligence?: IntentAnalysis;
     lead_reality_gap?: LeadRealityGap;
+    contact_probability?: ContactProbability;
+    primary_recommended_action?: PrimaryRecommendedAction;
     recommendations?: SmartAdsRecommendations;
 }
 
@@ -159,6 +161,37 @@ export interface SmartAdsRecommendation {
     confidence: number;
     hypothesis?: string;
     based_on?: string;
+}
+
+export interface ContactProbability {
+    score: number;
+    level: "very_low" | "low" | "medium" | "high" | "very_high" | string;
+    state: "no_real_interest" | "weak_contact_signal" | "strong_contact_signal" | "high_interest_low_conversion" | "healthy_contact_flow" | string;
+    state_label?: string;
+    summary?: string;
+    diagnosis: string[];
+    inputs?: {
+        intent_score?: number;
+        strong_intent_users?: number;
+        unique_visitors?: number;
+        sessions?: number;
+        whatsapp_clicks?: number;
+        form_opens?: number;
+        avg_time_on_page?: number;
+        avg_scroll?: number;
+        leads?: number;
+        campaign_clicks?: number;
+        attribution_rows?: number;
+    };
+}
+
+export interface PrimaryRecommendedAction {
+    type: string;
+    label: string;
+    reason: string;
+    next_step: string;
+    action_key?: string | null;
+    confidence: number;
 }
 
 export interface SmartAdsRecommendations {

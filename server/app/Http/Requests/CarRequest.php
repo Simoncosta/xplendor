@@ -25,6 +25,7 @@ class CarRequest extends FormRequest
         return [
             // Status
             'status' => ['required', Rule::in(['draft', 'active', 'inactive', 'sold', 'available_soon'])],
+            'sold_at' => ['nullable', 'date'],
 
             // Origin & identification
             'origin' => ['required', Rule::in(['national', 'imported'])],

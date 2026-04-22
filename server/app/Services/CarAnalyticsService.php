@@ -28,6 +28,12 @@ class CarAnalyticsService
         protected CarMarketIntelligenceService                $carMarketIntelligenceService,
         protected IntentAnalysisService                       $intentAnalysisService,
         protected LeadRealityGapService                       $leadRealityGapService,
+        protected CarFunnelAnalyzer                           $carFunnelAnalyzer,
+        protected SmartAdsOptimizerService                    $smartAdsOptimizerService,
+        protected ContactProbabilityService                   $contactProbabilityService,
+        protected ContactSignalService                        $contactSignalService,
+        protected SalesLearningService                        $salesLearningService,
+        protected CampaignToSaleAttributionService            $campaignToSaleAttributionService,
         protected MetaAdsTargetResolver                       $targetResolver,
         protected AttributionService                         $attributionService,
     ) {}
@@ -57,13 +63,41 @@ class CarAnalyticsService
         $promoDiscountValue = $car->promo_discount_value;
         $promoDiscountPct = $car->promo_discount_pct;
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
+        $funnelAnalysis = $this->carFunnelAnalyzer->analyzeForCar($car);
         $intentAnalysis = $this->intentAnalysisService->analyzeForCar($car);
-        $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, [], $intentAnalysis);
+        $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, $funnelAnalysis, $intentAnalysis);
         $attributionSummary = $this->attributionService->getAttributionSummary($car->id);
+        $optimizerRecommendations = $this->smartAdsOptimizerService->generateRecommendationsForCar(
+            $car,
+            $funnelAnalysis,
+            $intentAnalysis,
+            $leadRealityGap,
+            [],
+            null
+        );
+        $contactProbability = $this->contactProbabilityService->calculate(
+            $car,
+            $funnelAnalysis,
+            $intentAnalysis,
+            $leadRealityGap,
+            $attributionSummary
+        );
+        $contactSignal = $this->contactSignalService->calculate(
+            $car,
+            $funnelAnalysis,
+            $intentAnalysis,
+            $leadRealityGap,
+            $attributionSummary
+        );
+        $primaryRecommendedAction = $this->contactProbabilityService->primaryRecommendedAction(
+            $contactProbability,
+            $optimizerRecommendations
+        );
 
         return [
             'car' => [
                 'id'                     => $car->id,
+                'sold_at'                => $car->sold_at,
                 'price_gross'            => $car->price_gross,
                 'promo_price_gross'      => $car->promo_price_gross,
                 'effective_price_gross'  => $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross
@@ -121,7 +155,12 @@ class CarAnalyticsService
             'recommended_creative' => $recommendedCreative,
             'market_intelligence' => $marketIntelligence,
             'intent_analysis' => $intentAnalysis,
+            'contact_probability' => $contactProbability,
+            'contact_signal' => $contactSignal,
+            'primary_recommended_action' => $primaryRecommendedAction,
             'attribution_summary' => $attributionSummary,
+            'sale_learning' => $this->salesLearningService->summaryForCar($car),
+            'sale_attribution' => $this->campaignToSaleAttributionService->summaryForCar($car),
             'lead_reality_gap' => $leadRealityGap,
             'meta_ads_targeting_status' => $this->resolveMetaAdsTargetingStatus($car),
             'potential_score' => $latestScore ? [

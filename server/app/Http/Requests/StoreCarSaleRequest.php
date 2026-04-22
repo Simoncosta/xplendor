@@ -19,6 +19,8 @@ class StoreCarSaleRequest extends FormRequest
 
         return array_merge($carRules, [
             'sale_price' => ['nullable', 'numeric', 'min:0'],
+            'sold_at' => ['nullable', 'date'],
+            'buyer_age' => ['nullable', 'integer', 'min:18', 'max:120'],
             'buyer_gender' => ['required', Rule::in(['male', 'female', 'company'])],
             'buyer_age_range' => ['required', Rule::in(['18-30', '31-45', '46-60', '60+'])],
             'sale_channel' => ['required', Rule::in(['online', 'in_person', 'referral', 'trade_in'])],

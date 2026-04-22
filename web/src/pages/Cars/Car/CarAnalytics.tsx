@@ -11,6 +11,7 @@ import { analyticsCar } from "slices/cars/thunk";
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
 import CarAnalyticsKpiStrip from "./components/CarAnalyticsKpiStrip";
+import ContactProbabilityPanel from "./components/ContactProbabilityPanel";
 
 import {
     fmt, fmtDate, fmtTime,
@@ -58,6 +59,10 @@ export default function CarAnalytics() {
     const ips = carAnalytics?.potential_score;
     const perf = carAnalytics?.performance;
     const timeline = carAnalytics?.timeline || [];
+    const contactProbability = carAnalytics?.contact_probability ?? null;
+    const primaryRecommendedAction = carAnalytics?.primary_recommended_action ?? null;
+    const authUser = sessionStorage.getItem("authUser");
+    const companyId = authUser ? Number(JSON.parse(authUser).company_id ?? 0) : 0;
 
     const trafficSources = useMemo(
         () => buildTrafficSources(carAnalytics?.traffic_sources),
@@ -118,10 +123,16 @@ export default function CarAnalytics() {
                 <Row>
                     <Col>
                         <div className="d-grid gap-3">
+                            <ContactProbabilityPanel
+                                carId={id}
+                                companyId={companyId}
+                                contactProbability={contactProbability}
+                                primaryAction={primaryRecommendedAction}
+                            >
+                                <div className="d-grid gap-3">
+                                    <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
 
-                            <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
-
-                            <section style={sectionStyle}>
+                                    <section style={sectionStyle}>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -164,9 +175,9 @@ export default function CarAnalytics() {
                                         </Col>
                                     </Row>
                                 )}
-                            </section>
+                                    </section>
 
-                            <section style={sectionStyle}>
+                                    <section style={sectionStyle}>
                                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
                                     Métricas resumidas
                                 </p>
@@ -176,9 +187,9 @@ export default function CarAnalytics() {
                                     <div className="col-lg-3 col-sm-6"><Metric label="WhatsApp" value={perfTotals?.total_whatsapp_clicks ?? 0} /></div>
                                     <div className="col-lg-3 col-sm-6"><Metric label="Conversão" value={perfTotals?.avg_conversion_rate ? `${perfTotals.avg_conversion_rate}%` : "—"} /></div>
                                 </div>
-                            </section>
+                                    </section>
 
-                            <section style={sectionStyle}>
+                                    <section style={sectionStyle}>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -219,9 +230,9 @@ export default function CarAnalytics() {
                                         </tbody>
                                     </table>
                                 </div>
-                            </section>
+                                    </section>
 
-                            <section style={sectionStyle}>
+                                    <section style={sectionStyle}>
                                 <h6 className="fs-13 fw-semibold mb-3">
                                     <i className="ri-time-line me-2 text-primary" />
                                     Timeline de actividade
@@ -252,7 +263,9 @@ export default function CarAnalytics() {
                                         ))}
                                     </div>
                                 )}
-                            </section>
+                                    </section>
+                                </div>
+                            </ContactProbabilityPanel>
 
                         </div>
                     </Col>

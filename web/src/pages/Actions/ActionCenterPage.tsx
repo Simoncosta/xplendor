@@ -83,6 +83,11 @@ export default function ActionCenterPage() {
                             detailPath: `/cars/${item.car_id}/ficha`,
                         }))
                         .sort((a, b) => {
+                            const recommendationA = resolveRecommendationPriority(a);
+                            const recommendationB = resolveRecommendationPriority(b);
+
+                            if (recommendationA !== recommendationB) return recommendationA - recommendationB;
+
                             const orderA = decisionOrder[a.decision as DecisionType] ?? 99;
                             const orderB = decisionOrder[b.decision as DecisionType] ?? 99;
 
@@ -313,4 +318,19 @@ function formatAlertDate(value: string): string {
     return Number.isNaN(date.getTime())
         ? ""
         : date.toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+function resolveRecommendationPriority(item: ActionCenterCarItem): number {
+    const recommendations = item.recommendations;
+
+    if (!recommendations) {
+        return 99;
+    }
+
+    if ((recommendations.cut ?? []).length > 0) return 1;
+    if ((recommendations.scale ?? []).length > 0) return 2;
+    if ((recommendations.fix ?? []).length > 0) return 3;
+    if ((recommendations.test ?? []).length > 0) return 4;
+
+    return 99;
 }

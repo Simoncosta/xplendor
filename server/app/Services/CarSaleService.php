@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use App\Mail\CarSoldNotificationMail;
+use App\Models\Car;
+use App\Models\CarPerformanceMetric;
 use App\Models\CarSale;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use App\Repositories\Contracts\CarSaleRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class CarSaleService extends BaseService
 {
@@ -14,6 +19,8 @@ class CarSaleService extends BaseService
         protected CarSaleRepositoryInterface $carSaleRepository,
         protected CarRepositoryInterface $carRepository,
         protected CarService $carService,
+        protected SalesLearningService $salesLearningService,
+        protected CampaignToSaleAttributionService $campaignToSaleAttributionService,
     ) {
         parent::__construct($carSaleRepository);
     }
@@ -53,14 +60,53 @@ class CarSaleService extends BaseService
                 'sale_channel' => $saleData['sale_channel'],
             ]);
 
+            $car = Car::query()->where('company_id', $companyId)->findOrFail($carId);
+            $this->markAsSold($car, [
+                ...$saleData,
+                'buyer_age' => $data['buyer_age'] ?? null,
+                'force_notification' => true,
+            ]);
+
             return $sale->load(['car', 'company']);
         });
+    }
+
+    public function markAsSold(Car $car, array $context = []): void
+    {
+        $soldAt = Carbon::parse($context['sold_at'] ?? $car->sold_at ?? now());
+        $wasAlreadySold = $car->status === 'sold' && $car->sold_at !== null;
+
+        if (!$car->sold_at || !$car->sold_at->equalTo($soldAt) || $car->status !== 'sold') {
+            $car->forceFill([
+                'status' => 'sold',
+                'sold_at' => $soldAt,
+            ])->save();
+        }
+
+        $car->refresh();
+
+        $this->fillTimesToSale($car, $soldAt);
+        $this->salesLearningService->captureSaleSnapshot($car, [
+            'sold_at' => $soldAt,
+            'sale_price' => $context['sale_price'] ?? null,
+            'buyer_age' => $context['buyer_age'] ?? null,
+            'buyer_gender' => $context['buyer_gender'] ?? null,
+        ]);
+        $this->campaignToSaleAttributionService->recordSaleAttribution($car, [
+            'sold_at' => $soldAt,
+            'sale_price' => $context['sale_price'] ?? null,
+        ]);
+
+        if (empty($context['skip_notification']) && (!$wasAlreadySold || !empty($context['force_notification']))) {
+            $this->sendSoldNotification($car);
+        }
     }
 
     private function extractCarData(array $data, int $companyId): array
     {
         return [
             'status' => 'sold',
+            'sold_at' => $data['sold_at'] ?? now(),
             'origin' => $data['origin'],
             'license_plate' => $data['license_plate'] ?? null,
             'vin' => $data['vin'] ?? null,
@@ -126,7 +172,24 @@ class CarSaleService extends BaseService
             'buyer_email' => $data['contact_consent'] ? ($data['buyer_email'] ?? null) : null,
             'contact_consent' => (bool) ($data['contact_consent'] ?? false),
             'notes' => $data['notes'] ?? null,
-            'sold_at' => now(),
+            'sold_at' => $data['sold_at'] ?? now(),
         ];
+    }
+
+    private function fillTimesToSale(Car $car, Carbon $soldAt): void
+    {
+        $publishedAt = Carbon::parse($car->created_at);
+        $days = (int) $publishedAt->diffInDays($soldAt);
+
+        CarPerformanceMetric::where('car_id', $car->id)
+            ->whereNull('time_to_sale_days')
+            ->update(['time_to_sale_days' => $days]);
+    }
+
+    private function sendSoldNotification(Car $car): void
+    {
+        $car->loadMissing(['company', 'brand', 'model']);
+
+        Mail::to('simonfrtd@gmail.com')->send(new CarSoldNotificationMail($car));
     }
 }

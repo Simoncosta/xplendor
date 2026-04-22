@@ -37,6 +37,8 @@ class CarDecisionService
         protected IntentAnalysisService $intentAnalysisService,
         protected LeadRealityGapService $leadRealityGapService,
         protected SmartAdsOptimizerService $smartAdsOptimizerService,
+        protected ContactProbabilityService $contactProbabilityService,
+        protected ContactSignalService $contactSignalService,
     ) {}
 
     public function resolve(Car $car, ?string $from = null, ?string $to = null): array
@@ -86,8 +88,12 @@ class CarDecisionService
         $isMatureCampaign = $this->isMatureCampaign($metrics, $thresholds);
         $scores = $this->buildScores($phases);
         $guardrails = $this->adsGuardrailService->evaluate($car, $analysis, $from, $to, $intelligence, $leadRealityGap);
+        $contactProbability = $this->contactProbabilityService->calculate($car, $analysis, $intelligence, $leadRealityGap);
+        $contactSignal = $this->contactSignalService->calculate($car, $analysis, $intelligence, $leadRealityGap);
 
         if (!$this->hasActiveCampaigns($car)) {
+            $primaryRecommendedAction = $this->contactProbabilityService->primaryRecommendedAction($contactProbability, null, 'NO_ACTIVE_CAMPAIGN');
+
             return [
                 'car_id' => $car->id,
                 'car_name' => $this->buildCarName($car),
@@ -104,10 +110,15 @@ class CarDecisionService
                 'guardrails' => $guardrails,
                 'intelligence' => $intelligence,
                 'lead_reality_gap' => $leadRealityGap,
+                'contact_probability' => $contactProbability,
+                'contact_signal' => $contactSignal,
+                'primary_recommended_action' => $primaryRecommendedAction,
             ];
         }
 
         if ($this->hasInsufficientData($metrics)) {
+            $primaryRecommendedAction = $this->contactProbabilityService->primaryRecommendedAction($contactProbability, null, 'INSUFFICIENT_DATA');
+
             return [
                 'car_id' => $car->id,
                 'car_name' => $this->buildCarName($car),
@@ -124,6 +135,9 @@ class CarDecisionService
                 'guardrails' => $guardrails,
                 'intelligence' => $intelligence,
                 'lead_reality_gap' => $leadRealityGap,
+                'contact_probability' => $contactProbability,
+                'contact_signal' => $contactSignal,
+                'primary_recommended_action' => $primaryRecommendedAction,
             ];
         }
 
@@ -137,6 +151,7 @@ class CarDecisionService
             $guardrails,
             $decision
         );
+        $primaryRecommendedAction = $this->contactProbabilityService->primaryRecommendedAction($contactProbability, $recommendations, $decision);
 
         return [
             'car_id' => $car->id,
@@ -151,7 +166,10 @@ class CarDecisionService
             'guardrails' => $guardrails,
             'intelligence' => $intelligence,
             'lead_reality_gap' => $leadRealityGap,
+            'contact_probability' => $contactProbability,
+            'contact_signal' => $contactSignal,
             'recommendations' => $recommendations,
+            'primary_recommended_action' => $primaryRecommendedAction,
         ];
     }
 

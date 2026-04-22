@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "reactstrap";
-import ActionList from "./ActionList";
-import ActionExecutionModal from "./ActionExecutionModal";
-import ActionRecommendationCard from "./ActionRecommendationCard";
+import { Button, Spinner } from "reactstrap";
+import { toast } from "react-toastify";
+import { executeCarActionApi } from "../../../helpers/laravel_helper";
+import { getRecommendationActionLabel } from "./ActionRecommendationCard";
 import DecisionBadge, { getDecisionAccent } from "./DecisionBadge";
 import { ActionCenterCarItem, ActionExecutionResponse, DecisionType, SmartAdsRecommendation } from "../types";
 
@@ -11,17 +11,31 @@ interface CarDecisionCardProps {
     item: ActionCenterCarItem;
 }
 
+type ActionableRecommendation = Partial<SmartAdsRecommendation> & {
+    type: string;
+    reason: string;
+    next_step: string;
+    confidence: number;
+    label?: string;
+};
+type PrimaryAction = NonNullable<NonNullable<ActionCenterCarItem["recommendations"]>["primary_action"]>;
+
+const actionKeyMap: Record<string, string> = {
+    pause_campaign: "pause_campaign",
+    generate_new_copy: "generate_new_copy",
+    duplicate_campaign: "duplicate_winning_campaign",
+};
+const actionButtonStyle = { minWidth: 132 };
+
 export default function CarDecisionCard({ item }: CarDecisionCardProps) {
     const navigate = useNavigate();
     const accent = getDecisionAccent(item.decision as DecisionType);
-    const guardrails = item.guardrails ?? [];
     const intelligence = item.intelligence ?? null;
-    const leadRealityGap = item.lead_reality_gap ?? null;
-    const [isExecutionOpen, setIsExecutionOpen] = useState(false);
     const [isExecuting, setIsExecuting] = useState(false);
-    const [showAnalysis, setShowAnalysis] = useState(false);
     const [lastExecution, setLastExecution] = useState<ActionExecutionResponse | null>(null);
     const recommendations = item.recommendations;
+    const contactProbability = item.contact_probability ?? null;
+    const primaryRecommendedAction = item.primary_recommended_action ?? null;
     const orderedRecommendations: Array<{ bucket: "cut" | "scale" | "fix" | "test"; recommendation: SmartAdsRecommendation; }> = [
         ...(recommendations?.cut ?? []).map((recommendation) => ({ bucket: "cut" as const, recommendation })),
         ...(recommendations?.scale ?? []).map((recommendation) => ({ bucket: "scale" as const, recommendation })),
@@ -30,257 +44,291 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
     ];
     const primaryAction = recommendations?.primary_action;
     const primaryRecommendation = orderedRecommendations[0] ?? null;
-    const secondaryRecommendations = orderedRecommendations.slice(1);
+    const actionableRecommendation = resolveActionableRecommendation(primaryRecommendedAction ?? undefined, primaryAction, primaryRecommendation?.recommendation);
+    const normalizedActionKey = actionableRecommendation?.action_key ? actionKeyMap[actionableRecommendation.action_key] ?? actionableRecommendation.action_key : null;
+    const canExecute = Boolean(actionableRecommendation && normalizedActionKey && actionableRecommendation.type !== "no_action_needed");
+    const hasMappedCampaign = item.decision !== "NO_ACTIVE_CAMPAIGN" && Boolean(actionableRecommendation?.target_id || primaryRecommendation?.recommendation?.target_id);
+    const shouldMapCampaign = item.decision === "NO_ACTIVE_CAMPAIGN" || Boolean(actionableRecommendation?.type.startsWith("pause_") && !hasMappedCampaign);
+    const actionLabel = actionableRecommendation ? getRecommendationActionLabel({ type: actionableRecommendation.type }) : "Executar ação";
+    const score = Number(contactProbability?.score ?? intelligence?.intent_score ?? 0);
+    const leads = Number(actionableRecommendation?.data?.leads ?? contactProbability?.inputs?.leads ?? intelligence?.leads ?? 0);
+    const interest = Number(actionableRecommendation?.data?.intent_score ?? contactProbability?.inputs?.intent_score ?? intelligence?.intent_score ?? 0);
+    const mainAction = resolveMainAction(actionableRecommendation, shouldMapCampaign, score);
 
-    const handleExecuted = async (result: ActionExecutionResponse) => {
-        setLastExecution(result);
-        window.location.reload();
+    const handleExecute = async () => {
+        const companyId = readCompanyId();
+
+        if (!companyId || !actionableRecommendation || !normalizedActionKey || isExecuting) {
+            return;
+        }
+
+        setIsExecuting(true);
+
+        try {
+            const response = await executeCarActionApi(companyId, item.id, {
+                action: normalizedActionKey,
+                context: {
+                    decision: item.decision,
+                    confidence: actionableRecommendation.confidence,
+                    reason: actionableRecommendation.reason,
+                    target_level: actionableRecommendation.target_level,
+                    target_id: actionableRecommendation.target_id,
+                    campaign_id: actionableRecommendation.target_level === "campaign" ? actionableRecommendation.target_id : undefined,
+                    adset_id: actionableRecommendation.target_level === "adset" ? actionableRecommendation.target_id : undefined,
+                    ad_id: actionableRecommendation.target_level === "ad" ? actionableRecommendation.target_id : undefined,
+                    recommendation_type: actionableRecommendation.type,
+                    next_step: actionableRecommendation.next_step,
+                },
+            });
+
+            setLastExecution((response?.data ?? response) as ActionExecutionResponse);
+            toast.success("Ação executada com sucesso.");
+        } catch (error) {
+            toast.error("Não foi possível executar esta ação.");
+        } finally {
+            setIsExecuting(false);
+        }
     };
 
     return (
-        <>
-            <article
-                style={{
-                    border: "1px solid #e9ebec",
-                    borderLeft: `4px solid ${accent}`,
-                    borderRadius: 18,
-                    background: "#fff",
-                    padding: 20,
-                    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
-                }}
-            >
-                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
-                    <div>
-                        <div className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Carro
-                        </div>
-                        <h5 className="mb-0 fw-semibold">{item.car_name}</h5>
-                    </div>
-                    <DecisionBadge decision={item.decision as DecisionType} confidence={item.confidence} />
+        <article
+            style={{
+                border: "1px solid #e9ebec",
+                borderLeft: `4px solid ${accent}`,
+                borderRadius: 18,
+                background: "#fff",
+                padding: 20,
+                boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
+            }}
+        >
+            <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
+                <div>
+                    <h5 className="mb-0 fw-semibold">{item.car_name}</h5>
                 </div>
+                <DecisionBadge decision={item.decision as DecisionType} confidence={item.confidence} />
+            </div>
 
-                {primaryAction && (
-                    <div
-                        className="rounded-4 px-3 py-3 mb-4"
-                        style={{
-                            background: "#fff7ed",
-                            border: "1px solid #fed7aa",
-                        }}
-                    >
-                        <div className="text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em", color: "#9a3412" }}>
-                            Ação recomendada
-                        </div>
-                        <div className="fw-semibold fs-17 mb-1">
-                            {buildPrimaryActionHeadline(primaryAction)}
-                        </div>
-                        <div className="text-body fs-14">
-                            {primaryAction.next_step}
-                        </div>
-                    </div>
-                )}
+            <div className="text-muted fs-13 mb-3">
+                {score}% prob. venda <span className="mx-1">·</span> {leads} leads <span className="mx-1">·</span> {interest} interesse
+            </div>
 
-                {primaryRecommendation ? (
-                    <div className="mb-4">
-                        <ActionRecommendationCard
-                            key={`${primaryRecommendation.bucket}-${primaryRecommendation.recommendation.type}-${primaryRecommendation.recommendation.target_id}`}
-                            item={item}
-                            recommendation={primaryRecommendation.recommendation}
-                            bucket={primaryRecommendation.bucket}
-                            onExecuted={() => window.location.reload()}
-                        />
-                    </div>
-                ) : (
-                    <div className="rounded-3 px-3 py-3 mb-4 border" style={{ background: "#f8fafc" }}>
-                        <div className="fw-semibold fs-15 mb-1">{item.reason}</div>
-                        <div className="text-muted fs-13">Sem recomendação prioritária pronta para executar neste momento.</div>
-                    </div>
-                )}
-
-                <div className="d-flex gap-2 flex-wrap">
-                    <Button color="light" className="border" onClick={() => setShowAnalysis((value) => !value)}>
-                        {showAnalysis ? "Esconder análise" : "Ver análise"}
-                    </Button>
-                    <Button color="light" className="border" onClick={() => navigate(item.detailPath)}>
-                        Ver detalhes
-                    </Button>
-                    <Button color="light" className="border" onClick={() => setIsExecutionOpen(true)} disabled={isExecuting}>
-                        {isExecuting ? "A executar..." : "Ações manuais"}
-                    </Button>
-                </div>
-
-                {showAnalysis && (
-                    <div className="d-grid gap-3 mt-4 mb-4">
-                        {intelligence && (
-                            <div className="border rounded-3 px-3 py-3" style={{ background: "#f8fafc" }}>
-                                <div className="fw-semibold fs-13 mb-2">Contact Performance</div>
-                                <div className="d-flex gap-2 flex-wrap mb-3">
-                                    <CompactMetric label="Intent" value={`${intelligence.intent_score}/100`} />
-                                    <CompactMetric label="Tentativas" value={intelligence.whatsapp_clicks} />
-                                    <CompactMetric label="Fortes" value={intelligence.strong_intent_users} />
-                                    <CompactMetric label="Leads" value={intelligence.leads} />
-                                </div>
-                                <div className="text-muted fs-13">{intelligence.diagnostic?.message ?? "Sem diagnóstico de intenção disponível."}</div>
-                            </div>
-                        )}
-
-                        {leadRealityGap && (
-                            <div
-                                className="border rounded-3 px-3 py-3"
-                                style={{
-                                    background: resolveGapBackground(leadRealityGap.primary_gap_state),
-                                    borderColor: resolveGapBorder(leadRealityGap.primary_gap_state),
-                                }}
-                            >
-                                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
-                                    <div className="fw-semibold fs-13">Lead Reality Gap</div>
-                                    <span className={`badge fs-11 px-2 py-1 ${resolveGapBadgeClass(leadRealityGap.primary_gap_state)}`}>
-                                        {resolveGapStateLabel(leadRealityGap.primary_gap_state)}
-                                    </span>
-                                </div>
-                                <div className="text-body fs-13 mb-2">{leadRealityGap.message}</div>
-                                <div className="text-muted fs-12">{leadRealityGap.confidence_reason}</div>
-                            </div>
-                        )}
-
-                        {guardrails.length > 0 && (
-                            <div className="border rounded-3 px-3 py-3" style={{ background: "#fff7ed", borderColor: "#fed7aa" }}>
-                                <div className="fw-semibold fs-13 mb-2">Guardrails</div>
-                                <div className="d-grid gap-2">
-                                    {guardrails.map((guardrail, index) => (
-                                        <div key={`${guardrail.type}-${index}`} className="rounded-3 px-3 py-2" style={{ background: "#fff" }}>
-                                            <div className="fw-semibold fs-13 mb-1">{guardrail.title}</div>
-                                            <div className="text-muted fs-13">{guardrail.message}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {secondaryRecommendations.length > 0 && (
-                            <div className="d-grid gap-3">
-                                {secondaryRecommendations.map(({ bucket, recommendation }, index) => (
-                                    <ActionRecommendationCard
-                                        key={`${bucket}-${recommendation.type}-${recommendation.target_id}-${index}`}
-                                        item={item}
-                                        recommendation={recommendation}
-                                        bucket={bucket}
-                                        onExecuted={() => window.location.reload()}
-                                    />
-                                ))}
-                            </div>
-                        )}
-
+            {actionableRecommendation ? (
+                <div
+                    className="rounded-4 px-3 py-3 mb-4"
+                    style={{
+                        background: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                    }}
+                >
+                    <div className="d-flex align-items-start gap-2">
+                        <span className="fs-18" aria-hidden="true">{resolveDecisionIcon(actionableRecommendation, score)}</span>
                         <div>
-                            <div className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                Próximas ações manuais
+                            <div className="fw-semibold fs-16 mb-1">
+                                {buildDecisionTitle(actionableRecommendation, contactProbability)}
                             </div>
-                            <ActionList actions={item.actions} />
+                            <div className="text-body fs-14" style={{ maxWidth: 720 }}>
+                                {contactProbability?.summary ?? actionableRecommendation.next_step}
+                            </div>
                         </div>
                     </div>
-                )}
+                </div>
+            ) : (
+                <div className="rounded-4 px-4 py-4 mb-3 border" style={{ background: "#f8fafc" }}>
+                    <div className="fw-semibold fs-15 mb-1">{item.reason}</div>
+                    <div className="text-muted fs-13">Sem recomendação prioritária pronta para executar neste momento.</div>
+                </div>
+            )}
 
-                {lastExecution && (
-                    <div className="border rounded-3 px-3 py-2 mb-3" style={{ background: "#f8fafc" }}>
-                        <div className="fw-semibold fs-13 mb-1">Última execução</div>
-                        <div className="text-muted fs-13">
-                            {lastExecution.message}
-                        </div>
+            <div className="text-center mb-3">
+                <div className="mb-3">
+                    {(actionableRecommendation || shouldMapCampaign) && (
+                        shouldMapCampaign ? (
+                            <Button color="primary" className="px-4" style={actionButtonStyle} onClick={() => navigate(`/cars/${item.id}/ads`)}>
+                                Mapear campanha
+                            </Button>
+                        ) : (
+                            <Button
+                                color={mainAction.color}
+                                outline={mainAction.outline}
+                                className="px-4"
+                                style={actionButtonStyle}
+                                onClick={handleExecute}
+                                disabled={!canExecute || isExecuting}
+                            >
+                                {isExecuting ? <><Spinner size="sm" className="me-2" />{mainAction.label ?? actionLabel}</> : (mainAction.label ?? actionLabel)}
+                            </Button>
+                        )
+                    )}
+                </div>
+                <div className="d-flex align-items-center justify-content-center gap-3 text-muted fs-13">
+                    <span style={{ minWidth: 80, borderTop: "1px solid #e5e7eb" }} />
+                    <span>ou</span>
+                    <span style={{ minWidth: 80, borderTop: "1px solid #e5e7eb" }} />
+                </div>
+            </div>
+
+            <div className="d-flex align-items-center justify-content-center gap-4 flex-wrap">
+                <button type="button" className="btn btn-link text-muted text-decoration-none p-0" onClick={() => navigate(`/cars/${item.id}/intelligence`)}>
+                    Ver análise →
+                </button>
+                <button type="button" className="btn btn-link text-muted text-decoration-none p-0" onClick={() => navigate(item.detailPath)}>
+                    Ver detalhes →
+                </button>
+            </div>
+
+            {lastExecution && (
+                <div className="border rounded-3 px-3 py-2 mb-3" style={{ background: "#f8fafc" }}>
+                    <div className="fw-semibold fs-13 mb-1">Última execução</div>
+                    <div className="text-muted fs-13">
+                        {lastExecution.message}
                     </div>
-                )}
-            </article>
-
-            <ActionExecutionModal
-                item={item}
-                isOpen={isExecutionOpen}
-                toggle={() => !isExecuting && setIsExecutionOpen(false)}
-                onExecuted={handleExecuted}
-                onExecutionStateChange={setIsExecuting}
-            />
-        </>
+                </div>
+            )}
+        </article>
     );
 }
 
-function resolveGapStateLabel(state: string): string {
-    return {
-        no_real_interest: "Sem interesse real",
-        decision_friction: "Interesse forte sem contacto",
-        contact_capture_failure: "Provável falha de captura",
-        no_response: "Lead capturada sem resposta",
-        low_lead_quality: "Lead fraca",
-        tracking_gap: "Falha de tracking",
-        healthy_flow: "Fluxo saudável",
-    }[state] ?? state;
-}
+function resolveActionableRecommendation(
+    primaryRecommendedAction: ActionCenterCarItem["primary_recommended_action"] | undefined,
+    primaryAction: PrimaryAction | undefined,
+    recommendation?: SmartAdsRecommendation
+): ActionableRecommendation | null {
+    if (primaryRecommendedAction) {
+        return {
+            ...recommendation,
+            type: primaryRecommendedAction.type,
+            reason: primaryRecommendedAction.reason,
+            next_step: primaryRecommendedAction.next_step,
+            confidence: primaryRecommendedAction.confidence,
+            action_key: primaryRecommendedAction.action_key,
+            label: primaryRecommendedAction.label,
+            data: recommendation?.data,
+            impact: recommendation?.impact,
+            target_level: recommendation?.target_level,
+            target_id: recommendation?.target_id,
+        };
+    }
 
-function resolveGapBadgeClass(state: string): string {
-    return {
-        decision_friction: "bg-danger-subtle text-danger",
-        contact_capture_failure: "bg-danger-subtle text-danger",
-        no_response: "bg-danger-subtle text-danger",
-        tracking_gap: "bg-warning-subtle text-warning",
-        low_lead_quality: "bg-warning-subtle text-warning",
-        no_real_interest: "bg-secondary-subtle text-secondary",
-        healthy_flow: "bg-success-subtle text-success",
-    }[state] ?? "bg-light text-dark";
-}
-
-function resolveGapBackground(state: string): string {
-    return {
-        decision_friction: "#fff7f7",
-        contact_capture_failure: "#fff7f7",
-        no_response: "#fff7f7",
-        tracking_gap: "#fffaf3",
-        low_lead_quality: "#fffaf3",
-        healthy_flow: "#f8fffb",
-    }[state] ?? "#f8fafc";
-}
-
-function resolveGapBorder(state: string): string {
-    return {
-        decision_friction: "#fecaca",
-        contact_capture_failure: "#fecaca",
-        no_response: "#fecaca",
-        tracking_gap: "#fed7aa",
-        low_lead_quality: "#fed7aa",
-        healthy_flow: "#bbf7d0",
-    }[state] ?? "#e2e8f0";
-}
-
-function CompactMetric({ label, value }: { label: string; value: number | string }) {
-    return (
-        <div className="px-2 py-2 rounded-3 bg-white border" style={{ minWidth: 110 }}>
-            <div className="text-muted text-uppercase fw-semibold fs-11 mb-1">{label}</div>
-            <div className="fw-semibold fs-14">{value}</div>
-        </div>
-    );
-}
-
-function buildPrimaryActionHeadline(primaryAction: NonNullable<ActionCenterCarItem["recommendations"]>["primary_action"]) {
     if (!primaryAction) {
-        return "Sem ação prioritária";
+        return recommendation ?? null;
     }
 
-    if (primaryAction.type === "no_action_needed") {
-        return primaryAction.reason;
+    if (!recommendation) {
+        return {
+            type: primaryAction.type,
+            reason: primaryAction.reason,
+            next_step: primaryAction.next_step,
+            confidence: primaryAction.confidence,
+            action_key: primaryAction.action_key,
+            impact: primaryAction.impact as SmartAdsRecommendation["impact"] | undefined,
+        };
     }
 
-    const impact = primaryAction.impact as { estimated_loss?: number; estimated_gain?: number } | undefined;
-
-    if (impact?.estimated_loss !== undefined) {
-        return `${primaryAction.reason} - estás a perder ${formatMoney(impact.estimated_loss)}`;
-    }
-
-    if (impact?.estimated_gain !== undefined) {
-        return `${primaryAction.reason} - pode gerar +${impact.estimated_gain}`;
-    }
-
-    return primaryAction.reason;
+    return {
+        ...recommendation,
+        ...primaryAction,
+        data: primaryAction.data ?? recommendation.data,
+        impact: {
+            ...recommendation.impact,
+            ...(primaryAction.impact ?? {}),
+        },
+    };
 }
 
-function formatMoney(value: number): string {
-    return new Intl.NumberFormat("pt-PT", {
-        style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: 0,
-    }).format(value);
+function buildDecisionTitle(recommendation: ActionableRecommendation, contactProbability?: ActionCenterCarItem["contact_probability"] | null): string {
+    if (contactProbability?.summary) {
+        return contactProbability.state_label ?? recommendation.reason;
+    }
+
+    if (recommendation.type === "no_action_needed") {
+        return recommendation.reason;
+    }
+
+    const normalizedReason = normalizeText(recommendation.reason);
+
+    if (normalizedReason.includes("alcance baixo") || normalizedReason.includes("baixo alcance")) {
+        return "Estás a perder alcance qualificado";
+    }
+
+    if (normalizedReason.includes("ctr") || normalizedReason.includes("criativo")) {
+        return "O teu criativo não está a gerar atenção";
+    }
+
+    if (normalizedReason.includes("baixa conversao") || normalizedReason.includes("conversao")) {
+        return "Estás a perder potenciais clientes";
+    }
+
+    if (recommendation.type.startsWith("pause_")) {
+        return "Este anúncio está a gastar sem resultado";
+    }
+
+    if (recommendation.type === "scale_adset" || recommendation.type === "duplicate_campaign") {
+        return "Este anúncio está pronto para escalar";
+    }
+
+    if (recommendation.type === "improve_landing" || recommendation.type === "improve_cta" || recommendation.type === "fix_contact_capture") {
+        return "Estás a perder potenciais clientes";
+    }
+
+    if (recommendation.type === "test_creative") {
+        return "O teu criativo não está a gerar atenção";
+    }
+
+    if (recommendation.type === "test_audience") {
+        return "Estás a perder alcance qualificado";
+    }
+
+    if (recommendation.type === "test_offer") {
+        return "A oferta precisa de novo ângulo";
+    }
+
+    return recommendation.reason;
+}
+
+function resolveDecisionIcon(recommendation: ActionableRecommendation, score: number): string {
+    if (recommendation.type.startsWith("pause_") || score < 30) return "❌";
+    if (recommendation.type.startsWith("test_") || score < 55) return "⚠️";
+    return "✅";
+}
+
+function resolveMainAction(
+    recommendation: ActionableRecommendation | null,
+    shouldMapCampaign: boolean,
+    score: number
+): { label: string; color: "primary" | "danger" | "info" | "secondary"; outline: boolean } {
+    if (shouldMapCampaign) {
+        return { label: "Mapear campanha", color: "primary", outline: false };
+    }
+
+    if (!recommendation) {
+        return { label: "Ver detalhes", color: "secondary", outline: true };
+    }
+
+    if (recommendation.type.startsWith("pause_") || score < 30) {
+        return { label: getRecommendationActionLabel({ type: recommendation.type }), color: "danger", outline: true };
+    }
+
+    if (recommendation.type.startsWith("test_") || score < 55) {
+        return { label: recommendation.type === "test_audience" ? "Testar novo público" : "Gerar criativo", color: "info", outline: true };
+    }
+
+    return { label: recommendation.label ?? getRecommendationActionLabel({ type: recommendation.type }), color: "primary", outline: false };
+}
+
+function normalizeText(value: string): string {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+}
+
+function readCompanyId() {
+    const authUser = sessionStorage.getItem("authUser");
+    if (!authUser) return 0;
+
+    try {
+        return Number(JSON.parse(authUser).company_id || 0);
+    } catch {
+        return 0;
+    }
 }

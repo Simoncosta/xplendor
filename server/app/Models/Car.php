@@ -16,6 +16,7 @@ class Car extends Model implements AuditableContract
 
     protected $fillable = [
         'status',
+        'sold_at',
         'is_resume',
         'origin',
         'license_plate',
@@ -70,6 +71,7 @@ class Car extends Model implements AuditableContract
     protected $casts = [
         'extras' => 'array',
         'car_created_at' => 'datetime',
+        'sold_at' => 'datetime',
         'subsegment' => 'string',
     ];
 
@@ -217,6 +219,16 @@ class Car extends Model implements AuditableContract
     public function adAttributions(): HasMany
     {
         return $this->hasMany(CarAdAttribution::class, 'car_id');
+    }
+
+    public function salesLearning(): HasMany
+    {
+        return $this->hasMany(CarSalesLearning::class, 'car_id');
+    }
+
+    public function saleAttributions(): HasMany
+    {
+        return $this->hasMany(CarSaleAttribution::class, 'car_id');
     }
 
     public function getPromoDiscountValueAttribute(): ?float

@@ -209,25 +209,26 @@ function resolveUrgencyLabel(urgency: "low" | "medium" | "high"): string {
     }[urgency];
 }
 
-function getRecommendationActionLabel(recommendation: SmartAdsRecommendation): string {
+export function getRecommendationActionLabel(recommendation: Pick<SmartAdsRecommendation, "type">): string {
     const byType: Record<string, string> = {
         pause_ad: "Pausar anúncio",
         pause_adset: "Pausar conjunto",
         pause_campaign: "Pausar campanha",
-        scale_adset: "Preparar escala",
+        scale_adset: "Escalar conjunto",
         duplicate_campaign: "Duplicar campanha",
-        improve_landing: "Ver melhoria",
+        improve_landing: "Melhorar página",
         improve_cta: "Ajustar CTA",
         fix_contact_capture: "Rever contacto",
         test_creative: "Gerar novo criativo",
-        test_audience: "Preparar teste de público",
+        test_audience: "Testar novo público",
         test_offer: "Testar nova oferta",
+        no_action_needed: "Sem ação necessária",
     };
 
     return byType[recommendation.type] ?? "Executar ação";
 }
 
-function getRecommendationActionHelper(recommendation: SmartAdsRecommendation): string | null {
+export function getRecommendationActionHelper(recommendation: Pick<SmartAdsRecommendation, "type">): string | null {
     const byType: Record<string, string> = {
         pause_ad: "Vai pausar este anúncio na Meta Ads.",
         pause_adset: "Vai pausar este conjunto na Meta Ads.",

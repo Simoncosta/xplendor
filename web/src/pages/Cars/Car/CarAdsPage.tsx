@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { Col, Container, Row } from "reactstrap";
+import { Button, Col, Collapse, Container, Row } from "reactstrap";
 import { createSelector } from "reselect";
 import { ToastContainer } from "react-toastify";
 import CarAdCampaignMapper from "pages/Companies/CompanyProfile/components/CarAdCampaignMapper";
@@ -46,6 +46,7 @@ export default function CarAdsPage() {
     const { carAnalytics, loading } = useSelector(selectViewModel);
     const [audienceAnalysis, setAudienceAnalysis] = useState<any | null>(null);
     const [loadingAudience, setLoadingAudience] = useState(false);
+    const [showAudienceAnalysis, setShowAudienceAnalysis] = useState(false);
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -128,41 +129,37 @@ export default function CarAdsPage() {
                     <Col>
                         <div className="d-grid gap-3">
 
-                            <SmartAdsRecommendationCard
-                                recommendation={recommendation}
-                                recommendedCreative={recommendedCreative}
-                                recommendedPlatform={recommendedPlatform}
-                                marketingUrl={`/cars/${id}/marketing`}
-                                metrics={m}
-                            />
-
-                            <AudienceSuggestionCard
-                                analysis={audienceAnalysis}
-                                loading={loadingAudience}
-                            />
-
-                            <section style={sectionStyle}>
-                                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
-                                    <div>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                            Campanhas activas
-                                        </p>
-                                        <h6 className="mb-0 fw-semibold">Investimento em curso</h6>
-                                    </div>
-                                </div>
-                                <CarAdCampaignMapper companyId={companyId} carId={Number(id)} />
+                            <section style={{ ...sectionStyle, background: resolveRecommendationZoneBackground(recommendation?.action) }}>
+                                <SmartAdsRecommendationCard
+                                    recommendation={recommendation}
+                                    recommendedCreative={recommendedCreative}
+                                    recommendedPlatform={recommendedPlatform}
+                                    marketingUrl={`/cars/${id}/marketing`}
+                                    metrics={m}
+                                />
                             </section>
 
-                            {perfChannels.length > 0 && (
-                                <section style={sectionStyle}>
-                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
-                                        <div>
+                            <section style={sectionStyle}>
+                                <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap pb-3 mb-3 border-bottom">
+                                    <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                Contexto de investimento
-                                            </p>
-                                            <h6 className="mb-0 fw-semibold">Quanto foi investido e o que trouxe</h6>
-                                        </div>
+                                            Realidade atual
+                                        </p>
+                                        <h6 className="mb-0 fw-semibold">Campanhas e contexto de investimento</h6>
                                     </div>
+                                    <Button color="light" className="border btn-sm" onClick={() => setShowAudienceAnalysis((value) => !value)}>
+                                        {showAudienceAnalysis ? "Esconder análise do público" : "Ver análise do público"}
+                                    </Button>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
+                                        Campanhas activas
+                                    </div>
+                                    <CarAdCampaignMapper companyId={companyId} carId={Number(id)} />
+                                </div>
+
+                                {perfChannels.length > 0 && (
                                     <div className="table-responsive">
                                         <table className="table table-sm align-middle mb-0">
                                             <thead>
@@ -190,8 +187,17 @@ export default function CarAdsPage() {
                                             </tbody>
                                         </table>
                                     </div>
-                                </section>
-                            )}
+                                )}
+
+                                <Collapse isOpen={showAudienceAnalysis}>
+                                    <div className="mt-3 pt-3 border-top">
+                                        <AudienceSuggestionCard
+                                            analysis={audienceAnalysis}
+                                            loading={loadingAudience}
+                                        />
+                                    </div>
+                                </Collapse>
+                            </section>
 
                         </div>
                     </Col>
@@ -200,4 +206,11 @@ export default function CarAdsPage() {
             </Container>
         </div>
     );
+}
+
+function resolveRecommendationZoneBackground(action?: string | null): string {
+    if (action === "scale_ads") return "#f4fbf7";
+    if (action === "review_campaign" || action === "test_campaign") return "#fffaf0";
+    if (action === "do_not_invest") return "#f8fafc";
+    return "#f8fbff";
 }

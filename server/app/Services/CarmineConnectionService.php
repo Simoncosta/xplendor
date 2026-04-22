@@ -21,6 +21,7 @@ class CarmineConnectionService extends BaseService
         protected CarBrandRepositoryInterface $carBrandRepository,
         protected CarModelRepositoryInterface $carModelRepository,
         protected CarExternalImageService $carExternalImageService,
+        protected CarSaleService $carSaleService,
     ) {
         parent::__construct($carmineRepository);
     }
@@ -73,6 +74,14 @@ class CarmineConnectionService extends BaseService
 
                 if (isset($car->id)) {
                     $this->carExternalImageService->syncForCar($car->id, $companyId, 'carmine', $externalImages);
+
+                    if (($carmineMapData['status'] ?? null) === 'sold') {
+                        $this->carSaleService->markAsSold($car, [
+                            'sold_at' => $carmineMapData['sold_at'] ?? now(),
+                            'sale_price' => $carmineMapData['price_gross'] ?? null,
+                            'skip_notification' => true,
+                        ]);
+                    }
                 }
             } catch (\Throwable $e) {
                 $errors[] = [
@@ -171,6 +180,9 @@ class CarmineConnectionService extends BaseService
             "status"                  => $data['DisponivelBrevemente']
                 ? 'available_soon'
                 : ($data['Vendido'] ? 'sold' : 'active'),
+            "sold_at"                 => $data['Vendido']
+                ? ($this->parseCarmineDate($data['UltimaAlteracao'] ?? null) ?? now())
+                : null,
             "is_resume"               => $data['Retoma'] ?? false,
             "origin"                  => $data['Importado'] ? 'imported' : 'national',
             "license_plate"           => $data['Matricula'],
