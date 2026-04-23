@@ -1,6 +1,6 @@
 export type CarStatus = "draft" | "active" | "inactive" | "sold";
 export type CarOrigin = "national" | "imported";
-export type VehicleType = "car" | "motorhome";
+export type VehicleType = "car" | "motorcycle" | "motorhome" | "caravan";
 export type MotorhomeSubsegment = "autocaravana" | "caravana" | "residencial";
 export type MotorhomeBedType = "central" | "rebatível na cabine" | "beliche" | "transversal" | "outra";
 
@@ -61,12 +61,12 @@ export interface ICar {
     version: string;
     public_version_name: string | null;
 
-    fuel_type: string;
-    power_hp: number;
-    engine_capacity_cc: number;
+    fuel_type: string | null;
+    power_hp: number | null;
+    engine_capacity_cc: number | null;
 
     doors: number;
-    transmission: string;
+    transmission: string | null;
     segment: string;
     seats: number;
 

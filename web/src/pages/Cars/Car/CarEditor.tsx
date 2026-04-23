@@ -111,15 +111,7 @@ const CarEditor = ({
         // transmission: Yup.string().required("Transmissão é obrigatória"),
         // segment: Yup.string().required("Segmento é obrigatório"),
         // exterior_color: Yup.string().required("Cor exterior é obrigatória"),
-        subsegment: Yup.string()
-            .nullable()
-            .when("vehicle_type", {
-                is: "motorhome",
-                then: (schema) => schema
-                    .oneOf(["autocaravana", "caravana", "residencial"], "Tipo de Autocaravana inválido")
-                    .required("Tipo de Autocaravana é obrigatório"),
-                otherwise: (schema) => schema.nullable(),
-            }),
+        subsegment: Yup.string().nullable(),
         car_category_id: Yup.number().nullable(),
     });
 
@@ -133,10 +125,8 @@ const CarEditor = ({
         initialValues: {
             ...data,
             vehicle_type: data.vehicle_type ?? "car",
-            subsegment: data.subsegment ?? null,
-            segment: data.vehicle_type === "motorhome"
-                ? (data.subsegment ?? data.segment)
-                : data.segment,
+            subsegment: null,
+            segment: data.segment,
             extras: data.extras ?? [],
             extrasByGroup: arrayToMap(data.extras),
             vehicle_attributes: normalizeVehicleAttributes(data.vehicle_attributes),

@@ -15,7 +15,7 @@ class CarBrandController extends Controller
     public function index(PaginateRequest $request)
     {
         $data = $request->validate([
-            'vehicle_type' => ['nullable', 'in:car,motorhome'],
+            'vehicle_type' => ['nullable', 'in:car,motorcycle,motorhome,caravan'],
         ]);
 
         $filters = [];

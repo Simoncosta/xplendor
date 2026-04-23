@@ -32,11 +32,30 @@ class CarController extends Controller
             ['id']
         );
 
+        $orderBy = $request->input('orderBy', 'created_at') ?? 'created_at';
+        $orderDirection = $request->input('orderDirection', 'asc');
+
+        $order = [$orderBy => $orderDirection];
+
         $filters = ['company_id' => $company->id];
 
         // Filtros opcionais
         if ($request->filled('doors')) {
             $filters['doors'] = $request->doors;
+        }
+
+        if ($request->filled('condition')) {
+            $condition = $request->input('condition');
+            if ($condition === 'new') {
+                $filters['condition'] = 'new';
+            }
+            if ($condition === 'used') {
+                $filters['condition'] = ['used', 'like_new'];
+            }
+        }
+
+        if ($request->filled('vehicle_type')) {
+            $filters['vehicle_type'] = $request->vehicle_type;
         }
 
         if ($request->filled('segment')) {
@@ -67,7 +86,8 @@ class CarController extends Controller
             ['*'],
             ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'vehicleAttribute', 'seller'],
             $paginate,
-            $filters
+            $filters,
+            $order
         );
 
         $cars = $this->carService->appendPublicSellerContact($cars);

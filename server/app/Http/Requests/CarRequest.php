@@ -7,6 +7,25 @@ use Illuminate\Validation\Rule;
 
 class CarRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $vehicleType = $this->input('vehicle_type') ?: 'car';
+
+        $payload = [
+            'vehicle_type' => $vehicleType,
+            'subsegment' => null,
+        ];
+
+        if ($vehicleType === 'caravan') {
+            $payload['fuel_type'] = null;
+            $payload['engine_capacity_cc'] = null;
+            $payload['power_hp'] = null;
+            $payload['transmission'] = null;
+        }
+
+        $this->merge($payload);
+    }
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -37,23 +56,19 @@ class CarRequest extends FormRequest
             'registration_year' => ['required', 'integer', 'min:1900', 'max:' . now()->year],
 
             // Core vehicle data
-            'vehicle_type' => ['nullable', Rule::in(['car', 'motorhome'])],
-            'subsegment' => ['nullable', 'required_if:vehicle_type,motorhome', Rule::in([
-                'autocaravana',
-                'caravana',
-                'residencial',
-            ])],
+            'vehicle_type' => ['nullable', Rule::in(['car', 'motorcycle', 'motorhome', 'caravan'])],
+            'subsegment' => ['nullable', 'string', 'max:50'],
             'car_category_id' => ['nullable', 'exists:car_categories,id'],
             'vehicle_attributes' => ['nullable', 'array'],
             'car_brand_id' => ['required', 'exists:car_brands,id'],
             'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],
             'public_version_name' => ['nullable', 'string', 'max:150'],
-            'fuel_type' => ['required', 'string', 'max:50'],
-            'power_hp' => ['required', 'integer', 'min:1', 'max:2000'],
-            'engine_capacity_cc' => ['required', 'integer', 'min:1', 'max:10000'],
+            'fuel_type' => ['nullable', 'required_unless:vehicle_type,caravan', 'string', 'max:50'],
+            'power_hp' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:2000'],
+            'engine_capacity_cc' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:10000'],
             'doors' => ['required', 'integer', 'min:1', 'max:6'],
-            'transmission' => ['required', 'string', 'max:50'],
+            'transmission' => ['nullable', 'required_unless:vehicle_type,caravan', 'string', 'max:50'],
 
             // Details
             'segment' => ['required', 'string', 'max:50'],

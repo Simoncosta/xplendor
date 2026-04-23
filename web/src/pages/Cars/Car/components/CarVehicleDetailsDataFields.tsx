@@ -1,5 +1,5 @@
 //React
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Select from "react-select";
 import { Button, Col, Label, Row } from "reactstrap";
 
@@ -14,15 +14,9 @@ import { ICarUpdatePayload } from "common/models/car.model";
 
 // Redux
 import { colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "common/data/cars";
-import { getCarCategories } from "helpers/laravel_helper";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
-
-const motorhomeSubsegmentOptions = [
-    { value: "autocaravana", label: "Autocaravana" },
-    { value: "caravana", label: "Caravana" },
-    { value: "residencial", label: "Residencial" },
-];
+import { getCarCategories } from "helpers/laravel_helper";
 
 const bedTypeOptions = [
     { value: "central", label: "Central" },
@@ -37,39 +31,22 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
     const [categoryOptions, setCategoryOptions] = useState<{ value: number; label: string }[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
-    const prevVehicleTypeRef = useRef(values.vehicle_type);
 
     useEffect(() => {
-        if (prevVehicleTypeRef.current !== values.vehicle_type) {
-            setFieldValue("segment", null);
-            setFieldValue("car_category_id", null);
-
-            if (values.vehicle_type !== "motorhome") {
-                setFieldValue("subsegment", null);
-                setFieldValue("vehicle_attributes", { ...DEFAULT_VEHICLE_ATTRIBUTES });
-            }
-        }
-
-        prevVehicleTypeRef.current = values.vehicle_type;
+        setFieldValue("subsegment", null);
     }, [values.vehicle_type, setFieldValue]);
 
     useEffect(() => {
-        if (values.vehicle_type === "motorhome" && values.subsegment && values.segment !== values.subsegment) {
-            setFieldValue("segment", values.subsegment);
-        }
-    }, [values.vehicle_type, values.subsegment, values.segment, setFieldValue]);
+        if (values.vehicle_type === "motorhome") return;
 
-    useEffect(() => {
-        if (values.vehicle_type === "motorhome" && values.subsegment !== "autocaravana" && values.car_category_id) {
-            setFieldValue("car_category_id", null);
-        }
-    }, [values.vehicle_type, values.subsegment, values.car_category_id, setFieldValue]);
+        setFieldValue("car_category_id", null);
+    }, [values.vehicle_type, setFieldValue]);
 
     useEffect(() => {
         let isMounted = true;
 
         const fetchCategories = async () => {
-            if (values.vehicle_type !== "motorhome" || values.subsegment !== "autocaravana") {
+            if (values.vehicle_type !== "motorhome") {
                 setCategoryOptions([]);
                 return;
             }
@@ -78,10 +55,12 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
 
             try {
                 const response = await getCarCategories("motorhome");
-                const categories = (response?.data || []).map((category: any) => ({
-                    value: Number(category.id),
-                    label: category.name ?? String(category.slug ?? category.id),
-                })).filter((category: { value: number; label: string }) => Number.isFinite(category.value));
+                const categories = (response?.data || [])
+                    .map((category: any) => ({
+                        value: Number(category.id),
+                        label: category.name ?? String(category.slug ?? category.id),
+                    }))
+                    .filter((category: { value: number; label: string }) => Number.isFinite(category.value));
 
                 if (isMounted) {
                     setCategoryOptions(categories);
@@ -102,10 +81,18 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
         return () => {
             isMounted = false;
         };
-    }, [values.vehicle_type, values.subsegment]);
+    }, [values.vehicle_type]);
 
-    const isMotorhome = values.vehicle_type === "motorhome";
-    const showMotorhomeCategory = isMotorhome && values.subsegment === "autocaravana";
+    useEffect(() => {
+        if (values.vehicle_type === "motorhome" || values.vehicle_type === "caravan") {
+            setFieldValue("segment", values.vehicle_type);
+            return;
+        }
+
+        setFieldValue("vehicle_attributes", { ...DEFAULT_VEHICLE_ATTRIBUTES });
+    }, [values.vehicle_type, setFieldValue]);
+
+    const hasHabitationAttributes = values.vehicle_type === "motorhome" || values.vehicle_type === "caravan";
     const beds = Array.isArray(values.vehicle_attributes?.beds)
         ? values.vehicle_attributes.beds
         : [];
@@ -117,31 +104,7 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
             </div>
 
             <Row>
-                {isMotorhome ? (
-                    <Col lg={2}>
-                        <Label for="subsegment">
-                            Tipo de Autocaravana: <span className="text-danger">*</span>
-                        </Label>
-                        <Select
-                            id="subsegment"
-                            name="subsegment"
-                            options={motorhomeSubsegmentOptions}
-                            value={motorhomeSubsegmentOptions.find((option) => option.value === values.subsegment) || null}
-                            onChange={(option: any) => {
-                                const subsegment = option?.value || null;
-
-                                setFieldValue("subsegment", subsegment);
-                                setFieldValue("segment", subsegment);
-                                if (subsegment !== "autocaravana") {
-                                    setFieldValue("car_category_id", null);
-                                }
-                                setFieldTouched("subsegment", true);
-                            }}
-                            className="mb-3"
-                            required
-                        />
-                    </Col>
-                ) : (
+                {!hasHabitationAttributes && (
                     <Col lg={2}>
                         <Label for="segment">
                             Segmento: <span className="text-danger">*</span>
@@ -160,17 +123,17 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                         />
                     </Col>
                 )}
-                {showMotorhomeCategory && (
+                {values.vehicle_type === "motorhome" && (
                     <Col lg={2}>
                         <Label for="car_category_id">
-                            Categoria (opcional)
+                            Categoria:
                         </Label>
                         <Select
                             id="car_category_id"
                             name="car_category_id"
                             options={categoryOptions}
-                            isLoading={loadingCategories}
                             isClearable
+                            isLoading={loadingCategories}
                             placeholder="Selecionar categoria"
                             value={categoryOptions.find((option) => option.value === Number(values.car_category_id)) || null}
                             onChange={(option: any) => {
@@ -245,12 +208,11 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                         name="mileage_km"
                         label="Quilometragem (km)"
                         className="mb-3"
-                        required
                     />
                 </Col>
             </Row>
 
-            {values.vehicle_type === "motorhome" && (
+            {hasHabitationAttributes && (
                 <Row>
                     <Col lg={2}>
                         <XInput

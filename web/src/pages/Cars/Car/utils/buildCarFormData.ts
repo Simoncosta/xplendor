@@ -32,8 +32,18 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         "exterior_360_meta",
     ]);
 
+    const hasMotorFields = values.vehicle_type !== "caravan";
+
+    const motorFieldKeys = new Set([
+        "fuel_type",
+        "engine_capacity_cc",
+        "power_hp",
+        "transmission",
+    ]);
+
     Object.entries(values).forEach(([key, value]) => {
         if (ignoreKeys.has(key)) return;
+        if (!hasMotorFields && motorFieldKeys.has(key)) return;
         if (typeof value === "object" && value !== null) return;
         appendScalar(key, value);
     });
@@ -78,7 +88,7 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
 
     const vehicleAttributes = values.vehicle_attributes ?? {};
 
-    if (values.vehicle_type === "motorhome") {
+    if (values.vehicle_type === "motorhome" || values.vehicle_type === "caravan") {
         fd.append("vehicle_attributes[_sync]", "1");
 
         Object.entries(vehicleAttributes).forEach(([key, value]) => {

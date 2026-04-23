@@ -30,7 +30,9 @@ const selectSellerOptionsViewModel = createSelector(
 
 const vehicleTypeOptions = [
     { value: "car", label: "Carro" },
+    { value: "motorcycle", label: "Moto" },
     { value: "motorhome", label: "Autocaravana" },
+    { value: "caravan", label: "Caravana" },
 ];
 
 export default function CarInformationDataFields({

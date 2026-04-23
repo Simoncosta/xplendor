@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('car_brands', function (Blueprint $table) {
-            $table->enum('vehicle_type', ['car', 'motorhome'])
+            $table->enum('vehicle_type', ['car', 'motorcycle', 'motorhome'])
                 ->default('car')
                 ->after('slug');
 

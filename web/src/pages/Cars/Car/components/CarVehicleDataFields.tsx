@@ -45,6 +45,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
 
     const { brands, loading } = useSelector(selectCarBrandOptionsState);
     const { models } = useSelector(selectCarModelOptionsState);
+    const hasMotorFields = values.vehicle_type !== "caravan";
 
     const brandOptions = useMemo(() => brands.map((brand: any) => ({
         value: brand.id,
@@ -52,7 +53,12 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     })), [brands]);
 
     useEffect(() => {
-        dispatch(getCarBrands(values.vehicle_type));
+        const brandVehicleType =
+            values.vehicle_type === "caravan"
+                ? "motorhome"
+                : values.vehicle_type;
+
+        dispatch(getCarBrands(brandVehicleType));
     }, [dispatch, values.vehicle_type]);
 
     useEffect(() => {
@@ -83,11 +89,25 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
             return;
         }
 
+        const brandVehicleType =
+            values.vehicle_type === "caravan"
+                ? "motorhome"
+                : values.vehicle_type;
+
         dispatch(getCarModels({
             brand_id: values.car_brand_id,
-            vehicle_type: values.vehicle_type,
+            vehicle_type: brandVehicleType,
         }));
     }, [dispatch, setFieldValue, values.car_brand_id, values.vehicle_type]);
+
+    useEffect(() => {
+        if (hasMotorFields) return;
+
+        setFieldValue("fuel_type", null);
+        setFieldValue("engine_capacity_cc", null);
+        setFieldValue("power_hp", null);
+        setFieldValue("transmission", null);
+    }, [hasMotorFields, setFieldValue]);
 
     return (
         <div className="mt-4">
@@ -157,36 +177,40 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={2}>
-                    <Label for="fuel_type">
-                        Combustível:
-                    </Label>
-                    <Select
-                        id="fuel_type"
-                        name="fuel_type"
-                        options={fuelTypeOptions}
-                        value={fuelTypeOptions.find((option: any) => option.value === values.fuel_type) || null}
-                        onChange={(option: any) => {
-                            setFieldValue("fuel_type", option?.value || null);
-                            setFieldTouched("fuel_type", true);
-                        }}
-                        className="mb-3"
-                    />
-                </Col>
-                <Col lg={2}>
-                    <XInput
-                        name="engine_capacity_cc"
-                        label="Capacidade do Motor (CC)"
-                        className="mb-3"
-                    />
-                </Col>
-                <Col lg={2}>
-                    <XInput
-                        name="power_hp"
-                        label="Potência (CV)"
-                        className="mb-3"
-                    />
-                </Col>
+                {hasMotorFields && (
+                    <>
+                        <Col lg={2}>
+                            <Label for="fuel_type">
+                                Combustível:
+                            </Label>
+                            <Select
+                                id="fuel_type"
+                                name="fuel_type"
+                                options={fuelTypeOptions}
+                                value={fuelTypeOptions.find((option: any) => option.value === values.fuel_type) || null}
+                                onChange={(option: any) => {
+                                    setFieldValue("fuel_type", option?.value || null);
+                                    setFieldTouched("fuel_type", true);
+                                }}
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInput
+                                name="engine_capacity_cc"
+                                label="Capacidade do Motor (CC)"
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInput
+                                name="power_hp"
+                                label="Potência (CV)"
+                                className="mb-3"
+                            />
+                        </Col>
+                    </>
+                )}
                 <Col lg={2}>
                     <XInput
                         type="number"
@@ -195,22 +219,24 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={2}>
-                    <Label for="transmission">
-                        Transmissão:
-                    </Label>
-                    <Select
-                        id="transmission"
-                        name="transmission"
-                        options={transmissionOptions}
-                        value={transmissionOptions.find((option: any) => option.value === values.transmission) || null}
-                        onChange={(option: any) => {
-                            setFieldValue("transmission", option?.value || null);
-                            setFieldTouched("transmission", true);
-                        }}
-                        className="mb-3"
-                    />
-                </Col>
+                {hasMotorFields && (
+                    <Col lg={2}>
+                        <Label for="transmission">
+                            Transmissão:
+                        </Label>
+                        <Select
+                            id="transmission"
+                            name="transmission"
+                            options={transmissionOptions}
+                            value={transmissionOptions.find((option: any) => option.value === values.transmission) || null}
+                            onChange={(option: any) => {
+                                setFieldValue("transmission", option?.value || null);
+                                setFieldTouched("transmission", true);
+                            }}
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
                 <Col lg={2}>
                     <XInput
                         name="version"

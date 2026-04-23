@@ -15,7 +15,7 @@ class CarModelController extends Controller
     public function index(PaginateRequest $request)
     {
         $data = $request->validate([
-            'vehicle_type' => ['nullable', 'in:car,motorhome'],
+            'vehicle_type' => ['nullable', 'in:car,motorcycle,motorhome,caravan'],
             'brand_id' => ['nullable', 'integer', 'exists:car_brands,id'],
         ]);
 

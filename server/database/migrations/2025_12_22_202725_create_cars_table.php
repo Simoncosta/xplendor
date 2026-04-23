@@ -29,11 +29,11 @@ return new class extends Migration
             $table->unsignedSmallInteger('registration_year');
             $table->string('version')->comment('Versão');
             $table->string('public_version_name')->nullable()->comment('Versão diferente que aparecerá no site');
-            $table->string('fuel_type')->comment('Combustível');
-            $table->unsignedSmallInteger('power_hp')->comment('Potência Cv');
-            $table->unsignedSmallInteger('engine_capacity_cc')->comment('Cilindrada');
+            $table->string('fuel_type')->nullable()->comment('Combustível');
+            $table->unsignedSmallInteger('power_hp')->nullable()->comment('Potência Cv');
+            $table->unsignedSmallInteger('engine_capacity_cc')->nullable()->comment('Cilindrada');
             $table->unsignedTinyInteger('doors')->comment('Porta');
-            $table->string('transmission')->comment('Transmissão');
+            $table->string('transmission')->nullable()->comment('Transmissão');
 
             // Details
             $table->string('segment');
