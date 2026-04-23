@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\{
     MetaOAuthController,
     NewsletterController,
     PlanController,
+    PromotionRankingController,
     ScraperController,
     UserController
 };
@@ -73,6 +74,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
                 Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
+                Route::get('/cars/promotion-ranking', [PromotionRankingController::class, 'index']);
                 Route::post('/cars/{carId}/execute-action', [ActionExecutionController::class, 'store']);
                 Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
                 Route::get('/cars/{carId}/audience', [CarController::class, 'audience']);

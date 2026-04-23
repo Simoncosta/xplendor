@@ -7,6 +7,8 @@ type Props = {
     cars: IAdsPriorityRankedCar[];
 };
 
+type PromotionState = "ready" | "candidate" | "watch" | "avoid";
+
 const limitOptions = [
     { label: "5", value: 5 },
     { label: "10", value: 10 },
@@ -14,8 +16,74 @@ const limitOptions = [
     { label: "Todos", value: "all" as const },
 ];
 
-const formatCurrency = (value: number | null) => {
-    if (value === null || value === undefined) return "—";
+const stateSections: Array<{
+    state: PromotionState;
+    title: string;
+    description: string;
+    empty: string;
+    tone: { bg: string; border: string; color: string };
+}> = [
+    {
+        state: "ready",
+        title: "Prontos para anunciar",
+        description: "Carros com sinais fortes e sem bloqueadores relevantes.",
+        empty: "Nenhum carro está forte o suficiente para investimento imediato.",
+        tone: { bg: "#ecfdf3", border: "#bbf7d0", color: "#15803d" },
+    },
+    {
+        state: "candidate",
+        title: "Bons candidatos",
+        description: "Carros com sinais positivos, bons para testar ou validar orçamento.",
+        empty: "Não existem candidatos intermédios neste momento.",
+        tone: { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
+    },
+    {
+        state: "watch",
+        title: "Em observação",
+        description: "Carros ainda com pouco volume ou sinais insuficientes para investir com confiança.",
+        empty: "Sem carros em observação agora.",
+        tone: { bg: "#fffbeb", border: "#fde68a", color: "#a16207" },
+    },
+    {
+        state: "avoid",
+        title: "Evitar investimento",
+        description: "Carros onde investir agora tende a gerar baixo retorno.",
+        empty: "Nenhum carro foi sinalizado para evitar investimento.",
+        tone: { bg: "#fff1f2", border: "#fecdd3", color: "#be123c" },
+    },
+];
+
+const getPromotionState = (car: IAdsPriorityRankedCar): PromotionState => {
+    if (car.promotion_state) return car.promotion_state;
+
+    if (car.smartads_decision === "scale_ads") return "ready";
+    if (car.smartads_decision === "test_campaign" || car.smartads_decision === "test_campaign_seed") return "candidate";
+    if (car.smartads_decision === "do_not_invest") return "avoid";
+
+    return "watch";
+};
+
+const getScore = (car: IAdsPriorityRankedCar) => car.promotion_score ?? car.priority_score ?? 0;
+const getConfidence = (car: IAdsPriorityRankedCar) => car.confidence ?? car.confidence_score ?? 0;
+const getReasons = (car: IAdsPriorityRankedCar) => {
+    if (car.reasons?.length) return car.reasons.slice(0, 3);
+
+    return [car.reason, car.why_now, car.risk_note].filter(Boolean).slice(0, 3) as string[];
+};
+
+const getActionLabel = (car: IAdsPriorityRankedCar) => {
+    if (car.recommended_action?.label) return car.recommended_action.label;
+
+    const state = getPromotionState(car);
+
+    if (state === "ready" || state === "candidate") return "Promover este carro";
+    if (state === "avoid") return "Evitar investimento";
+
+    return "Observar evolução";
+};
+
+const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return null;
 
     return value.toLocaleString("pt-PT", {
         style: "currency",
@@ -24,417 +92,228 @@ const formatCurrency = (value: number | null) => {
     });
 };
 
-const formatConfidence = (value: number) => `${value}%`;
-
-const priorityMeta = (label: IAdsPriorityRankedCar["investment_label"]) => {
-    switch (label) {
-        case "high_priority":
-            return { label: "Precisa de atenção agora", bg: "#e7f8ee", color: "#0f8a4b" };
-        case "medium_priority":
-            return { label: "Acompanhar esta semana", bg: "#fff4d6", color: "#a16207" };
-        case "avoid_investment":
-            return { label: "Evitar investimento", bg: "#fde8e4", color: "#c2410c" };
-        default:
-            return { label: "Monitorizar", bg: "#eef2f7", color: "#475569" };
-    }
-};
-
-const decisionLabel = (
-    decision: IAdsPriorityRankedCar["smartads_decision"],
-    investmentLabel: IAdsPriorityRankedCar["investment_label"],
-) => {
-    if (investmentLabel === "low_priority") {
-        return "Sem decisão forte";
-    }
-
-    switch (decision) {
-        case "scale_ads":
-            return "Escalar ads";
-        case "test_campaign":
-            return "Testar campanha";
-        case "test_campaign_seed":
-            return "Testar para gerar procura";
-        case "review_campaign":
-            return "Rever campanha";
-        case "do_not_invest":
-            return "Não investir";
-        default:
-            return "Sem decisão";
-    }
-};
-
-const decisionBadgeMeta = (decision: IAdsPriorityRankedCar["smartads_decision"]) => {
-    switch (decision) {
-        case "test_campaign_seed":
-            return { bg: "#e0f2fe", color: "#0369a1", label: "Exploração" };
-        default:
-            return null;
-    }
-};
-
-const getObjective = (car: IAdsPriorityRankedCar) => {
-    switch (car.smartads_decision) {
-        case "scale_ads":
-            return "Conversão direta";
-        case "test_campaign":
-            return "Validação de procura";
-        case "test_campaign_seed":
-            return "Exploração inicial";
-        case "review_campaign":
-            return "Recuperar atenção";
-        default:
-            return "Observação";
-    }
-};
-
-const getAudienceSuggestion = (car: IAdsPriorityRankedCar) => {
-    if (car.investment_label === "high_priority") {
-        return "Audiência quente e lookalikes de intenção elevada.";
-    }
-
-    if (car.investment_label === "medium_priority") {
-        return "Audiência de teste com foco em interesse e intenção de contacto.";
-    }
-
-    return "Audiência ainda em validação.";
-};
-
-const getCreativeSuggestion = (car: IAdsPriorityRankedCar) => {
-    switch (car.smartads_decision) {
-        case "scale_ads":
-            return "Criativo comercial direto com CTA forte e foco em conversão.";
-        case "test_campaign":
-            return "Criativo de descoberta com gancho claro e promessa objetiva.";
-        case "test_campaign_seed":
-            return "Criativo leve para gerar procura inicial e recolher sinais reais do mercado.";
-        case "review_campaign":
-            return "Criativo de revisão para reduzir fricção e clarificar valor.";
-        default:
-            return "Ainda não existe criativo forte recomendado.";
-    }
-};
-
-const getSuggestedDailyBudget = (car: IAdsPriorityRankedCar) => {
-    if (car.smartads_decision === "test_campaign_seed") return "5€/dia";
-    if (car.investment_label === "high_priority") return "25€/dia";
-    if (car.investment_label === "medium_priority") return "12€/dia";
-    return "Sem budget sugerido";
-};
-
-const getEmptyState = () => ({
-    title: "Ainda não existem oportunidades fortes de investimento",
-    description: "O sistema ainda não identificou carros com sinais consistentes de procura e conversão.",
-    subtext: "Continua a acumular dados de comportamento, mercado e leads para melhorar a precisão das recomendações.",
-});
-
-const metricBoxStyle = {
-    minWidth: 92,
-    textAlign: "center" as const,
-    border: "1px solid #e9ebec",
-    borderRadius: 12,
-    padding: "8px 10px",
-    background: "#fff",
-};
-
 export default function AdsPriorityRankingCard({ cars }: Props) {
     const [limit, setLimit] = useState<number | "all">(5);
     const [selectedCar, setSelectedCar] = useState<IAdsPriorityRankedCar | null>(null);
 
-    const visibleState = useMemo(() => {
-        const limitedCars = limit === "all" ? cars : cars.slice(0, limit);
-
-        return {
-            readyCars: limitedCars.filter((car) => car.smartads_decision === "scale_ads"),
-            goodCandidates: limitedCars.filter((car) => car.smartads_decision === "test_campaign"),
-            explorationCars: limitedCars.filter((car) => car.smartads_decision === "test_campaign_seed"),
-            reviewCars: limitedCars.filter((car) => car.smartads_decision === "review_campaign"),
-            avoidCars: limitedCars.filter((car) => car.smartads_decision === "do_not_invest"),
-            hasStrongOpportunities: limitedCars.some((car) =>
-                car.smartads_decision === "scale_ads" || car.smartads_decision === "test_campaign"
-            ),
-        };
-    }, [cars, limit]);
-
-    const renderActionButtons = (car: IAdsPriorityRankedCar, mode: "campaign" | "analytics_only") => (
-        <div className="d-flex align-items-center gap-2 flex-wrap">
-            {mode === "campaign" && (
-                <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => setSelectedCar(car)}
-                >
-                    Gerar campanha
-                </button>
-            )}
-            <Link to={`/cars/${car.car_id}/analytics`} className="btn btn-soft-primary btn-sm">
-                Ver analytics
-            </Link>
-        </div>
+    const limitedCars = useMemo(
+        () => (limit === "all" ? cars : cars.slice(0, limit)),
+        [cars, limit]
     );
 
-    const renderCarItem = (car: IAdsPriorityRankedCar, mode: "campaign" | "analytics_only") => {
-        const badge = priorityMeta(car.investment_label);
-        const decisionBadge = decisionBadgeMeta(car.smartads_decision);
+    const carsByState = useMemo(() => {
+        return stateSections.reduce<Record<PromotionState, IAdsPriorityRankedCar[]>>((acc, section) => {
+            acc[section.state] = limitedCars.filter((car) => getPromotionState(car) === section.state);
+            return acc;
+        }, {
+            ready: [],
+            candidate: [],
+            watch: [],
+            avoid: [],
+        });
+    }, [limitedCars]);
+
+    const renderCard = (car: IAdsPriorityRankedCar, tone: typeof stateSections[number]["tone"]) => {
+        const score = getScore(car);
+        const confidence = getConfidence(car);
+        const reasons = getReasons(car);
+        const state = getPromotionState(car);
+        const actionLabel = getActionLabel(car);
+        const price = formatCurrency(car.price_gross);
 
         return (
-            <div
+            <article
                 key={car.car_id}
                 style={{
                     border: "1px solid #e9ebec",
-                    borderRadius: 14,
-                    padding: 16,
+                    borderRadius: 16,
                     background: "#fff",
+                    padding: 16,
                 }}
             >
-                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
+                <div className="d-flex align-items-start justify-content-between gap-3 mb-3">
                     <div>
-                        <div className="d-flex align-items-center gap-2 flex-wrap mb-2">
-                            <span className="badge bg-light text-dark fs-12 px-2 py-2">#{car.position}</span>
-                            <span className="badge rounded-pill fs-12 px-3 py-2" style={{ background: badge.bg, color: badge.color }}>
-                                {badge.label}
-                            </span>
-                            <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                {decisionLabel(car.smartads_decision, car.investment_label)}
-                            </span>
-                            {decisionBadge && (
-                                <span className="badge fs-12 px-3 py-2" style={{ background: decisionBadge.bg, color: decisionBadge.color }}>
-                                    {decisionBadge.label}
-                                </span>
-                            )}
+                        <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
+                            <h6 className="mb-0 fw-semibold text-body">{car.car_name}</h6>
+                            {price && <span className="text-muted fs-12">{price}</span>}
                         </div>
-                        <h6 className="mb-1 fw-semibold text-body">
-                            {car.car_name} · {formatCurrency(car.price_gross)}
-                        </h6>
+                        <span
+                            className="badge rounded-pill fs-12 px-3 py-2"
+                            style={{ background: tone.bg, color: tone.color, border: `1px solid ${tone.border}` }}
+                        >
+                            {car.promotion_label ?? stateSections.find((section) => section.state === state)?.title}
+                        </span>
                     </div>
 
-                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                        <div style={metricBoxStyle}>
-                            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1">Score</div>
-                            <div className="fw-semibold">{car.priority_score}</div>
-                        </div>
-                        <div style={metricBoxStyle}>
-                            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1">Confiança</div>
-                            <div className="fw-semibold">{formatConfidence(car.confidence_score)}</div>
-                        </div>
+                    <div className="text-end">
+                        <div className="fw-semibold fs-5" style={{ color: tone.color }}>{score}</div>
+                        <div className="text-muted fs-11">score</div>
                     </div>
                 </div>
 
-                <div className="d-flex flex-column gap-2 mb-3">
-                    <div>
-                        <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Motivo
-                        </p>
-                        <p className="mb-0 fs-14 text-body">{car.reason}</p>
-                    </div>
-
-                    <div>
-                        <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Porque agora
-                        </p>
-                        <p className="mb-0 fs-13 text-muted">{car.why_now}</p>
-                    </div>
-
-                    {car.risk_note && (
-                        <div>
-                            <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                Risco
-                            </p>
-                            <p className="mb-0 fs-13" style={{ color: "#c2410c" }}>
-                                {car.risk_note}
-                            </p>
-                        </div>
-                    )}
+                <div className="d-flex align-items-center gap-3 flex-wrap mb-3 text-muted fs-13">
+                    <span>Confiança: {confidence}%</span>
+                    {car.has_active_campaign && <span>Campanha ativa</span>}
+                    {car.flags?.includes("test_campaign_seed") && <span>Seed recomendado</span>}
                 </div>
 
-                {renderActionButtons(car, mode)}
-            </div>
+                {reasons.length > 0 && (
+                    <ul className="mb-3 ps-3 text-body fs-13">
+                        {reasons.map((reason) => (
+                            <li key={reason} className="mb-1">{reason}</li>
+                        ))}
+                    </ul>
+                )}
+
+                <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <button
+                        type="button"
+                        className={`btn btn-sm ${state === "avoid" ? "btn-outline-danger" : "btn-primary"}`}
+                        onClick={() => setSelectedCar(car)}
+                    >
+                        {actionLabel}
+                    </button>
+                    <Link to={`/cars/${car.car_id}/analytics`} className="btn btn-outline-secondary btn-sm">
+                        Ver análise
+                    </Link>
+                    <Link to={`/cars/${car.car_id}`} className="btn btn-link btn-sm text-muted text-decoration-none">
+                        Ver detalhes →
+                    </Link>
+                </div>
+            </article>
         );
     };
 
-    const renderSection = (
-        title: string,
-        description: string,
-        items: IAdsPriorityRankedCar[],
-        mode: "campaign" | "analytics_only",
-        emptyMessage?: string,
-    ) => (
-        <div className="d-flex flex-column gap-3">
-            <div>
-                <h6 className="mb-1 fw-semibold">{title}</h6>
-                <p className="text-muted fs-13 mb-0">{description}</p>
-            </div>
+    const renderSection = (section: typeof stateSections[number]) => {
+        const items = carsByState[section.state];
 
-            {items.length > 0 ? (
-                items.map((item) => renderCarItem(item, mode))
-            ) : emptyMessage ? (
-                <div
-                    style={{
-                        border: "1px dashed #dfe3e6",
-                        borderRadius: 14,
-                        padding: 16,
-                        background: "#fafbfc",
-                    }}
-                >
-                    <h6 className="mb-2 fw-semibold">{getEmptyState().title}</h6>
-                    <p className="text-muted fs-14 mb-2">{getEmptyState().description}</p>
-                    <p className="text-muted fs-13 mb-0">{getEmptyState().subtext}</p>
+        return (
+            <section
+                key={section.state}
+                style={{
+                    border: "1px solid #eef0f2",
+                    borderRadius: 18,
+                    background: "#fbfcfd",
+                    padding: 16,
+                }}
+            >
+                <div className="d-flex align-items-start justify-content-between gap-3 mb-3">
+                    <div>
+                        <h6 className="mb-1 fw-semibold">{section.title}</h6>
+                        <p className="text-muted fs-13 mb-0">{section.description}</p>
+                    </div>
+                    <span
+                        className="badge rounded-pill fs-12 px-3 py-2"
+                        style={{ background: section.tone.bg, color: section.tone.color, border: `1px solid ${section.tone.border}` }}
+                    >
+                        {items.length}
+                    </span>
                 </div>
-            ) : null}
-        </div>
-    );
+
+                {items.length > 0 ? (
+                    <div className="d-grid gap-3">
+                        {items.map((car) => renderCard(car, section.tone))}
+                    </div>
+                ) : (
+                    <div
+                        className="text-muted fs-14"
+                        style={{
+                            border: "1px dashed #dfe3e6",
+                            borderRadius: 14,
+                            padding: 14,
+                            background: "#fff",
+                        }}
+                    >
+                        {section.empty}
+                    </div>
+                )}
+            </section>
+        );
+    };
 
     return (
         <Col xs={12}>
             <section
                 style={{
                     border: "1px solid #e9ebec",
-                    borderRadius: 16,
+                    borderRadius: 18,
                     background: "#fff",
                     overflow: "hidden",
                 }}
             >
-                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap" style={{ padding: "16px 18px", borderBottom: "1px solid #e9ebec" }}>
+                <div
+                    className="d-flex align-items-start justify-content-between gap-3 flex-wrap"
+                    style={{ padding: "18px 20px", borderBottom: "1px solid #e9ebec" }}
+                >
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Top oportunidades de investimento
+                            Ranking para anunciar
                         </p>
-                        <h5 className="mb-1 fw-semibold">Top oportunidades de investimento</h5>
+                        <h5 className="mb-1 fw-semibold">Onde investir agora</h5>
                         <p className="text-muted fs-13 mb-0">
-                            Identificamos automaticamente os carros com maior probabilidade de gerar vendas com ads neste momento.
+                            Priorização simples com base em sinal de contacto, procura recente, preço e investimento ativo.
                         </p>
                     </div>
 
-                    <div className="d-flex flex-column align-items-start align-items-md-end gap-2">
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
-                            <span className="text-muted fs-12 fw-semibold">Selecionar quantidade:</span>
-                            {limitOptions.map((option) => (
-                                <button
-                                    key={option.label}
-                                    type="button"
-                                    onClick={() => setLimit(option.value)}
-                                    className="btn btn-sm"
-                                    style={{
-                                        border: limit === option.value ? "1px solid #405189" : "1px solid #dfe3e6",
-                                        background: limit === option.value ? "#405189" : "#fff",
-                                        color: limit === option.value ? "#fff" : "#405189",
-                                        minWidth: 52,
-                                    }}
-                                >
-                                    {option.label}
-                                </button>
-                            ))}
-                        </div>
-                        <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                            Por impacto potencial
-                        </span>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                        <span className="text-muted fs-12 fw-semibold">Mostrar:</span>
+                        {limitOptions.map((option) => (
+                            <button
+                                key={option.label}
+                                type="button"
+                                onClick={() => setLimit(option.value)}
+                                className="btn btn-sm"
+                                style={{
+                                    border: limit === option.value ? "1px solid #405189" : "1px solid #dfe3e6",
+                                    background: limit === option.value ? "#405189" : "#fff",
+                                    color: limit === option.value ? "#fff" : "#405189",
+                                    minWidth: 52,
+                                }}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {cars.length > 0 ? (
-                    <div style={{ padding: 16 }} className="d-flex flex-column gap-4">
-                        {renderSection(
-                            "Prontos para anunciar",
-                            "Carros com sinais fortes de procura, boa posição de mercado e potencial de conversão.",
-                            visibleState.readyCars,
-                            "campaign",
-                            !visibleState.hasStrongOpportunities
-                                ? "Ainda não existem oportunidades fortes de investimento"
-                                : undefined
-                        )}
-
-                        {visibleState.goodCandidates.length > 0 && renderSection(
-                            "Bons candidatos",
-                            "Carros com sinais positivos mas ainda sem confirmação total. Ideal para testar campanhas.",
-                            visibleState.goodCandidates,
-                            "campaign",
-                        )}
-
-                        {visibleState.explorationCars.length > 0 && renderSection(
-                            "Em observação",
-                            "Ainda sem dados suficientes para justificar investimento. Acompanhar evolução.",
-                            visibleState.explorationCars,
-                            "analytics_only",
-                        )}
-
-                        {visibleState.reviewCars.length > 0 && renderSection(
-                            "Rever antes de investir",
-                            "Carros que precisam de correção de proposta, preço ou criativo antes de receber mais budget.",
-                            visibleState.reviewCars,
-                            "analytics_only",
-                        )}
-
-                        {visibleState.avoidCars.length > 0 && renderSection(
-                            "Evitar investimento agora",
-                            "Carros com baixa procura, preço desalinhado ou baixa probabilidade de conversão.",
-                            visibleState.avoidCars,
-                            "analytics_only",
-                        )}
-                    </div>
-                ) : (
-                    <div style={{ padding: "16px 18px" }} className="text-muted">
-                        Ainda não existem carros ativos suficientes para construir um ranking.
-                    </div>
-                )}
+                <div style={{ padding: 16 }} className="d-grid gap-3">
+                    {stateSections.map(renderSection)}
+                </div>
             </section>
 
             <Modal isOpen={!!selectedCar} toggle={() => setSelectedCar(null)} centered>
                 <ModalHeader toggle={() => setSelectedCar(null)}>
-                    Campanha sugerida pela Xplendor
+                    {selectedCar ? getActionLabel(selectedCar) : "Ação recomendada"}
                 </ModalHeader>
                 <ModalBody>
                     {selectedCar && (
                         <div className="d-flex flex-column gap-3">
-                            <p className="text-muted fs-13 mb-0">
-                                Revê e aprova antes de executar no Meta Ads.
-                            </p>
-
                             <div>
                                 <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Nome da campanha
+                                    Carro
                                 </p>
-                                <div className="fw-semibold">{selectedCar.car_name} · {decisionLabel(selectedCar.smartads_decision, selectedCar.investment_label)}</div>
+                                <div className="fw-semibold">{selectedCar.car_name}</div>
                             </div>
 
                             <div>
                                 <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Objetivo
+                                    Porque faz sentido
                                 </p>
-                                <div>{getObjective(selectedCar)}</div>
-                            </div>
-
-                            <div>
-                                <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Público sugerido
-                                </p>
-                                <div>{getAudienceSuggestion(selectedCar)}</div>
-                            </div>
-
-                            <div>
-                                <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Criativo recomendado
-                                </p>
-                                <div>{getCreativeSuggestion(selectedCar)}</div>
-                            </div>
-
-                            <div>
-                                <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Orçamento diário sugerido
-                                </p>
-                                <div>{getSuggestedDailyBudget(selectedCar)}</div>
+                                <ul className="mb-0 ps-3">
+                                    {getReasons(selectedCar).map((reason) => (
+                                        <li key={reason}>{reason}</li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
                     )}
                 </ModalBody>
                 <ModalFooter>
-                    <button type="button" className="btn btn-primary">
-                        Aprovar campanha
-                    </button>
-                    <button type="button" className="btn btn-soft-secondary">
-                        Editar campanha
-                    </button>
-                    <button type="button" className="btn btn-soft-primary">
-                        Copiar conteúdo
-                    </button>
+                    {selectedCar && (
+                        <Link to={`/cars/${selectedCar.car_id}/marketing`} className="btn btn-primary">
+                            Preparar ação
+                        </Link>
+                    )}
                     <button type="button" className="btn btn-light" onClick={() => setSelectedCar(null)}>
                         Fechar
                     </button>

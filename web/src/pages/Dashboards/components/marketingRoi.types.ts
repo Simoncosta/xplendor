@@ -46,6 +46,17 @@ export interface IAdsPriorityRankedCar {
     car_id: number;
     car_name: string;
     price_gross: number | null;
+    promotion_score?: number;
+    promotion_state?: "ready" | "candidate" | "watch" | "avoid";
+    promotion_label?: string;
+    confidence?: number;
+    reasons?: string[];
+    recommended_action?: {
+        type: "promote_car" | "switch_car_investment" | "observe_car" | "avoid_investment" | "test_campaign_seed" | string;
+        label: string;
+    };
+    flags?: string[];
+    has_active_campaign?: boolean;
     priority_score: number;
     confidence_score: number;
     investment_label: "high_priority" | "medium_priority" | "low_priority" | "avoid_investment";

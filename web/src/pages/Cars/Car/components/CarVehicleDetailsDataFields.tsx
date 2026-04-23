@@ -29,6 +29,7 @@ const bedTypeOptions = [
     { value: "rebatível na cabine", label: "Rebatível na cabine" },
     { value: "beliche", label: "Beliche" },
     { value: "transversal", label: "Transversal" },
+    { value: "cama de garagem", label: "Cama de garagem" },
     { value: "outra", label: "Outra" },
 ];
 
