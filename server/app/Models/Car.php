@@ -80,6 +80,7 @@ class Car extends Model implements AuditableContract
         'promo_discount_value',
         'promo_discount_pct',
         'vehicle_attributes',
+        'bed_types',
     ];
 
     public function getExtrasAttribute($value)
@@ -189,6 +190,25 @@ class Car extends Model implements AuditableContract
         $attributes = $vehicleAttribute->getAttribute('attributes');
 
         return is_array($attributes) ? $attributes : null;
+    }
+
+    public function getBedTypesAttribute(): ?array
+    {
+        if (!in_array($this->vehicle_type, ['motorhome', 'caravan'])) {
+            return null;
+        }
+
+        $attrs = $this->vehicle_attributes;
+
+        if (!$attrs || empty($attrs['beds'])) {
+            return [];
+        }
+
+        return collect($attrs['beds'])
+            ->pluck('type')
+            ->filter()
+            ->values()
+            ->toArray();
     }
 
     public function sale(): HasOne

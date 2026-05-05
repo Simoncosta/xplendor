@@ -39,14 +39,16 @@ class CarDescriptionService
             : null;
 
         $system = <<<SYSTEM
-És um copywriter especializado em veículos para o mercado português.
-Escreves descrições comerciais em Português de Portugal (não Brasil), diretas e objetivas.
-Formato obrigatório: texto corrido, entre 80 a 150 palavras, sem bullet points, sem títulos, sem emojis.
-Tom: comercial mas direto, focado nos argumentos de venda mais relevantes para o tipo de veículo.
-Responde apenas com o texto da descrição, sem qualquer prefácio ou explicação adicional.
+És um redator especializado em anúncios de veículos usados no mercado português.
+O teu estilo é direto, credível e factual — sem linguagem de brochura, sem adjetivos vazios, sem repetir informação que já está visível na ficha técnica do anúncio.
+
+A descrição não é um resumo dos campos — é o que os campos não conseguem transmitir.
 SYSTEM;
 
-        $lines = ['Gera uma descrição comercial para o seguinte veículo:', ''];
+        $lines = ['Escreve a descrição deste veículo em Português de Portugal.'];
+        $lines[] = 'Texto corrido, sem bullet points, entre 60 e 100 palavras.';
+        $lines[] = '';
+        $lines[] = 'Dados do veículo (para teres contexto, não para repetires):';
 
         match ($vehicleType) {
             'car'       => $this->appendCarLines($lines, $data, $brand, $model, $year, $version, $priceGross, $promoPriceGross),
@@ -54,6 +56,39 @@ SYSTEM;
             'caravan'   => $this->appendCaravanLines($lines, $data, $brand, $model, $year, $version, $priceGross, $promoPriceGross),
             default     => $this->appendGenericLines($lines, $data, $brand, $model, $year, $version, $priceGross, $promoPriceGross),
         };
+
+        $lines[] = '';
+        $lines[] = 'REGRAS CRÍTICAS:';
+        $lines[] = '- NÃO repitas o que já está nos campos visíveis do anúncio: marca, modelo, ano, preço, km, combustível, potência, cilindrada, transmissão, lugares, dimensões';
+        $lines[] = '- Esses dados já estão na ficha — o comprador já os vê';
+        $lines[] = '- A descrição deve acrescentar o que os campos não capturam: estado de conservação percetível, combinação de equipamentos que se destaca, historial relevante, ou o que torna este veículo específico interessante face a outros iguais';
+        $lines[] = '';
+
+        match ($vehicleType) {
+            'car' => array_push(
+                $lines,
+                '[TIPO: CARRO]',
+                'Foca em: equipamento que se destaca para o segmento e preço, estado geral, algum detalhe que justifique a escolha deste face a alternativas similares.'
+            ),
+            'motorhome' => array_push(
+                $lines,
+                '[TIPO: AUTOCARAVANA]',
+                'Foca em: como o layout e equipamento de habitação funcionam na prática (ex: cama de garagem permite manter a área de estar montada), estado de conservação, equipamento que se destaca no contexto do preço pedido.'
+            ),
+            'caravan' => array_push(
+                $lines,
+                '[TIPO: CARAVANA]',
+                'Foca em: habitabilidade real, estado de conservação, equipamento que acrescenta valor prático para o utilizador.'
+            ),
+            default => null,
+        };
+
+        $lines[] = '';
+        $lines[] = 'PROIBIDO: "Descubra", "perfeito para", "não perca", "aventuras", "liberdade", "elegante", "moderno", qualquer frase que funcione em qualquer outro anúncio do mundo.';
+        $lines[] = '';
+        $lines[] = 'O texto deve funcionar apenas para este veículo específico — se puder ser copiado para outro anúncio sem mudar nada, está errado.';
+        $lines[] = '';
+        $lines[] = 'Responde apenas com o texto da descrição, sem qualquer prefácio ou explicação adicional.';
 
         return ['system' => $system, 'user' => implode("\n", $lines)];
     }

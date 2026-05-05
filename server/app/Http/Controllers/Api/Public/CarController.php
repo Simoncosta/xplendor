@@ -117,7 +117,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'vehicleAttribute', 'seller'],
+            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'category', 'vehicleAttribute', 'seller'],
             $paginate,
             $filters,
             $order
@@ -162,7 +162,7 @@ class CarController extends Controller
 
         $cars = $this->carService->getAll(
             ['*'],
-            ['images', 'externalImages', 'brand', 'model'],
+            ['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute'],
             null,
             ['company_id' => $company->id]
         );
@@ -263,6 +263,26 @@ class CarController extends Controller
             ->pluck('transmission')
             ->filter()
             ->unique()
+            ->values()
+            ->toArray();
+
+        $filters['bed_types'] = collect($cars)
+            ->filter(fn($car) => in_array($car->vehicle_type, ['motorhome', 'caravan']))
+            ->flatMap(fn($car) => $car->bed_types ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $filters['categories'] = collect($cars)
+            ->filter(fn($car) => $car->vehicle_type === 'motorhome')
+            ->pluck('category')
+            ->filter()
+            ->unique('id')
+            ->map(fn($category) => [
+                'id'   => $category->id,
+                'name' => $category->name,
+            ])
             ->values()
             ->toArray();
 
