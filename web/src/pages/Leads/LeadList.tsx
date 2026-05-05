@@ -1,5 +1,5 @@
 // React
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 // Redux
 import { useDispatch, useSelector } from "react-redux";
 // Components
@@ -10,13 +10,22 @@ import {
     Card,
     CardHeader,
     Col,
-    Badge,
 } from "reactstrap";
 // Slices
 import { getLeadsPaginate } from "slices/thunks";
+import { updateLeadStatus } from "slices/leads/thunk";
 import { createSelector } from "reselect";
 
 const selectLeadState = (state: any) => state.Lead;
+
+const leadStatuses = [
+    { value: "new", label: "Novo" },
+    { value: "contacted", label: "Contactado" },
+    { value: "qualified", label: "Qualificado" },
+    { value: "won", label: "Ganho" },
+    { value: "lost", label: "Perdido" },
+    { value: "spam", label: "Spam" },
+];
 
 const selectLeadListViewModel = createSelector(
     [selectLeadState],
@@ -24,15 +33,15 @@ const selectLeadListViewModel = createSelector(
         leads: leadState.data.leads,
         meta: leadState.data.meta,
         loading: leadState.loading.list,
+        loadingUpdate: leadState.loadingUpdate,
     })
 );
 
 export default function LeadList() {
     const dispatch: any = useDispatch();
 
-    const { leads, meta, loading } = useSelector(selectLeadListViewModel);
+    const { leads, meta, loading, loadingUpdate } = useSelector(selectLeadListViewModel);
 
-    const [companyId, setCompanyId] = useState<any>(null);
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
         pageIndex: 0,
@@ -43,7 +52,6 @@ export default function LeadList() {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
             const obj = JSON.parse(authUser);
-            setCompanyId(obj.company_id);
 
             dispatch(
                 getLeadsPaginate({
@@ -54,6 +62,10 @@ export default function LeadList() {
             );
         }
     }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+
+    const handleStatusChange = useCallback((leadId: number, status: string) => {
+        dispatch(updateLeadStatus({ leadId, status }));
+    }, [dispatch]);
 
     const columns = useMemo(() => [
         {
@@ -85,7 +97,7 @@ export default function LeadList() {
                     <div className="d-flex align-items-center gap-2">
                         {image && (
                             <img
-                                src={image}
+                                src={process.env.REACT_APP_PUBLIC_URL + image}
                                 alt=""
                                 className="rounded"
                                 style={{ width: 50, height: 35, objectFit: "cover" }}
@@ -106,18 +118,22 @@ export default function LeadList() {
             header: "Estado",
             accessorKey: "status",
             cell: ({ row }: any) => {
-                const status = row.original.status;
+                const lead = row.original;
 
-                const map: any = {
-                    new: "secondary",
-                    contacted: "info",
-                    qualified: "primary",
-                    won: "success",
-                    lost: "danger",
-                    spam: "dark",
-                };
-
-                return <Badge color={map[status] || "secondary"}>{status}</Badge>;
+                return (
+                    <select
+                        value={lead.status}
+                        onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                        className="form-select form-select-sm"
+                        disabled={loadingUpdate}
+                    >
+                        {leadStatuses.map((status) => (
+                            <option key={status.value} value={status.value}>
+                                {status.label}
+                            </option>
+                        ))}
+                    </select>
+                );
             },
         },
         {
@@ -196,7 +212,7 @@ export default function LeadList() {
             },
         }
     ],
-        []
+        [handleStatusChange, loadingUpdate]
     );
 
     document.title = "Leads | Xplendor";

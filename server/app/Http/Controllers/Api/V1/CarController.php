@@ -11,10 +11,12 @@ use App\Models\Car;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
 use App\Services\CarAiAnalysesService;
+use App\Services\CarDescriptionService;
 use App\Services\CarSaleService;
 use App\Services\CarService;
 use App\Services\MetaAdsCarSyncService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Throwable;
 
@@ -24,6 +26,7 @@ class CarController extends Controller
         protected CarService $carService,
         protected CarSaleService $carSaleService,
         protected CarAiAnalysesService $carAiAnalysesService,
+        protected CarDescriptionService $carDescriptionService,
         protected MetaAdsCarSyncService $metaAdsCarSyncService,
         protected AudienceSuggestionService $audienceSuggestionService,
         protected AudienceGapAnalysisService $audienceGapAnalysisService,
@@ -262,6 +265,47 @@ class CarController extends Controller
             return ApiResponse::success($analysis, 'Analise do publico carregada com sucesso.');
         } catch (Throwable $exception) {
             return ApiResponse::error('Nao foi possivel carregar a analise do publico desta viatura.', 500);
+        }
+    }
+
+    public function generateDescription(Request $request, int $companyId)
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'vehicle_type'        => 'required|string|in:car,motorcycle,motorhome,caravan',
+            'car_brand_id'        => 'required|integer|min:1',
+            'car_model_id'        => 'required|integer|min:1',
+            'registration_year'   => 'required|integer|min:1900',
+            'fuel_type'           => 'nullable|string|max:100',
+            'power_hp'            => 'nullable|numeric|min:0',
+            'engine_capacity_cc'  => 'nullable|numeric|min:0',
+            'transmission'        => 'nullable|string|max:100',
+            'seats'               => 'nullable|integer|min:0',
+            'mileage_km'          => 'nullable|numeric|min:0',
+            'segment'             => 'nullable|string|max:100',
+            'subsegment'          => 'nullable|string|max:100',
+            'version'             => 'nullable|string|max:255',
+            'exterior_color'      => 'nullable|string|max:100',
+            'price_gross'         => 'nullable|numeric|min:0',
+            'promo_price_gross'   => 'nullable|numeric|min:0',
+            'extras'              => 'nullable|array',
+            'extras.*.group'      => 'nullable|string',
+            'extras.*.items'      => 'nullable|array',
+            'extras.*.items.*'    => 'nullable|string',
+            'vehicle_attributes'  => 'nullable|array',
+        ]);
+
+        try {
+            $description = $this->carDescriptionService->generate($data);
+
+            return ApiResponse::success(['description' => $description], 'Descrição gerada com sucesso.');
+        } catch (Throwable $exception) {
+            Log::error('CarController::generateDescription failed', ['error' => $exception->getMessage()]);
+
+            return ApiResponse::error('Não foi possível gerar a descrição. Tenta novamente.', 503);
         }
     }
 

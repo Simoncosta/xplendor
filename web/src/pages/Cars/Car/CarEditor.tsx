@@ -241,7 +241,7 @@ const CarEditor = ({
                                         <CarAdditionalDataFields isEdit={isEdit} />
                                         <CarPriceDataFields isEdit={isEdit} />
                                         <CarEquipmentDataFields isEdit={isEdit} />
-                                        <CarDescriptionDataFields isEdit={isEdit} />
+                                        <CarDescriptionDataFields isEdit={isEdit} companyId={companyId} />
                                         <CarImagesDataFields isEdit={isEdit} companyId={companyId} />
 
                                         <Col lg={12}>

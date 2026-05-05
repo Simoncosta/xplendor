@@ -104,6 +104,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
 
                 Route::apiResource('/users', UserController::class);
+                Route::post('/cars/generate-description', [CarController::class, 'generateDescription']);
                 Route::apiResource('/cars', CarController::class);
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');

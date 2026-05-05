@@ -54,6 +54,39 @@ class CarController extends Controller
             }
         }
 
+        if ($request->filled('min_price_gross') || $request->filled('max_price_gross')) {
+            $min = $request->input('min_price_gross');
+            $max = $request->input('max_price_gross');
+            $min = $min ? (float) $min : null;
+            $max = $max ? (float) $max : null;
+            $filters['price_gross'] = [
+                'between' => [
+                    $min ?? 0,
+                    $max ?? PHP_INT_MAX
+                ]
+            ];
+        }
+
+        if ($request->filled('exterior_colors')) {
+            $filters['exterior_colors'] = $request->exterior_colors;
+        }
+
+        if ($request->filled('interior_colors')) {
+            $filters['interior_colors'] = $request->interior_colors;
+        }
+
+        if ($request->filled('registration_years')) {
+            $filters['registration_years'] = $request->registration_years;
+        }
+
+        if ($request->filled('fuel_types')) {
+            $filters['fuel_types'] = $request->fuel_types;
+        }
+
+        if ($request->filled('transmissions')) {
+            $filters['transmissions'] = $request->transmissions;
+        }
+
         if ($request->filled('vehicle_type')) {
             $filters['vehicle_type'] = $request->vehicle_type;
         }
@@ -179,6 +212,13 @@ class CarController extends Controller
 
         $filters['exterior_colors'] = collect($cars)
             ->pluck('exterior_color')
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $filters['interior_color'] = collect($cars)
+            ->pluck('interior_color')
             ->filter()
             ->unique()
             ->values()

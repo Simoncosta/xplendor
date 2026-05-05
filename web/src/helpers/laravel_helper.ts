@@ -96,6 +96,7 @@ export const deleteBlog = (companyId: number, id: number) => api.delete(url.GET_
 
 // LEADS
 export const getLeads = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_LEADS_APIS, { params });
+export const updateLead = (companyId: number, leadId: number, data: { status: string }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);
 
 // CARS
 export const getCarsPaginate = (
@@ -131,6 +132,12 @@ export const showCar = (params: { companyId: number; id: number; }) => api.get(u
 export const createCar = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateCar = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const closeCarSale = (companyId: number, carId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + url.GET_CAR_SALES, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const generateCarDescriptionApi = (companyId: number, data: any) =>
+    api.create(
+        url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + url.POST_CAR_GENERATE_DESCRIPTION,
+        data,
+        { headers: { "Content-Type": "application/json" } }
+    );
 export const analyticsCar = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/analytics");
 export const generateCarMarketingApi = (companyId: number, carId?: number) =>
     api.create(

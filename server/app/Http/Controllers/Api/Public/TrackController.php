@@ -52,6 +52,7 @@ class TrackController extends Controller
             'car_view',
             'car_view_duration',
             'car_lead',
+            // 'scroll_depth'
         ], $interactionTypes);
 
         $validated = $request->validate([
