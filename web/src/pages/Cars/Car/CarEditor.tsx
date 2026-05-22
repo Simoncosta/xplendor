@@ -8,6 +8,7 @@ import {
 } from "reactstrap";
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
+import type { BedType } from "./data/vehicleAttributes";
 import { ICarSalePayload } from "common/models/car-sale.model";
 // Components
 import XButton from "Components/Common/XButton";
@@ -69,18 +70,25 @@ const CarEditor = ({
         return map;
     };
 
-    const normalizeBeds = (beds: any) => {
-        if (!Array.isArray(beds)) {
-            return [];
-        }
+    const validBedSlugs = new Set<BedType>([
+        "camas_gemeas", "cama_central", "cama_francesa", "cama_basculante",
+        "cama_capucino", "cama_garagem", "beliche", "cama_transversal",
+        "cama_elevatoria_eletrica", "cama_suspensa", "cama_convertivel",
+        "outra", "cama_rebativel_cabine",
+    ]);
+
+    const normalizeBeds = (beds: unknown): Array<{ type: BedType }> => {
+        if (!Array.isArray(beds)) return [];
 
         return beds
-            .map((bed) => {
-                const type = typeof bed === "string" ? bed : bed?.type;
-
-                return type ? { type } : null;
+            .map((bed): { type: BedType } | null => {
+                const raw = typeof bed === "string" ? bed : (bed as Record<string, unknown>)?.type;
+                const type = typeof raw === "string" && validBedSlugs.has(raw as BedType)
+                    ? (raw as BedType)
+                    : "outra";
+                return { type };
             })
-            .filter((bed): bed is { type: string } => bed !== null);
+            .filter((bed): bed is { type: BedType } => bed !== null);
     };
 
     const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => {

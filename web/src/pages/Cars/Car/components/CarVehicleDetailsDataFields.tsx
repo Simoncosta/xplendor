@@ -1,3 +1,7 @@
+// TODO: Extrair B1 accordions (Dimensões, Cozinha, Casa de Banho) para
+// sub-componentes em components/vehicleAttributes/ na próxima iteração,
+// alinhando com o padrão dos B2 accordions.
+
 //React
 import { useEffect, useState } from "react";
 import Select from "react-select";
@@ -17,6 +21,12 @@ import { colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
 import { getCarCategories } from "helpers/laravel_helper";
+import EnergyClimateAccordion from "./vehicleAttributes/EnergyClimateAccordion";
+import ExteriorAccordion from "./vehicleAttributes/ExteriorAccordion";
+import SecurityAccordion from "./vehicleAttributes/SecurityAccordion";
+import ChassisStructureAccordion from "./vehicleAttributes/ChassisStructureAccordion";
+import InteriorFurnitureAccordion from "./vehicleAttributes/InteriorFurnitureAccordion";
+import { BED_LABELS, BedType } from "../data/vehicleAttributes";
 
 const fridgeTypeOptions = [
     { value: "trivalent",  label: "Trivalente" },
@@ -31,14 +41,25 @@ const showerTypeOptions = [
     { value: "none",     label: "Nenhum" },
 ];
 
-const bedTypeOptions = [
-    { value: "central", label: "Central" },
-    { value: "rebatível na cabine", label: "Rebatível na cabine" },
-    { value: "beliche", label: "Beliche" },
-    { value: "transversal", label: "Transversal" },
-    { value: "cama de garagem", label: "Cama de garagem" },
-    { value: "outra", label: "Outra" },
-];
+// 12 options shown by default; cama_rebativel_cabine is legacy and only injected
+// dynamically when the current bed already has that value (see getBedOptions below).
+const BED_OPTIONS_DEFAULT: { value: BedType; label: string }[] = (
+    [
+        "camas_gemeas", "cama_central", "cama_francesa", "cama_basculante",
+        "cama_capucino", "cama_garagem", "beliche", "cama_transversal",
+        "cama_elevatoria_eletrica", "cama_suspensa", "cama_convertivel", "outra",
+    ] as BedType[]
+).map(slug => ({ value: slug, label: BED_LABELS[slug] }));
+
+function getBedOptions(currentType: string | undefined): { value: BedType; label: string }[] {
+    if (currentType === "cama_rebativel_cabine") {
+        return [
+            ...BED_OPTIONS_DEFAULT,
+            { value: "cama_rebativel_cabine", label: BED_LABELS.cama_rebativel_cabine },
+        ];
+    }
+    return BED_OPTIONS_DEFAULT;
+}
 
 export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
@@ -293,7 +314,7 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                             type="button"
                                             color="light"
                                             className="border"
-                                            onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "" }])}
+                                            onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "outra" as BedType }])}
                                         >
                                             Adicionar cama
                                         </Button>
@@ -309,12 +330,12 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                                         <div className="flex-grow-1">
                                                             <Select
                                                                 name={`vehicle_attributes.beds.${index}.type`}
-                                                                options={bedTypeOptions}
-                                                                value={bedTypeOptions.find((option) => option.value === bed?.type) || null}
+                                                                options={getBedOptions(bed?.type)}
+                                                                value={getBedOptions(bed?.type).find((option) => option.value === bed?.type) || null}
                                                                 placeholder="Tipo de cama"
-                                                                onChange={(option: any) => {
+                                                                onChange={(option: { value: BedType; label: string } | null) => {
                                                                     const nextBeds = [...beds];
-                                                                    nextBeds[index] = { type: option?.value || "" };
+                                                                    nextBeds[index] = { type: option?.value ?? "outra" };
                                                                     setFieldValue("vehicle_attributes.beds", nextBeds);
                                                                 }}
                                                             />
@@ -411,6 +432,14 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                                         className="mb-3"
                                                     />
                                                 </Col>
+                                                <Col lg={2}>
+                                                    <XInput
+                                                        type="number"
+                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_shelves"
+                                                        label="Prateleiras"
+                                                        className="mb-3"
+                                                    />
+                                                </Col>
                                             </>
                                         )}
                                     </Row>
@@ -481,6 +510,12 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                 )}
                             </AccordionBody>
                         </AccordionItem>
+
+                        <EnergyClimateAccordion accordionId="4" />
+                        <ExteriorAccordion      accordionId="5" />
+                        <SecurityAccordion      accordionId="6" />
+                        <ChassisStructureAccordion accordionId="7" />
+                        <InteriorFurnitureAccordion accordionId="8" />
 
                     </Accordion>
                 </div>

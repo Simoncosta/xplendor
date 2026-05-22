@@ -16,6 +16,11 @@ export const DEFAULT_VEHICLE_ATTRIBUTES: VehicleAttributes = {
         bathroom: {},
     },
     beds: [],
+    energy_climate: {},
+    exterior: {},
+    security: {},
+    chassis_structure: {},
+    interior_furniture: {},
 };
 
 export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {

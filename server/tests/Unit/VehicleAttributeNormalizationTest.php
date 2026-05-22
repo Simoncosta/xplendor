@@ -78,13 +78,14 @@ class VehicleAttributeNormalizationTest extends TestCase
         $this->assertArrayNotHasKey('autonomy', $result);
     }
 
-    public function test_beds_stays_at_root_unchanged(): void
+    public function test_beds_old_strings_are_migrated_to_slugs(): void
     {
-        $beds = [['type' => 'central'], ['type' => 'cama de garagem']];
+        $result = VehicleAttribute::normalizeShape([
+            'beds' => [['type' => 'central'], ['type' => 'cama de garagem']],
+        ]);
 
-        $result = VehicleAttribute::normalizeShape(['beds' => $beds]);
-
-        $this->assertSame($beds, $result['beds']);
+        $this->assertSame('cama_central', $result['beds'][0]['type']);
+        $this->assertSame('cama_garagem', $result['beds'][1]['type']);
     }
 
     // ------------------------------------------------------------------ //
@@ -125,7 +126,7 @@ class VehicleAttributeNormalizationTest extends TestCase
         $this->assertSame(3300, $result['weights']['gross_weight_kg']);
         $this->assertTrue($result['habitation_basics']['has_bathroom']);
         $this->assertTrue($result['habitation_basics']['has_kitchen']);
-        $this->assertSame([['type' => 'cama de garagem']], $result['beds']);
+        $this->assertSame([['type' => 'cama_garagem']], $result['beds']);
     }
 
     // ------------------------------------------------------------------ //
@@ -211,5 +212,142 @@ class VehicleAttributeNormalizationTest extends TestCase
 
         // habitation migrated
         $this->assertTrue($result['habitation_basics']['has_bathroom']);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  B2 — 5 new sections
+    // ------------------------------------------------------------------ //
+
+    public function test_empty_shape_includes_all_b2_sections(): void
+    {
+        $shape = VehicleAttribute::emptyShape();
+
+        foreach (['energy_climate', 'exterior', 'security', 'chassis_structure', 'interior_furniture'] as $section) {
+            $this->assertArrayHasKey($section, $shape, "emptyShape missing section: {$section}");
+            $this->assertIsArray($shape[$section]);
+        }
+    }
+
+    public function test_b2_section_key_alone_triggers_as_is_return(): void
+    {
+        // Payload that has NO B1 keys — only a B2 key.
+        // normalizeShape must not fall through to migrateFromOldShape.
+        $input = [
+            'energy_climate' => [
+                'has_solar_panel'   => true,
+                'solar_panel_watts' => 150,
+            ],
+        ];
+
+        $result = VehicleAttribute::normalizeShape($input);
+
+        $this->assertSame($input, $result);
+        $this->assertTrue($result['energy_climate']['has_solar_panel']);
+    }
+
+    public function test_old_flat_record_does_not_gain_spurious_b2_sections(): void
+    {
+        // Typical old DB record — none of the B2 section keys should appear in output.
+        $raw = [
+            'length'       => 600,
+            'gross_weight' => 3300,
+            'has_bathroom' => true,
+            'has_kitchen'  => true,
+        ];
+
+        $result = VehicleAttribute::normalizeShape($raw);
+
+        foreach (['energy_climate', 'exterior', 'security', 'chassis_structure', 'interior_furniture'] as $section) {
+            $this->assertArrayNotHasKey($section, $result, "migrateFromOldShape should not add: {$section}");
+        }
+    }
+
+    public function test_full_b2_payload_survives_normalisation(): void
+    {
+        $input = [
+            'dimensions'        => ['length_m' => 7.0],
+            'energy_climate'    => [
+                'has_solar_panel'          => true,
+                'solar_panel_watts'        => 200,
+                'water_heater_source'      => 'gas',
+                'water_heater_brand'       => 'Truma',
+                'has_external_power_socket' => false,
+                'battery_count'            => 2,
+            ],
+            'exterior'          => [
+                'has_awning'   => true,
+                'awning_brand' => 'Thule',
+                'has_bike_rack' => false,
+            ],
+            'security'          => [
+                'has_alarm'          => true,
+                'has_entry_door_lock' => true,
+                'other_locks_notes'  => 'Fechadura adicional na bagageira',
+            ],
+            'chassis_structure' => [
+                'chassis_type'            => 'alko',
+                'has_turbovent_skylight'  => true,
+                'has_cabin_blackouts'     => true,
+                'cabin_blackout_type'     => 'magnético',
+            ],
+            'interior_furniture' => [
+                'has_foldable_table'     => true,
+                'upholstery_state'       => 'good',
+                'has_water_infiltrations' => false,
+            ],
+        ];
+
+        $result = VehicleAttribute::normalizeShape($input);
+
+        $this->assertSame($input, $result);
+        $this->assertSame('gas',   $result['energy_climate']['water_heater_source']);
+        $this->assertSame(200,     $result['energy_climate']['solar_panel_watts']);
+        $this->assertSame('Thule', $result['exterior']['awning_brand']);
+        $this->assertSame('alko',  $result['chassis_structure']['chassis_type']);
+        $this->assertSame('good',  $result['interior_furniture']['upholstery_state']);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  C — normalizeBedTypes
+    // ------------------------------------------------------------------ //
+
+    public function test_normalize_bed_types_empty_array_returns_empty(): void
+    {
+        $result = VehicleAttribute::normalizeShape(['beds' => []]);
+
+        $this->assertSame([], $result['beds']);
+    }
+
+    public function test_normalize_bed_types_central_maps_to_cama_central(): void
+    {
+        $result = VehicleAttribute::normalizeShape(['beds' => [['type' => 'central']]]);
+
+        $this->assertSame('cama_central', $result['beds'][0]['type']);
+    }
+
+    public function test_normalize_bed_types_cama_de_garagem_maps_to_cama_garagem(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'beds' => [['type' => 'cama de garagem']],
+        ]);
+
+        $this->assertSame('cama_garagem', $result['beds'][0]['type']);
+    }
+
+    public function test_normalize_bed_types_valid_slug_passes_through_unchanged(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'dimensions' => ['length_m' => 6.0],
+            'beds'       => [['type' => 'cama_basculante']],
+        ]);
+
+        $this->assertSame('cama_basculante', $result['beds'][0]['type']);
+    }
+
+    public function test_normalize_bed_types_unknown_string_falls_back_to_outra(): void
+    {
+        $result = VehicleAttribute::normalizeShape(['beds' => [['type' => 'dupla']]]);
+
+        $this->assertSame('outra', $result['beds'][0]['type']);
     }
 }

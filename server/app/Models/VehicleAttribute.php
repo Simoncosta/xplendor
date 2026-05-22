@@ -25,13 +25,18 @@ class VehicleAttribute extends Model
     public static function emptyShape(): array
     {
         return [
-            'dimensions'        => [],
-            'weights'           => [],
-            'habitation_basics' => [
+            'dimensions'         => [],
+            'weights'            => [],
+            'habitation_basics'  => [
                 'kitchen'  => [],
                 'bathroom' => [],
             ],
-            'beds'              => [],
+            'beds'               => [],
+            'energy_climate'     => [],
+            'exterior'           => [],
+            'security'           => [],
+            'chassis_structure'  => [],
+            'interior_furniture' => [],
         ];
     }
 
@@ -48,8 +53,15 @@ class VehicleAttribute extends Model
             return self::emptyShape();
         }
 
-        // Already in new format — at least one section key present
-        if (isset($raw['dimensions']) || isset($raw['weights']) || isset($raw['habitation_basics'])) {
+        // Already in new format — at least one known section key present.
+        // Still normalise beds: early B1 records preserved the old string values.
+        if (array_intersect_key($raw, array_flip([
+            'dimensions', 'weights', 'habitation_basics',
+            'energy_climate', 'exterior', 'security', 'chassis_structure', 'interior_furniture',
+        ]))) {
+            if (!empty($raw['beds'])) {
+                $raw['beds'] = self::normalizeBedTypes($raw['beds']);
+            }
             return $raw;
         }
 
@@ -100,11 +112,45 @@ class VehicleAttribute extends Model
             $result['autonomy_km'] = (int) $old['autonomy'];
         }
 
-        // beds stays at root as-is
+        // beds stays at root — normalise type slugs
         if (isset($old['beds']) && is_array($old['beds'])) {
-            $result['beds'] = $old['beds'];
+            $result['beds'] = self::normalizeBedTypes($old['beds']);
         }
 
         return $result;
+    }
+
+    /**
+     * Migrate legacy bed type strings to canonical slugs.
+     * Idempotent: valid slugs pass through unchanged.
+     */
+    private static function normalizeBedTypes(array $beds): array
+    {
+        $map = [
+            'central'              => 'cama_central',
+            'rebatível na cabine'  => 'cama_rebativel_cabine',
+            'beliche'              => 'beliche',
+            'transversal'          => 'cama_transversal',
+            'cama de garagem'      => 'cama_garagem',
+            'outra'                => 'outra',
+        ];
+
+        $validSlugs = [
+            'camas_gemeas', 'cama_central', 'cama_francesa', 'cama_basculante',
+            'cama_capucino', 'cama_garagem', 'beliche', 'cama_transversal',
+            'cama_elevatoria_eletrica', 'cama_suspensa', 'cama_convertivel',
+            'outra', 'cama_rebativel_cabine',
+        ];
+
+        return array_map(static function (array $bed) use ($map, $validSlugs): array {
+            $type = $bed['type'] ?? '';
+
+            if (in_array($type, $validSlugs, true)) {
+                return $bed;
+            }
+
+            $bed['type'] = $map[$type] ?? 'outra';
+            return $bed;
+        }, $beds);
     }
 }

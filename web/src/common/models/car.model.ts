@@ -1,8 +1,10 @@
+import type { BedType } from "pages/Cars/Car/data/vehicleAttributes";
+export type { BedType };
+
 export type CarStatus = "draft" | "active" | "inactive" | "sold";
 export type CarOrigin = "national" | "imported";
 export type VehicleType = "car" | "motorcycle" | "motorhome" | "caravan";
 export type MotorhomeSubsegment = "autocaravana" | "caravana" | "residencial";
-export type MotorhomeBedType = "central" | "rebatível na cabine" | "beliche" | "transversal" | "outra";
 
 export type CarCondition =
     | "new"
@@ -29,6 +31,10 @@ export interface CarExtrasGroup {
 
 export type FridgeType = "trivalent" | "compressor" | "absorption" | "none";
 export type ShowerType = "separate" | "combined" | "none";
+export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
+export type AmbientHeatingSource = "electric" | "gas" | "diesel" | "none";
+export type ChassisType = "standard" | "alko" | "other";
+export type UpholsteryState = "good" | "fair" | "worn" | "replaced";
 
 export interface VehicleAttributeDimensions {
     length_m?: number;
@@ -48,6 +54,7 @@ export interface VehicleAttributeKitchen {
     has_fridge?: boolean;
     fridge_type?: FridgeType;
     fridge_litres?: number;
+    fridge_shelves?: number;
 }
 
 export interface VehicleAttributeBathroom {
@@ -65,12 +72,90 @@ export interface VehicleAttributeHabitationBasics {
     bathroom?: VehicleAttributeBathroom;
 }
 
+export interface VehicleAttributeEnergyClimate {
+    water_heater_source?: WaterHeaterSource;
+    water_heater_brand?: string;
+    ambient_heating_source?: AmbientHeatingSource;
+    ambient_heating_brand?: string;
+    has_solar_panel?: boolean;
+    solar_panel_watts?: number;
+    has_inverter?: boolean;
+    inverter_watts?: number;
+    has_gpl?: boolean;
+    gpl_bottles_count?: number;
+    has_external_power_socket?: boolean;
+    battery_count?: number;
+    cabin_battery_count?: number;
+    cell_battery_count?: number;
+}
+
+export interface VehicleAttributeExterior {
+    has_awning?: boolean;
+    awning_brand?: string;
+    has_national_antenna?: boolean;
+    has_parabolic_antenna?: boolean;
+    has_bike_rack?: boolean;
+    has_motorbike_rack?: boolean;
+    has_electric_step?: boolean;
+    has_manual_step?: boolean;
+    has_stabilizers?: boolean;
+    has_spare_wheel?: boolean;
+    has_fix_n_go_kit?: boolean;
+    has_bull_eye?: boolean;
+    has_external_wc?: boolean;
+    has_hubcaps?: boolean;
+}
+
+export interface VehicleAttributeSecurity {
+    has_alarm?: boolean;
+    has_hatch_lock?: boolean;
+    has_cabin_lock?: boolean;
+    has_safe_door?: boolean;
+    has_gas_lock?: boolean;
+    has_entry_door_lock?: boolean;
+    other_locks_notes?: string;
+}
+
+export interface VehicleAttributeChassisStructure {
+    chassis_type?: ChassisType;
+    chassis_notes?: string;
+    has_turbovent_skylight?: boolean;
+    has_panoramic_skylight?: boolean;
+    has_40x40_skylight?: boolean;
+    other_skylights_notes?: string;
+    has_remifront?: boolean;
+    has_window_blackouts?: boolean;
+    has_mosquito_nets?: boolean;
+    has_door_mosquito_net?: boolean;
+    has_cabin_blackouts?: boolean;
+    cabin_blackout_type?: string;
+}
+
+export interface VehicleAttributeInteriorFurniture {
+    has_foldable_table?: boolean;
+    has_rotating_seats?: boolean;
+    upholstery_state?: UpholsteryState;
+    has_curtains?: boolean;
+    has_led_lighting?: boolean;
+    has_halo_lighting?: boolean;
+    has_tv_support?: boolean;
+    has_tv?: boolean;
+    has_command_panel?: boolean;
+    has_water_infiltrations?: boolean;
+    infiltrations_notes?: string;
+}
+
 export interface VehicleAttributes {
     dimensions?: VehicleAttributeDimensions;
     weights?: VehicleAttributeWeights;
     habitation_basics?: VehicleAttributeHabitationBasics;
-    beds?: Array<{ type: MotorhomeBedType | string }> | null;
+    beds?: Array<{ type: BedType }> | null;
     autonomy_km?: number;
+    energy_climate?: VehicleAttributeEnergyClimate;
+    exterior?: VehicleAttributeExterior;
+    security?: VehicleAttributeSecurity;
+    chassis_structure?: VehicleAttributeChassisStructure;
+    interior_furniture?: VehicleAttributeInteriorFurniture;
     [key: string]: unknown;
 }
 

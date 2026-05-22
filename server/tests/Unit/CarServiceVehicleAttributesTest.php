@@ -74,7 +74,7 @@ class CarServiceVehicleAttributesTest extends TestCase
     private function normalizeVehicleAttributes(array $attributes): array
     {
         $service = (new ReflectionClass(CarService::class))->newInstanceWithoutConstructor();
-        $method = new ReflectionClass(CarService::class)->getMethod('extractVehicleAttributes');
+        $method = (new ReflectionClass(CarService::class))->getMethod('extractVehicleAttributes');
         $method->setAccessible(true);
 
         return $method->invoke($service, [

@@ -528,6 +528,7 @@ Existem **5 páginas independentes** por viatura:
 13. Sem índices documentados em tabelas de métricas — adicionar `(car_id, period_start)` em `car_performance_metrics`
 14. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro
 15. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios
+16. Accordions B1 (`Dimensões e Pesos`, `Cozinha`, `Casa de Banho`) inline em `CarVehicleDetailsDataFields.tsx` — extrair para `components/vehicleAttributes/` alinhando com padrão B2
 
 ---
 

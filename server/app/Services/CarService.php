@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Car;
 use App\Models\User;
+use App\Repositories\CarPublicRepository;
 use App\Repositories\Contracts\CarRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +25,7 @@ class CarService extends BaseService
         protected CarImageService $carImageService,
         protected Car360ExteriorImageService $car360ExteriorImageService,
         protected CarAiAnalysesService $carAiAnalysesService,
+        protected CarPublicRepository $carPublicRepository,
     ) {
         parent::__construct($carRepository);
     }
@@ -30,6 +33,16 @@ class CarService extends BaseService
     public function getAll(array $columns = ['*'], array $relations = [], ?int $perPage = null, array $filters = [], array $orderBy = []): mixed
     {
         return $this->carRepository->getAllWithAnalytics($columns, $relations, $perPage, $filters, $orderBy);
+    }
+
+    public function getPublicCars(int $companyId, array $filters = [], ?int $perPage = null, array $orderBy = []): mixed
+    {
+        return $this->carPublicRepository->getPublicCars($companyId, $filters, $perPage, $orderBy);
+    }
+
+    public function getPublicFiltersData(int $companyId): EloquentCollection
+    {
+        return $this->carPublicRepository->getPublicFiltersData($companyId);
     }
 
     public function store(array $data): mixed
@@ -668,6 +681,45 @@ class CarService extends BaseService
             return $result;
         }
 
+        if ($key === 'energy_climate') {
+            return $this->normalizeFlatSection($value,
+                ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_external_power_socket'],
+                ['solar_panel_watts', 'inverter_watts', 'gpl_bottles_count', 'battery_count', 'cabin_battery_count', 'cell_battery_count']
+            );
+        }
+
+        if ($key === 'exterior') {
+            return $this->normalizeFlatSection($value,
+                ['has_awning', 'has_national_antenna', 'has_parabolic_antenna', 'has_bike_rack', 'has_motorbike_rack',
+                 'has_electric_step', 'has_manual_step', 'has_stabilizers', 'has_spare_wheel', 'has_fix_n_go_kit',
+                 'has_bull_eye', 'has_external_wc', 'has_hubcaps'],
+                []
+            );
+        }
+
+        if ($key === 'security') {
+            return $this->normalizeFlatSection($value,
+                ['has_alarm', 'has_hatch_lock', 'has_cabin_lock', 'has_safe_door', 'has_gas_lock', 'has_entry_door_lock'],
+                []
+            );
+        }
+
+        if ($key === 'chassis_structure') {
+            return $this->normalizeFlatSection($value,
+                ['has_turbovent_skylight', 'has_panoramic_skylight', 'has_40x40_skylight', 'has_remifront',
+                 'has_window_blackouts', 'has_mosquito_nets', 'has_door_mosquito_net', 'has_cabin_blackouts'],
+                []
+            );
+        }
+
+        if ($key === 'interior_furniture') {
+            return $this->normalizeFlatSection($value,
+                ['has_foldable_table', 'has_rotating_seats', 'has_curtains', 'has_led_lighting', 'has_halo_lighting',
+                 'has_tv_support', 'has_tv', 'has_command_panel', 'has_water_infiltrations'],
+                []
+            );
+        }
+
         if ($key === 'beds') {
             return collect($value)
                 ->map(function ($bed) {
@@ -687,5 +739,37 @@ class CarService extends BaseService
         }
 
         return Arr::sortRecursive(array_filter($value, fn ($item) => $item !== null && $item !== ''));
+    }
+
+    /**
+     * Normalise a flat key→scalar section (no sub-objects).
+     * Bool keys are cast via filter_var; int keys via (int); remainder trimmed as strings.
+     *
+     * @param array<string,mixed> $value
+     * @param list<string>        $boolKeys
+     * @param list<string>        $intKeys
+     * @return array<string,mixed>
+     */
+    private function normalizeFlatSection(array $value, array $boolKeys, array $intKeys): array
+    {
+        $result = [];
+        foreach ($value as $k => $v) {
+            if (!is_string($k) || $v === null || $v === '') {
+                continue;
+            }
+            if (in_array($k, $boolKeys, true)) {
+                $result[$k] = filter_var($v, FILTER_VALIDATE_BOOLEAN);
+            } elseif (!empty($intKeys) && in_array($k, $intKeys, true)) {
+                if (is_numeric($v)) {
+                    $result[$k] = (int) $v;
+                }
+            } else {
+                $trimmed = is_string($v) ? trim($v) : null;
+                if ($trimmed !== null && $trimmed !== '') {
+                    $result[$k] = $trimmed;
+                }
+            }
+        }
+        return $result;
     }
 }

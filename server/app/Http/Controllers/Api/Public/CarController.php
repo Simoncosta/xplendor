@@ -1,291 +1,277 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\Public;
 
 use App\Helpers\ApiPaginate;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Public\CarIndexRequest;
+use App\Http\Resources\Public\CarPublicResource;
+use App\Models\VehicleAttribute;
 use App\Services\CarBrandService;
 use App\Services\CarModelService;
 use App\Services\CarService;
-use App\Services\CompanyService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CarController extends Controller
 {
+    /** @var array<string, string> */
+    private const BED_LABELS = [
+        'camas_gemeas'             => 'Camas gémeas',
+        'cama_central'             => 'Cama central',
+        'cama_francesa'            => 'Cama francesa',
+        'cama_basculante'          => 'Cama basculante',
+        'cama_capucino'            => 'Cama capucino',
+        'cama_garagem'             => 'Cama de garagem',
+        'beliche'                  => 'Beliche',
+        'cama_transversal'         => 'Cama transversal',
+        'cama_elevatoria_eletrica' => 'Cama elevatória eléctrica',
+        'cama_suspensa'            => 'Cama suspensa',
+        'cama_convertivel'         => 'Cama convertível',
+        'outra'                    => 'Outra',
+        'cama_rebativel_cabine'    => 'Rebatível na cabine',
+    ];
+
     public function __construct(
-        protected CompanyService $companyService,
         protected CarService $carService,
         protected CarBrandService $brandService,
-        protected CarModelService $modelService
+        protected CarModelService $modelService,
     ) {}
 
-    public function index(Request $request)
+    public function index(CarIndexRequest $request): JsonResponse
     {
-        $paginate = $request->input('perPage')
-            ? ApiPaginate::perPage($request)
-            : null;
+        $company   = $request->input('public_api_company');
+        $perPage   = $request->input('perPage') ? ApiPaginate::perPage($request) : null;
+        $orderBy   = $request->input('orderBy', 'created_at') ?? 'created_at';
+        $orderDir  = $request->input('orderDirection', 'asc');
 
-        $company = $this->companyService->findOrFail(
-            $request->input('token'),
-            'public_api_token',
-            ['id']
-        );
+        $filters = $this->buildIndexFilters($request);
 
-        $orderBy = $request->input('orderBy', 'created_at') ?? 'created_at';
-        $orderDirection = $request->input('orderDirection', 'asc');
+        $cars = $this->carService->getPublicCars($company->id, $filters, $perPage, [$orderBy => $orderDir]);
+        $cars = $this->carService->appendPublicSellerContact($cars);
 
-        $order = [$orderBy => $orderDirection];
+        return ApiResponse::success(CarPublicResource::collection($cars), 'Cars fetched successfully.');
+    }
 
-        $filters = ['company_id' => $company->id];
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $company = $request->input('public_api_company');
 
-        // Filtros opcionais
+        $car = \App\Models\Car::query()
+            ->where('id', $id)
+            ->where('company_id', $company->id)
+            ->whereIn('status', ['active', 'available_soon'])
+            ->with(['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute'])
+            ->first();
+
+        if (!$car) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
+        $car = $this->carService->appendPublicSellerContact($car);
+
+        return ApiResponse::success(new CarPublicResource($car), 'Car fetched successfully.');
+    }
+
+    public function filters(Request $request): JsonResponse
+    {
+        $company = $request->input('public_api_company');
+        $cars    = $this->carService->getPublicFiltersData($company->id);
+
+        $habitation = $cars->filter(fn($c) => in_array($c->vehicle_type, ['motorhome', 'caravan'], true));
+
+        $filters = [
+            'brands' => $cars->pluck('brand')->filter()->unique('id')
+                ->map(fn($b) => ['id' => $b->id, 'name' => $b->name])
+                ->values()->toArray(),
+
+            'models' => $cars->pluck('model')->filter()->unique('id')
+                ->map(fn($m) => ['id' => $m->id, 'name' => $m->name])
+                ->values()->toArray(),
+
+            'categories' => $habitation->filter(fn($c) => $c->vehicle_type === 'motorhome')
+                ->pluck('category')->filter()->groupBy('id')
+                ->map(fn($group) => [
+                    'id'    => $group->first()->id,
+                    'name'  => $group->first()->name,
+                    'slug'  => $group->first()->slug,
+                    'count' => $group->count(),
+                ])->values()->toArray(),
+
+            'doors' => $cars->pluck('doors')->filter()->unique()->sort()->values()->toArray(),
+
+            'segments' => $cars->pluck('segment')->filter()->unique()->sort()->values()->toArray(),
+
+            'engine_capacity_cc' => $cars->pluck('engine_capacity_cc')->filter()->unique()->sort()->values()->toArray(),
+
+            'exterior_colors' => $cars->pluck('exterior_color')->filter()->unique()->sort()->values()->toArray(),
+
+            'interior_color' => $cars->pluck('interior_color')->filter()->unique()->sort()->values()->toArray(),
+
+            'mileage_kms' => $cars->pluck('mileage_km')->filter()->unique()->sort()->values()->toArray(),
+
+            'price_gross' => $cars->pluck('price_gross')->filter()->unique()->sort()->values()->toArray(),
+
+            'registration_years' => $cars->pluck('registration_year')->filter()->unique()->sort()->values()->toArray(),
+
+            'seats' => $cars->pluck('seats')->filter()->unique()->sort()->values()->toArray(),
+
+            'fuel_types' => $cars->pluck('fuel_type')->filter()->unique()->sort()->values()->toArray(),
+
+            'transmissions' => $cars->pluck('transmission')->filter()->unique()->sort()->values()->toArray(),
+
+            'bed_types' => $this->buildBedTypesFilter($habitation),
+
+            'seats_range' => $this->buildRange($cars->pluck('seats')->filter()),
+
+            'length_m_range' => $this->buildLengthRange($habitation),
+
+            'available_features' => $this->buildAvailableFeatures($habitation),
+        ];
+
+        return ApiResponse::success($filters, 'Filters fetched successfully.');
+    }
+
+    /** @return array<string, mixed> */
+    private function buildIndexFilters(CarIndexRequest $request): array
+    {
+        $filters = [];
+
         if ($request->filled('doors')) {
-            $filters['doors'] = $request->doors;
+            $filters['doors'] = $request->integer('doors');
         }
 
         if ($request->filled('condition')) {
-            $condition = $request->input('condition');
-            if ($condition === 'new') {
-                $filters['condition'] = 'new';
-            }
-            if ($condition === 'used') {
-                $filters['condition'] = ['used', 'like_new'];
-            }
+            $filters['condition'] = $request->string('condition')->toString();
         }
 
         if ($request->filled('min_price_gross') || $request->filled('max_price_gross')) {
-            $min = $request->input('min_price_gross');
-            $max = $request->input('max_price_gross');
-            $min = $min ? (float) $min : null;
-            $max = $max ? (float) $max : null;
-            $filters['price_gross'] = [
-                'between' => [
-                    $min ?? 0,
-                    $max ?? PHP_INT_MAX
-                ]
-            ];
+            $min = $request->filled('min_price_gross') ? (float) $request->input('min_price_gross') : 0;
+            $max = $request->filled('max_price_gross') ? (float) $request->input('max_price_gross') : PHP_INT_MAX;
+            $filters['price_gross'] = ['between' => [$min, $max]];
         }
 
-        if ($request->filled('exterior_colors')) {
-            $filters['exterior_colors'] = $request->exterior_colors;
+        foreach (['exterior_colors', 'interior_colors', 'registration_years', 'fuel_types', 'transmissions'] as $param) {
+            if ($request->filled($param)) {
+                $filters[$param] = $request->input($param);
+            }
         }
 
-        if ($request->filled('interior_colors')) {
-            $filters['interior_colors'] = $request->interior_colors;
+        foreach (['vehicle_type', 'segment', 'category'] as $param) {
+            if ($request->filled($param)) {
+                $filters[$param] = $request->string($param)->toString();
+            }
         }
 
-        if ($request->filled('registration_years')) {
-            $filters['registration_years'] = $request->registration_years;
+        foreach (['min_seats', 'max_seats'] as $param) {
+            if ($request->filled($param)) {
+                $filters[$param] = $request->integer($param);
+            }
         }
 
-        if ($request->filled('fuel_types')) {
-            $filters['fuel_types'] = $request->fuel_types;
+        foreach (['min_length_m', 'max_length_m'] as $param) {
+            if ($request->filled($param)) {
+                $filters[$param] = (float) $request->input($param);
+            }
         }
 
-        if ($request->filled('transmissions')) {
-            $filters['transmissions'] = $request->transmissions;
+        foreach (['has_bathroom', 'has_kitchen', 'has_solar_panel'] as $param) {
+            if ($request->filled($param)) {
+                $filters[$param] = $request->boolean($param);
+            }
         }
 
-        if ($request->filled('vehicle_type')) {
-            $filters['vehicle_type'] = $request->vehicle_type;
-        }
-
-        if ($request->filled('segment')) {
-            $filters['segment'] = $request->segment;
+        if ($request->filled('bed_types')) {
+            $filters['bed_types'] = $request->input('bed_types');
         }
 
         if ($request->filled('brand')) {
-            $brands = $this->brandService->getAll(
-                ['id'],
-                [],
-                null,
-                ['name' => $request->brand]
-            );
-            $filters['car_brand_id'] = $brands[0]->id;
+            $brands = $this->brandService->getAll(['id'], [], null, ['name' => $request->string('brand')->toString()]);
+            if (!empty($brands[0])) {
+                $filters['car_brand_id'] = $brands[0]->id;
+            }
         }
 
         if ($request->filled('model')) {
-            $models = $this->modelService->getAll(
-                ['id'],
-                [],
-                null,
-                ['name' => $request->model]
-            );
-            $filters['car_model_id'] = $models[0]->id;
+            $models = $this->modelService->getAll(['id'], [], null, ['name' => $request->string('model')->toString()]);
+            if (!empty($models[0])) {
+                $filters['car_model_id'] = $models[0]->id;
+            }
         }
 
-        $cars = $this->carService->getAll(
-            ['*'],
-            ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'category', 'vehicleAttribute', 'seller'],
-            $paginate,
-            $filters,
-            $order
-        );
-
-        $cars = $this->carService->appendPublicSellerContact($cars);
-
-        return ApiResponse::success($cars, 'Cars fetched successfully.');
+        return $filters;
     }
 
-    public function show(Request $request, int $id)
+    /** @return array<int, array<string, mixed>> */
+    private function buildBedTypesFilter(\Illuminate\Support\Collection $habitation): array
     {
-        $company = $this->companyService->findOrFail(
-            $request->input('token'),
-            'public_api_token',
-            ['id']
-        );
-
-        $cars = $this->carService->findOrFail(
-            $id,
-            'id',
-            ['*'],
-            ['images', 'externalImages', 'brand', 'model', 'vehicleAttribute', 'seller']
-        );
-
-        if ($cars->company_id !== $company->id) {
-            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        $counts = [];
+        foreach ($habitation as $car) {
+            $va   = $car->vehicle_attributes;
+            $beds = $va['beds'] ?? [];
+            foreach ($beds as $bed) {
+                $type = $bed['type'] ?? null;
+                if ($type) {
+                    $counts[$type] = ($counts[$type] ?? 0) + 1;
+                }
+            }
         }
 
-        $cars = $this->carService->appendPublicSellerContact($cars);
-
-        return ApiResponse::success($cars, 'Car fetched successfully.');
+        return collect($counts)
+            ->map(fn($count, $slug) => [
+                'slug'  => $slug,
+                'label' => self::BED_LABELS[$slug] ?? $slug,
+                'count' => $count,
+            ])
+            ->sortByDesc('count')
+            ->values()
+            ->toArray();
     }
 
-    public function filters(Request $request)
+    /** @param \Illuminate\Support\Collection<int, mixed> $values */
+    private function buildRange(\Illuminate\Support\Collection $values): array
     {
-        $company = $this->companyService->findOrFail(
-            $request->input('token'),
-            'public_api_token',
-            ['id']
-        );
+        if ($values->isEmpty()) {
+            return ['min' => null, 'max' => null];
+        }
 
-        $cars = $this->carService->getAll(
-            ['*'],
-            ['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute'],
-            null,
-            ['company_id' => $company->id]
-        );
+        return ['min' => $values->min(), 'max' => $values->max()];
+    }
 
-        $filters['brands'] = collect($cars)
-            ->pluck('brand')
-            ->filter()
-            ->unique('id')
-            ->map(fn($brand) => [
-                'id' => $brand->id,
-                'name' => $brand->name,
-            ])
-            ->values()
-            ->toArray();
+    /** @param \Illuminate\Support\Collection<int, mixed> $habitation */
+    private function buildLengthRange(\Illuminate\Support\Collection $habitation): array
+    {
+        $lengths = $habitation
+            ->map(fn($c) => ($c->vehicle_attributes['dimensions']['length_m'] ?? null))
+            ->filter(fn($v) => $v !== null && $v > 0)
+            ->map(fn($v) => (float) $v);
 
-        $filters['models'] = collect($cars)
-            ->pluck('model')
-            ->filter()
-            ->unique('id')
-            ->map(fn($brand) => [
-                'id' => $brand->id,
-                'name' => $brand->name,
-            ])
-            ->values()
-            ->toArray();
+        return $this->buildRange($lengths);
+    }
 
-        $filters['doors'] = collect($cars)
-            ->pluck('doors')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
+    /** @return array<int, array<string, mixed>> */
+    private function buildAvailableFeatures(\Illuminate\Support\Collection $habitation): array
+    {
+        $featureKeys = ['has_bathroom', 'has_kitchen', 'has_solar_panel'];
+        $result      = [];
 
-        $filters['segments'] = collect($cars)
-            ->pluck('segment')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
+        foreach ($featureKeys as $key) {
+            $count = $habitation->filter(function ($car) use ($key) {
+                $va = $car->vehicle_attributes ?? [];
+                if ($key === 'has_solar_panel') {
+                    return !empty($va['energy_climate'][$key]);
+                }
+                return !empty($va['habitation_basics'][$key]);
+            })->count();
 
-        $filters['engine_capacity_cc'] = collect($cars)
-            ->pluck('engine_capacity_cc')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
+            if ($count > 0) {
+                $result[] = ['key' => $key, 'count' => $count];
+            }
+        }
 
-        $filters['exterior_colors'] = collect($cars)
-            ->pluck('exterior_color')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['interior_color'] = collect($cars)
-            ->pluck('interior_color')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['mileage_kms'] = collect($cars)
-            ->pluck('mileage_km')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['price_gross'] = collect($cars)
-            ->pluck('price_gross')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['registration_years'] = collect($cars)
-            ->pluck('registration_year')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['seats'] = collect($cars)
-            ->pluck('seats')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['fuel_types'] = collect($cars)
-            ->pluck('fuel_type')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['transmissions'] = collect($cars)
-            ->pluck('transmission')
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['bed_types'] = collect($cars)
-            ->filter(fn($car) => in_array($car->vehicle_type, ['motorhome', 'caravan']))
-            ->flatMap(fn($car) => $car->bed_types ?? [])
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
-
-        $filters['categories'] = collect($cars)
-            ->filter(fn($car) => $car->vehicle_type === 'motorhome')
-            ->pluck('category')
-            ->filter()
-            ->unique('id')
-            ->map(fn($category) => [
-                'id'   => $category->id,
-                'name' => $category->name,
-            ])
-            ->values()
-            ->toArray();
-
-        return ApiResponse::success($filters, 'Filters cars fetched successfully.');
+        return $result;
     }
 }

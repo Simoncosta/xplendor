@@ -12,7 +12,7 @@ class MigrateVehicleAttributesShapeCommand extends Command
     protected $signature = 'vehicle-attributes:migrate-shape
                                 {--force : Escrever alterações na base de dados (por omissão é dry-run)}';
 
-    protected $description = 'Migra registos de vehicle_attributes do formato plano antigo para o formato B1 aninhado';
+    protected $description = 'Migra registos de vehicle_attributes do formato plano antigo para o formato B1 aninhado e normaliza slugs de tipos de cama';
 
     public function handle(): int
     {
