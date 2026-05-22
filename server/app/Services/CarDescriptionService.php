@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CarBrand;
 use App\Models\CarModel;
+use App\Models\VehicleAttribute;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -125,15 +126,16 @@ SYSTEM;
         if ($d['mileage_km'] ?? null)         $lines[] = 'Quilometragem: ' . number_format((int) $d['mileage_km'], 0, ',', '.') . ' km';
         if ($d['subsegment'] ?? null)         $lines[] = "Tipo de carroçaria: {$d['subsegment']}";
 
-        $attrs = $d['vehicle_attributes'] ?? [];
+        $raw = $d['vehicle_attributes'] ?? null;
+        $attrs = VehicleAttribute::normalizeShape(is_array($raw) ? $raw : null);
         if (!empty($attrs['beds'])) {
             $bedCount = count((array) $attrs['beds']);
             $bedTypes = collect($attrs['beds'])->pluck('type')->filter()->implode(', ');
             $lines[] = "Camas: {$bedCount}" . ($bedTypes ? " ({$bedTypes})" : '');
         }
-        if (!empty($attrs['has_bathroom'])) $lines[] = 'Casa de banho: Sim';
-        if (!empty($attrs['has_kitchen']))  $lines[] = 'Cozinha: Sim';
-        if ($attrs['gross_weight'] ?? null) $lines[] = "Peso bruto: {$attrs['gross_weight']} kg";
+        if (!empty($attrs['habitation_basics']['has_bathroom'])) $lines[] = 'Casa de banho: Sim';
+        if (!empty($attrs['habitation_basics']['has_kitchen']))  $lines[] = 'Cozinha: Sim';
+        if ($attrs['weights']['gross_weight_kg'] ?? null) $lines[] = "Peso bruto: {$attrs['weights']['gross_weight_kg']} kg";
 
         $this->appendExtras($lines, $d);
         $this->appendPrice($lines, $price, $promo);
@@ -147,15 +149,16 @@ SYSTEM;
         if ($version) $lines[] = "Versão: {$version}";
         $lines[] = "Ano: {$year}";
 
-        $attrs = $d['vehicle_attributes'] ?? [];
+        $raw = $d['vehicle_attributes'] ?? null;
+        $attrs = VehicleAttribute::normalizeShape(is_array($raw) ? $raw : null);
         if (!empty($attrs['beds'])) {
             $bedCount = count((array) $attrs['beds']);
             $lines[] = "Lugares de dormir: {$bedCount}";
         }
-        if (!empty($attrs['has_bathroom'])) $lines[] = 'Casa de banho: Sim';
-        if (!empty($attrs['has_kitchen']))  $lines[] = 'Cozinha: Sim';
-        if ($attrs['gross_weight'] ?? null) $lines[] = "Peso: {$attrs['gross_weight']} kg";
-        if ($attrs['length'] ?? null)       $lines[] = "Comprimento: {$attrs['length']} m";
+        if (!empty($attrs['habitation_basics']['has_bathroom'])) $lines[] = 'Casa de banho: Sim';
+        if (!empty($attrs['habitation_basics']['has_kitchen']))  $lines[] = 'Cozinha: Sim';
+        if ($attrs['weights']['gross_weight_kg'] ?? null) $lines[] = "Peso: {$attrs['weights']['gross_weight_kg']} kg";
+        if ($attrs['dimensions']['length_m'] ?? null)    $lines[] = "Comprimento: {$attrs['dimensions']['length_m']} m";
 
         $this->appendExtras($lines, $d);
         $this->appendPrice($lines, $price, $promo);

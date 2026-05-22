@@ -9,14 +9,13 @@ const DEFAULT_EXTRAS: CarExtrasGroup[] = [
 ];
 
 export const DEFAULT_VEHICLE_ATTRIBUTES: VehicleAttributes = {
-    length: "",
-    width: "",
-    height: "",
-    gross_weight: "",
+    dimensions: {},
+    weights: {},
+    habitation_basics: {
+        kitchen: {},
+        bathroom: {},
+    },
     beds: [],
-    has_bathroom: false,
-    has_kitchen: false,
-    autonomy: "",
 };
 
 export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {

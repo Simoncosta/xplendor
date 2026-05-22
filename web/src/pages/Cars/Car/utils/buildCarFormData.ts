@@ -88,37 +88,44 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
 
     const vehicleAttributes = values.vehicle_attributes ?? {};
 
+    const appendVehicleAttr = (prefix: string, value: any) => {
+        if (isNil(value) || value === "") return;
+
+        if (Array.isArray(value)) {
+            value.forEach((item: any, i: number) => {
+                if (isNil(item) || item === "") return;
+                if (typeof item === "object") {
+                    Object.entries(item).forEach(([childKey, childValue]) => {
+                        if (isNil(childValue) || childValue === "") return;
+                        fd.append(`${prefix}[${i}][${childKey}]`, String(childValue));
+                    });
+                    return;
+                }
+                fd.append(`${prefix}[${i}]`, String(item));
+            });
+            return;
+        }
+
+        if (typeof value === "object") {
+            Object.entries(value).forEach(([subKey, subValue]) => {
+                appendVehicleAttr(`${prefix}[${subKey}]`, subValue);
+            });
+            return;
+        }
+
+        if (typeof value === "boolean") {
+            fd.append(prefix, value ? "1" : "0");
+            return;
+        }
+
+        fd.append(prefix, String(value));
+    };
+
     if (values.vehicle_type === "motorhome" || values.vehicle_type === "caravan") {
         fd.append("vehicle_attributes[_sync]", "1");
 
         Object.entries(vehicleAttributes).forEach(([key, value]) => {
-            if (isNil(value) || value === "") return;
-
-            if (key === "autonomy_km") return;
-
-            if (Array.isArray(value)) {
-                value.forEach((item: any, i: number) => {
-                    if (isNil(item) || item === "") return;
-
-                    if (typeof item === "object") {
-                        Object.entries(item).forEach(([childKey, childValue]) => {
-                            if (isNil(childValue) || childValue === "") return;
-                            fd.append(`vehicle_attributes[${key}][${i}][${childKey}]`, String(childValue));
-                        });
-                        return;
-                    }
-
-                    fd.append(`vehicle_attributes[${key}][${i}]`, String(item));
-                });
-                return;
-            }
-
-            if (typeof value === "boolean") {
-                fd.append(`vehicle_attributes[${key}]`, value ? "1" : "0");
-                return;
-            }
-
-            fd.append(`vehicle_attributes[${key}]`, String(value));
+            appendVehicleAttr(`vehicle_attributes[${key}]`, value);
         });
     } else if (isUpdate) {
         fd.append("vehicle_attributes[_sync]", "1");

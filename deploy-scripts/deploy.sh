@@ -34,4 +34,8 @@ yarn build
 echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx
 
+echo "Migrations (prod)"
+cd ".."
+docker exec -it xplendor-php php artisan migrate
+
 echo "✅ Deploy OK"

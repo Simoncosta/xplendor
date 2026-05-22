@@ -134,11 +134,22 @@ export default function CarDescriptionDataFields({
                     .join("");
                 setFieldValue(fieldName, html || `<p>${description}</p>`);
             }
-        } catch {
-            toast.error("Não foi possível gerar a descrição. Tenta novamente.", {
-                position: "top-right",
-                hideProgressBar: true,
-            });
+        } catch (error: unknown) {
+            console.error(error);
+            const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+            const status = axiosError?.response?.status;
+            const serverMessage = axiosError?.response?.data?.message;
+
+            let message: string;
+            if (serverMessage && status !== undefined && status < 500) {
+                message = serverMessage;
+            } else if (status === undefined || status >= 500) {
+                message = "Serviço temporariamente indisponível. Tenta novamente em alguns segundos.";
+            } else {
+                message = "Não foi possível gerar a descrição. Tenta novamente.";
+            }
+
+            toast.error(message, { position: "top-right", hideProgressBar: true });
         } finally {
             setIsGenerating(false);
         }

@@ -1,7 +1,7 @@
 //React
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import { Button, Col, Label, Row } from "reactstrap";
+import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, Label, Row } from "reactstrap";
 
 // Components
 import XInput from "Components/Common/XInput";
@@ -17,6 +17,19 @@ import { colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
 import { getCarCategories } from "helpers/laravel_helper";
+
+const fridgeTypeOptions = [
+    { value: "trivalent",  label: "Trivalente" },
+    { value: "compressor", label: "Compressor" },
+    { value: "absorption", label: "Absorção" },
+    { value: "none",       label: "Nenhum" },
+];
+
+const showerTypeOptions = [
+    { value: "separate", label: "Separado" },
+    { value: "combined", label: "Combinado com WC" },
+    { value: "none",     label: "Nenhum" },
+];
 
 const bedTypeOptions = [
     { value: "central", label: "Central" },
@@ -96,6 +109,9 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
     const beds = Array.isArray(values.vehicle_attributes?.beds)
         ? values.vehicle_attributes.beds
         : [];
+
+    const [attrAccordion, setAttrAccordion] = useState<string>("1");
+    const toggleAttrAccordion = (id: string) => setAttrAccordion(attrAccordion === id ? "" : id);
 
     return (
         <div className="mt-4">
@@ -213,120 +229,261 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
             </Row>
 
             {hasHabitationAttributes && (
-                <Row>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            step="0.1"
-                            name="vehicle_attributes.length"
-                            label="Comprimento (cm)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            step="0.1"
-                            name="vehicle_attributes.width"
-                            label="Largura (cm)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            step="0.1"
-                            name="vehicle_attributes.height"
-                            label="Altura (cm)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.gross_weight"
-                            label="Peso bruto (kg)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.has_bathroom"
-                            label="Casa de banho"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.has_kitchen"
-                            label="Cozinha"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInput
-                            type="number"
-                            name="vehicle_attributes.autonomy"
-                            label="Autonomia (km)"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={12}>
-                        <div className="border rounded-3 p-3 mb-3">
-                            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
-                                <div>
-                                    <Label className="mb-1">Camas</Label>
-                                    <div className="text-muted fs-12">Adiciona quantas camas forem necessárias.</div>
-                                </div>
-                                <Button
-                                    type="button"
-                                    color="light"
-                                    className="border"
-                                    onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "" }])}
-                                >
-                                    Adicionar cama
-                                </Button>
-                            </div>
+                <div className="mt-2">
+                    <Accordion flush open={attrAccordion} toggle={toggleAttrAccordion}>
 
-                            {beds.length === 0 ? (
-                                <div className="text-muted fs-13">Sem camas adicionadas.</div>
-                            ) : (
+                        <AccordionItem>
+                            <AccordionHeader targetId="1">
+                                <strong>Dimensões e Pesos</strong>
+                            </AccordionHeader>
+                            <AccordionBody accordionId="1">
                                 <Row>
-                                    {beds.map((bed, index) => (
-                                        <Col lg={3} key={`bed-${index}`}>
-                                            <div className="d-flex gap-2 align-items-start mb-3">
-                                                <div className="flex-grow-1">
-                                                    <Select
-                                                        name={`vehicle_attributes.beds.${index}.type`}
-                                                        options={bedTypeOptions}
-                                                        value={bedTypeOptions.find((option) => option.value === bed?.type) || null}
-                                                        placeholder="Tipo de cama"
-                                                        onChange={(option: any) => {
-                                                            const nextBeds = [...beds];
-                                                            nextBeds[index] = { type: option?.value || "" };
-                                                            setFieldValue("vehicle_attributes.beds", nextBeds);
-                                                        }}
-                                                    />
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    color="light"
-                                                    className="border"
-                                                    onClick={() => {
-                                                        const nextBeds = beds.filter((_, bedIndex) => bedIndex !== index);
-                                                        setFieldValue("vehicle_attributes.beds", nextBeds);
-                                                    }}
-                                                >
-                                                    Remover
-                                                </Button>
-                                            </div>
-                                        </Col>
-                                    ))}
+                                    <Col lg={2}>
+                                        <XInput
+                                            type="number"
+                                            step="0.01"
+                                            name="vehicle_attributes.dimensions.length_m"
+                                            label="Comprimento (m)"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                    <Col lg={2}>
+                                        <XInput
+                                            type="number"
+                                            step="0.01"
+                                            name="vehicle_attributes.dimensions.width_m"
+                                            label="Largura (m)"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                    <Col lg={2}>
+                                        <XInput
+                                            type="number"
+                                            step="0.01"
+                                            name="vehicle_attributes.dimensions.height_m"
+                                            label="Altura (m)"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                    <Col lg={2}>
+                                        <XInput
+                                            type="number"
+                                            name="vehicle_attributes.weights.gross_weight_kg"
+                                            label="Peso bruto (kg)"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                    <Col lg={2}>
+                                        <XInput
+                                            type="number"
+                                            name="vehicle_attributes.autonomy_km"
+                                            label="Autonomia (km)"
+                                            className="mb-3"
+                                        />
+                                    </Col>
                                 </Row>
-                            )}
-                        </div>
-                    </Col>
-                </Row>
+
+                                <div className="border rounded-3 p-3 mb-1">
+                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+                                        <div>
+                                            <Label className="mb-1">Camas</Label>
+                                            <div className="text-muted fs-12">Adiciona quantas camas forem necessárias.</div>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            color="light"
+                                            className="border"
+                                            onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "" }])}
+                                        >
+                                            Adicionar cama
+                                        </Button>
+                                    </div>
+
+                                    {beds.length === 0 ? (
+                                        <div className="text-muted fs-13">Sem camas adicionadas.</div>
+                                    ) : (
+                                        <Row>
+                                            {beds.map((bed, index) => (
+                                                <Col lg={3} key={`bed-${index}`}>
+                                                    <div className="d-flex gap-2 align-items-start mb-3">
+                                                        <div className="flex-grow-1">
+                                                            <Select
+                                                                name={`vehicle_attributes.beds.${index}.type`}
+                                                                options={bedTypeOptions}
+                                                                value={bedTypeOptions.find((option) => option.value === bed?.type) || null}
+                                                                placeholder="Tipo de cama"
+                                                                onChange={(option: any) => {
+                                                                    const nextBeds = [...beds];
+                                                                    nextBeds[index] = { type: option?.value || "" };
+                                                                    setFieldValue("vehicle_attributes.beds", nextBeds);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            color="light"
+                                                            className="border"
+                                                            onClick={() => {
+                                                                const nextBeds = beds.filter((_, bedIndex) => bedIndex !== index);
+                                                                setFieldValue("vehicle_attributes.beds", nextBeds);
+                                                            }}
+                                                        >
+                                                            Remover
+                                                        </Button>
+                                                    </div>
+                                                </Col>
+                                            ))}
+                                        </Row>
+                                    )}
+                                </div>
+                            </AccordionBody>
+                        </AccordionItem>
+
+                        <AccordionItem>
+                            <AccordionHeader targetId="2">
+                                <strong>Cozinha</strong>
+                            </AccordionHeader>
+                            <AccordionBody accordionId="2">
+                                <Row>
+                                    <Col lg={12}>
+                                        <XInputCheckbox
+                                            name="vehicle_attributes.habitation_basics.has_kitchen"
+                                            label="Tem cozinha"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                </Row>
+                                {values.vehicle_attributes?.habitation_basics?.has_kitchen && (
+                                    <Row>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_stove"
+                                                label="Fogão"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_oven"
+                                                label="Forno"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_microwave"
+                                                label="Micro-ondas"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_extractor"
+                                                label="Exaustor"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_fridge"
+                                                label="Frigorífico"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.kitchen?.has_fridge && (
+                                            <>
+                                                <Col lg={2}>
+                                                    <Label>Tipo de frigorífico</Label>
+                                                    <Select
+                                                        isClearable
+                                                        placeholder="Selecionar"
+                                                        options={fridgeTypeOptions}
+                                                        value={fridgeTypeOptions.find(o => o.value === values.vehicle_attributes?.habitation_basics?.kitchen?.fridge_type) ?? null}
+                                                        onChange={(opt: any) => setFieldValue("vehicle_attributes.habitation_basics.kitchen.fridge_type", opt?.value ?? null)}
+                                                        className="mb-3"
+                                                    />
+                                                </Col>
+                                                <Col lg={2}>
+                                                    <XInput
+                                                        type="number"
+                                                        name="vehicle_attributes.habitation_basics.kitchen.fridge_litres"
+                                                        label="Capacidade (L)"
+                                                        className="mb-3"
+                                                    />
+                                                </Col>
+                                            </>
+                                        )}
+                                    </Row>
+                                )}
+                            </AccordionBody>
+                        </AccordionItem>
+
+                        <AccordionItem>
+                            <AccordionHeader targetId="3">
+                                <strong>Casa de Banho</strong>
+                            </AccordionHeader>
+                            <AccordionBody accordionId="3">
+                                <Row>
+                                    <Col lg={12}>
+                                        <XInputCheckbox
+                                            name="vehicle_attributes.habitation_basics.has_bathroom"
+                                            label="Tem casa de banho"
+                                            className="mb-3"
+                                        />
+                                    </Col>
+                                </Row>
+                                {values.vehicle_attributes?.habitation_basics?.has_bathroom && (
+                                    <Row>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.bathroom.has_toilet"
+                                                label="Sanita"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.bathroom.has_shower"
+                                                label="Duche"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_shower && (
+                                            <Col lg={2}>
+                                                <Label>Tipo de duche</Label>
+                                                <Select
+                                                    isClearable
+                                                    placeholder="Selecionar"
+                                                    options={showerTypeOptions}
+                                                    value={showerTypeOptions.find(o => o.value === values.vehicle_attributes?.habitation_basics?.bathroom?.shower_type) ?? null}
+                                                    onChange={(opt: any) => setFieldValue("vehicle_attributes.habitation_basics.bathroom.shower_type", opt?.value ?? null)}
+                                                    className="mb-3"
+                                                />
+                                            </Col>
+                                        )}
+                                        <Col lg={2}>
+                                            <XInput
+                                                type="number"
+                                                name="vehicle_attributes.habitation_basics.bathroom.clean_water_litres"
+                                                label="Água limpa (L)"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInput
+                                                type="number"
+                                                name="vehicle_attributes.habitation_basics.bathroom.waste_water_litres"
+                                                label="Águas residuais (L)"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                    </Row>
+                                )}
+                            </AccordionBody>
+                        </AccordionItem>
+
+                    </Accordion>
+                </div>
             )}
         </div>
     )

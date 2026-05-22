@@ -528,10 +528,6 @@ class CarService extends BaseService
                 continue;
             }
 
-            if ($key === 'autonomy_km') {
-                $key = 'autonomy';
-            }
-
             if (is_array($value)) {
                 $arrayValue = $this->normalizeVehicleAttributeArray($key, $value);
 
@@ -575,24 +571,121 @@ class CarService extends BaseService
 
     private function normalizeVehicleAttributeArray(string $key, array $value): array
     {
-        if ($key !== 'beds') {
-            return Arr::sortRecursive(array_filter($value, fn ($item) => $item !== null && $item !== ''));
+        if ($key === 'dimensions') {
+            $result = [];
+            foreach ($value as $k => $v) {
+                if (!is_string($k) || $v === null || $v === '') {
+                    continue;
+                }
+                if (is_numeric($v)) {
+                    $result[$k] = round((float) $v, 2);
+                }
+            }
+            return $result;
         }
 
-        return collect($value)
-            ->map(function ($bed) {
-                $type = is_array($bed)
-                    ? ($bed['type'] ?? null)
-                    : $bed;
+        if ($key === 'weights') {
+            $result = [];
+            foreach ($value as $k => $v) {
+                if (!is_string($k) || $v === null || $v === '') {
+                    continue;
+                }
+                if (is_numeric($v)) {
+                    $result[$k] = (int) $v;
+                }
+            }
+            return $result;
+        }
 
-                if (is_string($type)) {
-                    $type = trim($type);
+        if ($key === 'habitation_basics') {
+            $topBoolKeys     = ['has_bathroom', 'has_kitchen', 'has_garage', 'has_awning', 'has_solar_panel'];
+            $kitchenBoolKeys = ['has_stove', 'has_oven', 'has_microwave', 'has_extractor', 'has_fridge'];
+            $bathroomBoolKeys = ['has_toilet', 'has_shower'];
+            $result = [];
+
+            foreach ($value as $k => $v) {
+                if (!is_string($k) || $v === null || $v === '') {
+                    continue;
                 }
 
-                return $type ? ['type' => $type] : null;
-            })
-            ->filter()
-            ->values()
-            ->all();
+                if (in_array($k, $topBoolKeys, true)) {
+                    $result[$k] = filter_var($v, FILTER_VALIDATE_BOOLEAN);
+                    continue;
+                }
+
+                if ($k === 'kitchen' && is_array($v)) {
+                    $kitchen = [];
+                    foreach ($v as $ck => $cv) {
+                        if (!is_string($ck) || $cv === null || $cv === '') {
+                            continue;
+                        }
+                        if (in_array($ck, $kitchenBoolKeys, true)) {
+                            $kitchen[$ck] = filter_var($cv, FILTER_VALIDATE_BOOLEAN);
+                        } elseif (is_numeric($cv)) {
+                            $kitchen[$ck] = (int) $cv;
+                        } else {
+                            $trimmed = is_string($cv) ? trim($cv) : null;
+                            if ($trimmed !== null && $trimmed !== '') {
+                                $kitchen[$ck] = $trimmed;
+                            }
+                        }
+                    }
+                    if (!empty($kitchen)) {
+                        $result['kitchen'] = $kitchen;
+                    }
+                    continue;
+                }
+
+                if ($k === 'bathroom' && is_array($v)) {
+                    $bathroom = [];
+                    foreach ($v as $bk => $bv) {
+                        if (!is_string($bk) || $bv === null || $bv === '') {
+                            continue;
+                        }
+                        if (in_array($bk, $bathroomBoolKeys, true)) {
+                            $bathroom[$bk] = filter_var($bv, FILTER_VALIDATE_BOOLEAN);
+                        } elseif (is_numeric($bv)) {
+                            $bathroom[$bk] = (int) $bv;
+                        } else {
+                            $trimmed = is_string($bv) ? trim($bv) : null;
+                            if ($trimmed !== null && $trimmed !== '') {
+                                $bathroom[$bk] = $trimmed;
+                            }
+                        }
+                    }
+                    if (!empty($bathroom)) {
+                        $result['bathroom'] = $bathroom;
+                    }
+                    continue;
+                }
+
+                // other scalar keys
+                $trimmed = is_string($v) ? trim($v) : $v;
+                if ($trimmed !== '' && $trimmed !== null) {
+                    $result[$k] = $trimmed;
+                }
+            }
+            return $result;
+        }
+
+        if ($key === 'beds') {
+            return collect($value)
+                ->map(function ($bed) {
+                    $type = is_array($bed)
+                        ? ($bed['type'] ?? null)
+                        : $bed;
+
+                    if (is_string($type)) {
+                        $type = trim($type);
+                    }
+
+                    return $type ? ['type' => $type] : null;
+                })
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return Arr::sortRecursive(array_filter($value, fn ($item) => $item !== null && $item !== ''));
     }
 }

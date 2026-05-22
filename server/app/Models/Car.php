@@ -187,9 +187,7 @@ class Car extends Model implements AuditableContract
             return null;
         }
 
-        $attributes = $vehicleAttribute->getAttribute('attributes');
-
-        return is_array($attributes) ? $attributes : null;
+        return VehicleAttribute::normalizeShape($vehicleAttribute->getAttribute('attributes'));
     }
 
     public function getBedTypesAttribute(): ?array
