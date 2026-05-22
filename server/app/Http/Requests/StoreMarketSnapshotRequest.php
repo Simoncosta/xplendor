@@ -17,6 +17,7 @@ class StoreMarketSnapshotRequest extends FormRequest
             'snapshots' => ['required', 'array', 'min:1'],
             'snapshots.*.external_id' => ['required', 'string', 'max:255'],
             'snapshots.*.source' => ['required', 'string', 'max:100'],
+            'snapshots.*.vehicle_type' => ['nullable', 'string', 'in:car,motorhome,caravan,motorcycle'],
             'snapshots.*.brand' => ['nullable', 'string', 'max:255'],
             'snapshots.*.model' => ['nullable', 'string', 'max:255'],
             'snapshots.*.year' => ['nullable', 'integer', 'min:1900', 'max:2100'],

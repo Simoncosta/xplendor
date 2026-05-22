@@ -27,6 +27,13 @@ interface ExecutionResult {
     duration_seconds: number | null;
 }
 
+type VehicleType = "car" | "motorhome";
+
+const VEHICLE_TYPE_OPTIONS: { value: VehicleType; label: string }[] = [
+    { value: "car", label: "Carro" },
+    { value: "motorhome", label: "Autocaravana" },
+];
+
 const EMPTY_FILTERS = {
     brand: "",
     model: "",
@@ -40,6 +47,7 @@ const EMPTY_FILTERS = {
 
 const ScraperForm: React.FC<ScraperFormProps> = ({ companyId, onRunComplete }) => {
     const [source] = useState("standvirtual");
+    const [vehicleType, setVehicleType] = useState<VehicleType>("car");
     const [filters, setFilters] = useState(EMPTY_FILTERS);
     const [running, setRunning] = useState(false);
     const [result, setResult] = useState<ExecutionResult | null>(null);
@@ -99,6 +107,7 @@ const ScraperForm: React.FC<ScraperFormProps> = ({ companyId, onRunComplete }) =
             const res: any = await runScraperApi(companyId, {
                 source,
                 mode,
+                vehicle_type: vehicleType,
                 filters: buildFilters(),
             });
             startPolling(res.data.run_id);
@@ -116,6 +125,21 @@ const ScraperForm: React.FC<ScraperFormProps> = ({ companyId, onRunComplete }) =
                         <Label className="form-label">Source</Label>
                         <Input type="select" value={source} disabled>
                             <option value="standvirtual">Standvirtual</option>
+                        </Input>
+                    </FormGroup>
+                </Col>
+                <Col md={4}>
+                    <FormGroup>
+                        <Label className="form-label">Tipo de viatura</Label>
+                        <Input
+                            type="select"
+                            value={vehicleType}
+                            onChange={(e) => setVehicleType(e.target.value as VehicleType)}
+                            disabled={running}
+                        >
+                            {VEHICLE_TYPE_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                         </Input>
                     </FormGroup>
                 </Col>

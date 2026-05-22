@@ -82,6 +82,29 @@ class SearchFilters:
         return {key: value for key, value in asdict(self).items() if value not in (None, "", [])}
 
 
+VEHICLE_TYPE_PATHS: dict[str, str] = {
+    "car": "/carros",
+    "motorhome": "/autocaravanas",
+}
+
+VALID_VEHICLE_TYPES: list[str] = list(VEHICLE_TYPE_PATHS.keys())
+
+# Default max results per vehicle type — prevents runaway scraping and cost overruns.
+VEHICLE_TYPE_MAX_RESULTS_DEFAULT: dict[str, int] = {
+    "car": 50,
+    "motorhome": 15,
+}
+
+MAX_RESULTS_HARD_CAP: int = 100
+
+
+def resolve_max_results(vehicle_type: str, requested: Optional[int]) -> int:
+    """Returns effective max_results, applying per-type default and hard cap."""
+    default = VEHICLE_TYPE_MAX_RESULTS_DEFAULT.get(vehicle_type, 50)
+    effective = requested if requested is not None else default
+    return min(effective, MAX_RESULTS_HARD_CAP)
+
+
 @dataclass
 class ScraperConfig:
     # --- Standvirtual ---

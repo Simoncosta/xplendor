@@ -8,7 +8,7 @@ from typing import Optional
 from dotenv import load_dotenv
 import sys
 
-from config import SearchFilters, config
+from config import SearchFilters, config, VEHICLE_TYPE_PATHS, VALID_VEHICLE_TYPES, MAX_RESULTS_HARD_CAP, VEHICLE_TYPE_MAX_RESULTS_DEFAULT, resolve_max_results
 from scraper import StandvirtualScraper
 from normalizer import ListingNormalizer
 from sender import LaravelSender
@@ -46,6 +46,20 @@ def build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--source", required=True)
     parser.add_argument("--mode", required=True, choices=["preview", "run"])
+    parser.add_argument(
+        "--vehicle-type",
+        dest="vehicle_type",
+        default="car",
+        choices=VALID_VEHICLE_TYPES,
+        help=f"Vehicle category to scrape. Valid: {', '.join(VALID_VEHICLE_TYPES)}. Default: car.",
+    )
+    parser.add_argument(
+        "--max-results",
+        type=int,
+        dest="max_results",
+        default=None,
+        help=f"Maximum snapshots to collect (hard cap: {MAX_RESULTS_HARD_CAP}). Defaults per type: {VEHICLE_TYPE_MAX_RESULTS_DEFAULT}.",
+    )
     parser.add_argument("--brand")
     parser.add_argument("--model")
     parser.add_argument("--year-from", type=int, dest="year_from")
@@ -86,10 +100,18 @@ def run(
     preview: bool = False,
     preview_limit: int = 10,
     filters: Optional[SearchFilters] = None,
+    vehicle_type: str = "car",
+    max_results: Optional[int] = None,
 ):
     setup_logging()
     logger = logging.getLogger("main")
     filters = filters or SearchFilters()
+
+    # Route search to the correct Standvirtual category path.
+    config.search_path = VEHICLE_TYPE_PATHS[vehicle_type]
+
+    effective_max = resolve_max_results(vehicle_type, max_results)
+    logger.info(f"vehicle_type={vehicle_type} search_path={config.search_path} max_results={effective_max}")
 
     scraper = StandvirtualScraper(filters=filters)
     normalizer = ListingNormalizer()
@@ -97,11 +119,11 @@ def run(
 
     preview_results = []
     total_normalized = 0
-    total_raw = 0  # ✅ CORRETO (variável interna)
+    total_raw = 0
 
     try:
         for page_batch in scraper.scrape_all():
-            total_raw += len(page_batch)  # ✅ CORRETO
+            total_raw += len(page_batch)
 
             for raw_listing in page_batch:
 
@@ -113,7 +135,7 @@ def run(
                     if detail.get("doors"):
                         raw_listing.params["doors"] = str(detail["doors"])
 
-                snapshot = normalizer.normalize(raw_listing)
+                snapshot = normalizer.normalize(raw_listing, vehicle_type=vehicle_type)
 
                 if not snapshot:
                     continue
@@ -129,6 +151,17 @@ def run(
 
                 total_normalized += 1
 
+                if total_normalized >= effective_max:
+                    logger.info(f"Limite de resultados atingido ({effective_max}). A parar.")
+                    sender.flush()
+                    print(json.dumps({
+                        "total_raw": total_raw,
+                        "total_normalized": total_normalized,
+                        "total_sent": sender.stats()["total_sent"],
+                        "total_failed": sender.stats()["total_failed"],
+                    }))
+                    return
+
     except Exception as e:
         logger.error(f"Erro inesperado: {e}", exc_info=True)
 
@@ -141,12 +174,11 @@ def run(
     sender.flush()
     stats = sender.stats()
 
-    # 🔥 OUTPUT LIMPO PARA LARAVEL (SEM LOGS)
     print(json.dumps({
         "total_raw": total_raw,
         "total_normalized": total_normalized,
         "total_sent": stats["total_sent"],
-        "total_failed": stats["total_failed"]
+        "total_failed": stats["total_failed"],
     }))
 
 if __name__ == "__main__":
@@ -156,4 +188,6 @@ if __name__ == "__main__":
         preview=args.mode == "preview",
         preview_limit=args.preview_limit,
         filters=filters,
+        vehicle_type=args.vehicle_type,
+        max_results=args.max_results,
     )

@@ -50,6 +50,7 @@ class CarMarketSnapshotService extends BaseService
         return [
             'external_id' => $externalId,
             'source' => $source,
+            'vehicle_type' => $this->nullableString($snapshot['vehicle_type'] ?? null),
             'brand' => $this->nullableString($snapshot['brand'] ?? null),
             'model' => $this->nullableString($snapshot['model'] ?? null),
             'year' => $this->nullableInt($snapshot['year'] ?? null),

@@ -18,12 +18,21 @@ class RunScraperJob implements ShouldQueue
     public int $tries   = 3;
     public int $timeout = 300;
 
+    private const VALID_VEHICLE_TYPES = ['car', 'motorhome'];
+
     public function __construct(
         private readonly string $source,
         private readonly string $mode,
         private readonly array  $filters,
         private readonly int    $executionId,
-    ) {}
+        private readonly string $vehicleType = 'car',
+    ) {
+        if (!\in_array($this->vehicleType, self::VALID_VEHICLE_TYPES, true)) {
+            throw new \InvalidArgumentException(
+                "Invalid vehicle_type '{$this->vehicleType}'. Valid: " . implode(', ', self::VALID_VEHICLE_TYPES)
+            );
+        }
+    }
 
     public function handle(): void
     {
@@ -48,9 +57,17 @@ class RunScraperJob implements ShouldQueue
             $this->mode,
         ];
 
+        $command[] = '--vehicle-type';
+        $command[] = $this->vehicleType;
+
         if ($this->mode === 'preview') {
             $command[] = '--preview-limit';
             $command[] = '10';
+        }
+
+        if (!empty($this->filters['max_results'])) {
+            $command[] = '--max-results';
+            $command[] = (string) (int) $this->filters['max_results'];
         }
 
         foreach (

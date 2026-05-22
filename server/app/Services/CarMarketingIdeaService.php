@@ -195,6 +195,9 @@ class CarMarketingIdeaService extends BaseService
             ->post('https://api.openai.com/v1/chat/completions', [
                 'model'           => 'gpt-4o',
                 'temperature'     => 0.6, // criativo mas estruturado
+                // Cap to prevent runaway costs even on manual invocations.
+                // 1000 tokens generates ~750 words, sufficient for 3 marketing ideas.
+                'max_tokens'      => 1000,
                 'response_format' => ['type' => 'json_object'],
                 'messages'        => [
                     [

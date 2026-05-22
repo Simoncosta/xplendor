@@ -153,3 +153,10 @@
 2026-04-04 10:25:49 [INFO] scraper: Total de páginas a scraper: 1
 2026-04-04 10:25:49 [INFO] scraper: Página 1/1: 7 anúncios
 2026-04-04 10:26:03 [INFO] sender: Batch enviado: 7 snapshots. Total: 7
+2026-05-22 20:33:20 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=15
+2026-05-22 20:33:20 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat'}
+2026-05-22 20:33:20 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'fiat'}
+2026-05-22 20:33:20 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/autocaravanas
+2026-05-22 20:33:20 [INFO] scraper: Filtros ativos: {'brand': 'Fiat'}
+2026-05-22 20:33:21 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-22 20:33:22 [INFO] scraper: Página 1/2: 32 anúncios

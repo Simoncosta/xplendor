@@ -37,11 +37,13 @@ class NormalizedSnapshot:
 
     # Com valor padrão — têm de vir no fim
     price_currency: str = "EUR"
+    vehicle_type: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {
             "external_id": self.external_id,
             "source": self.source,
+            "vehicle_type": self.vehicle_type,
             "brand": self.brand,
             "model": self.model,
             "year": self.year,
@@ -94,7 +96,7 @@ class ListingNormalizer:
         "sequencial": "semi_automatic",
     }
 
-    def normalize(self, raw: RawListing) -> Optional[NormalizedSnapshot]:
+    def normalize(self, raw: RawListing, vehicle_type: Optional[str] = None) -> Optional[NormalizedSnapshot]:
         try:
             brand, model = self._parse_brand_model(raw.title, raw.params)
             year = self._parse_year(raw.params)
@@ -125,6 +127,7 @@ class ListingNormalizer:
                 power_hp=power_hp,
                 color=color,
                 doors=doors,
+                vehicle_type=vehicle_type,
             )
         except Exception as e:
             logger.debug(f"Erro ao normalizar anúncio {raw.external_id}: {e}")

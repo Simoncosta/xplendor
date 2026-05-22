@@ -9,13 +9,11 @@ use Illuminate\Validation\ValidationException;
 
 class ScraperService
 {
-    /**
-     * Supported data sources.
-     * Add new sources here — each key maps to a recognized source name.
-     */
     private const SUPPORTED_SOURCES = [
         'standvirtual',
     ];
+
+    private const VALID_VEHICLE_TYPES = ['car', 'motorhome'];
 
     /**
      * Frontend sends English keys/values; the Python scraper expects its own
@@ -63,13 +61,19 @@ class ScraperService
     }
 
     /**
-     * Validate source, create the execution record and dispatch the job.
+     * Validate source + vehicle_type, create the execution record and dispatch the job.
      */
-    public function run(string $source, string $mode, array $filters = [], ?int $companyId = null): ScraperExecution
+    public function run(string $source, string $mode, array $filters = [], ?int $companyId = null, string $vehicleType = 'car'): ScraperExecution
     {
-        if (!in_array($source, self::SUPPORTED_SOURCES, true)) {
+        if (!\in_array($source, self::SUPPORTED_SOURCES, true)) {
             throw ValidationException::withMessages([
                 'source' => ['Source inválida. Sources suportadas: ' . implode(', ', self::SUPPORTED_SOURCES)],
+            ]);
+        }
+
+        if (!\in_array($vehicleType, self::VALID_VEHICLE_TYPES, true)) {
+            throw ValidationException::withMessages([
+                'vehicle_type' => ['Tipo de viatura inválido. Válidos: ' . implode(', ', self::VALID_VEHICLE_TYPES)],
             ]);
         }
 
@@ -79,11 +83,11 @@ class ScraperService
             'company_id' => $companyId,
             'source'     => $source,
             'mode'       => $mode,
-            'filters'    => $normalized,
+            'filters'    => array_merge($normalized, ['vehicle_type' => $vehicleType]),
             'status'     => 'pending',
         ]);
 
-        RunScraperJob::dispatch($source, $mode, $normalized, $execution->id);
+        RunScraperJob::dispatch($source, $mode, $normalized, $execution->id, $vehicleType);
 
         return $execution;
     }

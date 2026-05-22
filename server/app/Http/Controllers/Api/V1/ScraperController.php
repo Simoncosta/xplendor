@@ -28,9 +28,10 @@ class ScraperController extends Controller
         }
 
         $validated = $request->validate([
-            'source'  => ['required', 'string'],
-            'mode'    => ['required', 'string', 'in:preview,run'],
-            'filters' => ['sometimes', 'array'],
+            'source'       => ['required', 'string'],
+            'mode'         => ['required', 'string', 'in:preview,run'],
+            'vehicle_type' => ['sometimes', 'string', 'in:car,motorhome'],
+            'filters'      => ['sometimes', 'array'],
         ]);
 
         try {
@@ -39,6 +40,7 @@ class ScraperController extends Controller
                 $validated['mode'],
                 $validated['filters'] ?? [],
                 $id,
+                $validated['vehicle_type'] ?? 'car',
             );
         } catch (ValidationException $e) {
             return ApiResponse::error($e->getMessage(), 422, $e->errors());

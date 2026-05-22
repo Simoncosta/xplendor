@@ -41,11 +41,12 @@ Schedule::job(new RecalculateAllCarScoresJob())
     ->withoutOverlapping();
 
 
-Schedule::job(new GenerateWeeklyMarketingIdeasJob())
-    ->mondays()
-    ->at('03:00')
-    ->name('generate-weekly-marketing-ideas')
-    ->withoutOverlapping();
+// Schedule de geração automática de ideias de marketing — DESACTIVADO em 2026-05-22.
+// Motivo: a página /cars/:id/marketing não tinha uso activo suficiente para justificar
+// chamadas semanais à OpenAI para 60+ viaturas. O job e o service permanecem funcionais
+// para accionamento manual via botão no UI. Reactivar quando feature for adoptada
+// pela equipa comercial dos clientes.
+// Schedule::job(new GenerateWeeklyMarketingIdeasJob())->weeklyOn(1, '03:00')->withoutOverlapping();
 
 Schedule::job(new GenerateDailyAlertsEmailJob())
     ->dailyAt('09:00')

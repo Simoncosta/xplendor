@@ -4,16 +4,23 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-22 · Versão 1.0
+> Última actualização: 2026-05-22 · Versão 1.1
 
 ---
 
 ## 0. Como ler e usar este documento
 
 - Ler do início ao fim antes da primeira contribuição
-- Em sessões seguintes: pelo menos rever as secções **2 (Direção estratégica)**, **15 (Roadmap)** e **16 (O que não fazer)** antes de propor mudanças
+- Em sessões seguintes: pelo menos rever as secções **2 (Direção estratégica)**, **14 (Dívida técnica)**, **15 (Roadmap)** e **16 (O que não fazer)** antes de propor mudanças
 - Quando uma decisão arquitetural mudar, **actualizar este ficheiro no mesmo PR** que implementa a mudança
 - Quando algo neste documento estiver desactualizado, **assinalar TODO no topo da secção** em vez de seguir o código silenciosamente
+
+### Histórico de versões
+
+| Versão | Data | Resumo |
+|---|---|---|
+| 1.0 | 2026-05-22 | Versão inicial após auditoria estrutural completa |
+| 1.1 | 2026-05-22 | Adicionadas Fases A, B1, B2, C, D. Tabelas em falta. Dívida técnica nova. Correcções de PII na API pública. |
 
 ---
 
@@ -21,9 +28,9 @@
 
 XPLENDOR é uma plataforma B2B de gestão de stock + analytics + marketing automation para stands de automóveis em Portugal.
 
-**Estado actual:** 2 clientes pagantes (1 stand de carros, 1 stand de autocaravanas).
+**Estado actual:** 2 clientes pagantes (1 stand de carros, 1 stand de autocaravanas — Quebom & Parracho).
 
-**Estado do produto:** funcional, com 12–18 meses de desenvolvimento investidos, com funcionalidades reais entregues (analytics, IA, integração Meta Ads, scraper de mercado, dashboards por persona, IPS scoring).
+**Estado do produto:** funcional, com 12–18 meses de desenvolvimento investidos, com funcionalidades reais entregues (analytics, IA, integração Meta Ads, scraper de mercado, dashboards por persona, IPS scoring, gestão completa de atributos de habitação para autocaravanas).
 
 **Direção estratégica imediata:** agência produtizada (ver secção 2).
 
@@ -53,6 +60,10 @@ Servimos exclusivamente stands de automóveis em Portugal. Não aceitamos client
 ### 2.4 Independência face aos marketplaces
 
 A narrativa central é *"libertar o stand da dependência do Standvirtual"*. **Não integramos com Standvirtual.** O produto direciona tráfego pago para o site do próprio stand, não para marketplaces de terceiros.
+
+### 2.5 Sites públicos dos clientes são projectos separados
+
+Os sites públicos dos stands são projectos React **separados** do XPLENDOR. Consomem a `Api/Public/*` via HTTP. Quando alterações na API pública têm breaking change, **a actualização dos sites é responsabilidade humana coordenada**, não automatizada.
 
 ---
 
@@ -132,13 +143,20 @@ A narrativa central é *"libertar o stand da dependência do Standvirtual"*. **N
             │   Scraper   │
             │   (Python)  │
             └─────────────┘
+                                   │
+                                   ▼
+                  ┌──────────────────────────────────────┐
+                  │  Sites React separados dos clientes  │
+                  │  (consomem Api/Public/*)             │
+                  └──────────────────────────────────────┘
 ```
 
 **Princípios desta arquitectura:**
 - Laravel é a fonte única de verdade para dados, auth, business logic
 - Python é tool especializada accionada via Job → `docker exec` para scraping
 - Redis é exclusivamente cache + queue, nunca fonte de verdade
-- Frontend é SPA pura atrás de Sanctum (login-walled)
+- Frontend interno é SPA pura atrás de Sanctum (login-walled)
+- Sites públicos dos clientes são consumidores externos via `Api/Public/*`
 
 ---
 
@@ -150,16 +168,24 @@ A narrativa central é *"libertar o stand da dependência do Standvirtual"*. **N
 server/
 ├── app/
 │   ├── Console/Commands/          # Artisan commands
+│   │   └── MigrateVehicleAttributesShapeCommand.php  # migração old→new shape
 │   ├── Http/
-│   │   ├── Controllers/           # Thin — chamam Services
-│   │   ├── Middleware/            # Auth, company scoping
-│   │   └── Requests/              # Form Request validation
+│   │   ├── Controllers/
+│   │   │   └── Api/Public/        # endpoints públicos consumidos por sites externos
+│   │   ├── Middleware/            # Auth, company scoping, check_company_api_token
+│   │   ├── Requests/              # Form Request validation
+│   │   │   └── Public/            # validação dos endpoints públicos
+│   │   └── Resources/
+│   │       └── Public/            # Resources que controlam o que sai publicamente
+│   │           ├── CarPublicResource.php
+│   │           └── RESOURCE_SHAPE.md  # documentação do contrato da API pública
 │   ├── Jobs/                      # Async: AggregateCarPerformanceMetricsJob,
-│   │                              #         RunScraperJob, FetchMetaAds
+│   │                              #         RunScraperJob, FetchMetaAdsJob
 │   ├── Models/                    # Eloquent
 │   ├── Repositories/
 │   │   ├── Contracts/             # Interfaces
-│   │   └── (implementações)
+│   │   ├── CarPublicRepository.php  # queries específicas da API pública (com JSON filters)
+│   │   └── (outros)
 │   └── Services/                  # Business logic
 ├── database/
 │   ├── migrations/
@@ -185,9 +211,24 @@ web/src/
 │   │       ├── CarMarketing.tsx
 │   │       ├── CarCreate.tsx
 │   │       ├── CarUpdate.tsx
-│   │       └── components/
+│   │       ├── components/
+│   │       │   ├── CarVehicleDetailsDataFields.tsx
+│   │       │   ├── CarEquipmentDataFields.tsx
+│   │       │   └── vehicleAttributes/        # accordions B2 extraídos
+│   │       │       ├── EnergyClimateAccordion.tsx
+│   │       │       ├── ExteriorAccordion.tsx
+│   │       │       ├── SecurityAccordion.tsx
+│   │       │       ├── ChassisStructureAccordion.tsx
+│   │       │       └── InteriorFurnitureAccordion.tsx
+│   │       └── data/
+│   │           ├── extraGroups.ts            # listas de items por grupo de extras
+│   │           └── vehicleAttributes.ts      # tipos + BED_LABELS
 │   ├── Companies/
 │   ├── Dashboards/
+│   ├── Landing/                  # landing pública (agência) — não usar em painel autenticado
+│   │   ├── components/
+│   │   ├── sections/
+│   │   └── data/
 │   ├── Leads/
 │   ├── Users/
 │   ├── Blogs/
@@ -217,9 +258,10 @@ web/src/
 
 | Tabela | Propósito | Notas |
 |---|---|---|
-| `companies` | Tenant raiz | Todas as outras tabelas referenciam |
+| `companies` | Tenant raiz | Token público em `public_api_token` |
 | `users` | Utilizadores por empresa | Role enum: `root` / `admin` / `user` |
-| `cars` | Viaturas por empresa | `price_gross`, `power_hp`, `segment`, `seats`, `status` |
+| `cars` | Viaturas por empresa | `price_gross`, `power_hp`, `segment`, `seats`, `status`, `car_category_id` |
+| `car_categories` | Lookup de categorias por tipo de viatura | Atrelado a `vehicle_type` |
 | `car_views` | Visualizações em tempo real | Por sessão/canal/fonte |
 | `car_leads` | Leads capturados | Por canal (form, whatsapp, phone, etc.) |
 | `car_interactions` | Eventos granulares | `interaction_type` enum (whatsapp_click, …) |
@@ -227,6 +269,16 @@ web/src/
 | `car_market_snapshots` | Dados do scraper de mercado | Por viatura e data |
 | `car_ai_analyses` | Análises IA por viatura | JSON com structured output |
 | `car_sale_potential_scores` | IPS 0–100 | Histórico; mais recente = `MAX(id)` |
+| `car_external_images` | Imagens externas por URL | Provavelmente Carmine ou scraper |
+| `car_sales` | Registo de venda efectiva por viatura | — |
+| `car_sale_attributions` | Atribuição de venda a canal/campanha | — |
+| `car_sales_learning` | Histórico para modelo de venda | — |
+| `car_ad_campaigns` | Campanhas de anúncio por viatura | — |
+| `car_ad_attributions` | Atribuição de resultado a campanha | — |
+| `campaign_car_metrics_daily` | Métricas diárias por campanha e viatura | — |
+| `car_funnel_metrics_daily` | Métricas de funil diárias por viatura | — |
+| `car_marketing_ideas` | Ideias de marketing geradas por IA por viatura | — |
+| `vehicle_attributes` | **Atributos de habitação** (motorhome/caravan) | JSON estruturado por secções — ver secção 6.1 |
 | `meta_audience_insights` | Audiência Meta Ads | Sincronizado via job |
 | `company_integrations` | Tokens OAuth por plataforma | Meta Ads, Carmine |
 | `carmine_connections` | Ligação ao Carmine | — |
@@ -243,6 +295,8 @@ Company
   └── hasMany ScraperExecution (company_id nullable — legacy)
 
 Car
+  ├── hasOne VehicleAttribute             (só motorhome/caravan)
+  ├── belongsTo CarCategory               (car_category_id, só motorhome)
   ├── hasMany CarView
   ├── hasMany CarLead
   ├── hasMany CarInteraction
@@ -252,12 +306,145 @@ Car
   └── hasMany CarSalePotentialScore
 ```
 
+### 6.1 Estrutura do JSON `vehicle_attributes.attributes`
+
+Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. Aceita formato antigo (flat) por retro-compatibilidade.
+
+```json
+{
+  "dimensions": {
+    "length_m": 6.00,
+    "width_m": 2.40,
+    "height_m": 2.50
+  },
+  "weights": {
+    "gross_weight_kg": 3300,
+    "tare_kg": 2800,
+    "towable_weight_kg": 750
+  },
+  "habitation_basics": {
+    "has_bathroom": true,
+    "has_kitchen": true,
+    "kitchen": {
+      "has_stove": true,
+      "has_oven": false,
+      "has_microwave": true,
+      "has_extractor": true,
+      "has_fridge": true,
+      "fridge_type": "trivalent",
+      "fridge_litres": 142,
+      "fridge_shelves": 3
+    },
+    "bathroom": {
+      "has_toilet": true,
+      "has_shower": true,
+      "shower_type": "separate",
+      "clean_water_litres": 100,
+      "waste_water_litres": 90
+    }
+  },
+  "energy_climate": {
+    "water_heater_source": "gas",
+    "water_heater_brand": "Truma",
+    "ambient_heating_source": "gas",
+    "ambient_heating_brand": "Truma",
+    "has_solar_panel": true,
+    "solar_panel_watts": 150,
+    "has_inverter": true,
+    "inverter_watts": 2000,
+    "has_gpl": false,
+    "gpl_bottles_count": null,
+    "has_external_power_socket": true,
+    "battery_count": 2,
+    "cabin_battery_count": 1,
+    "cell_battery_count": 1
+  },
+  "exterior": {
+    "has_awning": true,
+    "awning_brand": "Thule",
+    "has_national_antenna": false,
+    "has_parabolic_antenna": false,
+    "has_bike_rack": true,
+    "has_motorbike_rack": false,
+    "has_electric_step": true,
+    "has_manual_step": false,
+    "has_stabilizers": true,
+    "has_spare_wheel": true,
+    "has_fix_n_go_kit": false,
+    "has_bull_eye": false,
+    "has_external_wc": false,
+    "has_hubcaps": true
+  },
+  "security": {
+    "has_alarm": true,
+    "has_hatch_lock": true,
+    "has_cabin_lock": true,
+    "has_safe_door": false,
+    "has_gas_lock": true,
+    "has_entry_door_lock": true,
+    "other_locks_notes": ""
+  },
+  "chassis_structure": {
+    "chassis_type": "alko",
+    "chassis_notes": "",
+    "has_turbovent_skylight": true,
+    "has_panoramic_skylight": true,
+    "has_40x40_skylight": true,
+    "other_skylights_notes": "",
+    "has_remifront": true,
+    "has_window_blackouts": true,
+    "has_mosquito_nets": true,
+    "has_door_mosquito_net": false,
+    "has_cabin_blackouts": true,
+    "cabin_blackout_type": ""
+  },
+  "interior_furniture": {
+    "has_foldable_table": true,
+    "has_rotating_seats": true,
+    "upholstery_state": "good",
+    "has_curtains": true,
+    "has_led_lighting": true,
+    "has_halo_lighting": false,
+    "has_tv_support": true,
+    "has_tv": true,
+    "has_command_panel": true,
+    "has_water_infiltrations": false,
+    "infiltrations_notes": ""
+  },
+  "beds": [
+    { "type": "cama_garagem" },
+    { "type": "cama_central" }
+  ],
+  "autonomy_km": 800
+}
+```
+
+**Tipos de cama válidos** (13 slugs):
+- Visíveis no UI (12): `camas_gemeas`, `cama_central`, `cama_francesa`, `cama_basculante`, `cama_capucino`, `cama_garagem`, `beliche`, `cama_transversal`, `cama_elevatoria_eletrica`, `cama_suspensa`, `cama_convertivel`, `outra`
+- Legacy preservado (1): `cama_rebativel_cabine` — só aparece como opção quando já está seleccionado num registo existente
+
+**Enums:**
+- `fridge_type`: `trivalent` | `compressor` | `absorption` | `none`
+- `shower_type`: `separate` | `combined` | `none`
+- `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
+- `chassis_type`: `standard` | `alko` | `other`
+- `upholstery_state`: `good` | `fair` | `worn` | `replaced`
+
+**Helper único de normalização:** `VehicleAttribute::normalizeShape($raw)`. Usado por:
+1. `Car::getVehicleAttributesAttribute()` (accessor)
+2. `CarDescriptionService` (geração de descrições com IA)
+3. `MigrateVehicleAttributesShapeCommand` (artisan command de migração)
+
 ### Problemas de dados conhecidos
 
-- **`car_performance_metrics.whatsapp_clicks`**: coluna adicionada 2026-03-14 com `DEFAULT 0`. Linhas anteriores ficaram com 0. O job diário só processa T-1, nunca retroactivamente. **Métricas de WhatsApp erradas para o intervalo 2026-03-06 a 2026-03-13.**
-  - **Remediação:** `php artisan performance:aggregate --from=DATE --to=DATE --sync` para cada dia do intervalo afectado. Correr fora de horas de pico.
-- **Sem índices documentados** em `car_performance_metrics(car_id, period_start)` — necessário para escalar. Adicionar como parte do refactor backend.
-- **Sem schema enforcement** em `car_ai_analyses.json_output` — mudanças no formato da resposta IA podem quebrar o frontend silenciosamente.
+- **`car_performance_metrics.whatsapp_clicks`**: coluna adicionada 2026-03-14 com `DEFAULT 0`. Métricas erradas para 2026-03-06 a 2026-03-13. Remediação: `php artisan performance:aggregate --from=DATE --to=DATE --sync`.
+- **`car_id 57` tem `length: -0.1745`** — bug histórico. Corrigir manualmente ou aceitar normalização para `-0.001745`.
+- **`subsegment` está NULL em todos os motorhomes/caravans** na BD — o campo existe mas não está a ser gravado pelo UI. Investigar.
+- **`lifestyle` está zombie** — campo no schema do `cars`, sem cast, sem UI, nunca preenchido. Candidato a remoção.
+- **`car_categories` BD divergente do seeder** — seeder tem 7 categorias (Atrelado Tenda, Capucine, Caravana, Caravana Pickup, Furgão, Integral, Perfilada); BD tem 4 (Campervan, Capucino, Integral, Perfilada). "Capucine" no seeder vs "Capucino" na BD. Não corrigir agora — slug em uso.
+- **Sem índices documentados** em `car_performance_metrics(car_id, period_start)`.
+- **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa.
+- **Sem schema enforcement** em `car_ai_analyses.json_output`.
 
 ---
 
@@ -265,11 +452,34 @@ Car
 
 ### Convenções
 
-- Todos os models de negócio têm `company_id` no `$fillable` e usam scope global por empresa (`BelongsToCompany` trait, se já existir; caso contrário, criar e aplicar)
+- Todos os models de negócio têm `company_id` no `$fillable` e usam scope global por empresa
 - Casts explícitos em todos os campos JSON, decimal, datetime, enum
 - Relações nomeadas em singular para `belongsTo` / `hasOne`, plural para `hasMany` / `belongsToMany`
 - **Sem business logic em models** — vai sempre para Services
-- Auditoria via `Auditable` trait do `owen-it/laravel-auditing` em models que mudam frequentemente (Car em particular)
+- Auditoria via `Auditable` trait do `owen-it/laravel-auditing` em models que mudam frequentemente
+
+### Helper `VehicleAttribute::normalizeShape()`
+
+**Fonte única de verdade** para a estrutura do JSON `attributes`. Sempre que se lê este JSON, passa por aqui. Sempre que se escreve, grava-se no formato novo.
+
+```php
+VehicleAttribute::normalizeShape(null);          // → estrutura vazia válida
+VehicleAttribute::normalizeShape([]);            // → estrutura vazia válida
+VehicleAttribute::normalizeShape($oldFlat);      // → migra para formato novo
+VehicleAttribute::normalizeShape($newStructured);// → devolve as-is
+```
+
+Inclui também `normalizeBedTypes()` que mapeia strings antigas para slugs novos:
+
+| String antiga | Slug novo |
+|---|---|
+| `"central"` | `"cama_central"` |
+| `"rebatível na cabine"` | `"cama_rebativel_cabine"` |
+| `"beliche"` | `"beliche"` |
+| `"transversal"` | `"cama_transversal"` |
+| `"cama de garagem"` | `"cama_garagem"` |
+| `"outra"` | `"outra"` |
+| Slug desconhecido | `"outra"` (fallback) |
 
 ### Problemas conhecidos a corrigir incrementalmente
 
@@ -285,7 +495,7 @@ Car
 | Prefixo | Auth | Propósito |
 |---|---|---|
 | `/api/v1/*` | Sanctum SPA (cookie) | Painel autenticado da empresa |
-| `/api/public/*` | Token da empresa | Catálogos embebidos, captação de views/leads públicos |
+| `/api/public/*` | Token da empresa (`?token=<uuid>` na query string) | Catálogos embebidos consumidos por sites externos dos clientes |
 | `/market/snapshots` | Scraper token middleware | Ingestão de dados de mercado |
 
 ### Convenções de API
@@ -296,9 +506,64 @@ Car
 - Paginação com formato standard: `{ data, meta: { current_page, last_page, per_page, total } }`
 - Erros 4xx com payload `{ message, errors: { campo: [mensagens] } }`
 - Erros 5xx com payload `{ message }` apenas (sem stack trace)
-- **Versionamento:** quando precisar de breaking changes, criar `/api/v2/*` e manter `/api/v1/*` em paralelo até deprecação anunciada com 90 dias de antecedência
+- **Versionamento:** quando precisar de breaking changes na API pública, **coordenar com actualização manual dos sites externos** dos clientes. Não criar `/api/v2/*` automaticamente — versionar só quando houver consumidores externos terceiros.
 
-### Segurança a reforçar (parte do refactor)
+### 8.1 API pública (`/api/public/*`)
+
+**Middleware:** `check_company_api_token` lê `?token=<uuid>` da query string e injecta `public_api_company` no request. Usar `$request->input('public_api_company')` para obter o modelo da empresa, **sem fazer query redundante**.
+
+**Status visíveis publicamente:** apenas `active` e `available_soon`. Outros valores (`sold`, `draft`, `inactive`, `reserved`) são filtrados automaticamente no `CarPublicRepository`.
+
+**Resource pública:** `CarPublicResource` em `app/Http/Resources/Public/`. Documentação completa em `RESOURCE_SHAPE.md` ao lado da Resource.
+
+**Estrutura achatada da resposta pública** (não expõe a estrutura interna do JSON):
+
+```json
+{
+  "id": 55,
+  "brand": { "id": 1, "name": "Fiat" },
+  "model": { "id": 12, "name": "Ducato" },
+  "category": { "id": 6, "name": "Integral", "slug": "integral" },
+  "specs": { "seats": 5, "length_m": 6.0, "gross_weight_kg": 3300 },
+  "habitation": { "has_kitchen": true, "has_bathroom": true },
+  "features": { "has_solar_panel": true, "has_awning": false },
+  "beds": [{ "type": "cama_garagem", "label": "Cama de garagem" }],
+  "seller": { "name": "...", "avatar": "...", "mobile": "...", "whatsapp": "..." },
+  "is_trade_in": false
+}
+```
+
+**Para viaturas não-motorhome:** `habitation`, `features`, `beds`, `category` são `null`. Mais previsível que omitir chaves.
+
+### 8.2 Campos NUNCA expostos publicamente
+
+A `CarPublicResource` omite explicitamente estes campos. Não voltar a expor sem revisão de privacidade:
+
+- `internal_notes` — notas internas dos vendedores
+- `vin` — número de chassis (PII)
+- `license_plate` — matrícula (PII)
+- `company_id`, `carmine_id`, `seller_user_id`, `car_brand_id`, `car_model_id`, `car_category_id` — FKs internas
+- `lifestyle`, `price_net` — campos sem dados ou B2B internos
+- `views_count`, `leads_count` — métricas internas
+- Relação `seller` raw (User completo com `email`, `role`, `birthdate`, `deleted_at`, etc.)
+
+A entidade `seller` na resposta pública contém apenas: `name`, `avatar`, `mobile`, `whatsapp`. Calculada por `appendPublicSellerContact`. **Não carregar `with(['seller'])` nos endpoints públicos.**
+
+### 8.3 Filtros suportados na API pública
+
+**Filtros antigos (manter):**
+`doors`, `condition`, `min_price_gross`, `max_price_gross`, `exterior_colors`, `interior_colors`, `registration_years`, `fuel_types`, `transmissions`, `vehicle_type`, `segment`, `brand`, `model`, `orderBy`, `orderDirection`, `perPage`.
+
+**Filtros novos (Fase D):**
+- `category=integral` — filtra por `car_category.slug`
+- `bed_types=cama_central,cama_garagem` — OR entre slugs
+- `min_seats` / `max_seats`
+- `min_length_m` / `max_length_m` (decimal)
+- `has_bathroom=true` / `has_kitchen=true` / `has_solar_panel=true`
+
+**Documentação completa:** `app/Http/Resources/Public/RESOURCE_SHAPE.md`.
+
+### Segurança a reforçar (parte do refactor contínuo)
 
 - **Rate limiting** nas rotas de IA — proteger custos OpenAI (adicionar throttle por `company_id`)
 - **Autorização role `root`** em endpoints internos (`/internal/scraper/*`) tanto no frontend (já feito) como no backend (verificar)
@@ -318,23 +583,27 @@ Car
 
 | Service | Responsabilidade |
 |---|---|
-| `CarService` | CRUD de viaturas, upload de imagens |
+| `CarService` | CRUD de viaturas, upload de imagens, normalização de payload |
 | `CarAnalyticsService` | Agrega métricas, IPS, análises para endpoint de analytics |
 | `CarAiAnalysesService` | Gera e persiste análises IA; enforce pós-processamento |
+| `CarDescriptionService` | Gera descrições via OpenAI, lê `vehicle_attributes` via helper |
 | `MetaAdsService` | OAuth Meta, sincronização de campanhas e métricas |
 | `DashboardService` | Agrega dados de dashboard; inclui personas |
 | `ScraperService` | Normaliza filtros, cria `ScraperExecution`, despacha job |
+| `VehicleAttributeService` | Orquestra repo de atributos (read/write/upsert) |
 
 ### Repositories existentes
 
 | Repository | Responsabilidade |
 |---|---|
-| `DashboardRepository` | Agregações dashboard; contém `groupCarsByPersona()` com classificação por `price_gross`, `power_hp`, `segment`, `seats` |
+| `DashboardRepository` | Agregações dashboard; contém `groupCarsByPersona()` |
+| `CarPublicRepository` | Queries da API pública, incluindo filtros JSON em `vehicle_attributes.attributes` |
+| `VehicleAttributeRepository` | CRUD de atributos de viatura |
 
 ### Problemas conhecidos a corrigir
 
-- `CarAiAnalysesService::enforceCampaignDiagnosisRules()` não tem testes unitários — risco de regressão silenciosa. **Adicionar testes parametrizados a cobrir os casos limite documentados** (ex: `goodDelivery=true`, `ctr=1.9`, `clicks=99` — não deve disparar a regra)
-- `DashboardRepository::classifyPersona()` usa `segment` como string raw — se o enum de segmentos mudar, classificação quebra silenciosamente. **Encapsular num Value Object `Segment` com constantes**
+- `CarAiAnalysesService::enforceCampaignDiagnosisRules()` não tem testes unitários
+- `DashboardRepository::classifyPersona()` usa `segment` como string raw — encapsular num Value Object
 
 ---
 
@@ -348,11 +617,9 @@ React 19 + Vite + TypeScript + Redux Toolkit + Reactstrap (Velzon theme).
 - Slices por feature em `web/src/slices/`
 - Pattern: `state.<Feature>.data.<resource>` e `state.<Feature>.loading.<resource>`
 - Selectors via `createSelector` do `reselect` — sempre, não consumir slices directamente em componentes
-- Thunks para chamadas API que partilham dados entre páginas; `useState` local apenas para estado verdadeiramente local (modais, hover, dropdowns)
+- Thunks para chamadas API que partilham dados entre páginas; `useState` local apenas para estado verdadeiramente local
 
-### Páginas de viatura (refactorização recente — atenção)
-
-Existem **5 páginas independentes** por viatura:
+### Páginas de viatura (5 páginas independentes)
 
 | Rota | Componente | Conteúdo |
 |---|---|---|
@@ -364,31 +631,47 @@ Existem **5 páginas independentes** por viatura:
 
 `CarPageNav` é a navegação entre tabs (usa `useParams()`).
 
-**Problema actual:** cada uma das 5 páginas chama o thunk `analyticsCar` independentemente no `useEffect`. Resultado: navegar entre tabs dispara N pedidos para os mesmos dados. **A corrigir no refactor — ver secção 15.**
+**Problema actual:** cada uma das 5 páginas chama o thunk `analyticsCar` independentemente. Resolução no refactor — ver secção 14.
+
+### Formulário de viatura (`CarCreate` / `CarUpdate`)
+
+Suporta tipos: carro, moto, motorhome, caravana.
+
+**Para motorhome e caravan:** 8 accordions de atributos de habitação (Fases B1 + B2):
+1. Dimensões e Pesos (B1)
+2. Cozinha (B1)
+3. Casa de Banho (B1)
+4. Energia e Aquecimento (B2)
+5. Exterior (B2)
+6. Segurança e Fechaduras (B2)
+7. Chassis e Estrutura (B2)
+8. Mobiliário Interior (B2)
+
+Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` como sub-componentes próprios. Accordions 1-3 estão inline em `CarVehicleDetailsDataFields.tsx` (dívida técnica registada).
 
 ### Velzon — como tratar
 
 - Velzon é tema Bootstrap 5 comercial. As classes (`fs-11`, `fw-semibold`, `bg-light-subtle`, `text-primary`) **são do tema, não do nosso design system**
-- **Não criar mais `sectionStyle` inline.** Já está duplicado em 4 ficheiros — extrair para componente `Section` ou `Card` próprio no refactor
+- **Não criar mais `sectionStyle` inline.** Já está duplicado em 4 ficheiros — extrair para componente `Section` ou `Card` próprio
 - Não fazer upgrade major do Velzon sem análise de impacto (risco alto)
-- Médio prazo: extrair tokens (cores, espaçamentos, border-radius) para CSS variables próprias, criando camada de produto sobre o Bootstrap
+- Médio prazo: extrair tokens (cores, espaçamentos, border-radius) para CSS variables próprias
 
 ### Convenções TypeScript
 
 - **Nunca usar `any`.** É o problema #1 do frontend actual e está a ser corrigido em fases. Todo o código novo deve ter tipos próprios
-- Tipos de API vivem em `web/src/types/api.ts` (a criar — ver roadmap)
-- Tipos derivam das API Resources do Laravel (estas são a fonte de verdade do schema)
-- Optional chaining (`?.`) só é justificado quando o contrato genuinamente permite `undefined`. Se está a ser usado para "defensive coding" porque o tipo é `any`, **tipar correctamente em vez disso**
+- Tipos de API vivem em `web/src/types/api.ts` (a criar progressivamente)
+- Tipos derivam das API Resources do Laravel
+- Optional chaining (`?.`) só é justificado quando o contrato genuinamente permite `undefined`
 
 ### Convenções de chamadas API
 
-- **Um único padrão:** Redux Toolkit thunks + selectors. Chamadas locais com `useState`/`useEffect` apenas para casos verdadeiramente isolados (e documentar porquê no código)
+- **Um único padrão:** Redux Toolkit thunks + selectors
 - Helpers em `web/src/helpers/api_helper.ts` (transversais) e por recurso (a criar) — não acumular tudo em `laravel_helper.ts`
 
 ### Formulários
 
 - Formulários simples: state controlado manual (aceitável)
-- Formulários complexos (CarCreate, CarUpdate): considerar React Hook Form + Zod no próximo refactor — não bloqueante
+- Formulários complexos (CarCreate, CarUpdate): usar Formik (já em uso) + considerar Yup ou Zod para validação no próximo refactor
 
 ### Erros e feedback
 
@@ -410,7 +693,7 @@ Existem **5 páginas independentes** por viatura:
 ### Multi-tenancy
 
 - Recursos de `/api/v1/*` fazem scope por `company_id` derivado do utilizador autenticado **no backend** (não confiar no frontend)
-- API pública (`/api/public/*`) usa token da empresa, não utilizador
+- API pública (`/api/public/*`) usa token da empresa via `?token=<uuid>` na query string
 - **`company_id` nunca deve ser aceite como parâmetro de request** do utilizador autenticado — é sempre derivado do auth
 
 ### Roles
@@ -421,7 +704,7 @@ Existem **5 páginas independentes** por viatura:
 | `admin` | Gestão completa da empresa |
 | `user` | Operação corrente (criar/editar viaturas, ver analytics) |
 
-**Importante:** os guards de role são feitos no frontend (renderização condicional). **Verificar e reforçar guards equivalentes no backend** — não confiar apenas no frontend.
+**Importante:** os guards de role são feitos no frontend (renderização condicional). **Verificar e reforçar guards equivalentes no backend.**
 
 ---
 
@@ -431,7 +714,9 @@ Existem **5 páginas independentes** por viatura:
 
 - **Língua de identificadores:** inglês (variáveis, funções, classes, tabelas, colunas)
 - **Língua de conteúdo voltado ao utilizador:** Português de Portugal (pt-PT, não pt-BR)
-- **Comentários:** preferencialmente inglês, mas pt-PT aceite em código de domínio (regras de negócio específicas a Portugal — fiscalidade, segmentos automóveis)
+- **Comentários:** preferencialmente inglês, mas pt-PT aceite em código de domínio
+- **Slugs e enums:** snake_case (`cama_central`, `chassis_alko`)
+- **Labels:** pt-PT factual, sem buzzwords (sem "moderno", "elegante", "perfeito para…")
 
 ### PHP / Laravel
 
@@ -442,10 +727,10 @@ Existem **5 páginas independentes** por viatura:
 
 ### TypeScript / React
 
-- Strict mode `true` no `tsconfig.json` (a verificar e corrigir se não estiver)
+- Strict mode `true` no `tsconfig.json`
 - Componentes funcionais com hooks — nada de class components
 - Props com interfaces explícitas — nunca `any`, nunca `object`
-- Imports absolutos via alias (`@/components/...`, `@/slices/...`) — configurar no Vite se não estiver
+- Imports absolutos via alias (`@/components/...`, `@/slices/...`)
 
 ### Naming
 
@@ -454,8 +739,9 @@ Existem **5 páginas independentes** por viatura:
 - Controllers: `<Resource>Controller`
 - Services: `<Resource>Service`
 - Repositories: `<Resource>Repository`
-- Componentes React: PascalCase (`CarAnalyticsHeader.tsx`)
-- Slices Redux: feature em PascalCase (`Car`, `Dashboard`)
+- Resources: `<Resource>Resource` ou `<Resource>PublicResource` para endpoints públicos
+- Componentes React: PascalCase
+- Slices Redux: feature em PascalCase
 
 ---
 
@@ -468,18 +754,19 @@ Existem **5 páginas independentes** por viatura:
 - **Rate limit por empresa** — implementar no refactor (proteger custos)
 - Prompts em ficheiros dedicados, versionáveis — não inline em Services
 - Output esperado **sempre** explícito (formato, comprimento, língua pt-PT)
+- **Variável de ambiente obrigatória:** `OPENAI_KEY`. Deve estar em `.env.example` e validada em deploy.
 
-### Geração de descrições de viatura (feature dedicada)
+### Geração de descrições de viatura
 
 - Páginas: `/cars/create` e `/cars/edit`
 - Botão "Gerar descrição com IA" junto ao campo de descrição
 - **Botão disabled** enquanto faltar preencher: Tipo de Veículo, Marca, Modelo, Ano, Preço (sempre); Combustível (só Carro); Cilindrada+Potência (Carro e Autocaravana)
-- **Princípio inviolável:** a descrição NÃO repete informação visível na ficha técnica. É a camada editorial que os campos não capturam
+- **Princípio inviolável:** a descrição NÃO repete informação visível na ficha técnica
 - Português de Portugal, 60–100 palavras, texto corrido, sem bullet points
 - Proibido: "Descubra", "perfeito para", "aventuras", "liberdade", "elegante", "moderno"
 - Foco por tipo:
-  - **Carro** → equipamento que se destaca para o segmento e preço, estado geral, diferenciadores face a alternativas similares
-  - **Autocaravana** → como o layout e equipamento de habitação funcionam na prática, estado, diferenciador face ao preço
+  - **Carro** → equipamento que se destaca para o segmento e preço, estado geral
+  - **Autocaravana** → como o layout e equipamento de habitação funcionam na prática, estado
   - **Caravana** → habitabilidade real, estado de conservação, equipamento que acrescenta valor prático
 
 ### Meta Ads
@@ -487,18 +774,17 @@ Existem **5 páginas independentes** por viatura:
 - OAuth via `MetaAdsService`, tokens em `company_integrations`
 - Sincronização de campanhas e métricas via `FetchMetaAdsJob`
 - `meta_audience_insights` é a tabela de audiência
-- **Atenção:** a Meta Graph API muda 2× por ano. Quando partir, **não improvisar** — verificar changelog Meta e ajustar `MetaAdsService` num PR dedicado
+- **Atenção:** a Meta Graph API muda 2× por ano. Quando partir, **não improvisar**
 
 ### Carmine
 
 - Tabela e model existem (`carmine_connections`)
 - Funcionalidade UI ainda não totalmente integrada — **estado: parcial**
-- Antes de qualquer feature nova com Carmine, validar o que está implementado
 
 ### Scraper Python
 
 - Container isolado, comunicação via `docker exec` despachado por `RunScraperJob`
-- **Atenção arquitectural:** o worker tem acesso ao Docker socket (`/var/run/docker.sock`). Risco de segurança em produção — auditar e considerar runner dedicado a médio prazo
+- **Atenção arquitectural:** o worker tem acesso ao Docker socket (`/var/run/docker.sock`). Risco de segurança em produção
 - Não tem testes — adicionar pelo menos smoke tests
 
 ---
@@ -508,75 +794,79 @@ Existem **5 páginas independentes** por viatura:
 ### 🔴 Alta prioridade — atacar no próximo trimestre
 
 1. **Bug histórico `whatsapp_clicks`** — métricas erradas 2026-03-06 a 2026-03-13. Correr `php artisan performance:aggregate --from=DATE --to=DATE --sync` para cada dia
-2. **TypeScript `any` generalizado** — bloqueia refactor seguro. Criar `web/src/types/api.ts` com interfaces para `CarAnalyticsResponse`, `IpsScore`, `AiAnalysis`, `PerformanceMetric`
+2. **TypeScript `any` generalizado** — bloqueia refactor seguro. Criar `web/src/types/api.ts` progressivamente
 3. **Sem testes para lógica de negócio crítica** — `CarAiAnalysesService::enforceCampaignDiagnosisRules()`, `DashboardRepository::groupCarsByPersona()`, `ScraperService::normalizeFilters()`, `AggregateCarPerformanceMetricsJob`
-4. **Fetch duplicado em cada tab de viatura** — 5 páginas fazem o mesmo fetch independente. Resolver com layout component que faz fetch uma vez e partilha estado por `car_id`
-5. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie ou pelo menos limitar o que é guardado
+4. **Fetch duplicado em cada tab de viatura** — 5 páginas fazem o mesmo fetch independente
+5. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie
 
 ### 🟡 Média prioridade
 
 6. **`laravel_helper.ts` a crescer sem organização** — partir em helpers por recurso
-7. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense` no `allRoutes.tsx`
+7. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense`
 8. **Sem rate limiting nas rotas de IA** — adicionar throttle por `company_id`
 9. **`classifyPersona()` acoplado a strings raw de `segment`** — encapsular num enum/VO
 10. **Sem Error Boundary React global** — adicionar e ligar a logging
+11. **B1 accordions inline em `CarVehicleDetailsDataFields.tsx`** — Os 3 accordions da Fase B1 estão inline no componente parent. Os 5 da B2 foram extraídos para sub-componentes em `components/vehicleAttributes/`. Extrair também os 3 da B1 para alinhar com o padrão
+12. **`subsegment` NULL em todos os motorhomes** — campo existe no schema mas não está a ser gravado pelo UI. Investigar e corrigir
+13. **Catch silencioso em `CarDescriptionDataFields.tsx`** — `catch {}` apenas mostra toast genérico. Propagar mensagem de erro real quando disponível
+14. **Validação de min/max em campos numéricos do `vehicle_attributes`** — o car 57 tem `length: -0.1745`. Validação backend já existe na Fase B1 (min 0.1 m), mas o registo histórico não foi limpo
 
 ### 🟢 Baixa prioridade
 
-11. `document.title` mutado directamente — substituir por hook `useDocumentTitle`
-12. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs
-13. Sem índices documentados em tabelas de métricas — adicionar `(car_id, period_start)` em `car_performance_metrics`
-14. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro
-15. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios
-16. Accordions B1 (`Dimensões e Pesos`, `Cozinha`, `Casa de Banho`) inline em `CarVehicleDetailsDataFields.tsx` — extrair para `components/vehicleAttributes/` alinhando com padrão B2
+15. `document.title` mutado directamente — substituir por hook `useDocumentTitle`
+16. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs
+17. Sem índices documentados em tabelas de métricas — adicionar `(car_id, period_start)` em `car_performance_metrics`
+18. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro
+19. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios
+20. **`lifestyle` campo zombie** no `cars` — sem cast, sem UI, nunca preenchido. Remover ou implementar
+21. **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa. Quando esse limite for atingido, adicionar índices funcionais em MariaDB para campos filtráveis (`length_m`, `has_solar_panel`, slugs de `beds`)
+22. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino". Seeder tem 7 categorias, BD tem 4. Não alterar slugs em uso, mas alinhar seeder com realidade da BD
+23. **Redundância eliminada na Fase D mas verificar outros sítios** — `appendPublicSellerContact` ainda existe; auditar se há queries duplicadas similares
+24. **`car_id 57` com `length: -0.1745`** — registo único, corrigir manualmente em produção: `UPDATE vehicle_attributes SET ...`
+25. **`GenerateWeeklyMarketingIdeasJob` desactivado em 2026-05-22** — Schedule comentado em `routes/console.php`. Reactivar apenas quando a página `/cars/:id/marketing` tiver tracção de uso real. Ver discussão na sessão de optimização do Dashboard.
 
 ---
 
-## 15. Refactor cirúrgico — roadmap 90 dias
+## 15. Refactor cirúrgico — fases concluídas e roadmap
 
-### Mês 1 — fundações de tipagem e dados
+### ✅ Fases concluídas (sessão 2026-05-22)
 
-**Semana 1**
-- Criar `web/src/types/api.ts` com interfaces baseadas nas API Resources existentes
-- Migrar `CarAnalytics`, `CarAdsPage`, `CarIntelligencePage` para tipos próprios (eliminar `any`)
-- Corrigir bug histórico `whatsapp_clicks` em produção (artisan command)
+**Fase A — Items de equipamento adicionados ao UI**
+6 items novos em `cars.extras`: `EBD`, `ASR`, `Sensores de marcha atrás`, `Ar condicionado`, `Vidros eléctricos`, `Bancos rotativos`. Listas extraídas para `data/extraGroups.ts`.
 
-**Semana 2**
-- Layout component `CarPageLayout` em `/cars/:id/*` que faz fetch único de `analyticsCar` e partilha via Context ou via key no Redux
-- Remover fetches duplicados das 5 páginas individuais
-- Mover `CarAnalyticsHeader` para o layout
+**Fase B1 — Atributos de habitação essenciais**
+Reestruturação do JSON `vehicle_attributes.attributes` em 3 secções: `dimensions`, `weights`, `habitation_basics` (com sub-objectos `kitchen` e `bathroom` completos). Helper `VehicleAttribute::normalizeShape()` centralizado. 16 testes verdes. Artisan command `vehicle-attributes:migrate-shape` com dry-run.
 
-**Semana 3**
-- Testes unitários para `CarAiAnalysesService::enforceCampaignDiagnosisRules()` — todos os casos limite
-- Testes unitários para `DashboardRepository::groupCarsByPersona()` — cada combinação de segmento/preço/potência
+**Fase B2 — Atributos de habitação avançados**
+5 secções novas (57 campos): `energy_climate`, `exterior`, `security`, `chassis_structure`, `interior_furniture`. 5 accordions extraídos para sub-componentes em `components/vehicleAttributes/`. Validação nested em `CarRequest`. 22 testes verdes.
 
-**Semana 4**
+**Fase C — Nomenclatura de camas + integração car_categories**
+13 tipos de cama (11 novos visíveis + "outra" + 1 legacy preservado). Mapeamento não-destrutivo de strings antigas. `car_categories` já estava implementado de ponta a ponta. 22 testes no `VehicleAttributeNormalizationTest`.
+
+**Fase D — API pública: Resource + filtros + correcção PII**
+`CarPublicResource` substitui devolução raw de Model. **Correcção crítica:** removida exposição de `email` do seller, `vin`, `license_plate`, `internal_notes`, `role` e outros campos sensíveis. 7 filtros novos no `index`: `category`, `bed_types`, ranges de seats/length_m, `has_*`. `filters()` endpoint alargado com agregados (`count` por opção). 11 testes verdes. Status filtrado implicitamente para `active|available_soon`. Contrato documentado em `RESOURCE_SHAPE.md`.
+
+### 🚧 Próximo trimestre (sugestões — não comprometido)
+
+**Mês 1 — fundações de tipagem e dados**
+- `web/src/types/api.ts` com interfaces baseadas nas Resources
+- Migrar `CarAnalytics`, `CarAdsPage`, `CarIntelligencePage` para tipos próprios
+- Corrigir bug histórico `whatsapp_clicks`
+- Layout component `CarPageLayout` para resolver fetch duplicado nas 5 tabs
+
+**Mês 2 — organização e robustez**
+- Partir `laravel_helper.ts` em helpers por recurso
+- Adoptar padrão único de chamadas API (Redux thunks)
+- Error Boundary global + integração com logging
+- Lazy loading de rotas em `allRoutes.tsx`
 - Rate limiting `/api/v1/ai/*` por `company_id`
-- Verificação e reforço de guards `role:root` nos endpoints `/internal/*` no backend (não confiar só no frontend)
-- Adicionar índice composto `(car_id, period_start)` em `car_performance_metrics`
 
-### Mês 2 — organização e robustez
-
-**Semana 5–6**
-- Partir `laravel_helper.ts` em ficheiros por recurso (`carsApi.ts`, `dashboardApi.ts`, `leadsApi.ts`, …)
-- Adoptar padrão único de chamadas API (Redux thunks). Documentar excepções no código
-- Adicionar Error Boundary global + integração com logging
-
-**Semana 7–8**
-- Lazy loading de rotas em `allRoutes.tsx` com `React.lazy()` + `Suspense`
-- Substituir `document.title = …` por hook `useDocumentTitle`
-- Encapsular `segment` num enum/Value Object em PHP
-
-### Mês 3 — produto e estabilidade
-
-**Semana 9–10**
-- Extrair tokens Velzon para CSS variables próprias; primeira versão do `<Section>` / `<Card>` próprio
-- Migrar 2–3 páginas piloto para usar os componentes próprios
-
-**Semana 11–12**
+**Mês 3 — produto e estabilidade**
+- Extrair tokens Velzon para CSS variables próprias
 - Smoke tests Python do scraper
 - GitHub Actions com lint + tests em PRs
-- Auditoria de mass assignment / `$fillable` em todos os models
+- Investigar e corrigir `subsegment NULL` em motorhomes
+- Decidir destino do campo `lifestyle` zombie
 
 ### O que **não** está no roadmap (deliberadamente)
 
@@ -597,7 +887,7 @@ Existem **5 páginas independentes** por viatura:
 - **Não integrar com Standvirtual** — quebra a narrativa comercial
 - **Não criar marketplace público XPLENDOR** — não competimos com Standvirtual
 - **Não construir DMS completo** (faturação, oficina, contabilidade) — usar integrações com Vendus, Moloni, Eticadata
-- **Não devolver Models directamente da API** — sempre via Resource
+- **Não devolver Models directamente da API** — sempre via Resource (princípio aplicado e enforced na Fase D)
 - **Não pôr business logic em Controllers** — vai para Services
 - **Não usar `any` em código novo**
 - **Não criar migrations sem `down()`** implementado
@@ -606,6 +896,12 @@ Existem **5 páginas independentes** por viatura:
 - **Não aceitar `company_id` como parâmetro de request** de utilizador autenticado — derivar do auth
 - **Não fazer upgrade major do Velzon** sem análise de impacto
 - **Não usar emojis ou pt-BR** em conteúdo voltado ao utilizador
+- **Não nomear concorrentes pelo nome** em material público (landing, conteúdos) — usar "marketplaces"
+- **Não carregar `with(['seller'])` em endpoints públicos** — expõe PII do User
+- **Não expor `vin`, `license_plate`, `internal_notes`, `email` do seller** na API pública
+- **Não adicionar filtros novos na API pública sem actualizar `RESOURCE_SHAPE.md`** — é o contrato com os sites externos
+- **Não correr `vehicle-attributes:migrate-shape --force`** sem aprovação explícita — migração destrutiva
+- **Não fazer breaking changes na API pública sem coordenar deploy** com actualização dos sites React dos clientes
 
 ---
 
@@ -613,7 +909,7 @@ Existem **5 páginas independentes** por viatura:
 
 Ao receber uma tarefa, seguir esta ordem:
 
-1. **Ler este CLAUDE.md** (pelo menos secções 2, 14, 15, 16)
+1. **Ler este CLAUDE.md** (pelo menos secções 2, 8, 14, 15, 16)
 2. **Analisar código existente** relacionado antes de propor solução — seguir padrões já estabelecidos
 3. **Verificar se há decisão prévia** que afecta a tarefa (secção 16 em particular)
 4. **Mostrar plano** antes de escrever código quando a tarefa envolver múltiplos ficheiros ou alterações estruturais
@@ -626,6 +922,13 @@ Ao receber uma tarefa, seguir esta ordem:
 
 - Confirmar que não estamos a violar a regra de "agência primeiro" — a feature ajuda-nos a servir clientes da agência, ou é especulação para SaaS futuro?
 - Se for especulação para SaaS, **adiar**. Voltamos a esta conversa quando tivermos 12+ clientes da agência e cashflow positivo (ver secção 18)
+
+### Quando trabalhar na API pública
+
+- **Sempre actualizar `RESOURCE_SHAPE.md`** no mesmo PR
+- **Sempre validar** se a alteração quebra os sites React externos dos clientes
+- **Se quebrar**, coordenar deploy: actualizar sites primeiro, depois deploy do backend
+- **Nunca expor** campos da lista da secção 8.2
 
 ---
 
@@ -652,12 +955,15 @@ Antes disto, **SaaS aberto é distração.** A agência é o negócio.
 - **Marketplace** — Standvirtual, OLX, Custojusto (não integramos, ver secção 2.4)
 - **Action Center** — área da app que sugere acções concretas ao stand baseadas em analytics e IA
 - **SmartAds** — recomendações de campanha geradas pelo `CarAiAnalysesService`
+- **Habitação** — equipamento da célula da autocaravana (cozinha, casa de banho, camas, energia, exterior)
+- **Trade-in** (`is_trade_in`) — viatura entregue em retoma. Coluna na BD ainda é `is_resume`; renomeado apenas na API pública.
 
 ---
 
 ## 20. Documentos relacionados
 
 - `XPLENDOR-Manual-Reposicionamento.md` — manual comercial da agência (pricing, contrato-tipo, scripts de venda)
+- `app/Http/Resources/Public/RESOURCE_SHAPE.md` — contrato da API pública (formato de resposta, breaking changes)
 - Auditoria estrutural completa (2026-05-22) — relatório base que deu origem a este documento
 
 ---
