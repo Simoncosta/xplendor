@@ -1,65 +1,70 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import './landing.css';
 
-import Navbar from './navbar';
-import Home from './home';
-import Client from './client';
-import Services from './services';
-import Features from './features';
-import Plans from './plans';
-import Faqs from './faq';
-import Reviews from './reviews';
-import Counter from './counter';
-import WorkProcess from './workProcess';
-import Team from './team';
-import Contact from './contact';
-import Cta from './cta';
-import Footer from './footer';
+import LandingNav from './components/LandingNav';
+import LandingFooter from './components/LandingFooter';
+import Hero from './sections/Hero';
+import ProblemSection from './sections/ProblemSection';
+import HowItWorks from './sections/HowItWorks';
+import MarketAnalysis from './sections/MarketAnalysis';
+import Differentiators from './sections/Differentiators';
+import Pricing from './sections/Pricing';
+import CustomPlan from './sections/CustomPlan';
+// SocialProof: reactivar quando tivermos 3+ logos autorizados de clientes reais
+// import SocialProof from './sections/SocialProof';
+import FAQSection from './sections/FAQSection';
+import FinalCTA from './sections/FinalCTA';
 
-const Index = () => {
-    document.title = "Xplendor | Plataforma Inteligente para Venda de Carros";
+const Landing: React.FC = () => {
+    useEffect(() => {
+        document.title =
+            'XPLENDOR — Marketing digital para stands automóveis em Portugal';
+    }, []);
 
-    window.onscroll = function () {
-        scrollFunction();
-    };
+    useEffect(() => {
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const scrollFunction = () => {
-        const element = document.getElementById("back-to-top");
-        if (element) {
-            if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-                element.style.display = "block";
-            } else {
-                element.style.display = "none";
-            }
-        }
-    };
+        const elements = document.querySelectorAll<HTMLElement>('.lp-reveal');
 
-    const toTop = () => {
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
-    };
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('lp-revealed');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            },
+            { threshold: 0.07, rootMargin: '0px 0px -32px 0px' }
+        );
+
+        elements.forEach((el) => {
+            el.classList.add('lp-hidden');
+            observer.observe(el);
+        });
+
+        return () => observer.disconnect();
+    }, []);
+
     return (
-        <React.Fragment>
-            <div className="layout-wrapper landing">
-                <Navbar />
-                <Home />
-                {/* <Client /> */}
-                <Services />
-                <Features />
-                <Plans />
-                <Faqs />
-                {/* <Reviews /> */}
-                <Counter />
-                <WorkProcess />
-                {/* <Team /> */}
-                <Contact />
-                <Cta />
-                <Footer />
-                <button onClick={() => toTop()} className="btn btn-danger btn-icon landing-back-top" id="back-to-top">
-                    <i className="ri-arrow-up-line"></i>
-                </button>
-            </div>
-        </React.Fragment>
+        <div className="xplndor-landing">
+            <LandingNav />
+            <main>
+                <Hero />
+                <ProblemSection />
+                <HowItWorks />
+                <MarketAnalysis />
+                <Differentiators />
+                <Pricing />
+                <CustomPlan />
+                {/* SocialProof: reactivar quando tivermos 3+ logos autorizados de clientes reais */}
+                {/* <SocialProof /> */}
+                <FAQSection />
+                <FinalCTA />
+            </main>
+            <LandingFooter />
+        </div>
     );
 };
 
-export default Index;
+export default Landing;
