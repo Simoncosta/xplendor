@@ -825,6 +825,42 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 24. **`car_id 57` com `length: -0.1745`** — registo único, corrigir manualmente em produção: `UPDATE vehicle_attributes SET ...`
 25. **`GenerateWeeklyMarketingIdeasJob` desactivado em 2026-05-22** — Schedule comentado em `routes/console.php`. Reactivar apenas quando a página `/cars/:id/marketing` tiver tracção de uso real. Ver discussão na sessão de optimização do Dashboard.
 
+### 🔴 Alta prioridade (adicionado E3a)
+
+29. **Duas fontes de verdade paralelas para "posição no mercado"** —
+    Após a Sub-fase E3a, o sistema tem dois mecanismos paralelos:
+    - `CarMarketIntelligenceService` (legacy): lê de `car_market_snapshots`,
+      alimenta toda a pipeline de IA (`CarAiAnalysesService`,
+      `CarDecisionEngineService`, `CarIssueEngine`, `VehiclePromptBuilder`,
+      possivelmente `CarSalePotentialScoreService`). Thresholds
+      `below_market`/`aligned_market`/`above_market`.
+    - `CarMarketAggregate` (E2): tabela própria com aggregates ricos
+      (mediana, top 5, confidence), alimenta UI da ficha e futuramente
+      o Dashboard. Thresholds `competitive`/`fair`/`slightly_high`/`overpriced`.
+
+    **Migrar pipeline de IA para `CarMarketAggregate`** numa sub-fase
+    dedicada após o capítulo E estar em produção. Envolve:
+    - Substituir leitura de `car_market_snapshots` por
+      `latest_market_aggregate` nos 5 services dependentes
+    - Re-treinar prompts da IA que assumem `market_intelligence.market_position`
+    - Validar que motor de decisão (`CarDecisionEngineService`) continua
+      a produzir scoring consistente
+    - Eventualmente eliminar `CarMarketIntelligenceService.php`
+
+    Não atacar antes do capítulo E estar deployed e estável (3-5 dias
+    em produção).
+
+30. **6 ficheiros frontend orphans eliminados na E3a** — `MarketIntelligenceCard`,
+    `TabAnaliseIA`, `TabMetricas`, `TabOverview`, `TabPerformance`, `TabViatura`.
+    Tinham sido criados em iterações anteriores mas nunca foram integrados
+    em rotas activas. Registado para evitar reintrodução acidental.
+
+31. **`car_market_aggregates` não tem `scraped_at`** — A coluna estava no
+    plano da E2 mas ficou de fora da migration. `updated_at` é usado como
+    proxy para "última vez que o scrape correu". Adicionar `scraped_at`
+    quando houver necessidade de distinguir "última actualização" de
+    "último scrape" (ex: refresh manual vs schedule periódico).
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap

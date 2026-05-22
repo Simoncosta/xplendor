@@ -93,6 +93,8 @@ Route::prefix('v1')->group(function () {
                 Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
+                Route::get('/cars/{carId}/market-aggregate', [CarController::class, 'marketAggregate']);
+                Route::post('/cars/{carId}/market-aggregate/refresh', [CarController::class, 'refreshMarketAggregate']);
 
                 Route::post('/scraper/run', [ScraperController::class, 'run']);
                 Route::get('/scraper/executions', [ScraperController::class, 'executions']);

@@ -25,7 +25,6 @@ class CarAnalyticsService
         protected CarSalePotentialScoreRepositoryInterface    $potentialScoreRepository,
         protected SmartAdsRecommendationService               $smartAdsRecommendationService,
         protected SilentBuyerDetectionService                 $silentBuyerDetectionService,
-        protected CarMarketIntelligenceService                $carMarketIntelligenceService,
         protected IntentAnalysisService                       $intentAnalysisService,
         protected LeadRealityGapService                       $leadRealityGapService,
         protected CarFunnelAnalyzer                           $carFunnelAnalyzer,
@@ -62,7 +61,6 @@ class CarAnalyticsService
         $recommendedCreative = $this->resolveRecommendedCreative($car, $smartAdsRecommendation);
         $promoDiscountValue = $car->promo_discount_value;
         $promoDiscountPct = $car->promo_discount_pct;
-        $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
         $funnelAnalysis = $this->carFunnelAnalyzer->analyzeForCar($car);
         $intentAnalysis = $this->intentAnalysisService->analyzeForCar($car);
         $leadRealityGap = $this->leadRealityGapService->analyzeForCar($car, $funnelAnalysis, $intentAnalysis);
@@ -153,7 +151,6 @@ class CarAnalyticsService
             ],
             'smart_ads_recommendation' => $smartAdsRecommendation,
             'recommended_creative' => $recommendedCreative,
-            'market_intelligence' => $marketIntelligence,
             'intent_analysis' => $intentAnalysis,
             'contact_probability' => $contactProbability,
             'contact_signal' => $contactSignal,

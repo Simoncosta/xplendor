@@ -226,7 +226,7 @@ export const getCarCategories = (vehicleType: string) =>
 export const getDistricts = () => api.get(url.GET_DISTRICTS);
 
 // SCRAPER
-export const runScraperApi = (companyId: number, data: { source: string; mode: string; filters: Record<string, any> }) =>
+export const runScraperApi = (companyId: number, data: { source: string; mode: string; vehicle_type?: string; filters: Record<string, any> }) =>
     api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SCRAPER + "/run", data, { headers: { "Content-Type": "application/json" } });
 export const getScraperExecutionsApi = (companyId: number, params?: { per_page?: number }) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SCRAPER + "/executions", params);

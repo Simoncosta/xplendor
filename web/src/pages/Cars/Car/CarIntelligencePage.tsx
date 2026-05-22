@@ -10,6 +10,7 @@ import { refreshCarMetaAds, regenerateCarAnalysis } from "slices/car-ai-analises
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
+import MarketPositionCard from "./components/intelligence/MarketPositionCard";
 
 import {
     fmtDate,
@@ -43,6 +44,7 @@ export default function CarIntelligencePage() {
     const dispatch: any = useDispatch();
     const { id } = useParams();
     const [companyId, setCompanyId] = useState<number>(0);
+    const [userRole, setUserRole] = useState<string>("");
     const [refreshingAndReanalyzing, setRefreshingAndReanalyzing] = useState(false);
     const [showTechnicalAnalysis, setShowTechnicalAnalysis] = useState(false);
 
@@ -53,6 +55,7 @@ export default function CarIntelligencePage() {
         if (!authUser) return;
         const obj = JSON.parse(authUser);
         setCompanyId(Number(obj.company_id));
+        setUserRole(obj.role ?? "");
         dispatch(analyticsCar({ companyId: obj.company_id, id: Number(id) }));
     }, [dispatch, id]);
 
@@ -110,6 +113,14 @@ export default function CarIntelligencePage() {
                 <Row className="g-3">
                     <Col xs={12}>
                         <div className="d-grid gap-3">
+                            {companyId > 0 && id && (
+                                <MarketPositionCard
+                                    companyId={companyId}
+                                    carId={Number(id)}
+                                    userRole={userRole}
+                                />
+                            )}
+
                             <CarDiagnosisBlock
                                 ips={ips}
                                 analysis={intentAnalysis}

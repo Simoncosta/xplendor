@@ -8,6 +8,7 @@ use App\Jobs\{
     GenerateDailyAlertsEmailJob,
     GenerateWeeklyMarketingIdeasJob,
     RecalculateAllCarScoresJob,
+    RefreshStaleMarketAggregatesJob,
     FetchMetaAdsMetricsJob,
     SyncCarmineCarsJob,
 };
@@ -47,6 +48,17 @@ Schedule::job(new RecalculateAllCarScoresJob())
 // para accionamento manual via botão no UI. Reactivar quando feature for adoptada
 // pela equipa comercial dos clientes.
 // Schedule::job(new GenerateWeeklyMarketingIdeasJob())->weeklyOn(1, '03:00')->withoutOverlapping();
+
+// Refresh nocturno de aggregates de mercado.
+// Limita a 20 viaturas/noite para evitar bloqueio do Standvirtual.
+// Refresh apenas para aggregates com updated_at > 7 dias OU sem aggregate.
+// Apenas car/motorhome (scraper não suporta caravan/motorcycle).
+// Em 14 dias cobre ~280 viaturas — suficiente para a escala actual.
+// Prioridade às viaturas sem aggregate algum (NOT EXISTS check).
+Schedule::job(new RefreshStaleMarketAggregatesJob())
+    ->dailyAt('03:30')
+    ->name('refresh-stale-market-aggregates')
+    ->withoutOverlapping(60);
 
 Schedule::job(new GenerateDailyAlertsEmailJob())
     ->dailyAt('09:00')

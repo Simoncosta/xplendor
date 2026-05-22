@@ -7,6 +7,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CarRequest;
 use App\Http\Requests\PaginateRequest;
+use App\Http\Resources\CarMarketAggregateResource;
 use App\Models\Car;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
@@ -14,8 +15,11 @@ use App\Services\CarAiAnalysesService;
 use App\Services\CarDescriptionService;
 use App\Services\CarSaleService;
 use App\Services\CarService;
+use App\Services\MarketSnapshotService;
 use App\Services\MetaAdsCarSyncService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Throwable;
@@ -307,6 +311,59 @@ class CarController extends Controller
 
             return ApiResponse::error('Não foi possível gerar a descrição. Tenta novamente.', 503);
         }
+    }
+
+    public function marketAggregate(int $companyId, int $carId): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        $car = Car::with('latestMarketAggregate')->find($carId);
+
+        if (!$car || (int) $car->company_id !== $companyId) {
+            return response()->json(['message' => 'Viatura não encontrada.'], 404);
+        }
+
+        $aggregate = $car->latestMarketAggregate;
+
+        if (!$aggregate) {
+            return response()->json(['data' => null], 200);
+        }
+
+        return CarMarketAggregateResource::make($aggregate)->response();
+    }
+
+    public function refreshMarketAggregate(int $companyId, int $carId, MarketSnapshotService $service): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        $car = Car::find($carId);
+
+        if (!$car || (int) $car->company_id !== $companyId) {
+            return response()->json(['message' => 'Viatura não encontrada.'], 404);
+        }
+
+        $cacheKey = "market_refresh:car:{$carId}";
+
+        if (Cache::has($cacheKey)) {
+            return response()->json(['message' => 'Aguarda alguns minutos antes de actualizar novamente.'], 429);
+        }
+
+        Cache::put($cacheKey, true, 300);
+
+        $aggregate = $service->snapshotForCar($car);
+
+        if ($aggregate === null) {
+            return response()->json(['message' => 'Este tipo de viatura não suporta análise de mercado.'], 422);
+        }
+
+        return response()->json([
+            'data'    => ['aggregate_id' => $aggregate->id, 'status' => $aggregate->status],
+            'message' => 'Análise de mercado iniciada.',
+        ], 202);
     }
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)
