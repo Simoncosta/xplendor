@@ -224,6 +224,16 @@ class Car extends Model implements AuditableContract
         return $this->belongsTo(User::class, 'seller_user_id');
     }
 
+    public function marketAggregates(): HasMany
+    {
+        return $this->hasMany(CarMarketAggregate::class);
+    }
+
+    public function latestMarketAggregate(): HasOne
+    {
+        return $this->hasOne(CarMarketAggregate::class)->latestOfMany();
+    }
+
     public function marketingIdeas(): HasMany
     {
         return $this->hasMany(CarMarketingIdea::class);

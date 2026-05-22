@@ -160,3 +160,20 @@
 2026-05-22 20:33:20 [INFO] scraper: Filtros ativos: {'brand': 'Fiat'}
 2026-05-22 20:33:21 [INFO] scraper: Total de páginas a scraper: 2
 2026-05-22 20:33:22 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-22 21:05:00 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=10
+2026-05-22 21:05:00 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mclouis', 'search[filter_enum_model][0]': 'menfys-van', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-22 21:05:00 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mclouis', 'search[filter_enum_model][0]': 'menfys-van', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-22 21:05:00 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/autocaravanas
+2026-05-22 21:05:00 [INFO] scraper: Filtros ativos: {'brand': 'McLouis', 'model': 'Menfys Van', 'year_from': 2018, 'year_to': 2020, 'fuel': 'gasoline'}
+2026-05-22 21:05:01 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-22 21:05:01 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
+2026-05-22 21:05:01 [INFO] scraper: Página 1/1: 0 anúncios
+2026-05-22 21:05:52 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-22 21:05:52 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-22 21:05:52 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-22 21:05:52 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-22 21:05:52 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2016, 'year_to': 2018, 'fuel': 'diesel'}
+2026-05-22 21:05:54 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-22 21:05:54 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-22 21:06:14 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-22 21:06:14 [INFO] sender: Batch enviado: 10 snapshots. Total: 10

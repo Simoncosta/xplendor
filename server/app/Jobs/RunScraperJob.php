@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Jobs\Traits\ScraperProcess;
 use App\Models\ScraperExecution;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -13,7 +14,7 @@ use Symfony\Component\Process\Process;
 
 class RunScraperJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, ScraperProcess;
 
     public int $tries   = 3;
     public int $timeout = 300;
@@ -139,21 +140,6 @@ class RunScraperJob implements ShouldQueue
                 "Scraper falhou ({$process->getExitCode()}): {$error}"
             );
         }
-    }
-
-    /**
-     * Extrai JSON válido do meio de logs
-     */
-    private function extractJson(string $output): ?string
-    {
-        $start = strpos($output, '{');
-        $end   = strrpos($output, '}');
-
-        if ($start === false || $end === false) {
-            return null;
-        }
-
-        return substr($output, $start, $end - $start + 1);
     }
 
     public function failed(\Throwable $exception): void

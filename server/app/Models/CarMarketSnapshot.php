@@ -9,6 +9,7 @@ class CarMarketSnapshot extends Model
     protected $fillable = [
         'external_id',
         'source',
+        'vehicle_type',
         'brand',
         'model',
         'year',

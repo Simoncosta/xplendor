@@ -25,6 +25,7 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
             $snapshots,
             ['source', 'external_id'],
             [
+                'vehicle_type',
                 'brand',
                 'model',
                 'year',
@@ -67,6 +68,8 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
                 'id',
                 'external_id',
                 'source',
+                'title',
+                'url',
                 'brand',
                 'model',
                 'year',
@@ -98,6 +101,65 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
                         ->orWhereBetween('power_hp', [$powerHp - 25, $powerHp + 25]);
                 });
             })
+            ->orderBy('price')
+            ->get();
+    }
+
+    /** Wider year window; keeps fuel/gearbox/power filters. */
+    public function getComparableSnapshotsWide(Car $car, int $yearWindow): Collection
+    {
+        $car->loadMissing(['brand:id,name', 'model:id,name']);
+
+        $brand   = $this->normalizeComparableValue($car->brand?->name);
+        $model   = $this->normalizeComparableValue($car->model?->name);
+        $year    = $car->registration_year ? (int) $car->registration_year : null;
+        $fuel    = $this->normalizeFuel($car->fuel_type);
+        $gearbox = $this->normalizeGearbox($car->transmission);
+        $powerHp = $car->power_hp ? (int) $car->power_hp : null;
+
+        if (!$brand || !$model || !$year) {
+            return collect();
+        }
+
+        return $this->model->newQuery()
+            ->select(['id', 'external_id', 'source', 'title', 'url', 'brand', 'model', 'year', 'price', 'fuel', 'gearbox', 'power_hp', 'region', 'price_evaluation', 'scraped_at'])
+            ->whereNotNull('price')
+            ->where('price', '>', 0)
+            ->whereBetween('year', [$year - $yearWindow, $year + $yearWindow])
+            ->whereRaw("LOWER(REPLACE(REPLACE(brand, '-', ''), ' ', '')) = ?", [$brand])
+            ->whereRaw("LOWER(REPLACE(REPLACE(model, '-', ''), ' ', '')) = ?", [$model])
+            ->when($fuel, fn ($q) => $q->where('fuel', $fuel))
+            ->when($gearbox, fn ($q) => $q->where('gearbox', $gearbox))
+            ->when($powerHp, function ($q) use ($powerHp) {
+                $q->where(function ($sub) use ($powerHp) {
+                    $sub->whereNull('power_hp')
+                        ->orWhereBetween('power_hp', [$powerHp - 25, $powerHp + 25]);
+                });
+            })
+            ->orderBy('price')
+            ->get();
+    }
+
+    /** Loosest fallback — brand + model + year window only, no fuel/gearbox/power. */
+    public function getComparableSnapshotsLoose(Car $car, int $yearWindow): Collection
+    {
+        $car->loadMissing(['brand:id,name', 'model:id,name']);
+
+        $brand = $this->normalizeComparableValue($car->brand?->name);
+        $model = $this->normalizeComparableValue($car->model?->name);
+        $year  = $car->registration_year ? (int) $car->registration_year : null;
+
+        if (!$brand || !$model || !$year) {
+            return collect();
+        }
+
+        return $this->model->newQuery()
+            ->select(['id', 'external_id', 'source', 'title', 'url', 'brand', 'model', 'year', 'price', 'fuel', 'gearbox', 'power_hp', 'region', 'price_evaluation', 'scraped_at'])
+            ->whereNotNull('price')
+            ->where('price', '>', 0)
+            ->whereBetween('year', [$year - $yearWindow, $year + $yearWindow])
+            ->whereRaw("LOWER(REPLACE(REPLACE(brand, '-', ''), ' ', '')) = ?", [$brand])
+            ->whereRaw("LOWER(REPLACE(REPLACE(model, '-', ''), ' ', '')) = ?", [$model])
             ->orderBy('price')
             ->get();
     }
