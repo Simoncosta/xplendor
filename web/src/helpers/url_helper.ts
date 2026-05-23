@@ -39,6 +39,7 @@ export const POST_CAR_EXECUTE_ACTION = "/execute-action";
 export const POST_CAR_META_ADS_REFRESH = "/meta-ads/refresh";
 export const POST_CAR_ANALYSIS_REGENERATE = "/analysis/regenerate";
 export const POST_CAR_GENERATE_DESCRIPTION = "/generate-description";
+export const GET_CAR_SPECS = "/specs";
 
 // ANALYSES
 export const GET_CARS_ANALYSES = "/car-ai-analyses";

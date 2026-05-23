@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CarRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CarMarketAggregateResource;
+use App\Http\Resources\CarSpecsResource;
 use App\Models\Car;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
@@ -364,6 +365,25 @@ class CarController extends Controller
             'data'    => ['aggregate_id' => $aggregate->id, 'status' => $aggregate->status],
             'message' => 'Análise de mercado iniciada.',
         ], 202);
+    }
+
+    public function specs(int $companyId, int $carId): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $car = Car::with(['brand', 'model', 'images'])
+            ->find($carId);
+
+        if (!$car || (int) $car->company_id !== $companyId) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
+        return ApiResponse::success(
+            CarSpecsResource::make($car)->resolve(),
+            'Specs carregados com sucesso.'
+        );
     }
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)

@@ -915,6 +915,18 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     para `useLocation()`. Implementar quando atacarmos auditoria profunda
     da página de viatura (Parte 2 sessão dedicada).
 
+39. **`CarSpecsResource` faz 2 queries extra no `toArray()`** — H2b optou
+    por simplicidade (queries directas a `CarSalePotentialScore` e
+    `CarAiAnalysis` dentro do Resource). Aceitável para escala actual
+    (1 viatura por request). Optimizar para eager load no controller
+    quando houver evidência de bottleneck.
+
+40. **`CarAnalyticsHeader` recebe `car` como objecto plano sem tipo** —
+    Props definidas como `any`. Após H2b, a Ficha passa um adapter
+    `carForHeader` construído a partir de `CarSpecs`. Tipar
+    `CarAnalyticsHeader` com interface própria quando atacarmos
+    auditoria de tipagem geral do frontend.
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
