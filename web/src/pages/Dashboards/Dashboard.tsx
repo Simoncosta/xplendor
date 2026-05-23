@@ -53,9 +53,11 @@ const Dashboard = () => {
                     <Row className="g-3 mb-3">
                         <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />
                     </Row>
-                    <Row className="g-3 mb-3">
-                        <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
-                    </Row>
+                    {(analytics.silent_buyers?.total_detected ?? 0) > 0 && (
+                        <Row className="g-3 mb-3">
+                            <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
+                        </Row>
+                    )}
                 </Container>
             </div>
         </React.Fragment>

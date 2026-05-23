@@ -882,6 +882,14 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     o utilizador concreto (provavelmente reorientada para análise sobre
     as viaturas do próprio stock, não sobre o mercado em geral).
 
+34. **Backend gera `action.label`, `action.suggestion`, `problem` em
+    `immediate_actions` que o frontend já não renderiza** — Após F1c,
+    estes campos continuam a ser gerados (potencialmente com custo de
+    processamento/IA) mas não aparecem na UI. Investigar
+    `DashboardService` onde estes campos são populados e decidir se
+    eliminar a geração quando voltarmos com lógica nova de
+    "probabilidade de venda" e "acção sugerida real".
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap

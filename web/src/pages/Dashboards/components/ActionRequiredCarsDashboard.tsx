@@ -37,29 +37,26 @@ const formatPrice = (value?: number | null) => {
 
 const getPriorityMeta = (score: number) => {
     if (score >= 80) {
-        return {
-            label: "Precisa de atenção agora",
-            tone: { bg: "#fde8e4", color: "#c2410c" },
-            border: "#ef4444",
-            cardBg: "#fff6f5",
-        };
+        return { border: "#ef4444", cardBg: "#fff6f5" };
     }
-
     if (score >= 60) {
-        return {
-            label: "Acompanhar esta semana",
-            tone: { bg: "#fff4d6", color: "#a16207" },
-            border: "#f7b84b",
-            cardBg: "#fffdf5",
-        };
+        return { border: "#f7b84b", cardBg: "#fffdf5" };
     }
+    return { border: "#cbd5e1", cardBg: "#f8fafc" };
+};
 
-    return {
-        label: "Monitorizar",
-        tone: { bg: "#eef2f7", color: "#475569" },
-        border: "#cbd5e1",
-        cardBg: "#f8fafc",
-    };
+const buildFactualDescription = (signals?: IActionRequiredCar["signals"]): string => {
+    const days = signals?.days_in_stock;
+    const views = signals?.views ?? 0;
+    const leads = signals?.leads ?? 0;
+
+    if (days === null || days === undefined) return "Dados insuficientes para análise.";
+
+    const base = `Em stock há ${days} dias.`;
+    if (days > 90) return `${base} Stock antigo.`;
+    if (days > 60 && leads === 0) return `${base} Mais de 60 dias em stock sem leads.`;
+    if (views > 1000 && leads === 0) return `${base} Atrai visitantes mas não gera leads.`;
+    return base;
 };
 
 const signalItems = (signals?: IActionRequiredCar["signals"]) => [
@@ -88,11 +85,11 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                 >
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Acao imediata
+                            Viaturas a acompanhar
                         </p>
-                        <h5 className="mb-1 fw-semibold">Decisões prioritárias no stock</h5>
+                        <h5 className="mb-1 fw-semibold">Stock que merece atenção esta semana</h5>
                         <p className="text-muted fs-13 mb-0">
-                            O sistema mostra primeiro o carro, o problema e o próximo passo mais útil.
+                            Lista das viaturas com tempo em stock prolongado ou sinais relevantes.
                         </p>
                     </div>
                     <span className="badge bg-light text-dark fs-12 px-3 py-2">
@@ -122,36 +119,9 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                             transition: "all 0.2s ease",
                                         }}
                                     >
-                                        <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
-                                            <div>
-                                                <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                                    <span
-                                                        className="badge rounded-pill"
-                                                        style={{
-                                                            background: priority.tone.bg,
-                                                            color: priority.tone.color,
-                                                            fontWeight: 600,
-                                                        }}
-                                                    >
-                                                        {priority.label}
-                                                    </span>
-                                                    <span className="text-muted fs-12">{car.problem}</span>
-                                                </div>
-                                                <h6 className="mb-1 fw-semibold text-body">{car.title}</h6>
-                                                <p className="text-muted fs-13 mb-0">{formatPrice(car.price)}</p>
-                                            </div>
-
-                                            <div
-                                                className="d-inline-flex align-items-center gap-2"
-                                                style={{
-                                                    border: "1px solid #e9ebec",
-                                                    borderRadius: 12,
-                                                    padding: "8px 12px",
-                                                    background: "#f8fafc",
-                                                }}
-                                            >
-                                                <span className="text-body fw-semibold">{car.action.label}</span>
-                                            </div>
+                                        <div className="mb-3">
+                                            <h6 className="mb-1 fw-semibold text-body">{car.title}</h6>
+                                            <p className="text-muted fs-13 mb-0">{formatPrice(car.price)}</p>
                                         </div>
 
                                         <div className="row g-3 align-items-stretch">
@@ -159,8 +129,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                                 <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                                                     Diagnóstico
                                                 </p>
-                                                <p className="mb-2 text-body fs-14">{car.diagnosis}</p>
-                                                <p className="mb-0 fs-13 fw-semibold" style={{ color: priority.tone.color }}>{car.action.suggestion}</p>
+                                                <p className="mb-0 text-body fs-14">{buildFactualDescription(car.signals)}</p>
                                             </div>
 
                                             <div className="col-lg-5">
@@ -192,7 +161,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                     </div>
                 ) : (
                     <div style={{ padding: "16px 18px" }} className="text-muted">
-                        Nenhuma viatura pede acao imediata neste momento.
+                        Nenhuma viatura a acompanhar neste momento.
                     </div>
                 )}
             </section>
