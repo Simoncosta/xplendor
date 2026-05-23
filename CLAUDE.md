@@ -1016,6 +1016,53 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     - refreshCarMetaAds
     - regenerateCarAnalysis
 
+45. **Bug `triggered_by` ENUM resolvido em 2026-05-23 (X2)** —
+    Coluna `triggered_by` em `car_sale_potential_scores` não aceitava
+    `'promo_price_change'`. CarObserver despachava o job com este valor
+    quando preço promocional mudava, falhando silenciosamente
+    (SQLSTATE 01000 Data truncated). 2.836 falhas acumuladas em 59 dias.
+
+    Fix: migration ALTER ENUM adicionando 'promo_price_change' aos
+    valores aceites. CarObserver intacto (já estava semanticamente
+    correcto). Down() da migration tem guard contra perda de dados.
+
+    Decisão: failed_jobs limpa sem retry. Os 2.836 jobs eram históricos
+    (25/03 → 23/05) e re-disparar produziria scores actuais com triggers
+    obsoletos, não recuperaria scores históricos.
+
+🔴 46. **IPS produz 68% de zeros — calibração suspeita (alta prioridade)** —
+    Descoberto durante validação X2: nas últimas 30 dias, 578 dos 843
+    scores recentes são 0 (68.6%). Apenas 4 viaturas com score 61-80,
+    zero entre 41-60 e 81-100. Distribuição não saudável.
+
+    Hipóteses: (a) IPS genuinamente reflecte stock difícil; (b) thresholds
+    mal calibrados em `scoreDaysInStock`, `scoreEngagementRate`,
+    `scoreContactRate` ou outros sub-scores; (c) bug no agregador.
+
+    Investigar em sub-fase dedicada: ler `CarSalePotentialScoreService`
+    e sub-métodos de scoring; analisar viaturas com score 0 manualmente;
+    comparar com viaturas que efectivamente venderam.
+
+    Bloqueia: redesign profundo do Dashboard com "probabilidade de venda"
+    (mencionado em sessão anterior). Sem IPS confiável, badge
+    "Probabilidade de venda X/100" é teatro.
+
+🔴 47. **`RecalculateAllCarScoresJob` cron parado há 32 dias (alta prioridade)** —
+    Schedule definido em `routes/console.php` para correr daily às 01:00.
+    Mas último score com `triggered_by = scheduled` no car 4 é de
+    2026-04-21 01:00:21. Hoje é 2026-05-23 → 32 dias sem cron.
+
+    Possíveis causas: (a) Schedule comentado/removido; (b) Job a falhar
+    silenciosamente sem entrar em failed_jobs; (c) Worker não está a
+    processar a fila do scheduler; (d) Schedule:run não está a correr
+    no container.
+
+    Investigar: verificar `php artisan schedule:list`, logs do scheduler
+    container, configuração do cron.
+
+    Impacto: viaturas sem nova actividade (sem leads, sem mudança de
+    preço, sem imagens) deixam de ter score actualizado.
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
