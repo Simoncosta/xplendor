@@ -867,6 +867,21 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     `getCompanyOverview` quando houver mudança maior no Redux state.
     Não bloqueia funcionamento.
 
+33. **Página `/insights` desactivada em 2026-05-23** — rota removida, item
+    do menu removido, link do dashboard removido. Componentes
+    (DashboardInsightsCard, StockIntelligenceDashboardCard,
+    MarketingWorkspaceTabs com prop visibleTabs, InsightsPage,
+    visibilityHelpers + 12 testes) ficam no codebase para reuso futuro.
+
+    Motivo: a página foi construída com lógica de análise de marketplace
+    (oportunidades de compra, segmentos saturados, marca em destaque),
+    não de gestão de stand. Para stands com poucas viaturas e sem
+    campanhas activas, a informação não gera decisões accionáveis.
+
+    Recuperar quando houver decisão clara sobre que análise é útil para
+    o utilizador concreto (provavelmente reorientada para análise sobre
+    as viaturas do próprio stock, não sobre o mercado em geral).
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap

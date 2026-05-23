@@ -6,9 +6,14 @@ import { getAnalyticsDashboard } from 'slices/dashboards/thunk';
 import DashboardInsightsCard from 'pages/Dashboards/components/DashboardInsightsCard';
 import StockIntelligenceDashboardCard from 'pages/Dashboards/components/StockIntelligenceDashboardCard';
 import MarketingWorkspaceTabs from 'pages/Dashboards/components/MarketingWorkspaceTabs';
-import { IMarketingRoi } from 'pages/Dashboards/components/marketingRoi.types';
+import { IMarketingRoi, IAdsPriorityRankedCar } from 'pages/Dashboards/components/marketingRoi.types';
 import { PersonaGroup } from 'pages/Dashboards/components/PersonaGroupCard';
-import { IAdsPriorityRankedCar } from 'pages/Dashboards/components/marketingRoi.types';
+import {
+    hasMeaningfulInsights,
+    hasStockIntelligence,
+    visibleMarketingTabs,
+    type AnalyticsData,
+} from './visibilityHelpers';
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectInsightsViewModel = createSelector(
@@ -34,26 +39,31 @@ const emptyMarketingRoi: IMarketingRoi = {
     insights: [],
 };
 
-type TAnalytics = {
-    summary?: any;
-    immediate_actions?: any[];
-    marketing_performance?: any;
-    insights?: any[];
-    marketing_roi?: IMarketingRoi | null;
-    ads_priority_ranking?: {
-        cars_ranked_for_ads?: IAdsPriorityRankedCar[];
-    } | null;
-    silent_buyers?: any;
-    stock_intelligence?: {
-        opportunities?: any[];
-        saturated_segments?: any[];
-    } | null;
-    personas?: PersonaGroup[];
-};
+function EmptyInsightsState() {
+    return (
+        <div className="text-center py-5">
+            <i className="ri-bar-chart-line fs-1 text-muted opacity-50 d-block mb-3" />
+            <h4 className="mt-2">Sem dados de análise ainda</h4>
+            <p className="text-muted">
+                Os insights vão aparecer aqui à medida que o stock cresce e as
+                campanhas começam a gerar resultados.
+            </p>
+        </div>
+    );
+}
 
 const scrollTo = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+};
+
+type FullAnalytics = {
+    insights?: any[];
+    stock_intelligence?: { opportunities?: any[]; saturated_segments?: any[] } | null;
+    marketing_performance?: any;
+    marketing_roi?: IMarketingRoi | null;
+    ads_priority_ranking?: { cars_ranked_for_ads?: IAdsPriorityRankedCar[] } | null;
+    personas?: PersonaGroup[];
 };
 
 const InsightsPage = () => {
@@ -71,11 +81,33 @@ const InsightsPage = () => {
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
     }, [dispatch, analytics]);
 
-    const typedAnalytics = analytics as TAnalytics | null;
-    const marketingRoi = typedAnalytics?.marketing_roi ?? emptyMarketingRoi;
-
     if (loading) return null;
     if (!analytics) return null;
+
+    const a = analytics as AnalyticsData;
+    const showInsights = hasMeaningfulInsights(a);
+    const showStock = hasStockIntelligence(a);
+    const mktTabs = visibleMarketingTabs(a);
+    const showMarketing = mktTabs.length > 0;
+
+    if (!showInsights && !showStock && !showMarketing) {
+        return (
+            <div className="page-content">
+                <Container fluid>
+                    <EmptyInsightsState />
+                </Container>
+            </div>
+        );
+    }
+
+    const anchors = [
+        showInsights ? { id: 'insights', label: 'Insights Automáticos' } : null,
+        showStock ? { id: 'stock', label: 'Stock Intelligence' } : null,
+        showMarketing ? { id: 'marketing', label: 'Marketing' } : null,
+    ].filter((x): x is { id: string; label: string } => x !== null);
+
+    const full = analytics as FullAnalytics;
+    const marketingRoi = full.marketing_roi ?? emptyMarketingRoi;
 
     return (
         <React.Fragment>
@@ -85,43 +117,51 @@ const InsightsPage = () => {
                         <h4 className="mb-1">Insights</h4>
                         <p className="text-muted mb-3">Análise completa de stock e marketing</p>
                         <div className="d-flex gap-2 flex-wrap">
-                            <a href="#insights" onClick={scrollTo('insights')} className="btn btn-sm btn-light">
-                                Insights Automáticos
-                            </a>
-                            <a href="#stock" onClick={scrollTo('stock')} className="btn btn-sm btn-light">
-                                Stock Intelligence
-                            </a>
-                            <a href="#marketing" onClick={scrollTo('marketing')} className="btn btn-sm btn-light">
-                                Marketing
-                            </a>
+                            {anchors.map(({ id, label }) => (
+                                <a
+                                    key={id}
+                                    href={`#${id}`}
+                                    onClick={scrollTo(id)}
+                                    className="btn btn-sm btn-light"
+                                >
+                                    {label}
+                                </a>
+                            ))}
                         </div>
                     </div>
 
-                    <div id="insights">
-                        <Row className="g-3 mb-3">
-                            <DashboardInsightsCard insights={typedAnalytics?.insights || []} />
-                        </Row>
-                    </div>
+                    {showInsights && (
+                        <div id="insights">
+                            <Row className="g-3 mb-3">
+                                <DashboardInsightsCard insights={full.insights || []} />
+                            </Row>
+                        </div>
+                    )}
 
-                    <div id="stock">
-                        <Row className="g-3 mb-3">
-                            <StockIntelligenceDashboardCard
-                                opportunities={typedAnalytics?.stock_intelligence?.opportunities || []}
-                                saturatedSegments={typedAnalytics?.stock_intelligence?.saturated_segments || []}
-                            />
-                        </Row>
-                    </div>
+                    {showStock && (
+                        <div id="stock">
+                            <Row className="g-3 mb-3">
+                                <StockIntelligenceDashboardCard
+                                    opportunities={full.stock_intelligence?.opportunities || []}
+                                    saturatedSegments={full.stock_intelligence?.saturated_segments || []}
+                                />
+                            </Row>
+                        </div>
+                    )}
 
-                    <div id="marketing">
-                        <Row className="g-3 mb-3">
-                            <MarketingWorkspaceTabs
-                                marketingPerformance={typedAnalytics?.marketing_performance}
-                                marketingRoi={marketingRoi}
-                                rankingCars={typedAnalytics?.ads_priority_ranking?.cars_ranked_for_ads || []}
-                                personas={typedAnalytics?.personas || []}
-                            />
-                        </Row>
-                    </div>
+                    {showMarketing && (
+                        <div id="marketing">
+                            <Row className="g-3 mb-3">
+                                <MarketingWorkspaceTabs
+                                    visibleTabs={mktTabs}
+                                    marketingPerformance={full.marketing_performance}
+                                    marketingRoi={marketingRoi}
+                                    rankingCars={full.ads_priority_ranking?.cars_ranked_for_ads || []}
+                                    personas={full.personas || []}
+                                />
+                            </Row>
+                        </div>
+                    )}
                 </Container>
             </div>
         </React.Fragment>

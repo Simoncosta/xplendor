@@ -4,8 +4,6 @@ import { Navigate } from "react-router-dom";
 // Dashboard
 import Dashboard from "pages/Dashboards/Dashboard";
 
-// Insights
-import InsightsPage from "pages/Insights/InsightsPage";
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -84,9 +82,6 @@ const authProtectedRoutes = [
     { path: "/blogs/create", component: <BlogCreate /> },
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
-
-    // Insights
-    { path: "/insights", component: <InsightsPage /> },
 
     // Internal tools
     { path: "/internal/scraper", component: <ScraperRunner /> },

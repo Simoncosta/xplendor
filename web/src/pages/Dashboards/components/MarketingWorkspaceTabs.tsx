@@ -9,25 +9,25 @@ import MarketingTopCampaignsCard from "./MarketingTopCampaignsCard";
 import TopCarsToPromoteCard from "./TopCarsToPromoteCard";
 import AdsPriorityRankingCard from "./AdsPriorityRankingCard";
 import PersonaGroupCard, { PersonaGroup } from "./PersonaGroupCard";
-import { IAdsPriorityRankedCar, IMarketingRoi } from "./marketingRoi.types";
+import { IAdsPriorityRankedCar, IMarketingRoi, TabKey } from "./marketingRoi.types";
 
 type Props = {
     marketingPerformance: any;
     marketingRoi: IMarketingRoi;
     rankingCars: IAdsPriorityRankedCar[];
     personas: PersonaGroup[];
+    visibleTabs?: TabKey[];
 };
 
-type TabKey = "overview" | "ranking" | "personas";
-
-const tabs: { key: TabKey; label: string }[] = [
+const allTabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "O que fazer hoje" },
     { key: "ranking", label: "Onde investir agora" },
     { key: "personas", label: "Por persona" },
 ];
 
-export default function MarketingWorkspaceTabs({ marketingPerformance, marketingRoi, rankingCars, personas }: Props) {
-    const [activeTab, setActiveTab] = useState<TabKey>("overview");
+export default function MarketingWorkspaceTabs({ marketingPerformance, marketingRoi, rankingCars, personas, visibleTabs }: Props) {
+    const tabs = visibleTabs ? allTabs.filter(t => visibleTabs.includes(t.key)) : allTabs;
+    const [activeTab, setActiveTab] = useState<TabKey>(() => visibleTabs?.[0] ?? 'overview');
 
     return (
         <Col xs={12}>

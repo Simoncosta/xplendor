@@ -66,6 +66,8 @@ export interface IAdsPriorityRankedCar {
     smartads_decision: "scale_ads" | "test_campaign" | "test_campaign_seed" | "review_campaign" | "do_not_invest" | null;
 }
 
+export type TabKey = 'overview' | 'ranking' | 'personas';
+
 export interface IMarketingRoi {
     summary: IMarketingRoiSummary;
     by_channel: IMarketingRoiChannel[];
