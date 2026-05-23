@@ -137,15 +137,6 @@ export const ipsClassBadge = (cls: string) =>
 export const ipsExecutiveLabel = (cls?: string) =>
     cls === "hot" ? "Probabilidade forte" : cls === "warm" ? "Acompanhar esta semana" : "Precisa de atenção agora";
 
-export const ipsFactorLabels: Record<string, { label: string; max: number; icon: string; color: string }> = {
-    price_vs_market: { label: "Preço vs Mercado", max: 25, icon: "ri-price-tag-3-line", color: "primary" },
-    engagement_rate: { label: "Engajamento", max: 20, icon: "ri-cursor-line", color: "info" },
-    days_in_stock: { label: "Dias em Stock", max: 20, icon: "ri-time-line", color: "warning" },
-    segment_demand: { label: "Procura do Segmento", max: 15, icon: "ri-bar-chart-line", color: "success" },
-    listing_quality: { label: "Qualidade do Anúncio", max: 10, icon: "ri-image-line", color: "purple" },
-    model_history: { label: "Histórico do Modelo", max: 10, icon: "ri-history-line", color: "secondary" },
-};
-
 export const marketPositionMeta: Record<string, { label: string; className: string; impact: string; description: string }> = {
     below_market: {
         label: "Abaixo do mercado",

@@ -1,19 +1,8 @@
 import React from "react";
 import { Navigate, useParams } from "react-router-dom";
 
-const CarMarketingRedirect = () => {
-    const { id } = useParams();
-    return <Navigate to={`/cars/${id}/analytics`} replace />;
-};
-
-const CarAdsRedirect = () => {
-    const { id } = useParams();
-    return <Navigate to={`/cars/${id}/analytics`} replace />;
-};
-
 // Dashboard
 import Dashboard from "pages/Dashboards/Dashboard";
-
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -38,7 +27,7 @@ import ActionCenterPage from "pages/Actions/ActionCenterPage";
 // Users
 import UsersList from "pages/Users/UsersList";
 
-// Landing 
+// Landing
 import Landing from "pages/Landing";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
@@ -57,6 +46,16 @@ import ScraperRunner from "pages/Internal/ScraperRunner";
 
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
+
+const CarMarketingRedirect = () => {
+    const { id } = useParams();
+    return <Navigate to={`/cars/${id}/analytics`} replace />;
+};
+
+const CarAdsRedirect = () => {
+    const { id } = useParams();
+    return <Navigate to={`/cars/${id}/analytics`} replace />;
+};
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },

@@ -186,3 +186,12 @@
 2026-05-22 22:23:03 [INFO] scraper: Página 1/2: 32 anúncios
 2026-05-22 22:23:27 [INFO] main: Limite de resultados atingido (10). A parar.
 2026-05-22 22:23:27 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-23 12:57:47 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-23 12:57:47 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-23 12:57:47 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-23 12:57:47 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-23 12:57:47 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2016, 'year_to': 2018, 'fuel': 'diesel'}
+2026-05-23 12:57:48 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-23 12:57:49 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-23 12:58:08 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-23 12:58:08 [INFO] sender: Batch enviado: 10 snapshots. Total: 10

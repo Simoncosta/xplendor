@@ -978,6 +978,44 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     - Componente CarAnalyticsKpiStrip.tsx (mantido mas órfão —
       pode ser reaproveitado noutras páginas no futuro)
 
+44. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em
+    2026-05-23 (H3d)** — CarIntelligencePage.tsx passou de 477 para
+    ~78 linhas (-84%).
+
+    Frontend eliminado (~1007 linhas total):
+    - CarIntelligencePage.tsx: -399 linhas
+      - Blocos inline: CarDiagnosisBlock, TechnicalPipeline,
+        IntentSignalsBlock, SilentBuyerCompactBlock
+      - Helpers inline: buildSignalCards, buildScoreSignal,
+        buildBusinessDiagnosis, resolveBusinessActionLabel,
+        buildActionReason, resolveScoreColor, statusMark,
+        translateBenchmark, translateIntentLevel
+      - Handler handleRefreshAndReanalyze (toast pipeline)
+    - CarAnalyticsData.ts: ipsFactorLabels removido (-8 linhas)
+    - Componentes zombie eliminados (-560 linhas):
+      - LeadRealityGapCard.tsx (170 linhas — nunca importado)
+      - SilentBuyerIntentCard.tsx (142 linhas — nunca importado)
+      - ContactPerformanceCard.tsx (248 linhas — nunca importado)
+
+    Mantido: MarketPositionCard (E3a — único bloco com dados reais
+    externos do Standvirtual via car_market_aggregates).
+
+    Backend INTACTO. 4 campos no payload analyticsCar viram zombies
+    no frontend (continuam calculados pelo backend):
+    - intent_analysis
+    - lead_reality_gap
+    - meta_ads_targeting_status
+    - silent_buyers (versão da Intelligence; Dashboard usa fonte
+      diferente)
+
+    Razão para manter cálculo: alimentam pipeline de IA legacy
+    (item 29). Limpeza fica para sub-fase futura quando migrarmos
+    pipeline IA para CarMarketAggregate.
+
+    Thunks órfãos no slice car-ai-analises (não eliminados):
+    - refreshCarMetaAds
+    - regenerateCarAnalysis
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
