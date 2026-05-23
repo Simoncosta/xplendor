@@ -861,6 +861,12 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     quando houver necessidade de distinguir "última actualização" de
     "último scrape" (ex: refresh manual vs schedule periódico).
 
+32. **`getAnalyticsDashboard` thunk alimenta Dashboard e /insights** —
+    Após F1a, o nome é semanticamente impreciso (já não é exclusivamente
+    para Dashboard). Renomear para `getAnalyticsCompany` ou
+    `getCompanyOverview` quando houver mudança maior no Redux state.
+    Não bloqueia funcionamento.
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap

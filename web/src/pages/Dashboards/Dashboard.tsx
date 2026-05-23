@@ -4,17 +4,13 @@ import { createSelector } from 'reselect';
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Container, Row } from 'reactstrap';
+import { Col, Container, Row } from 'reactstrap';
+import { Link } from 'react-router-dom';
 import SummaryDashboard from './components/SummaryDashboard';
 import { getAnalyticsDashboard } from 'slices/dashboards/thunk';
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
-import DashboardInsightsCard from './components/DashboardInsightsCard';
 import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
-import StockIntelligenceDashboardCard from './components/StockIntelligenceDashboardCard';
-import MarketingWorkspaceTabs from './components/MarketingWorkspaceTabs';
-import { IAdsPriorityRankedCar, IMarketingRoi } from './components/marketingRoi.types';
-import { PersonaGroup } from './components/PersonaGroupCard';
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
@@ -30,7 +26,6 @@ const Dashboard = () => {
     document.title = "Dashboard | Xplendor";
 
     const { analytics, loading } = useSelector(selectDashboardViewModel);
-    const safeAnalytics = analytics ?? emptyAnalytics;
 
     // Effects
     useEffect(() => {
@@ -42,7 +37,6 @@ const Dashboard = () => {
 
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
     }, [dispatch]);
-    const marketingRoi = safeAnalytics.marketing_roi || emptyMarketingRoi;
 
     if (loading) return null;
     if (!analytics) return null;
@@ -62,83 +56,33 @@ const Dashboard = () => {
                     </Row>
                     <Row className="g-3 mb-3">
                         <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
-                        <DashboardInsightsCard insights={analytics.insights || []} />
                     </Row>
                     <Row className="g-3 mb-3">
-                        <StockIntelligenceDashboardCard
-                            opportunities={analytics.stock_intelligence?.opportunities || []}
-                            saturatedSegments={analytics.stock_intelligence?.saturated_segments || []}
-                        />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <MarketingWorkspaceTabs
-                            marketingPerformance={analytics.marketing_performance}
-                            marketingRoi={marketingRoi}
-                            rankingCars={analytics.ads_priority_ranking?.cars_ranked_for_ads || []}
-                            personas={analytics.personas || []}
-                        />
+                        <Col xs={12}>
+                            <Link
+                                to="/insights"
+                                className="d-block text-decoration-none"
+                                style={{
+                                    background: '#f8f9fa',
+                                    border: '1px solid #e9ebec',
+                                    borderRadius: 12,
+                                    padding: '16px 20px',
+                                }}
+                            >
+                                <div className="d-flex align-items-center gap-2">
+                                    <i className="ri-bar-chart-line text-muted fs-5" />
+                                    <div>
+                                        <div className="fw-semibold text-dark">Análise completa →</div>
+                                        <div className="text-muted fs-12">Vê insights de stock, marketing e ROI detalhados</div>
+                                    </div>
+                                </div>
+                            </Link>
+                        </Col>
                     </Row>
                 </Container>
             </div>
         </React.Fragment>
     );
-};
-
-const emptyMarketingRoi: IMarketingRoi = {
-    summary: {
-        total_spend: 0,
-        total_leads: 0,
-        overall_conversion_rate: 0,
-        avg_cost_per_lead: 0,
-        best_channel: "",
-        best_campaign: "",
-    },
-    by_channel: [],
-    top_campaigns: [],
-    top_cars_to_promote: [],
-    insights: [],
-};
-
-type TAnalytics = {
-    summary?: any;
-    immediate_actions?: any[];
-    high_demand_opportunity_cars?: any[];
-    urgent_action_cars?: any[];
-    high_interest_low_conversion_cars?: any[];
-    highest_stuck_capital_cars?: any[];
-    marketing_performance?: any;
-    insights?: any[];
-    marketing_roi?: IMarketingRoi | null;
-    ads_priority_ranking?: {
-        cars_ranked_for_ads?: IAdsPriorityRankedCar[];
-        ready?: IAdsPriorityRankedCar[];
-        test?: IAdsPriorityRankedCar[];
-        exploration?: IAdsPriorityRankedCar[];
-        review?: IAdsPriorityRankedCar[];
-        avoid?: IAdsPriorityRankedCar[];
-    } | null;
-    silent_buyers?: any;
-    stock_intelligence?: {
-        opportunities?: any[];
-        saturated_segments?: any[];
-    } | null;
-    personas?: PersonaGroup[];
-};
-
-const emptyAnalytics: TAnalytics = {
-    summary: undefined,
-    immediate_actions: [],
-    high_demand_opportunity_cars: [],
-    urgent_action_cars: [],
-    high_interest_low_conversion_cars: [],
-    highest_stuck_capital_cars: [],
-    marketing_performance: undefined,
-    insights: [],
-    marketing_roi: emptyMarketingRoi,
-    ads_priority_ranking: null,
-    silent_buyers: null,
-    stock_intelligence: null,
-    personas: [],
 };
 
 export default Dashboard;

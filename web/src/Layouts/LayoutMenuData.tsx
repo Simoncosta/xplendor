@@ -114,6 +114,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "insights",
+            label: "Insights",
+            icon: "ri-bar-chart-line",
+            link: "/insights",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Insights');
+            }
+        },
+        {
             id: "actions",
             label: "Ações",
             icon: "ri-flashlight-line",

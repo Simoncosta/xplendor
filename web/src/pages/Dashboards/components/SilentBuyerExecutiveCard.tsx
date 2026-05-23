@@ -29,7 +29,7 @@ export default function SilentBuyerExecutiveCard({ summary }: Props) {
     const targetCar = summary?.top_affected_cars?.[0];
 
     return (
-        <Col xl={6}>
+        <Col xs={12}>
             <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
                 <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
