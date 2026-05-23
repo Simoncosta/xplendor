@@ -890,6 +890,11 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     eliminar a geração quando voltarmos com lógica nova de
     "probabilidade de venda" e "acção sugerida real".
 
+35. **Item "Acções" oculto do sidebar em 2026-05-23** — rota `/actions`
+    mantida em `allRoutes.tsx` mas item de menu removido. A página
+    existe mas conteúdo não está pronto para uso de cliente.
+    Reintroduzir item quando houver conteúdo accionável real.
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
