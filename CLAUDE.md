@@ -895,13 +895,12 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     existe mas conteúdo não está pronto para uso de cliente.
     Reintroduzir item quando houver conteúdo accionável real.
 
-36. **`CarAdsPage` usa chamada API directa (`getCarAudienceAnalysisApi`)
-    fora do Redux com useState local** — padrão inconsistente com as outras
-    tabs. Harmonizar para Redux thunk em sub-fase futura quando atacarmos
-    auditoria profunda de Ads (Parte 2 sessão dedicada).
+36. ~~**`CarAdsPage` usa chamada API directa (`getCarAudienceAnalysisApi`)
+    fora do Redux com useState local**~~ — **Resolvido em H3b (2026-05-23)**
+    via eliminação da aba. Endpoint backend mantido para uso futuro.
 
 37. **Guard de fetch em tabs de viatura não invalida por tempo** —
-    Após H2a (Opção B), as 3 tabs (Analytics, Intelligence, Ads) saltam
+    Após H2a (Opção B), as 2 tabs restantes (Analytics, Intelligence) saltam
     fetch se já têm carAnalytics para o mesmo car.id. Mas se o utilizador
     deixa a tab aberta e volta horas depois, vê dados potencialmente
     stale (não há TTL). Aceitável para escala actual (sessão típica curta).
@@ -927,12 +926,35 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     `CarAnalyticsHeader` com interface própria quando atacarmos
     auditoria de tipagem geral do frontend.
 
-41. **`RecommendedCreative` type em `SmartAdsRecommendationCard` é zombie** —
-    Após H3a, o backend devolve sempre `recommended_creative: null`
-    (stub em `CarAnalyticsService`). O type e a lógica de renderização do
-    criativo ficam no componente mas nunca são activados. Remover quando
-    o campo for definitivamente abandonado, ou reimplementar sem
-    dependência em `car_marketing_ideas` se voltarmos à funcionalidade.
+41. ~~**`RecommendedCreative` type em `SmartAdsRecommendationCard` é zombie**~~ —
+    **Componente eliminado em H3b (2026-05-23)**. Backend continua a
+    devolver `recommended_creative: null` (stub de H3a). Limpeza
+    backend agendada para sub-fase futura (ver item 42).
+
+42. **Aba `/cars/:id/ads` eliminada em 2026-05-23 (H3b)** — frontend
+    completo removido (CarAdsPage, SmartAdsRecommendationCard,
+    AudienceSuggestionCard, 822 linhas).
+
+    Backend INTACTO:
+    - Tabelas car_ad_campaigns, car_ad_attributions,
+      campaign_car_metrics_daily, meta_audience_insights
+    - MetaAdsService, OAuth, jobs de sync, schedule
+    - Endpoints /audience-analysis e /audience
+    - CarAdCampaignMapper em pages/Companies (reaproveitável)
+
+    Razão para eliminar frontend: fluxo actual (mapear campanha já
+    criada na Meta) é retrabalho. Visão futura: criar campanhas
+    directo no XPLENDOR sem abrir Business Manager.
+
+    Razão para manter backend: OAuth Meta é trabalho de 1-2 dias
+    para reconstruir; dados de campanhas têm valor histórico;
+    integração estável será reaproveitada em página futura.
+
+    Candidatos a limpeza futura (não atacar agora):
+    - Campos órfãos no payload analyticsCar: smart_ads_recommendation,
+      recommended_creative (já zombie via item 41), ai_analysis.recommended_channel
+    - Decidir destino em sub-fase dedicada quando construirmos
+      página nova de criação de campanhas.
 
 ---
 

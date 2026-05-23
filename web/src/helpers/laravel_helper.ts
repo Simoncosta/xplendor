@@ -139,10 +139,6 @@ export const generateCarDescriptionApi = (companyId: number, data: any) =>
         { headers: { "Content-Type": "application/json" } }
     );
 export const analyticsCar = (companyId: number, carId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + "/analytics");
-export const getCarAudienceSuggestionsApi = (companyId: number, carId: number) =>
-    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AUDIENCE);
-export const getCarAudienceAnalysisApi = (companyId: number, carId: number) =>
-    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AUDIENCE_ANALYSIS);
 export const getCarDecisionApi = (companyId: number, carId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_DECISION);
 export const executeCarActionApi = (

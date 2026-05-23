@@ -1,12 +1,11 @@
 import { Link, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-type NavPage = "analytics" | "intelligence" | "ads" | "ficha";
+type NavPage = "analytics" | "intelligence" | "ficha";
 
 const pages: { key: NavPage; label: string; icon: string }[] = [
     { key: "analytics", label: "Tráfego & Canais", icon: "ri-bar-chart-grouped-line" },
     { key: "intelligence", label: "Mercado & Público", icon: "ri-cpu-line" },
-    { key: "ads", label: "Decisão de investimento", icon: "ri-money-euro-circle-line" },
     { key: "ficha", label: "Ficha", icon: "ri-car-line" },
 ];
 
@@ -16,8 +15,6 @@ export default function CarPageNav({ active }: { active: NavPage }) {
 
     const metrics = carAnalytics?.metrics;
     const ips = carAnalytics?.potential_score;
-    const paidChannel = (carAnalytics?.performance?.by_channel || []).find((item: any) => item?.channel === "paid");
-    const weeklySpend = Number(paidChannel?.total_spend || 0);
 
     return (
         <div
@@ -36,7 +33,6 @@ export default function CarPageNav({ active }: { active: NavPage }) {
                 const context = getPageContext(p.key, {
                     views: Number(metrics?.views || 0),
                     ipsScore: ips?.score,
-                    weeklySpend,
                 });
 
                 return (
@@ -70,7 +66,6 @@ function getPageContext(
     data: {
         views: number;
         ipsScore?: number | null;
-        weeklySpend: number;
     }
 ) {
     switch (page) {
@@ -82,10 +77,6 @@ function getPageContext(
             return data.ipsScore
                 ? { label: `IPS ${data.ipsScore}`, className: data.ipsScore > 70 ? "bg-success-subtle text-success" : data.ipsScore >= 40 ? "bg-warning-subtle text-warning" : "bg-danger-subtle text-danger" }
                 : null;
-        case "ads":
-            return data.weeklySpend > 0
-                ? { label: new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(data.weeklySpend), className: "bg-info-subtle text-info" }
-                : { label: "Sem investimento activo", className: "bg-secondary-subtle text-secondary" };
         default:
             return null;
     }

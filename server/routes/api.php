@@ -76,7 +76,6 @@ Route::prefix('v1')->group(function () {
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
                 Route::get('/cars/promotion-ranking', [PromotionRankingController::class, 'index']);
                 Route::post('/cars/{carId}/execute-action', [ActionExecutionController::class, 'store']);
-                Route::get('/cars/{carId}/marketing', [CarMarketingIdeaController::class, 'show']);
                 Route::get('/cars/{carId}/audience', [CarController::class, 'audience']);
                 Route::get('/cars/{carId}/audience-analysis', [CarController::class, 'audienceAnalysis']);
                 Route::get('/cars/{carId}/images/download', [CarController::class, 'downloadImages']);
