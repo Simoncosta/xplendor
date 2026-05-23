@@ -1,5 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { getCarsPaginate, showCar, createCar, updateCar, analyticsCar, getCarMarketing, generateCarMarketing } from "./thunk";
+import { getCarsPaginate, showCar, createCar, updateCar, analyticsCar } from "./thunk";
 
 const initialState = {
     data: {
@@ -7,7 +7,6 @@ const initialState = {
         meta: null as any,
         car: null as any | null,
         carAnalytics: null as any | null,
-        carMarketing: [] as any[],
     },
     loading: {
         list: false,
@@ -15,8 +14,6 @@ const initialState = {
         create: false,
         update: false,
         analytics: false,
-        marketing: false,
-        generate: false,
     },
     error: {
         list: null as any,
@@ -24,8 +21,6 @@ const initialState = {
         create: null as any,
         update: null as any,
         analytics: null as any,
-        marketing: null as any,
-        generate: null as any,
     },
 };
 
@@ -115,39 +110,6 @@ const CarSlice = createSlice({
                 state.error.analytics = action.payload || action.error;
             });
 
-        // GET MARKETING
-        builder
-            .addCase(getCarMarketing.pending, (state) => {
-                state.loading.marketing = true;
-                state.error.marketing = null;
-            })
-            .addCase(getCarMarketing.fulfilled, (state, action) => {
-                state.loading.marketing = false;
-                state.error.marketing = null;
-                state.data.carMarketing = action.payload.data;
-            })
-            .addCase(getCarMarketing.rejected, (state, action) => {
-                state.loading.marketing = false;
-                state.error.marketing = action.payload || action.error;
-            });
-
-        // GENERATE MARKETING
-        builder
-            .addCase(generateCarMarketing.pending, (state) => {
-                state.loading.generate = true;
-                state.error.generate = null;
-            })
-            .addCase(generateCarMarketing.fulfilled, (state, action) => {
-                state.loading.generate = false;
-                state.error.generate = null;
-                if (action.payload.data) {
-                    state.data.carMarketing = action.payload.data;
-                }
-            })
-            .addCase(generateCarMarketing.rejected, (state, action) => {
-                state.loading.generate = false;
-                state.error.generate = action.payload || action.error;
-            });
     },
 });
 

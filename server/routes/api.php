@@ -20,7 +20,6 @@ use App\Http\Controllers\Api\V1\{
     CarController,
     CarDecisionController,
     CarLeadController,
-    CarMarketingIdeaController,
     CarmineConnectionController,
     CarModelController,
     CarPerformanceMetricController,
@@ -90,8 +89,6 @@ Route::prefix('v1')->group(function () {
 
                 Route::get('dashboard', [DashboardController::class, 'index']);
 
-                Route::get('/marketing-ideas', [CarMarketingIdeaController::class, 'index']);
-                Route::post('/marketing-ideas/generate', [CarMarketingIdeaController::class, 'generate']);
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
                 Route::get('/cars/{carId}/market-aggregate', [CarController::class, 'marketAggregate']);

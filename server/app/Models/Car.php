@@ -234,11 +234,6 @@ class Car extends Model implements AuditableContract
         return $this->hasOne(CarMarketAggregate::class)->latestOfMany();
     }
 
-    public function marketingIdeas(): HasMany
-    {
-        return $this->hasMany(CarMarketingIdea::class);
-    }
-
     public function adCampaigns(): HasMany
     {
         return $this->hasMany(CarAdCampaign::class, 'car_id');

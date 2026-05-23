@@ -30,7 +30,6 @@ use App\Repositories\Contracts\{
     CarInteractionRepositoryInterface,
     CarLeadRepositoryInterface,
     CarMarketSnapshotRepositoryInterface,
-    CarMarketingIdeaRepositoryInterface,
     CarMarketingRoiRepositoryInterface,
     CompanyIntegrationRepositoryInterface,
     CarmineConnectionRepositoryInterface,
@@ -63,7 +62,6 @@ use App\Repositories\{
     CarInteractionRepository,
     CarLeadRepository,
     CarMarketSnapshotRepository,
-    CarMarketingIdeaRepository,
     CarMarketingRoiRepository,
     CompanyIntegrationRepository,
     CarmineConnectionRepository,
@@ -109,7 +107,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CarInteractionRepositoryInterface::class, CarInteractionRepository::class);
         $this->app->bind(CarLeadRepositoryInterface::class, CarLeadRepository::class);
         $this->app->bind(CarMarketSnapshotRepositoryInterface::class, CarMarketSnapshotRepository::class);
-        $this->app->bind(CarMarketingIdeaRepositoryInterface::class, CarMarketingIdeaRepository::class);
         $this->app->bind(CarMarketingRoiRepositoryInterface::class, CarMarketingRoiRepository::class);
         $this->app->bind(CompanyIntegrationRepositoryInterface::class, CompanyIntegrationRepository::class);
         $this->app->bind(CarModelRepositoryInterface::class, CarModelRepository::class);

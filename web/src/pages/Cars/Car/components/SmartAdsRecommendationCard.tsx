@@ -35,7 +35,6 @@ type Props = {
     recommendation: SmartAdsRecommendation | null;
     recommendedCreative?: RecommendedCreative | null;
     recommendedPlatform?: "meta" | "google" | null;
-    marketingUrl?: string;
     metrics?: {
         views?: number;
         leads?: number;
@@ -141,7 +140,6 @@ export default function SmartAdsRecommendationCard({
     recommendation,
     recommendedCreative,
     recommendedPlatform,
-    marketingUrl,
     metrics,
 }: Props) {
     if (!recommendation) {
@@ -283,12 +281,6 @@ export default function SmartAdsRecommendationCard({
                                             {recommendedCreative.reason || "Criativo alinhado com a decisão de investimento atual."}
                                         </p>
                                     </div>
-                                    {marketingUrl && (
-                                        <a href={marketingUrl} className="btn btn-sm btn-primary">
-                                            <i className="ri-arrow-right-line me-1" />
-                                            Ver briefing completo
-                                        </a>
-                                    )}
                                 </div>
 
                                 <div

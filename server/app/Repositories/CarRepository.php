@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\Car;
-use App\Models\CarMarketingIdea;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -186,16 +185,6 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
             'urgency_level' => $car?->analyses?->urgency_level,
             'source' => 'ai_analysis',
         ];
-    }
-
-    public function getMarketingIdeasData(int $carId, int $companyId): Collection
-    {
-        return CarMarketingIdea::query()
-            ->where('company_id', $companyId)
-            ->where('car_id', $carId)
-            ->orderByDesc('week_ref')
-            ->orderByDesc('id')
-            ->get();
     }
 
     protected function normalizeRecommendedChannel(?string $channel): ?string

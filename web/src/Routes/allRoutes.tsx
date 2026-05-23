@@ -1,5 +1,10 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
+
+const CarMarketingRedirect = () => {
+    const { id } = useParams();
+    return <Navigate to={`/cars/${id}/analytics`} replace />;
+};
 
 // Dashboard
 import Dashboard from "pages/Dashboards/Dashboard";
@@ -21,7 +26,6 @@ import CarList from "pages/Cars/CarList";
 import CarCreate from "pages/Cars/Car/CarCreate";
 import CarUpdate from "pages/Cars/Car/CarUpdate";
 import CarAnalytics from "pages/Cars/Car/CarAnalytics";
-import CarMarketing from "pages/Cars/Car/CarMarketing";
 import CarIntelligencePage from "pages/Cars/Car/CarIntelligencePage";
 import CarAdsPage from "pages/Cars/Car/CarAdsPage";
 import CarFichaPage from "pages/Cars/Car/CarFichaPage";
@@ -67,7 +71,7 @@ const authProtectedRoutes = [
     { path: "/cars/:id/intelligence", component: <CarIntelligencePage /> },
     { path: "/cars/:id/ads", component: <CarAdsPage /> },
     { path: "/cars/:id/ficha", component: <CarFichaPage /> },
-    { path: "/cars/:id/marketing", component: <CarMarketing /> },
+    { path: "/cars/:id/marketing", component: <CarMarketingRedirect /> },
 
     // Leads
     { path: "/leads", component: <LeadList /> },

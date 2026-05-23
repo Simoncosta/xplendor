@@ -823,7 +823,7 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 22. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino". Seeder tem 7 categorias, BD tem 4. Não alterar slugs em uso, mas alinhar seeder com realidade da BD
 23. **Redundância eliminada na Fase D mas verificar outros sítios** — `appendPublicSellerContact` ainda existe; auditar se há queries duplicadas similares
 24. **`car_id 57` com `length: -0.1745`** — registo único, corrigir manualmente em produção: `UPDATE vehicle_attributes SET ...`
-25. **`GenerateWeeklyMarketingIdeasJob` desactivado em 2026-05-22** — Schedule comentado em `routes/console.php`. Reactivar apenas quando a página `/cars/:id/marketing` tiver tracção de uso real. Ver discussão na sessão de optimização do Dashboard.
+25. ~~**`GenerateWeeklyMarketingIdeasJob` desactivado**~~ — **Eliminado em H3a (2026-05-23)**. Funcionalidade "Conteúdo da semana" removida completamente (model, service, job, repo, controller, migration DROP TABLE — 80 registos eliminados). Ver item 41.
 
 ### 🔴 Alta prioridade (adicionado E3a)
 
@@ -926,6 +926,13 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     `carForHeader` construído a partir de `CarSpecs`. Tipar
     `CarAnalyticsHeader` com interface própria quando atacarmos
     auditoria de tipagem geral do frontend.
+
+41. **`RecommendedCreative` type em `SmartAdsRecommendationCard` é zombie** —
+    Após H3a, o backend devolve sempre `recommended_creative: null`
+    (stub em `CarAnalyticsService`). O type e a lógica de renderização do
+    criativo ficam no componente mas nunca são activados. Remover quando
+    o campo for definitivamente abandonado, ou reimplementar sem
+    dependência em `car_marketing_ideas` se voltarmos à funcionalidade.
 
 ---
 

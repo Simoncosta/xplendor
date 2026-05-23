@@ -6,7 +6,6 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\{
     AggregateCarPerformanceMetricsJob,
     GenerateDailyAlertsEmailJob,
-    GenerateWeeklyMarketingIdeasJob,
     RecalculateAllCarScoresJob,
     RefreshStaleMarketAggregatesJob,
     FetchMetaAdsMetricsJob,
@@ -41,13 +40,6 @@ Schedule::job(new RecalculateAllCarScoresJob())
     ->name('recalculate-all-car-scores')
     ->withoutOverlapping();
 
-
-// Schedule de geração automática de ideias de marketing — DESACTIVADO em 2026-05-22.
-// Motivo: a página /cars/:id/marketing não tinha uso activo suficiente para justificar
-// chamadas semanais à OpenAI para 60+ viaturas. O job e o service permanecem funcionais
-// para accionamento manual via botão no UI. Reactivar quando feature for adoptada
-// pela equipa comercial dos clientes.
-// Schedule::job(new GenerateWeeklyMarketingIdeasJob())->weeklyOn(1, '03:00')->withoutOverlapping();
 
 // Refresh nocturno de aggregates de mercado.
 // Limita a 20 viaturas/noite para evitar bloqueio do Standvirtual.

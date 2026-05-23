@@ -136,7 +136,6 @@ export default function CarAdsPage() {
                                     recommendation={recommendation}
                                     recommendedCreative={recommendedCreative}
                                     recommendedPlatform={recommendedPlatform}
-                                    marketingUrl={`/cars/${id}/marketing`}
                                     metrics={m}
                                 />
                             </section>

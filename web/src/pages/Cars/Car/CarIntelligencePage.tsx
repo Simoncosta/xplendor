@@ -230,9 +230,6 @@ function CarDiagnosisBlock({
                             <div className="text-muted fs-14">{actionReason}</div>
                         </div>
                     </div>
-                    <a href={`/cars/${carId}/marketing`} className="btn btn-primary">
-                        Fazer →
-                    </a>
                 </div>
             </div>
 
