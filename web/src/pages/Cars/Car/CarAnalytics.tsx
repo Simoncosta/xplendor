@@ -46,11 +46,13 @@ export default function CarAnalytics() {
     const { carAnalytics, loading } = useSelector(selectCarAnalyticsViewModel);
 
     useEffect(() => {
+        const existingId = carAnalytics?.car?.id;
+        if (existingId && existingId === Number(id)) return;
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
         const { company_id } = JSON.parse(authUser);
         dispatch(analyticsCar({ companyId: company_id, id: Number(id) }));
-    }, [dispatch, id]);
+    }, [dispatch, id, carAnalytics?.car?.id]);
 
     const car = carAnalytics?.car;
     const m = carAnalytics?.metrics;

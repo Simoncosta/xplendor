@@ -56,8 +56,10 @@ export default function CarIntelligencePage() {
         const obj = JSON.parse(authUser);
         setCompanyId(Number(obj.company_id));
         setUserRole(obj.role ?? "");
+        const existingId = carAnalytics?.car?.id;
+        if (existingId && existingId === Number(id)) return;
         dispatch(analyticsCar({ companyId: obj.company_id, id: Number(id) }));
-    }, [dispatch, id]);
+    }, [dispatch, id, carAnalytics?.car?.id]);
 
     const car = carAnalytics?.car;
     const ai = car?.analyses?.analysis;

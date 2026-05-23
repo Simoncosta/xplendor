@@ -895,6 +895,26 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     existe mas conteúdo não está pronto para uso de cliente.
     Reintroduzir item quando houver conteúdo accionável real.
 
+36. **`CarAdsPage` usa chamada API directa (`getCarAudienceAnalysisApi`)
+    fora do Redux com useState local** — padrão inconsistente com as outras
+    tabs. Harmonizar para Redux thunk em sub-fase futura quando atacarmos
+    auditoria profunda de Ads (Parte 2 sessão dedicada).
+
+37. **Guard de fetch em tabs de viatura não invalida por tempo** —
+    Após H2a (Opção B), as 3 tabs (Analytics, Intelligence, Ads) saltam
+    fetch se já têm carAnalytics para o mesmo car.id. Mas se o utilizador
+    deixa a tab aberta e volta horas depois, vê dados potencialmente
+    stale (não há TTL). Aceitável para escala actual (sessão típica curta).
+    Adicionar TTL ou invalidação por evento quando relevante.
+
+38. **CarPageLayout com Outlet não implementado** — A Opção A da
+    investigação H2a (nested routes via Outlet) ficou registada como
+    design correcto a longo prazo. Requer suportar nested routes em
+    `Routes/index.tsx` (hoje não usa Outlet em lado nenhum), refactor
+    de `CarAnalyticsHeader` para ler do Redux, e refactor de `CarPageNav`
+    para `useLocation()`. Implementar quando atacarmos auditoria profunda
+    da página de viatura (Parte 2 sessão dedicada).
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
