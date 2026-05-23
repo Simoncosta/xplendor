@@ -45,7 +45,15 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
     const [pollAttempts, setPollAttempts]     = useState(0);
     const [pollTimedOut, setPollTimedOut]     = useState(false);
 
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+        };
+    }, []);
 
     const stopPolling = () => {
         if (pollRef.current) {
@@ -114,9 +122,11 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
 
         try {
             await refreshMarketAggregate(companyId, carId);
+            if (!mountedRef.current) return;
             toast.success("Análise de mercado iniciada. Os resultados aparecem em breve.");
             startPolling();
         } catch (err: unknown) {
+            if (!mountedRef.current) return;
             setRefreshing(false);
             const status = (err as { response?: { status?: number } })?.response?.status;
             if (status === 429) {
