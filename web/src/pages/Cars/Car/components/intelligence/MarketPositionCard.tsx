@@ -43,6 +43,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
     const [refreshing, setRefreshing]         = useState(false);
     const [showComparables, setShowComparables] = useState(false);
     const [pollAttempts, setPollAttempts]     = useState(0);
+    const [pollTimedOut, setPollTimedOut]     = useState(false);
 
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -62,6 +63,8 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                 const next = prev + 1;
                 if (next >= MAX_POLL_ATTEMPTS) {
                     stopPolling();
+                    setRefreshing(false);
+                    setPollTimedOut(true);
                 }
                 return next;
             });
@@ -106,6 +109,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
 
     const handleRefresh = async () => {
         if (refreshing) return;
+        setPollTimedOut(false);
         setRefreshing(true);
 
         try {
@@ -131,7 +135,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>
                     Posição no mercado
                 </p>
-                {aggregate && TERMINAL_STATUSES.includes(aggregate.status) && (
+                {(pollTimedOut || (aggregate && TERMINAL_STATUSES.includes(aggregate.status))) && (
                     <button
                         className="btn btn-sm btn-outline-secondary py-1 px-2 fs-12"
                         onClick={handleRefresh}
@@ -153,6 +157,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                     onToggleComparables={() => setShowComparables((v) => !v)}
                     onRefresh={handleRefresh}
                     pollAttempts={pollAttempts}
+                    pollTimedOut={pollTimedOut}
                     userRole={userRole}
                 />
             }
@@ -171,6 +176,25 @@ function LoadingState() {
     );
 }
 
+function TimedOutState({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="text-center py-4">
+            <i className="ri-time-line display-6 text-warning opacity-75" />
+            <p className="mt-3 mb-1 fw-semibold">A análise está a demorar mais do que o esperado</p>
+            <p className="text-muted fs-13 mb-3">
+                O serviço de mercado pode estar momentaneamente lento. Tenta de novo em alguns minutos.
+            </p>
+            <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={onRetry}
+            >
+                <i className="ri-refresh-line me-1" />
+                Tentar novamente
+            </button>
+        </div>
+    );
+}
+
 function Body({
     aggregate,
     refreshing,
@@ -178,6 +202,7 @@ function Body({
     onToggleComparables,
     onRefresh,
     pollAttempts,
+    pollTimedOut,
     userRole,
 }: {
     aggregate: MarketAggregate | null | undefined;
@@ -186,8 +211,13 @@ function Body({
     onToggleComparables: () => void;
     onRefresh: () => void;
     pollAttempts: number;
+    pollTimedOut: boolean;
     userRole?: string;
 }) {
+    if (pollTimedOut) {
+        return <TimedOutState onRetry={onRefresh} />;
+    }
+
     if (aggregate === null || aggregate === undefined) {
         return <NeverRunState onRefresh={onRefresh} refreshing={refreshing} />;
     }

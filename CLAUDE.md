@@ -1063,6 +1063,26 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     Impacto: viaturas sem nova actividade (sem leads, sem mudança de
     preço, sem imagens) deixam de ter score actualizado.
 
+48. **Polling do MarketPositionCard sem estado de timeout — resolvido em 2026-05-23 (X1)** —
+    Quando MAX_POLL_ATTEMPTS (18 tentativas de 10s) era atingido sem
+    receber status terminal, stopPolling() era chamado mas
+    setRefreshing(false) não. UI ficava em loading perpétuo até
+    utilizador trocar de aba.
+
+    Fix: novo estado `pollTimedOut` que dispara render de
+    TimedOutState component com mensagem honesta em pt-PT e botão
+    "Tentar novamente". setRefreshing(false) chamado em todos os
+    caminhos terminais (success, timeout).
+
+    Fragilidade adicional NÃO resolvida (registada para futuro):
+    O frontend descarta o aggregate_id devolvido pelo POST /refresh
+    e usa GET genérico que delega em latestOfMany() do modelo.
+    Funciona porque latestOfMany devolve MAX(id) — coincide com o
+    aggregate recém-criado. Mas se dois refreshes corressem em
+    paralelo (improvável), GET podia devolver o do outro trigger.
+    Não fixar nesta sub-fase — risco real muito baixo, fix
+    adicionaria complexidade.
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
