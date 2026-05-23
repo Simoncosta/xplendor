@@ -956,6 +956,28 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     - Decidir destino em sub-fase dedicada quando construirmos
       página nova de criação de campanhas.
 
+43. **Aba Tráfego & Canais simplificada em 2026-05-23 (H3c)** —
+    KPIs reduzidos de 10 (6 topo + 4 Métricas Resumidas) para 4
+    essenciais: Views / Leads / WhatsApp / Conversão. Timeline
+    filtrada para apenas eventos com sinal comercial real
+    (interactions, leads, marcador car_created) — view_group
+    eliminado: para car 4, payload passou de 367 entradas para 14.
+
+    Backend: filtro em CarAnalyticsService::buildTimeline() —
+    payload mais leve (~96% redução para viaturas com views altos).
+
+    Bónus: campo metrics.whatsapp_clicks novo, alimentado por
+    car_interactions (real-time) em vez de car_performance_metrics
+    (que tinha bug histórico item 1 do CLAUDE.md). Resolve sintoma
+    do bug sem mexer no agregado.
+
+    Campos órfãos no payload (candidatos a limpeza futura):
+    - metrics.views_24h, metrics.views_7d, metrics.interactions,
+      metrics.interest_rate
+    - performance.totals.* (4 campos)
+    - Componente CarAnalyticsKpiStrip.tsx (mantido mas órfão —
+      pode ser reaproveitado noutras páginas no futuro)
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap

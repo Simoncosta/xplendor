@@ -45,6 +45,8 @@ class CarAnalyticsService
         $views7d  = $this->viewRepository->countByCarSince($car->id, now()->subDays(7));
 
         $interactionsBreakdown = $this->interactionRepository->groupByType($car->id);
+        $whatsappClicks = collect($interactionsBreakdown)
+            ->firstWhere('interaction_type', 'whatsapp_click')?->total ?? 0;
         $trafficSources        = $this->viewRepository->groupByChannel($car->id);
 
         // ── Performance metrics (XPLDR-5) ─────────────────────────────────────
@@ -128,14 +130,15 @@ class CarAnalyticsService
                 'images'                 => $car->images,
             ],
             'metrics' => [
-                'views'         => $views,
-                'interactions'  => $interactions,
-                'leads'         => $leads,
-                'views_24h'     => $views24h,
-                'views_7d'      => $views7d,
-                'interest_rate' => $views > 0
+                'views'            => $views,
+                'interactions'     => $interactions,
+                'leads'            => $leads,
+                'views_24h'        => $views24h,
+                'views_7d'         => $views7d,
+                'interest_rate'    => $views > 0
                     ? round(($interactions / $views) * 100, 2)
                     : 0,
+                'whatsapp_clicks'  => (int) $whatsappClicks,
             ],
             'interactions_breakdown' => $interactionsBreakdown,
             'traffic_sources'        => $trafficSources,
@@ -311,21 +314,6 @@ class CarAnalyticsService
             'icon'       => 'ri-add-circle-line',
             'color'      => 'success',
         ];
-
-        foreach ($this->viewRepository->getGroupedTimelineByCar($car->id) as $viewGroup) {
-            $total      = (int) $viewGroup->total;
-            $timeline[] = [
-                'type'            => 'view_group',
-                'label'           => $total === 1
-                    ? '1 visualização do anúncio'
-                    : "{$total} visualizações do anúncio",
-                'created_at'      => $viewGroup->grouped_at,
-                'icon'            => 'ri-eye-line',
-                'color'           => 'primary',
-                'count'           => $total,
-                'unique_visitors' => (int) $viewGroup->unique_visitors,
-            ];
-        }
 
         foreach ($this->interactionRepository->getTimelineByCar($car->id) as $interaction) {
             $timeline[] = [

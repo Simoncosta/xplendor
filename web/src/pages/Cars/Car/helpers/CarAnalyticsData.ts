@@ -33,34 +33,6 @@ export const fmtDate = (d: string) =>
 export const fmtTime = (d: string) =>
     new Date(d).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
 
-// ─── KPI helpers ──────────────────────────────────────────────────────────────
-
-export const interestRateColor = (r: number) =>
-    r >= 10 ? "text-success" : r >= 3 ? "text-warning" : "text-muted";
-
-export const interestRateBadge = (r: number) =>
-    r >= 10 ? "ri-arrow-up-line text-success" : r >= 3 ? "ri-subtract-line text-warning" : "ri-arrow-down-line text-muted";
-
-export const buildKpiItems = (m?: any) => {
-    const metrics = {
-        views: Number(m?.views || 0),
-        views_24h: Number(m?.views_24h || 0),
-        views_7d: Number(m?.views_7d || 0),
-        interactions: Number(m?.interactions || 0),
-        leads: Number(m?.leads || 0),
-        interest_rate: Number(m?.interest_rate || 0),
-    };
-
-    return [
-        { id: 1, label: "Views", counter: metrics.views, icon: "ri-eye-line", iconClass: "text-primary", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-        { id: 2, label: "Views 24h", counter: metrics.views_24h, icon: "ri-time-line", iconClass: metrics.views_24h > 0 ? "text-info" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-        { id: 3, label: "Views 7 dias", counter: metrics.views_7d, icon: "ri-calendar-line", iconClass: metrics.views_7d > 0 ? "text-secondary" : "text-muted", suffix: "", decimals: 0, valueClass: "text-body", badge: "" },
-        { id: 4, label: "Interações", counter: metrics.interactions, icon: "ri-cursor-line", iconClass: metrics.interactions > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.interactions > 0 ? "text-success" : "text-body", badge: "" },
-        { id: 5, label: "Leads", counter: metrics.leads, icon: "ri-user-follow-line", iconClass: metrics.leads > 0 ? "text-success" : "text-muted", suffix: "", decimals: 0, valueClass: metrics.leads > 0 ? "text-success" : "text-body", badge: "" },
-        { id: 6, label: "Interesse do mercado", counter: metrics.interest_rate, icon: "ri-line-chart-line", iconClass: interestRateColor(metrics.interest_rate), suffix: "%", decimals: 1, valueClass: interestRateColor(metrics.interest_rate), badge: interestRateBadge(metrics.interest_rate) },
-    ];
-};
-
 // ─── Traffic sources ──────────────────────────────────────────────────────────
 
 export const buildTrafficSources = (rawSources: any[]) =>

@@ -10,12 +10,10 @@ import { analyticsCar } from "slices/cars/thunk";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
-import CarAnalyticsKpiStrip from "./components/CarAnalyticsKpiStrip";
 import ContactProbabilityPanel from "./components/ContactProbabilityPanel";
 
 import {
     fmt, fmtDate, fmtTime,
-    buildKpiItems,
     buildTrafficSources, buildDonutOptions,
     buildInteractions,
     channelLabels, channelColors,
@@ -86,7 +84,6 @@ export default function CarAnalytics() {
         () => interactions.reduce((s: number, i: any) => s + i.total, 0),
         [interactions]
     );
-    const perfTotals = perf?.totals;
     const perfChannels = useMemo(
         () => (perf?.by_channel || []).map((ch: any) => ({
             ...ch,
@@ -132,7 +129,25 @@ export default function CarAnalytics() {
                                 primaryAction={primaryRecommendedAction}
                             >
                                 <div className="d-grid gap-3">
-                                    <CarAnalyticsKpiStrip items={buildKpiItems(m)} />
+                                    <div className="row g-3">
+                                        <div className="col-xl-3 col-sm-6">
+                                            <Metric label="VIEWS" value={Number(m?.views ?? 0)} />
+                                        </div>
+                                        <div className="col-xl-3 col-sm-6">
+                                            <Metric label="LEADS" value={Number(m?.leads ?? 0)} />
+                                        </div>
+                                        <div className="col-xl-3 col-sm-6">
+                                            <Metric label="WHATSAPP" value={Number(m?.whatsapp_clicks ?? 0)} />
+                                        </div>
+                                        <div className="col-xl-3 col-sm-6">
+                                            <Metric
+                                                label="CONVERSÃO"
+                                                value={Number(m?.views ?? 0) >= 10
+                                                    ? `${((Number(m?.leads ?? 0) / Number(m?.views ?? 1)) * 100).toFixed(2)}%`
+                                                    : "—"}
+                                            />
+                                        </div>
+                                    </div>
 
                                     <section style={sectionStyle}>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
@@ -177,18 +192,6 @@ export default function CarAnalytics() {
                                         </Col>
                                     </Row>
                                 )}
-                                    </section>
-
-                                    <section style={sectionStyle}>
-                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-2" style={{ letterSpacing: "0.08em" }}>
-                                    Métricas resumidas
-                                </p>
-                                <div className="row g-2">
-                                    <div className="col-lg-3 col-sm-6"><Metric label="Sessões" value={perfTotals?.total_sessions ?? 0} /></div>
-                                    <div className="col-lg-3 col-sm-6"><Metric label="Leads" value={perfTotals?.total_leads ?? 0} /></div>
-                                    <div className="col-lg-3 col-sm-6"><Metric label="WhatsApp" value={perfTotals?.total_whatsapp_clicks ?? 0} /></div>
-                                    <div className="col-lg-3 col-sm-6"><Metric label="Conversão" value={perfTotals?.avg_conversion_rate ? `${perfTotals.avg_conversion_rate}%` : "—"} /></div>
-                                </div>
                                     </section>
 
                                     <section style={sectionStyle}>
@@ -239,14 +242,15 @@ export default function CarAnalytics() {
                                     <i className="ri-time-line me-2 text-primary" />
                                     Timeline de actividade
                                 </h6>
-                                {!timeline.length ? (
-                                    <div className="text-center py-4 text-muted bg-light-subtle rounded">
-                                        <i className="ri-time-line fs-1 d-block mb-2" />
-                                        <p className="fs-13 mb-0">Ainda sem histórico registado</p>
+                                {timeline.filter((e: any) => e.type !== "car_created").length === 0 ? (
+                                    <div className="text-center py-4 text-muted">
+                                        <i className="ri-message-3-line display-6 opacity-50" />
+                                        <p className="mt-2 mb-0">Sem contactos directos registados ainda.</p>
+                                        <small>Cliques em WhatsApp, telefone e leads vão aparecer aqui.</small>
                                     </div>
                                 ) : (
                                     <div className="vstack gap-2">
-                                        {timeline.slice(0, 12).map((item: any, idx: number) => (
+                                        {timeline.map((item: any, idx: number) => (
                                             <div key={idx} className="d-flex align-items-start gap-3" style={{ border: "1px dashed #e9ebec", borderRadius: "0.5rem", padding: "0.75rem", background: "#fff" }}>
                                                 <div
                                                     className={`avatar-title rounded-circle bg-${item.color}-subtle text-${item.color}`}
@@ -280,9 +284,9 @@ export default function CarAnalytics() {
 
 function Metric({ label, value }: { label: string; value: string | number }) {
     return (
-        <div className="d-flex align-items-center justify-content-between px-3 py-3 rounded-3 bg-light-subtle">
-            <span className="text-muted fs-13">{label}</span>
-            <span className="fw-semibold">{value}</span>
+        <div className="rounded-3 bg-light-subtle px-3 py-3">
+            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>{label}</p>
+            <span className="fs-20 fw-bold">{value}</span>
         </div>
     );
 }
