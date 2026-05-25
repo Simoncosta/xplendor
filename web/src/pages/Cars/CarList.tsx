@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 import {
     Container,
@@ -159,7 +160,7 @@ const CarList = () => {
     const { cars, meta, loading } = useSelector(selectCarListViewModel);
 
     // State
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 680);
+    const isMobile = useIsMobile(680);
     const [companyId, setCompanyId] = useState<any>(null);
     const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
@@ -241,15 +242,6 @@ const CarList = () => {
         pagination.pageIndex,
         pagination.pageSize,
     ]);
-
-    useEffect(() => {
-        const handleResize = () => {
-            setIsMobile(window.innerWidth < 680);
-        };
-
-        window.addEventListener("resize", handleResize);
-        return () => window.removeEventListener("resize", handleResize);
-    }, []);
 
     // Actions
     const onClickSyncCarmine = async () => {

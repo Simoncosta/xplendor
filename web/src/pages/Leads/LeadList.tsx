@@ -1,5 +1,6 @@
 // React
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 // Redux
 import { useDispatch, useSelector } from "react-redux";
 // Components
@@ -39,6 +40,7 @@ const selectLeadListViewModel = createSelector(
 
 export default function LeadList() {
     const dispatch: any = useDispatch();
+    const isMobile = useIsMobile(680);
 
     const { leads, meta, loading, loadingUpdate } = useSelector(selectLeadListViewModel);
 
@@ -240,6 +242,7 @@ export default function LeadList() {
                                         total={meta?.total}
                                         isBordered={true}
                                         theadClass="text-muted table-light"
+                                        mobileMode={isMobile}
                                     />
                                 </div>
                             </Card>
