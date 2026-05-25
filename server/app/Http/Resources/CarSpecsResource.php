@@ -74,9 +74,10 @@ class CarSpecsResource extends JsonResource
 
             // Internal DB column 'image' exposed as 'url' for cleaner API semantics
             'images' => $this->images?->map(fn ($img) => [
-                'id'         => $img->id,
-                'url'        => $img->image,
-                'is_primary' => (bool) $img->is_primary,
+                'id'            => $img->id,
+                'url'           => $img->image,
+                'is_primary'    => (bool) $img->is_primary,
+                'original_path' => $img->original_path,
             ]) ?? [],
 
             'header_meta' => [

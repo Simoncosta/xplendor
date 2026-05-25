@@ -62,10 +62,11 @@ class CarService extends BaseService
 
             foreach ($processed as $img) {
                 $car->images()->create([
-                    'image' => $img['image'],
-                    'order' => $img['order'],
-                    'is_primary' => $img['is_primary'],
-                    'company_id' => $data['company_id'],
+                    'image'         => $img['image'],
+                    'original_path' => $img['original_path'] ?? null,
+                    'order'         => $img['order'],
+                    'is_primary'    => $img['is_primary'],
+                    'company_id'    => $data['company_id'],
                 ]);
             }
         }
@@ -182,10 +183,11 @@ class CarService extends BaseService
 
                 foreach ($processed as $img) {
                     $car->images()->create([
-                        'image' => $img['image'],
-                        'order' => $img['order'],
-                        'is_primary' => $img['is_primary'],
-                        'company_id' => $data['company_id'],
+                        'image'         => $img['image'],
+                        'original_path' => $img['original_path'] ?? null,
+                        'order'         => $img['order'],
+                        'is_primary'    => $img['is_primary'],
+                        'company_id'    => $data['company_id'],
                     ]);
                 }
             }

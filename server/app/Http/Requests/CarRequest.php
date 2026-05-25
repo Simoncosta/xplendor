@@ -225,9 +225,14 @@ class CarRequest extends FormRequest
             'existing_images.*' => ['string'],
 
             // Metadados opcionais das imagens normais (mesma ordem do array images)
-            'images_meta' => ['nullable', 'array'],
-            'images_meta.*.is_primary' => ['nullable', 'boolean'],
-            'images_meta.*.order' => ['nullable', 'integer', 'min:1'],
+            'images_meta'                => ['nullable', 'array'],
+            'images_meta.*.is_primary'   => ['nullable', 'boolean'],
+            'images_meta.*.order'        => ['nullable', 'integer', 'min:1'],
+            'images_meta.*.crop'         => ['nullable', 'array'],
+            'images_meta.*.crop.x'       => ['nullable', 'integer', 'min:0'],
+            'images_meta.*.crop.y'       => ['nullable', 'integer', 'min:0'],
+            'images_meta.*.crop.width'   => ['nullable', 'integer', 'min:1'],
+            'images_meta.*.crop.height'  => ['nullable', 'integer', 'min:1'],
 
             // Imagens 360 exterior (upload)
             'exterior_360_images' => ['nullable', 'array', 'max:60'],
