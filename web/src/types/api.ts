@@ -81,11 +81,11 @@ export type MarketPriceSignal = 'overpriced' | 'slightly_high' | 'fair' | 'compe
 export interface MarketComparable {
     url: string;
     title: string;
-    brand: string;
-    model: string;
-    year: number;
-    km: number | null;
+    year: number | null;
     price: number;
+    fuel?: string;
+    gearbox?: string;
+    region?: string;
 }
 
 export interface MarketAggregatePrices {

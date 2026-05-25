@@ -347,10 +347,17 @@ function Body({
                 className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2"
                 style={{ borderTop: "1px solid #eef0f2" }}
             >
-                <div className="text-muted fs-12">
-                    Baseado em {aggregate.comparables_count} comparáveis · Standvirtual
-                    {aggregate.fallback_used && (
-                        <span className="ms-2 badge bg-light text-muted">pesquisa alargada</span>
+                <div>
+                    <div className="text-muted fs-12">
+                        Análise baseada em {aggregate.comparables_count} anúncios · Standvirtual
+                        {aggregate.fallback_used && (
+                            <span className="ms-2 badge bg-light text-muted">pesquisa alargada</span>
+                        )}
+                    </div>
+                    {aggregate.top_comparables.length > 0 && (
+                        <div className="text-muted fs-12">
+                            A mostrar os {aggregate.top_comparables.length} mais próximos da mediana
+                        </div>
                     )}
                 </div>
                 <button
@@ -362,7 +369,10 @@ function Body({
             </div>
 
             {showComparables && (
-                <ComparablesList comparables={aggregate.top_comparables} />
+                <ComparablesList
+                    comparables={aggregate.top_comparables}
+                    effectivePrice={aggregate.comparison.car_price}
+                />
             )}
         </div>
     );
