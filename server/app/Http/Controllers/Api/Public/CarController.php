@@ -63,7 +63,7 @@ class CarController extends Controller
         $car = \App\Models\Car::query()
             ->where('id', $id)
             ->where('company_id', $company->id)
-            ->whereIn('status', ['active', 'available_soon'])
+            ->whereIn('status', ['active', 'sold', 'available_soon'])
             ->with(['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute'])
             ->first();
 

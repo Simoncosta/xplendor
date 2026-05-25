@@ -66,7 +66,7 @@ class CarControllerTest extends TestCase
         if (!empty($items)) {
             $statuses = array_unique(array_column($items, 'status'));
             foreach ($statuses as $status) {
-                $this->assertContains($status, ['active', 'available_soon']);
+                $this->assertContains($status, ['active', 'sold', 'available_soon']);
             }
         } else {
             $this->assertTrue(true); // no cars → nothing to fail
@@ -105,7 +105,7 @@ class CarControllerTest extends TestCase
     {
         $car = Car::where('company_id', self::COMPANY_MH_ID)
             ->where('vehicle_type', 'motorhome')
-            ->whereIn('status', ['active', 'available_soon'])
+            ->whereIn('status', ['active', 'sold', 'available_soon'])
             ->first();
 
         if (!$car) {
@@ -147,13 +147,13 @@ class CarControllerTest extends TestCase
     {
         $car = Car::where('company_id', self::COMPANY_MH_ID)
             ->where('vehicle_type', 'car')
-            ->whereIn('status', ['active', 'available_soon'])
+            ->whereIn('status', ['active', 'sold', 'available_soon'])
             ->first();
 
         if (!$car) {
             // Fall back to any non-motorhome across all companies
             $car = Car::whereNotIn('vehicle_type', ['motorhome', 'caravan'])
-                ->whereIn('status', ['active', 'available_soon'])
+                ->whereIn('status', ['active', 'sold', 'available_soon'])
                 ->first();
         }
 
@@ -184,7 +184,7 @@ class CarControllerTest extends TestCase
     {
         // Get a car that belongs to company MH but try to access it with token C2
         $car = Car::where('company_id', self::COMPANY_MH_ID)
-            ->whereIn('status', ['active', 'available_soon'])
+            ->whereIn('status', ['active', 'sold', 'available_soon'])
             ->first();
 
         if (!$car) {

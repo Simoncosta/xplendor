@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class CarPublicRepository
 {
-    private const ACTIVE_STATUSES = ['active', 'available_soon'];
+    private const ACTIVE_STATUSES = ['active', 'sold', 'available_soon'];
 
     private const ALLOWED_ORDER_FIELDS = ['created_at', 'price_gross', 'registration_year', 'mileage_km'];
 

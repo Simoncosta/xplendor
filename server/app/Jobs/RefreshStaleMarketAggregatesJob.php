@@ -43,7 +43,7 @@ class RefreshStaleMarketAggregatesJob implements ShouldQueue
     public function resolveStaleCars(): Collection
     {
         return Car::query()
-            ->whereIn('status', ['active', 'available_soon'])
+            ->whereIn('status', ['active', 'sold', 'available_soon'])
             ->whereIn('vehicle_type', ['car', 'motorhome'])
             ->whereNotNull('car_brand_id')
             ->whereNotNull('car_model_id')
