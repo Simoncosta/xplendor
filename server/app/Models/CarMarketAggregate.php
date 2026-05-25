@@ -22,6 +22,7 @@ class CarMarketAggregate extends Model
         'std_dev',
         'car_price_gross',
         'promo_price_gross',
+        'search_url',
         'top_comparables',
         'fallback_used',
     ];

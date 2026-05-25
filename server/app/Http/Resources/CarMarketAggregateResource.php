@@ -31,6 +31,7 @@ class CarMarketAggregateResource extends JsonResource
                 : []),
             'top_comparables' => $this->top_comparables ?? [],
             'fallback_used'   => (bool) $this->fallback_used,
+            'search_url'      => $this->search_url,
             'created_at'      => $this->created_at->toIso8601String(),
             'updated_at'      => $this->updated_at->toIso8601String(),
         ];

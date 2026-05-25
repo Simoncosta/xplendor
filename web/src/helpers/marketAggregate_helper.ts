@@ -30,3 +30,16 @@ export async function refreshMarketAggregate(
     );
     return res.data;
 }
+
+export async function checkMarketLink(
+    companyId: number,
+    carId: number,
+    url: string
+): Promise<boolean> {
+    // Interceptor returns JSON body directly; endpoint returns { available: boolean }.
+    const res = await axios.get<{ available: boolean }>(
+        carMarketAggregateUrl(companyId, carId) + "/check-link",
+        { params: { url } }
+    );
+    return res.data?.available ?? false;
+}

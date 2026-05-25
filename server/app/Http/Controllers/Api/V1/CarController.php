@@ -22,6 +22,7 @@ use App\Services\MetaAdsCarSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Throwable;
@@ -389,6 +390,39 @@ class CarController extends Controller
             CarSpecsResource::make($car)->resolve(),
             'Specs carregados com sucesso.'
         );
+    }
+
+    public function checkMarketLink(int $companyId, int $carId, Request $request): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return response()->json(['message' => 'Acesso negado.'], 403);
+        }
+
+        $url = (string) $request->query('url', '');
+
+        // Only proxy requests to Standvirtual listing URLs to limit SSRF surface.
+        if (!str_starts_with($url, 'https://www.standvirtual.com/')) {
+            return response()->json(['available' => false]);
+        }
+
+        try {
+            // Detection strategy (tested 2026-05-25):
+            // - Live listing  → HTTP 200
+            // - Expired/sold  → HTTP 410 Gone (Standvirtual's canonical signal)
+            // - Any other error (network, timeout, block) → fail-open: return available=false
+            //   so the frontend falls back to the pre-computed search_url.
+            // If Standvirtual changes the expired-listing signal, update this check.
+            $response = Http::timeout(4)
+                ->withHeaders([
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                ])
+                ->get($url);
+
+            return response()->json(['available' => $response->successful()]);
+        } catch (\Throwable) {
+            // Network error, timeout, or block → fail-open to search URL
+            return response()->json(['available' => false]);
+        }
     }
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)

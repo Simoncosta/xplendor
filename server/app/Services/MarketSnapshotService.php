@@ -36,6 +36,8 @@ class MarketSnapshotService
             ? $car->promo_price_gross
             : null;
 
+        $searchUrl = $this->buildSearchUrl($car);
+
         // Insufficient data — record failure without invoking the scraper
         if (!$car->brand?->name || !$car->model?->name || !$car->registration_year) {
             return CarMarketAggregate::create([
@@ -43,6 +45,7 @@ class MarketSnapshotService
                 'vehicle_type'      => $car->vehicle_type ?? 'car',
                 'car_price_gross'   => $car->price_gross,
                 'promo_price_gross' => $promoPrice,
+                'search_url'        => $searchUrl,
                 'status'            => 'failed',
                 'confidence'        => 'none',
                 'comparables_count' => 0,
@@ -55,6 +58,7 @@ class MarketSnapshotService
             'vehicle_type'      => $car->vehicle_type ?? 'car',
             'car_price_gross'   => $car->price_gross,
             'promo_price_gross' => $promoPrice,
+            'search_url'        => $searchUrl,
             'status'            => 'pending',
             'confidence'        => 'none',
             'comparables_count' => 0,
@@ -242,5 +246,60 @@ class MarketSnapshotService
             ])
             ->values()
             ->toArray();
+    }
+
+    /**
+     * Builds a Standvirtual search URL for the car's brand/model/year/fuel.
+     * Stored in the aggregate at creation time so it's always available as a fallback
+     * when a specific listing URL is no longer valid.
+     */
+    private function buildSearchUrl(Car $car): string
+    {
+        $paths = [
+            'car'       => '/carros',
+            'motorhome' => '/autocaravanas',
+        ];
+        $path = $paths[$car->vehicle_type ?? 'car'] ?? '/carros';
+
+        $params = [];
+
+        if ($car->brand?->name) {
+            $params['search[filter_enum_make][0]'] = $this->slugifySearchValue($car->brand->name);
+        }
+        if ($car->model?->name) {
+            $params['search[filter_enum_model][0]'] = $this->slugifySearchValue($car->model->name);
+        }
+        if ($car->registration_year) {
+            $params['search[filter_float_first_registration_year:from]'] = $car->registration_year - 1;
+            $params['search[filter_float_first_registration_year:to]']   = $car->registration_year + 1;
+        }
+        if ($car->fuel_type) {
+            $params['search[filter_enum_fuel_type][0]'] = $this->normalizeFuelForSearch($car->fuel_type);
+        }
+
+        return 'https://www.standvirtual.com' . $path . '?' . http_build_query($params);
+    }
+
+    private function slugifySearchValue(string $value): string
+    {
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value) ?: $value;
+        $cleaned        = strtolower(trim(str_replace(['/', '_'], ' ', $transliterated)));
+
+        return implode('-', array_filter(explode(' ', $cleaned)));
+    }
+
+    private function normalizeFuelForSearch(string $fuel): string
+    {
+        $slug = $this->slugifySearchValue($fuel);
+
+        return match ($slug) {
+            'gasolina', 'petrol', 'gasoline' => 'petrol',
+            'diesel'                          => 'diesel',
+            'eletrico', 'electrico', 'electric' => 'electric',
+            'hibrido', 'hybrid'               => 'hybrid',
+            'hibrido-plug-in', 'plug-in-hybrid', 'plugin-hybrid' => 'plug_in_hybrid',
+            'gpl', 'lpg'                      => 'lpg',
+            default                           => $slug,
+        };
     }
 }

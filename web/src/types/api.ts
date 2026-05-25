@@ -112,6 +112,7 @@ export interface MarketAggregate {
     comparison: MarketAggregateComparison;
     top_comparables: MarketComparable[];
     fallback_used: boolean;
+    search_url: string | null;
     created_at: string;
     updated_at: string;
 }

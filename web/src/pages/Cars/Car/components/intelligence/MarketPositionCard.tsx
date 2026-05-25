@@ -207,6 +207,8 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                         pollAttempts={pollAttempts}
                         pollTimedOut={pollTimedOut}
                         userRole={userRole}
+                        companyId={companyId}
+                        carId={carId}
                     />
             }
         </section>
@@ -271,6 +273,8 @@ function Body({
     pollAttempts,
     pollTimedOut,
     userRole,
+    companyId,
+    carId,
 }: {
     aggregate: MarketAggregate | null | undefined;
     refreshing: boolean;
@@ -280,6 +284,8 @@ function Body({
     pollAttempts: number;
     pollTimedOut: boolean;
     userRole?: string;
+    companyId: number;
+    carId: number;
 }) {
     if (pollTimedOut) {
         return <TimedOutState onRetry={onRefresh} />;
@@ -372,6 +378,9 @@ function Body({
                 <ComparablesList
                     comparables={aggregate.top_comparables}
                     effectivePrice={aggregate.comparison.car_price}
+                    companyId={companyId}
+                    carId={carId}
+                    searchUrl={aggregate.search_url}
                 />
             )}
         </div>

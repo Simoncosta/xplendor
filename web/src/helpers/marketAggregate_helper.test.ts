@@ -32,6 +32,7 @@ const mockAggregate: MarketAggregate = {
     comparison: { car_price: 19000, difference_percent: 5.6, signal: 'slightly_high' },
     top_comparables: [],
     fallback_used: false,
+    search_url: null,
     created_at: '2026-05-25T10:00:00Z',
     updated_at: '2026-05-25T10:00:00Z',
 };

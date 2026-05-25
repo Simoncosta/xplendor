@@ -92,6 +92,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
                 Route::get('/cars/{carId}/market-aggregate', [CarController::class, 'marketAggregate']);
                 Route::post('/cars/{carId}/market-aggregate/refresh', [CarController::class, 'refreshMarketAggregate']);
+                Route::get('/cars/{carId}/market-aggregate/check-link', [CarController::class, 'checkMarketLink']);
 
                 Route::post('/scraper/run', [ScraperController::class, 'run']);
                 Route::get('/scraper/executions', [ScraperController::class, 'executions']);
