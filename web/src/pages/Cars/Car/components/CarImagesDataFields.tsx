@@ -309,7 +309,11 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                                 syncFormikFromPond(nextFiles);
                             }}
                             onreorderfiles={(nextFiles) => {
-                                setFiles(nextFiles);
+                                // Do NOT call setFiles here. FilePond already updated its
+                                // internal order; calling setFiles triggers a re-render that
+                                // passes the items back through setOptions, causing FilePond to
+                                // attempt re-processing them as new uploads (react-filepond
+                                // only sets allowFilesSync=false for onupdatefiles, not here).
                                 syncFormikFromPond(nextFiles);
                             }}
                             allowMultiple
