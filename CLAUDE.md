@@ -1105,7 +1105,7 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     Relacionado com item 48 — quando atacarmos refactor de persistência
     de aggregate_id, resolvemos os dois bugs juntos.
 
-🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (alta prioridade)** —
+🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (parcial — Fix A resolvido)** —
     Descoberto em 2026-05-23 (X4) durante investigação de bug
     "Analisar mercado fica 5+ minutos sem dados". Investigação revelou
     4 problemas distintos a interagir:
@@ -1122,40 +1122,35 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     Docker). A tabela `jobs` é o ponto único de verdade da fila — funcional
     mas mais lento e propenso a contenção do que Redis.
 
-    **(c) GET no `useEffect.catch` produz NeverRunState para qualquer
+    **(c) GET no `useEffect.catch` produzia NeverRunState para qualquer
     erro** — incluindo timeout de rede, 5xx transitório, ou resposta mal-
-    formada. Não distingue "não existe aggregate" (legítimo NeverRun) de
-    "erro de rede" (devia mostrar estado de erro com retry).
+    formada. Não distinguia "não existe aggregate" (legítimo NeverRun) de
+    "erro de rede".
 
     **(d) ErrorState/FailedState não têm botão de retry no body** — só
     o botão "↻ Actualizar agora" no header. Utilizador que cai num
     aggregate `error` pode não perceber que pode tentar de novo.
 
-    **Plano de fix proposto na X4.1 (4 candidatos):**
+    **Estado dos fixes:**
 
-    - **Fix A** (frontend, baixo risco): distinguir 404 genuíno de erro
-      de rede no catch do GET. Mostrar NetworkErrorState com retry em
-      vez de NeverRunState quando há erro de rede.
+    - ✅ **Fix A** (frontend) — resolvido em 2026-05-25 (X5). Distinguir
+      erro de rede de "aggregate inexistente" no `useEffect.catch`. Novo
+      estado `networkError` e componente `NetworkErrorState` com botão
+      "Tentar novamente". Backend devolve 200+null para "sem aggregate"
+      (tratado no `.then()`), por isso ALL casos no `.catch()` são
+      erros genuínos → `NetworkErrorState`. `retryFetch` re-faz o GET
+      e repõe estado correctamente. `NeverRunState` mantém-se apenas
+      para resposta legítima `{ data: null }` do servidor.
 
-    - **Fix B** (backend, novo job): scheduler periódico que marca
-      aggregates em `pending` há mais de 10 minutos como `error`. Elimina
-      zombies silenciosos. Requer decisão arquitectural (que job? que
-      intervalo? que mensagem?).
+    - 🟡 **Fix B** (backend) — pendente. Scheduler que marca aggregates
+      em `pending` há mais de 10 minutos como `error`. Elimina zombies
+      silenciosos.
 
-    - **Fix C** (refactor, sessão dedicada): persistir `aggregate_id`
-      devolvido pelo POST no frontend (sessionStorage / URL param / Redux).
-      Ao remontar, componente sabe exactamente qual aggregate consultar.
-      Resolve simultaneamente items 48 e 49.
+    - 🟡 **Fix C** (refactor) — pendente. Persistir `aggregate_id` no
+      frontend. Resolve items 48, 49 e parte do 50 simultaneamente.
 
-    - **Fix D** (infra, complementar): aumentar `--max-time` do worker
-      para reduzir frequência de restarts, ou implementar graceful drain
-      antes do restart. Resolve causa-raiz do (a). Baixo impacto sem o
-      Fix B.
-
-    **Recomendação:** Fix A + Fix B em sessão dedicada (resolvem casos
-    observáveis). Fix C em sessão posterior (refactor de persistência).
-    Fix D em sessão de infraestrutura (resolver junto com migração de
-    fila/cache para Redis correctamente configurado).
+    - 🟡 **Fix D** (infra) — pendente. Worker `--max-time` + migrar
+      fila/cache para Redis correctamente configurado.
 
     **Relacionado com:**
     - Item 47 — RecalculateAllCarScoresJob cron parado pode ter mesma

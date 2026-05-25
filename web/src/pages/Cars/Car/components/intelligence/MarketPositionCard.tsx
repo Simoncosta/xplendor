@@ -44,6 +44,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
     const [showComparables, setShowComparables] = useState(false);
     const [pollAttempts, setPollAttempts]     = useState(0);
     const [pollTimedOut, setPollTimedOut]     = useState(false);
+    const [networkError, setNetworkError]     = useState(false);
 
     const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
     const mountedRef = useRef(true);
@@ -96,6 +97,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         fetchMarketAggregate(companyId, carId)
             .then((data) => {
                 if (cancelled) return;
+                setNetworkError(false);
                 setAggregate(data);
 
                 if (data && !TERMINAL_STATUSES.includes(data.status)) {
@@ -103,7 +105,8 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                 }
             })
             .catch(() => {
-                if (!cancelled) setAggregate(null);
+                if (cancelled) return;
+                setNetworkError(true);
             })
             .finally(() => {
                 if (!cancelled) setLoadingInitial(false);
@@ -139,6 +142,24 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         }
     };
 
+    const retryFetch = async () => {
+        setLoadingInitial(true);
+        setNetworkError(false);
+
+        try {
+            const data = await fetchMarketAggregate(companyId, carId);
+            setNetworkError(false);
+            setAggregate(data);
+            if (data && !TERMINAL_STATUSES.includes(data.status)) {
+                startPolling();
+            }
+        } catch {
+            setNetworkError(true);
+        } finally {
+            setLoadingInitial(false);
+        }
+    };
+
     return (
         <section style={sectionStyle}>
             <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
@@ -160,16 +181,18 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
 
             {loadingInitial
                 ? <LoadingState />
-                : <Body
-                    aggregate={aggregate}
-                    refreshing={refreshing}
-                    showComparables={showComparables}
-                    onToggleComparables={() => setShowComparables((v) => !v)}
-                    onRefresh={handleRefresh}
-                    pollAttempts={pollAttempts}
-                    pollTimedOut={pollTimedOut}
-                    userRole={userRole}
-                />
+                : networkError
+                    ? <NetworkErrorState onRetry={retryFetch} />
+                    : <Body
+                        aggregate={aggregate}
+                        refreshing={refreshing}
+                        showComparables={showComparables}
+                        onToggleComparables={() => setShowComparables((v) => !v)}
+                        onRefresh={handleRefresh}
+                        pollAttempts={pollAttempts}
+                        pollTimedOut={pollTimedOut}
+                        userRole={userRole}
+                    />
             }
         </section>
     );
@@ -193,6 +216,25 @@ function TimedOutState({ onRetry }: { onRetry: () => void }) {
             <p className="mt-3 mb-1 fw-semibold">A análise está a demorar mais do que o esperado</p>
             <p className="text-muted fs-13 mb-3">
                 O serviço de mercado pode estar momentaneamente lento. Tenta de novo em alguns minutos.
+            </p>
+            <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={onRetry}
+            >
+                <i className="ri-refresh-line me-1" />
+                Tentar novamente
+            </button>
+        </div>
+    );
+}
+
+function NetworkErrorState({ onRetry }: { onRetry: () => void }) {
+    return (
+        <div className="text-center py-4">
+            <i className="ri-wifi-off-line display-6 text-warning opacity-75" />
+            <p className="mt-3 mb-1 fw-semibold">Não foi possível carregar os dados de mercado</p>
+            <p className="text-muted fs-13 mb-3">
+                Verifica a tua ligação e tenta de novo.
             </p>
             <button
                 className="btn btn-sm btn-outline-primary"

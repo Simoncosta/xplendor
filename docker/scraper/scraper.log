@@ -204,3 +204,186 @@
 2026-05-23 13:45:40 [INFO] scraper: Página 1/2: 32 anúncios
 2026-05-23 13:46:01 [INFO] main: Limite de resultados atingido (10). A parar.
 2026-05-23 13:46:01 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-23 14:00:50 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-23 14:00:50 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-23 14:00:50 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-200', 'search[filter_float_first_registration_year:from]': 2016, 'search[filter_float_first_registration_year:to]': 2018, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-23 14:00:50 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-23 14:00:50 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2016, 'year_to': 2018, 'fuel': 'diesel'}
+2026-05-23 14:00:52 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-23 14:00:52 [INFO] scraper: Página 1/2: 31 anúncios
+2026-05-23 14:01:19 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-23 14:01:19 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:35:39 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:35:39 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'lexus', 'search[filter_enum_model][0]': 'rc-200t', 'search[filter_float_first_registration_year:from]': 2015, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:35:39 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'lexus', 'search[filter_enum_model][0]': 'rc-200t', 'search[filter_float_first_registration_year:from]': 2015, 'search[filter_float_first_registration_year:to]': 2017, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:35:39 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:35:39 [INFO] scraper: Filtros ativos: {'brand': 'Lexus', 'model': 'RC 200t', 'year_from': 2015, 'year_to': 2017, 'fuel': 'gasoline'}
+2026-05-24 03:35:40 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:35:40 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
+2026-05-24 03:35:40 [INFO] scraper: Página 1/1: 0 anúncios
+2026-05-24 03:35:40 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:35:40 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'nissan', 'search[filter_enum_model][0]': 'juke', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:35:40 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'nissan', 'search[filter_enum_model][0]': 'juke', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:35:40 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:35:40 [INFO] scraper: Filtros ativos: {'brand': 'Nissan', 'model': 'Juke', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:35:41 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:35:41 [INFO] scraper: Página 1/1: 8 anúncios
+2026-05-24 03:35:57 [INFO] sender: Batch enviado: 8 snapshots. Total: 8
+2026-05-24 03:35:57 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:35:57 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '2008', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:35:57 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '2008', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:35:57 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:35:57 [INFO] scraper: Filtros ativos: {'brand': 'Peugeot', 'model': '2008', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:35:59 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:35:59 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:36:19 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:36:19 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:36:19 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:36:19 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'ds', 'search[filter_enum_model][0]': 'ds7-crossback', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:36:19 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'ds', 'search[filter_enum_model][0]': 'ds7-crossback', 'search[filter_float_first_registration_year:from]': 2021, 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:36:19 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:36:19 [INFO] scraper: Filtros ativos: {'brand': 'DS', 'model': 'DS7 Crossback', 'year_from': 2021, 'year_to': 2023, 'fuel': 'diesel'}
+2026-05-24 03:36:20 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:36:20 [INFO] scraper: Página 1/1: 11 anúncios
+2026-05-24 03:36:43 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:36:43 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:36:43 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:36:43 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'ford', 'search[filter_enum_model][0]': 'puma', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:36:43 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'ford', 'search[filter_enum_model][0]': 'puma', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:36:43 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:36:43 [INFO] scraper: Filtros ativos: {'brand': 'Ford', 'model': 'Puma', 'year_from': 2020, 'year_to': 2022, 'fuel': 'gasoline'}
+2026-05-24 03:36:44 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:36:44 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
+2026-05-24 03:36:44 [INFO] scraper: Página 1/1: 0 anúncios
+2026-05-24 03:36:44 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:36:44 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'opel', 'search[filter_enum_model][0]': 'corsa', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:36:44 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'opel', 'search[filter_enum_model][0]': 'corsa', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:36:44 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:36:44 [INFO] scraper: Filtros ativos: {'brand': 'Opel', 'model': 'Corsa', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel'}
+2026-05-24 03:36:46 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:36:46 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:37:07 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:37:07 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:37:07 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:37:07 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '308', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:07 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '308', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:07 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:37:07 [INFO] scraper: Filtros ativos: {'brand': 'Peugeot', 'model': '308', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:37:09 [INFO] scraper: Total de páginas a scraper: 3
+2026-05-24 03:37:09 [INFO] scraper: Página 1/3: 32 anúncios
+2026-05-24 03:37:30 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:37:30 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:37:31 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:37:31 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'a-180', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2019, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:31 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'a-180', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2019, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:31 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:37:31 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'A 180', 'year_from': 2017, 'year_to': 2019, 'fuel': 'diesel'}
+2026-05-24 03:37:32 [INFO] scraper: Total de páginas a scraper: 5
+2026-05-24 03:37:32 [INFO] scraper: Página 1/5: 32 anúncios
+2026-05-24 03:37:53 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:37:53 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:37:53 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:37:53 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'c3', 'search[filter_float_first_registration_year:from]': 2022, 'search[filter_float_first_registration_year:to]': 2024, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:37:53 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'c3', 'search[filter_float_first_registration_year:from]': 2022, 'search[filter_float_first_registration_year:to]': 2024, 'search[filter_enum_fuel_type][0]': 'gasoline'}
+2026-05-24 03:37:53 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:37:53 [INFO] scraper: Filtros ativos: {'brand': 'Citroën', 'model': 'C3', 'year_from': 2022, 'year_to': 2024, 'fuel': 'gasoline'}
+2026-05-24 03:37:54 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:37:54 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
+2026-05-24 03:37:54 [INFO] scraper: Página 1/1: 0 anúncios
+2026-05-24 03:37:54 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:37:54 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'renault', 'search[filter_enum_model][0]': 'captur', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:54 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'renault', 'search[filter_enum_model][0]': 'captur', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:37:54 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:37:54 [INFO] scraper: Filtros ativos: {'brand': 'Renault', 'model': 'Captur', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel'}
+2026-05-24 03:37:55 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:37:55 [INFO] scraper: Página 1/1: 15 anúncios
+2026-05-24 03:38:16 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:38:16 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:38:17 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:38:17 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'jaguar', 'search[filter_enum_model][0]': 'f-pace', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2019, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:38:17 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'jaguar', 'search[filter_enum_model][0]': 'f-pace', 'search[filter_float_first_registration_year:from]': 2017, 'search[filter_float_first_registration_year:to]': 2019, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:38:17 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:38:17 [INFO] scraper: Filtros ativos: {'brand': 'Jaguar', 'model': 'F-Pace', 'year_from': 2017, 'year_to': 2019, 'fuel': 'diesel'}
+2026-05-24 03:38:18 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:38:18 [INFO] scraper: Página 1/2: 31 anúncios
+2026-05-24 03:38:39 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:38:40 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:38:40 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:38:40 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'cla-220', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:38:40 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'cla-220', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:38:40 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:38:40 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'CLA 220', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:38:41 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:38:41 [INFO] scraper: Página 1/1: 13 anúncios
+2026-05-24 03:39:04 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:39:04 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:39:04 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:39:04 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'berlingo', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:04 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'berlingo', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:04 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:39:04 [INFO] scraper: Filtros ativos: {'brand': 'Citroën', 'model': 'Berlingo', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel'}
+2026-05-24 03:39:05 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:39:05 [INFO] scraper: Página 1/1: 4 anúncios
+2026-05-24 03:39:14 [INFO] sender: Batch enviado: 4 snapshots. Total: 4
+2026-05-24 03:39:14 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:39:14 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'bmw', 'search[filter_enum_model][0]': 'x2', 'search[filter_float_first_registration_year:from]': 2019, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:14 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'bmw', 'search[filter_enum_model][0]': 'x2', 'search[filter_float_first_registration_year:from]': 2019, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:14 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:39:14 [INFO] scraper: Filtros ativos: {'brand': 'BMW', 'model': 'X2', 'year_from': 2019, 'year_to': 2021, 'fuel': 'diesel'}
+2026-05-24 03:39:15 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:39:15 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:39:39 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:39:39 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:39:39 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:39:39 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'iveco', 'search[filter_enum_model][0]': 'daily', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:39 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'iveco', 'search[filter_enum_model][0]': 'daily', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:39 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:39:39 [INFO] scraper: Filtros ativos: {'brand': 'Iveco', 'model': 'Daily', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel'}
+2026-05-24 03:39:41 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:39:41 [INFO] scraper: Página 1/1: 3 anúncios
+2026-05-24 03:39:47 [INFO] sender: Batch enviado: 3 snapshots. Total: 3
+2026-05-24 03:39:47 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:39:47 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'bmw', 'search[filter_enum_model][0]': '320', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:47 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'bmw', 'search[filter_enum_model][0]': '320', 'search[filter_float_first_registration_year:from]': 2020, 'search[filter_float_first_registration_year:to]': 2022, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:39:47 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:39:47 [INFO] scraper: Filtros ativos: {'brand': 'BMW', 'model': '320', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel'}
+2026-05-24 03:39:48 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:39:49 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:40:09 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:40:10 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:40:10 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:40:10 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '308', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:10 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'peugeot', 'search[filter_enum_model][0]': '308', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:10 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:40:10 [INFO] scraper: Filtros ativos: {'brand': 'Peugeot', 'model': '308', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:40:11 [INFO] scraper: Total de páginas a scraper: 3
+2026-05-24 03:40:11 [INFO] scraper: Página 1/3: 32 anúncios
+2026-05-24 03:40:33 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:40:33 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:40:33 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:40:33 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'renault', 'search[filter_enum_model][0]': 'grand-scenic', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:33 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'renault', 'search[filter_enum_model][0]': 'grand-scenic', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:33 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:40:33 [INFO] scraper: Filtros ativos: {'brand': 'Renault', 'model': 'Grand Scenic', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:40:35 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:40:35 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:40:56 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:40:56 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:40:57 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:40:57 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-220', 'search[filter_float_first_registration_year:from]': 2019, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:57 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'mercedes-benz', 'search[filter_enum_model][0]': 'c-220', 'search[filter_float_first_registration_year:from]': 2019, 'search[filter_float_first_registration_year:to]': 2021, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:40:57 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:40:57 [INFO] scraper: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 220', 'year_from': 2019, 'year_to': 2021, 'fuel': 'diesel'}
+2026-05-24 03:40:58 [INFO] scraper: Total de páginas a scraper: 2
+2026-05-24 03:40:58 [INFO] scraper: Página 1/2: 32 anúncios
+2026-05-24 03:41:20 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:41:20 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-05-24 03:41:20 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-05-24 03:41:20 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'c3-aircross', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:41:20 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_make][0]': 'citroen', 'search[filter_enum_model][0]': 'c3-aircross', 'search[filter_float_first_registration_year:from]': 2018, 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_fuel_type][0]': 'diesel'}
+2026-05-24 03:41:20 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros
+2026-05-24 03:41:20 [INFO] scraper: Filtros ativos: {'brand': 'Citroën', 'model': 'C3 Aircross', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel'}
+2026-05-24 03:41:22 [INFO] scraper: Total de páginas a scraper: 1
+2026-05-24 03:41:22 [INFO] scraper: Página 1/1: 27 anúncios
+2026-05-24 03:41:46 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-05-24 03:41:46 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
