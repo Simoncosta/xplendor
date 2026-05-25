@@ -1083,6 +1083,87 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     Não fixar nesta sub-fase — risco real muito baixo, fix
     adicionaria complexidade.
 
+49. **MarketPositionCard — race condition de navegação rápida (parcial)** —
+    Resolvido em 2026-05-23 (X3): toast `success` e `startPolling()` agora
+    verificam `mountedRef` antes de disparar, evitando:
+    - Toast na página errada quando utilizador navega antes do POST completar
+    - Interval fantasma após unmount (fazia requests sem efeito)
+
+    NÃO resolvido (dívida técnica conhecida):
+    Se utilizador clica "Analisar mercado" e navega para outra página em
+    <1 segundo, ao voltar pode ver NeverRunState mesmo havendo aggregate
+    `pending` na BD (criado pelo POST in-flight). Componente remontado
+    faz GET antes do aggregate ser persistido → recebe null → mostra
+    estado enganador.
+
+    Fix correcto futuro: persistir `aggregate_id` devolvido pelo POST
+    (sessionStorage, URL param, Redux) para que ao remontar o componente
+    saiba exactamente qual aggregate consultar. Exige decisões de
+    arquitectura (onde persistir? como invalidar?) — merece sessão
+    dedicada.
+
+    Relacionado com item 48 — quando atacarmos refactor de persistência
+    de aggregate_id, resolvemos os dois bugs juntos.
+
+🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (alta prioridade)** —
+    Descoberto em 2026-05-23 (X4) durante investigação de bug
+    "Analisar mercado fica 5+ minutos sem dados". Investigação revelou
+    4 problemas distintos a interagir:
+
+    **(a) Worker tem `--max-time=3600`** — reinicia de hora em hora.
+    Hoje observou-se gap de 19 minutos entre 13:00 e 13:19 onde jobs
+    ficaram em fila sem processamento. Se utilizador clica "Analisar
+    mercado" durante esta janela, polling de 3 minutos esgota antes do
+    job correr. Aggregate fica em `pending` na BD.
+
+    **(b) Fila e cache em MariaDB, não Redis** — `QUEUE_CONNECTION=database`
+    e `CACHE_STORE=database`. O `REDIS_HOST=127.0.0.1` está configurado
+    mas inacessível dentro dos containers (devia ser nome do serviço
+    Docker). A tabela `jobs` é o ponto único de verdade da fila — funcional
+    mas mais lento e propenso a contenção do que Redis.
+
+    **(c) GET no `useEffect.catch` produz NeverRunState para qualquer
+    erro** — incluindo timeout de rede, 5xx transitório, ou resposta mal-
+    formada. Não distingue "não existe aggregate" (legítimo NeverRun) de
+    "erro de rede" (devia mostrar estado de erro com retry).
+
+    **(d) ErrorState/FailedState não têm botão de retry no body** — só
+    o botão "↻ Actualizar agora" no header. Utilizador que cai num
+    aggregate `error` pode não perceber que pode tentar de novo.
+
+    **Plano de fix proposto na X4.1 (4 candidatos):**
+
+    - **Fix A** (frontend, baixo risco): distinguir 404 genuíno de erro
+      de rede no catch do GET. Mostrar NetworkErrorState com retry em
+      vez de NeverRunState quando há erro de rede.
+
+    - **Fix B** (backend, novo job): scheduler periódico que marca
+      aggregates em `pending` há mais de 10 minutos como `error`. Elimina
+      zombies silenciosos. Requer decisão arquitectural (que job? que
+      intervalo? que mensagem?).
+
+    - **Fix C** (refactor, sessão dedicada): persistir `aggregate_id`
+      devolvido pelo POST no frontend (sessionStorage / URL param / Redux).
+      Ao remontar, componente sabe exactamente qual aggregate consultar.
+      Resolve simultaneamente items 48 e 49.
+
+    - **Fix D** (infra, complementar): aumentar `--max-time` do worker
+      para reduzir frequência de restarts, ou implementar graceful drain
+      antes do restart. Resolve causa-raiz do (a). Baixo impacto sem o
+      Fix B.
+
+    **Recomendação:** Fix A + Fix B em sessão dedicada (resolvem casos
+    observáveis). Fix C em sessão posterior (refactor de persistência).
+    Fix D em sessão de infraestrutura (resolver junto com migração de
+    fila/cache para Redis correctamente configurado).
+
+    **Relacionado com:**
+    - Item 47 — RecalculateAllCarScoresJob cron parado pode ter mesma
+      causa-raiz que (a): worker `--max-time` ou gap de restart
+    - Items 48 e 49 — todos beneficiam do Fix C
+    - Configuração Redis vs MariaDB merece documentação na secção 3
+      do CLAUDE.md
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
