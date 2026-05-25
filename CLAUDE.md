@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-25 · Versão 1.3.1
+> Última actualização: 2026-05-25 · Versão 1.4
 
 ---
 
@@ -24,6 +24,7 @@
 | 1.2 | 2026-05-25 | Sessões 2026-05-23 a 2026-05-25: F1a/b/c (Dashboard honesto), G (Acções ocultas), H1 (auditoria 5 tabs), H2a/b (fetch + Ficha), H3a/b/c/d (eliminações + simplificações), X1/X2/X3/X4/X5/X6 (bug fixes MarketPositionCard + IPS). Items 29-51 de dívida técnica. |
 | 1.3 | 2026-05-25 | X7 — Fix C do item 50: persistir aggregate_id em sessionStorage. Items 48 e 49 resolvidos. Endpoint GET por id específico (?aggregate_id=N). Fix migration SQLite para testes. 8/8 testes verdes. |
 | 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
+| 1.4 | 2026-05-25 | Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional na comparação de mercado). |
 
 ---
 
@@ -238,6 +239,7 @@ web/src/
 │   ├── Actions/
 │   └── Internal/ScraperRunner/
 ├── Routes/allRoutes.tsx
+├── hooks/                         # Hooks reutilizáveis: useIsMobile(breakpoint), useMetaOAuth
 ├── slices/                        # Redux slices
 └── layouts/                       # Velzon shell
 ```
@@ -1206,25 +1208,25 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 
     Relacionado com: item 50 Fix B (depende deste scheduler para correr).
 
-🔴 52. **Comparação de mercado ignora preço promocional** —
+✅ 52. **Comparação de mercado ignora preço promocional — resolvido em 2026-05-25 (Y2)** —
     Descoberto em 2026-05-25 durante validação E2E do Fix C.1.
-    CarMarketAggregateService usa price_gross como car_price na
-    comparação com mediana de mercado, mesmo quando promo_gross
-    existe. Resultado: stand vê "alinhado com o mercado" (+2.4%)
-    quando o preço efectivo ao cliente está 2.8% ABAIXO da mediana
-    — informação enganadora que pode motivar decisões erradas
-    (ex: subir preço quando devia destacar o desconto).
+    `MarketSnapshotService` gravava `price_gross` em `car_price_gross` no aggregate,
+    ignorando `promo_price_gross`. Resultado: sinal de mercado calculado sobre o
+    preço de lista mesmo quando o comprador vê um preço promocional — potencialmente
+    enganador (ex: "ligeiramente acima" quando o efectivo é competitivo).
 
-    Plano:
-    - Backend: usar effective_price = promo_gross ?? price_gross
-      no campo car_price da response
-    - Frontend: idealmente mostrar ambas as comparações (gross e
-      efectivo) com tooltip explicativo
-    - Decidir: signal (fair/competitive/...) deve ser calculado
-      sobre que preço? Provavelmente o efectivo (é o que o
-      comprador vê), mas vale pena confirmar com Paulo Alves.
-
-    Atacar depois de Fix D estabilizar.
+    Fix Y2:
+    - Migration: `promo_price_gross` nullable decimal(10,2) em `car_market_aggregates`
+    - `MarketSnapshotService::snapshotForCar()`: grava `promo_price_gross` quando
+      `promo < gross && promo > 0` (mesma lógica do accessor `has_promo_price`)
+    - `CarMarketAggregate::effectivePrice()`: novo método, retorna promo se activa,
+      senão gross. `priceDifference()` e `priceSignal()` passaram a usar
+      `effectivePrice()` em vez de `car_price_gross` directamente
+    - `CarMarketAggregateResource`: `comparison.car_price` = `effectivePrice()`;
+      `comparison.car_price_gross` presente apenas quando promo activa (PVP de referência)
+    - `MarketPositionCard`: label "Preço promo" + linha "↑ PVP: €X" quando promo activa
+    - `MarketAggregateComparison` em `types/api.ts`: `car_price_gross?: number` (opcional)
+    - 5 novos testes unitários (16/16 verdes); 8/8 testes de feature verdes
 
 ---
 
@@ -1299,6 +1301,15 @@ Backend: endpoint `GET /market-aggregate?aggregate_id=N` com verificação `car_
 
 **X7.1 — Correcção do mapeamento de resposta no helper**
 Bug histórico desde a Fase E (commit "fase e", 2026-05-22), exposto pelo X7 ao tentar usar `result.aggregate_id`. O helper `marketAggregate_helper.ts` usava `res.data.data` mas o interceptor de axios em `api_helper.ts` já desempacota `response.data` — portanto `res` = body JSON e `res.data` = campo `data` interior. Sintomas produção: (1) toast de erro mesmo com HTTP 202 de sucesso; (2) NeverRunState em qualquer navegação com aggregate existente. Fix: genérico de `<{ data: T }>` para `<T>`, acesso de `res.data.data` para `res.data` (2 funções). 5 novos testes frontend com mock da saída do interceptor. Item 50 Fix C.1 ✅.
+
+**Y1.1 — useIsMobile hook + LeadList mobile**
+Hook `web/src/hooks/useIsMobile(breakpoint)` partilhado, com `useState` inicial + `addEventListener("resize")`. `CarList` migrado de estado local para `useIsMobile(680)`. `LeadList` recebia sempre layout tabular; passou a receber `mobileMode={useIsMobile(680)}` — tabela de 6 colunas colapsa em cards abaixo de 680px.
+
+**Y1.2 — CarPageNav overflow scroll em mobile**
+Substituído `flexWrap: "wrap"` por `flexWrap: "nowrap" + overflowX: "auto"` no container de tabs. Adicionado `flexShrink: 0` em cada link para evitar compressão dos labels com badges. Tabs ficam sempre numa única linha e fazem scroll horizontal em viewports estreitos.
+
+**Y2 — Preço promocional na comparação de mercado (item 52)**
+Migration `promo_price_gross` nullable em `car_market_aggregates`. Novo método `effectivePrice()` no model. `priceDifference()` e `priceSignal()` usam preço efectivo (promo se activo, senão gross). Resource emite `comparison.car_price_gross` apenas quando promo activa. UI: label "Preço promo" + linha "↑ PVP: €X" no MetricBox. 5 novos testes unitários (16/16). Item 52 ✅.
 
 ### 🚧 Próximo
 

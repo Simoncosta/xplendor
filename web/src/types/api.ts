@@ -97,6 +97,8 @@ export interface MarketAggregatePrices {
 
 export interface MarketAggregateComparison {
     car_price: number | null;
+    /** Only present when a promo price was active at snapshot time. Represents the list price. */
+    car_price_gross?: number;
     difference_percent: number | null;
     signal: MarketPriceSignal | null;
 }

@@ -23,10 +23,12 @@ class CarMarketAggregateResource extends JsonResource
                 'avg'    => $this->avg_price    !== null ? (float) $this->avg_price    : null,
             ],
             'comparison' => [
-                'car_price'          => $this->car_price_gross !== null ? (float) $this->car_price_gross : null,
+                'car_price'          => $this->effectivePrice(),
                 'difference_percent' => $this->priceDifference(),
                 'signal'             => $this->priceSignal(),
-            ],
+            ] + ($this->promo_price_gross !== null
+                ? ['car_price_gross' => (float) $this->car_price_gross]
+                : []),
             'top_comparables' => $this->top_comparables ?? [],
             'fallback_used'   => (bool) $this->fallback_used,
             'created_at'      => $this->created_at->toIso8601String(),

@@ -31,12 +31,18 @@ class MarketSnapshotService
             return null;
         }
 
+        // Promo price is valid only when set, positive, and lower than gross price
+        $promoPrice = ($car->promo_price_gross > 0 && $car->promo_price_gross < $car->price_gross)
+            ? $car->promo_price_gross
+            : null;
+
         // Insufficient data — record failure without invoking the scraper
         if (!$car->brand?->name || !$car->model?->name || !$car->registration_year) {
             return CarMarketAggregate::create([
                 'car_id'            => $car->id,
                 'vehicle_type'      => $car->vehicle_type ?? 'car',
                 'car_price_gross'   => $car->price_gross,
+                'promo_price_gross' => $promoPrice,
                 'status'            => 'failed',
                 'confidence'        => 'none',
                 'comparables_count' => 0,
@@ -48,6 +54,7 @@ class MarketSnapshotService
             'car_id'            => $car->id,
             'vehicle_type'      => $car->vehicle_type ?? 'car',
             'car_price_gross'   => $car->price_gross,
+            'promo_price_gross' => $promoPrice,
             'status'            => 'pending',
             'confidence'        => 'none',
             'comparables_count' => 0,

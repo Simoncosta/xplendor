@@ -309,6 +309,7 @@ function Body({
     const signalCfg = signal ? SIGNAL_CONFIG[signal] : null;
     const diffPct = aggregate.comparison.difference_percent;
     const isLowConfidence = aggregate.confidence === "low";
+    const hasPromo = aggregate.comparison.car_price_gross !== undefined;
 
     return (
         <div>
@@ -321,8 +322,9 @@ function Body({
             <div className="row g-3 mb-3">
                 <div className="col-sm-4">
                     <MetricBox
-                        label="O teu preço"
+                        label={hasPromo ? "Preço promo" : "O teu preço"}
                         value={formatCurrency(aggregate.comparison.car_price)}
+                        hint={hasPromo ? `↑ PVP: ${formatCurrency(aggregate.comparison.car_price_gross ?? null)}` : undefined}
                     />
                 </div>
                 <div className="col-sm-4">
