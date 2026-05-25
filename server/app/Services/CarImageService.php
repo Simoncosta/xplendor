@@ -9,6 +9,38 @@ use Intervention\Image\Drivers\Gd\Driver;
 class CarImageService
 {
     /**
+     * Apply a new crop to an existing image using the preserved original.
+     * Overwrites the current image file in storage (same path, new content).
+     *
+     * @throws \RuntimeException when original_path is missing or file not found
+     */
+    public function recrop(\App\Models\CarImage $image, int $x, int $y, int $width, int $height): void
+    {
+        if (empty($image->original_path)) {
+            throw new \RuntimeException('Imagem sem original — re-corte impossível.');
+        }
+
+        $manager = new ImageManager(new Driver());
+
+        // Strip /storage/ prefix to get the disk-relative path
+        $originalDiskPath = ltrim(str_replace('/storage', '', $image->original_path), '/');
+        $croppedDiskPath  = ltrim(str_replace('/storage', '', $image->image), '/');
+
+        $originalAbsPath = Storage::disk('public')->path($originalDiskPath);
+
+        if (!file_exists($originalAbsPath)) {
+            throw new \RuntimeException('Ficheiro original não encontrado em storage.');
+        }
+
+        $cropped = $manager->read($originalAbsPath)
+            ->crop($width, $height, $x, $y)
+            ->toWebp(85)
+            ->toString();
+
+        Storage::disk('public')->put($croppedDiskPath, $cropped);
+    }
+
+    /**
      * @param  array<int, \Illuminate\Http\UploadedFile>  $images
      * @param  array<int, array{order?: int, is_primary?: bool, crop?: array{x: int, y: int, width: int, height: int}}>  $meta
      * @return array<int, array{image: string, original_path: string, order: int, is_primary: bool}>

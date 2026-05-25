@@ -59,6 +59,8 @@ export type ICarFormValues = ICarUpdatePayload & {
 
 type CropQueueEntry = { pondId: string; file: File };
 
+type RecropTarget = { imageId: number; originalUrl: string };
+
 export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boolean; companyId?: number }) {
     const { values, setFieldValue } = useFormikContext<ICarFormValues>();
 
@@ -68,6 +70,12 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
     // Crop queue: one modal at a time, sequential for multi-file selections
     const [cropQueue, setCropQueue] = useState<CropQueueEntry[]>([]);
     const [activeCrop, setActiveCrop] = useState<CropQueueEntry | null>(null);
+
+    // Re-crop for stored images (only images uploaded after Z2.a with original_path)
+    const [recropTarget, setRecropTarget] = useState<RecropTarget | null>(null);
+    const [isRecropping, setIsRecropping] = useState(false);
+    // bust-cache after recrop: map imageId → version timestamp
+    const [recropVersions, setRecropVersions] = useState<Record<number, number>>({});
 
     // crop params keyed by FilePond item id — useRef avoids stale closures in syncFormikFromPond
     const cropParamsMapRef = useRef<Record<string, CropArea>>({});
@@ -241,6 +249,50 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
         setActiveCrop(null);
     };
 
+    const handleRecropConfirm = async (cropParams: CropArea) => {
+        if (!recropTarget || isRecropping) return;
+
+        const authUser = sessionStorage.getItem("authUser");
+        const token = authUser ? JSON.parse(authUser)?.token : null;
+
+        setIsRecropping(true);
+        try {
+            const res = await fetch(
+                `${API_BASE}/api/v1/companies/${companyId}/cars/${carId}/images/${recropTarget.imageId}/recrop`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
+                    body: JSON.stringify(cropParams),
+                }
+            );
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error((body as any)?.message ?? "recrop_failed");
+            }
+
+            setRecropVersions((prev) => ({ ...prev, [recropTarget.imageId]: Date.now() }));
+            setRecropTarget(null);
+            toast("Corte aplicado com sucesso.", {
+                position: "top-right",
+                hideProgressBar: false,
+                className: "bg-success text-white",
+            });
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Erro desconhecido";
+            toast(`Não foi possível aplicar o corte: ${msg}`, {
+                position: "top-right",
+                hideProgressBar: false,
+                className: "bg-danger text-white",
+            });
+        } finally {
+            setIsRecropping(false);
+        }
+    };
+
     const syncFormikFromPond = (pondItems: any[]) => {
         // 1) identificar stored vs new
         const isStored = (it: any) => {
@@ -411,12 +463,89 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                 </Col>
             </Row>
 
+            {/* Re-crop section: only visible in edit mode for images with preserved original */}
+            {isEdit && (() => {
+                const recropEligible = (values.stored_images ?? []).filter(
+                    (img) =>
+                        img.original_path &&
+                        (values as any).existing_images?.includes(img.image)
+                );
+
+                if (recropEligible.length === 0) return null;
+
+                return (
+                    <div className="mt-4 pt-3 border-top">
+                        <h6 className="card-title mb-1 fs-14">Editar cortes</h6>
+                        <p className="text-muted fs-12 mb-3">
+                            Imagens com original preservado — clique para ajustar o corte.
+                        </p>
+                        <div className="d-flex flex-wrap gap-3">
+                            {recropEligible.map((img) => {
+                                const version = recropVersions[img.id];
+                                const thumbUrl = `${toAbsoluteUrl(img.image)}${version ? `?v=${version}` : ""}`;
+                                const originalUrl = toAbsoluteUrl(img.original_path!);
+
+                                return (
+                                    <div
+                                        key={img.id}
+                                        style={{ position: "relative", width: 120, cursor: "pointer" }}
+                                        onClick={() =>
+                                            setRecropTarget({ imageId: img.id, originalUrl })
+                                        }
+                                        title="Editar corte desta imagem"
+                                    >
+                                        <img
+                                            src={thumbUrl}
+                                            alt="Pré-visualização"
+                                            style={{
+                                                width: 120,
+                                                height: 68,
+                                                objectFit: "cover",
+                                                borderRadius: 6,
+                                                border: "1px solid #dee2e6",
+                                                display: "block",
+                                            }}
+                                        />
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                top: 4,
+                                                right: 4,
+                                                background: "rgba(0,0,0,0.55)",
+                                                borderRadius: 4,
+                                                padding: "2px 5px",
+                                                color: "#fff",
+                                                fontSize: 12,
+                                                lineHeight: 1,
+                                            }}
+                                        >
+                                            <i className="ri-scissors-line" />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* Crop modal for new uploads */}
             {activeCrop && (
                 <ImageCropperModal
                     open={true}
                     imageSource={activeCrop.file}
                     onConfirm={handleCropConfirm}
                     onCancel={handleCropCancel}
+                />
+            )}
+
+            {/* Re-crop modal for stored images */}
+            {recropTarget && (
+                <ImageCropperModal
+                    open={true}
+                    imageSource={recropTarget.originalUrl}
+                    onConfirm={handleRecropConfirm}
+                    onCancel={() => setRecropTarget(null)}
                 />
             )}
         </div>

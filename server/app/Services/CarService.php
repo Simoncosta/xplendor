@@ -321,6 +321,11 @@ class CarService extends BaseService
         return $cars;
     }
 
+    public function recropImage(\App\Models\CarImage $image, int $x, int $y, int $width, int $height): void
+    {
+        $this->carImageService->recrop($image, $x, $y, $width, $height);
+    }
+
     public function buildImagesDownloadArchive(int $companyId, int $carId): array
     {
         $car = $this->carRepository->findOrFail(

@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-25 · Versão 1.4
+> Última actualização: 2026-05-26 · Versão 1.5
 
 ---
 
@@ -25,6 +25,7 @@
 | 1.3 | 2026-05-25 | X7 — Fix C do item 50: persistir aggregate_id em sessionStorage. Items 48 e 49 resolvidos. Endpoint GET por id específico (?aggregate_id=N). Fix migration SQLite para testes. 8/8 testes verdes. |
 | 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
 | 1.4 | 2026-05-25 | 6 sub-fases: X7.1 (fix mapeamento helper), Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional), Y2.1 (UX comparáveis + fix tipo MarketComparable), Y2.2 (links mortos: search_url + check-link + cache). |
+| 1.5 | 2026-05-26 | Z1.a (fix reorder FilePond), Z1.b (sentinel existing_images_present), Z2.a (original_path + crop backend), Z2.b (ImageCropperModal + integração FilePond), Z2.c (endpoint recrop + UI + testes). |
 
 ---
 
@@ -830,6 +831,10 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 24. **`car_id 57` com `length: -0.1745`** — registo único, corrigir manualmente em produção: `UPDATE vehicle_attributes SET ...`
 25. ~~**`GenerateWeeklyMarketingIdeasJob` desactivado**~~ — **Eliminado em H3a (2026-05-23)**. Funcionalidade "Conteúdo da semana" removida completamente (model, service, job, repo, controller, migration DROP TABLE — 80 registos eliminados). Ver item 41.
 
+53. **Originais não são eliminados quando a imagem é apagada (Z2.a, low priority)** — `CarService::update()` elimina o ficheiro em `images/` mas não o correspondente em `originals/`. Orphaned originals acumulam em storage. Corrigir quando houver limpeza de storage agendada ou quando atacarmos o endpoint de delete de imagem individual.
+
+54. **Re-crop não actualiza o tile do FilePond (Z2.c, low priority)** — Após re-crop, o thumbnail na secção "Editar cortes" é actualizado via `?v=timestamp`. O tile no FilePond pond mantém o old cached preview até refresh da página. Corrigir via remoção + re-adição do item ao FilePond após re-crop bem sucedido — complexo dado o modelo de estado do react-filepond. Adiar para v2 do cropper.
+
 ### 🔴 Alta prioridade (adicionado E3a)
 
 29. **Duas fontes de verdade paralelas para "posição no mercado"** —
@@ -1327,6 +1332,27 @@ Migration `promo_price_gross` nullable em `car_market_aggregates`. Novo método 
 Migration `search_url` nullable text em `car_market_aggregates`. `MarketSnapshotService::buildSearchUrl()` pré-computa URL de pesquisa (marca/modelo/ano±1/combustível, mesmos query params do scraper Python) no momento do snapshot. `CarController::checkMarketLink()`: endpoint `GET /market-aggregate/check-link?url=` — proxies HEAD para Standvirtual, devolve `{ available: bool }`; SSRF-guardado a `https://www.standvirtual.com/`; fail-open (timeout/5xx → `available: false`). `CarMarketAggregateResource` inclui `search_url`. `checkMarketLink()` adicionado ao helper. `ComparablesList` recebe `companyId`, `carId`, `searchUrl`; clique em `↗` verifica link via endpoint com cache `useRef<Map<string, {available, expiresAt}>>` TTL 60s; link morto → abre `searchUrl` + toast informativo.
 
 Detecção validada empiricamente (2026-05-25) com URLs reais da BD: listagem activa → HTTP 200; expirada/vendida → HTTP 410 Gone.
+
+### ✅ Fases concluídas (sessão 2026-05-26)
+
+**Z1.a — Fix reorder FilePond**
+Removido `setFiles(nextFiles)` do handler `onreorderfiles`. Causa: `react-filepond` só define `allowFilesSync=false` no `onupdatefiles`, não no `onreorderfiles` — chamar `setFiles` forçava re-render e FilePond re-processava os itens como novos uploads. Fix: uma linha removida. O handler passa a chamar apenas `syncFormikFromPond(nextFiles)`.
+
+**Z1.b — Sentinel `existing_images_present` (fix delete-all-images)**
+FormData não consegue representar um array vazio — sem o sentinel, zero iterações de `forEach` = chave ausente no request, e o backend interpretava como "não tocar nas imagens". Sentinel `existing_images_present=1` distingue "lista vazia intencional" de "chave ausente". 3 ficheiros alterados (frontend, backend service, backend validation). 3 testes feature (3/3 verdes).
+
+**Z2.a — Preservar original + aceitar crop params no upload**
+Migration `original_path nullable text` em `car_images`. `CarImageService::handleUploads` sempre guarda o original em `originals/` (extensão real, sem conversão) e aplica `->crop(w,h,x,y)->toWebp(85)` quando crop params presentes. `CarImage.$fillable` actualizado. `CarService` store/update persistem `original_path`. `CarRequest` valida `images_meta.*.crop.{x,y,width,height}`. `CarSpecsResource` expõe `original_path`. 3 testes feature (3/3 verdes).
+
+**Z2.b — Crop modal 16:9 no upload (react-easy-crop)**
+`react-easy-crop@5.5.7` instalado (8.3 KB gzip). `ImageCropperModal`: proporção 16:9 obrigatória, zoom slider, rotate esquerda/direita, pt-PT, sem botão "Ignorar" (modal sempre confirma). `CarImagesDataFields`: fila sequencial de crop (um modal de cada vez para selecções múltiplas), `cropParamsMapRef` (ref evita stale closures em `syncFormikFromPond`), ref ao FilePond para remoção programática ao cancelar. `buildCarFormData` serializa `images_meta[i][crop][x/y/width/height]`. `CarStoredImage` e `CarImageMeta` actualizados com `original_path` e `crop`.
+
+**Z2.c — Endpoint de re-crop + UI + testes**
+`POST /api/v1/companies/{id}/cars/{carId}/images/{imageId}/recrop` — aplica novo corte ao original preservado, sobrescreve a imagem cortada em storage. Validação de tenant (car_id + company_id). 422 se `original_path IS NULL` com mensagem pt-PT. `CarImageService::recrop()` + `CarService::recropImage()` + `CarController::recropImage()`. UI: secção "Editar cortes" abaixo do FilePond pond com thumbnails 16:9 das imagens stored que têm `original_path`; ícone de tesoura em hover; abre `ImageCropperModal` com a imagem original; após sucesso, bust-cache do thumbnail com `?v=timestamp`. 4 testes feature + 3 do Z2.a = 7/7 verdes.
+
+**Nota sobre re-crop e FilePond:** o tile do FilePond não reflecte o novo corte até refresh da página. Apenas o thumbnail na secção "Editar cortes" é actualizado via cache-bust. Comportamento aceite na v1 — documentado aqui para futuro.
+
+**Nota sobre imagens legadas (pré-Z2.a):** `original_path = NULL` — botão de re-crop não aparece. Zero retroactividade. Documentado.
 
 ### 🚧 Próximo
 

@@ -10,6 +10,7 @@ use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CarMarketAggregateResource;
 use App\Http\Resources\CarSpecsResource;
 use App\Models\Car;
+use App\Models\CarImage;
 use App\Models\CarMarketAggregate;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
@@ -423,6 +424,51 @@ class CarController extends Controller
             // Network error, timeout, or block → fail-open to search URL
             return response()->json(['available' => false]);
         }
+    }
+
+    public function recropImage(Request $request, int $companyId, int $carId, int $imageId): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado.', 403);
+        }
+
+        $image = CarImage::where('id', $imageId)
+            ->where('car_id', $carId)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$image) {
+            return ApiResponse::error('Imagem não encontrada.', 404);
+        }
+
+        if (empty($image->original_path)) {
+            return ApiResponse::error(
+                'Esta imagem não tem original disponível para re-corte. Apenas imagens enviadas após a actualização suportam re-corte.',
+                422
+            );
+        }
+
+        $data = $request->validate([
+            'x'      => ['required', 'integer', 'min:0'],
+            'y'      => ['required', 'integer', 'min:0'],
+            'width'  => ['required', 'integer', 'min:1'],
+            'height' => ['required', 'integer', 'min:1'],
+        ]);
+
+        try {
+            $this->carService->recropImage($image, $data['x'], $data['y'], $data['width'], $data['height']);
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        } catch (Throwable) {
+            return ApiResponse::error('Não foi possível aplicar o corte à imagem.', 500);
+        }
+
+        return ApiResponse::success([
+            'id'            => $image->id,
+            'url'           => $image->image,
+            'is_primary'    => (bool) $image->is_primary,
+            'original_path' => $image->original_path,
+        ], 'Corte aplicado com sucesso.');
     }
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)
