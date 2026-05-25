@@ -24,7 +24,7 @@
 | 1.2 | 2026-05-25 | Sessões 2026-05-23 a 2026-05-25: F1a/b/c (Dashboard honesto), G (Acções ocultas), H1 (auditoria 5 tabs), H2a/b (fetch + Ficha), H3a/b/c/d (eliminações + simplificações), X1/X2/X3/X4/X5/X6 (bug fixes MarketPositionCard + IPS). Items 29-51 de dívida técnica. |
 | 1.3 | 2026-05-25 | X7 — Fix C do item 50: persistir aggregate_id em sessionStorage. Items 48 e 49 resolvidos. Endpoint GET por id específico (?aggregate_id=N). Fix migration SQLite para testes. 8/8 testes verdes. |
 | 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
-| 1.4 | 2026-05-25 | Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional na comparação de mercado). |
+| 1.4 | 2026-05-25 | 6 sub-fases: X7.1 (fix mapeamento helper), Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional), Y2.1 (UX comparáveis + fix tipo MarketComparable), Y2.2 (links mortos: search_url + check-link + cache). |
 
 ---
 
@@ -1228,6 +1228,13 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     - `MarketAggregateComparison` em `types/api.ts`: `car_price_gross?: number` (opcional)
     - 5 novos testes unitários (16/16 verdes); 8/8 testes de feature verdes
 
+    Follow-ons resolvidos na mesma sessão:
+    - **Y2.1** — UX da lista de comparáveis reescrita; bug histórico do tipo
+      `MarketComparable` corrigido (`brand`/`model`/`km` → `fuel`/`gearbox`/`region`/`year|null`)
+    - **Y2.2** — Links mortos tratados: `search_url` pré-computado no snapshot;
+      endpoint `check-link` com SSRF guard; cache in-memory TTL 60s no frontend;
+      detecção validada empiricamente (HTTP 410 = expirado, HTTP 200 = activo)
+
 ---
 
 ## 15. Refactor cirúrgico — fases concluídas e roadmap
@@ -1310,6 +1317,16 @@ Substituído `flexWrap: "wrap"` por `flexWrap: "nowrap" + overflowX: "auto"` no 
 
 **Y2 — Preço promocional na comparação de mercado (item 52)**
 Migration `promo_price_gross` nullable em `car_market_aggregates`. Novo método `effectivePrice()` no model. `priceDifference()` e `priceSignal()` usam preço efectivo (promo se activo, senão gross). Resource emite `comparison.car_price_gross` apenas quando promo activa. UI: label "Preço promo" + linha "↑ PVP: €X" no MetricBox. 5 novos testes unitários (16/16). Item 52 ✅.
+
+**Y2.1 — UX da lista de comparáveis + correcção do tipo MarketComparable**
+`ComparablesList.tsx` reescrito. Chips de combustível/caixa/região/ano traduzidos para pt-PT (omitidos silenciosamente quando null). Diferença percentual `(price - effectivePrice) / effectivePrice` colorida (verde/vermelho). Substituída props `carPrice` por `effectivePrice` (usa `comparison.car_price` da Resource, não `car_price_gross`). Texto do contador alterado para "Análise baseada em N anúncios · Standvirtual" + subtítulo "A mostrar os N mais próximos da mediana".
+
+**Bug histórico corrigido:** `MarketComparable` em `types/api.ts` declarava `brand`, `model`, `km` — campos que nunca existiram na resposta do backend (desde Fase E3a). O backend envia `title`, `fuel`, `gearbox`, `region`, `year | null`. Interface corrigida; frontend passa a consumir e renderizar todos estes campos.
+
+**Y2.2 — Links mortos do Standvirtual: search_url + check-link + cache**
+Migration `search_url` nullable text em `car_market_aggregates`. `MarketSnapshotService::buildSearchUrl()` pré-computa URL de pesquisa (marca/modelo/ano±1/combustível, mesmos query params do scraper Python) no momento do snapshot. `CarController::checkMarketLink()`: endpoint `GET /market-aggregate/check-link?url=` — proxies HEAD para Standvirtual, devolve `{ available: bool }`; SSRF-guardado a `https://www.standvirtual.com/`; fail-open (timeout/5xx → `available: false`). `CarMarketAggregateResource` inclui `search_url`. `checkMarketLink()` adicionado ao helper. `ComparablesList` recebe `companyId`, `carId`, `searchUrl`; clique em `↗` verifica link via endpoint com cache `useRef<Map<string, {available, expiresAt}>>` TTL 60s; link morto → abre `searchUrl` + toast informativo.
+
+Detecção validada empiricamente (2026-05-25) com URLs reais da BD: listagem activa → HTTP 200; expirada/vendida → HTTP 410 Gone.
 
 ### 🚧 Próximo
 
