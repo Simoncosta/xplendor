@@ -10,19 +10,23 @@ export async function fetchMarketAggregate(
     aggregateId?: number
 ): Promise<MarketAggregate | null> {
     const params = aggregateId !== undefined ? { aggregate_id: aggregateId } : undefined;
-    const res = await axios.get<{ data: MarketAggregate | null }>(
+    // The global axios interceptor (api_helper.ts) returns response.data directly,
+    // so res is the JSON body { data: MarketAggregate | null } and res.data is the aggregate.
+    const res = await axios.get<MarketAggregate | null>(
         carMarketAggregateUrl(companyId, carId),
         { params }
     );
-    return res.data.data ?? null;
+    return res.data ?? null;
 }
 
 export async function refreshMarketAggregate(
     companyId: number,
     carId: number
 ): Promise<RefreshMarketAggregateResult> {
-    const res = await axios.post<{ data: RefreshMarketAggregateResult }>(
+    // Same interceptor: res is the JSON body { data: RefreshMarketAggregateResult, message: ... }
+    // and res.data is { aggregate_id, status }.
+    const res = await axios.post<RefreshMarketAggregateResult>(
         carMarketAggregateUrl(companyId, carId) + "/refresh"
     );
-    return res.data.data;
+    return res.data;
 }

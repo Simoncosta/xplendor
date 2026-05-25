@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-25 · Versão 1.3
+> Última actualização: 2026-05-25 · Versão 1.3.1
 
 ---
 
@@ -23,6 +23,7 @@
 | 1.1 | 2026-05-22 | Adicionadas Fases A, B1, B2, C, D. Tabelas em falta. Dívida técnica nova. Correcções de PII na API pública. |
 | 1.2 | 2026-05-25 | Sessões 2026-05-23 a 2026-05-25: F1a/b/c (Dashboard honesto), G (Acções ocultas), H1 (auditoria 5 tabs), H2a/b (fetch + Ficha), H3a/b/c/d (eliminações + simplificações), X1/X2/X3/X4/X5/X6 (bug fixes MarketPositionCard + IPS). Items 29-51 de dívida técnica. |
 | 1.3 | 2026-05-25 | X7 — Fix C do item 50: persistir aggregate_id em sessionStorage. Items 48 e 49 resolvidos. Endpoint GET por id específico (?aggregate_id=N). Fix migration SQLite para testes. 8/8 testes verdes. |
+| 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
 
 ---
 
@@ -1148,6 +1149,22 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       resolvidos. Migration X2 corrigida para SQLite (era blocker
       de todos os testes do ficheiro).
 
+    - ✅ **Fix C.1** (frontend) — resolvido em 2026-05-25 (X7.1).
+      Bug histórico desde a Fase E (commit "fase e"), exposto pelo X7
+      ao tentar usar `result.aggregate_id`. O helper `marketAggregate_helper.ts`
+      usava `res.data.data` (dois níveis) mas o interceptor global de axios
+      em `api_helper.ts` já desempacota `response.data`, por isso `res` = body
+      JSON e `res.data` = campo `data` interior. Dois sintomas:
+      (1) POST: `result.aggregate_id` lançava TypeError → catch → toast de erro
+      mesmo com HTTP 202;
+      (2) GET: `fetchMarketAggregate` retornava sempre `null` → NeverRunState
+      em qualquer navegação, independentemente de existir aggregate.
+      Fix: genérico alterado de `<{ data: T }>` para `<T>`, acesso de
+      `res.data.data` para `res.data`. 5 novos testes frontend verdes.
+      Bug estava silencioso antes do X7 porque o resultado do POST era
+      descartado (sem acesso a `.aggregate_id`) e o NeverRunState nunca
+      foi reportado.
+
     - 🟡 **Fix D** (infra) — pendente. Worker `--max-time` + migrar
       fila/cache para Redis correctamente configurado.
 
@@ -1188,6 +1205,26 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       cada invocação, monitorizar com Docker healthcheck)
 
     Relacionado com: item 50 Fix B (depende deste scheduler para correr).
+
+🔴 52. **Comparação de mercado ignora preço promocional** —
+    Descoberto em 2026-05-25 durante validação E2E do Fix C.1.
+    CarMarketAggregateService usa price_gross como car_price na
+    comparação com mediana de mercado, mesmo quando promo_gross
+    existe. Resultado: stand vê "alinhado com o mercado" (+2.4%)
+    quando o preço efectivo ao cliente está 2.8% ABAIXO da mediana
+    — informação enganadora que pode motivar decisões erradas
+    (ex: subir preço quando devia destacar o desconto).
+
+    Plano:
+    - Backend: usar effective_price = promo_gross ?? price_gross
+      no campo car_price da response
+    - Frontend: idealmente mostrar ambas as comparações (gross e
+      efectivo) com tooltip explicativo
+    - Decidir: signal (fair/competitive/...) deve ser calculado
+      sobre que preço? Provavelmente o efectivo (é o que o
+      comprador vê), mas vale pena confirmar com Paulo Alves.
+
+    Atacar depois de Fix D estabilizar.
 
 ---
 
@@ -1259,6 +1296,9 @@ Novo `MarkStaleAggregatesAsErrorJob` em `app/Jobs/`. Scheduled `everyFiveMinutes
 
 **X7 — Fix C do item 50: persistir aggregate_id em sessionStorage**
 Backend: endpoint `GET /market-aggregate?aggregate_id=N` com verificação `car_id` para isolamento (query param opcional, backward compatible). Frontend: `writeStoredAggregateId()` ANTES do guard `mountedRef` em `handleRefresh`; `readStoredAggregateId()` + `clearStoredAggregateId()` no `useEffect`, polling, e `retryFetch`; TTL 20 min; chave `xplendor:mkt_agg:{carId}`; fallback para `latestOfMany` se TTL expirado. 2 novos testes backend + asserção `aggregate_id` em teste existente (8/8 verdes). Migration X2 corrigida para SQLite (bloqueava todos os testes do ficheiro). Items 48 e 49 ✅. Item 50 Fix C ✅.
+
+**X7.1 — Correcção do mapeamento de resposta no helper**
+Bug histórico desde a Fase E (commit "fase e", 2026-05-22), exposto pelo X7 ao tentar usar `result.aggregate_id`. O helper `marketAggregate_helper.ts` usava `res.data.data` mas o interceptor de axios em `api_helper.ts` já desempacota `response.data` — portanto `res` = body JSON e `res.data` = campo `data` interior. Sintomas produção: (1) toast de erro mesmo com HTTP 202 de sucesso; (2) NeverRunState em qualquer navegação com aggregate existente. Fix: genérico de `<{ data: T }>` para `<T>`, acesso de `res.data.data` para `res.data` (2 funções). 5 novos testes frontend com mock da saída do interceptor. Item 50 Fix C.1 ✅.
 
 ### 🚧 Próximo
 
