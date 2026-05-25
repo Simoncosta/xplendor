@@ -48,8 +48,12 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         appendScalar(key, value);
     });
 
-    // ✅ FIX 2: envia existentes quando for update E houver dados
+    // Envia existentes quando for update.
+    // existing_images_present=1 é o sentinel que distingue "array vazio intencional"
+    // de "chave ausente" — FormData não consegue representar um array vazio,
+    // por isso sem o sentinel o backend interpreta como "não tocar nas imagens".
     if (isUpdate && Array.isArray(values.existing_images)) {
+        fd.append("existing_images_present", "1");
         values.existing_images.forEach((v: any, i: number) => {
             if (!isNil(v)) fd.append(`existing_images[${i}]`, String(v));
         });

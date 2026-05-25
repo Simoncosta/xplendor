@@ -115,18 +115,24 @@ class CarService extends BaseService
         *| Imagens normais
         *|--------------------------------------------------------------------------
         */
-        // Só mexe em imagens se o request trouxer algum campo relacionado
+        // Só mexe em imagens se o request trouxer algum campo relacionado.
+        // existing_images_present=1 é incluído para cobrir o caso de lista vazia intencional.
         $touchImages =
             array_key_exists('images', $data) ||
             array_key_exists('existing_images', $data) ||
             array_key_exists('existing_images_meta', $data) ||
-            array_key_exists('images_meta', $data);
+            array_key_exists('images_meta', $data) ||
+            !empty($data['existing_images_present']);
 
         if ($touchImages) {
             $novas = $data['images'] ?? [];
 
-            // Só apaga se o request trouxe a lista final das existentes
-            $hasExistingList = array_key_exists('existing_images', $data);
+            // existing_images_present=1 é o sentinel que distingue "lista vazia intencional"
+            // de "chave ausente" — FormData não representa arrays vazios, por isso sem o
+            // sentinel não podemos saber se o frontend quis apagar tudo ou não quis tocar.
+            $hasExistingList =
+                array_key_exists('existing_images', $data) ||
+                !empty($data['existing_images_present']);
 
             if ($hasExistingList) {
                 $existentes = $data['existing_images'] ?? [];

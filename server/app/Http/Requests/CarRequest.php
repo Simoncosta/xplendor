@@ -218,6 +218,9 @@ class CarRequest extends FormRequest
             'images.*' => ['file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'], // 10MB cada
 
             // Imagens já existentes
+            // existing_images_present=1 indica que a lista foi enviada intencionalmente
+            // (mesmo que vazia) — necessário porque FormData não representa arrays vazios.
+            'existing_images_present' => ['nullable', 'boolean'],
             'existing_images' => ['nullable', 'array'],
             'existing_images.*' => ['string'],
 
