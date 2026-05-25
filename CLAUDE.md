@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-22 · Versão 1.1
+> Última actualização: 2026-05-25 · Versão 1.2
 
 ---
 
@@ -21,6 +21,7 @@
 |---|---|---|
 | 1.0 | 2026-05-22 | Versão inicial após auditoria estrutural completa |
 | 1.1 | 2026-05-22 | Adicionadas Fases A, B1, B2, C, D. Tabelas em falta. Dívida técnica nova. Correcções de PII na API pública. |
+| 1.2 | 2026-05-25 | Sessões 2026-05-23 a 2026-05-25: F1a/b/c (Dashboard honesto), G (Acções ocultas), H1 (auditoria 5 tabs), H2a/b (fetch + Ficha), H3a/b/c/d (eliminações + simplificações), X1/X2/X3/X4/X5/X6 (bug fixes MarketPositionCard + IPS). Items 29-51 de dívida técnica. |
 
 ---
 
@@ -45,7 +46,7 @@ Estas decisões foram tomadas após análise de mercado e auditoria técnica. **
 ### 2.1 Modelo de negócio: agência primeiro, SaaS depois
 
 - O XPLENDOR é vendido aos clientes como **serviço gerido**, não como software self-service
-- Os clientes não usam o painel directamente — usamos nós, internamente, para os servir
+- Os clientes podem usar o painel se assim quiserem directamente — usamos mais nós, internamente, para os servir
 - A plataforma é **ferramenta interna que nos torna 3–5× mais eficientes** que freelancers de tráfego automóvel
 - Pacotes comerciais: €490 / €890 / €1.490/mês + budget de ads — ver `XPLENDOR-Manual-Reposicionamento.md`
 
@@ -1047,21 +1048,14 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     (mencionado em sessão anterior). Sem IPS confiável, badge
     "Probabilidade de venda X/100" é teatro.
 
-🔴 47. **`RecalculateAllCarScoresJob` cron parado há 32 dias (alta prioridade)** —
-    Schedule definido em `routes/console.php` para correr daily às 01:00.
-    Mas último score com `triggered_by = scheduled` no car 4 é de
-    2026-04-21 01:00:21. Hoje é 2026-05-23 → 32 dias sem cron.
+47. ~~**`RecalculateAllCarScoresJob` cron parado há 32 dias**~~ —
+    **Auto-resolvido em 2026-05-23.** Os containers foram recriados
+    nesse dia e o scheduler voltou a funcionar. Confirmado em X6
+    (2026-05-25): último score com `triggered_by=scheduled` é de
+    2026-05-24 01:00:27. 42 scores scheduled nos últimos 7 dias.
 
-    Possíveis causas: (a) Schedule comentado/removido; (b) Job a falhar
-    silenciosamente sem entrar em failed_jobs; (c) Worker não está a
-    processar a fila do scheduler; (d) Schedule:run não está a correr
-    no container.
-
-    Investigar: verificar `php artisan schedule:list`, logs do scheduler
-    container, configuração do cron.
-
-    Impacto: viaturas sem nova actividade (sem leads, sem mudança de
-    preço, sem imagens) deixam de ter score actualizado.
+    Atenção: o scheduler tem instabilidade nova documentada no
+    item 51 — gaps inexplicáveis de horas sem o container morrer.
 
 48. **Polling do MarketPositionCard sem estado de timeout — resolvido em 2026-05-23 (X1)** —
     Quando MAX_POLL_ATTEMPTS (18 tentativas de 10s) era atingido sem
@@ -1105,7 +1099,7 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     Relacionado com item 48 — quando atacarmos refactor de persistência
     de aggregate_id, resolvemos os dois bugs juntos.
 
-🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (parcial — Fix A resolvido)** —
+🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (parcial — Fix A e Fix B resolvidos)** —
     Descoberto em 2026-05-23 (X4) durante investigação de bug
     "Analisar mercado fica 5+ minutos sem dados". Investigação revelou
     4 problemas distintos a interagir:
@@ -1142,9 +1136,15 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       e repõe estado correctamente. `NeverRunState` mantém-se apenas
       para resposta legítima `{ data: null }` do servidor.
 
-    - 🟡 **Fix B** (backend) — pendente. Scheduler que marca aggregates
-      em `pending` há mais de 10 minutos como `error`. Elimina zombies
-      silenciosos.
+    - ✅ **Fix B** (backend) — resolvido em 2026-05-25 (X6).
+      `MarkStaleAggregatesAsErrorJob` em `app/Jobs/`. Scheduled
+      `everyFiveMinutes()` em `routes/console.php` com `withoutOverlapping()`
+      e `onFailure` callback que loga em erro. Bulk update via `whereIn`.
+      Marca aggregates em `pending`/`running` há mais de 10 minutos como
+      `error`. Log estruturado com `count`, `ids`, `car_ids`, `statuses`
+      para auditoria. Limitação conhecida (item 51): durante janelas de
+      congelamento do scheduler, Fix B não corre. Aggregates podem ficar
+      pendentes durante essas janelas.
 
     - 🟡 **Fix C** (refactor) — pendente. Persistir `aggregate_id` no
       frontend. Resolve items 48, 49 e parte do 50 simultaneamente.
@@ -1153,11 +1153,42 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       fila/cache para Redis correctamente configurado.
 
     **Relacionado com:**
-    - Item 47 — RecalculateAllCarScoresJob cron parado pode ter mesma
-      causa-raiz que (a): worker `--max-time` ou gap de restart
     - Items 48 e 49 — todos beneficiam do Fix C
+    - Item 51 — gap do scheduler afecta correr do Fix B
     - Configuração Redis vs MariaDB merece documentação na secção 3
       do CLAUDE.md
+
+🔴 51. **Scheduler tem gaps inexplicados — alta prioridade** —
+    Descoberto em 2026-05-25 (X6) durante investigação prévia ao Fix B.
+    Container `xplendor-scheduler` (Up 2 days) ficou suspenso ~11h30
+    entre 21:00 (2026-05-24) e 08:30 (2026-05-25). 23 invocações de
+    `fetch-meta-ads-metrics` perdidas. `RecalculateAllCarScoresJob`
+    das 01:00 não correu nesse dia.
+
+    O loop `while true` que invoca `schedule:run` não morreu, apenas
+    suspendeu. Docker considera o container saudável. Detecção
+    silenciosa.
+
+    Hipótese: uma invocação síncrona de `schedule:run` bloqueou
+    (provavelmente um job que congela em vez de timeout), travando
+    o loop.
+
+    **Impacto:**
+    - Jobs schedulados podem perder execução durante horas sem alerta
+    - Fix B (X6) corre via scheduler — quando scheduler congela, Fix B
+      também não corre. Aggregates podem ficar pendentes durante
+      a janela de congelamento.
+
+    **Plano de investigação (sessão dedicada):**
+    - Identificar o último job antes do gap (logs de ~21:00)
+    - Substituir loop `while true` por supervisor/cron robusto com
+      timeout por invocação
+    - Considerar `php artisan schedule:work` em vez de `schedule:run`
+      em loop manual (built-in do Laravel, comportamento mais previsível)
+    - Adicionar health check externo (ex: heartbeat file actualizado a
+      cada invocação, monitorizar com Docker healthcheck)
+
+    Relacionado com: item 50 Fix B (depende deste scheduler para correr).
 
 ---
 
@@ -1180,7 +1211,54 @@ Reestruturação do JSON `vehicle_attributes.attributes` em 3 secções: `dimens
 **Fase D — API pública: Resource + filtros + correcção PII**
 `CarPublicResource` substitui devolução raw de Model. **Correcção crítica:** removida exposição de `email` do seller, `vin`, `license_plate`, `internal_notes`, `role` e outros campos sensíveis. 7 filtros novos no `index`: `category`, `bed_types`, ranges de seats/length_m, `has_*`. `filters()` endpoint alargado com agregados (`count` por opção). 11 testes verdes. Status filtrado implicitamente para `active|available_soon`. Contrato documentado em `RESOURCE_SHAPE.md`.
 
-### 🚧 Próximo trimestre (sugestões — não comprometido)
+### ✅ Fases concluídas (sessões 2026-05-23)
+
+**F1a/b/c — Dashboard honesto**
+Separação Dashboard / Insights (F1a). Visibilidade condicional do menu Insights (F1b). Eliminação completa de `/insights` (F1c-pre + F1c). Dashboard sem teatro decorativo. Item 33, 34 da dívida técnica.
+
+**G — Item "Acções" oculto do sidebar**
+Rota mantida em `allRoutes.tsx` mas item de menu removido. Página existe mas conteúdo não está pronto. Reintroduzir quando houver conteúdo accionável real. Item 35.
+
+**H1 — Auditoria estrutural das 5 tabs de viatura**
+Relatório completo guardado em `docs/auditorias/H1-tabs-viatura-2026-05-23.md`. Identificou fetch duplicado, over-fetching, chamadas API directas fora do Redux. Base para H2 e H3.
+
+**H2a — Guard contra fetch duplicado**
+Opção B (Redux guard) implementada. 3 ficheiros, +2 linhas cada, guard `if (existingId === Number(id)) return`. Item 37 (sem TTL), 38 (CarPageLayout futuro).
+
+**H2b — Endpoint dedicado leve para Ficha**
+Novo `GET /api/v1/cars/{id}/specs` + `CarSpecsResource`. Resolve over-fetching da Ficha (~20% do payload `analyticsCar` antes). 5 testes verdes. Items 39, 40.
+
+**H3a — Eliminar "Conteúdo da semana" completo**
+~1300 linhas eliminadas (647 frontend + 610 backend) + migration DROP TABLE `car_marketing_ideas` (80 registos). CarDescriptionService e VehiclePromptBuilder mantidos (uso diferente). Rota redirect inline `/cars/:id/marketing` → `/cars/:id/analytics`. Items 25 (eliminado), 41.
+
+**H3b — Eliminar aba "Decisão de investimento" (Ads)**
+822 linhas removidas (CarAdsPage 217, SmartAdsRecommendationCard 424, AudienceSuggestionCard 181). Backend Meta INTACTO (OAuth, jobs, endpoints) para reaproveitar em página futura de criação de campanhas. Rota redirect `/cars/:id/ads` → `/cars/:id/analytics`. Items 36 (resolvido), 41, 42.
+
+**H3c — Simplificar Tráfego & Canais**
+4 KPIs essenciais (Views/Leads/WhatsApp/Conversão) em vez de 10. Timeline filtrada apenas para `car_interactions` reais (timeline car 4 passou de 367 entradas para 14, -96%). `metrics.whatsapp_clicks` novo a partir de `car_interactions` (real-time) resolve sintoma do bug histórico item 1. Item 43.
+
+**H3d — Reduzir aba "Mercado & Público" (Intelligence) a MarketPositionCard**
+`CarIntelligencePage.tsx`: 477 → 85 linhas (-82%, -392 linhas). 3 ficheiros zombie eliminados (LeadRealityGapCard, SilentBuyerIntentCard, ContactPerformanceCard, -560 linhas). 13 funções helper inline removidas. ~960 linhas total. Backend intacto (4 campos viram zombies no payload, alimentam pipeline IA legacy item 29). Item 44.
+
+**X1 — Timeout honesto no polling do MarketPositionCard**
+`pollTimedOut` state + `TimedOutState` component com mensagem pt-PT "A análise está a demorar mais do que o esperado" + botão "Tentar novamente". `setRefreshing(false)` em todos os caminhos terminais. Item 48.
+
+**X2 — Bug `triggered_by` ENUM `'promo_price_change'`**
+2.836 falhas acumuladas em 59 dias (25/03 → 23/05). Migration ALTER ENUM adicionando valor, com guard no `down()` contra perda de dados. `failed_jobs` limpa sem retry. Items 45 (resolvido), 46 (🔴 novo), 47 (auto-resolvido depois em X6).
+
+**X3 — Race condition zombie state no MarketPositionCard**
+`mountedRef = useRef(true)` + guard `if (!mountedRef.current) return` após cada `await` em `handleRefresh`. Evita toast/interval fantasma em navegação rápida. Item 49.
+
+**X4 — Investigação profunda "5 minutos sem dados"**
+Não foi sub-fase de implementação. Investigação revelou 4 problemas interligados no MarketPositionCard (worker `--max-time`, fila em MariaDB, GET catch, ErrorState sem retry). Documentado como item 50 com 4 fixes propostos (A, B, C, D).
+
+**X5 — Fix A do item 50: distinguir erro de rede de aggregate inexistente**
+Novo estado `networkError` + `NetworkErrorState` component. Distinguir 404/null (legítimo NeverRun) de erro de rede/servidor no `useEffect.catch`. +44/-3 linhas. Item 50 Fix A ✅.
+
+**X6 — Fix B do item 50: scheduler para marcar aggregates zombie**
+Novo `MarkStaleAggregatesAsErrorJob` em `app/Jobs/`. Scheduled `everyFiveMinutes()` com `withoutOverlapping()` e `onFailure` callback. Marca aggregates em `pending`/`running` há mais de 10 minutos como `error`. Investigação prévia confirmou item 47 auto-resolvido em 2026-05-23 e revelou novo item 51 (gap do scheduler de 11h30). Item 50 Fix B ✅. Item 51 🔴.
+
+### 🚧 Próximo
 
 **Mês 1 — fundações de tipagem e dados**
 - `web/src/types/api.ts` com interfaces baseadas nas Resources

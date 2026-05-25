@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schedule;
 use App\Jobs\{
     AggregateCarPerformanceMetricsJob,
     GenerateDailyAlertsEmailJob,
+    MarkStaleAggregatesAsErrorJob,
     RecalculateAllCarScoresJob,
     RefreshStaleMarketAggregatesJob,
     FetchMetaAdsMetricsJob,
@@ -40,6 +41,16 @@ Schedule::job(new RecalculateAllCarScoresJob())
     ->name('recalculate-all-car-scores')
     ->withoutOverlapping();
 
+
+// Marca aggregates em pending/running há mais de 10 min como error.
+// Elimina zombies silenciosos quando o worker falha ou o scraper congela.
+Schedule::job(new MarkStaleAggregatesAsErrorJob())
+    ->everyFiveMinutes()
+    ->name('mark-stale-aggregates-as-error')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[MarkStaleAggregates] Job falhou no scheduler');
+    });
 
 // Refresh nocturno de aggregates de mercado.
 // Limita a 20 viaturas/noite para evitar bloqueio do Standvirtual.
