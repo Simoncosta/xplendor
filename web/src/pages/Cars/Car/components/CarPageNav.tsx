@@ -25,7 +25,8 @@ export default function CarPageNav({ active }: { active: NavPage }) {
                 padding: "6px",
                 display: "flex",
                 gap: "4px",
-                flexWrap: "wrap",
+                flexWrap: "nowrap",
+                overflowX: "auto",
             }}
         >
             {pages.map((p) => {
@@ -45,6 +46,7 @@ export default function CarPageNav({ active }: { active: NavPage }) {
                             color: isActive ? "#405189" : "#878a99",
                             background: isActive ? "#f8f9fa" : "transparent",
                             border: isActive ? "1px solid #e9ebec" : "1px solid transparent",
+                            flexShrink: 0,
                         }}
                     >
                         <i className={p.icon} />
