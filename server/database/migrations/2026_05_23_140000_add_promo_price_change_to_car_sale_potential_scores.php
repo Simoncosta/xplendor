@@ -5,6 +5,11 @@ use Illuminate\Support\Facades\DB;
 
 return new class extends Migration {
     public function up(): void {
+        // ALTER TABLE ... MODIFY is MariaDB/MySQL syntax; skip on SQLite (test env)
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::statement("
             ALTER TABLE car_sale_potential_scores
             MODIFY triggered_by ENUM(
@@ -20,6 +25,10 @@ return new class extends Migration {
     }
 
     public function down(): void {
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Antes de remover o valor, verifica se há registos a usá-lo
         $count = DB::table('car_sale_potential_scores')
             ->where('triggered_by', 'promo_price_change')

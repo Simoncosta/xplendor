@@ -11,6 +11,7 @@ import ComparablesList from "./ComparablesList";
 
 const POLL_INTERVAL_MS  = 10_000;
 const MAX_POLL_ATTEMPTS = 18; // 3 minutes
+const STORAGE_TTL_MS    = 20 * 60 * 1000; // 20 minutes
 
 const TERMINAL_STATUSES: MarketAggregateStatus[] = ["success", "none", "blocked", "error", "failed"];
 
@@ -38,13 +39,13 @@ interface Props {
 }
 
 export default function MarketPositionCard({ companyId, carId, userRole }: Props) {
-    const [aggregate, setAggregate]           = useState<MarketAggregate | null | undefined>(undefined);
-    const [loadingInitial, setLoadingInitial] = useState(true);
-    const [refreshing, setRefreshing]         = useState(false);
+    const [aggregate, setAggregate]             = useState<MarketAggregate | null | undefined>(undefined);
+    const [loadingInitial, setLoadingInitial]   = useState(true);
+    const [refreshing, setRefreshing]           = useState(false);
     const [showComparables, setShowComparables] = useState(false);
-    const [pollAttempts, setPollAttempts]     = useState(0);
-    const [pollTimedOut, setPollTimedOut]     = useState(false);
-    const [networkError, setNetworkError]     = useState(false);
+    const [pollAttempts, setPollAttempts]       = useState(0);
+    const [pollTimedOut, setPollTimedOut]       = useState(false);
+    const [networkError, setNetworkError]       = useState(false);
 
     const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
     const mountedRef = useRef(true);
@@ -63,7 +64,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         }
     };
 
-    const startPolling = () => {
+    const startPolling = (aggregateId?: number) => {
         stopPolling();
         setPollAttempts(0);
 
@@ -79,8 +80,9 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
             });
 
             try {
-                const data = await fetchMarketAggregate(companyId, carId);
+                const data = await fetchMarketAggregate(companyId, carId, aggregateId);
                 if (data && TERMINAL_STATUSES.includes(data.status)) {
+                    clearStoredAggregateId(carId);
                     setAggregate(data);
                     stopPolling();
                     setRefreshing(false);
@@ -93,15 +95,20 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
 
     useEffect(() => {
         let cancelled = false;
+        const storedId = readStoredAggregateId(carId);
 
-        fetchMarketAggregate(companyId, carId)
+        fetchMarketAggregate(companyId, carId, storedId ?? undefined)
             .then((data) => {
                 if (cancelled) return;
                 setNetworkError(false);
                 setAggregate(data);
 
-                if (data && !TERMINAL_STATUSES.includes(data.status)) {
-                    startPolling();
+                if (data) {
+                    if (TERMINAL_STATUSES.includes(data.status)) {
+                        clearStoredAggregateId(carId);
+                    } else {
+                        startPolling(storedId ?? undefined);
+                    }
                 }
             })
             .catch(() => {
@@ -124,10 +131,13 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         setRefreshing(true);
 
         try {
-            await refreshMarketAggregate(companyId, carId);
+            const result = await refreshMarketAggregate(companyId, carId);
+            // Write to sessionStorage BEFORE mountedRef guard — ensures the id is
+            // persisted even if the user navigated away during the POST round-trip.
+            writeStoredAggregateId(carId, result.aggregate_id);
             if (!mountedRef.current) return;
             toast.success("Análise de mercado iniciada. Os resultados aparecem em breve.");
-            startPolling();
+            startPolling(result.aggregate_id);
         } catch (err: unknown) {
             if (!mountedRef.current) return;
             setRefreshing(false);
@@ -147,11 +157,16 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         setNetworkError(false);
 
         try {
-            const data = await fetchMarketAggregate(companyId, carId);
+            const storedId = readStoredAggregateId(carId);
+            const data = await fetchMarketAggregate(companyId, carId, storedId ?? undefined);
             setNetworkError(false);
             setAggregate(data);
-            if (data && !TERMINAL_STATUSES.includes(data.status)) {
-                startPolling();
+            if (data) {
+                if (TERMINAL_STATUSES.includes(data.status)) {
+                    clearStoredAggregateId(carId);
+                } else {
+                    startPolling(storedId ?? undefined);
+                }
             }
         } catch {
             setNetworkError(true);
@@ -466,6 +481,49 @@ function formatPercent(value: number | null): string {
     if (value === null || value === undefined) return "—";
     const sign = value > 0 ? "+" : "";
     return `${sign}${value.toFixed(1)}%`;
+}
+
+// ─── sessionStorage helpers ───────────────────────────────────────────────────
+
+interface StoredAggregate {
+    aggregate_id: number;
+    timestamp: number;
+}
+
+function storageKey(carId: number): string {
+    return `xplendor:mkt_agg:${carId}`;
+}
+
+function readStoredAggregateId(carId: number): number | null {
+    try {
+        const raw = sessionStorage.getItem(storageKey(carId));
+        if (!raw) return null;
+        const entry = JSON.parse(raw) as StoredAggregate;
+        if (Date.now() - entry.timestamp > STORAGE_TTL_MS) {
+            sessionStorage.removeItem(storageKey(carId));
+            return null;
+        }
+        return entry.aggregate_id;
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredAggregateId(carId: number, aggregateId: number): void {
+    try {
+        const entry: StoredAggregate = { aggregate_id: aggregateId, timestamp: Date.now() };
+        sessionStorage.setItem(storageKey(carId), JSON.stringify(entry));
+    } catch {
+        // sessionStorage blocked (private mode, storage full) — degrade gracefully
+    }
+}
+
+function clearStoredAggregateId(carId: number): void {
+    try {
+        sessionStorage.removeItem(storageKey(carId));
+    } catch {
+        // ignore
+    }
 }
 
 const sectionStyle: React.CSSProperties = {

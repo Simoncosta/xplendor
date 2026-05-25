@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-25 · Versão 1.2
+> Última actualização: 2026-05-25 · Versão 1.3
 
 ---
 
@@ -22,6 +22,7 @@
 | 1.0 | 2026-05-22 | Versão inicial após auditoria estrutural completa |
 | 1.1 | 2026-05-22 | Adicionadas Fases A, B1, B2, C, D. Tabelas em falta. Dívida técnica nova. Correcções de PII na API pública. |
 | 1.2 | 2026-05-25 | Sessões 2026-05-23 a 2026-05-25: F1a/b/c (Dashboard honesto), G (Acções ocultas), H1 (auditoria 5 tabs), H2a/b (fetch + Ficha), H3a/b/c/d (eliminações + simplificações), X1/X2/X3/X4/X5/X6 (bug fixes MarketPositionCard + IPS). Items 29-51 de dívida técnica. |
+| 1.3 | 2026-05-25 | X7 — Fix C do item 50: persistir aggregate_id em sessionStorage. Items 48 e 49 resolvidos. Endpoint GET por id específico (?aggregate_id=N). Fix migration SQLite para testes. 8/8 testes verdes. |
 
 ---
 
@@ -1068,14 +1069,11 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     "Tentar novamente". setRefreshing(false) chamado em todos os
     caminhos terminais (success, timeout).
 
-    Fragilidade adicional NÃO resolvida (registada para futuro):
-    O frontend descarta o aggregate_id devolvido pelo POST /refresh
-    e usa GET genérico que delega em latestOfMany() do modelo.
-    Funciona porque latestOfMany devolve MAX(id) — coincide com o
-    aggregate recém-criado. Mas se dois refreshes corressem em
-    paralelo (improvável), GET podia devolver o do outro trigger.
-    Não fixar nesta sub-fase — risco real muito baixo, fix
-    adicionaria complexidade.
+    Fragilidade adicional resolvida em 2026-05-25 (X7):
+    O frontend agora persiste `aggregate_id` em sessionStorage
+    e usa `GET ?aggregate_id=N` para polling e remontagem.
+    Eliminado o risco de `latestOfMany()` devolver o aggregate
+    errado em cenários de refresh paralelo. Ver item 50 Fix C.
 
 49. **MarketPositionCard — race condition de navegação rápida (parcial)** —
     Resolvido em 2026-05-23 (X3): toast `success` e `startPolling()` agora
@@ -1083,21 +1081,14 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
     - Toast na página errada quando utilizador navega antes do POST completar
     - Interval fantasma após unmount (fazia requests sem efeito)
 
-    NÃO resolvido (dívida técnica conhecida):
-    Se utilizador clica "Analisar mercado" e navega para outra página em
-    <1 segundo, ao voltar pode ver NeverRunState mesmo havendo aggregate
-    `pending` na BD (criado pelo POST in-flight). Componente remontado
-    faz GET antes do aggregate ser persistido → recebe null → mostra
-    estado enganador.
-
-    Fix correcto futuro: persistir `aggregate_id` devolvido pelo POST
-    (sessionStorage, URL param, Redux) para que ao remontar o componente
-    saiba exactamente qual aggregate consultar. Exige decisões de
-    arquitectura (onde persistir? como invalidar?) — merece sessão
-    dedicada.
-
-    Relacionado com item 48 — quando atacarmos refactor de persistência
-    de aggregate_id, resolvemos os dois bugs juntos.
+    Resolvido em 2026-05-25 (X7 — Fix C do item 50):
+    `writeStoredAggregateId()` é chamado ANTES do guard
+    `mountedRef.current` no `handleRefresh`. O aggregate_id fica
+    em sessionStorage mesmo que o componente desmonte durante o
+    POST. Na remontagem, o `useEffect` lê o id persistido e faz
+    GET por id específico (`?aggregate_id=N`) em vez de
+    `latestOfMany` — vê correctamente o aggregate `pending` e
+    retoma o polling sem mostrar NeverRunState.
 
 🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (parcial — Fix A e Fix B resolvidos)** —
     Descoberto em 2026-05-23 (X4) durante investigação de bug
@@ -1146,8 +1137,16 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       congelamento do scheduler, Fix B não corre. Aggregates podem ficar
       pendentes durante essas janelas.
 
-    - 🟡 **Fix C** (refactor) — pendente. Persistir `aggregate_id` no
-      frontend. Resolve items 48, 49 e parte do 50 simultaneamente.
+    - ✅ **Fix C** (frontend + backend) — resolvido em 2026-05-25 (X7).
+      `writeStoredAggregateId(carId, result.aggregate_id)` persiste o
+      id em sessionStorage (chave `xplendor:mkt_agg:{carId}`, TTL 20min)
+      ANTES do guard `mountedRef`. Endpoint GET aceita agora
+      `?aggregate_id=N` opcional — verifica `car_id` para isolamento.
+      Polling usa o id específico. Clearing automático quando status
+      terminal. Fallback para `latestOfMany` se TTL expirado ou id
+      ausente. 2 novos testes backend (8/8 verdes). Items 48 e 49
+      resolvidos. Migration X2 corrigida para SQLite (era blocker
+      de todos os testes do ficheiro).
 
     - 🟡 **Fix D** (infra) — pendente. Worker `--max-time` + migrar
       fila/cache para Redis correctamente configurado.
@@ -1257,6 +1256,9 @@ Novo estado `networkError` + `NetworkErrorState` component. Distinguir 404/null 
 
 **X6 — Fix B do item 50: scheduler para marcar aggregates zombie**
 Novo `MarkStaleAggregatesAsErrorJob` em `app/Jobs/`. Scheduled `everyFiveMinutes()` com `withoutOverlapping()` e `onFailure` callback. Marca aggregates em `pending`/`running` há mais de 10 minutos como `error`. Investigação prévia confirmou item 47 auto-resolvido em 2026-05-23 e revelou novo item 51 (gap do scheduler de 11h30). Item 50 Fix B ✅. Item 51 🔴.
+
+**X7 — Fix C do item 50: persistir aggregate_id em sessionStorage**
+Backend: endpoint `GET /market-aggregate?aggregate_id=N` com verificação `car_id` para isolamento (query param opcional, backward compatible). Frontend: `writeStoredAggregateId()` ANTES do guard `mountedRef` em `handleRefresh`; `readStoredAggregateId()` + `clearStoredAggregateId()` no `useEffect`, polling, e `retryFetch`; TTL 20 min; chave `xplendor:mkt_agg:{carId}`; fallback para `latestOfMany` se TTL expirado. 2 novos testes backend + asserção `aggregate_id` em teste existente (8/8 verdes). Migration X2 corrigida para SQLite (bloqueava todos os testes do ficheiro). Items 48 e 49 ✅. Item 50 Fix C ✅.
 
 ### 🚧 Próximo
 

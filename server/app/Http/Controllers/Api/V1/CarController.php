@@ -10,6 +10,7 @@ use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CarMarketAggregateResource;
 use App\Http\Resources\CarSpecsResource;
 use App\Models\Car;
+use App\Models\CarMarketAggregate;
 use App\Services\Ads\AudienceSuggestionService;
 use App\Services\Ads\AudienceGapAnalysisService;
 use App\Services\CarAiAnalysesService;
@@ -314,19 +315,23 @@ class CarController extends Controller
         }
     }
 
-    public function marketAggregate(int $companyId, int $carId): JsonResponse
+    public function marketAggregate(int $companyId, int $carId, Request $request): JsonResponse
     {
         if (!$this->authorizeCompanyAccess($companyId)) {
             return response()->json(['message' => 'Acesso negado.'], 403);
         }
 
-        $car = Car::with('latestMarketAggregate')->find($carId);
+        $car = Car::find($carId);
 
         if (!$car || (int) $car->company_id !== $companyId) {
             return response()->json(['message' => 'Viatura não encontrada.'], 404);
         }
 
-        $aggregate = $car->latestMarketAggregate;
+        $aggregateId = $request->query('aggregate_id');
+
+        $aggregate = $aggregateId !== null
+            ? CarMarketAggregate::where('id', (int) $aggregateId)->where('car_id', $carId)->first()
+            : $car->latestMarketAggregate;
 
         if (!$aggregate) {
             return response()->json(['data' => null], 200);

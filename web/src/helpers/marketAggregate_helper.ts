@@ -6,10 +6,13 @@ const carMarketAggregateUrl = (companyId: number, carId: number): string =>
 
 export async function fetchMarketAggregate(
     companyId: number,
-    carId: number
+    carId: number,
+    aggregateId?: number
 ): Promise<MarketAggregate | null> {
+    const params = aggregateId !== undefined ? { aggregate_id: aggregateId } : undefined;
     const res = await axios.get<{ data: MarketAggregate | null }>(
-        carMarketAggregateUrl(companyId, carId)
+        carMarketAggregateUrl(companyId, carId),
+        { params }
     );
     return res.data.data ?? null;
 }

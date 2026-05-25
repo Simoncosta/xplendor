@@ -182,8 +182,54 @@ class CarMarketAggregateApiTest extends TestCase
         $this->actingAs($this->user, 'sanctum')
             ->postJson($this->url('/refresh'))
             ->assertStatus(202)
-            ->assertJsonPath('data.status', 'pending');
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonStructure(['data' => ['aggregate_id', 'status']]);
 
         Queue::assertPushed(ScrapeMarketSnapshotJob::class);
+    }
+
+    public function test_market_aggregate_by_specific_id_returns_correct_aggregate(): void
+    {
+        $first  = $this->makeAggregate(['status' => 'error']);
+        $second = $this->makeAggregate(['status' => 'success', 'median_price' => 18000.00]);
+
+        $this->actingAs($this->user, 'sanctum')
+            ->getJson($this->url("?aggregate_id={$first->id}"))
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $first->id)
+            ->assertJsonPath('data.status', 'error');
+
+        $this->actingAs($this->user, 'sanctum')
+            ->getJson($this->url("?aggregate_id={$second->id}"))
+            ->assertStatus(200)
+            ->assertJsonPath('data.id', $second->id)
+            ->assertJsonPath('data.status', 'success');
+    }
+
+    public function test_market_aggregate_by_id_of_other_car_returns_null(): void
+    {
+        $otherCar = Car::factory()->create([
+            'company_id'        => $this->company->id,
+            'vehicle_type'      => 'car',
+            'registration_year' => 2021,
+            'price_gross'       => 15000,
+        ]);
+
+        $otherAggregate = CarMarketAggregate::create([
+            'car_id'            => $otherCar->id,
+            'vehicle_type'      => 'car',
+            'status'            => 'success',
+            'confidence'        => 'high',
+            'comparables_count' => 3,
+            'median_price'      => 14000.00,
+            'top_comparables'   => json_encode([]),
+            'fallback_used'     => false,
+        ]);
+
+        // Request aggregate_id of otherCar's aggregate through this->car's URL
+        $this->actingAs($this->user, 'sanctum')
+            ->getJson($this->url("?aggregate_id={$otherAggregate->id}"))
+            ->assertStatus(200)
+            ->assertJsonPath('data', null);
     }
 }
