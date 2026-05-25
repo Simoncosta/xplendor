@@ -76,6 +76,12 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         if (!m) return;
         fd.append(`images_meta[${i}][order]`, String(m.order ?? i + 1));
         fd.append(`images_meta[${i}][is_primary]`, toBool(m.is_primary) ? "1" : "0");
+        if (m.crop) {
+            fd.append(`images_meta[${i}][crop][x]`, String(m.crop.x));
+            fd.append(`images_meta[${i}][crop][y]`, String(m.crop.y));
+            fd.append(`images_meta[${i}][crop][width]`, String(m.crop.width));
+            fd.append(`images_meta[${i}][crop][height]`, String(m.crop.height));
+        }
     });
 
     // extras (array CarExtrasGroup[])

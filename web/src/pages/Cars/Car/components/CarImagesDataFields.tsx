@@ -1,6 +1,6 @@
 import { Alert, Col, Row } from "reactstrap";
 import { useFormikContext } from "formik";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import { FilePond, registerPlugin } from "react-filepond";
@@ -13,6 +13,8 @@ import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 
 import type { ICarUpdatePayload } from "common/models/car.model";
 import XButton from "Components/Common/XButton";
+import ImageCropperModal from "Components/Common/ImageCropperModal";
+import type { CropArea } from "Components/Common/ImageCropperModal";
 import styles from "../../../../assets/scss/CarImagesDataFields.module.scss";
 
 
@@ -30,12 +32,14 @@ export type CarStoredImage = {
     image: string; // "/storage/..."
     is_primary?: 0 | 1 | boolean;
     order?: number;
+    original_path?: string | null;
 };
 
 export type CarImageMeta = {
     key: string;
     is_primary?: boolean;
     order?: number;
+    crop?: CropArea;
 };
 
 export type ICarFormValues = ICarUpdatePayload & {
@@ -53,12 +57,22 @@ export type ICarFormValues = ICarUpdatePayload & {
     }>;
 };
 
+type CropQueueEntry = { pondId: string; file: File };
+
 export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boolean; companyId?: number }) {
     const { values, setFieldValue } = useFormikContext<ICarFormValues>();
 
-    // Estado UI do FilePond
     const [files, setFiles] = useState<PondFile[]>([]);
     const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+
+    // Crop queue: one modal at a time, sequential for multi-file selections
+    const [cropQueue, setCropQueue] = useState<CropQueueEntry[]>([]);
+    const [activeCrop, setActiveCrop] = useState<CropQueueEntry | null>(null);
+
+    // crop params keyed by FilePond item id — useRef avoids stale closures in syncFormikFromPond
+    const cropParamsMapRef = useRef<Record<string, CropArea>>({});
+
+    const pondRef = useRef<FilePond | null>(null);
 
     const API_BASE = process.env.REACT_APP_PUBLIC_URL ?? "http://localhost:8001";
     const carId = Number((values as any)?.id ?? 0);
@@ -198,6 +212,35 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
         }, 0);
     }, [isEdit, (values as any)?.stored_images, files.length]);
 
+    // Process crop queue: open modal for next entry when no crop is active
+    useEffect(() => {
+        if (activeCrop !== null) return;
+        if (cropQueue.length === 0) return;
+        const [next, ...rest] = cropQueue;
+        setActiveCrop(next);
+        setCropQueue(rest);
+    }, [cropQueue, activeCrop]);
+
+    // Called by FilePond when a new file is added by the user
+    const handleFileAdded = (_error: any, pondFile: any) => {
+        // Only trigger crop for user-selected files (not stored images loaded via URL)
+        if (!pondFile || !(pondFile.file instanceof File)) return;
+        const entry: CropQueueEntry = { pondId: pondFile.id as string, file: pondFile.file as File };
+        setCropQueue((prev) => [...prev, entry]);
+    };
+
+    const handleCropConfirm = (cropParams: CropArea) => {
+        if (!activeCrop) return;
+        cropParamsMapRef.current[activeCrop.pondId] = cropParams;
+        setActiveCrop(null); // triggers queue effect
+    };
+
+    const handleCropCancel = () => {
+        if (!activeCrop) return;
+        pondRef.current?.removeFile(activeCrop.pondId);
+        setActiveCrop(null);
+    };
+
     const syncFormikFromPond = (pondItems: any[]) => {
         // 1) identificar stored vs new
         const isStored = (it: any) => {
@@ -228,13 +271,23 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
             is_primary: Boolean(it.getMetadata("is_primary")),
         }));
 
-        // 5) novas imagens
+        // 5) novas imagens + crop params do mapa (ref, sem stale closure)
         const images: File[] = newItems.map((it: any) => it.file);
 
-        const images_meta = newItems.map((it: any, idx: number) => ({
-            order: idx + 1,
-            is_primary: Boolean(it.getMetadata("is_primary")) || false,
-        }));
+        const images_meta = newItems.map((it: any, idx: number) => {
+            const base = {
+                order: idx + 1,
+                is_primary: Boolean(it.getMetadata("is_primary")) || false,
+            };
+            const crop = cropParamsMapRef.current[it.id as string];
+            return crop ? { ...base, crop } : base;
+        });
+
+        // Clean up crop map entries for files no longer in the pond
+        const currentIds = new Set(newItems.map((it: any) => it.id as string));
+        for (const id of Object.keys(cropParamsMapRef.current)) {
+            if (!currentIds.has(id)) delete cropParamsMapRef.current[id];
+        }
 
         // 6) garantir 1 primary total
         const total = [...existing_images_meta, ...images_meta];
@@ -303,6 +356,7 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                 <Col lg={12}>
                     <div className={styles.carImagesPond}>
                         <FilePond
+                            ref={pondRef}
                             files={files}
                             onupdatefiles={(nextFiles) => {
                                 setFiles(nextFiles);
@@ -316,6 +370,7 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                                 // only sets allowFilesSync=false for onupdatefiles, not here).
                                 syncFormikFromPond(nextFiles);
                             }}
+                            onaddfile={handleFileAdded}
                             allowMultiple
                             allowReorder
                             maxFiles={60}
@@ -355,6 +410,15 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                     </div>
                 </Col>
             </Row>
+
+            {activeCrop && (
+                <ImageCropperModal
+                    open={true}
+                    imageSource={activeCrop.file}
+                    onConfirm={handleCropConfirm}
+                    onCancel={handleCropCancel}
+                />
+            )}
         </div>
     );
 }

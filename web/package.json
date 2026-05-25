@@ -68,6 +68,7 @@
     "react-dragula": "^1.1.17",
     "react-dropzone": "^14.3.8",
     "react-dual-listbox": "^6.0.3",
+    "react-easy-crop": "^5.5.7",
     "react-filepond": "^7.1.3",
     "react-flatpickr": "^4.0.10",
     "react-i18next": "^15.5.1",
