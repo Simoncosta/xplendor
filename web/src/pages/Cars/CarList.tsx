@@ -22,7 +22,7 @@ import easyDataIcon from "../../assets/images/icon-easydata.png";
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
@@ -161,6 +161,8 @@ const CarList = () => {
     const { brands } = useSelector(selectCarBrandViewModel);
     const { models } = useSelector(selectCarModelViewModel);
     const { cars, meta, loading } = useSelector(selectCarListViewModel);
+
+    const navigate = useNavigate();
 
     // State
     const isMobile = useIsMobile(680);
@@ -424,6 +426,143 @@ const CarList = () => {
         []
     );
 
+    const renderCarMobileCard = useCallback((car: any) => {
+        const badge = getAttentionBadge(car);
+        const thumbnailUrl = getCarThumbnailUrl(car);
+        const views = getMetricCount(car.views);
+        const leads = getMetricCount(car.leads);
+
+        return (
+            <div
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/cars/${car.id}/analytics`)}
+                onKeyDown={(e) => { if (e.key === "Enter") navigate(`/cars/${car.id}/analytics`); }}
+                style={{
+                    background: "#fff",
+                    border: "1px solid #e9ebec",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                    cursor: "pointer",
+                }}
+            >
+                <div style={{ position: "relative", paddingBottom: "56.25%", background: "#f1f3f5" }}>
+                    {thumbnailUrl ? (
+                        <img
+                            src={thumbnailUrl}
+                            alt=""
+                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                    ) : (
+                        <div
+                            style={{
+                                position: "absolute",
+                                inset: 0,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 4,
+                            }}
+                        >
+                            <i className="ri-car-line" style={{ fontSize: 32, color: "#adb5bd" }} />
+                            <span
+                                className="fw-semibold text-uppercase"
+                                style={{ fontSize: 11, color: "#adb5bd", letterSpacing: "0.06em" }}
+                            >
+                                Sem imagem
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                <div style={{ padding: "12px 14px" }}>
+                    <div className="d-flex align-items-center gap-2 mb-2" style={{ minWidth: 0 }}>
+                        <h6 className="mb-0 fw-semibold text-body text-truncate" style={{ minWidth: 0, flex: 1 }}>
+                            {car.brand.name} {car.model.name}
+                        </h6>
+                        <span className={`badge rounded-pill px-2 py-1 fs-11 flex-shrink-0 ${badge.className}`}>
+                            <i className={`${badge.icon} me-1`} />
+                            {badge.label}
+                        </span>
+                    </div>
+
+                    <div className="mb-3">
+                        <CarPriceDisplay
+                            priceGross={car.price_gross}
+                            promoPriceGross={car.promo_price_gross}
+                            promoDiscountPct={car.promo_discount_pct}
+                            size="sm"
+                            badgeLabel="Oportunidade"
+                        />
+                    </div>
+
+                    <div className="d-flex gap-2 mb-3">
+                        {([
+                            { label: "Views", value: String(views) },
+                            { label: "Leads", value: String(leads), highlight: leads > 0 },
+                            { label: "Conversão", value: formatConversionRate(views, leads) },
+                        ] as { label: string; value: string; highlight?: boolean }[]).map((chip) => (
+                            <div
+                                key={chip.label}
+                                style={{
+                                    flex: 1,
+                                    border: "1px solid #e9ebec",
+                                    borderRadius: 8,
+                                    padding: "5px 8px",
+                                    background: "#f8fafc",
+                                    textAlign: "center",
+                                }}
+                            >
+                                <div
+                                    className="text-muted fw-semibold text-uppercase"
+                                    style={{ fontSize: 10, letterSpacing: "0.06em", marginBottom: 2 }}
+                                >
+                                    {chip.label}
+                                </div>
+                                <div className={`fw-semibold fs-13 ${chip.highlight ? "text-success" : "text-body"}`}>
+                                    {chip.value}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ borderTop: "1px solid #e9ebec", paddingTop: 10 }}>
+                        <div className="d-flex align-items-center justify-content-between">
+                            <span className="text-muted fs-12">
+                                {new Date(car.car_created_at ?? car.created_at).toLocaleDateString("pt-PT", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                })}
+                            </span>
+                            <div className="d-flex gap-2">
+                                <Link
+                                    to={`/cars/${car.id}/analytics`}
+                                    className="btn btn-soft-info btn-sm"
+                                    title="Inteligência"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                                >
+                                    <i className="ri-brain-line" />
+                                </Link>
+                                <Link
+                                    to={`/cars/${car.id}`}
+                                    className="btn btn-soft-primary btn-sm"
+                                    title="Editar"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                                >
+                                    <i className="ri-pencil-line" />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }, [navigate]);
+
     const filterPanelContent = (
         <>
             <div className="filter-choices-input mb-3">
@@ -661,6 +800,7 @@ const CarList = () => {
                                         isBordered={true}
                                         theadClass="text-muted table-light"
                                         mobileMode={isMobile}
+                                        renderMobileCard={renderCarMobileCard}
                                         onSortingChange={handleSortChange}
                                     />
                                 </div>
