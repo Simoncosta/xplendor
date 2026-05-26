@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.8.2
+> Última actualização: 2026-05-26 · Versão 1.8.3
 
 ---
 
@@ -33,6 +33,7 @@
 | 1.8 | 2026-05-26 | **DOCS** — Revisão integral do CLAUDE.md. Schema actualizado (`car_market_aggregates`, `car_images`, `original_path`, `search_url`, `promo_price_gross`). 3 endpoints documentados em 8.4 (recrop, check-link, GET por `aggregate_id`). Padrões mobile e aprendizagens CSS documentados em 10. Items resolvidos compactados em tabela (14.2). Secção 15 reorganizada por capítulos Z, D, Y3. |
 | 1.8.1 | 2026-05-26 | Y4.a — `LeadStatusBadge` component (substitui `<select>` HTML nativo na coluna Estado de LeadList, desktop e mobile card). Dropdown Reactstrap com soft badges Bootstrap. |
 | 1.8.2 | 2026-05-26 | Y4.c — Fix scroll fantasma vertical (~538px em todas as telas autenticadas). Override do `min-height: 1400px` do Velzon para `min-height: 100vh` via `_xplendor-overrides.scss`. |
+| 1.8.3 | 2026-05-26 | Y4.b — Login polish: textos pt-PT, alert de erro funcional (msg genérica), ícones nos inputs (ri-mail-line + ri-lock-2-line), loading state no botão, eye toggle dentro do InputGroup. |
 
 ---
 
@@ -1146,6 +1147,9 @@ Substituído `<select>` HTML nativo por `LeadStatusBadge` em `web/src/pages/Lead
 
 **Y4.c — Fix scroll fantasma vertical (override Velzon)**
 O Velzon define `min-height: 1400px` no `<html>` via `structure/_vertical.scss` quando `data-sidebar-size="sm"` e viewport ≥ 768px. Em displays com altura < 1400px (todo desktop ≤ 1080p), criava ~538px de scroll fantasma em todas as telas autenticadas. Criado `web/src/assets/scss/_xplendor-overrides.scss` como ficheiro dedicado para overrides futuros do tema (não mexer nos ficheiros Velzon directamente). Override aplica `min-height: 100vh !important` no mesmo selector, eliminando o scroll sem alterar a aparência visual. Import adicionado no fim de `themes.scss` para garantir precedência. Build CSS confirma compilação correcta.
+
+**Y4.b — Login polish**
+`web/src/pages/Authentication/Login.tsx` reescrito com: (1) todos os textos em pt-PT ("Entrar na XPLENDOR", "O seu email", "A sua palavra-passe", "Esqueceu-se da palavra-passe?", "Manter sessão iniciada"); (2) alert Reactstrap `color="danger"` com mensagem genérica "Email ou palavra-passe incorrectos." — não revela se é email ou password o erro (boa prática de segurança); (3) ícones `ri-mail-line` e `ri-lock-2-line` via `InputGroup` + `InputGroupText`; (4) botão de olho movido para dentro do `InputGroup` como elemento append (resolve interceptação de eventos do Bootstrap em position-absolute); (5) `isSubmitting` state + `Spinner size="sm"` no botão durante request; (6) `useSelector` sobre `state.Login.data.errorMsg` para detectar falha via Redux. Testimonial no carousel: textos já correctos em pt-PT, não há truncamento de conteúdo (overflow é do `react-responsive-carousel` em animação mid-slide, não layout issue).
 
 #### DOCS — Revisão integral do CLAUDE.md
 

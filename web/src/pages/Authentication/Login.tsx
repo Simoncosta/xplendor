@@ -1,44 +1,62 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Col, Container, Input, Label, Row, Button, FormFeedback, Form } from 'reactstrap';
+import {
+    Card, Col, Container, Input, Label, Row, Button,
+    FormFeedback, Form, Alert, InputGroup, InputGroupText, Spinner
+} from 'reactstrap';
 import AuthSlider from '../AuthenticationInner/authCarousel';
 
-// Redux
-import { useDispatch } from 'react-redux';
-
+import { useDispatch, useSelector } from 'react-redux';
 import withRouter from "../../Components/Common/withRouter";
-// Formik validation
 import * as Yup from "yup";
 import { useFormik } from "formik";
 
-// actions
 import { loginUser } from 'slices/thunks';
+import { reset_login_flag } from 'slices/auth/login/reducer';
 
 const Login = (props: any) => {
     const dispatch: any = useDispatch();
 
     const [passwordShow, setPasswordShow] = useState<boolean>(false);
-    const [loader, setLoader] = useState<boolean>(false);
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+    const [loginError, setLoginError] = useState<string | null>(null);
 
-    const validation: any = useFormik({
-        // enableReinitialize : use this flag when initial values needs to be changed
+    const errorMsg: boolean = useSelector((state: any) => state.Login.data.errorMsg);
+
+    useEffect(() => {
+        if (errorMsg) {
+            setLoginError('Email ou palavra-passe incorrectos.');
+            setIsSubmitting(false);
+        }
+    }, [errorMsg]);
+
+    const validation = useFormik({
         enableReinitialize: true,
-
         initialValues: {
             email: '',
             password: '',
         },
         validationSchema: Yup.object({
-            email: Yup.string().required("Please Enter Your E-mail"),
-            password: Yup.string().required("Please Enter Your Password"),
+            email: Yup.string().required("Introduza o seu email"),
+            password: Yup.string().required("Introduza a sua palavra-passe"),
         }),
         onSubmit: (values) => {
+            setIsSubmitting(true);
+            setLoginError(null);
+            dispatch(reset_login_flag());
             dispatch(loginUser(values, props.router.navigate));
-            setLoader(true)
         }
     });
 
-    document.title = "LogIn | Xplendor - Dashboard";
+    const clearError = () => {
+        if (loginError) {
+            setLoginError(null);
+            dispatch(reset_login_flag());
+        }
+    };
+
+    document.title = "Entrar | Xplendor";
+
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
@@ -54,8 +72,8 @@ const Login = (props: any) => {
                                         <Col lg={6}>
                                             <div className="p-lg-5 p-4">
                                                 <div>
-                                                    <h5 className="text-dark">Bem vindo!</h5>
-                                                    <p className="text-muted">Faça login para continuar na Xplendor.</p>
+                                                    <h5 className="text-dark">Entrar na XPLENDOR</h5>
+                                                    <p className="text-muted">Introduza as suas credenciais para continuar.</p>
                                                 </div>
 
                                                 <div className="mt-4">
@@ -67,72 +85,88 @@ const Login = (props: any) => {
                                                         }}
                                                         action="#">
 
+                                                        {loginError && (
+                                                            <Alert color="danger" className="mb-3">
+                                                                <i className="ri-error-warning-line align-middle me-2"></i>
+                                                                {loginError}
+                                                            </Alert>
+                                                        )}
+
                                                         <div className="mb-3">
-                                                            <Label htmlFor="uemaile" className="form-label">E-mail</Label>
-                                                            <Input type="text" className="form-control" id="email" placeholder="Enter email"
-                                                                name="email"
-                                                                onChange={validation.handleChange}
-                                                                onBlur={validation.handleBlur}
-                                                                value={validation.values.email || ""}
-                                                                invalid={
-                                                                    validation.touched.email && validation.errors.email ? true : false
-                                                                }
-                                                            />
-                                                            {validation.touched.email && validation.errors.email ? (
-                                                                <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
-                                                            ) : null}
+                                                            <Label htmlFor="email" className="form-label">E-mail</Label>
+                                                            <InputGroup className={validation.touched.email && validation.errors.email ? 'has-validation' : ''}>
+                                                                <InputGroupText className="bg-transparent">
+                                                                    <i className="ri-mail-line text-muted"></i>
+                                                                </InputGroupText>
+                                                                <Input
+                                                                    type="text"
+                                                                    className="form-control"
+                                                                    id="email"
+                                                                    placeholder="O seu email"
+                                                                    name="email"
+                                                                    onChange={(e) => { clearError(); validation.handleChange(e); }}
+                                                                    onBlur={validation.handleBlur}
+                                                                    value={validation.values.email || ""}
+                                                                    invalid={validation.touched.email && !!validation.errors.email}
+                                                                />
+                                                                {validation.touched.email && validation.errors.email && (
+                                                                    <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
+                                                                )}
+                                                            </InputGroup>
                                                         </div>
 
                                                         <div className="mb-3">
                                                             <div className="float-end">
-                                                                <Link to="/auth-pass-reset-cover" className="text-muted">Forgot password?</Link>
+                                                                <Link to="/auth-pass-reset-cover" className="text-muted">Esqueceu-se da palavra-passe?</Link>
                                                             </div>
-                                                            <Label className="form-label" htmlFor="password-input">Password</Label>
-                                                            <div className="position-relative auth-pass-inputgroup mb-3">
-                                                                <Input type={passwordShow ? "text" : "password"} className="form-control pe-5 password-input" placeholder="Enter password" id="password-input"
+                                                            <Label className="form-label" htmlFor="password-input">Palavra-passe</Label>
+                                                            <InputGroup className={validation.touched.password && validation.errors.password ? 'has-validation' : ''}>
+                                                                <InputGroupText className="bg-transparent">
+                                                                    <i className="ri-lock-2-line text-muted"></i>
+                                                                </InputGroupText>
+                                                                <Input
+                                                                    type={passwordShow ? "text" : "password"}
+                                                                    className="form-control password-input"
+                                                                    placeholder="A sua palavra-passe"
+                                                                    id="password-input"
                                                                     name="password"
                                                                     value={validation.values.password || ""}
-                                                                    onChange={validation.handleChange}
+                                                                    onChange={(e) => { clearError(); validation.handleChange(e); }}
                                                                     onBlur={validation.handleBlur}
-                                                                    invalid={
-                                                                        validation.touched.password && validation.errors.password ? true : false
-                                                                    }
+                                                                    invalid={validation.touched.password && !!validation.errors.password}
                                                                 />
-                                                                {validation.touched.password && validation.errors.password ? (
+                                                                <button
+                                                                    className="btn btn-link text-decoration-none text-muted border border-start-0"
+                                                                    type="button"
+                                                                    id="password-addon"
+                                                                    onClick={() => setPasswordShow(!passwordShow)}
+                                                                >
+                                                                    <i className={passwordShow ? "ri-eye-off-fill align-middle" : "ri-eye-fill align-middle"}></i>
+                                                                </button>
+                                                                {validation.touched.password && validation.errors.password && (
                                                                     <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
-                                                                ) : null}
-                                                                <button className="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted password-addon" type="button" id="password-addon" onClick={() => setPasswordShow(!passwordShow)}><i className="ri-eye-fill align-middle"></i></button>
-                                                            </div>
+                                                                )}
+                                                            </InputGroup>
                                                         </div>
 
                                                         <div className="form-check">
                                                             <Input className="form-check-input" type="checkbox" value="" id="auth-remember-check" />
-                                                            <Label className="form-check-label" htmlFor="auth-remember-check">Remember me</Label>
+                                                            <Label className="form-check-label" htmlFor="auth-remember-check">Manter sessão iniciada</Label>
                                                         </div>
 
                                                         <div className="mt-4">
-                                                            <Button color="dark" className="w-100" type="submit">Entrar</Button>
+                                                            <Button color="dark" className="w-100" type="submit" disabled={isSubmitting}>
+                                                                {isSubmitting ? (
+                                                                    <>
+                                                                        <Spinner size="sm" className="me-2" />
+                                                                        A entrar...
+                                                                    </>
+                                                                ) : 'Entrar'}
+                                                            </Button>
                                                         </div>
-
-                                                        {/* <div className="mt-4 text-center">
-                                                            <div className="signin-other-title">
-                                                                <h5 className="fs-13 mb-4 title">Sign In with</h5>
-                                                            </div>
-
-                                                            <div>
-                                                                <Button color="primary" className="btn-icon me-1"><i className="ri-facebook-fill fs-16"></i></Button>
-                                                                <Button color="danger" className="btn-icon me-1"><i className="ri-google-fill fs-16"></i></Button>
-                                                                <Button color="dark" className="btn-icon me-1"><i className="ri-github-fill fs-16"></i></Button>
-                                                                <Button color="info" className="btn-icon"><i className="ri-twitter-fill fs-16"></i></Button>
-                                                            </div>
-                                                        </div> */}
 
                                                     </Form>
                                                 </div>
-
-                                                {/* <div className="mt-5 text-center">
-                                                    <p className="mb-0">Don't have an account ? <a href="/auth-signup-cover" className="fw-semibold text-primary text-decoration-underline"> Signup</a> </p>
-                                                </div> */}
                                             </div>
                                         </Col>
                                     </Row>
