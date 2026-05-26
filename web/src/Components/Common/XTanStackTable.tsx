@@ -98,6 +98,7 @@ interface IXTanStackTable {
     handleTicketClick?: any;
     isBordered?: any;
     mobileMode?: boolean;
+    renderMobileCard?: (rowData: any) => React.ReactNode;
 
     onSortingChange?: (sorting: { field: string; direction: 'asc' | 'desc' } | null) => void;
 }
@@ -120,6 +121,7 @@ const XTanStackTable = ({
     SearchPlaceholder,
     isBordered,
     mobileMode = false,
+    renderMobileCard,
     onSortingChange
 }: IXTanStackTable) => {
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -223,28 +225,35 @@ const XTanStackTable = ({
             {mobileMode ? (
                 <div className="d-flex flex-column gap-3">
                     {getRowModel().rows.map((row: any) => (
-                        <div key={row.id} className="card border shadow-sm mb-0">
-                            <div className="card-body p-3">
-                                {row.getVisibleCells().map((cell: any) => {
-                                    const header = getHeaderGroups()[0]?.headers.find(
-                                        (h: any) => h.id === cell.column.id
-                                    );
-                                    const label = header && !header.isPlaceholder
-                                        ? flexRender(header.column.columnDef.header, header.getContext())
-                                        : cell.column.id;
+                        <div key={row.id}>
+                            {renderMobileCard
+                                ? renderMobileCard(row.original)
+                                : (
+                                    <div className="card border shadow-sm mb-0">
+                                        <div className="card-body p-3">
+                                            {row.getVisibleCells().map((cell: any) => {
+                                                const header = getHeaderGroups()[0]?.headers.find(
+                                                    (h: any) => h.id === cell.column.id
+                                                );
+                                                const label = header && !header.isPlaceholder
+                                                    ? flexRender(header.column.columnDef.header, header.getContext())
+                                                    : cell.column.id;
 
-                                    return (
-                                        <div key={cell.id} className="d-flex justify-content-between align-items-center py-1 border-bottom last-border-0">
-                                            <span className="text-muted fw-semibold" style={{ fontSize: 12, minWidth: 120 }}>
-                                                {label}
-                                            </span>
-                                            <span className="text-end">
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </span>
+                                                return (
+                                                    <div key={cell.id} className="d-flex justify-content-between align-items-center py-1 border-bottom last-border-0">
+                                                        <span className="text-muted fw-semibold" style={{ fontSize: 12, minWidth: 120 }}>
+                                                            {label}
+                                                        </span>
+                                                        <span className="text-end">
+                                                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    );
-                                })}
-                            </div>
+                                    </div>
+                                )
+                            }
                         </div>
                     ))}
                 </div>
