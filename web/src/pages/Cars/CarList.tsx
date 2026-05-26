@@ -9,6 +9,9 @@ import {
     CardBody,
     Col,
     Label,
+    Offcanvas,
+    OffcanvasHeader,
+    OffcanvasBody,
 } from "reactstrap";
 
 // Select Form
@@ -161,6 +164,7 @@ const CarList = () => {
 
     // State
     const isMobile = useIsMobile(680);
+    const isFiltersMobile = useIsMobile();
     const [companyId, setCompanyId] = useState<any>(null);
     const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
@@ -176,6 +180,17 @@ const CarList = () => {
         field: null,
         direction: null,
     });
+    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    const activeFilterCount = [
+        carBrandIds.length > 0,
+        carModelIds.length > 0,
+        statusFilter !== null && statusFilter !== "active",
+        isResumeFilter !== null,
+        hasActiveCampaignFilter !== null,
+        mincost !== undefined,
+        maxcost !== undefined,
+    ].filter(Boolean).length;
 
     // Actions
     const handleSortChange = useCallback((sorting: any) => {
@@ -195,6 +210,17 @@ const CarList = () => {
             return next;
         });
     }, []);
+
+    const handleClearFilters = () => {
+        setCarBrandIds([]);
+        setCarModelIds([]);
+        setMincost(undefined);
+        setMaxcost(undefined);
+        setStatusFilter(null);
+        setIsResumeFilter(null);
+        setHasActiveCampaignFilter(null);
+        setSort({ field: null, direction: null });
+    };
 
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
@@ -398,6 +424,101 @@ const CarList = () => {
         []
     );
 
+    const filterPanelContent = (
+        <>
+            <div className="filter-choices-input mb-3">
+                <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
+                <Select
+                    placeholder="Selecione as marcas"
+                    options={brands}
+                    getOptionLabel={(option: any) => option.name}
+                    getOptionValue={(option: any) => String(option.id)}
+                    isMulti
+                    value={brands.filter((brand: any) => carBrandIds?.includes(brand.id))}
+                    onChange={(selected: any) => {
+                        setCarBrandIds(selected ? selected.map((item: any) => item.id) : []);
+                    }}
+                />
+            </div>
+            <div className="filter-choices-input mb-4">
+                <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
+                <Select
+                    placeholder="Selecione os modelos"
+                    options={models}
+                    getOptionLabel={(option: any) => option.name}
+                    getOptionValue={(option: any) => String(option.id)}
+                    isMulti
+                    value={models.filter((model: any) => carModelIds?.includes(model.id))}
+                    onChange={(selected: any) => {
+                        setCarModelIds(selected ? selected.map((item: any) => item.id) : []);
+                    }}
+                    isDisabled={carBrandIds.length === 0}
+                />
+            </div>
+            <div className="filter-choices-input mb-4">
+                <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
+                <Select
+                    inputId="car_status"
+                    placeholder="Todos os estados"
+                    options={statusFilterOptions}
+                    isClearable={false}
+                    value={statusFilterOptions.find((option) => option.value === statusFilter) ?? statusFilterOptions[0]}
+                    onChange={(selected: StatusFilterOption | null) => {
+                        setStatusFilter(selected?.value ?? null);
+                    }}
+                />
+            </div>
+            <div className="filter-choices-input mb-4">
+                <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
+                <Select
+                    inputId="car_stock_type"
+                    placeholder="Todo o stock"
+                    options={stockTypeOptions}
+                    isClearable={false}
+                    value={stockTypeOptions.find((option) => option.value === isResumeFilter) ?? stockTypeOptions[0]}
+                    onChange={(selected: StockTypeOption | null) => {
+                        setIsResumeFilter(selected?.value ?? null);
+                    }}
+                />
+            </div>
+            <div className="filter-choices-input mb-4">
+                <Label for="car_investment_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Investimento</Label>
+                <Select
+                    inputId="car_investment_status"
+                    placeholder="Todo o stock"
+                    options={investmentFilterOptions}
+                    isClearable={false}
+                    value={investmentFilterOptions.find((option) => option.value === hasActiveCampaignFilter) ?? investmentFilterOptions[0]}
+                    onChange={(selected: InvestmentFilterOption | null) => {
+                        setHasActiveCampaignFilter(selected?.value ?? null);
+                    }}
+                />
+            </div>
+            <div className="filter-choices-input">
+                <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
+                <div className="formCost d-flex gap-2 align-items-center">
+                    <input
+                        className="form-control form-control-sm"
+                        type="text"
+                        placeholder="Preço de"
+                        value={mincost}
+                        onChange={(e: any) => setMincost(e.target.value)}
+                        id="minCost"
+                    />
+                    <span className="fw-semibold text-muted">até</span>
+                    <input
+                        className="form-control form-control-sm"
+                        type="text"
+                        placeholder="Preço até"
+                        value={maxcost}
+                        onChange={(e: any) => setMaxcost(e.target.value)}
+                        id="maxCost"
+                    />
+                </div>
+            </div>
+        </>
+    );
+
     document.title = "Carros | Xplendor";
 
     return (
@@ -414,6 +535,16 @@ const CarList = () => {
                                 <h3 className="mb-1 fw-semibold">Carros</h3>
                             </div>
                             <div className="d-flex gap-2 flex-wrap">
+                                {isFiltersMobile && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-soft-secondary btn-sm"
+                                        onClick={() => setFiltersOpen(true)}
+                                    >
+                                        <i className="ri-filter-line me-1" />
+                                        {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
+                                    </button>
+                                )}
                                 {carmine && carmine.id && (
                                     <button onClick={onClickSyncCarmine} className="btn btn-soft-danger">
                                         <img src={easyDataIcon} alt="EasyData" width={10} className="me-1" />
@@ -430,148 +561,49 @@ const CarList = () => {
                 </Row>
 
                 <Row>
-                    <Col xl={3} lg={4}>
-                        <Card
-                            className="border-0"
-                            style={{
-                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
-                            }}
-                        >
-                            <CardHeader
-                                className="border-bottom-0"
+                    {!isFiltersMobile && (
+                        <Col xl={3} lg={4}>
+                            <Card
+                                className="border-0"
                                 style={{
-                                    padding: "1.25rem 1.25rem 0 1.25rem",
-                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
+                                    background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
                                 }}
                             >
-                                <div className="d-flex mb-3 align-items-start justify-content-between gap-2">
-                                    <div className="flex-grow-1">
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                            Filtros
-                                        </p>
-                                        <h5 className="fs-16 mb-1 fw-semibold">Refinar listagem</h5>
-                                        <p className="text-muted fs-13 mb-0">Encontra rapidamente as viaturas que pedem ação.</p>
+                                <CardHeader
+                                    className="border-bottom-0"
+                                    style={{
+                                        padding: "1.25rem 1.25rem 0 1.25rem",
+                                        background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
+                                    }}
+                                >
+                                    <div className="d-flex mb-3 align-items-start justify-content-between gap-2">
+                                        <div className="flex-grow-1">
+                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                                Filtros
+                                            </p>
+                                            <h5 className="fs-16 mb-1 fw-semibold">Refinar listagem</h5>
+                                            <p className="text-muted fs-13 mb-0">Encontra rapidamente as viaturas que pedem ação.</p>
+                                        </div>
+                                        <div className="flex-shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={handleClearFilters}
+                                                className="btn btn-link text-decoration-none p-0 fs-13"
+                                            >
+                                                Limpar todos
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="flex-shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setCarBrandIds([]);
-                                                setCarModelIds([]);
-                                                setMincost(undefined);
-                                                setMaxcost(undefined);
-                                                setStatusFilter(null);
-                                                setIsResumeFilter(null);
-                                                setHasActiveCampaignFilter(null);
-                                                setSort({
-                                                    field: null,
-                                                    direction: null,
-                                                });
-                                            }}
-                                            className="btn btn-link text-decoration-none p-0 fs-13"
-                                        >
-                                            Limpar todos
-                                        </button>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardBody className="pt-2">
-                                <div className="filter-choices-input mb-3">
-                                    <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
-                                    <Select
-                                        placeholder="Selecione as marcas"
-                                        options={brands}
-                                        getOptionLabel={(option: any) => option.name}
-                                        getOptionValue={(option: any) => String(option.id)}
-                                        isMulti
-                                        value={brands.filter((brand: any) => carBrandIds?.includes(brand.id))}
-                                        onChange={(selected: any) => {
-                                            setCarBrandIds(selected ? selected.map((item: any) => item.id) : []);
-                                        }}
-                                    />
-                                </div>
-                                <div className="filter-choices-input mb-4">
-                                    <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
-                                    <Select
-                                        placeholder="Selecione os modelos"
-                                        options={models}
-                                        getOptionLabel={(option: any) => option.name}
-                                        getOptionValue={(option: any) => String(option.id)}
-                                        isMulti
-                                        value={models.filter((model: any) => carModelIds?.includes(model.id))}
-                                        onChange={(selected: any) => {
-                                            setCarModelIds(selected ? selected.map((item: any) => item.id) : []);
-                                        }}
-                                        isDisabled={carBrandIds.length === 0}
-                                    />
-                                </div>
-                                <div className="filter-choices-input mb-4">
-                                    <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
-                                    <Select
-                                        inputId="car_status"
-                                        placeholder="Todos os estados"
-                                        options={statusFilterOptions}
-                                        isClearable={false}
-                                        value={statusFilterOptions.find((option) => option.value === statusFilter) ?? statusFilterOptions[0]}
-                                        onChange={(selected: StatusFilterOption | null) => {
-                                            setStatusFilter(selected?.value ?? null);
-                                        }}
-                                    />
-                                </div>
-                                <div className="filter-choices-input mb-4">
-                                    <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
-                                    <Select
-                                        inputId="car_stock_type"
-                                        placeholder="Todo o stock"
-                                        options={stockTypeOptions}
-                                        isClearable={false}
-                                        value={stockTypeOptions.find((option) => option.value === isResumeFilter) ?? stockTypeOptions[0]}
-                                        onChange={(selected: StockTypeOption | null) => {
-                                            setIsResumeFilter(selected?.value ?? null);
-                                        }}
-                                    />
-                                </div>
-                                <div className="filter-choices-input mb-4">
-                                    <Label for="car_investment_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Investimento</Label>
-                                    <Select
-                                        inputId="car_investment_status"
-                                        placeholder="Todo o stock"
-                                        options={investmentFilterOptions}
-                                        isClearable={false}
-                                        value={investmentFilterOptions.find((option) => option.value === hasActiveCampaignFilter) ?? investmentFilterOptions[0]}
-                                        onChange={(selected: InvestmentFilterOption | null) => {
-                                            setHasActiveCampaignFilter(selected?.value ?? null);
-                                        }}
-                                    />
-                                </div>
-                                <div className="filter-choices-input">
-                                    <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
-                                    <div className="formCost d-flex gap-2 align-items-center">
-                                        <input
-                                            className="form-control form-control-sm"
-                                            type="text"
-                                            placeholder="Preço de"
-                                            value={mincost}
-                                            onChange={(e: any) => setMincost(e.target.value)}
-                                            id="minCost"
-                                        />
-                                        <span className="fw-semibold text-muted">até</span>
-                                        <input
-                                            className="form-control form-control-sm"
-                                            type="text"
-                                            placeholder="Preço até"
-                                            value={maxcost}
-                                            onChange={(e: any) => setMaxcost(e.target.value)}
-                                            id="maxCost"
-                                        />
-                                    </div>
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </Col>
+                                </CardHeader>
+                                <CardBody className="pt-2">
+                                    {filterPanelContent}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    )}
 
-                    <Col xl={9} lg={8}>
+                    <Col xl={isFiltersMobile ? 12 : 9} lg={isFiltersMobile ? 12 : 8}>
                         <Card
                             className="border-0 overflow-hidden"
                             style={{
@@ -636,6 +668,34 @@ const CarList = () => {
                         </Card>
                     </Col>
                 </Row>
+
+                {isFiltersMobile && (
+                    <Offcanvas
+                        isOpen={filtersOpen}
+                        toggle={() => setFiltersOpen(false)}
+                        direction="start"
+                        scrollable
+                    >
+                        <OffcanvasHeader toggle={() => setFiltersOpen(false)}>
+                            <div>
+                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Filtros</p>
+                                <span className="fw-semibold fs-16">Refinar listagem</span>
+                            </div>
+                        </OffcanvasHeader>
+                        <OffcanvasBody>
+                            <div className="d-flex justify-content-end mb-4">
+                                <button
+                                    type="button"
+                                    onClick={handleClearFilters}
+                                    className="btn btn-link text-decoration-none p-0 fs-13"
+                                >
+                                    Limpar todos
+                                </button>
+                            </div>
+                            {filterPanelContent}
+                        </OffcanvasBody>
+                    </Offcanvas>
+                )}
             </Container>
         </div>
     );
