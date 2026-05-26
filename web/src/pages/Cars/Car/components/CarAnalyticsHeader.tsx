@@ -31,7 +31,7 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ padding: "16px 18px" }}>
                 <div style={{ minWidth: 0 }}>
                     <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
-                        <h5 className="mb-0 fw-semibold">
+                        <h5 className="mb-0 fw-semibold text-truncate" style={{ minWidth: 0 }}>
                             {car?.brand?.name} {car?.model?.name}
                         </h5>
                         {car?.version && (
@@ -54,34 +54,34 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
                             </span>
                         </span>
                         {car?.created_at && (
-                            <span>
+                            <span className="d-none d-md-inline">
                                 Publicado <span className="text-dark fw-semibold">{fmtDate(car.created_at)}</span>
                             </span>
                         )}
                         {car?.license_plate && (
-                            <span>
+                            <span className="d-none d-md-inline">
                                 Matrícula <span className="text-dark fw-semibold">{car.license_plate}</span>
                             </span>
                         )}
                         {ips && (
-                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
+                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill d-none d-md-inline-flex`}>
                                 <i className="ri-award-line me-1" />
                                 Probabilidade de venda {ips.score}/100
                             </span>
                         )}
                         {ips && (
-                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill`}>
+                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill d-none d-md-inline-flex`}>
                                 {ipsLabel}
                             </span>
                         )}
                         {ai && (
-                            <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"} rounded-pill`}>
+                            <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"} rounded-pill d-none d-md-inline-flex`}>
                                 <i className="ri-alarm-warning-line me-1" />
                                 {aiMeta?.urgency_level === "Alta" ? "Precisa de atenção agora" : "Acompanhar esta semana"}
                             </span>
                         )}
                         {aiMeta?.price_alert && (
-                            <span className="badge bg-warning-subtle text-warning rounded-pill">
+                            <span className="badge bg-warning-subtle text-warning rounded-pill d-none d-md-inline-flex">
                                 <i className="ri-price-tag-3-line me-1" />
                                 Alerta de preço
                             </span>
@@ -90,7 +90,8 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
                 </div>
                 <div className="d-flex gap-2 flex-wrap">
                     <Link to={`/cars/${car?.id}`} className="btn btn-soft-primary btn-sm">
-                        <i className="ri-pencil-fill me-1" /> Editar viatura
+                        <i className="ri-pencil-fill" />
+                        <span className="d-none d-md-inline ms-1">Editar viatura</span>
                     </Link>
                 </div>
             </div>
