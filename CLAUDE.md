@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.6
+> Última actualização: 2026-05-26 · Versão 1.7
 
 ---
 
@@ -27,6 +27,7 @@
 | 1.4 | 2026-05-25 | 6 sub-fases: X7.1 (fix mapeamento helper), Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional), Y2.1 (UX comparáveis + fix tipo MarketComparable), Y2.2 (links mortos: search_url + check-link + cache). |
 | 1.5 | 2026-05-26 | Z1.a (fix reorder FilePond), Z1.b (sentinel existing_images_present), Z2.a (original_path + crop backend), Z2.b (ImageCropperModal + integração FilePond), Z2.c (endpoint recrop + UI + testes). |
 | 1.6 | 2026-05-26 | Fix D completo (D1 investigação infra, D2 REDIS_HOST, D3 fila Redis, D4 cache Redis, D6 scheduler output visível em prod). Y3 mobile: Y3.a (CarAnalyticsHeader trim), Y3.b (CarList filtros off-canvas), Y3.c (Dashboard grid + SummaryDashboard borderBottom). |
+| 1.7 | 2026-05-26 | Y3.d mobile cards: Y3.d.0 (fix overlap desktop /cars), Y3.d.1 (renderMobileCard prop XTanStackTable), Y3.d.2 (car mobile card com imagem 16:9 + chips + nav), Y3.d.3 (lead mobile card com avatar + status select + acções), Y3.d.4 (UsersList migração useIsMobile). |
 
 ---
 
@@ -1373,6 +1374,21 @@ Abaixo de 768px, a sidebar de filtros (`Col xl={3} lg={4}`) é substituída por 
 
 **Y3.c — Dashboard signal cards grid + SummaryDashboard border switch**
 `ActionRequiredCarsDashboard`: signal cards passam de `d-flex flex-wrap` para `row g-2` com `col-6 col-lg-3` — grid 2×2 em mobile/tablet e 4×1 em desktop. `minWidth: 78` removido (Bootstrap gere a largura). `key` movido para o wrapper `col-6`. `SummaryDashboard`: `useIsMobile(1200)` + `isCompact` — abaixo de 1200px as separações passam de `borderRight` para `borderBottom`, eliminando linhas verticais órfãs no layout 2×2 (`col-md-6`).
+
+**Y3.d.0 — Fix sobreposição desktop /cars**
+`CarList` coluna "Carro": `flex-grow-1` recebe `style={{ minWidth: 0 }}` e `h5` recebe `text-truncate`. Sem `minWidth: 0`, o flex-grow não impede overflow do texto em viewports ~1024-1280px — títulos longos invadiam a coluna Preço.
+
+**Y3.d.1 — Prop `renderMobileCard` no XTanStackTable**
+Nova prop opcional `renderMobileCard?: (rowData: any) => React.ReactNode` no `IXTanStackTable`. Quando presente e `mobileMode=true`, substitui o bloco genérico de label/valor. Retro-compatível — tabelas existentes sem a prop mantêm o comportamento anterior.
+
+**Y3.d.2 — Car mobile card em CarList**
+`renderCarMobileCard` useCallback em `CarList`: 16:9 image (ou placeholder cinzento com `ri-car-line` + "Sem imagem"), title + attention badge, `CarPriceDisplay`, 3 chips (Views/Leads/Conversão), footer com data de publicação e botões de acção 44px (`/analytics` + `/edit`). Tap no card navega para `/cars/:id/analytics`; botões filhos têm `stopPropagation`.
+
+**Y3.d.3 — Lead mobile card em LeadList**
+`formatTimeDiff` extraído para helper de módulo (substitui cálculo inline na coluna Tempo). `renderLeadMobileCard` useCallback: avatar com inicial (círculo `#405189`), nome/telefone/email, thumbnail + nome do carro, status select (reutiliza `handleStatusChange`), footer com tempo+origem e botões 44px (tel/whatsapp/email). Sem tap-no-card.
+
+**Y3.d.4 — UsersList migração useIsMobile**
+`useState(window.innerWidth < 680)` substituído por `useIsMobile(680)` + import do hook. Fix de bug silencioso: o estado anterior não actualizava em resize de janela.
 
 ### 🚧 Próximo
 

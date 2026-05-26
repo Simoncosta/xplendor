@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 import {
     Container,
@@ -39,8 +40,8 @@ export default function UsersList() {
 
     const { users, meta, loading } = useSelector(selectUsersListViewModel);
 
+    const isMobile = useIsMobile(680);
     const [companyId, setCompanyId] = useState<any>(null);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 680);
 
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
