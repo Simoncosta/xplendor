@@ -89,7 +89,7 @@ services:
     restart: always
     working_dir: /var/www/html
     entrypoint: []
-    command: sh -c "while true; do php artisan schedule:run >> /dev/null 2>&1; sleep 60; done"
+    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor

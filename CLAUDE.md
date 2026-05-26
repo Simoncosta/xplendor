@@ -26,7 +26,7 @@
 | 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
 | 1.4 | 2026-05-25 | 6 sub-fases: X7.1 (fix mapeamento helper), Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional), Y2.1 (UX comparáveis + fix tipo MarketComparable), Y2.2 (links mortos: search_url + check-link + cache). |
 | 1.5 | 2026-05-26 | Z1.a (fix reorder FilePond), Z1.b (sentinel existing_images_present), Z2.a (original_path + crop backend), Z2.b (ImageCropperModal + integração FilePond), Z2.c (endpoint recrop + UI + testes). |
-| 1.6 | 2026-05-26 | D2/D3/D4 (Redis correctamente configurado: REDIS_HOST, QUEUE_CONNECTION, CACHE_STORE). Y3.a (CarAnalyticsHeader trim mobile), Y3.b (CarList off-canvas filtros), Y3.c (Dashboard signal cards grid + SummaryDashboard borderBottom). |
+| 1.6 | 2026-05-26 | Fix D completo (D1 investigação infra, D2 REDIS_HOST, D3 fila Redis, D4 cache Redis, D6 scheduler output visível em prod). Y3 mobile: Y3.a (CarAnalyticsHeader trim), Y3.b (CarList filtros off-canvas), Y3.c (Dashboard grid + SummaryDashboard borderBottom). |
 
 ---
 
@@ -1173,7 +1173,7 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       descartado (sem acesso a `.aggregate_id`) e o NeverRunState nunca
       foi reportado.
 
-    - ✅ **Fix D** (infra) — parcialmente resolvido em 2026-05-26. `REDIS_HOST=redis` (D2), `QUEUE_CONNECTION=redis` (D3), `CACHE_STORE=redis` (D4). Fila em Redis db=0, cache em Redis db=1. Worker `--max-time=3600` mantido (Docker `restart: always` cobre o restart horário). D6 (visibilidade do scheduler em prod) ainda pendente.
+    - ✅ **Fix D** (infra) — resolvido em 2026-05-26. `REDIS_HOST=redis` (D2), `QUEUE_CONNECTION=redis` (D3), `CACHE_STORE=redis` (D4). Fila em Redis db=0, cache em Redis db=1. Worker `--max-time=3600` mantido (Docker `restart: always` cobre o restart horário). `>> /dev/null 2>&1` removido do scheduler em prod (D6) — output agora visível via `docker logs xplendor-scheduler`.
 
     **Relacionado com:**
     - Items 48 e 49 — todos beneficiam do Fix C
@@ -1212,6 +1212,8 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       cada invocação, monitorizar com Docker healthcheck)
 
     Relacionado com: item 50 Fix B (depende deste scheduler para correr).
+
+    **D6 (2026-05-26):** Output do scheduler em produção tornado visível — `>> /dev/null 2>&1` removido de `docker-compose.prod.yml`. `docker logs xplendor-scheduler` passa a mostrar a saída de cada `schedule:run`. Permite diagnosticar o congelamento descrito acima quando se atacar este item em sessão dedicada.
 
 ✅ 52. **Comparação de mercado ignora preço promocional — resolvido em 2026-05-25 (Y2)** —
     Descoberto em 2026-05-25 durante validação E2E do Fix C.1.
@@ -1354,8 +1356,14 @@ Migration `original_path nullable text` em `car_images`. `CarImageService::handl
 
 **Nota sobre imagens legadas (pré-Z2.a):** `original_path = NULL` — botão de re-crop não aparece. Zero retroactividade. Documentado.
 
+**D1 — Investigação infra Redis/queue/cache**
+Relatório completo de infra: `REDIS_HOST=127.0.0.1` inacessível dentro dos containers (devia ser nome do serviço Docker `redis`), fila e cache em MariaDB em vez de Redis, worker com `--max-time=3600`, scheduler com output suprimido em prod. Base para D2–D6.
+
 **D2/D3/D4 — Redis correctamente configurado**
 `REDIS_HOST=127.0.0.1` → `REDIS_HOST=redis` (D2). `QUEUE_CONNECTION=redis` (D3). `CACHE_STORE=redis` (D4). Fila e cache migradas de MariaDB para Redis. `.env.example` actualizado nos 3 commits correspondentes. Worker e scheduler reiniciados a seguir a cada mudança. Validado: `redis-cli PING` → `PONG` em ambas as connections; jobs processados em <1s; `Cache::put/get` OK.
+
+**D6 — Output do scheduler visível em produção**
+`>> /dev/null 2>&1` removido de `docker-compose.prod.yml` (linha 92). `docker logs xplendor-scheduler` passa a mostrar a saída de cada invocação de `schedule:run`. Dev nunca teve este redirect. Diagnóstico do item 51 (congelamentos) agora possível com visibilidade real dos logs.
 
 **Y3.a — CarAnalyticsHeader trim mobile**
 Abaixo de `md` (768px), ocultos via `d-none d-md-inline` / `d-none d-md-inline-flex`: data de publicação, matrícula, badge IPS (numérico), badge IPS (classificação), badge urgência IA, badge alerta de preço. Botão "Editar viatura" passa a mostrar apenas ícone em mobile (`d-none d-md-inline` no texto). `text-truncate` + `minWidth: 0` adicionados ao `h5` para marcas longas ("Mercedes-Benz Classe E") em viewports estreitos.
