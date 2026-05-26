@@ -302,9 +302,9 @@ const CarList = () => {
                                 />
                             </div>
                         )}
-                        <div className="flex-grow-1">
+                        <div className="flex-grow-1" style={{ minWidth: 0 }}>
                             <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                <h5 className="fs-14 mb-0 fw-semibold text-body">
+                                <h5 className="fs-14 mb-0 fw-semibold text-body text-truncate">
                                     {car.brand.name} {car.model.name}
                                 </h5>
                                 <span className={`badge rounded-pill px-3 py-2 fs-11 ${badge.className}`}>
