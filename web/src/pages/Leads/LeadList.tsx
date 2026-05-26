@@ -17,6 +17,14 @@ import { getLeadsPaginate } from "slices/thunks";
 import { updateLeadStatus } from "slices/leads/thunk";
 import { createSelector } from "reselect";
 
+const formatTimeDiff = (dateStr: string): string => {
+    const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+    return `${Math.floor(diff / 86400)}d`;
+};
+
 const selectLeadState = (state: any) => state.Lead;
 
 const leadStatuses = [
@@ -142,18 +150,7 @@ export default function LeadList() {
             enableColumnFilter: false,
             header: "Tempo",
             accessorKey: "created_at",
-            cell: ({ row }: any) => {
-                const date = new Date(row.original.created_at);
-                const now = new Date();
-
-                const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-                if (diff < 60) return `${diff}s`;
-                if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-                if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-
-                return `${Math.floor(diff / 86400)}d`;
-            },
+            cell: ({ row }: any) => formatTimeDiff(row.original.created_at),
         },
         {
             enableColumnFilter: false,
@@ -217,6 +214,113 @@ export default function LeadList() {
         [handleStatusChange, loadingUpdate]
     );
 
+    const renderLeadMobileCard = useCallback((lead: any) => {
+        const phone = lead.phone?.replace(/\D/g, "");
+        const car = lead.car;
+        const initial = lead.name?.charAt(0)?.toUpperCase() ?? "?";
+        const carImage = car?.images?.find((img: any) => img.is_primary)?.image;
+
+        return (
+            <div
+                style={{
+                    background: "#fff",
+                    border: "1px solid #e9ebec",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                }}
+            >
+                <div className="d-flex align-items-start gap-3" style={{ padding: "14px 14px 12px" }}>
+                    <div
+                        className="flex-shrink-0 d-flex align-items-center justify-content-center fw-bold"
+                        style={{
+                            width: 42,
+                            height: 42,
+                            borderRadius: "50%",
+                            background: "#405189",
+                            color: "#fff",
+                            fontSize: 16,
+                        }}
+                    >
+                        {initial}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <h6 className="mb-0 fw-semibold text-body text-truncate">{lead.name}</h6>
+                        {lead.phone && (
+                            <span className="text-muted fs-13 d-block">{lead.phone}</span>
+                        )}
+                        <span className="text-muted fs-12 d-block text-truncate">{lead.email}</span>
+                    </div>
+                </div>
+
+                <div style={{ borderTop: "1px solid #e9ebec", padding: "10px 14px" }}>
+                    {car && (
+                        <div className="d-flex align-items-center gap-2 mb-2">
+                            {carImage && (
+                                <img
+                                    src={process.env.REACT_APP_PUBLIC_URL + carImage}
+                                    alt=""
+                                    className="rounded flex-shrink-0"
+                                    style={{ width: 44, height: 30, objectFit: "cover" }}
+                                />
+                            )}
+                            <span className="fw-semibold text-body fs-13 text-truncate">
+                                {car.brand?.name} {car.model?.name}
+                            </span>
+                        </div>
+                    )}
+                    <select
+                        value={lead.status}
+                        onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                        className="form-select form-select-sm w-100"
+                        disabled={loadingUpdate}
+                    >
+                        {leadStatuses.map((status) => (
+                            <option key={status.value} value={status.value}>{status.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                <div
+                    className="d-flex align-items-center justify-content-between gap-2"
+                    style={{ borderTop: "1px solid #e9ebec", padding: "10px 14px" }}
+                >
+                    <span className="text-muted fs-12 text-truncate">
+                        {formatTimeDiff(lead.created_at)} · {lead.channel} - {lead.utm_source}
+                    </span>
+                    <div className="d-flex gap-2 flex-shrink-0">
+                        {phone && (
+                            <>
+                                <a
+                                    href={`tel:${phone}`}
+                                    className="btn btn-sm btn-soft-primary"
+                                    style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                                >
+                                    <i className="ri-phone-line" />
+                                </a>
+                                <a
+                                    href={`https://wa.me/${phone}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn btn-sm btn-soft-success"
+                                    style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                                >
+                                    <i className="ri-whatsapp-line" />
+                                </a>
+                            </>
+                        )}
+                        <a
+                            href={`mailto:${lead.email}`}
+                            className="btn btn-sm btn-soft-secondary"
+                            style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                            <i className="ri-mail-line" />
+                        </a>
+                    </div>
+                </div>
+            </div>
+        );
+    }, [handleStatusChange, loadingUpdate]);
+
     document.title = "Leads | Xplendor";
 
     return (
@@ -243,6 +347,7 @@ export default function LeadList() {
                                         isBordered={true}
                                         theadClass="text-muted table-light"
                                         mobileMode={isMobile}
+                                        renderMobileCard={renderLeadMobileCard}
                                     />
                                 </div>
                             </Card>
