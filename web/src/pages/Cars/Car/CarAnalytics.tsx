@@ -128,7 +128,7 @@ export default function CarAnalytics() {
                                 contactProbability={contactProbability}
                                 primaryAction={primaryRecommendedAction}
                             >
-                                <div className="d-grid gap-3">
+                                <div className="d-grid gap-3" style={{ overflow: "hidden" }}>
                                     <div className="row g-3">
                                         <div className="col-xl-3 col-sm-6">
                                             <Metric label="VIEWS" value={Number(m?.views ?? 0)} />

@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.7.1
+> Última actualização: 2026-05-26 · Versão 1.7.2
 
 ---
 
@@ -29,6 +29,7 @@
 | 1.6 | 2026-05-26 | Fix D completo (D1 investigação infra, D2 REDIS_HOST, D3 fila Redis, D4 cache Redis, D6 scheduler output visível em prod). Y3 mobile: Y3.a (CarAnalyticsHeader trim), Y3.b (CarList filtros off-canvas), Y3.c (Dashboard grid + SummaryDashboard borderBottom). |
 | 1.7 | 2026-05-26 | Y3.d mobile cards: Y3.d.0 (fix overlap desktop /cars), Y3.d.1 (renderMobileCard prop XTanStackTable), Y3.d.2 (car mobile card com imagem 16:9 + chips + nav), Y3.d.3 (lead mobile card com avatar + status select + acções), Y3.d.4 (UsersList migração useIsMobile). |
 | 1.7.1 | 2026-05-26 | Y3.d.5 — Fix regressão Y1.2: `minWidth: 0` no CarPageNav outer div elimina propagação de min-content para o flex parent, que causava overflow horizontal em todas as rotas `/cars/:id/*` em viewports < ~500px. |
+| 1.7.2 | 2026-05-26 | Y3.d.6 — Fix overflow residual em CarAnalytics: margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewports mobile; `overflow: hidden` no d-grid wrapper resolve. |
 
 ---
 
@@ -1395,6 +1396,9 @@ Nova prop opcional `renderMobileCard?: (rowData: any) => React.ReactNode` no `IX
 
 **Y3.d.5 — Fix overflow horizontal em CarPageNav (regressão Y1.2)**
 `minWidth: 0` adicionado ao outer div do CarPageNav. Contexto: Y1.2 introduziu `flexWrap: "nowrap"` + `flexShrink: 0` nas tabs sem adicionar `minWidth: 0` ao container. O CSS default `min-width: auto` num flex item significa que o Col pai nunca comprime abaixo do `min-content` do CarPageNav (~500px = soma das tabs), inflando o `scrollWidth` da página e criando scroll horizontal em todas as rotas `/cars/:id/*` em viewports < ~500px. Com `minWidth: 0` no outer div, a propagação de min-content é cortada: o Col fica nos seus ~350px calculados pelo flex layout, `scrollWidth` da página ≤ viewport, sem scroll horizontal.
+
+**Y3.d.6 — Fix overflow residual em CarAnalytics (KPI row)**
+Margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewports mobile; `overflow: hidden` no d-grid wrapper resolve. Contexto: após Y3.d.5, persistia overflow residual de 16px em CarAnalytics a ~500px. Causa: `.row.g-3` tem `margin-x: -8px` em cada lado (total -16px); o wrapper d-grid não tinha `overflow: hidden` para absorver esse bleed. A ~504px, o row media 488px num container de 472px, inflando o `scrollWidth` da página em 16px. Fix: `overflow: "hidden"` no inner d-grid que envolve directamente o `row g-3` dos KPIs (linha 131 de `CarAnalytics.tsx`). As outras rotas (`/intelligence`, `/ficha`) não têm `.row.g-3` sem padding adequado, pelo que não precisam de fix equivalente.
 
 ### 🚧 Próximo
 
