@@ -1,4 +1,5 @@
 import { Col } from "reactstrap";
+import { useIsMobile } from "../../../hooks/useIsMobile";
 
 interface ISummaryDashboard {
     total_cars: number;
@@ -41,6 +42,8 @@ const metrics = (summary: ISummaryDashboard) => [
 ];
 
 export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
+    const isCompact = useIsMobile(1200);
+
     return (
         <Col xs={12}>
             <section
@@ -58,7 +61,8 @@ export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
                                 className="d-flex align-items-center justify-content-between gap-3"
                                 style={{
                                     padding: "16px 18px",
-                                    borderRight: index < 3 ? "1px solid #e9ebec" : "none",
+                                    borderRight: !isCompact && index < 3 ? "1px solid #e9ebec" : "none",
+                                    borderBottom: isCompact && index < 3 ? "1px solid #e9ebec" : "none",
                                 }}
                             >
                                 <div>

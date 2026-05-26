@@ -133,22 +133,22 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                             </div>
 
                                             <div className="col-lg-5">
-                                                <div className="d-flex flex-wrap gap-2 justify-content-lg-end">
+                                                <div className="row g-2">
                                                     {signalItems(car.signals).map((signal) => (
-                                                        <div
-                                                            key={signal.label}
-                                                            style={{
-                                                                minWidth: 78,
-                                                                border: "1px solid #e9ebec",
-                                                                borderRadius: 12,
-                                                                padding: "8px 10px",
-                                                                background: "#fff",
-                                                            }}
-                                                        >
-                                                            <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.06em" }}>
-                                                                {signal.label}
+                                                        <div className="col-6 col-lg-3" key={signal.label}>
+                                                            <div
+                                                                style={{
+                                                                    border: "1px solid #e9ebec",
+                                                                    borderRadius: 12,
+                                                                    padding: "8px 10px",
+                                                                    background: "#fff",
+                                                                }}
+                                                            >
+                                                                <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.06em" }}>
+                                                                    {signal.label}
+                                                                </div>
+                                                                <div className="fw-semibold text-body fs-14">{signal.value}</div>
                                                             </div>
-                                                            <div className="fw-semibold text-body fs-14">{signal.value}</div>
                                                         </div>
                                                     ))}
                                                 </div>

@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.5
+> Última actualização: 2026-05-26 · Versão 1.6
 
 ---
 
@@ -26,6 +26,7 @@
 | 1.3.1 | 2026-05-25 | X7.1 — Correcção do mapeamento de resposta no helper: bug histórico desde Fase E exposto pelo X7. 5/5 testes frontend novos. |
 | 1.4 | 2026-05-25 | 6 sub-fases: X7.1 (fix mapeamento helper), Y1.1 (useIsMobile hook + LeadList mobile), Y1.2 (CarPageNav overflow scroll), Y2 (item 52: preço promocional), Y2.1 (UX comparáveis + fix tipo MarketComparable), Y2.2 (links mortos: search_url + check-link + cache). |
 | 1.5 | 2026-05-26 | Z1.a (fix reorder FilePond), Z1.b (sentinel existing_images_present), Z2.a (original_path + crop backend), Z2.b (ImageCropperModal + integração FilePond), Z2.c (endpoint recrop + UI + testes). |
+| 1.6 | 2026-05-26 | D2/D3/D4 (Redis correctamente configurado: REDIS_HOST, QUEUE_CONNECTION, CACHE_STORE). Y3.a (CarAnalyticsHeader trim mobile), Y3.b (CarList off-canvas filtros), Y3.c (Dashboard signal cards grid + SummaryDashboard borderBottom). |
 
 ---
 
@@ -1172,8 +1173,7 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
       descartado (sem acesso a `.aggregate_id`) e o NeverRunState nunca
       foi reportado.
 
-    - 🟡 **Fix D** (infra) — pendente. Worker `--max-time` + migrar
-      fila/cache para Redis correctamente configurado.
+    - ✅ **Fix D** (infra) — parcialmente resolvido em 2026-05-26. `REDIS_HOST=redis` (D2), `QUEUE_CONNECTION=redis` (D3), `CACHE_STORE=redis` (D4). Fila em Redis db=0, cache em Redis db=1. Worker `--max-time=3600` mantido (Docker `restart: always` cobre o restart horário). D6 (visibilidade do scheduler em prod) ainda pendente.
 
     **Relacionado com:**
     - Items 48 e 49 — todos beneficiam do Fix C
@@ -1353,6 +1353,18 @@ Migration `original_path nullable text` em `car_images`. `CarImageService::handl
 **Nota sobre re-crop e FilePond:** o tile do FilePond não reflecte o novo corte até refresh da página. Apenas o thumbnail na secção "Editar cortes" é actualizado via cache-bust. Comportamento aceite na v1 — documentado aqui para futuro.
 
 **Nota sobre imagens legadas (pré-Z2.a):** `original_path = NULL` — botão de re-crop não aparece. Zero retroactividade. Documentado.
+
+**D2/D3/D4 — Redis correctamente configurado**
+`REDIS_HOST=127.0.0.1` → `REDIS_HOST=redis` (D2). `QUEUE_CONNECTION=redis` (D3). `CACHE_STORE=redis` (D4). Fila e cache migradas de MariaDB para Redis. `.env.example` actualizado nos 3 commits correspondentes. Worker e scheduler reiniciados a seguir a cada mudança. Validado: `redis-cli PING` → `PONG` em ambas as connections; jobs processados em <1s; `Cache::put/get` OK.
+
+**Y3.a — CarAnalyticsHeader trim mobile**
+Abaixo de `md` (768px), ocultos via `d-none d-md-inline` / `d-none d-md-inline-flex`: data de publicação, matrícula, badge IPS (numérico), badge IPS (classificação), badge urgência IA, badge alerta de preço. Botão "Editar viatura" passa a mostrar apenas ícone em mobile (`d-none d-md-inline` no texto). `text-truncate` + `minWidth: 0` adicionados ao `h5` para marcas longas ("Mercedes-Benz Classe E") em viewports estreitos.
+
+**Y3.b — CarList filtros off-canvas**
+Abaixo de 768px, a sidebar de filtros (`Col xl={3} lg={4}`) é substituída por um Offcanvas (Reactstrap, desliza da esquerda, `scrollable`, ESC fecha, backdrop fecha). Botão "Filtros (N)" aparece na toolbar apenas quando `isFiltersMobile`. `activeFilterCount` conta filtros activos excluindo `statusFilter === "active"` (estado default). `filterPanelContent` extraído para const reutilizado em desktop e Offcanvas. `handleClearFilters` extraído de inline para função nomeada.
+
+**Y3.c — Dashboard signal cards grid + SummaryDashboard border switch**
+`ActionRequiredCarsDashboard`: signal cards passam de `d-flex flex-wrap` para `row g-2` com `col-6 col-lg-3` — grid 2×2 em mobile/tablet e 4×1 em desktop. `minWidth: 78` removido (Bootstrap gere a largura). `key` movido para o wrapper `col-6`. `SummaryDashboard`: `useIsMobile(1200)` + `isCompact` — abaixo de 1200px as separações passam de `borderRight` para `borderBottom`, eliminando linhas verticais órfãs no layout 2×2 (`col-md-6`).
 
 ### 🚧 Próximo
 
