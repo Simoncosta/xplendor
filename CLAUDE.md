@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.7
+> Última actualização: 2026-05-26 · Versão 1.7.1
 
 ---
 
@@ -28,6 +28,7 @@
 | 1.5 | 2026-05-26 | Z1.a (fix reorder FilePond), Z1.b (sentinel existing_images_present), Z2.a (original_path + crop backend), Z2.b (ImageCropperModal + integração FilePond), Z2.c (endpoint recrop + UI + testes). |
 | 1.6 | 2026-05-26 | Fix D completo (D1 investigação infra, D2 REDIS_HOST, D3 fila Redis, D4 cache Redis, D6 scheduler output visível em prod). Y3 mobile: Y3.a (CarAnalyticsHeader trim), Y3.b (CarList filtros off-canvas), Y3.c (Dashboard grid + SummaryDashboard borderBottom). |
 | 1.7 | 2026-05-26 | Y3.d mobile cards: Y3.d.0 (fix overlap desktop /cars), Y3.d.1 (renderMobileCard prop XTanStackTable), Y3.d.2 (car mobile card com imagem 16:9 + chips + nav), Y3.d.3 (lead mobile card com avatar + status select + acções), Y3.d.4 (UsersList migração useIsMobile). |
+| 1.7.1 | 2026-05-26 | Y3.d.5 — Fix regressão Y1.2: `minWidth: 0` no CarPageNav outer div elimina propagação de min-content para o flex parent, que causava overflow horizontal em todas as rotas `/cars/:id/*` em viewports < ~500px. |
 
 ---
 
@@ -1323,6 +1324,8 @@ Hook `web/src/hooks/useIsMobile(breakpoint)` partilhado, com `useState` inicial 
 **Y1.2 — CarPageNav overflow scroll em mobile**
 Substituído `flexWrap: "wrap"` por `flexWrap: "nowrap" + overflowX: "auto"` no container de tabs. Adicionado `flexShrink: 0` em cada link para evitar compressão dos labels com badges. Tabs ficam sempre numa única linha e fazem scroll horizontal em viewports estreitos.
 
+**Fix incompleto em Y1.2 — corrigido em Y3.d.5:** `flexWrap: "nowrap"` + `flexShrink: 0` sem `minWidth: 0` no container faziam o `min-content width` do div (soma de todas as tabs, ~500px) propagar-se pelo Col pai → Row → Container fluid, inflando o `scrollWidth` da página em viewports estreitos. Adicionado `minWidth: 0` ao outer div em Y3.d.5 — ver entrada abaixo.
+
 **Y2 — Preço promocional na comparação de mercado (item 52)**
 Migration `promo_price_gross` nullable em `car_market_aggregates`. Novo método `effectivePrice()` no model. `priceDifference()` e `priceSignal()` usam preço efectivo (promo se activo, senão gross). Resource emite `comparison.car_price_gross` apenas quando promo activa. UI: label "Preço promo" + linha "↑ PVP: €X" no MetricBox. 5 novos testes unitários (16/16). Item 52 ✅.
 
@@ -1389,6 +1392,9 @@ Nova prop opcional `renderMobileCard?: (rowData: any) => React.ReactNode` no `IX
 
 **Y3.d.4 — UsersList migração useIsMobile**
 `useState(window.innerWidth < 680)` substituído por `useIsMobile(680)` + import do hook. Fix de bug silencioso: o estado anterior não actualizava em resize de janela.
+
+**Y3.d.5 — Fix overflow horizontal em CarPageNav (regressão Y1.2)**
+`minWidth: 0` adicionado ao outer div do CarPageNav. Contexto: Y1.2 introduziu `flexWrap: "nowrap"` + `flexShrink: 0` nas tabs sem adicionar `minWidth: 0` ao container. O CSS default `min-width: auto` num flex item significa que o Col pai nunca comprime abaixo do `min-content` do CarPageNav (~500px = soma das tabs), inflando o `scrollWidth` da página e criando scroll horizontal em todas as rotas `/cars/:id/*` em viewports < ~500px. Com `minWidth: 0` no outer div, a propagação de min-content é cortada: o Col fica nos seus ~350px calculados pelo flex layout, `scrollWidth` da página ≤ viewport, sem scroll horizontal.
 
 ### 🚧 Próximo
 

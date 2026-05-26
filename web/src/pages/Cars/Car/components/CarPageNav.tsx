@@ -27,6 +27,7 @@ export default function CarPageNav({ active }: { active: NavPage }) {
                 gap: "4px",
                 flexWrap: "nowrap",
                 overflowX: "auto",
+                minWidth: 0,
             }}
         >
             {pages.map((p) => {
