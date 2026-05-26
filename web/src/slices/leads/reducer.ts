@@ -65,7 +65,7 @@ const LeadSlice = createSlice({
                 state.statusUpdatePrevious = null;
 
                 const updatedLead = action.payload;
-                console.log("UPDATED LEAD:", updatedLead);
+
                 state.data.leads = state.data.leads.map((lead: any) =>
                     lead.id === updatedLead.id
                         ? {

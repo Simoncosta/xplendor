@@ -620,7 +620,7 @@ const CarList = () => {
                     }}
                 />
             </div>
-            <div className="filter-choices-input mb-4">
+            {/* <div className="filter-choices-input mb-4">
                 <Label for="car_investment_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Investimento</Label>
                 <Select
                     inputId="car_investment_status"
@@ -632,7 +632,7 @@ const CarList = () => {
                         setHasActiveCampaignFilter(selected?.value ?? null);
                     }}
                 />
-            </div>
+            </div> */}
             <div className="filter-choices-input">
                 <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
                 <div className="formCost d-flex gap-2 align-items-center">
