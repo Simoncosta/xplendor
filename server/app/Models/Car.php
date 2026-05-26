@@ -73,6 +73,18 @@ class Car extends Model implements AuditableContract
         'car_created_at' => 'datetime',
         'sold_at' => 'datetime',
         'subsegment' => 'string',
+        // Fix F.2/F.3 — normaliza tipos para evitar diff fantasma no sync Carmine
+        'price_gross' => 'decimal:2',
+        'promo_price_gross' => 'decimal:2',
+        'is_resume' => 'boolean',
+        'is_metallic' => 'boolean',
+        'mileage_km' => 'integer',
+        'power_hp' => 'integer',
+        'engine_capacity_cc' => 'integer',
+        'doors' => 'integer',
+        'seats' => 'integer',
+        'registration_year' => 'integer',
+        'registration_month' => 'integer',
     ];
 
     protected $appends = [

@@ -68,8 +68,34 @@ class CarmineConnectionService extends BaseService
                     $car = $this->carRepository->store($carmineMapData);
                     $imported++;
                 } else {
-                    $car = $this->carRepository->update($carmine['id'], $carmineMapData);
-                    $updated++;
+                    $existingCar = Car::find($carmine['id']);
+
+                    if (!$existingCar) {
+                        // Edge case: registo desapareceu entre findOrFail e Car::find
+                        $car = $this->carRepository->store($carmineMapData);
+                        $imported++;
+                    } else {
+                        $hasChanges = false;
+                        foreach ($carmineMapData as $key => $newValue) {
+                            // != em vez de !== porque os casts do Eloquent normalizam
+                            // tipos ao ler, mas $carmineMapData vem de PHP puro
+                            if ($existingCar->{$key} != $newValue) {
+                                $hasChanges = true;
+                                break;
+                            }
+                        }
+
+                        if ($hasChanges) {
+                            $car = $this->carRepository->update($existingCar->id, $carmineMapData);
+                            $updated++;
+                        } else {
+                            $car = $existingCar;
+                            Log::debug('[Carmine Sync] Viatura sem mudanças, saltando', [
+                                'carmine_id' => $carmineMapData['carmine_id'],
+                                'car_id' => $existingCar->id,
+                            ]);
+                        }
+                    }
                 }
 
                 if (isset($car->id)) {
@@ -97,11 +123,12 @@ class CarmineConnectionService extends BaseService
         });
 
         Log::info('[Carmine Import] Concluído', [
-            'company_id' => $companyId,
+            'company_id'     => $companyId,
             'total_recebidos' => $totalFetched,
-            'importados' => $imported,
-            'atualizados' => $updated,
-            'erros'      => count($errors),
+            'importados'     => $imported,
+            'atualizados'    => $updated,
+            'sem_mudancas'   => $totalFetched - $imported - $updated - count($errors),
+            'erros'          => count($errors),
         ]);
 
         if (!empty($errors)) {
@@ -211,7 +238,8 @@ class CarmineConnectionService extends BaseService
             "youtube_url"             => $data['UrlVideo'],
             "company_id"              => $companyId,
             "car_created_at"          => $this->parseCarmineDate($data['DataCriacao'] ?? null),
-            "updated_at"              => $this->parseCarmineDate($data['UltimaAlteracao'] ?? null),
+            // updated_at removido: forçar este campo criava diff permanente no sync hourly.
+            // Eloquent gere updated_at automaticamente — só toca quando há mudança real.
         ];
     }
 

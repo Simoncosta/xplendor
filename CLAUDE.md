@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.8.3
+> Última actualização: 2026-05-26 · Versão 1.9.0
 
 ---
 
@@ -34,6 +34,7 @@
 | 1.8.1 | 2026-05-26 | Y4.a — `LeadStatusBadge` component (substitui `<select>` HTML nativo na coluna Estado de LeadList, desktop e mobile card). Dropdown Reactstrap com soft badges Bootstrap. |
 | 1.8.2 | 2026-05-26 | Y4.c — Fix scroll fantasma vertical (~538px em todas as telas autenticadas). Override do `min-height: 1400px` do Velzon para `min-height: 100vh` via `_xplendor-overrides.scss`. |
 | 1.8.3 | 2026-05-26 | Y4.b — Login polish: textos pt-PT, alert de erro funcional (msg genérica), ícones nos inputs (ri-mail-line + ri-lock-2-line), loading state no botão, eye toggle dentro do InputGroup. |
+| 1.9.0 | 2026-05-26 | Fase F — Bug crítico de scores zombie no sync Carmine resolvido (F.2/F.3). Casts adicionados ao Car model (price_gross, is_resume, is_metallic, etc.). updated_at removido do payload Carmine. Comparação antes de update no CarmineConnectionService. |
 
 ---
 
@@ -878,7 +879,7 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
    - Validar que `CarDecisionEngineService` continua a produzir scoring consistente
    - Eventualmente eliminar `CarMarketIntelligenceService.php`
 
-4. **IPS produz 68% de zeros — calibração suspeita** — descoberto durante validação X2. Nas últimas 30 dias, 578 dos 843 scores recentes são 0 (68.6%). Distribuição não saudável. Investigar em sub-fase dedicada (Fase F): ler `CarSalePotentialScoreService`; analisar viaturas com score 0 manualmente; comparar com viaturas que efectivamente venderam. **Bloqueia** redesign do Dashboard com "probabilidade de venda" — sem IPS confiável, esse badge é teatro.
+4. **Limpeza de scores zombie em `car_sale_potential_scores`** (baixa prioridade) — ~56k registos históricos com `triggered_by='price_change'` e `score=0`, criados pelo bug F.2/F.3 antes do fix de 2026-05-26. Bug resolvido. Carmine sem clientes activos. Limpar em sessão dedicada se tabela atingir tamanho problemático. Distribuição actual saudável (investigação F.1): 19% zeros, 66% no meio, 12% altos — IPS não bloqueia dashboard.
 
 5. **Scheduler tem gaps inexplicados (alta prioridade)** — container ficou suspenso 11h30 entre 21:00 (2026-05-24) e 08:30 (2026-05-25). Loop `while true` que invoca `schedule:run` não morreu, apenas suspendeu. Detecção silenciosa. Hipótese: invocação síncrona de `schedule:run` bloqueou. **Fase E planeada** com logs visíveis desde D6. Plano:
    - Identificar último job antes do gap
@@ -1151,6 +1152,17 @@ O Velzon define `min-height: 1400px` no `<html>` via `structure/_vertical.scss` 
 **Y4.b — Login polish**
 `web/src/pages/Authentication/Login.tsx` reescrito com: (1) todos os textos em pt-PT ("Entrar na XPLENDOR", "O seu email", "A sua palavra-passe", "Esqueceu-se da palavra-passe?", "Manter sessão iniciada"); (2) alert Reactstrap `color="danger"` com mensagem genérica "Email ou palavra-passe incorrectos." — não revela se é email ou password o erro (boa prática de segurança); (3) ícones `ri-mail-line` e `ri-lock-2-line` via `InputGroup` + `InputGroupText`; (4) botão de olho movido para dentro do `InputGroup` como elemento append (resolve interceptação de eventos do Bootstrap em position-absolute); (5) `isSubmitting` state + `Spinner size="sm"` no botão durante request; (6) `useSelector` sobre `state.Login.data.errorMsg` para detectar falha via Redux. Testimonial no carousel: textos já correctos em pt-PT, não há truncamento de conteúdo (overflow é do `react-responsive-carousel` em animação mid-slide, não layout issue).
 
+#### Capítulo F — Calibração IPS e bug scores zombie (sessão 2026-05-26)
+
+**F.1 — Diagnóstico IPS**
+CLAUDE.md item 4 (anterior: "68% zeros — calibração suspeita") estava desactualizado. Distribuição real na Spacedrive: 19% zeros, 12% altos, 66% no meio — saudável. Bug real identificado: ~970 scores por viatura em 60 dias vs esperado ~60-120. Causa-raiz no sync Carmine.
+
+**F.2 — Identificação da causa-raiz**
+`SyncCarmineCarsJob` (hourly) → `CarmineConnectionService::syncCompanyCars()` fazia update incondicional em cada viatura Carmine. Dois mecanismos criavam diff fantasma: (1) `updated_at` forçado do Carmine em cada sync → Eloquent detectava mudança; (2) sem casts no `Car` model → `price_gross` da BD era string `"21900.00"` vs float `21900.0` do payload Carmine → `wasChanged('price_gross') = true` → `CarObserver` disparava `CalculateCarSalePotentialScoreJob`.
+
+**F.3 — Fix aplicado**
+Três camadas de defesa: (1) casts adicionados em `Car.php` (`price_gross: decimal:2`, `is_resume: boolean`, `is_metallic: boolean`, `mileage_km/power_hp/engine_capacity_cc/doors/seats/registration_year/registration_month: integer`) — normaliza tipos para comparação correcta; (2) `updated_at` removido do `mapCarmineToXplendor()` — Eloquent gere automaticamente; (3) comparação valor-a-valor antes de update em `syncCompanyCars()` — se nada mudou, `Car::find()` devolve existente sem chamar `save()`, sem disparar observer. Log `sem_mudancas` adicionado para observabilidade. Scores zombie deixam de ser criados em syncs futuros.
+
 #### DOCS — Revisão integral do CLAUDE.md
 
 **v1.8 — DOCS**
@@ -1160,7 +1172,7 @@ Revisão integral do documento após acumulação de 14 sub-fases em 2 dias. Sch
 
 **Curto prazo (próximas 2-3 sessões)**
 - **Fase E** — investigar congelamento do scheduler (item 5 de 14.1) com logs visíveis desde D6
-- **Fase F** — calibrar IPS (item 4 de 14.1): investigar 68% de zeros antes de qualquer redesign de "probabilidade de venda" no Dashboard
+- **Fase F concluída** — bug de scores zombie no sync Carmine resolvido (F.2/F.3). IPS com distribuição saudável, não bloqueia dashboard.
 - Lista de **ideias do utilizador** (a receber em sessão dedicada) — classificar como atacar curto/médio prazo, validar com Paulo/Matilde, ou descartar
 - Verificação 24-48h pós-push nocturno de 2026-05-26: confirmar que Redis em prod, mobile UX e crop de imagens funcionam com utilizadores reais
 
