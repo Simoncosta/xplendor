@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.7.2
+> Última actualização: 2026-05-26 · Versão 1.8.1
 
 ---
 
@@ -30,6 +30,8 @@
 | 1.7 | 2026-05-26 | Y3.d mobile cards: Y3.d.0 (fix overlap desktop /cars), Y3.d.1 (renderMobileCard prop XTanStackTable), Y3.d.2 (car mobile card com imagem 16:9 + chips + nav), Y3.d.3 (lead mobile card com avatar + status select + acções), Y3.d.4 (UsersList migração useIsMobile). |
 | 1.7.1 | 2026-05-26 | Y3.d.5 — Fix regressão Y1.2: `minWidth: 0` no CarPageNav outer div elimina propagação de min-content para o flex parent, que causava overflow horizontal em todas as rotas `/cars/:id/*` em viewports < ~500px. |
 | 1.7.2 | 2026-05-26 | Y3.d.6 — Fix overflow residual em CarAnalytics: margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewports mobile; `overflow: hidden` no d-grid wrapper resolve. |
+| 1.8 | 2026-05-26 | **DOCS** — Revisão integral do CLAUDE.md. Schema actualizado (`car_market_aggregates`, `car_images`, `original_path`, `search_url`, `promo_price_gross`). 3 endpoints documentados em 8.4 (recrop, check-link, GET por `aggregate_id`). Padrões mobile e aprendizagens CSS documentados em 10. Items resolvidos compactados em tabela (14.2). Secção 15 reorganizada por capítulos Z, D, Y3. |
+| 1.8.1 | 2026-05-26 | Y4.a — `LeadStatusBadge` component (substitui `<select>` HTML nativo na coluna Estado de LeadList, desktop e mobile card). Dropdown Reactstrap com soft badges Bootstrap. |
 
 ---
 
@@ -112,6 +114,15 @@ Os sites públicos dos stands são projectos React **separados** do XPLENDOR. Co
 | Worker | `php artisan queue:work` em container dedicado |
 | Scheduler | `php artisan schedule:run` a cada 60s |
 | Scraper | Python 3 (Selenium / requests) em container isolado |
+
+### Estado Redis (clarificação)
+
+- **Dev:** sempre usou Redis para queue e cache.
+- **Prod:** migrado para Redis em 2026-05-26 (Fix D). Anteriormente usava `QUEUE_CONNECTION=database` e `CACHE_STORE=database` porque `REDIS_HOST=127.0.0.1` era inacessível dentro dos containers Docker (devia ser o nome do serviço, `redis`).
+- Convenção actual: fila em Redis db=0, cache em Redis db=1.
+- Worker mantém `--max-time=3600` (restart horário coberto por Docker `restart: always`).
+- Scheduler em prod com output visível desde D6 (`docker logs xplendor-scheduler`).
+- Quando alterar `.env` em produção, **correr `php artisan config:cache`** — restart de workers não chega (descoberto em D2).
 
 ---
 
@@ -277,6 +288,8 @@ web/src/
 | `car_interactions` | Eventos granulares | `interaction_type` enum (whatsapp_click, …) |
 | `car_performance_metrics` | Agregado diário **T-1** por canal | Upsert por (`period_start`, `period_end`, `car_id`, `channel`) |
 | `car_market_snapshots` | Dados do scraper de mercado | Por viatura e data |
+| `car_market_aggregates` | Snapshot agregado de mercado por viatura (Fase E2) | `mediana`, `confidence`, `price_signal`, `promo_price_gross` (Y2), `search_url` (Y2.2), `status` (`pending`/`running`/`done`/`error`). Persiste o mais recente; histórico noutras tabelas se necessário |
+| `car_images` | Imagens por viatura | `image` (path cortada em formato WebP), `original_path` (Z2.a, nullable, preserva original em `originals/`) |
 | `car_ai_analyses` | Análises IA por viatura | JSON com structured output |
 | `car_sale_potential_scores` | IPS 0–100 | Histórico; mais recente = `MAX(id)` |
 | `car_external_images` | Imagens externas por URL | Provavelmente Carmine ou scraper |
@@ -573,6 +586,22 @@ A entidade `seller` na resposta pública contém apenas: `name`, `avatar`, `mobi
 
 **Documentação completa:** `app/Http/Resources/Public/RESOURCE_SHAPE.md`.
 
+### 8.4 Endpoints internos relevantes adicionados em 2026-05
+
+Documentados aqui porque foram introduzidos em sub-fases recentes e ainda não estavam reflectidos no documento.
+
+**Re-crop de imagem (Z2.c):**
+`POST /api/v1/companies/{companyId}/cars/{carId}/images/{imageId}/recrop`
+Aplica novo corte ao `original_path` preservado, sobrescreve a imagem cortada em storage. Validação de tenant (`car_id` + `company_id`). 422 se `original_path IS NULL` com mensagem em pt-PT (imagens legadas pré-Z2.a não têm botão de re-crop no UI).
+
+**Verificar link de pesquisa Standvirtual (Y2.2):**
+`GET /api/v1/companies/{companyId}/cars/{carId}/market-aggregate/check-link?url=`
+Proxies HEAD para Standvirtual, devolve `{ available: bool }`. SSRF-guardado a `https://www.standvirtual.com/`; fail-open (timeout/5xx → `available: false`). Cache in-memory `useRef<Map>` TTL 60s no frontend para evitar polling.
+
+**GET aggregate por id específico (X7 Fix C):**
+`GET /api/v1/companies/{companyId}/cars/{carId}/market-aggregate?aggregate_id=N`
+Query param `aggregate_id` opcional. Quando presente, devolve o aggregate específico (com verificação de `car_id` para isolamento). Sem o param, devolve `latestOfMany` (comportamento legado, ainda usado em alguns paths). Usado pelo polling do MarketPositionCard com `aggregate_id` persistido em sessionStorage (chave `xplendor:mkt_agg:{carId}`, TTL 20 min).
+
 ### Segurança a reforçar (parte do refactor contínuo)
 
 - **Rate limiting** nas rotas de IA — proteger custos OpenAI (adicionar throttle por `company_id`)
@@ -641,7 +670,7 @@ React 19 + Vite + TypeScript + Redux Toolkit + Reactstrap (Velzon theme).
 
 `CarPageNav` é a navegação entre tabs (usa `useParams()`).
 
-**Problema actual:** cada uma das 5 páginas chama o thunk `analyticsCar` independentemente. Resolução no refactor — ver secção 14.
+**Estado actual do fetch duplicado:** mitigado em 2026-05-23 (H2a) com guard Redux (`if (existingId === Number(id)) return`) e endpoint dedicado leve para Ficha (`H2b`, `GET /cars/{id}/specs`). Falta TTL/invalidação por tempo — item 37 da dívida técnica. Layout component com `Outlet` (resolução estrutural completa) — item 38.
 
 ### Formulário de viatura (`CarCreate` / `CarUpdate`)
 
@@ -662,9 +691,39 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 ### Velzon — como tratar
 
 - Velzon é tema Bootstrap 5 comercial. As classes (`fs-11`, `fw-semibold`, `bg-light-subtle`, `text-primary`) **são do tema, não do nosso design system**
-- **Não criar mais `sectionStyle` inline.** Já está duplicado em 4 ficheiros — extrair para componente `Section` ou `Card` próprio
+- **Não criar mais `sectionStyle` inline.** Já está duplicado em vários ficheiros — extrair para componente `Section` ou `Card` próprio
 - Não fazer upgrade major do Velzon sem análise de impacto (risco alto)
 - Médio prazo: extrair tokens (cores, espaçamentos, border-radius) para CSS variables próprias
+
+### Padrões mobile (Fase Y3, 2026-05-26)
+
+**Hook `useIsMobile(breakpoint=768)`** em `web/src/hooks/useIsMobile.ts`. Substituiu `useState(window.innerWidth < N)` em vários sítios (que não actualizava em resize). Breakpoints recomendados: 680px para listas/tabelas, 768px para sidebars/headers, 1200px para grids complexos.
+
+**Off-canvas para filtros em mobile** (CarList, Y3.b): abaixo de 768px, a sidebar de filtros vira `Offcanvas` (Reactstrap) com botão "Filtros (N)" na toolbar. `activeFilterCount` exclui defaults (ex: `statusFilter === "active"`). Pattern aplicável a qualquer lista com sidebar de filtros.
+
+**Prop `renderMobileCard` no XTanStackTable** (Y3.d.1): quando `mobileMode=true` e a prop está presente, substitui o bloco genérico label/valor por render customizado. Retro-compatível — tabelas sem a prop mantêm o comportamento anterior. Usado em CarList e LeadList.
+
+**Tap-no-card vs botões filhos** (Y3.d.2): cards mobile com acção principal e botões secundários precisam de `stopPropagation` nos botões para evitar duplo trigger. Pattern: navegação dominante no card inteiro, acções específicas nos botões com `e.stopPropagation()`.
+
+### Aprendizagens CSS (Y3.d, 2026-05-26)
+
+Dois bugs descobertos no mesmo dia através de debugging empírico no browser. Documentar aqui para evitar repetir.
+
+**Flex containers + min-content em Bootstrap (Y3.d.5):** num flex container com `flexWrap: nowrap` e filhos com `flexShrink: 0`, o `min-content width` do container propaga-se para o `Col` pai (que tem `min-width: auto` por defeito), inflando o `scrollWidth` da página. **Solução:** `minWidth: 0` no container flex resolve a propagação. Aplicado em Y3.d.5 ao `CarPageNav` (regressão introduzida pelo Y1.2).
+
+**Bootstrap `.row.g-3` margin negativa (Y3.d.6):** `<Row className="g-3">` tem `margin-x: -8px` cada lado (-16px total) para compensar padding das colunas. Em viewports estreitos, esse bleed pode exceder o padding do pai e causar overflow horizontal. **Solução:** `overflow: hidden` no wrapper directo da Row. Aplicado em Y3.d.6 ao `CarAnalytics` (KPI row).
+
+**Debug de overflow horizontal:** análise estática não basta — testar empiricamente no Console do DevTools com `findOverflow()`:
+
+```javascript
+(function(){const v=innerWidth;const r=[];function w(e){
+  if(e.scrollWidth>v+1)r.push({tag:e.tagName,sw:e.scrollWidth,
+    ow:e.offsetWidth,class:(e.className?.toString()||'').slice(0,60)});
+  for(const c of e.children)w(c)}w(document.body);
+  console.table(r);return r;})();
+```
+
+Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é a causa-raiz. Validar fix com `document.documentElement.scrollWidth === window.innerWidth`.
 
 ### Convenções TypeScript
 
@@ -799,451 +858,124 @@ Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` c
 
 ---
 
-## 14. Dívida técnica conhecida (priorizada)
-
-### 🔴 Alta prioridade — atacar no próximo trimestre
-
-1. **Bug histórico `whatsapp_clicks`** — métricas erradas 2026-03-06 a 2026-03-13. Correr `php artisan performance:aggregate --from=DATE --to=DATE --sync` para cada dia
-2. **TypeScript `any` generalizado** — bloqueia refactor seguro. Criar `web/src/types/api.ts` progressivamente
-3. **Sem testes para lógica de negócio crítica** — `CarAiAnalysesService::enforceCampaignDiagnosisRules()`, `DashboardRepository::groupCarsByPersona()`, `ScraperService::normalizeFilters()`, `AggregateCarPerformanceMetricsJob`
-4. **Fetch duplicado em cada tab de viatura** — 5 páginas fazem o mesmo fetch independente
-5. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie
-
-### 🟡 Média prioridade
-
-6. **`laravel_helper.ts` a crescer sem organização** — partir em helpers por recurso
-7. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense`
-8. **Sem rate limiting nas rotas de IA** — adicionar throttle por `company_id`
-9. **`classifyPersona()` acoplado a strings raw de `segment`** — encapsular num enum/VO
-10. **Sem Error Boundary React global** — adicionar e ligar a logging
-11. **B1 accordions inline em `CarVehicleDetailsDataFields.tsx`** — Os 3 accordions da Fase B1 estão inline no componente parent. Os 5 da B2 foram extraídos para sub-componentes em `components/vehicleAttributes/`. Extrair também os 3 da B1 para alinhar com o padrão
-12. **`subsegment` NULL em todos os motorhomes** — campo existe no schema mas não está a ser gravado pelo UI. Investigar e corrigir
-13. **Catch silencioso em `CarDescriptionDataFields.tsx`** — `catch {}` apenas mostra toast genérico. Propagar mensagem de erro real quando disponível
-14. **Validação de min/max em campos numéricos do `vehicle_attributes`** — o car 57 tem `length: -0.1745`. Validação backend já existe na Fase B1 (min 0.1 m), mas o registo histórico não foi limpo
-
-### 🟢 Baixa prioridade
-
-15. `document.title` mutado directamente — substituir por hook `useDocumentTitle`
-16. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs
-17. Sem índices documentados em tabelas de métricas — adicionar `(car_id, period_start)` em `car_performance_metrics`
-18. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro
-19. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios
-20. **`lifestyle` campo zombie** no `cars` — sem cast, sem UI, nunca preenchido. Remover ou implementar
-21. **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa. Quando esse limite for atingido, adicionar índices funcionais em MariaDB para campos filtráveis (`length_m`, `has_solar_panel`, slugs de `beds`)
-22. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino". Seeder tem 7 categorias, BD tem 4. Não alterar slugs em uso, mas alinhar seeder com realidade da BD
-23. **Redundância eliminada na Fase D mas verificar outros sítios** — `appendPublicSellerContact` ainda existe; auditar se há queries duplicadas similares
-24. **`car_id 57` com `length: -0.1745`** — registo único, corrigir manualmente em produção: `UPDATE vehicle_attributes SET ...`
-25. ~~**`GenerateWeeklyMarketingIdeasJob` desactivado**~~ — **Eliminado em H3a (2026-05-23)**. Funcionalidade "Conteúdo da semana" removida completamente (model, service, job, repo, controller, migration DROP TABLE — 80 registos eliminados). Ver item 41.
-
-53. **Originais não são eliminados quando a imagem é apagada (Z2.a, low priority)** — `CarService::update()` elimina o ficheiro em `images/` mas não o correspondente em `originals/`. Orphaned originals acumulam em storage. Corrigir quando houver limpeza de storage agendada ou quando atacarmos o endpoint de delete de imagem individual.
-
-54. **Re-crop não actualiza o tile do FilePond (Z2.c, low priority)** — Após re-crop, o thumbnail na secção "Editar cortes" é actualizado via `?v=timestamp`. O tile no FilePond pond mantém o old cached preview até refresh da página. Corrigir via remoção + re-adição do item ao FilePond após re-crop bem sucedido — complexo dado o modelo de estado do react-filepond. Adiar para v2 do cropper.
-
-### 🔴 Alta prioridade (adicionado E3a)
-
-29. **Duas fontes de verdade paralelas para "posição no mercado"** —
-    Após a Sub-fase E3a, o sistema tem dois mecanismos paralelos:
-    - `CarMarketIntelligenceService` (legacy): lê de `car_market_snapshots`,
-      alimenta toda a pipeline de IA (`CarAiAnalysesService`,
-      `CarDecisionEngineService`, `CarIssueEngine`, `VehiclePromptBuilder`,
-      possivelmente `CarSalePotentialScoreService`). Thresholds
-      `below_market`/`aligned_market`/`above_market`.
-    - `CarMarketAggregate` (E2): tabela própria com aggregates ricos
-      (mediana, top 5, confidence), alimenta UI da ficha e futuramente
-      o Dashboard. Thresholds `competitive`/`fair`/`slightly_high`/`overpriced`.
-
-    **Migrar pipeline de IA para `CarMarketAggregate`** numa sub-fase
-    dedicada após o capítulo E estar em produção. Envolve:
-    - Substituir leitura de `car_market_snapshots` por
-      `latest_market_aggregate` nos 5 services dependentes
-    - Re-treinar prompts da IA que assumem `market_intelligence.market_position`
-    - Validar que motor de decisão (`CarDecisionEngineService`) continua
-      a produzir scoring consistente
-    - Eventualmente eliminar `CarMarketIntelligenceService.php`
-
-    Não atacar antes do capítulo E estar deployed e estável (3-5 dias
-    em produção).
-
-30. **6 ficheiros frontend orphans eliminados na E3a** — `MarketIntelligenceCard`,
-    `TabAnaliseIA`, `TabMetricas`, `TabOverview`, `TabPerformance`, `TabViatura`.
-    Tinham sido criados em iterações anteriores mas nunca foram integrados
-    em rotas activas. Registado para evitar reintrodução acidental.
-
-31. **`car_market_aggregates` não tem `scraped_at`** — A coluna estava no
-    plano da E2 mas ficou de fora da migration. `updated_at` é usado como
-    proxy para "última vez que o scrape correu". Adicionar `scraped_at`
-    quando houver necessidade de distinguir "última actualização" de
-    "último scrape" (ex: refresh manual vs schedule periódico).
-
-32. **`getAnalyticsDashboard` thunk alimenta Dashboard e /insights** —
-    Após F1a, o nome é semanticamente impreciso (já não é exclusivamente
-    para Dashboard). Renomear para `getAnalyticsCompany` ou
-    `getCompanyOverview` quando houver mudança maior no Redux state.
-    Não bloqueia funcionamento.
-
-33. **Página `/insights` desactivada em 2026-05-23** — rota removida, item
-    do menu removido, link do dashboard removido. Componentes
-    (DashboardInsightsCard, StockIntelligenceDashboardCard,
-    MarketingWorkspaceTabs com prop visibleTabs, InsightsPage,
-    visibilityHelpers + 12 testes) ficam no codebase para reuso futuro.
-
-    Motivo: a página foi construída com lógica de análise de marketplace
-    (oportunidades de compra, segmentos saturados, marca em destaque),
-    não de gestão de stand. Para stands com poucas viaturas e sem
-    campanhas activas, a informação não gera decisões accionáveis.
-
-    Recuperar quando houver decisão clara sobre que análise é útil para
-    o utilizador concreto (provavelmente reorientada para análise sobre
-    as viaturas do próprio stock, não sobre o mercado em geral).
-
-34. **Backend gera `action.label`, `action.suggestion`, `problem` em
-    `immediate_actions` que o frontend já não renderiza** — Após F1c,
-    estes campos continuam a ser gerados (potencialmente com custo de
-    processamento/IA) mas não aparecem na UI. Investigar
-    `DashboardService` onde estes campos são populados e decidir se
-    eliminar a geração quando voltarmos com lógica nova de
-    "probabilidade de venda" e "acção sugerida real".
-
-35. **Item "Acções" oculto do sidebar em 2026-05-23** — rota `/actions`
-    mantida em `allRoutes.tsx` mas item de menu removido. A página
-    existe mas conteúdo não está pronto para uso de cliente.
-    Reintroduzir item quando houver conteúdo accionável real.
-
-36. ~~**`CarAdsPage` usa chamada API directa (`getCarAudienceAnalysisApi`)
-    fora do Redux com useState local**~~ — **Resolvido em H3b (2026-05-23)**
-    via eliminação da aba. Endpoint backend mantido para uso futuro.
-
-37. **Guard de fetch em tabs de viatura não invalida por tempo** —
-    Após H2a (Opção B), as 2 tabs restantes (Analytics, Intelligence) saltam
-    fetch se já têm carAnalytics para o mesmo car.id. Mas se o utilizador
-    deixa a tab aberta e volta horas depois, vê dados potencialmente
-    stale (não há TTL). Aceitável para escala actual (sessão típica curta).
-    Adicionar TTL ou invalidação por evento quando relevante.
-
-38. **CarPageLayout com Outlet não implementado** — A Opção A da
-    investigação H2a (nested routes via Outlet) ficou registada como
-    design correcto a longo prazo. Requer suportar nested routes em
-    `Routes/index.tsx` (hoje não usa Outlet em lado nenhum), refactor
-    de `CarAnalyticsHeader` para ler do Redux, e refactor de `CarPageNav`
-    para `useLocation()`. Implementar quando atacarmos auditoria profunda
-    da página de viatura (Parte 2 sessão dedicada).
-
-39. **`CarSpecsResource` faz 2 queries extra no `toArray()`** — H2b optou
-    por simplicidade (queries directas a `CarSalePotentialScore` e
-    `CarAiAnalysis` dentro do Resource). Aceitável para escala actual
-    (1 viatura por request). Optimizar para eager load no controller
-    quando houver evidência de bottleneck.
-
-40. **`CarAnalyticsHeader` recebe `car` como objecto plano sem tipo** —
-    Props definidas como `any`. Após H2b, a Ficha passa um adapter
-    `carForHeader` construído a partir de `CarSpecs`. Tipar
-    `CarAnalyticsHeader` com interface própria quando atacarmos
-    auditoria de tipagem geral do frontend.
-
-41. ~~**`RecommendedCreative` type em `SmartAdsRecommendationCard` é zombie**~~ —
-    **Componente eliminado em H3b (2026-05-23)**. Backend continua a
-    devolver `recommended_creative: null` (stub de H3a). Limpeza
-    backend agendada para sub-fase futura (ver item 42).
-
-42. **Aba `/cars/:id/ads` eliminada em 2026-05-23 (H3b)** — frontend
-    completo removido (CarAdsPage, SmartAdsRecommendationCard,
-    AudienceSuggestionCard, 822 linhas).
-
-    Backend INTACTO:
-    - Tabelas car_ad_campaigns, car_ad_attributions,
-      campaign_car_metrics_daily, meta_audience_insights
-    - MetaAdsService, OAuth, jobs de sync, schedule
-    - Endpoints /audience-analysis e /audience
-    - CarAdCampaignMapper em pages/Companies (reaproveitável)
-
-    Razão para eliminar frontend: fluxo actual (mapear campanha já
-    criada na Meta) é retrabalho. Visão futura: criar campanhas
-    directo no XPLENDOR sem abrir Business Manager.
-
-    Razão para manter backend: OAuth Meta é trabalho de 1-2 dias
-    para reconstruir; dados de campanhas têm valor histórico;
-    integração estável será reaproveitada em página futura.
-
-    Candidatos a limpeza futura (não atacar agora):
-    - Campos órfãos no payload analyticsCar: smart_ads_recommendation,
-      recommended_creative (já zombie via item 41), ai_analysis.recommended_channel
-    - Decidir destino em sub-fase dedicada quando construirmos
-      página nova de criação de campanhas.
-
-43. **Aba Tráfego & Canais simplificada em 2026-05-23 (H3c)** —
-    KPIs reduzidos de 10 (6 topo + 4 Métricas Resumidas) para 4
-    essenciais: Views / Leads / WhatsApp / Conversão. Timeline
-    filtrada para apenas eventos com sinal comercial real
-    (interactions, leads, marcador car_created) — view_group
-    eliminado: para car 4, payload passou de 367 entradas para 14.
-
-    Backend: filtro em CarAnalyticsService::buildTimeline() —
-    payload mais leve (~96% redução para viaturas com views altos).
-
-    Bónus: campo metrics.whatsapp_clicks novo, alimentado por
-    car_interactions (real-time) em vez de car_performance_metrics
-    (que tinha bug histórico item 1 do CLAUDE.md). Resolve sintoma
-    do bug sem mexer no agregado.
-
-    Campos órfãos no payload (candidatos a limpeza futura):
-    - metrics.views_24h, metrics.views_7d, metrics.interactions,
-      metrics.interest_rate
-    - performance.totals.* (4 campos)
-    - Componente CarAnalyticsKpiStrip.tsx (mantido mas órfão —
-      pode ser reaproveitado noutras páginas no futuro)
-
-44. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em
-    2026-05-23 (H3d)** — CarIntelligencePage.tsx passou de 477 para
-    ~78 linhas (-84%).
-
-    Frontend eliminado (~1007 linhas total):
-    - CarIntelligencePage.tsx: -399 linhas
-      - Blocos inline: CarDiagnosisBlock, TechnicalPipeline,
-        IntentSignalsBlock, SilentBuyerCompactBlock
-      - Helpers inline: buildSignalCards, buildScoreSignal,
-        buildBusinessDiagnosis, resolveBusinessActionLabel,
-        buildActionReason, resolveScoreColor, statusMark,
-        translateBenchmark, translateIntentLevel
-      - Handler handleRefreshAndReanalyze (toast pipeline)
-    - CarAnalyticsData.ts: ipsFactorLabels removido (-8 linhas)
-    - Componentes zombie eliminados (-560 linhas):
-      - LeadRealityGapCard.tsx (170 linhas — nunca importado)
-      - SilentBuyerIntentCard.tsx (142 linhas — nunca importado)
-      - ContactPerformanceCard.tsx (248 linhas — nunca importado)
-
-    Mantido: MarketPositionCard (E3a — único bloco com dados reais
-    externos do Standvirtual via car_market_aggregates).
-
-    Backend INTACTO. 4 campos no payload analyticsCar viram zombies
-    no frontend (continuam calculados pelo backend):
-    - intent_analysis
-    - lead_reality_gap
-    - meta_ads_targeting_status
-    - silent_buyers (versão da Intelligence; Dashboard usa fonte
-      diferente)
-
-    Razão para manter cálculo: alimentam pipeline de IA legacy
-    (item 29). Limpeza fica para sub-fase futura quando migrarmos
-    pipeline IA para CarMarketAggregate.
-
-    Thunks órfãos no slice car-ai-analises (não eliminados):
-    - refreshCarMetaAds
-    - regenerateCarAnalysis
-
-45. **Bug `triggered_by` ENUM resolvido em 2026-05-23 (X2)** —
-    Coluna `triggered_by` em `car_sale_potential_scores` não aceitava
-    `'promo_price_change'`. CarObserver despachava o job com este valor
-    quando preço promocional mudava, falhando silenciosamente
-    (SQLSTATE 01000 Data truncated). 2.836 falhas acumuladas em 59 dias.
-
-    Fix: migration ALTER ENUM adicionando 'promo_price_change' aos
-    valores aceites. CarObserver intacto (já estava semanticamente
-    correcto). Down() da migration tem guard contra perda de dados.
-
-    Decisão: failed_jobs limpa sem retry. Os 2.836 jobs eram históricos
-    (25/03 → 23/05) e re-disparar produziria scores actuais com triggers
-    obsoletos, não recuperaria scores históricos.
-
-🔴 46. **IPS produz 68% de zeros — calibração suspeita (alta prioridade)** —
-    Descoberto durante validação X2: nas últimas 30 dias, 578 dos 843
-    scores recentes são 0 (68.6%). Apenas 4 viaturas com score 61-80,
-    zero entre 41-60 e 81-100. Distribuição não saudável.
-
-    Hipóteses: (a) IPS genuinamente reflecte stock difícil; (b) thresholds
-    mal calibrados em `scoreDaysInStock`, `scoreEngagementRate`,
-    `scoreContactRate` ou outros sub-scores; (c) bug no agregador.
-
-    Investigar em sub-fase dedicada: ler `CarSalePotentialScoreService`
-    e sub-métodos de scoring; analisar viaturas com score 0 manualmente;
-    comparar com viaturas que efectivamente venderam.
-
-    Bloqueia: redesign profundo do Dashboard com "probabilidade de venda"
-    (mencionado em sessão anterior). Sem IPS confiável, badge
-    "Probabilidade de venda X/100" é teatro.
-
-47. ~~**`RecalculateAllCarScoresJob` cron parado há 32 dias**~~ —
-    **Auto-resolvido em 2026-05-23.** Os containers foram recriados
-    nesse dia e o scheduler voltou a funcionar. Confirmado em X6
-    (2026-05-25): último score com `triggered_by=scheduled` é de
-    2026-05-24 01:00:27. 42 scores scheduled nos últimos 7 dias.
-
-    Atenção: o scheduler tem instabilidade nova documentada no
-    item 51 — gaps inexplicáveis de horas sem o container morrer.
-
-48. **Polling do MarketPositionCard sem estado de timeout — resolvido em 2026-05-23 (X1)** —
-    Quando MAX_POLL_ATTEMPTS (18 tentativas de 10s) era atingido sem
-    receber status terminal, stopPolling() era chamado mas
-    setRefreshing(false) não. UI ficava em loading perpétuo até
-    utilizador trocar de aba.
-
-    Fix: novo estado `pollTimedOut` que dispara render de
-    TimedOutState component com mensagem honesta em pt-PT e botão
-    "Tentar novamente". setRefreshing(false) chamado em todos os
-    caminhos terminais (success, timeout).
-
-    Fragilidade adicional resolvida em 2026-05-25 (X7):
-    O frontend agora persiste `aggregate_id` em sessionStorage
-    e usa `GET ?aggregate_id=N` para polling e remontagem.
-    Eliminado o risco de `latestOfMany()` devolver o aggregate
-    errado em cenários de refresh paralelo. Ver item 50 Fix C.
-
-49. **MarketPositionCard — race condition de navegação rápida (parcial)** —
-    Resolvido em 2026-05-23 (X3): toast `success` e `startPolling()` agora
-    verificam `mountedRef` antes de disparar, evitando:
-    - Toast na página errada quando utilizador navega antes do POST completar
-    - Interval fantasma após unmount (fazia requests sem efeito)
-
-    Resolvido em 2026-05-25 (X7 — Fix C do item 50):
-    `writeStoredAggregateId()` é chamado ANTES do guard
-    `mountedRef.current` no `handleRefresh`. O aggregate_id fica
-    em sessionStorage mesmo que o componente desmonte durante o
-    POST. Na remontagem, o `useEffect` lê o id persistido e faz
-    GET por id específico (`?aggregate_id=N`) em vez de
-    `latestOfMany` — vê correctamente o aggregate `pending` e
-    retoma o polling sem mostrar NeverRunState.
-
-🔴 50. **MarketPositionCard — 4 problemas interligados de estado e infraestrutura (parcial — Fix A e Fix B resolvidos)** —
-    Descoberto em 2026-05-23 (X4) durante investigação de bug
-    "Analisar mercado fica 5+ minutos sem dados". Investigação revelou
-    4 problemas distintos a interagir:
-
-    **(a) Worker tem `--max-time=3600`** — reinicia de hora em hora.
-    Hoje observou-se gap de 19 minutos entre 13:00 e 13:19 onde jobs
-    ficaram em fila sem processamento. Se utilizador clica "Analisar
-    mercado" durante esta janela, polling de 3 minutos esgota antes do
-    job correr. Aggregate fica em `pending` na BD.
-
-    **(b) Fila e cache em MariaDB, não Redis** — `QUEUE_CONNECTION=database`
-    e `CACHE_STORE=database`. O `REDIS_HOST=127.0.0.1` está configurado
-    mas inacessível dentro dos containers (devia ser nome do serviço
-    Docker). A tabela `jobs` é o ponto único de verdade da fila — funcional
-    mas mais lento e propenso a contenção do que Redis.
-
-    **(c) GET no `useEffect.catch` produzia NeverRunState para qualquer
-    erro** — incluindo timeout de rede, 5xx transitório, ou resposta mal-
-    formada. Não distinguia "não existe aggregate" (legítimo NeverRun) de
-    "erro de rede".
-
-    **(d) ErrorState/FailedState não têm botão de retry no body** — só
-    o botão "↻ Actualizar agora" no header. Utilizador que cai num
-    aggregate `error` pode não perceber que pode tentar de novo.
-
-    **Estado dos fixes:**
-
-    - ✅ **Fix A** (frontend) — resolvido em 2026-05-25 (X5). Distinguir
-      erro de rede de "aggregate inexistente" no `useEffect.catch`. Novo
-      estado `networkError` e componente `NetworkErrorState` com botão
-      "Tentar novamente". Backend devolve 200+null para "sem aggregate"
-      (tratado no `.then()`), por isso ALL casos no `.catch()` são
-      erros genuínos → `NetworkErrorState`. `retryFetch` re-faz o GET
-      e repõe estado correctamente. `NeverRunState` mantém-se apenas
-      para resposta legítima `{ data: null }` do servidor.
-
-    - ✅ **Fix B** (backend) — resolvido em 2026-05-25 (X6).
-      `MarkStaleAggregatesAsErrorJob` em `app/Jobs/`. Scheduled
-      `everyFiveMinutes()` em `routes/console.php` com `withoutOverlapping()`
-      e `onFailure` callback que loga em erro. Bulk update via `whereIn`.
-      Marca aggregates em `pending`/`running` há mais de 10 minutos como
-      `error`. Log estruturado com `count`, `ids`, `car_ids`, `statuses`
-      para auditoria. Limitação conhecida (item 51): durante janelas de
-      congelamento do scheduler, Fix B não corre. Aggregates podem ficar
-      pendentes durante essas janelas.
-
-    - ✅ **Fix C** (frontend + backend) — resolvido em 2026-05-25 (X7).
-      `writeStoredAggregateId(carId, result.aggregate_id)` persiste o
-      id em sessionStorage (chave `xplendor:mkt_agg:{carId}`, TTL 20min)
-      ANTES do guard `mountedRef`. Endpoint GET aceita agora
-      `?aggregate_id=N` opcional — verifica `car_id` para isolamento.
-      Polling usa o id específico. Clearing automático quando status
-      terminal. Fallback para `latestOfMany` se TTL expirado ou id
-      ausente. 2 novos testes backend (8/8 verdes). Items 48 e 49
-      resolvidos. Migration X2 corrigida para SQLite (era blocker
-      de todos os testes do ficheiro).
-
-    - ✅ **Fix C.1** (frontend) — resolvido em 2026-05-25 (X7.1).
-      Bug histórico desde a Fase E (commit "fase e"), exposto pelo X7
-      ao tentar usar `result.aggregate_id`. O helper `marketAggregate_helper.ts`
-      usava `res.data.data` (dois níveis) mas o interceptor global de axios
-      em `api_helper.ts` já desempacota `response.data`, por isso `res` = body
-      JSON e `res.data` = campo `data` interior. Dois sintomas:
-      (1) POST: `result.aggregate_id` lançava TypeError → catch → toast de erro
-      mesmo com HTTP 202;
-      (2) GET: `fetchMarketAggregate` retornava sempre `null` → NeverRunState
-      em qualquer navegação, independentemente de existir aggregate.
-      Fix: genérico alterado de `<{ data: T }>` para `<T>`, acesso de
-      `res.data.data` para `res.data`. 5 novos testes frontend verdes.
-      Bug estava silencioso antes do X7 porque o resultado do POST era
-      descartado (sem acesso a `.aggregate_id`) e o NeverRunState nunca
-      foi reportado.
-
-    - ✅ **Fix D** (infra) — resolvido em 2026-05-26. `REDIS_HOST=redis` (D2), `QUEUE_CONNECTION=redis` (D3), `CACHE_STORE=redis` (D4). Fila em Redis db=0, cache em Redis db=1. Worker `--max-time=3600` mantido (Docker `restart: always` cobre o restart horário). `>> /dev/null 2>&1` removido do scheduler em prod (D6) — output agora visível via `docker logs xplendor-scheduler`.
-
-    **Relacionado com:**
-    - Items 48 e 49 — todos beneficiam do Fix C
-    - Item 51 — gap do scheduler afecta correr do Fix B
-    - Configuração Redis vs MariaDB merece documentação na secção 3
-      do CLAUDE.md
-
-🔴 51. **Scheduler tem gaps inexplicados — alta prioridade** —
-    Descoberto em 2026-05-25 (X6) durante investigação prévia ao Fix B.
-    Container `xplendor-scheduler` (Up 2 days) ficou suspenso ~11h30
-    entre 21:00 (2026-05-24) e 08:30 (2026-05-25). 23 invocações de
-    `fetch-meta-ads-metrics` perdidas. `RecalculateAllCarScoresJob`
-    das 01:00 não correu nesse dia.
-
-    O loop `while true` que invoca `schedule:run` não morreu, apenas
-    suspendeu. Docker considera o container saudável. Detecção
-    silenciosa.
-
-    Hipótese: uma invocação síncrona de `schedule:run` bloqueou
-    (provavelmente um job que congela em vez de timeout), travando
-    o loop.
-
-    **Impacto:**
-    - Jobs schedulados podem perder execução durante horas sem alerta
-    - Fix B (X6) corre via scheduler — quando scheduler congela, Fix B
-      também não corre. Aggregates podem ficar pendentes durante
-      a janela de congelamento.
-
-    **Plano de investigação (sessão dedicada):**
-    - Identificar o último job antes do gap (logs de ~21:00)
-    - Substituir loop `while true` por supervisor/cron robusto com
-      timeout por invocação
-    - Considerar `php artisan schedule:work` em vez de `schedule:run`
-      em loop manual (built-in do Laravel, comportamento mais previsível)
-    - Adicionar health check externo (ex: heartbeat file actualizado a
-      cada invocação, monitorizar com Docker healthcheck)
-
-    Relacionado com: item 50 Fix B (depende deste scheduler para correr).
-
-    **D6 (2026-05-26):** Output do scheduler em produção tornado visível — `>> /dev/null 2>&1` removido de `docker-compose.prod.yml`. `docker logs xplendor-scheduler` passa a mostrar a saída de cada `schedule:run`. Permite diagnosticar o congelamento descrito acima quando se atacar este item em sessão dedicada.
-
-✅ 52. **Comparação de mercado ignora preço promocional — resolvido em 2026-05-25 (Y2)** —
-    Descoberto em 2026-05-25 durante validação E2E do Fix C.1.
-    `MarketSnapshotService` gravava `price_gross` em `car_price_gross` no aggregate,
-    ignorando `promo_price_gross`. Resultado: sinal de mercado calculado sobre o
-    preço de lista mesmo quando o comprador vê um preço promocional — potencialmente
-    enganador (ex: "ligeiramente acima" quando o efectivo é competitivo).
-
-    Fix Y2:
-    - Migration: `promo_price_gross` nullable decimal(10,2) em `car_market_aggregates`
-    - `MarketSnapshotService::snapshotForCar()`: grava `promo_price_gross` quando
-      `promo < gross && promo > 0` (mesma lógica do accessor `has_promo_price`)
-    - `CarMarketAggregate::effectivePrice()`: novo método, retorna promo se activa,
-      senão gross. `priceDifference()` e `priceSignal()` passaram a usar
-      `effectivePrice()` em vez de `car_price_gross` directamente
-    - `CarMarketAggregateResource`: `comparison.car_price` = `effectivePrice()`;
-      `comparison.car_price_gross` presente apenas quando promo activa (PVP de referência)
-    - `MarketPositionCard`: label "Preço promo" + linha "↑ PVP: €X" quando promo activa
-    - `MarketAggregateComparison` em `types/api.ts`: `car_price_gross?: number` (opcional)
-    - 5 novos testes unitários (16/16 verdes); 8/8 testes de feature verdes
-
-    Follow-ons resolvidos na mesma sessão:
-    - **Y2.1** — UX da lista de comparáveis reescrita; bug histórico do tipo
-      `MarketComparable` corrigido (`brand`/`model`/`km` → `fuel`/`gearbox`/`region`/`year|null`)
-    - **Y2.2** — Links mortos tratados: `search_url` pré-computado no snapshot;
-      endpoint `check-link` com SSRF guard; cache in-memory TTL 60s no frontend;
-      detecção validada empiricamente (HTTP 410 = expirado, HTTP 200 = activo)
+## 14. Dívida técnica conhecida
+
+Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos no topo, itens resolvidos compactados em tabela no fim, aprendizagens de processo em sub-secção própria. **Para detalhe histórico de cada item resolvido, ver a secção 15 onde a sub-fase correspondente está documentada.**
+
+### 14.1 Itens activos
+
+#### 🔴 Alta prioridade — atacar no próximo trimestre
+
+1. **TypeScript `any` generalizado** — bloqueia refactor seguro. Criar `web/src/types/api.ts` progressivamente. Tipos derivam das API Resources do Laravel.
+
+2. **Sem testes para lógica de negócio crítica** — `CarAiAnalysesService::enforceCampaignDiagnosisRules()`, `DashboardRepository::groupCarsByPersona()`, `ScraperService::normalizeFilters()`, `AggregateCarPerformanceMetricsJob`.
+
+3. **Duas fontes de verdade paralelas para "posição no mercado"** — `CarMarketIntelligenceService` (legacy, lê de `car_market_snapshots`) vs `CarMarketAggregate` (E2, tabela própria). Pipeline IA ainda usa o legacy. Migrar numa sub-fase dedicada após capítulo E estabilizar (3-5 dias em produção). Envolve:
+   - Substituir leitura de `car_market_snapshots` por `latest_market_aggregate` nos 5 services dependentes
+   - Re-treinar prompts da IA que assumem `market_intelligence.market_position`
+   - Validar que `CarDecisionEngineService` continua a produzir scoring consistente
+   - Eventualmente eliminar `CarMarketIntelligenceService.php`
+
+4. **IPS produz 68% de zeros — calibração suspeita** — descoberto durante validação X2. Nas últimas 30 dias, 578 dos 843 scores recentes são 0 (68.6%). Distribuição não saudável. Investigar em sub-fase dedicada (Fase F): ler `CarSalePotentialScoreService`; analisar viaturas com score 0 manualmente; comparar com viaturas que efectivamente venderam. **Bloqueia** redesign do Dashboard com "probabilidade de venda" — sem IPS confiável, esse badge é teatro.
+
+5. **Scheduler tem gaps inexplicados (alta prioridade)** — container ficou suspenso 11h30 entre 21:00 (2026-05-24) e 08:30 (2026-05-25). Loop `while true` que invoca `schedule:run` não morreu, apenas suspendeu. Detecção silenciosa. Hipótese: invocação síncrona de `schedule:run` bloqueou. **Fase E planeada** com logs visíveis desde D6. Plano:
+   - Identificar último job antes do gap
+   - Substituir loop por supervisor/cron robusto com timeout por invocação
+   - Considerar `php artisan schedule:work` (built-in)
+   - Health check externo (heartbeat file + Docker healthcheck)
+
+6. **Bug histórico `whatsapp_clicks`** — métricas erradas 2026-03-06 a 2026-03-13. Remediação: `php artisan performance:aggregate --from=DATE --to=DATE --sync` para cada dia. Mitigado em parte: H3c passou a usar `car_interactions` (real-time) no campo `metrics.whatsapp_clicks` da Tráfego & Canais, evitando o agregado bug.
+
+#### 🟡 Média prioridade
+
+7. **Fetch duplicado em tabs de viatura — guards sem TTL** — H2a/H2b resolveram fetch repetido na mesma sessão. Mas se o utilizador deixa a tab aberta horas, vê dados stale. Adicionar TTL ou invalidação por evento quando relevante (item antigo 37).
+
+8. **`CarPageLayout` com `Outlet` não implementado** — Opção A da H2a (nested routes) é o design correcto a longo prazo. Requer suporte a nested routes em `Routes/index.tsx`, refactor de `CarAnalyticsHeader` para ler do Redux, e `CarPageNav` para `useLocation()`. Atacar em sessão dedicada à página de viatura (item antigo 38).
+
+9. **`CarSpecsResource` faz 2 queries extra no `toArray()`** — H2b optou por simplicidade (queries directas a `CarSalePotentialScore` e `CarAiAnalysis` dentro do Resource). Aceitável para escala actual (1 viatura por request). Optimizar para eager load quando houver bottleneck (item antigo 39).
+
+10. **`CarAnalyticsHeader` recebe `car` como objecto plano sem tipo** — props definidas como `any`. Após H2b, a Ficha passa adapter `carForHeader` construído a partir de `CarSpecs`. Tipar com interface própria (item antigo 40).
+
+11. **Backend gera `action.label`, `action.suggestion`, `problem` em `immediate_actions`** que o frontend já não renderiza (após F1c). Continuam a ser gerados (custo potencial de IA) mas não aparecem. Decidir destino quando voltarmos com lógica nova (item antigo 34).
+
+12. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie. Tem implicações de auth, não trivial.
+
+13. **`laravel_helper.ts` a crescer sem organização** — partir em helpers por recurso.
+
+14. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense` em `allRoutes.tsx`.
+
+15. **Sem rate limiting nas rotas de IA** — adicionar throttle por `company_id` para proteger custos OpenAI.
+
+16. **`classifyPersona()` acoplado a strings raw de `segment`** — encapsular num enum/Value Object.
+
+17. **Sem Error Boundary React global** — adicionar e ligar a logging.
+
+18. **B1 accordions inline em `CarVehicleDetailsDataFields.tsx`** — Os 3 accordions da Fase B1 (Dimensões/Pesos, Cozinha, Casa de Banho) estão inline no parent. Os 5 da B2 foram extraídos para sub-componentes. Alinhar B1 com o padrão.
+
+19. **`subsegment` NULL em todos os motorhomes** — campo existe no schema mas não está a ser gravado pelo UI. Investigar.
+
+20. **Catch silencioso em `CarDescriptionDataFields.tsx`** — `catch {}` apenas mostra toast genérico. Propagar mensagem de erro real quando disponível.
+
+21. **Validação min/max em campos numéricos do `vehicle_attributes`** — backend valida (min 0.1 m para `length_m`), mas car 57 histórico tem `length: -0.1745`. Limpar registo manualmente.
+
+22. **Originais não eliminados em delete de imagem (Z2.a)** — `CarService::update()` elimina o ficheiro em `images/` mas não o correspondente em `originals/`. Orphaned originals acumulam. Corrigir quando houver limpeza de storage agendada.
+
+23. **Re-crop não actualiza tile do FilePond (Z2.c)** — thumbnail da secção "Editar cortes" actualiza via `?v=timestamp`, mas o tile no FilePond pond mantém cached preview até refresh. Complexo dado o modelo de estado do react-filepond. Adiar para v2 do cropper.
+
+#### 🟢 Baixa prioridade
+
+24. `document.title` mutado directamente — substituir por hook `useDocumentTitle`.
+25. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs.
+26. Sem índices em `car_performance_metrics(car_id, period_start)`.
+27. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro.
+28. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios.
+29. **`lifestyle` campo zombie** no `cars` — sem cast, sem UI, nunca preenchido. Remover ou implementar.
+30. **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa. Adicionar índices funcionais (MariaDB) para `length_m`, `has_solar_panel`, slugs de `beds` se necessário.
+31. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino"; seeder tem 7 categorias, BD tem 4. Alinhar seeder com realidade, sem alterar slugs em uso.
+32. **`car_market_aggregates` não tem `scraped_at`** — `updated_at` é usado como proxy. Adicionar quando houver necessidade de distinguir "última actualização" de "último scrape" (refresh manual vs schedule periódico).
+33. **`getAnalyticsDashboard` thunk alimenta Dashboard e /insights** — nome impreciso após F1a. Renomear para `getAnalyticsCompany` em mudança maior do Redux state.
+34. **6 ficheiros frontend orphans eliminados na E3a** registados para evitar reintrodução acidental: `MarketIntelligenceCard`, `TabAnaliseIA`, `TabMetricas`, `TabOverview`, `TabPerformance`, `TabViatura`.
+35. **Página `/insights` desactivada em 2026-05-23** — rota e item de menu removidos. Componentes (DashboardInsightsCard, StockIntelligenceDashboardCard, MarketingWorkspaceTabs, InsightsPage, visibilityHelpers + 12 testes) ficam no codebase para reuso futuro. Motivo: análise de marketplace em vez de gestão de stand. Recuperar quando houver decisão clara sobre que análise é útil (provavelmente reorientada para análise sobre o próprio stock).
+36. **Item "Acções" oculto do sidebar em 2026-05-23** — rota mantida, item de menu removido. Página existe mas conteúdo não pronto. Reintroduzir quando houver acções accionáveis reais.
+37. **Aba `/cars/:id/ads` eliminada em 2026-05-23 (H3b)** — frontend removido (822 linhas), backend Meta INTACTO (OAuth, jobs, endpoints) para reaproveitar em página futura de criação directa de campanhas. Candidatos a limpeza no payload `analyticsCar`: `smart_ads_recommendation`, `recommended_creative`, `ai_analysis.recommended_channel`.
+38. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em 2026-05-23 (H3d)** — backend intacto. 4 campos viram zombies no payload (`intent_analysis`, `lead_reality_gap`, `meta_ads_targeting_status`, `silent_buyers`) — continuam calculados para alimentar pipeline IA legacy (item 3). Limpeza apenas após migrar para `CarMarketAggregate`. Thunks órfãos não eliminados: `refreshCarMetaAds`, `regenerateCarAnalysis`.
+39. **Campos órfãos em Tráfego & Canais (H3c)** — `metrics.views_24h`, `metrics.views_7d`, `metrics.interactions`, `metrics.interest_rate`, `performance.totals.*`. Componente `CarAnalyticsKpiStrip.tsx` mantido mas órfão (reutilizável).
+
+### 14.2 Itens resolvidos (histórico compactado)
+
+Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
+
+| # | Descrição | Resolvido em | Sub-fase |
+|---|---|---|---|
+| ~~25~~ | `GenerateWeeklyMarketingIdeasJob` desactivado → eliminado completamente | 2026-05-23 | H3a (DROP TABLE `car_marketing_ideas`) |
+| ~~36~~ | `CarAdsPage` chamadas API directas fora do Redux | 2026-05-23 | H3b (eliminação da aba) |
+| ~~41~~ | `RecommendedCreative` type zombie | 2026-05-23 | H3b (componente eliminado) |
+| ~~43~~ | KPIs em excesso em Tráfego & Canais | 2026-05-23 | H3c (reduzido a 4 essenciais) |
+| ~~44~~ | Intelligence com componentes zombie | 2026-05-23 | H3d (reduzido a MarketPositionCard) |
+| ~~45~~ | Bug `triggered_by` ENUM rejeitava `'promo_price_change'` | 2026-05-23 | X2 (ALTER ENUM) |
+| ~~47~~ | `RecalculateAllCarScoresJob` cron parado | 2026-05-23 | Auto-resolvido (recreate de containers) |
+| ~~48~~ | Polling MarketPositionCard sem timeout | 2026-05-23 + 25 | X1 (TimedOutState) + X7 (Fix C) |
+| ~~49~~ | Race condition de navegação rápida | 2026-05-23 + 25 | X3 (mountedRef) + X7 (Fix C) |
+| ~~50~~ Fix A | GET `useEffect.catch` produzia NeverRunState para qualquer erro | 2026-05-25 | X5 (NetworkErrorState) |
+| ~~50~~ Fix B | Aggregates ficam pendentes durante janelas sem worker | 2026-05-25 | X6 (`MarkStaleAggregatesAsErrorJob`) |
+| ~~50~~ Fix C | `latestOfMany` podia devolver aggregate errado | 2026-05-25 | X7 (sessionStorage + GET `?aggregate_id=N`) |
+| ~~50~~ Fix C.1 | Bug histórico de mapeamento `res.data.data` no helper | 2026-05-25 | X7.1 (genérico corrigido) |
+| ~~50~~ Fix D | Fila/cache em MariaDB em vez de Redis em prod | 2026-05-26 | D2/D3/D4/D6 |
+| ~~52~~ | Comparação de mercado ignorava `promo_price_gross` | 2026-05-25 | Y2 (+ Y2.1 UX, Y2.2 search_url) |
+
+### 14.3 Aprendizagens de processo (descobertas em sessões recentes)
+
+- **Análise estática mente** — para bugs CSS/layout, testar empiricamente no browser. Em 2026-05-26 foram precisas 3 rondas de debugging do Claude Code (todas com análises estáticas bem fundamentadas) para identificar as duas causas reais de overflow horizontal em `/cars/:id/analytics`. Só o snippet `findOverflow()` no Console do DevTools (documentado em 10.X) chegou à verdade.
+
+- **Causas-raiz podem ter múltiplas camadas** — Y3.d.5 resolveu o `CarPageNav`; Y3.d.6 resolveu o KPI row (segundo culpado, independente). Parar no primeiro fix deixaria 50% do bug em produção. Lição: após aplicar fix, **revalidar empiricamente** que o sintoma desapareceu totalmente.
+
+- **`config:cache` é necessário após mudança de `.env` em prod** (descoberto em D2). Restart de workers não chega — Laravel cacheia `config()` no boot e ignora `.env` actualizado.
+
+- **`docker exec` num container reinicia variáveis** mas se o container já estava com config cacheada, o restart só chega quando se faz `restart` propriamente. `up -d --no-deps <service>` recria o container.
+
+- **Falsos positivos em detectores de overflow** — o `findOverflow()` pode listar muitos elementos sem que haja overflow real no documento. A âncora de verdade é `document.documentElement.scrollWidth === window.innerWidth`. Tudo o resto pode ser overflow contido (`overflow: auto/hidden`).
+
+- **Migração de queue/cache em prod precisa de validação imediata** — em D2/D3/D4 confirmámos com `redis-cli KEYS` que o Redis tinha as chaves esperadas (`xplendor-database-xplendor-cache-confirm-redis`). Sem isso, fica a dúvida se a config foi mesmo aplicada.
 
 ---
 
@@ -1342,6 +1074,8 @@ Detecção validada empiricamente (2026-05-25) com URLs reais da BD: listagem ac
 
 ### ✅ Fases concluídas (sessão 2026-05-26)
 
+#### Capítulo Z — Imagens e cropper
+
 **Z1.a — Fix reorder FilePond**
 Removido `setFiles(nextFiles)` do handler `onreorderfiles`. Causa: `react-filepond` só define `allowFilesSync=false` no `onupdatefiles`, não no `onreorderfiles` — chamar `setFiles` forçava re-render e FilePond re-processava os itens como novos uploads. Fix: uma linha removida. O handler passa a chamar apenas `syncFormikFromPond(nextFiles)`.
 
@@ -1361,6 +1095,8 @@ Migration `original_path nullable text` em `car_images`. `CarImageService::handl
 
 **Nota sobre imagens legadas (pré-Z2.a):** `original_path = NULL` — botão de re-crop não aparece. Zero retroactividade. Documentado.
 
+#### Capítulo D — Infra Redis em produção
+
 **D1 — Investigação infra Redis/queue/cache**
 Relatório completo de infra: `REDIS_HOST=127.0.0.1` inacessível dentro dos containers (devia ser nome do serviço Docker `redis`), fila e cache em MariaDB em vez de Redis, worker com `--max-time=3600`, scheduler com output suprimido em prod. Base para D2–D6.
 
@@ -1369,6 +1105,8 @@ Relatório completo de infra: `REDIS_HOST=127.0.0.1` inacessível dentro dos con
 
 **D6 — Output do scheduler visível em produção**
 `>> /dev/null 2>&1` removido de `docker-compose.prod.yml` (linha 92). `docker logs xplendor-scheduler` passa a mostrar a saída de cada invocação de `schedule:run`. Dev nunca teve este redirect. Diagnóstico do item 51 (congelamentos) agora possível com visibilidade real dos logs.
+
+#### Capítulo Y3 — Mobile UX e CSS fixes
 
 **Y3.a — CarAnalyticsHeader trim mobile**
 Abaixo de `md` (768px), ocultos via `d-none d-md-inline` / `d-none d-md-inline-flex`: data de publicação, matrícula, badge IPS (numérico), badge IPS (classificação), badge urgência IA, badge alerta de preço. Botão "Editar viatura" passa a mostrar apenas ícone em mobile (`d-none d-md-inline` no texto). `text-truncate` + `minWidth: 0` adicionados ao `h5` para marcas longas ("Mercedes-Benz Classe E") em viewports estreitos.
@@ -1400,27 +1138,40 @@ Nova prop opcional `renderMobileCard?: (rowData: any) => React.ReactNode` no `IX
 **Y3.d.6 — Fix overflow residual em CarAnalytics (KPI row)**
 Margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewports mobile; `overflow: hidden` no d-grid wrapper resolve. Contexto: após Y3.d.5, persistia overflow residual de 16px em CarAnalytics a ~500px. Causa: `.row.g-3` tem `margin-x: -8px` em cada lado (total -16px); o wrapper d-grid não tinha `overflow: hidden` para absorver esse bleed. A ~504px, o row media 488px num container de 472px, inflando o `scrollWidth` da página em 16px. Fix: `overflow: "hidden"` no inner d-grid que envolve directamente o `row g-3` dos KPIs (linha 131 de `CarAnalytics.tsx`). As outras rotas (`/intelligence`, `/ficha`) não têm `.row.g-3` sem padding adequado, pelo que não precisam de fix equivalente.
 
+#### Capítulo Y4 — UX de estado de lead
+
+**Y4.a — LeadStatusBadge component**
+Substituído `<select>` HTML nativo por `LeadStatusBadge` em `web/src/pages/Leads/components/LeadStatusBadge.tsx`. Dropdown Reactstrap (`UncontrolledDropdown`) com soft badges Bootstrap (`bg-{variant}-subtle text-{variant}`). 6 estados: `new` (primary), `contacted` (secondary), `qualified` (warning), `won` (success), `lost` (danger), `spam` (dark). Prop `size="sm"` para tabela desktop, `size="md"` para card mobile. Checkmark no item activo. Prop `disabled` mantém comportamento de `loadingUpdate`. Integrado em coluna "Estado" de `LeadList` (desktop) e `renderLeadMobileCard` (mobile, Y3.d.3). `leadStatuses` array removido de `LeadList` — não mais necessário. Sem alterações de backend.
+
+#### DOCS — Revisão integral do CLAUDE.md
+
+**v1.8 — DOCS**
+Revisão integral do documento após acumulação de 14 sub-fases em 2 dias. Schema actualizado (`car_market_aggregates`, `car_images`, `original_path`, `search_url`, `promo_price_gross` adicionados à secção 6). 3 endpoints internos recentes documentados em nova subsecção 8.4 (recrop Z2.c, check-link Y2.2, GET por `aggregate_id` X7). Padrões mobile (Fase Y3) e aprendizagens CSS (Y3.d) documentados em nova subsecção em 10. Secção 14 (dívida técnica) reestruturada: itens activos no topo (14.1), tabela compacta de resolvidos (14.2), aprendizagens de processo (14.3) — passou de ~448 linhas para ~120. Secção 15 organizada por capítulos (Z, D, Y3, DOCS) dentro de cada sessão. Histórico de versões com entrada 1.8.
+
 ### 🚧 Próximo
 
-**Mês 1 — fundações de tipagem e dados**
-- `web/src/types/api.ts` com interfaces baseadas nas Resources
-- Migrar `CarAnalytics`, `CarAdsPage`, `CarIntelligencePage` para tipos próprios
-- Corrigir bug histórico `whatsapp_clicks`
-- Layout component `CarPageLayout` para resolver fetch duplicado nas 5 tabs
+**Curto prazo (próximas 2-3 sessões)**
+- **Fase E** — investigar congelamento do scheduler (item 5 de 14.1) com logs visíveis desde D6
+- **Fase F** — calibrar IPS (item 4 de 14.1): investigar 68% de zeros antes de qualquer redesign de "probabilidade de venda" no Dashboard
+- Lista de **ideias do utilizador** (a receber em sessão dedicada) — classificar como atacar curto/médio prazo, validar com Paulo/Matilde, ou descartar
+- Verificação 24-48h pós-push nocturno de 2026-05-26: confirmar que Redis em prod, mobile UX e crop de imagens funcionam com utilizadores reais
 
-**Mês 2 — organização e robustez**
-- Partir `laravel_helper.ts` em helpers por recurso
-- Adoptar padrão único de chamadas API (Redux thunks)
-- Error Boundary global + integração com logging
-- Lazy loading de rotas em `allRoutes.tsx`
-- Rate limiting `/api/v1/ai/*` por `company_id`
+**Médio prazo (3-6 meses)**
+- `types/api.ts` e fim do `any` (item 1)
+- Migrar pipeline IA de `CarMarketIntelligenceService` para `CarMarketAggregate` (item 3 — bloqueado por estabilidade do Capítulo E)
+- Layout component `CarPageLayout` com `Outlet` (item 8) — resolução estrutural da página de viatura
+- Rate limiting OpenAI por `company_id` (item 15)
+- Error Boundary React global (item 17)
+- Lazy loading de rotas (item 14)
+- B1 accordions extraídos do parent (item 18)
 
-**Mês 3 — produto e estabilidade**
-- Extrair tokens Velzon para CSS variables próprias
-- Smoke tests Python do scraper
-- GitHub Actions com lint + tests em PRs
-- Investigar e corrigir `subsegment NULL` em motorhomes
-- Decidir destino do campo `lifestyle` zombie
+**Longo prazo / backlog (sem urgência clara)**
+- 2FA
+- WebSockets / real-time notifications
+- Smoke tests do scraper Python
+- GitHub Actions CI (lint + tests em PRs)
+- Tokens Velzon → CSS variables próprias
+- WhatsApp Business API (faz parte da fase de Agência)
 
 ### O que **não** está no roadmap (deliberadamente)
 
@@ -1511,6 +1262,9 @@ Antes disto, **SaaS aberto é distração.** A agência é o negócio.
 - **SmartAds** — recomendações de campanha geradas pelo `CarAiAnalysesService`
 - **Habitação** — equipamento da célula da autocaravana (cozinha, casa de banho, camas, energia, exterior)
 - **Trade-in** (`is_trade_in`) — viatura entregue em retoma. Coluna na BD ainda é `is_resume`; renomeado apenas na API pública.
+- **Aggregate de mercado** — registo em `car_market_aggregates` com mediana, top 5 comparáveis, confidence e `price_signal`. Substitui parcialmente os `car_market_snapshots` (Fase E2). Item 3 da dívida técnica documenta a migração da pipeline IA pendente.
+- **Off-canvas** — pattern Reactstrap (`<Offcanvas>`) para sidebars móveis. Aplicado em CarList (Y3.b) para os filtros em viewports mobile. Pattern reutilizável.
+- **`useIsMobile(breakpoint)`** — hook em `web/src/hooks/useIsMobile.ts`. Substitui `useState(window.innerWidth < N)` (que não actualiza em resize). Padrão estabelecido na Fase Y1/Y3.
 
 ---
 

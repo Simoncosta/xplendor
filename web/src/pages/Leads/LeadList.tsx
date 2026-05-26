@@ -5,6 +5,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { useDispatch, useSelector } from "react-redux";
 // Components
 import XTanStackTable from "Components/Common/XTanStackTable";
+import LeadStatusBadge from "./components/LeadStatusBadge";
 import {
     Container,
     Row,
@@ -27,14 +28,6 @@ const formatTimeDiff = (dateStr: string): string => {
 
 const selectLeadState = (state: any) => state.Lead;
 
-const leadStatuses = [
-    { value: "new", label: "Novo" },
-    { value: "contacted", label: "Contactado" },
-    { value: "qualified", label: "Qualificado" },
-    { value: "won", label: "Ganho" },
-    { value: "lost", label: "Perdido" },
-    { value: "spam", label: "Spam" },
-];
 
 const selectLeadListViewModel = createSelector(
     [selectLeadState],
@@ -131,18 +124,12 @@ export default function LeadList() {
                 const lead = row.original;
 
                 return (
-                    <select
-                        value={lead.status}
-                        onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-                        className="form-select form-select-sm"
+                    <LeadStatusBadge
+                        currentStatus={lead.status}
+                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus)}
                         disabled={loadingUpdate}
-                    >
-                        {leadStatuses.map((status) => (
-                            <option key={status.value} value={status.value}>
-                                {status.label}
-                            </option>
-                        ))}
-                    </select>
+                        size="sm"
+                    />
                 );
             },
         },
@@ -268,16 +255,12 @@ export default function LeadList() {
                             </span>
                         </div>
                     )}
-                    <select
-                        value={lead.status}
-                        onChange={(e) => handleStatusChange(lead.id, e.target.value)}
-                        className="form-select form-select-sm w-100"
+                    <LeadStatusBadge
+                        currentStatus={lead.status}
+                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus)}
                         disabled={loadingUpdate}
-                    >
-                        {leadStatuses.map((status) => (
-                            <option key={status.value} value={status.value}>{status.label}</option>
-                        ))}
-                    </select>
+                        size="md"
+                    />
                 </div>
 
                 <div
