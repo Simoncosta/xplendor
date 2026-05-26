@@ -1,0 +1,26 @@
+//
+// _xplendor-overrides.scss
+//
+// Overrides do tema Velzon para problemas conhecidos.
+// Cada override deve ter comentário a explicar contexto + ticket.
+//
+
+// ───────────────────────────────────────────────────────
+// Fix Y4.c — Scroll fantasma vertical (~538px em todas
+// as telas autenticadas com sidebar size="sm").
+//
+// O Velzon define min-height: 1400px no html via
+// structure/_vertical.scss para preencher visualmente
+// o espaço quando o sidebar está em modo compacto.
+// Em viewports < 1400px de altura (todos os desktops
+// 720p/900p/1080p) isto cria scroll vertical desnecessário.
+//
+// Override para min-height: 100vh (preserva visual sem
+// scroll extra).
+// ───────────────────────────────────────────────────────
+
+@media (min-width: 768px) {
+  :is([data-layout="vertical"], [data-layout="semibox"])[data-sidebar-size="sm"] {
+    min-height: 100vh !important;
+  }
+}

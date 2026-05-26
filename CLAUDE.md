@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.8.1
+> Última actualização: 2026-05-26 · Versão 1.8.2
 
 ---
 
@@ -32,6 +32,7 @@
 | 1.7.2 | 2026-05-26 | Y3.d.6 — Fix overflow residual em CarAnalytics: margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewports mobile; `overflow: hidden` no d-grid wrapper resolve. |
 | 1.8 | 2026-05-26 | **DOCS** — Revisão integral do CLAUDE.md. Schema actualizado (`car_market_aggregates`, `car_images`, `original_path`, `search_url`, `promo_price_gross`). 3 endpoints documentados em 8.4 (recrop, check-link, GET por `aggregate_id`). Padrões mobile e aprendizagens CSS documentados em 10. Items resolvidos compactados em tabela (14.2). Secção 15 reorganizada por capítulos Z, D, Y3. |
 | 1.8.1 | 2026-05-26 | Y4.a — `LeadStatusBadge` component (substitui `<select>` HTML nativo na coluna Estado de LeadList, desktop e mobile card). Dropdown Reactstrap com soft badges Bootstrap. |
+| 1.8.2 | 2026-05-26 | Y4.c — Fix scroll fantasma vertical (~538px em todas as telas autenticadas). Override do `min-height: 1400px` do Velzon para `min-height: 100vh` via `_xplendor-overrides.scss`. |
 
 ---
 
@@ -1142,6 +1143,9 @@ Margin negativa do Bootstrap `.row.g-3` nos KPIs excedia padding do pai em viewp
 
 **Y4.a — LeadStatusBadge component**
 Substituído `<select>` HTML nativo por `LeadStatusBadge` em `web/src/pages/Leads/components/LeadStatusBadge.tsx`. Dropdown Reactstrap (`UncontrolledDropdown`) com soft badges Bootstrap (`bg-{variant}-subtle text-{variant}`). 6 estados: `new` (primary), `contacted` (secondary), `qualified` (warning), `won` (success), `lost` (danger), `spam` (dark). Prop `size="sm"` para tabela desktop, `size="md"` para card mobile. Checkmark no item activo. Prop `disabled` mantém comportamento de `loadingUpdate`. Integrado em coluna "Estado" de `LeadList` (desktop) e `renderLeadMobileCard` (mobile, Y3.d.3). `leadStatuses` array removido de `LeadList` — não mais necessário. Sem alterações de backend.
+
+**Y4.c — Fix scroll fantasma vertical (override Velzon)**
+O Velzon define `min-height: 1400px` no `<html>` via `structure/_vertical.scss` quando `data-sidebar-size="sm"` e viewport ≥ 768px. Em displays com altura < 1400px (todo desktop ≤ 1080p), criava ~538px de scroll fantasma em todas as telas autenticadas. Criado `web/src/assets/scss/_xplendor-overrides.scss` como ficheiro dedicado para overrides futuros do tema (não mexer nos ficheiros Velzon directamente). Override aplica `min-height: 100vh !important` no mesmo selector, eliminando o scroll sem alterar a aparência visual. Import adicionado no fim de `themes.scss` para garantir precedência. Build CSS confirma compilação correcta.
 
 #### DOCS — Revisão integral do CLAUDE.md
 

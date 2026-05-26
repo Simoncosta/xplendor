@@ -370,3 +370,6 @@ input:-webkit-autofill:active {
     }
   }
 }
+
+// Overrides Xplendor — deve ficar no fim para garantir precedência sobre o tema
+@import "./_xplendor-overrides";
