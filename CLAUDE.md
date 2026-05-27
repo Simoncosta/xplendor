@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.2
+> Última actualização: 2026-05-27 · Versão 1.9.3
 
 ---
 
@@ -37,6 +37,7 @@
 | 1.9.0 | 2026-05-26 | Fase F — Bug crítico de scores zombie no sync Carmine resolvido (F.2/F.3). Casts adicionados ao Car model (price_gross, is_resume, is_metallic, etc.). updated_at removido do payload Carmine. Comparação antes de update no CarmineConnectionService. |
 | 1.9.1 | 2026-05-27 | M1 — Feedback Matilde: label "Baterias célula" (era "celular"), enum shower_type `separate` → `independent` (label "Independente"). 7 alterações em 6 ficheiros. BD em prod vazia neste campo. |
 | 1.9.2 | 2026-05-27 | M1.c — shower_type expandido para 3 tipos distintos: `separate` (cabine dentro WC), `independent` (cabine fora WC), `combined` (sem cabine). Removido `none` — ausência do campo = sem duche. |
+| 1.9.3 | 2026-05-27 | M2 — Energia avançada: `solar_panel_count` (1-10) + `inverter_type` (`pure_sine`/`modified_sine`). Layout lado-a-lado no accordion Energia e Aquecimento. |
 
 ---
 
@@ -377,8 +378,10 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "ambient_heating_source": "gas",
     "ambient_heating_brand": "Truma",
     "has_solar_panel": true,
+    "solar_panel_count": 2,
     "solar_panel_watts": 150,
     "has_inverter": true,
+    "inverter_type": "pure_sine",
     "inverter_watts": 2000,
     "has_gpl": false,
     "gpl_bottles_count": null,
@@ -454,6 +457,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
 **Enums:**
 - `fridge_type`: `trivalent` | `compressor` | `absorption` | `none`
 - `shower_type`: `separate` | `independent` | `combined` (ausência = sem duche)
+- `inverter_type`: `pure_sine` | `modified_sine`
 - `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
 - `chassis_type`: `standard` | `alko` | `other`
 - `upholstery_state`: `good` | `fair` | `worn` | `replaced`
@@ -1183,6 +1187,12 @@ Após M1, a Matilde clarificou que existem 3 tipos distintos de duche em autocar
 - `independent` (label "Independente"): cabine de duche FORA do WC, em espaço próprio
 - `combined` (label "Combinado"): duche e WC partilham mesmo espaço, sem cabine
 Removido `none` — ausência do campo (`null`) significa "sem duche". BD em prod vazia, sites externos não no ar, grep confirma que 'none' não tinha tratamento especial. 5 ficheiros de código + CLAUDE.md.
+
+**M2 — Energia avançada**
+Feedback Matilde: dois novos campos opcionais no accordion Energia e Aquecimento.
+- Painel solar: `solar_panel_count` (integer, 1-10) — "Quantidade". Permite indicar nº de painéis sem ter de saber watts. Layout lado-a-lado com "Potência (W)" existente quando `has_solar_panel = true`.
+- Inversor: `inverter_type` enum (`pure_sine`/`modified_sine`, labels "Onda Pura"/"Onda Modificada") — dropdown react-select. Layout lado-a-lado com "Potência inversor (W)" quando `has_inverter = true`.
+Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttributes.ts`. Validação backend em `CarRequest.php`. Sem migration (JSON). 5 ficheiros alterados + CLAUDE.md.
 
 ### 🚧 Próximo
 

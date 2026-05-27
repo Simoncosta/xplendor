@@ -3,19 +3,25 @@ import { AccordionBody, AccordionHeader, AccordionItem, Col, Label, Row } from "
 import { useFormikContext } from "formik";
 import XInput from "Components/Common/XInput";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
-import type { ICarUpdatePayload, WaterHeaterSource, AmbientHeatingSource } from "common/models/car.model";
+import type { ICarUpdatePayload, WaterHeaterSource, AmbientHeatingSource, InverterType } from "common/models/car.model";
 
 export interface AccordionProps {
     accordionId: string;
 }
 
 type SourceOpt = { value: WaterHeaterSource | AmbientHeatingSource; label: string };
+type InverterOpt = { value: InverterType; label: string };
 
 const heatingSourceOptions: SourceOpt[] = [
     { value: "electric", label: "Eléctrico" },
     { value: "gas",      label: "Gás" },
     { value: "diesel",   label: "Gasóleo" },
     { value: "none",     label: "Nenhum" },
+];
+
+const inverterTypeOptions: InverterOpt[] = [
+    { value: "pure_sine",      label: "Onda Pura" },
+    { value: "modified_sine",  label: "Onda Modificada" },
 ];
 
 export default function EnergyClimateAccordion({ accordionId }: AccordionProps) {
@@ -81,14 +87,24 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                         />
                     </Col>
                     {ec?.has_solar_panel && (
-                        <Col lg={2}>
-                            <XInput
-                                type="number"
-                                name="vehicle_attributes.energy_climate.solar_panel_watts"
-                                label="Potência (W)"
-                                className="mb-3"
-                            />
-                        </Col>
+                        <>
+                            <Col lg={2}>
+                                <XInput
+                                    type="number"
+                                    name="vehicle_attributes.energy_climate.solar_panel_count"
+                                    label="Quantidade"
+                                    className="mb-3"
+                                />
+                            </Col>
+                            <Col lg={2}>
+                                <XInput
+                                    type="number"
+                                    name="vehicle_attributes.energy_climate.solar_panel_watts"
+                                    label="Potência (W)"
+                                    className="mb-3"
+                                />
+                            </Col>
+                        </>
                     )}
                     <Col lg={2}>
                         <XInputCheckbox
@@ -98,14 +114,27 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                         />
                     </Col>
                     {ec?.has_inverter && (
-                        <Col lg={2}>
-                            <XInput
-                                type="number"
-                                name="vehicle_attributes.energy_climate.inverter_watts"
-                                label="Potência inversor (W)"
-                                className="mb-3"
-                            />
-                        </Col>
+                        <>
+                            <Col lg={2}>
+                                <Label>Tipo de inversor</Label>
+                                <Select
+                                    isClearable
+                                    placeholder="Selecionar"
+                                    options={inverterTypeOptions}
+                                    value={inverterTypeOptions.find(o => o.value === ec?.inverter_type) ?? null}
+                                    onChange={(opt: InverterOpt | null) => setFieldValue("vehicle_attributes.energy_climate.inverter_type", opt?.value ?? null)}
+                                    className="mb-3"
+                                />
+                            </Col>
+                            <Col lg={2}>
+                                <XInput
+                                    type="number"
+                                    name="vehicle_attributes.energy_climate.inverter_watts"
+                                    label="Potência inversor (W)"
+                                    className="mb-3"
+                                />
+                            </Col>
+                        </>
                     )}
                     <Col lg={2}>
                         <XInputCheckbox

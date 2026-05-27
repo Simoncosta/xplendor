@@ -31,6 +31,7 @@ export interface CarExtrasGroup {
 
 export type FridgeType = "trivalent" | "compressor" | "absorption" | "none";
 export type ShowerType = "separate" | "independent" | "combined";
+export type InverterType = "pure_sine" | "modified_sine";
 export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
 export type AmbientHeatingSource = "electric" | "gas" | "diesel" | "none";
 export type ChassisType = "standard" | "alko" | "other";
@@ -78,8 +79,10 @@ export interface VehicleAttributeEnergyClimate {
     ambient_heating_source?: AmbientHeatingSource;
     ambient_heating_brand?: string;
     has_solar_panel?: boolean;
+    solar_panel_count?: number;
     solar_panel_watts?: number;
     has_inverter?: boolean;
+    inverter_type?: InverterType;
     inverter_watts?: number;
     has_gpl?: boolean;
     gpl_bottles_count?: number;
