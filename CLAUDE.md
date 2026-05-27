@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.1
+> Última actualização: 2026-05-27 · Versão 1.9.2
 
 ---
 
@@ -36,6 +36,7 @@
 | 1.8.3 | 2026-05-26 | Y4.b — Login polish: textos pt-PT, alert de erro funcional (msg genérica), ícones nos inputs (ri-mail-line + ri-lock-2-line), loading state no botão, eye toggle dentro do InputGroup. |
 | 1.9.0 | 2026-05-26 | Fase F — Bug crítico de scores zombie no sync Carmine resolvido (F.2/F.3). Casts adicionados ao Car model (price_gross, is_resume, is_metallic, etc.). updated_at removido do payload Carmine. Comparação antes de update no CarmineConnectionService. |
 | 1.9.1 | 2026-05-27 | M1 — Feedback Matilde: label "Baterias célula" (era "celular"), enum shower_type `separate` → `independent` (label "Independente"). 7 alterações em 6 ficheiros. BD em prod vazia neste campo. |
+| 1.9.2 | 2026-05-27 | M1.c — shower_type expandido para 3 tipos distintos: `separate` (cabine dentro WC), `independent` (cabine fora WC), `combined` (sem cabine). Removido `none` — ausência do campo = sem duche. |
 
 ---
 
@@ -365,7 +366,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "bathroom": {
       "has_toilet": true,
       "has_shower": true,
-      "shower_type": "separate",
+      "shower_type": "independent",
       "clean_water_litres": 100,
       "waste_water_litres": 90
     }
@@ -452,7 +453,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
 
 **Enums:**
 - `fridge_type`: `trivalent` | `compressor` | `absorption` | `none`
-- `shower_type`: `independent` | `combined` | `none`
+- `shower_type`: `separate` | `independent` | `combined` (ausência = sem duche)
 - `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
 - `chassis_type`: `standard` | `alko` | `other`
 - `upholstery_state`: `good` | `fair` | `worn` | `replaced`
@@ -945,6 +946,8 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 38. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em 2026-05-23 (H3d)** — backend intacto. 4 campos viram zombies no payload (`intent_analysis`, `lead_reality_gap`, `meta_ads_targeting_status`, `silent_buyers`) — continuam calculados para alimentar pipeline IA legacy (item 3). Limpeza apenas após migrar para `CarMarketAggregate`. Thunks órfãos não eliminados: `refreshCarMetaAds`, `regenerateCarAnalysis`.
 39. **Campos órfãos em Tráfego & Canais (H3c)** — `metrics.views_24h`, `metrics.views_7d`, `metrics.interactions`, `metrics.interest_rate`, `performance.totals.*`. Componente `CarAnalyticsKpiStrip.tsx` mantido mas órfão (reutilizável).
 
+40. **Consistência de enums com `none` nos outros 3 enums de habitação** — Após M1.c (shower_type sem 'none'), avaliar com Matilde se `fridge_type`, `water_heater_source`, `ambient_heating_source` também deviam perder `'none'` por consistência UX ("não marca = não tem"). Baixa prioridade — funciona como está.
+
 ### 14.2 Itens resolvidos (histórico compactado)
 
 Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
@@ -1173,6 +1176,13 @@ Revisão integral do documento após acumulação de 14 sub-fases em 2 dias. Sch
 
 **M1 — Bug fixes triviais**
 Feedback de utilizadora real (Matilde, autocaravanas): label "Baterias celular" → "Baterias célula" (pt-PT correcto). Enum `shower_type` `'separate'` → `'independent'` (label "Independente" em vez de "Separado"). BD em prod vazia neste campo, sites externos não no ar — renomeação sem risco, sem migration necessária. 7 alterações em 6 ficheiros (CarRequest.php, RESOURCE_SHAPE.md, car.model.ts, vehicleAttributes.ts, CarVehicleDetailsDataFields.tsx, EnergyClimateAccordion.tsx + CLAUDE.md).
+
+**M1.c — Fix shower_type: 3 tipos distintos**
+Após M1, a Matilde clarificou que existem 3 tipos distintos de duche em autocaravanas:
+- `separate` (label "Separado"): cabine de duche DENTRO do WC, com divisão própria
+- `independent` (label "Independente"): cabine de duche FORA do WC, em espaço próprio
+- `combined` (label "Combinado"): duche e WC partilham mesmo espaço, sem cabine
+Removido `none` — ausência do campo (`null`) significa "sem duche". BD em prod vazia, sites externos não no ar, grep confirma que 'none' não tinha tratamento especial. 5 ficheiros de código + CLAUDE.md.
 
 ### 🚧 Próximo
 

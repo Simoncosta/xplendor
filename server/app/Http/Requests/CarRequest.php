@@ -81,7 +81,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.bathroom'                    => ['nullable', 'array'],
             'vehicle_attributes.habitation_basics.bathroom.has_toilet'         => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.bathroom.has_shower'         => ['nullable', 'boolean'],
-            'vehicle_attributes.habitation_basics.bathroom.shower_type'        => ['nullable', Rule::in(['independent', 'combined', 'none'])],
+            'vehicle_attributes.habitation_basics.bathroom.shower_type'        => ['nullable', Rule::in(['separate', 'independent', 'combined'])],
             'vehicle_attributes.habitation_basics.bathroom.clean_water_litres' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'vehicle_attributes.habitation_basics.bathroom.waste_water_litres' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'vehicle_attributes.beds'                                          => ['nullable', 'array'],

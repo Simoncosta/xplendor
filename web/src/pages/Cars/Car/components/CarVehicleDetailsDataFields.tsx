@@ -36,9 +36,9 @@ const fridgeTypeOptions = [
 ];
 
 const showerTypeOptions = [
+    { value: "separate",    label: "Separado" },
     { value: "independent", label: "Independente" },
-    { value: "combined", label: "Combinado com WC" },
-    { value: "none",     label: "Nenhum" },
+    { value: "combined",    label: "Combinado" },
 ];
 
 // 12 options shown by default; cama_rebativel_cabine is legacy and only injected

@@ -94,7 +94,7 @@ This version returns a curated, stable payload.
     "fridge_type": "compressor",
     "has_toilet": true,
     "has_shower": true,
-    "shower_type": "independent",
+    "shower_type": "independent",  // 'separate' | 'independent' | 'combined' | null
     "clean_water_litres": 100,
     "waste_water_litres": 90
   },

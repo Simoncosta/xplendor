@@ -30,7 +30,7 @@ export const BED_LABELS: Record<BedType, string> = {
 };
 
 export type FridgeType = "trivalent" | "compressor" | "absorption" | "none";
-export type ShowerType = "independent" | "combined" | "none";
+export type ShowerType = "separate" | "independent" | "combined";
 export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
 export type AmbientHeatingSource = "electric" | "gas" | "diesel" | "none";
 export type ChassisType = "standard" | "alko" | "other";
