@@ -11,6 +11,7 @@ import { createCar } from "slices/cars/thunk";
 import CarEditor from "./CarEditor";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
+import { showApiErrorToast } from "helpers/error_helper";
 
 const selectCarState = (state: any) => state.Car;
 
@@ -56,7 +57,7 @@ export default function CarCreate() {
                         toast("Carro criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                         navigate(-1);
                     } catch (error) {
-                        // Mantém o comportamento atual de erro sem navegação indevida.
+                        showApiErrorToast(error, "Erro ao criar viatura.");
                     }
                 }}
                 onCancel={() => {

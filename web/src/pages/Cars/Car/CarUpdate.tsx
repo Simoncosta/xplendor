@@ -13,6 +13,7 @@ import { closeCarSale } from "slices/car-sales/thunk";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
 import { ICarSalePayload } from "common/models/car-sale.model";
+import { showApiErrorToast } from "helpers/error_helper";
 
 const selectCarState = (state: any) => state.Car;
 const selectCarSaleState = (state: any) => state.CarSale;
@@ -68,7 +69,7 @@ export default function CarUpdate() {
                         await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
                         toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     } catch (error) {
-                        // Mantém o comportamento atual de erro sem toast de sucesso indevido.
+                        showApiErrorToast(error, "Erro ao actualizar viatura.");
                     }
                 }}
                 onSubmitSold={async (values: any, saleData: ICarSalePayload) => {
@@ -107,7 +108,7 @@ export default function CarUpdate() {
                         await dispatch(showCar({ companyId, id: Number(id) })).unwrap();
                         toast("Venda concluída com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                     } catch (error) {
-                        // Mantém o modal disponível para nova tentativa em caso de erro.
+                        showApiErrorToast(error, "Erro ao registar venda.");
                     }
                 }}
                 onCancel={() => {

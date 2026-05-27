@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.3
+> Última actualização: 2026-05-27 · Versão 1.9.4
 
 ---
 
@@ -38,6 +38,7 @@
 | 1.9.1 | 2026-05-27 | M1 — Feedback Matilde: label "Baterias célula" (era "celular"), enum shower_type `separate` → `independent` (label "Independente"). 7 alterações em 6 ficheiros. BD em prod vazia neste campo. |
 | 1.9.2 | 2026-05-27 | M1.c — shower_type expandido para 3 tipos distintos: `separate` (cabine dentro WC), `independent` (cabine fora WC), `combined` (sem cabine). Removido `none` — ausência do campo = sem duche. |
 | 1.9.3 | 2026-05-27 | M2 — Energia avançada: `solar_panel_count` (1-10) + `inverter_type` (`pure_sine`/`modified_sine`). Layout lado-a-lado no accordion Energia e Aquecimento. |
+| 1.9.4 | 2026-05-27 | M3.preview — Toast de erros 422 em CarCreate/CarUpdate. Helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`. |
 
 ---
 
@@ -905,52 +906,54 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 10. **`CarAnalyticsHeader` recebe `car` como objecto plano sem tipo** — props definidas como `any`. Após H2b, a Ficha passa adapter `carForHeader` construído a partir de `CarSpecs`. Tipar com interface própria (item antigo 40).
 
-11. **Backend gera `action.label`, `action.suggestion`, `problem` em `immediate_actions`** que o frontend já não renderiza (após F1c). Continuam a ser gerados (custo potencial de IA) mas não aparecem. Decidir destino quando voltarmos com lógica nova (item antigo 34).
+11. **Toast de erros 422 só em CarCreate/CarUpdate** — M3.preview implementou em escopo mínimo via `showApiErrorToast` em `helpers/error_helper.ts`. Outros forms (Leads, Users, Companies, Blogs) continuam silenciosos perante 422. Alargar quando houver feedback de bug ou em sessão dedicada de UX.
 
-12. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie. Tem implicações de auth, não trivial.
+12. **Backend gera `action.label`, `action.suggestion`, `problem` em `immediate_actions`** que o frontend já não renderiza (após F1c). Continuam a ser gerados (custo potencial de IA) mas não aparecem. Decidir destino quando voltarmos com lógica nova (item antigo 34).
 
-13. **`laravel_helper.ts` a crescer sem organização** — partir em helpers por recurso.
+13. **`sessionStorage` com dados de utilizador** — avaliar mover para HTTP-only cookie. Tem implicações de auth, não trivial.
 
-14. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense` em `allRoutes.tsx`.
+14. **`laravel_helper.ts` a crescer sem organização** — partir em helpers por recurso.
 
-15. **Sem rate limiting nas rotas de IA** — adicionar throttle por `company_id` para proteger custos OpenAI.
+15. **Sem lazy loading de rotas React** — implementar `React.lazy()` + `Suspense` em `allRoutes.tsx`.
 
-16. **`classifyPersona()` acoplado a strings raw de `segment`** — encapsular num enum/Value Object.
+16. **Sem rate limiting nas rotas de IA** — adicionar throttle por `company_id` para proteger custos OpenAI.
 
-17. **Sem Error Boundary React global** — adicionar e ligar a logging.
+17. **`classifyPersona()` acoplado a strings raw de `segment`** — encapsular num enum/Value Object.
 
-18. **B1 accordions inline em `CarVehicleDetailsDataFields.tsx`** — Os 3 accordions da Fase B1 (Dimensões/Pesos, Cozinha, Casa de Banho) estão inline no parent. Os 5 da B2 foram extraídos para sub-componentes. Alinhar B1 com o padrão.
+18. **Sem Error Boundary React global** — adicionar e ligar a logging.
 
-19. **`subsegment` NULL em todos os motorhomes** — campo existe no schema mas não está a ser gravado pelo UI. Investigar.
+19. **B1 accordions inline em `CarVehicleDetailsDataFields.tsx`** — Os 3 accordions da Fase B1 (Dimensões/Pesos, Cozinha, Casa de Banho) estão inline no parent. Os 5 da B2 foram extraídos para sub-componentes. Alinhar B1 com o padrão.
 
-20. **Catch silencioso em `CarDescriptionDataFields.tsx`** — `catch {}` apenas mostra toast genérico. Propagar mensagem de erro real quando disponível.
+20. **`subsegment` NULL em todos os motorhomes** — campo existe no schema mas não está a ser gravado pelo UI. Investigar.
 
-21. **Validação min/max em campos numéricos do `vehicle_attributes`** — backend valida (min 0.1 m para `length_m`), mas car 57 histórico tem `length: -0.1745`. Limpar registo manualmente.
+21. **Catch silencioso em `CarDescriptionDataFields.tsx`** — `catch {}` apenas mostra toast genérico. Propagar mensagem de erro real quando disponível.
 
-22. **Originais não eliminados em delete de imagem (Z2.a)** — `CarService::update()` elimina o ficheiro em `images/` mas não o correspondente em `originals/`. Orphaned originals acumulam. Corrigir quando houver limpeza de storage agendada.
+22. **Validação min/max em campos numéricos do `vehicle_attributes`** — backend valida (min 0.1 m para `length_m`), mas car 57 histórico tem `length: -0.1745`. Limpar registo manualmente.
 
-23. **Re-crop não actualiza tile do FilePond (Z2.c)** — thumbnail da secção "Editar cortes" actualiza via `?v=timestamp`, mas o tile no FilePond pond mantém cached preview até refresh. Complexo dado o modelo de estado do react-filepond. Adiar para v2 do cropper.
+23. **Originais não eliminados em delete de imagem (Z2.a)** — `CarService::update()` elimina o ficheiro em `images/` mas não o correspondente em `originals/`. Orphaned originals acumulam. Corrigir quando houver limpeza de storage agendada.
+
+24. **Re-crop não actualiza tile do FilePond (Z2.c)** — thumbnail da secção "Editar cortes" actualiza via `?v=timestamp`, mas o tile no FilePond pond mantém cached preview até refresh. Complexo dado o modelo de estado do react-filepond. Adiar para v2 do cropper.
 
 #### 🟢 Baixa prioridade
 
-24. `document.title` mutado directamente — substituir por hook `useDocumentTitle`.
-25. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs.
-26. Sem índices em `car_performance_metrics(car_id, period_start)`.
-27. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro.
-28. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios.
-29. **`lifestyle` campo zombie** no `cars` — sem cast, sem UI, nunca preenchido. Remover ou implementar.
-30. **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa. Adicionar índices funcionais (MariaDB) para `length_m`, `has_solar_panel`, slugs de `beds` se necessário.
-31. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino"; seeder tem 7 categorias, BD tem 4. Alinhar seeder com realidade, sem alterar slugs em uso.
-32. **`car_market_aggregates` não tem `scraped_at`** — `updated_at` é usado como proxy. Adicionar quando houver necessidade de distinguir "última actualização" de "último scrape" (refresh manual vs schedule periódico).
-33. **`getAnalyticsDashboard` thunk alimenta Dashboard e /insights** — nome impreciso após F1a. Renomear para `getAnalyticsCompany` em mudança maior do Redux state.
-34. **6 ficheiros frontend orphans eliminados na E3a** registados para evitar reintrodução acidental: `MarketIntelligenceCard`, `TabAnaliseIA`, `TabMetricas`, `TabOverview`, `TabPerformance`, `TabViatura`.
-35. **Página `/insights` desactivada em 2026-05-23** — rota e item de menu removidos. Componentes (DashboardInsightsCard, StockIntelligenceDashboardCard, MarketingWorkspaceTabs, InsightsPage, visibilityHelpers + 12 testes) ficam no codebase para reuso futuro. Motivo: análise de marketplace em vez de gestão de stand. Recuperar quando houver decisão clara sobre que análise é útil (provavelmente reorientada para análise sobre o próprio stock).
-36. **Item "Acções" oculto do sidebar em 2026-05-23** — rota mantida, item de menu removido. Página existe mas conteúdo não pronto. Reintroduzir quando houver acções accionáveis reais.
-37. **Aba `/cars/:id/ads` eliminada em 2026-05-23 (H3b)** — frontend removido (822 linhas), backend Meta INTACTO (OAuth, jobs, endpoints) para reaproveitar em página futura de criação directa de campanhas. Candidatos a limpeza no payload `analyticsCar`: `smart_ads_recommendation`, `recommended_creative`, `ai_analysis.recommended_channel`.
-38. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em 2026-05-23 (H3d)** — backend intacto. 4 campos viram zombies no payload (`intent_analysis`, `lead_reality_gap`, `meta_ads_targeting_status`, `silent_buyers`) — continuam calculados para alimentar pipeline IA legacy (item 3). Limpeza apenas após migrar para `CarMarketAggregate`. Thunks órfãos não eliminados: `refreshCarMetaAds`, `regenerateCarAnalysis`.
-39. **Campos órfãos em Tráfego & Canais (H3c)** — `metrics.views_24h`, `metrics.views_7d`, `metrics.interactions`, `metrics.interest_rate`, `performance.totals.*`. Componente `CarAnalyticsKpiStrip.tsx` mantido mas órfão (reutilizável).
+25. `document.title` mutado directamente — substituir por hook `useDocumentTitle`.
+26. Sem CI/CD — adicionar GitHub Actions para tests + lint em PRs.
+27. Sem índices em `car_performance_metrics(car_id, period_start)`.
+28. `ScraperExecution.company_id` nullable (legacy) — normalizar quando seguro.
+29. `sectionStyle` inline duplicado — extrair `<Section>` / `<Card>` próprios.
+30. **`lifestyle` campo zombie** no `cars` — sem cast, sem UI, nunca preenchido. Remover ou implementar.
+31. **Queries em JSON sobre `vehicle_attributes.attributes` não usam índices.** Aceitável até ~5.000 viaturas por empresa. Adicionar índices funcionais (MariaDB) para `length_m`, `has_solar_panel`, slugs de `beds` se necessário.
+32. **Divergência seeder vs DB nas `car_categories`** — seeder tem "Capucine", BD tem "Capucino"; seeder tem 7 categorias, BD tem 4. Alinhar seeder com realidade, sem alterar slugs em uso.
+33. **`car_market_aggregates` não tem `scraped_at`** — `updated_at` é usado como proxy. Adicionar quando houver necessidade de distinguir "última actualização" de "último scrape" (refresh manual vs schedule periódico).
+34. **`getAnalyticsDashboard` thunk alimenta Dashboard e /insights** — nome impreciso após F1a. Renomear para `getAnalyticsCompany` em mudança maior do Redux state.
+35. **6 ficheiros frontend orphans eliminados na E3a** registados para evitar reintrodução acidental: `MarketIntelligenceCard`, `TabAnaliseIA`, `TabMetricas`, `TabOverview`, `TabPerformance`, `TabViatura`.
+36. **Página `/insights` desactivada em 2026-05-23** — rota e item de menu removidos. Componentes (DashboardInsightsCard, StockIntelligenceDashboardCard, MarketingWorkspaceTabs, InsightsPage, visibilityHelpers + 12 testes) ficam no codebase para reuso futuro. Motivo: análise de marketplace em vez de gestão de stand. Recuperar quando houver decisão clara sobre que análise é útil (provavelmente reorientada para análise sobre o próprio stock).
+37. **Item "Acções" oculto do sidebar em 2026-05-23** — rota mantida, item de menu removido. Página existe mas conteúdo não pronto. Reintroduzir quando houver acções accionáveis reais.
+38. **Aba `/cars/:id/ads` eliminada em 2026-05-23 (H3b)** — frontend removido (822 linhas), backend Meta INTACTO (OAuth, jobs, endpoints) para reaproveitar em página futura de criação directa de campanhas. Candidatos a limpeza no payload `analyticsCar`: `smart_ads_recommendation`, `recommended_creative`, `ai_analysis.recommended_channel`.
+39. **Aba `/cars/:id/intelligence` reduzida a MarketPositionCard em 2026-05-23 (H3d)** — backend intacto. 4 campos viram zombies no payload (`intent_analysis`, `lead_reality_gap`, `meta_ads_targeting_status`, `silent_buyers`) — continuam calculados para alimentar pipeline IA legacy (item 3). Limpeza apenas após migrar para `CarMarketAggregate`. Thunks órfãos não eliminados: `refreshCarMetaAds`, `regenerateCarAnalysis`.
+40. **Campos órfãos em Tráfego & Canais (H3c)** — `metrics.views_24h`, `metrics.views_7d`, `metrics.interactions`, `metrics.interest_rate`, `performance.totals.*`. Componente `CarAnalyticsKpiStrip.tsx` mantido mas órfão (reutilizável).
 
-40. **Consistência de enums com `none` nos outros 3 enums de habitação** — Após M1.c (shower_type sem 'none'), avaliar com Matilde se `fridge_type`, `water_heater_source`, `ambient_heating_source` também deviam perder `'none'` por consistência UX ("não marca = não tem"). Baixa prioridade — funciona como está.
+41. **Consistência de enums com `none` nos outros 3 enums de habitação** — Após M1.c (shower_type sem 'none'), avaliar com Matilde se `fridge_type`, `water_heater_source`, `ambient_heating_source` também deviam perder `'none'` por consistência UX ("não marca = não tem"). Baixa prioridade — funciona como está.
 
 ### 14.2 Itens resolvidos (histórico compactado)
 
@@ -1194,6 +1197,9 @@ Feedback Matilde: dois novos campos opcionais no accordion Energia e Aquecimento
 - Inversor: `inverter_type` enum (`pure_sine`/`modified_sine`, labels "Onda Pura"/"Onda Modificada") — dropdown react-select. Layout lado-a-lado com "Potência inversor (W)" quando `has_inverter = true`.
 Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttributes.ts`. Validação backend em `CarRequest.php`. Sem migration (JSON). 5 ficheiros alterados + CLAUDE.md.
 
+**M3.preview — Toast de erros 422 (escopo mínimo)**
+Bug descoberto via Matilde: backend rejeitava save com HTTP 422 e frontend não mostrava mensagem — utilizadora ficava bloqueada sem perceber porque o save falhava. Novo helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`: detecta estrutura Laravel `{ errors: { campo: [msgs] } }`, mostra um toast por mensagem (autoClose 6s), fallback para `message` do servidor ou texto genérico. Integrado em `CarCreate.tsx` (save) e `CarUpdate.tsx` (save + venda). Outros forms (Leads, Users, Companies, Blogs) ficam como dívida técnica (item 11).
+
 ### 🚧 Próximo
 
 **Curto prazo (próximas 2-3 sessões)**
@@ -1206,10 +1212,10 @@ Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttri
 - `types/api.ts` e fim do `any` (item 1)
 - Migrar pipeline IA de `CarMarketIntelligenceService` para `CarMarketAggregate` (item 3 — bloqueado por estabilidade do Capítulo E)
 - Layout component `CarPageLayout` com `Outlet` (item 8) — resolução estrutural da página de viatura
-- Rate limiting OpenAI por `company_id` (item 15)
-- Error Boundary React global (item 17)
-- Lazy loading de rotas (item 14)
-- B1 accordions extraídos do parent (item 18)
+- Rate limiting OpenAI por `company_id` (item 16)
+- Error Boundary React global (item 18)
+- Lazy loading de rotas (item 15)
+- B1 accordions extraídos do parent (item 19)
 
 **Longo prazo / backlog (sem urgência clara)**
 - 2FA
