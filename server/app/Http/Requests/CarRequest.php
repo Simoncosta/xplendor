@@ -128,6 +128,12 @@ class CarRequest extends FormRequest
             'vehicle_attributes.exterior.has_bull_eye'                                  => ['nullable', 'boolean'],
             'vehicle_attributes.exterior.has_external_wc'                               => ['nullable', 'boolean'],
             'vehicle_attributes.exterior.has_hubcaps'                                   => ['nullable', 'boolean'],
+            'vehicle_attributes.exterior.has_external_ladder'                           => ['nullable', 'boolean'],
+            'vehicle_attributes.exterior.garage'                                        => ['nullable', 'array'],
+            'vehicle_attributes.exterior.garage.has_garage'                             => ['nullable', 'boolean'],
+            'vehicle_attributes.exterior.garage.has_double_opening'                     => ['nullable', 'boolean'],
+            'vehicle_attributes.exterior.garage.is_spacious'                            => ['nullable', 'boolean'],
+            'vehicle_attributes.exterior.garage.has_height_adjuster'                    => ['nullable', 'boolean'],
 
             // B2 — Segurança e Fechaduras
             'vehicle_attributes.security'                                               => ['nullable', 'array'],

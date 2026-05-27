@@ -92,6 +92,13 @@ export interface VehicleAttributeEnergyClimate {
     cell_battery_count?: number;
 }
 
+export interface VehicleAttributeGarage {
+    has_garage?: boolean;
+    has_double_opening?: boolean;
+    is_spacious?: boolean;
+    has_height_adjuster?: boolean;
+}
+
 export interface VehicleAttributeExterior {
     has_awning?: boolean;
     awning_brand?: string;
@@ -107,6 +114,8 @@ export interface VehicleAttributeExterior {
     has_bull_eye?: boolean;
     has_external_wc?: boolean;
     has_hubcaps?: boolean;
+    has_external_ladder?: boolean;
+    garage?: VehicleAttributeGarage;
 }
 
 export interface VehicleAttributeSecurity {

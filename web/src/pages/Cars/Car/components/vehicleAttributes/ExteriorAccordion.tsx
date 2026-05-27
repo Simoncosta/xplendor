@@ -126,7 +126,52 @@ export default function ExteriorAccordion({ accordionId }: AccordionProps) {
                             className="mb-3"
                         />
                     </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.has_external_ladder"
+                            label="Escada exterior"
+                            className="mb-3"
+                        />
+                    </Col>
                 </Row>
+
+                <hr className="my-3" />
+                <h6 className="mb-3"><i className="ri-archive-line me-2" />Garagem</h6>
+
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.garage.has_garage"
+                            label="Garagem"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+                {ext?.garage?.has_garage && (
+                    <Row className="mb-2">
+                        <Col lg={2}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.exterior.garage.has_double_opening"
+                                label="Abertura dos dois lados"
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.exterior.garage.is_spacious"
+                                label="Espaçosa"
+                                className="mb-3"
+                            />
+                        </Col>
+                        <Col lg={2}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.exterior.garage.has_height_adjuster"
+                                label="Altura ajustável"
+                                className="mb-3"
+                            />
+                        </Col>
+                    </Row>
+                )}
 
             </AccordionBody>
         </AccordionItem>

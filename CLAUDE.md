@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.4
+> Última actualização: 2026-05-27 · Versão 1.9.5
 
 ---
 
@@ -39,6 +39,7 @@
 | 1.9.2 | 2026-05-27 | M1.c — shower_type expandido para 3 tipos distintos: `separate` (cabine dentro WC), `independent` (cabine fora WC), `combined` (sem cabine). Removido `none` — ausência do campo = sem duche. |
 | 1.9.3 | 2026-05-27 | M2 — Energia avançada: `solar_panel_count` (1-10) + `inverter_type` (`pure_sine`/`modified_sine`). Layout lado-a-lado no accordion Energia e Aquecimento. |
 | 1.9.4 | 2026-05-27 | M3.preview — Toast de erros 422 em CarCreate/CarUpdate. Helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`. |
+| 1.9.5 | 2026-05-27 | M3 — Exterior: `has_external_ladder` + objecto aninhado `garage` com 4 booleanos. |
 
 ---
 
@@ -405,7 +406,14 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "has_fix_n_go_kit": false,
     "has_bull_eye": false,
     "has_external_wc": false,
-    "has_hubcaps": true
+    "has_hubcaps": true,
+    "has_external_ladder": true,
+    "garage": {
+      "has_garage": true,
+      "has_double_opening": true,
+      "is_spacious": true,
+      "has_height_adjuster": true
+    }
   },
   "security": {
     "has_alarm": true,
@@ -1199,6 +1207,9 @@ Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttri
 
 **M3.preview — Toast de erros 422 (escopo mínimo)**
 Bug descoberto via Matilde: backend rejeitava save com HTTP 422 e frontend não mostrava mensagem — utilizadora ficava bloqueada sem perceber porque o save falhava. Novo helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`: detecta estrutura Laravel `{ errors: { campo: [msgs] } }`, mostra um toast por mensagem (autoClose 6s), fallback para `message` do servidor ou texto genérico. Integrado em `CarCreate.tsx` (save) e `CarUpdate.tsx` (save + venda). Outros forms (Leads, Users, Companies, Blogs) ficam como dívida técnica (item 11).
+
+**M3 — Exterior: Escada exterior + Garagem**
+Feedback Matilde: campo `has_external_ladder` (boolean, label "Escada exterior") adicionado ao último `<Row>` do ExteriorAccordion (6.º de 6 cols `lg={2}`). Novo objecto aninhado `garage` em `exterior` com 4 booleanos: `has_garage` (gate principal, label "Garagem"), `has_double_opening` ("Abertura dos dois lados"), `is_spacious` ("Espaçosa"), `has_height_adjuster` ("Altura ajustável"). Secção "Garagem" separada por `<hr/>` + `<h6>`. Sub-campos condicionais (só aparecem com `garage.has_garage === true`). Novo tipo TypeScript `VehicleAttributeGarage` em `car.model.ts` e `vehicleAttributes.ts`. 5 regras de validação backend em `CarRequest.php`. Sem migration (JSON).
 
 ### 🚧 Próximo
 
