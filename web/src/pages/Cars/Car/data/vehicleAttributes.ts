@@ -41,6 +41,7 @@ export type UpholsteryState = "good" | "fair" | "worn" | "replaced";
 export interface VehicleAttributeKitchen {
     has_stove?: boolean;
     has_oven?: boolean;
+    has_extending_counter?: boolean;
     has_microwave?: boolean;
     has_extractor?: boolean;
     has_fridge?: boolean;

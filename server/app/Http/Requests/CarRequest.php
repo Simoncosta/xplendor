@@ -72,6 +72,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.kitchen'                     => ['nullable', 'array'],
             'vehicle_attributes.habitation_basics.kitchen.has_stove'           => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.kitchen.has_oven'            => ['nullable', 'boolean'],
+            'vehicle_attributes.habitation_basics.kitchen.has_extending_counter' => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.kitchen.has_microwave'       => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.kitchen.has_extractor'       => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.kitchen.has_fridge'          => ['nullable', 'boolean'],

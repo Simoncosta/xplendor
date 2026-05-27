@@ -392,6 +392,13 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                         </Col>
                                         <Col lg={2}>
                                             <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.kitchen.has_extending_counter"
+                                                label="Acrescento de banca"
+                                                className="mb-3"
+                                            />
+                                        </Col>
+                                        <Col lg={2}>
+                                            <XInputCheckbox
                                                 name="vehicle_attributes.habitation_basics.kitchen.has_microwave"
                                                 label="Micro-ondas"
                                                 className="mb-3"
