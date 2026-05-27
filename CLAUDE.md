@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-26 · Versão 1.9.0
+> Última actualização: 2026-05-27 · Versão 1.9.1
 
 ---
 
@@ -35,6 +35,7 @@
 | 1.8.2 | 2026-05-26 | Y4.c — Fix scroll fantasma vertical (~538px em todas as telas autenticadas). Override do `min-height: 1400px` do Velzon para `min-height: 100vh` via `_xplendor-overrides.scss`. |
 | 1.8.3 | 2026-05-26 | Y4.b — Login polish: textos pt-PT, alert de erro funcional (msg genérica), ícones nos inputs (ri-mail-line + ri-lock-2-line), loading state no botão, eye toggle dentro do InputGroup. |
 | 1.9.0 | 2026-05-26 | Fase F — Bug crítico de scores zombie no sync Carmine resolvido (F.2/F.3). Casts adicionados ao Car model (price_gross, is_resume, is_metallic, etc.). updated_at removido do payload Carmine. Comparação antes de update no CarmineConnectionService. |
+| 1.9.1 | 2026-05-27 | M1 — Feedback Matilde: label "Baterias célula" (era "celular"), enum shower_type `separate` → `independent` (label "Independente"). 7 alterações em 6 ficheiros. BD em prod vazia neste campo. |
 
 ---
 
@@ -451,7 +452,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
 
 **Enums:**
 - `fridge_type`: `trivalent` | `compressor` | `absorption` | `none`
-- `shower_type`: `separate` | `combined` | `none`
+- `shower_type`: `independent` | `combined` | `none`
 - `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
 - `chassis_type`: `standard` | `alko` | `other`
 - `upholstery_state`: `good` | `fair` | `worn` | `replaced`
@@ -1167,6 +1168,11 @@ Três camadas de defesa: (1) casts adicionados em `Car.php` (`price_gross: decim
 
 **v1.8 — DOCS**
 Revisão integral do documento após acumulação de 14 sub-fases em 2 dias. Schema actualizado (`car_market_aggregates`, `car_images`, `original_path`, `search_url`, `promo_price_gross` adicionados à secção 6). 3 endpoints internos recentes documentados em nova subsecção 8.4 (recrop Z2.c, check-link Y2.2, GET por `aggregate_id` X7). Padrões mobile (Fase Y3) e aprendizagens CSS (Y3.d) documentados em nova subsecção em 10. Secção 14 (dívida técnica) reestruturada: itens activos no topo (14.1), tabela compacta de resolvidos (14.2), aprendizagens de processo (14.3) — passou de ~448 linhas para ~120. Secção 15 organizada por capítulos (Z, D, Y3, DOCS) dentro de cada sessão. Histórico de versões com entrada 1.8.
+
+#### Capítulo M — Feedback Matilde (sessão 2026-05-27)
+
+**M1 — Bug fixes triviais**
+Feedback de utilizadora real (Matilde, autocaravanas): label "Baterias celular" → "Baterias célula" (pt-PT correcto). Enum `shower_type` `'separate'` → `'independent'` (label "Independente" em vez de "Separado"). BD em prod vazia neste campo, sites externos não no ar — renomeação sem risco, sem migration necessária. 7 alterações em 6 ficheiros (CarRequest.php, RESOURCE_SHAPE.md, car.model.ts, vehicleAttributes.ts, CarVehicleDetailsDataFields.tsx, EnergyClimateAccordion.tsx + CLAUDE.md).
 
 ### 🚧 Próximo
 

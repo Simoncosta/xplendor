@@ -36,7 +36,7 @@ const fridgeTypeOptions = [
 ];
 
 const showerTypeOptions = [
-    { value: "separate", label: "Separado" },
+    { value: "independent", label: "Independente" },
     { value: "combined", label: "Combinado com WC" },
     { value: "none",     label: "Nenhum" },
 ];

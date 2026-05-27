@@ -154,7 +154,7 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                         <XInput
                             type="number"
                             name="vehicle_attributes.energy_climate.cell_battery_count"
-                            label="Baterias celular"
+                            label="Baterias célula"
                             className="mb-3"
                         />
                     </Col>
