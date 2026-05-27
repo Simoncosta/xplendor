@@ -37,6 +37,7 @@ class VehicleAttribute extends Model
             'security'           => [],
             'chassis_structure'  => [],
             'interior_furniture' => [],
+            'living_room'        => [],
         ];
     }
 
@@ -57,7 +58,7 @@ class VehicleAttribute extends Model
         // Still normalise beds: early B1 records preserved the old string values.
         if (array_intersect_key($raw, array_flip([
             'dimensions', 'weights', 'habitation_basics',
-            'energy_climate', 'exterior', 'security', 'chassis_structure', 'interior_furniture',
+            'energy_climate', 'exterior', 'security', 'chassis_structure', 'interior_furniture', 'living_room',
         ]))) {
             if (!empty($raw['beds'])) {
                 $raw['beds'] = self::normalizeBedTypes($raw['beds']);

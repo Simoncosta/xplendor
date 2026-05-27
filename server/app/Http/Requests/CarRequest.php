@@ -174,6 +174,12 @@ class CarRequest extends FormRequest
             'vehicle_attributes.interior_furniture.has_command_panel'                   => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_water_infiltrations'             => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.infiltrations_notes'                 => ['nullable', 'string', 'max:500'],
+
+            // Sala (M5)
+            'vehicle_attributes.living_room'                                             => ['nullable', 'array'],
+            'vehicle_attributes.living_room.layout'                                     => ['nullable', Rule::in(['face_to_face', 'l_shape', 'panoramic'])],
+            'vehicle_attributes.living_room.has_extending_table'                        => ['nullable', 'boolean'],
+
             'car_brand_id' => ['required', 'exists:car_brands,id'],
             'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],

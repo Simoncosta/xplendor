@@ -160,6 +160,13 @@ export interface VehicleAttributeInteriorFurniture {
     infiltrations_notes?: string;
 }
 
+export type LivingRoomLayout = "face_to_face" | "l_shape" | "panoramic";
+
+export interface VehicleAttributeLivingRoom {
+    layout?: LivingRoomLayout;
+    has_extending_table?: boolean;
+}
+
 export interface VehicleAttributesB1 {
     dimensions?: VehicleAttributeDimensions;
     weights?: VehicleAttributeWeights;
@@ -171,4 +178,5 @@ export interface VehicleAttributesB1 {
     security?: VehicleAttributeSecurity;
     chassis_structure?: VehicleAttributeChassisStructure;
     interior_furniture?: VehicleAttributeInteriorFurniture;
+    living_room?: VehicleAttributeLivingRoom;
 }

@@ -26,6 +26,7 @@ import ExteriorAccordion from "./vehicleAttributes/ExteriorAccordion";
 import SecurityAccordion from "./vehicleAttributes/SecurityAccordion";
 import ChassisStructureAccordion from "./vehicleAttributes/ChassisStructureAccordion";
 import InteriorFurnitureAccordion from "./vehicleAttributes/InteriorFurnitureAccordion";
+import LivingRoomAccordion from "./vehicleAttributes/LivingRoomAccordion";
 import { BED_LABELS, BedType } from "../data/vehicleAttributes";
 
 const fridgeTypeOptions = [
@@ -523,6 +524,7 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                         <SecurityAccordion      accordionId="6" />
                         <ChassisStructureAccordion accordionId="7" />
                         <InteriorFurnitureAccordion accordionId="8" />
+                        <LivingRoomAccordion        accordionId="9" />
 
                     </Accordion>
                 </div>

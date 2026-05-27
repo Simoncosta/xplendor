@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.6
+> Última actualização: 2026-05-27 · Versão 1.9.7
 
 ---
 
@@ -41,6 +41,7 @@
 | 1.9.4 | 2026-05-27 | M3.preview — Toast de erros 422 em CarCreate/CarUpdate. Helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`. |
 | 1.9.5 | 2026-05-27 | M3 — Exterior: `has_external_ladder` + objecto aninhado `garage` com 4 booleanos. |
 | 1.9.6 | 2026-05-27 | M4 — Cozinha: `has_extending_counter` ("Acrescento de banca"), 3.º checkbox na linha do Fogão/Forno. |
+| 1.9.7 | 2026-05-27 | M5 — Sala: nova secção `living_room` no JSON + novo accordion `LivingRoomAccordion.tsx` (accordionId=9). |
 
 ---
 
@@ -453,6 +454,10 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "has_water_infiltrations": false,
     "infiltrations_notes": ""
   },
+  "living_room": {
+    "layout": "face_to_face",
+    "has_extending_table": true
+  },
   "beds": [
     { "type": "cama_garagem" },
     { "type": "cama_central" }
@@ -472,6 +477,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
 - `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
 - `chassis_type`: `standard` | `alko` | `other`
 - `upholstery_state`: `good` | `fair` | `worn` | `replaced`
+- `living_room.layout`: `face_to_face` | `l_shape` | `panoramic`
 
 **Helper único de normalização:** `VehicleAttribute::normalizeShape($raw)`. Usado por:
 1. `Car::getVehicleAttributesAttribute()` (accessor)
@@ -696,7 +702,7 @@ React 19 + Vite + TypeScript + Redux Toolkit + Reactstrap (Velzon theme).
 
 Suporta tipos: carro, moto, motorhome, caravana.
 
-**Para motorhome e caravan:** 8 accordions de atributos de habitação (Fases B1 + B2):
+**Para motorhome e caravan:** 9 accordions de atributos de habitação (Fases B1 + B2 + M5):
 1. Dimensões e Pesos (B1)
 2. Cozinha (B1)
 3. Casa de Banho (B1)
@@ -705,8 +711,9 @@ Suporta tipos: carro, moto, motorhome, caravana.
 6. Segurança e Fechaduras (B2)
 7. Chassis e Estrutura (B2)
 8. Mobiliário Interior (B2)
+9. Sala (M5)
 
-Accordions 4-8 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` como sub-componentes próprios. Accordions 1-3 estão inline em `CarVehicleDetailsDataFields.tsx` (dívida técnica registada).
+Accordions 4-9 vivem em `web/src/pages/Cars/Car/components/vehicleAttributes/` como sub-componentes próprios. Accordions 1-3 estão inline em `CarVehicleDetailsDataFields.tsx` (dívida técnica registada).
 
 ### Velzon — como tratar
 
@@ -1209,6 +1216,9 @@ Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttri
 
 **M3.preview — Toast de erros 422 (escopo mínimo)**
 Bug descoberto via Matilde: backend rejeitava save com HTTP 422 e frontend não mostrava mensagem — utilizadora ficava bloqueada sem perceber porque o save falhava. Novo helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`: detecta estrutura Laravel `{ errors: { campo: [msgs] } }`, mostra um toast por mensagem (autoClose 6s), fallback para `message` do servidor ou texto genérico. Integrado em `CarCreate.tsx` (save) e `CarUpdate.tsx` (save + venda). Outros forms (Leads, Users, Companies, Blogs) ficam como dívida técnica (item 11).
+
+**M5 — Sala (novo accordion + secção JSON)**
+Feedback Matilde: nova secção `living_room` no JSON `vehicle_attributes.attributes`. Campos: `layout` (enum nullable: `face_to_face` | `l_shape` | `panoramic`, labels pt-PT "Frente a Frente" / "Sala em L" / "Salão Panorâmico") e `has_extending_table` (boolean nullable, label "Acrescento de mesa"). Novo `LivingRoomAccordion.tsx` extraído (padrão B2), accordionId=9, no fim. Sem renumeração dos existentes. Bancos rotativos (S5) não duplicado — reutiliza `interior_furniture.has_rotating_seats` existente. `normalizeShape()` actualizado em 2 sítios (emptyShape + detector new format). `LivingRoomLayout` e `VehicleAttributeLivingRoom` adicionados a `car.model.ts` e `vehicleAttributes.ts`. 3 regras de validação backend em `CarRequest.php`. Sem migration (JSON). Capítulo M completo.
 
 **M4 — Cozinha: acrescento de banca**
 Feedback Matilde: novo campo `has_extending_counter` (boolean, label "Acrescento de banca") na interface `VehicleAttributeKitchen`. Inserido como 3.º checkbox na mesma `<Row>` de Fogão/Forno (após `has_oven`, antes de Micro-ondas) — Row passa de 5 para 6 `<Col lg={2}>` (12 colunas exactas). Validação backend em `CarRequest.php`. Sem migration (JSON).
