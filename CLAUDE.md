@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.7
+> Última actualização: 2026-05-27 · Versão 1.9.8
 
 ---
 
@@ -42,6 +42,7 @@
 | 1.9.5 | 2026-05-27 | M3 — Exterior: `has_external_ladder` + objecto aninhado `garage` com 4 booleanos. |
 | 1.9.6 | 2026-05-27 | M4 — Cozinha: `has_extending_counter` ("Acrescento de banca"), 3.º checkbox na linha do Fogão/Forno. |
 | 1.9.7 | 2026-05-27 | M5 — Sala: nova secção `living_room` no JSON + novo accordion `LivingRoomAccordion.tsx` (accordionId=9). |
+| 1.9.8 | 2026-05-27 | P0 — Fix label 'Cilindros' (era 'Cilindradas') + campo oculto para motorhome/caravan. |
 
 ---
 
@@ -993,6 +994,7 @@ Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
 | ~~50~~ Fix C.1 | Bug histórico de mapeamento `res.data.data` no helper | 2026-05-25 | X7.1 (genérico corrigido) |
 | ~~50~~ Fix D | Fila/cache em MariaDB em vez de Redis em prod | 2026-05-26 | D2/D3/D4/D6 |
 | ~~52~~ | Comparação de mercado ignorava `promo_price_gross` | 2026-05-25 | Y2 (+ Y2.1 UX, Y2.2 search_url) |
+| ~~P0~~ | Label 'Cilindradas' (name=`cylinders`) confundia utilizadora; corrigido para 'Cilindros' + oculto para motorhome/caravan | 2026-05-27 | P0 |
 
 ### 14.3 Aprendizagens de processo (descobertas em sessões recentes)
 
@@ -1216,6 +1218,9 @@ Novo tipo TypeScript `InverterType` adicionado em `car.model.ts` e `vehicleAttri
 
 **M3.preview — Toast de erros 422 (escopo mínimo)**
 Bug descoberto via Matilde: backend rejeitava save com HTTP 422 e frontend não mostrava mensagem — utilizadora ficava bloqueada sem perceber porque o save falhava. Novo helper genérico `showApiErrorToast` em `web/src/helpers/error_helper.ts`: detecta estrutura Laravel `{ errors: { campo: [msgs] } }`, mostra um toast por mensagem (autoClose 6s), fallback para `message` do servidor ou texto genérico. Integrado em `CarCreate.tsx` (save) e `CarUpdate.tsx` (save + venda). Outros forms (Leads, Users, Companies, Blogs) ficam como dívida técnica (item 11).
+
+**P0 — Fix bug 'cylinders' label confuso**
+Descoberto via feedback Matilde (M3.preview): `name="cylinders"` (número de cilindros, válido 1-16) tinha label "Cilindradas" (sugerindo cilindrada em cc). Utilizadora preencheu 2287 esperando cc, backend rejeitou com 422. SQL em prod confirmou 0/70 viaturas com cylinders preenchido. Fix: label corrigido para "Cilindros"; campo ocultado para motorhome/caravan via `isMotorhomeOrCaravan` condicional; `useEffect` limpa valor residual quando vehicle_type muda para motorhome/caravan. Backend, API pública e `CarSaleService` intactos. 1 ficheiro alterado (`CarAdditionalDataFields.tsx`).
 
 **M5 — Sala (novo accordion + secção JSON)**
 Feedback Matilde: nova secção `living_room` no JSON `vehicle_attributes.attributes`. Campos: `layout` (enum nullable: `face_to_face` | `l_shape` | `panoramic`, labels pt-PT "Frente a Frente" / "Sala em L" / "Salão Panorâmico") e `has_extending_table` (boolean nullable, label "Acrescento de mesa"). Novo `LivingRoomAccordion.tsx` extraído (padrão B2), accordionId=9, no fim. Sem renumeração dos existentes. Bancos rotativos (S5) não duplicado — reutiliza `interior_furniture.has_rotating_seats` existente. `normalizeShape()` actualizado em 2 sítios (emptyShape + detector new format). `LivingRoomLayout` e `VehicleAttributeLivingRoom` adicionados a `car.model.ts` e `vehicleAttributes.ts`. 3 regras de validação backend em `CarRequest.php`. Sem migration (JSON). Capítulo M completo.

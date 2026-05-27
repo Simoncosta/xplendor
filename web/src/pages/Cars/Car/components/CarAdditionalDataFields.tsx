@@ -1,4 +1,5 @@
 //React
+import { useEffect } from "react";
 import Select from "react-select";
 import { Col, Label, Row } from "reactstrap";
 
@@ -17,6 +18,15 @@ import XInputCheckbox from "Components/Common/XInputCheckbox";
 
 export default function CarAdditionalDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
+
+    const isMotorhomeOrCaravan =
+        values.vehicle_type === "motorhome" || values.vehicle_type === "caravan";
+
+    useEffect(() => {
+        if (isMotorhomeOrCaravan && values.cylinders !== null && values.cylinders !== undefined) {
+            setFieldValue("cylinders", null);
+        }
+    }, [isMotorhomeOrCaravan]);
 
     return (
         <div className="mt-4">
@@ -47,12 +57,14 @@ export default function CarAdditionalDataFields({ isEdit }: { isEdit: boolean })
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={2}>
-                    <XInput
-                        name="cylinders"
-                        label="Cilindradas"
-                    />
-                </Col>
+                {!isMotorhomeOrCaravan && (
+                    <Col lg={2}>
+                        <XInput
+                            name="cylinders"
+                            label="Cilindros"
+                        />
+                    </Col>
+                )}
                 <Col lg={1}>
                     <XInputCheckbox
                         name="has_spare_key"
