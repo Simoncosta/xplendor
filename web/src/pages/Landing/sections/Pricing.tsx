@@ -12,7 +12,7 @@ const Pricing: React.FC = () => (
             <h2 className="lp-section-title">Preços sem letra pequena</h2>
             <p className="lp-section-sub mx-auto mt-2">
                 Período mínimo de 6 meses. Pré-aviso de 30 dias para sair. Budget de ads
-                não incluído nos valores indicados.
+                não incluído nos valores indicados. Valores sem IVA à taxa legal em vigor (23%).
             </p>
         </div>
 
