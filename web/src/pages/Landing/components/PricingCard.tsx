@@ -1,5 +1,6 @@
 import React from 'react';
 import { PricingPlan, formatPlanPrice } from '../data/pricing';
+import { trackPlanClick } from '../lib/tracking';
 import CTAButton from './CTAButton';
 
 interface PricingCardProps {
@@ -47,7 +48,11 @@ const PricingCard: React.FC<PricingCardProps> = ({ plan, ctaHref, withVat }) => 
             </div>
         )}
 
-        <CTAButton href={ctaHref} className="w-100 justify-content-center">
+        <CTAButton
+            href={ctaHref}
+            className="w-100 justify-content-center"
+            onClick={() => trackPlanClick(plan.id, plan.name)}
+        >
             {plan.ctaLabel}
         </CTAButton>
     </div>

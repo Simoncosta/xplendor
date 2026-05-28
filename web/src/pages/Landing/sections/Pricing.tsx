@@ -3,7 +3,7 @@ import { Col, Row } from 'reactstrap';
 import Section from '../components/Section';
 import PricingCard from '../components/PricingCard';
 import { PRICING_PLANS } from '../data/pricing';
-import { CTA_WHATSAPP_URL } from '../data/constants';
+import { buildWhatsAppUrl } from '../data/constants';
 
 const Pricing: React.FC = () => {
     const [withVat, setWithVat] = useState(false);
@@ -46,7 +46,7 @@ const Pricing: React.FC = () => {
             <Row className="g-4 align-items-stretch justify-content-center">
                 {PRICING_PLANS.map((plan) => (
                     <Col md={6} lg={4} key={plan.id} className="d-flex">
-                        <PricingCard plan={plan} ctaHref={CTA_WHATSAPP_URL} withVat={withVat} />
+                        <PricingCard plan={plan} ctaHref={buildWhatsAppUrl(plan.name)} withVat={withVat} />
                     </Col>
                 ))}
             </Row>

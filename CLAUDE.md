@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.5
+> Última actualização: 2026-05-28 · Versão 1.10.6
 
 ---
 
@@ -51,6 +51,7 @@
 | 1.10.3 | 2026-05-28 | Meta Pixel (`987402273689566`) — só na landing, só após consentimento. Carregado por código (`metaPixel.ts`), não no `index.html`. Banner dispara evento `xplendor-consent-granted`; landing escuta e inicializa. Nunca no painel autenticado. |
 | 1.10.4 | 2026-05-28 | Landing Fase 2 — polish visual "startup tech" (só `landing.css`). Glows/gradientes nos destaques (hero, navbar blur, CTAs, card popular, Final CTA), sombras em camadas + hover nos cards de leitura, tokens de sombra/glow centralizados, `prefers-reduced-motion` respeitado. Zero `.tsx`. |
 | 1.10.5 | 2026-05-28 | Landing Fase 3 — animações no hero. KPIs contam de 0 ao valor (`react-countup`), barras do gráfico crescem com stagger (transição CSS + duplo rAF). `prefers-reduced-motion` → valores finais directos. Só `Hero.tsx` + `landing.css`. |
+| 1.10.6 | 2026-05-28 | Landing — tracking por plano + WhatsApp diferenciado. Cada card abre WhatsApp com mensagem do plano e dispara GA4 `select_plan` + Meta Pixel `Lead` (respeita consentimento). `buildWhatsAppUrl`, `lib/tracking.ts`, `onClick` opcional no `CTAButton`. CTAs genéricos inalterados. |
 
 ---
 
@@ -1284,6 +1285,9 @@ Polish visual da landing, exclusivamente em `landing.css` (zero `.tsx` alterados
 
 **Fase 3 — animações no hero (contadores + barras)**
 Movimento no mockup do hero (`sections/Hero.tsx` + transição CSS em `landing.css`). Os 3 KPIs (`47`, `€8,20`, `32`) contam de 0 ao valor com `react-countup` (`^6.5.3`, já instalada) — `duration 1.6s`, `delay 0.2s`, start-on-mount (hero está no topo, anima ao carregar; scrollSpy não fiável quando já está em viewport). O `€8,20` usa `prefix="€"`, `decimals={2}`, `decimal=","`. As 5 barras do gráfico "Leads por canal" crescem de `0%` até ao valor com transição CSS (`transition: width 0.9s` em `.lp-dash-bar-fill`) + stagger (`transitionDelay` incremental de 80ms por barra); estado `barsGrown` aplicado após duplo `requestAnimationFrame` (garante paint do 0% antes da transição). **`prefers-reduced-motion`:** guard manual (`window.matchMedia`) → KPIs mostram `staticText` final sem `CountUp`, barras arrancam no valor final + `transition: none` no media query CSS. Mockup já é `aria-hidden`. Reveal de secções (observer em `index.tsx`) intacto. Só `Hero.tsx` + `landing.css` alterados.
+
+**Tracking por plano + WhatsApp diferenciado**
+Cada card de pacote passa a abrir WhatsApp com mensagem pré-preenchida do plano e a disparar eventos de tracking. `buildWhatsAppUrl(planName)` em `data/constants.ts` gera `https://wa.me/351938963526?text=...` com "Olá, interessa-me o plano {nome} para o meu stand." (pt-PT, `encodeURIComponent`). `Pricing.tsx` passa `buildWhatsAppUrl(plan.name)` a cada card (CTAs genéricos do hero/FinalCTA/CustomPlan mantêm `CTA_WHATSAPP_URL`). `CTAButton` ganhou prop opcional `onClick` (retrocompatível; o `<a target="_blank">` navega na mesma). `PricingCard` chama `trackPlanClick(plan.id, plan.name)` no clique. Helper `lib/tracking.ts`: GA4 `gtag('event','select_plan',{plan_id,plan_name})` (respeita Consent Mode) + Meta Pixel `fbq('track','Lead',{content_name,content_category:'pricing_plan'})` (fbq só existe se o pixel carregou, i.e. após consentimento). Guards `typeof` em ambos — sem consentimento o WhatsApp abre na mesma, sem eventos. `window.gtag`/`window.fbq` já tipados globalmente (não redeclarados). Sem `any`, sem bibliotecas novas.
 
 ### 🚧 Próximo
 

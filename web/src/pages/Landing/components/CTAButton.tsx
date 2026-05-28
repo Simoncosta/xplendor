@@ -8,6 +8,7 @@ interface CTAButtonProps {
     variant?: CTAVariant;
     size?: CTASize;
     className?: string;
+    onClick?: () => void;
     children: React.ReactNode;
 }
 
@@ -16,12 +17,14 @@ const CTAButton: React.FC<CTAButtonProps> = ({
     variant = 'primary',
     size = 'lg',
     className = '',
+    onClick,
     children,
 }) => (
     <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={onClick}
         className={[
             'lp-cta-btn',
             variant === 'outline' ? 'lp-cta-btn-outline' : '',
