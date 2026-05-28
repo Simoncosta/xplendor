@@ -43,7 +43,7 @@ class CarRequest extends FormRequest
     {
         return [
             // Status
-            'status' => ['required', Rule::in(['draft', 'active', 'inactive', 'sold', 'available_soon'])],
+            'status' => ['required', Rule::in(['draft', 'active', 'inactive', 'sold', 'available_soon', 'reserved'])],
             'sold_at' => ['nullable', 'date'],
 
             // Origin & identification
@@ -87,10 +87,19 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.bathroom.waste_water_litres' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'vehicle_attributes.beds'                                          => ['nullable', 'array'],
             'vehicle_attributes.beds.*.type'                                   => ['nullable', Rule::in([
-                'camas_gemeas', 'cama_central', 'cama_francesa', 'cama_basculante',
-                'cama_capucino', 'cama_garagem', 'beliche', 'cama_transversal',
-                'cama_elevatoria_eletrica', 'cama_suspensa', 'cama_convertivel',
-                'outra', 'cama_rebativel_cabine',
+                'camas_gemeas',
+                'cama_central',
+                'cama_francesa',
+                'cama_basculante',
+                'cama_capucino',
+                'cama_garagem',
+                'beliche',
+                'cama_transversal',
+                'cama_elevatoria_eletrica',
+                'cama_suspensa',
+                'cama_convertivel',
+                'outra',
+                'cama_rebativel_cabine',
             ])],
             'vehicle_attributes.autonomy_km'                                   => ['nullable', 'integer', 'min:0', 'max:5000'],
 
