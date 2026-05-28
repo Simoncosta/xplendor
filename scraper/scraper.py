@@ -297,7 +297,11 @@ class StandvirtualScraper:
         Generator que yield batches de listings por página.
         Uso: for batch in scraper.scrape_all(): ...
         """
-        url = f"{config.base_url}{config.search_path}"
+        # URL path-based do Standvirtual (validado 2026-05-28): a categoria
+        # (config.search_path) + marca/ano-desde (to_path_suffix) vão no PATH;
+        # fuel e year:to vão em query. Consistente com o construtor PHP em
+        # MarketSnapshotService::buildSearchUrl.
+        url = f"{config.base_url}{config.search_path}{self.filters.to_path_suffix()}"
         params = config.build_search_params(self.filters)
 
         logger.info(f"PARAMS USADOS NA REQUEST: {params}")

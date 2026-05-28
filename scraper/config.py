@@ -56,21 +56,33 @@ class SearchFilters:
     price_from: Optional[int] = None
     price_to: Optional[int] = None
 
+    def to_path_suffix(self) -> str:
+        """Marca e ano 'desde' vão no PATH (formato path-based do Standvirtual).
+
+        Formato validado em 2026-05-28: /{categoria}/{marca}/desde-{ano}. Sem
+        marca, devolve "" (degradação graciosa — fica só /{categoria} + query).
+        Tem de ficar consistente com MarketSnapshotService::buildSearchUrl (PHP).
+        """
+        if not self.brand:
+            return ""
+        suffix = "/" + _slugify_search_value(self.brand)
+        if self.year_from is not None:
+            suffix += f"/desde-{int(self.year_from)}"
+        return suffix
+
     def to_query_params(self) -> dict:
+        # Combustível e limite superior do ano em query (fuel SEM índice [0]).
+        # Marca, modelo e ano-from NÃO vão em query: marca/ano-from vão no PATH
+        # (ver to_path_suffix) e o modelo é abandonado no URL — a precisão vem
+        # da filtragem por modelo/preço no processamento (lado Laravel).
         params = {}
 
-        if self.brand:
-            params["search[filter_enum_make][0]"] = _slugify_search_value(self.brand)
-        if self.model:
-            params["search[filter_enum_model][0]"] = _slugify_search_value(self.model)
-        if self.year_from is not None:
-            params["search[filter_float_first_registration_year:from]"] = int(self.year_from)
+        if self.fuel:
+            params["search[filter_enum_fuel_type]"] = _normalize_fuel(self.fuel)
         if self.year_to is not None:
             params["search[filter_float_first_registration_year:to]"] = int(self.year_to)
-        if self.fuel:
-            params["search[filter_enum_fuel_type][0]"] = _normalize_fuel(self.fuel)
         if self.gearbox:
-            params["search[filter_enum_gearbox][0]"] = _normalize_gearbox(self.gearbox)
+            params["search[filter_enum_gearbox]"] = _normalize_gearbox(self.gearbox)
         if self.price_from is not None:
             params["search[filter_float_price:from]"] = int(self.price_from)
         if self.price_to is not None:

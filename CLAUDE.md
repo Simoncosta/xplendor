@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.7
+> Última actualização: 2026-05-28 · Versão 1.10.8
 
 ---
 
@@ -53,6 +53,7 @@
 | 1.10.5 | 2026-05-28 | Landing Fase 3 — animações no hero. KPIs contam de 0 ao valor (`react-countup`), barras do gráfico crescem com stagger (transição CSS + duplo rAF). `prefers-reduced-motion` → valores finais directos. Só `Hero.tsx` + `landing.css`. |
 | 1.10.6 | 2026-05-28 | Landing — tracking por plano + WhatsApp diferenciado. Cada card abre WhatsApp com mensagem do plano e dispara GA4 `select_plan` + Meta Pixel `Lead` (respeita consentimento). `buildWhatsAppUrl`, `lib/tracking.ts`, `onClick` opcional no `CTAButton`. CTAs genéricos inalterados. |
 | 1.10.7 | 2026-05-28 | Landing dedicada `/autocaravanas` (nicho). Hero + 3 dores + análise de mercado (exemplo fictício Adria) + diferenciadores próprios; reutiliza CSS, componentes, Meta Pixel, tracking e pacotes. Landing principal `/` intacta. Nav/footer partilhados não alterados. |
+| 1.10.8 | 2026-05-28 | Fix scraper Standvirtual — URL path-based (`/{categoria}/{marca}/desde-{ano}` + fuel/year:to em query sem `[0]`). Corrigido em PHP (`MarketSnapshotService::buildSearchUrl`) e Python (`config.py`/`scraper.py`), consistentes. Modelo abandonado no URL. Resolve "Sem comparáveis" / posição no mercado partida. |
 
 ---
 
@@ -894,7 +895,8 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 
 - Container isolado, comunicação via `docker exec` despachado por `RunScraperJob`
 - **Atenção arquitectural:** o worker tem acesso ao Docker socket (`/var/run/docker.sock`). Risco de segurança em produção
-- Não tem testes — adicionar pelo menos smoke tests
+- Não tem testes — adicionar pelo menos smoke tests (nota: existe `scraper/tests/` com 16 testes a passar)
+- **Formato de URL do Standvirtual (validado 2026-05-28):** path-based — `/{categoria}/{marca}/desde-{ano-1}?search[filter_enum_fuel_type]={fuel}&search[filter_float_first_registration_year:to]={ano+1}`. Marca e ano-from no PATH; fuel e year:to em query **sem índice `[0]`**; modelo abandonado no URL. Construído em **dois sítios que têm de ficar consistentes**: PHP `MarketSnapshotService::buildSearchUrl()` (gera o `search_url` guardado no aggregate) e Python `SearchFilters.to_path_suffix()` + `to_query_params()` (`scraper/config.py`) usado por `scrape_all()` (`scraper/scraper.py`). **Se a Posição no Mercado voltar a falhar, testar primeiro um URL real no browser — este formato muda periodicamente — antes de alterar.**
 
 ### Google Analytics 4 + Consent Mode v2 (RGPD)
 
@@ -1004,6 +1006,10 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 41. **Consistência de enums com `none` nos outros 3 enums de habitação** — Após M1.c (shower_type sem 'none'), avaliar com Matilde se `fridge_type`, `water_heater_source`, `ambient_heating_source` também deviam perder `'none'` por consistência UX ("não marca = não tem"). Baixa prioridade — funciona como está.
 
+42. **Construtor do URL Standvirtual duplicado PHP/Python** — a lógica do URL path-based existe em dois sítios (`MarketSnapshotService::buildSearchUrl` em PHP e `SearchFilters.to_path_suffix`/`to_query_params` em `scraper/config.py`). Têm de ser mantidos manualmente em sincronia; se o formato do Standvirtual mudar, é preciso corrigir os dois. Não há fonte única. Aceitável (são linguagens diferentes), mas registar como risco — qualquer alteração futura ao formato tem de tocar ambos.
+
+43. **Matching de comparáveis ainda exige modelo exacto na BD (risco de starvation após drop do modelo no URL)** — `CarMarketSnapshotRepository::getComparableSnapshots/Wide/Loose` filtram por **modelo exacto** em todas as 3 tentativas. Como o URL do scraper deixou de filtrar por modelo (2026-05-28), o scraper traz a gama da marca toda; a BD depois reduz ao modelo exacto. Com `max_results` baixo (motorhome=15), a janela pode não conter o modelo-alvo → 0 comparáveis para esse modelo. A "precisão por proximidade de preço" (`selectTop5` closest-to-median) é só refinamento de **apresentação** — corre **depois** do filtro de modelo, não o substitui. Fase separada a decidir: subir `max_results`, ou relaxar o match de modelo na BD e confiar na proximidade de preço. **Não alterado nesta tarefa.**
+
 ### 14.2 Itens resolvidos (histórico compactado)
 
 Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
@@ -1030,6 +1036,8 @@ Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
 ### 14.3 Aprendizagens de processo (descobertas em sessões recentes)
 
 - **Análise estática mente** — para bugs CSS/layout, testar empiricamente no browser. Em 2026-05-26 foram precisas 3 rondas de debugging do Claude Code (todas com análises estáticas bem fundamentadas) para identificar as duas causas reais de overflow horizontal em `/cars/:id/analytics`. Só o snippet `findOverflow()` no Console do DevTools (documentado em 10.X) chegou à verdade.
+
+- **Formato de URL do Standvirtual muda periodicamente** — em 2026-05-28 a Posição no Mercado estava partida porque o Standvirtual migrou de query-params (`make[0]`, `model[0]`, `year:from`) para URLs path-based (`/{categoria}/{marca}/desde-{ano}`). O código antigo dava 404/zero. Lição: quando a comparação de mercado falhar, **testar um URL real no browser primeiro** (confirmar que devolve anúncios) antes de mexer no código — e corrigir **os dois** construtores (PHP `buildSearchUrl` + Python scraper), que têm de gerar URLs idênticos.
 
 - **Causas-raiz podem ter múltiplas camadas** — Y3.d.5 resolveu o `CarPageNav`; Y3.d.6 resolveu o KPI row (segundo culpado, independente). Parar no primeiro fix deixaria 50% do bug em produção. Lição: após aplicar fix, **revalidar empiricamente** que o sintoma desapareceu totalmente.
 

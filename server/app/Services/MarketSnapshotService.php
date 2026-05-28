@@ -249,9 +249,17 @@ class MarketSnapshotService
     }
 
     /**
-     * Builds a Standvirtual search URL for the car's brand/model/year/fuel.
+     * Builds a Standvirtual search URL for the car's brand/year/fuel.
      * Stored in the aggregate at creation time so it's always available as a fallback
      * when a specific listing URL is no longer valid.
+     *
+     * Formato de URL do Standvirtual validado em 2026-05-28. O Standvirtual usa
+     * URLs path-based: /{categoria}/{marca}/desde-{ano} com fuel e year:to em
+     * query (sem índice [0]). O modelo é abandonado no URL (a precisão vem da
+     * filtragem por modelo/preço no processamento). Se a Posição no Mercado
+     * voltar a falhar, testar primeiro um URL real no browser (este formato muda
+     * periodicamente) antes de alterar. Tem de ficar consistente com o
+     * construtor de URL do scraper Python (scraper/config.py + scraper.py).
      */
     private function buildSearchUrl(Car $car): string
     {
@@ -261,23 +269,26 @@ class MarketSnapshotService
         ];
         $path = $paths[$car->vehicle_type ?? 'car'] ?? '/carros';
 
-        $params = [];
+        $url = 'https://www.standvirtual.com' . $path;
 
+        // Marca e ano "desde" vão no PATH (formato path-based).
         if ($car->brand?->name) {
-            $params['search[filter_enum_make][0]'] = $this->slugifySearchValue($car->brand->name);
+            $url .= '/' . $this->slugifySearchValue($car->brand->name);
+            if ($car->registration_year) {
+                $url .= '/desde-' . ($car->registration_year - 1);
+            }
         }
-        if ($car->model?->name) {
-            $params['search[filter_enum_model][0]'] = $this->slugifySearchValue($car->model->name);
+
+        // Combustível e limite superior do ano em query (fuel SEM índice [0]).
+        $query = [];
+        if ($car->fuel_type) {
+            $query['search[filter_enum_fuel_type]'] = $this->normalizeFuelForSearch($car->fuel_type);
         }
         if ($car->registration_year) {
-            $params['search[filter_float_first_registration_year:from]'] = $car->registration_year - 1;
-            $params['search[filter_float_first_registration_year:to]']   = $car->registration_year + 1;
-        }
-        if ($car->fuel_type) {
-            $params['search[filter_enum_fuel_type][0]'] = $this->normalizeFuelForSearch($car->fuel_type);
+            $query['search[filter_float_first_registration_year:to]'] = $car->registration_year + 1;
         }
 
-        return 'https://www.standvirtual.com' . $path . '?' . http_build_query($params);
+        return $query ? $url . '?' . http_build_query($query) : $url;
     }
 
     private function slugifySearchValue(string $value): string
