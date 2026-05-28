@@ -14,6 +14,9 @@ class MarketSnapshotService
 {
     private const SCRAPER_SUPPORTED_TYPES = ['car', 'motorhome'];
 
+    /** Faixa de preço (±) para o fallback de autocaravanas por marca+preço. Afinável. */
+    private const MOTORHOME_PRICE_BAND = 0.25;
+
     public function __construct(
         private readonly CarMarketSnapshotRepositoryInterface $snapshotRepo,
     ) {}
@@ -122,7 +125,31 @@ class MarketSnapshotService
             }
         }
 
+        // Attempt 4 (motorhome only): brand + price band + year, NO model.
+        // Motorhome models are too fragmented for exact-model match — compare
+        // by brand within ±MOTORHOME_PRICE_BAND of the effective price instead.
+        if (($car->vehicle_type ?? null) === 'motorhome') {
+            $effectivePrice = $this->effectivePriceFor($car);
+            if ($effectivePrice > 0.0) {
+                $min       = $effectivePrice * (1 - self::MOTORHOME_PRICE_BAND);
+                $max       = $effectivePrice * (1 + self::MOTORHOME_PRICE_BAND);
+                $snapshots = $this->snapshotRepo->getComparableSnapshotsByBrandPrice($car, $yearWindow, $min, $max);
+                if ($snapshots->isNotEmpty()) {
+                    return ['snapshots' => $snapshots, 'fallback_used' => true];
+                }
+            }
+        }
+
         return ['snapshots' => collect(), 'fallback_used' => false];
+    }
+
+    /** Effective price: promo when valid (positive and below gross), else gross. */
+    private function effectivePriceFor(Car $car): float
+    {
+        $gross = (float) ($car->price_gross ?? 0);
+        $promo = (float) ($car->promo_price_gross ?? 0);
+
+        return ($promo > 0.0 && $promo < $gross) ? $promo : $gross;
     }
 
     /**

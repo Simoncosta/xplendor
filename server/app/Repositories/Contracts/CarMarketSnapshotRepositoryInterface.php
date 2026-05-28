@@ -11,5 +11,6 @@ interface CarMarketSnapshotRepositoryInterface extends BaseRepositoryInterface
     public function getComparableSnapshots(Car $car): Collection;
     public function getComparableSnapshotsWide(Car $car, int $yearWindow): Collection;
     public function getComparableSnapshotsLoose(Car $car, int $yearWindow): Collection;
+    public function getComparableSnapshotsByBrandPrice(Car $car, int $yearWindow, float $priceMin, float $priceMax): Collection;
     public function getSegmentSnapshotStats(array $filters): array;
 }

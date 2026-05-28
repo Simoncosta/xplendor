@@ -164,6 +164,38 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
             ->get();
     }
 
+    /**
+     * Motorhome fallback — brand + price range + year, no model.
+     * Motorhome models are too fragmented for exact-model match (e.g. a specific
+     * McLouis Menfys Van may have 0 listings nationwide). Compares by brand within
+     * a price band instead. Price bounds are pre-computed by the service.
+     */
+    public function getComparableSnapshotsByBrandPrice(
+        Car $car,
+        int $yearWindow,
+        float $priceMin,
+        float $priceMax,
+    ): Collection {
+        $car->loadMissing(['brand:id,name']);
+
+        $brand = $this->normalizeComparableValue($car->brand?->name);
+        $year  = $car->registration_year ? (int) $car->registration_year : null;
+
+        if (!$brand || !$year) {
+            return collect();
+        }
+
+        return $this->model->newQuery()
+            ->select(['id', 'external_id', 'source', 'title', 'url', 'brand', 'model', 'year', 'price', 'fuel', 'gearbox', 'power_hp', 'region', 'price_evaluation', 'scraped_at'])
+            ->whereNotNull('price')
+            ->where('price', '>', 0)
+            ->whereBetween('price', [$priceMin, $priceMax])
+            ->whereBetween('year', [$year - $yearWindow, $year + $yearWindow])
+            ->whereRaw("LOWER(REPLACE(REPLACE(brand, '-', ''), ' ', '')) = ?", [$brand])
+            ->orderBy('price')
+            ->get();
+    }
+
     public function getSegmentSnapshotStats(array $filters): array
     {
         $baseQuery = $this->buildSegmentQuery($filters);

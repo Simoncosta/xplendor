@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.8
+> Última actualização: 2026-05-28 · Versão 1.10.9
 
 ---
 
@@ -54,6 +54,7 @@
 | 1.10.6 | 2026-05-28 | Landing — tracking por plano + WhatsApp diferenciado. Cada card abre WhatsApp com mensagem do plano e dispara GA4 `select_plan` + Meta Pixel `Lead` (respeita consentimento). `buildWhatsAppUrl`, `lib/tracking.ts`, `onClick` opcional no `CTAButton`. CTAs genéricos inalterados. |
 | 1.10.7 | 2026-05-28 | Landing dedicada `/autocaravanas` (nicho). Hero + 3 dores + análise de mercado (exemplo fictício Adria) + diferenciadores próprios; reutiliza CSS, componentes, Meta Pixel, tracking e pacotes. Landing principal `/` intacta. Nav/footer partilhados não alterados. |
 | 1.10.8 | 2026-05-28 | Fix scraper Standvirtual — URL path-based (`/{categoria}/{marca}/desde-{ano}` + fuel/year:to em query sem `[0]`). Corrigido em PHP (`MarketSnapshotService::buildSearchUrl`) e Python (`config.py`/`scraper.py`), consistentes. Modelo abandonado no URL. Resolve "Sem comparáveis" / posição no mercado partida. |
+| 1.10.9 | 2026-05-28 | Fix starvation de comparáveis (autocaravanas). Novo degrau na cascata `getComparables` só para motorhome: marca + faixa de preço ±25% (preço efectivo) + ano, sem modelo (`getComparableSnapshotsByBrandPrice`). Carros mantêm modelo exacto (intactos). `fallback_used=true`. Resolve item 43. 4 testes novos. |
 
 ---
 
@@ -898,6 +899,11 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 - Não tem testes — adicionar pelo menos smoke tests (nota: existe `scraper/tests/` com 16 testes a passar)
 - **Formato de URL do Standvirtual (validado 2026-05-28):** path-based — `/{categoria}/{marca}/desde-{ano-1}?search[filter_enum_fuel_type]={fuel}&search[filter_float_first_registration_year:to]={ano+1}`. Marca e ano-from no PATH; fuel e year:to em query **sem índice `[0]`**; modelo abandonado no URL. Construído em **dois sítios que têm de ficar consistentes**: PHP `MarketSnapshotService::buildSearchUrl()` (gera o `search_url` guardado no aggregate) e Python `SearchFilters.to_path_suffix()` + `to_query_params()` (`scraper/config.py`) usado por `scrape_all()` (`scraper/scraper.py`). **Se a Posição no Mercado voltar a falhar, testar primeiro um URL real no browser — este formato muda periodicamente — antes de alterar.**
 
+- **Cascata de comparáveis** (`MarketSnapshotService::getComparables()`, lado Laravel, sobre snapshots já scraped na BD) — difere por tipo de viatura:
+  - **Carros** (modelo exacto, há volume): (1) estrita (modelo + ano±1 + fuel + gearbox + power±25); (2) ano alargado (±3); (3) loose (modelo + ano, sem fuel/gearbox/power).
+  - **Autocaravanas** (modelo fragmentado): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (25%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only.
+  - Qualquer fallback (2/3/4) marca `fallback_used=true` (comparação aproximada — o UI pode sinalizar). `selectTop5` (5 mais próximos da mediana) e o cálculo da mediana são iguais para ambos.
+
 ### Google Analytics 4 + Consent Mode v2 (RGPD)
 
 - **ID de medição:** `G-KMK84KG99K`. Carregado em `web/public/index.html` (gtag.js) em toda a app — landing pública e painel autenticado.
@@ -1008,7 +1014,7 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 42. **Construtor do URL Standvirtual duplicado PHP/Python** — a lógica do URL path-based existe em dois sítios (`MarketSnapshotService::buildSearchUrl` em PHP e `SearchFilters.to_path_suffix`/`to_query_params` em `scraper/config.py`). Têm de ser mantidos manualmente em sincronia; se o formato do Standvirtual mudar, é preciso corrigir os dois. Não há fonte única. Aceitável (são linguagens diferentes), mas registar como risco — qualquer alteração futura ao formato tem de tocar ambos.
 
-43. **Matching de comparáveis ainda exige modelo exacto na BD (risco de starvation após drop do modelo no URL)** — `CarMarketSnapshotRepository::getComparableSnapshots/Wide/Loose` filtram por **modelo exacto** em todas as 3 tentativas. Como o URL do scraper deixou de filtrar por modelo (2026-05-28), o scraper traz a gama da marca toda; a BD depois reduz ao modelo exacto. Com `max_results` baixo (motorhome=15), a janela pode não conter o modelo-alvo → 0 comparáveis para esse modelo. A "precisão por proximidade de preço" (`selectTop5` closest-to-median) é só refinamento de **apresentação** — corre **depois** do filtro de modelo, não o substitui. Fase separada a decidir: subir `max_results`, ou relaxar o match de modelo na BD e confiar na proximidade de preço. **Não alterado nesta tarefa.**
+43. **~~Starvation de comparáveis em autocaravanas~~ — RESOLVIDO 2026-05-28.** As 3 tentativas exigiam modelo exacto e a 3.ª (loose) era car-only → autocaravanas com modelo fragmentado (ex: McLouis Menfys Van, 0 anúncios) davam 0 comparáveis. Fix: novo degrau (Attempt 4) na cascata `getComparables`, **só para motorhome**, via `getComparableSnapshotsByBrandPrice` — marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (25%, afinável) sobre o preço efectivo + ano (janela ±5 existente), **sem modelo/fuel/gearbox/power**. Carros mantêm modelo exacto (têm volume). Ver cascata documentada na secção 13.
 
 ### 14.2 Itens resolvidos (histórico compactado)
 
