@@ -11,10 +11,20 @@ use Illuminate\Support\Facades\Log;
 
 class CarSalePotentialScoreService
 {
+    /** Fatores do breakdown que somam para o score (exclui 'pricing', que é metadata). */
+    private const SCORING_FACTORS = [
+        'price_vs_market',
+        'promo_effect',
+        'engagement_rate',
+        'days_in_stock',
+        'segment_demand',
+        'listing_quality',
+        'model_history',
+    ];
+
     public function __construct(
         private CarSalePotentialScoreRepositoryInterface $repository,
         private CarMarketIntelligenceService $carMarketIntelligenceService,
-        private VehicleIpsService $vehicleIpsService,
     ) {}
 
     // ── Entrada pública ───────────────────────────────────────────────────────
@@ -28,7 +38,6 @@ class CarSalePotentialScoreService
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
         $priceVsMarket = $this->getPriceVsMarketPercent($marketIntelligence);
         $viewsTotal = (int) DB::table('car_views')->where('car_id', $car->id)->count();
-        $interactionsTotal = (int) DB::table('car_interactions')->where('car_id', $car->id)->count();
         $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
 
         $breakdown = [
@@ -56,12 +65,23 @@ class CarSalePotentialScoreService
             ],
         ];
 
-        $score = (int) $this->vehicleIpsService->calculate($car, [
-            'views_total' => $viewsTotal,
-            'interactions_total' => $interactionsTotal,
-            'dias_em_stock' => $daysInStock,
-            'market_position' => $marketIntelligence['market_position'] ?? null,
-        ]);
+        // Sinais suficientes? Sem views E sem dados de mercado → "a calibrar".
+        $hasMarketSignal     = ($marketIntelligence['market_position'] ?? 'insufficient_data') !== 'insufficient_data';
+        $hasEngagementSignal = $viewsTotal > 0;
+
+        if (!$hasMarketSignal && !$hasEngagementSignal) {
+            // Score null + classification 'pending': UI mostra "a calibrar"
+            // em vez de "0/100 · precisa de atenção" (falso alarme).
+            $score = null;
+        } else {
+            // Score unificado: soma dos 7 fatores do breakdown (clamp 100).
+            // Fonte única — substitui o cálculo paralelo do VehicleIpsService.
+            $factorSum = 0;
+            foreach (self::SCORING_FACTORS as $factor) {
+                $factorSum += (int) ($breakdown[$factor] ?? 0);
+            }
+            $score = (int) min(100, max(0, $factorSum));
+        }
 
         Log::info('[IPS] Carro calculado', [
             'car_id'      => $carId,
@@ -345,13 +365,18 @@ class CarSalePotentialScoreService
 
     private function scoreModelHistory(Car $car): int
     {
-        // Tempo médio (dias) de venda de carros do mesmo modelo no stand
+        // Tempo médio (dias) de venda de carros do mesmo modelo no stand.
+        // Expressão portável: DATEDIFF (MariaDB) vs julianday (SQLite/testes).
+        $diffExpr = DB::connection()->getDriverName() === 'sqlite'
+            ? 'AVG(julianday(updated_at) - julianday(created_at))'
+            : 'AVG(DATEDIFF(updated_at, created_at))';
+
         $avgDays = DB::table('cars')
             ->where('company_id', $car->company_id)
             ->where('car_model_id', $car->car_model_id)
             ->where('status', 'sold')
             ->whereNotNull('updated_at')
-            ->selectRaw('AVG(DATEDIFF(updated_at, created_at)) as avg_days')
+            ->selectRaw("{$diffExpr} as avg_days")
             ->value('avg_days');
 
         if ($avgDays === null) return 5; // sem histórico → neutro

@@ -35,6 +35,13 @@ class CarSalePotentialScore extends Model
         'cold' => [0,  39],
     ];
 
+    /**
+     * Estado "a calibrar": score === null && classification === 'pending'
+     * significa que não houve sinais suficientes (sem views e sem dados de
+     * mercado) para pontuar a viatura. O UI mostra texto neutro em vez de 0.
+     */
+    const CLASSIFICATION_PENDING = 'pending';
+
     const TRIGGERED_BY = [
         'scheduled',
         'price_change',
@@ -45,8 +52,9 @@ class CarSalePotentialScore extends Model
         'promo_price_change',
     ];
 
-    public static function classify(int $score): string
+    public static function classify(?int $score): string
     {
+        if ($score === null) return self::CLASSIFICATION_PENDING;
         if ($score >= 70) return 'hot';
         if ($score >= 40) return 'warm';
         return 'cold';

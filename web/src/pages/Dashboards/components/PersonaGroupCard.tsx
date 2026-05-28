@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { formatIpsBadge } from "helpers/ips";
 
 export interface PersonaCar {
     id: number;
@@ -7,7 +8,7 @@ export interface PersonaCar {
     version: string | null;
     price_gross: number;
     ips_score: number | null;
-    ips_classification: "hot" | "warm" | "cold" | null;
+    ips_classification: "hot" | "warm" | "cold" | "pending" | null;
     views_count: number;
     leads_count: number;
     interactions_count: number;
@@ -44,12 +45,6 @@ const personaBg: Record<PersonaGroup["persona"], string> = {
     jovem: "bg-info-subtle",
     performance: "bg-warning-subtle",
     geral: "bg-light",
-};
-
-const ipsClass = (cls: string | null) => {
-    if (cls === "hot") return "bg-success-subtle text-success";
-    if (cls === "warm") return "bg-warning-subtle text-warning";
-    return "bg-danger-subtle text-danger";
 };
 
 const formatCurrency = (value: number) =>
@@ -112,11 +107,14 @@ export default function PersonaGroupCard({ group }: Props) {
                                     {car.version && <span className="text-muted fw-normal"> {car.version}</span>}
                                 </span>
                                 <span className="text-muted fs-13">{formatCurrency(car.price_gross)}</span>
-                                {car.ips_score !== null && (
-                                    <span className={`badge rounded-pill fs-11 px-2 py-1 ${ipsClass(car.ips_classification)}`}>
-                                        {car.ips_score}
-                                    </span>
-                                )}
+                                {(() => {
+                                    const badge = formatIpsBadge(car.ips_score, car.ips_classification);
+                                    return (
+                                        <span className={`badge rounded-pill fs-11 px-2 py-1 ${badge.className}`}>
+                                            {badge.shortLabel}
+                                        </span>
+                                    );
+                                })()}
                             </div>
                             <div className="d-flex align-items-center gap-3 flex-shrink-0">
                                 <span className="text-muted fs-12">

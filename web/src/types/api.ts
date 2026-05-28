@@ -7,7 +7,7 @@ export interface CarSpecsImage {
 }
 
 export interface CarSpecsPotentialScore {
-    score: number;
+    score: number | null;
     classification: string;
 }
 

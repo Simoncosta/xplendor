@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
+import { formatIpsBadge } from "helpers/ips";
 
 interface Props {
     car: any;
@@ -10,12 +11,8 @@ interface Props {
     ipsClassBadge: (cls: string) => string;
 }
 
-export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsClassBadge }: Props) {
-    const ipsLabel = ips?.classification === "hot"
-        ? "Probabilidade forte"
-        : ips?.classification === "warm"
-            ? "Acompanhar esta semana"
-            : "Precisa de atenção agora";
+export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Props) {
+    const ipsBadge = ips ? formatIpsBadge(ips.score, ips.classification) : null;
 
     return (
         <div
@@ -63,16 +60,23 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, ipsC
                                 Matrícula <span className="text-dark fw-semibold">{car.license_plate}</span>
                             </span>
                         )}
-                        {ips && (
-                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill d-none d-md-inline-flex`}>
-                                <i className="ri-award-line me-1" />
-                                Probabilidade de venda {ips.score}/100
-                            </span>
-                        )}
-                        {ips && (
-                            <span className={`badge ${ipsClassBadge(ips.classification)} rounded-pill d-none d-md-inline-flex`}>
-                                {ipsLabel}
-                            </span>
+                        {ipsBadge && (
+                            ipsBadge.isPending ? (
+                                <span className={`badge ${ipsBadge.className} rounded-pill d-none d-md-inline-flex`} title="Ainda não há visitas nem dados de mercado suficientes para calcular a probabilidade de venda.">
+                                    <i className="ri-time-line me-1" />
+                                    {ipsBadge.label}
+                                </span>
+                            ) : (
+                                <>
+                                    <span className={`badge ${ipsBadge.className} rounded-pill d-none d-md-inline-flex`}>
+                                        <i className="ri-award-line me-1" />
+                                        Probabilidade de venda {ipsBadge.label}
+                                    </span>
+                                    <span className={`badge ${ipsBadge.className} rounded-pill d-none d-md-inline-flex`}>
+                                        {ipsBadge.executiveLabel}
+                                    </span>
+                                </>
+                            )
                         )}
                         {ai && (
                             <span className={`badge ${aiMeta?.urgency_level === "Alta" ? "bg-danger-subtle text-danger" : "bg-warning-subtle text-warning"} rounded-pill d-none d-md-inline-flex`}>

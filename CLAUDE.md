@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.10
+> Última actualização: 2026-05-28 · Versão 1.10.11
 
 ---
 
@@ -56,6 +56,7 @@
 | 1.10.8 | 2026-05-28 | Fix scraper Standvirtual — URL path-based (`/{categoria}/{marca}/desde-{ano}` + fuel/year:to em query sem `[0]`). Corrigido em PHP (`MarketSnapshotService::buildSearchUrl`) e Python (`config.py`/`scraper.py`), consistentes. Modelo abandonado no URL. Resolve "Sem comparáveis" / posição no mercado partida. |
 | 1.10.9 | 2026-05-28 | Fix starvation de comparáveis (autocaravanas). Novo degrau na cascata `getComparables` só para motorhome: marca + faixa de preço ±25% (preço efectivo) + ano, sem modelo (`getComparableSnapshotsByBrandPrice`). Carros mantêm modelo exacto (intactos). `fallback_used=true`. Resolve item 43. 4 testes novos. |
 | 1.10.10 | 2026-05-28 | Afinação Posição no Mercado autocaravanas: `MOTORHOME_PRICE_BAND` ±25% → ±35% (gama de preços dispersa) e `--max-results` do scraper para motorhome 10 → 30 (`ScrapeMarketSnapshotJob`, por tipo). Carros inalterados (modelo exacto, max 10). |
+| 1.10.11 | 2026-05-28 | IPS — unificação do cálculo (`score` = soma dos 7 fatores do breakdown; `VehicleIpsService` eliminado) + estado "a calibrar" (`score` null / `classification` 'pending' quando sem views e sem mercado). UI neutra via `helpers/ips.ts` (`formatIpsBadge`). Migration score nullable + enum 'pending'. Comando `cars:recalculate-scores`. Pesos inalterados (calibração = fase separada). Carros + autocaravanas. |
 
 ---
 
@@ -946,6 +947,8 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 4. **Limpeza de scores zombie em `car_sale_potential_scores`** (baixa prioridade) — ~56k registos históricos com `triggered_by='price_change'` e `score=0`, criados pelo bug F.2/F.3 antes do fix de 2026-05-26. Bug resolvido. Carmine sem clientes activos. Limpar em sessão dedicada se tabela atingir tamanho problemático. Distribuição actual saudável (investigação F.1): 19% zeros, 66% no meio, 12% altos — IPS não bloqueia dashboard.
 
+4b. **Calibração de pesos do IPS** (média prioridade, fase separada) — os pesos dos 7 fatores (`price_vs_market` 25, `engagement_rate`/`days_in_stock` 20, `segment_demand` 15, `promo_effect`/`listing_quality`/`model_history` 10) **não foram recalibrados** na unificação de 2026-05-28 (só se mudou a *fonte* do score, não os pesos). Recalibrar com análise de dados reais: viaturas que **venderam vs não venderam**, para validar se os pesos predizem venda. Requer histórico de vendas suficiente. Não fazer "a olho".
+
 5. **Scheduler tem gaps inexplicados (alta prioridade)** — container ficou suspenso 11h30 entre 21:00 (2026-05-24) e 08:30 (2026-05-25). Loop `while true` que invoca `schedule:run` não morreu, apenas suspendeu. Detecção silenciosa. Hipótese: invocação síncrona de `schedule:run` bloqueou. **Fase E planeada** com logs visíveis desde D6. Plano:
    - Identificar último job antes do gap
    - Substituir loop por supervisor/cron robusto com timeout por invocação
@@ -1308,6 +1311,21 @@ Nova landing pública `/autocaravanas` focada em stands de autocaravanas (Opçã
 **Tracking por plano + WhatsApp diferenciado**
 Cada card de pacote passa a abrir WhatsApp com mensagem pré-preenchida do plano e a disparar eventos de tracking. `buildWhatsAppUrl(planName)` em `data/constants.ts` gera `https://wa.me/351938963526?text=...` com "Olá, interessa-me o plano {nome} para o meu stand." (pt-PT, `encodeURIComponent`). `Pricing.tsx` passa `buildWhatsAppUrl(plan.name)` a cada card (CTAs genéricos do hero/FinalCTA/CustomPlan mantêm `CTA_WHATSAPP_URL`). `CTAButton` ganhou prop opcional `onClick` (retrocompatível; o `<a target="_blank">` navega na mesma). `PricingCard` chama `trackPlanClick(plan.id, plan.name)` no clique. Helper `lib/tracking.ts`: GA4 `gtag('event','select_plan',{plan_id,plan_name})` (respeita Consent Mode) + Meta Pixel `fbq('track','Lead',{content_name,content_category:'pricing_plan'})` (fbq só existe se o pixel carregou, i.e. após consentimento). Guards `typeof` em ambos — sem consentimento o WhatsApp abre na mesma, sem eventos. `window.gtag`/`window.fbq` já tipados globalmente (não redeclarados). Sem `any`, sem bibliotecas novas.
 
+#### Capítulo IPS — unificação do cálculo + estado "a calibrar" (sessão 2026-05-28)
+
+**Problema:** dois serviços calculavam o IPS de formas que não concordavam — `CarSalePotentialScoreService` gravava um `score_breakdown` rico (7 fatores) **mas** o `score` final vinha do `VehicleIpsService` (fórmula diferente e mais pobre), que fazia `return 0` quando `views===0`. Resultado: viaturas novas sem tráfego apareciam como "0/100 · Precisa de atenção agora" (falso alarme) e o breakdown discordava do score (ex: breakdown 53, score 0).
+
+**Fix (3 partes):**
+1. **Fonte única do score** — `CSPS::calculate()` passa a calcular o `score` como a **soma dos 7 fatores do breakdown** (`price_vs_market` + `promo_effect` + `engagement_rate` + `days_in_stock` + `segment_demand` + `listing_quality` + `model_history`), com `min(100, max(0, soma))`. `VehicleIpsService` **eliminado** (era o único caller). **Pesos inalterados** — só mudou a fonte (calibração de pesos é fase separada, item 4b).
+2. **Estado "a calibrar" (`pending`)** — quando não há sinais suficientes (**sem views E sem dados de mercado**, i.e. `market_position === 'insufficient_data'`), o `score` é `null` e `classification` é `'pending'`. Migration: `score` → nullable, enum `classification` + `'pending'`. `CarSalePotentialScore::classify(?int)` devolve `'pending'` para `null`. O breakdown continua gravado (auditoria).
+3. **UI neutra** — helper `web/src/helpers/ips.ts` `formatIpsBadge(score, classification)` centraliza a lógica: `pending` → "A calibrar · aguarda primeiras visitas" (cinza neutro), nunca "0/100 · precisa de atenção". Aplicado em `CarAnalyticsHeader` (usado por Analytics/Intelligence/Ficha) e `PersonaGroupCard` (dashboard). `CarPageNav` já escondia o badge quando score falsy (sem alarme). **Surfaces inactivas não tocadas:** `/insights` (TopCarsToPromoteCard / CarMarketingRoiService) está desactivado (item 36) e usa `COALESCE(score,0)` só para *ranking* interno (0 para no-signal é correcto) — não é falso alarme a nenhum utilizador.
+
+**Portabilidade:** `scoreModelHistory` usava `DATEDIFF` (MariaDB-only) — tornado portável (`julianday` em SQLite) para permitir testar `calculate()` end-to-end. Comportamento em prod inalterado.
+
+**Comando:** `php artisan cars:recalculate-scores --companies=2,4 --status=active` despacha `CalculateCarSalePotentialScoreJob` para o stock filtrado (recalcula com a lógica nova).
+
+**Aplicado a carros e autocaravanas** (unificado). 2 testes novos (`IpsPendingStateTest`): no-signal → pending; views=0 + mercado → score numérico. Regressões verdes (CarSpecsControllerTest, NextBestCarToPromoteServiceTest).
+
 ### 🚧 Próximo
 
 **Curto prazo (próximas 2-3 sessões)**
@@ -1414,7 +1432,7 @@ Antes disto, **SaaS aberto é distração.** A agência é o negócio.
 
 ## 19. Glossário rápido
 
-- **IPS** — Índice de Potencial de Venda (score 0–100 calculado por viatura, persistido em `car_sale_potential_scores`)
+- **IPS** — Índice de Potencial de Venda (score 0–100 calculado por viatura, persistido em `car_sale_potential_scores`). O `score` é a soma dos 7 fatores do `score_breakdown` (clamp 100). Estado **"a calibrar"** (`score === null`, `classification === 'pending'`): sem sinais suficientes (sem views e sem dados de mercado) — UI mostra texto neutro, não "0/100". Formatação centralizada em `web/src/helpers/ips.ts` (`formatIpsBadge`).
 - **Persona** — agrupamento de viaturas por características (preço, potência, segmento, lugares) usado no dashboard
 - **Stand** — concessionário/vendedor de veículos (cliente XPLENDOR)
 - **Marketplace** — Standvirtual, OLX, Custojusto (não integramos, ver secção 2.4)
