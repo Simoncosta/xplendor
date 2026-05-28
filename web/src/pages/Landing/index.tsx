@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import './landing.css';
 
+import { initMetaPixel } from './lib/metaPixel';
 import LandingNav from './components/LandingNav';
 import LandingFooter from './components/LandingFooter';
 import Hero from './sections/Hero';
@@ -19,6 +20,19 @@ const Landing: React.FC = () => {
     useEffect(() => {
         document.title =
             'XPLENDOR — Marketing digital para stands automóveis em Portugal';
+    }, []);
+
+    // Meta Pixel: só na landing, só após consentimento. Inicializa se já
+    // consentido; senão fica à escuta do evento disparado pelo CookieBanner.
+    useEffect(() => {
+        if (localStorage.getItem('xplendor_cookie_consent') === 'granted') {
+            initMetaPixel();
+        }
+
+        const onConsentGranted = () => initMetaPixel();
+        window.addEventListener('xplendor-consent-granted', onConsentGranted);
+        return () =>
+            window.removeEventListener('xplendor-consent-granted', onConsentGranted);
     }, []);
 
     useEffect(() => {

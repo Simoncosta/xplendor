@@ -37,6 +37,10 @@ const CookieBanner: React.FC = () => {
     const handleAccept = (): void => {
         localStorage.setItem(CONSENT_KEY, "granted");
         updateConsent();
+        // Sinal para quem carrega tracking condicional (ex: Meta Pixel na
+        // landing). O banner monta em toda a app, por isso só emite o evento
+        // — quem o ouve (a landing) decide carregar o pixel.
+        window.dispatchEvent(new Event("xplendor-consent-granted"));
         setVisible(false);
     };
 
