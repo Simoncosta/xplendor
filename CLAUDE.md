@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.9.10
+> Última actualização: 2026-05-28 · Versão 1.10.0
 
 ---
 
@@ -45,6 +45,7 @@
 | 1.9.8 | 2026-05-27 | P0 — Fix label 'Cilindros' (era 'Cilindradas') + campo oculto para motorhome/caravan. |
 | 1.9.9 | 2026-05-28 | API Pública — viaturas `reserved` expostas publicamente + unificação da fonte de status (`CarPublicRepository::PUBLIC_STATUSES`, public const). Corrigida duplicação entre Repository e Controller `show()`. RESOURCE_SHAPE.md e secção 8.1 actualizados. |
 | 1.9.10 | 2026-05-28 | API Pública — ordenação da listagem por status (`FIELD(status, 'active', 'available_soon', 'reserved', 'sold')`) como critério primário; orderBy do request desempata. Só na listagem, não no `show()`. |
+| 1.10.0 | 2026-05-28 | GA4 (`G-KMK84KG99K`) + Google Consent Mode v2 em toda a app. Default `denied`; tracking só após consentimento via `CookieBanner` (pt-PT, custom). Escolha em localStorage `xplendor_cookie_consent`. Banner montado no `App.tsx` (todas as rotas). |
 
 ---
 
@@ -887,6 +888,16 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 - Container isolado, comunicação via `docker exec` despachado por `RunScraperJob`
 - **Atenção arquitectural:** o worker tem acesso ao Docker socket (`/var/run/docker.sock`). Risco de segurança em produção
 - Não tem testes — adicionar pelo menos smoke tests
+
+### Google Analytics 4 + Consent Mode v2 (RGPD)
+
+- **ID de medição:** `G-KMK84KG99K`. Carregado em `web/public/index.html` (gtag.js) em toda a app — landing pública e painel autenticado.
+- **Google Consent Mode v2:** por defeito **todos os consentimentos são `denied`** (`ad_storage`, `ad_user_data`, `ad_personalization`, `analytics_storage`). GA4 carrega mas não usa cookies nem trackeia até consentimento explícito. O bloco de Consent Mode vem **antes** do gtag.js no `<head>` (a ordem importa).
+- **Banner de cookies:** `web/src/Components/Common/CookieBanner.tsx` (+ `.css` dedicado, sem dependência da classe `.xplndor-landing`). Montado em `App.tsx` ao nível do router (aparece em todas as rotas). Custom, sem biblioteca externa.
+- **Persistência:** `localStorage` chave `xplendor_cookie_consent` (`granted` | `denied`). `granted` → `gtag('consent','update', {…granted})` re-aplicado a cada sessão; `denied` → fica no default; ausência → mostra banner.
+- **Defensivo:** todas as chamadas verificam `typeof window.gtag === 'function'` — se o gtag.js falhar a carregar, a app não rebenta.
+- **Privacidade:** banner liga a `/privacy` (mesmo destino do `LandingFooter`).
+- **Nota:** Meta Pixel ainda não instalado (tarefa separada).
 
 ---
 

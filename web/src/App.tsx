@@ -6,6 +6,8 @@ import './assets/scss/themes.scss';
 //imoprt Route
 import Route from './Routes';
 
+import CookieBanner from './Components/Common/CookieBanner';
+
 // Import Firebase Configuration file
 // import { initFirebaseBackend } from "./helpers/firebase_helper";
 
@@ -27,6 +29,7 @@ function App() {
     return (
         <React.Fragment>
             <Route />
+            <CookieBanner />
         </React.Fragment>
     );
 }

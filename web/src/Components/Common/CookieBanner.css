@@ -1,0 +1,95 @@
+/* Cookie consent banner — independente da landing (.xplndor-landing).
+   Valores directos para renderizar igual na landing e no painel. */
+.xplndor-cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #0d1b36;
+    color: #f8fafc;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.25);
+    padding: 16px 20px;
+}
+
+.xplndor-cookie-banner__inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.xplndor-cookie-banner__text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    flex: 1 1 360px;
+    color: #f8fafc;
+}
+
+.xplndor-cookie-banner__text a {
+    color: #1ebe5d;
+    text-decoration: underline;
+}
+
+.xplndor-cookie-banner__text a:hover {
+    color: #19a951;
+}
+
+.xplndor-cookie-banner__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.xplndor-cookie-banner__btn {
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 10px 22px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+}
+
+.xplndor-cookie-banner__btn--accept {
+    background: #1ebe5d;
+    color: #ffffff;
+}
+
+.xplndor-cookie-banner__btn--accept:hover {
+    background: #19a951;
+}
+
+.xplndor-cookie-banner__btn--reject {
+    background: transparent;
+    color: #cbd3e1;
+    border: 1px solid rgba(203, 211, 225, 0.4);
+}
+
+.xplndor-cookie-banner__btn--reject:hover {
+    color: #ffffff;
+    border-color: #ffffff;
+}
+
+@media (max-width: 575.98px) {
+    .xplndor-cookie-banner__inner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+    }
+
+    .xplndor-cookie-banner__actions {
+        justify-content: stretch;
+    }
+
+    .xplndor-cookie-banner__btn {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+}
