@@ -7,6 +7,9 @@ ENV_FILE="$APP_DIR/server/.env"
 echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
 
+echo "Docker Down"
+docker compose down
+
 echo "📥 Git pull"
 git pull origin main
 
