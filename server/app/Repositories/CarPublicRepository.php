@@ -155,6 +155,8 @@ class CarPublicRepository
 
     private function applyOrder(Builder $query, array $orderBy): void
     {
+        $query->orderByRaw("FIELD(status, 'active', 'available_soon', 'reserved', 'sold')");
+
         $orderBy = $orderBy ?: ['created_at' => 'asc'];
         foreach ($orderBy as $field => $direction) {
             if (!in_array($field, self::ALLOWED_ORDER_FIELDS, true)) {

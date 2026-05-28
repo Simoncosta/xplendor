@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.9.9
+> Última actualização: 2026-05-28 · Versão 1.9.10
 
 ---
 
@@ -44,6 +44,7 @@
 | 1.9.7 | 2026-05-27 | M5 — Sala: nova secção `living_room` no JSON + novo accordion `LivingRoomAccordion.tsx` (accordionId=9). |
 | 1.9.8 | 2026-05-27 | P0 — Fix label 'Cilindros' (era 'Cilindradas') + campo oculto para motorhome/caravan. |
 | 1.9.9 | 2026-05-28 | API Pública — viaturas `reserved` expostas publicamente + unificação da fonte de status (`CarPublicRepository::PUBLIC_STATUSES`, public const). Corrigida duplicação entre Repository e Controller `show()`. RESOURCE_SHAPE.md e secção 8.1 actualizados. |
+| 1.9.10 | 2026-05-28 | API Pública — ordenação da listagem por status (`FIELD(status, 'active', 'available_soon', 'reserved', 'sold')`) como critério primário; orderBy do request desempata. Só na listagem, não no `show()`. |
 
 ---
 
@@ -564,6 +565,8 @@ Inclui também `normalizeBedTypes()` que mapeia strings antigas para slugs novos
 **Middleware:** `check_company_api_token` lê `?token=<uuid>` da query string e injecta `public_api_company` no request. Usar `$request->input('public_api_company')` para obter o modelo da empresa, **sem fazer query redundante**.
 
 **Status visíveis publicamente:** `active`, `sold`, `available_soon`, `reserved` (fonte única: `CarPublicRepository::PUBLIC_STATUSES`). Valores `draft` e `inactive` são filtrados. O site externo decide como renderizar cada status (ex: badge 'Reservado' para reserved, 'Vendido' para sold).
+
+**Ordenação da listagem pública:** critério primário por status via `FIELD(status, 'active', 'available_soon', 'reserved', 'sold')` em `applyOrder()` — viaturas disponíveis aparecem antes das vendidas. O `orderBy`/`orderDirection` do request (default `created_at asc`) fica como desempate dentro de cada grupo de status. Aplica-se apenas à listagem (`getPublicCars`), não ao `show()`.
 
 **Resource pública:** `CarPublicResource` em `app/Http/Resources/Public/`. Documentação completa em `RESOURCE_SHAPE.md` ao lado da Resource.
 
