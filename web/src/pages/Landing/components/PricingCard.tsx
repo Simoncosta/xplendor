@@ -1,13 +1,14 @@
 import React from 'react';
-import { PricingPlan } from '../data/pricing';
+import { PricingPlan, formatPlanPrice } from '../data/pricing';
 import CTAButton from './CTAButton';
 
 interface PricingCardProps {
     plan: PricingPlan;
     ctaHref: string;
+    withVat: boolean;
 }
 
-const PricingCard: React.FC<PricingCardProps> = ({ plan, ctaHref }) => (
+const PricingCard: React.FC<PricingCardProps> = ({ plan, ctaHref, withVat }) => (
     <div className={`lp-pricing-card${plan.featured ? ' featured' : ''}`}>
         {plan.badge && (
             <span className="lp-pricing-badge" aria-label="Plano mais popular">
@@ -20,7 +21,7 @@ const PricingCard: React.FC<PricingCardProps> = ({ plan, ctaHref }) => (
 
         <div className="lp-pricing-price">
             <sup>€</sup>
-            {plan.priceFrom.toLocaleString('pt-PT')}
+            {formatPlanPrice(plan.priceFrom, withVat)}
         </div>
         <p className="lp-pricing-suffix">
             desde{plan.pricePeriod}

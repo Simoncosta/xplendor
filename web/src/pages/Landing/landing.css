@@ -564,6 +564,40 @@
     color: var(--lp-muted);
 }
 
+.xplndor-landing .lp-pricing-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    background: var(--lp-accent-bg);
+    border-radius: 999px;
+}
+
+.xplndor-landing .lp-pricing-toggle__btn {
+    border: none;
+    background: transparent;
+    color: var(--lp-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.xplndor-landing .lp-pricing-toggle__btn:hover {
+    color: var(--lp-text);
+}
+
+.xplndor-landing .lp-pricing-toggle__btn.active {
+    background: var(--lp-green);
+    color: #ffffff;
+}
+
+.xplndor-landing .lp-pricing-toggle__btn.active:hover {
+    color: #ffffff;
+}
+
 .xplndor-landing .lp-pricing-features {
     list-style: none;
     padding: 0;

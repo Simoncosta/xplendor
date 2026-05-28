@@ -17,6 +17,24 @@ export interface PricingPlan {
     ctaLabel: string;
 }
 
+export const VAT_RATE = 0.23;
+
+/** Formata o número do preço no formato tradicional português (ponto de
+ *  milhar, vírgula decimal: 1.094,70). Sem IVA: inteiro (490). Com IVA:
+ *  valor × 1.23 com 2 decimais (602,70). Devolve só o número — o "€" fica
+ *  no markup. Fonte única do cálculo de IVA.
+ *
+ *  Usa 'de-DE' (não 'pt-PT') de propósito: o CLDR moderno de pt-PT usa
+ *  espaço estreito como separador de milhar e suprime grupos de 4 dígitos;
+ *  'de-DE' garante deterministicamente ponto de milhar + vírgula decimal. */
+export const formatPlanPrice = (priceFrom: number, withVat: boolean): string => {
+    const value = withVat ? priceFrom * (1 + VAT_RATE) : priceFrom;
+    return value.toLocaleString('de-DE', {
+        minimumFractionDigits: withVat ? 2 : 0,
+        maximumFractionDigits: withVat ? 2 : 0,
+    });
+};
+
 export const PRICING_PLANS: PricingPlan[] = [
     {
         id: 'digital',

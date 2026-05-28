@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.0
+> Última actualização: 2026-05-28 · Versão 1.10.1
 
 ---
 
@@ -46,6 +46,7 @@
 | 1.9.9 | 2026-05-28 | API Pública — viaturas `reserved` expostas publicamente + unificação da fonte de status (`CarPublicRepository::PUBLIC_STATUSES`, public const). Corrigida duplicação entre Repository e Controller `show()`. RESOURCE_SHAPE.md e secção 8.1 actualizados. |
 | 1.9.10 | 2026-05-28 | API Pública — ordenação da listagem por status (`FIELD(status, 'active', 'available_soon', 'reserved', 'sold')`) como critério primário; orderBy do request desempata. Só na listagem, não no `show()`. |
 | 1.10.0 | 2026-05-28 | GA4 (`G-KMK84KG99K`) + Google Consent Mode v2 em toda a app. Default `denied`; tracking só após consentimento via `CookieBanner` (pt-PT, custom). Escolha em localStorage `xplendor_cookie_consent`. Banner montado no `App.tsx` (todas as rotas). |
+| 1.10.1 | 2026-05-28 | Landing — toggle Sem IVA / Com IVA nos pacotes. IVA calculado (× 1.23), formatado pt-PT tradicional (ponto de milhar, vírgula decimal via `de-DE`). Default Sem IVA. Helper único `formatPlanPrice`. Budget de ads não afectado. |
 
 ---
 
@@ -1250,6 +1251,17 @@ Feedback Matilde: campo `has_external_ladder` (boolean, label "Escada exterior")
 
 **API Pública — reserved + unificação de status**
 Viaturas `reserved` passam a ser expostas publicamente (visíveis no site do stand, tal como `active`/`sold`/`available_soon`). Corrigida duplicação entre `CarPublicRepository` (constante `ACTIVE_STATUSES` sem reserved, usada por `index` e `filters`) e `CarController::show()` (array hardcoded `['active', 'sold', 'available_soon']`) — unificados numa fonte única `CarPublicRepository::PUBLIC_STATUSES` (`public const`, agora com reserved). Constante renomeada `ACTIVE_STATUSES` → `PUBLIC_STATUSES` (nome antigo enganador — incluía `sold`). Resource continua a emitir `status` cru; o site externo decide o rendering. `RESOURCE_SHAPE.md` e secção 8.1 actualizados (estavam desactualizados face ao código, que já incluía `sold`). `RefreshStaleMarketAggregatesJob` (lógica interna de market aggregates) **não alterado** — decisão separada fora do escopo. Sem migration, sem alterações de frontend interno.
+
+#### Capítulo Landing — pacotes (sessão 2026-05-28)
+
+**GA4 + Consent Mode v2 + banner de cookies (RGPD)**
+Ver secção 13 (Integrações externas) para detalhe. GA4 `G-KMK84KG99K` em toda a app, default `denied`, `CookieBanner` custom, escolha em `localStorage`.
+
+**Nota de IVA nos pacotes**
+Adicionada nota "Valores sem IVA à taxa legal em vigor (23%)" ao bloco geral da secção de pacotes (`Pricing.tsx`). Clarifica que os preços B2B são líquidos de IVA.
+
+**Toggle Sem IVA / Com IVA nos pacotes**
+Toggle (pill segmentado, dois botões) acima dos cards em `Pricing.tsx` que alterna os 3 preços entre Sem IVA (default) e Com IVA (23%). IVA **calculado** (`priceFrom × 1.23`), não hardcoded — se um preço mudar, o c/IVA acompanha. Helper único `formatPlanPrice(priceFrom, withVat)` em `data/pricing.ts` (constante `VAT_RATE = 0.23`). Formatação no formato tradicional português (ponto de milhar, vírgula decimal) via `toLocaleString('de-DE', …)` — escolhido de propósito porque o CLDR moderno de `pt-PT` usa espaço estreito como separador de milhar e suprime grupos de 4 dígitos. Resultado: Sem IVA `€490 / €890 / €1.490`; Com IVA `€602,70 / €1.094,70 / €1.832,70`. O toggle aplica-se só ao valor base — o budget de ads (texto `adsBudgetNote`) não é afectado. CSS do toggle em `landing.css` (paleta `--lp-*`, verde no estado activo). Nota de rodapé alterna para "IVA (23%) incluído nos valores indicados." quando em Com IVA.
 
 ### 🚧 Próximo
 
