@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class CarPublicRepository
 {
-    private const ACTIVE_STATUSES = ['active', 'sold', 'available_soon'];
+    public const PUBLIC_STATUSES = ['active', 'sold', 'available_soon', 'reserved'];
 
     private const ALLOWED_ORDER_FIELDS = ['created_at', 'price_gross', 'registration_year', 'mileage_km'];
 
@@ -22,7 +22,7 @@ class CarPublicRepository
     ): mixed {
         $query = Car::query()
             ->where('company_id', $companyId)
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('status', self::PUBLIC_STATUSES)
             ->with(['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute']);
 
         $this->applyScalarFilters($query, $filters);
@@ -36,7 +36,7 @@ class CarPublicRepository
     {
         return Car::query()
             ->where('company_id', $companyId)
-            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('status', self::PUBLIC_STATUSES)
             ->with(['brand', 'model', 'category', 'vehicleAttribute'])
             ->get();
     }

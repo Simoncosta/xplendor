@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\CarIndexRequest;
 use App\Http\Resources\Public\CarPublicResource;
 use App\Models\VehicleAttribute;
+use App\Repositories\CarPublicRepository;
 use App\Services\CarBrandService;
 use App\Services\CarModelService;
 use App\Services\CarService;
@@ -63,7 +64,7 @@ class CarController extends Controller
         $car = \App\Models\Car::query()
             ->where('id', $id)
             ->where('company_id', $company->id)
-            ->whereIn('status', ['active', 'sold', 'available_soon'])
+            ->whereIn('status', CarPublicRepository::PUBLIC_STATUSES)
             ->with(['images', 'externalImages', 'brand', 'model', 'category', 'vehicleAttribute'])
             ->first();
 

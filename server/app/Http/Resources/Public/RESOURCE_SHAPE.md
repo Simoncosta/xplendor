@@ -21,7 +21,7 @@ This version returns a curated, stable payload.
 | `vehicle_attributes` (raw JSON) | Present as nested JSON | **Removed** — flattened into `specs`, `habitation`, `features`, `beds` |
 | `seller` (full User relation) | Exposed | **Replaced by safe `seller` object** (name, avatar, mobile, whatsapp only) |
 | `views_count`, `leads_count` | Appended via analytics | **Removed** (not for public) |
-| `status` filter | Not enforced | **Enforced: only `active` / `available_soon`** |
+| `status` filter | Not enforced | **Enforced: `active`, `sold`, `available_soon`, `reserved`** (single source: `CarPublicRepository::PUBLIC_STATUSES`) |
 
 ---
 
@@ -194,6 +194,21 @@ This version returns a curated, stable payload.
 
 `specs` is always present (at minimum `{ "seats": N }`).  
 Only keys with explicit non-null values are included in `habitation`, `features`, and `specs`.
+
+---
+
+## Status Values in the Response
+
+The `status` field is emitted raw. Public endpoints only return cars whose status is one of `active`, `sold`, `available_soon`, `reserved` (single source: `CarPublicRepository::PUBLIC_STATUSES`). The `draft` and `inactive` statuses are never exposed.
+
+The external site decides how to render each status:
+
+| Status | Meaning | Suggested rendering |
+|---|---|---|
+| `active` | On sale | Normal listing + CTA |
+| `available_soon` | Coming soon | "Brevemente" badge |
+| `sold` | Sold | "Vendido" badge, CTA off |
+| `reserved` | Reserved (deposit/hold) | "Reservado" badge, alternative CTA |
 
 ---
 

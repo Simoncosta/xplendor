@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-27 · Versão 1.9.8
+> Última actualização: 2026-05-28 · Versão 1.9.9
 
 ---
 
@@ -43,6 +43,7 @@
 | 1.9.6 | 2026-05-27 | M4 — Cozinha: `has_extending_counter` ("Acrescento de banca"), 3.º checkbox na linha do Fogão/Forno. |
 | 1.9.7 | 2026-05-27 | M5 — Sala: nova secção `living_room` no JSON + novo accordion `LivingRoomAccordion.tsx` (accordionId=9). |
 | 1.9.8 | 2026-05-27 | P0 — Fix label 'Cilindros' (era 'Cilindradas') + campo oculto para motorhome/caravan. |
+| 1.9.9 | 2026-05-28 | API Pública — viaturas `reserved` expostas publicamente + unificação da fonte de status (`CarPublicRepository::PUBLIC_STATUSES`, public const). Corrigida duplicação entre Repository e Controller `show()`. RESOURCE_SHAPE.md e secção 8.1 actualizados. |
 
 ---
 
@@ -562,7 +563,7 @@ Inclui também `normalizeBedTypes()` que mapeia strings antigas para slugs novos
 
 **Middleware:** `check_company_api_token` lê `?token=<uuid>` da query string e injecta `public_api_company` no request. Usar `$request->input('public_api_company')` para obter o modelo da empresa, **sem fazer query redundante**.
 
-**Status visíveis publicamente:** apenas `active` e `available_soon`. Outros valores (`sold`, `draft`, `inactive`, `reserved`) são filtrados automaticamente no `CarPublicRepository`.
+**Status visíveis publicamente:** `active`, `sold`, `available_soon`, `reserved` (fonte única: `CarPublicRepository::PUBLIC_STATUSES`). Valores `draft` e `inactive` são filtrados. O site externo decide como renderizar cada status (ex: badge 'Reservado' para reserved, 'Vendido' para sold).
 
 **Resource pública:** `CarPublicResource` em `app/Http/Resources/Public/`. Documentação completa em `RESOURCE_SHAPE.md` ao lado da Resource.
 
@@ -1230,6 +1231,11 @@ Feedback Matilde: novo campo `has_extending_counter` (boolean, label "Acrescento
 
 **M3 — Exterior: Escada exterior + Garagem**
 Feedback Matilde: campo `has_external_ladder` (boolean, label "Escada exterior") adicionado ao último `<Row>` do ExteriorAccordion (6.º de 6 cols `lg={2}`). Novo objecto aninhado `garage` em `exterior` com 4 booleanos: `has_garage` (gate principal, label "Garagem"), `has_double_opening` ("Abertura dos dois lados"), `is_spacious` ("Espaçosa"), `has_height_adjuster` ("Altura ajustável"). Secção "Garagem" separada por `<hr/>` + `<h6>`. Sub-campos condicionais (só aparecem com `garage.has_garage === true`). Novo tipo TypeScript `VehicleAttributeGarage` em `car.model.ts` e `vehicleAttributes.ts`. 5 regras de validação backend em `CarRequest.php`. Sem migration (JSON).
+
+#### Capítulo API Pública — status de viatura (sessão 2026-05-28)
+
+**API Pública — reserved + unificação de status**
+Viaturas `reserved` passam a ser expostas publicamente (visíveis no site do stand, tal como `active`/`sold`/`available_soon`). Corrigida duplicação entre `CarPublicRepository` (constante `ACTIVE_STATUSES` sem reserved, usada por `index` e `filters`) e `CarController::show()` (array hardcoded `['active', 'sold', 'available_soon']`) — unificados numa fonte única `CarPublicRepository::PUBLIC_STATUSES` (`public const`, agora com reserved). Constante renomeada `ACTIVE_STATUSES` → `PUBLIC_STATUSES` (nome antigo enganador — incluía `sold`). Resource continua a emitir `status` cru; o site externo decide o rendering. `RESOURCE_SHAPE.md` e secção 8.1 actualizados (estavam desactualizados face ao código, que já incluía `sold`). `RefreshStaleMarketAggregatesJob` (lógica interna de market aggregates) **não alterado** — decisão separada fora do escopo. Sem migration, sem alterações de frontend interno.
 
 ### 🚧 Próximo
 
