@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.1
+> Última actualização: 2026-05-28 · Versão 1.10.2
 
 ---
 
@@ -47,6 +47,7 @@
 | 1.9.10 | 2026-05-28 | API Pública — ordenação da listagem por status (`FIELD(status, 'active', 'available_soon', 'reserved', 'sold')`) como critério primário; orderBy do request desempata. Só na listagem, não no `show()`. |
 | 1.10.0 | 2026-05-28 | GA4 (`G-KMK84KG99K`) + Google Consent Mode v2 em toda a app. Default `denied`; tracking só após consentimento via `CookieBanner` (pt-PT, custom). Escolha em localStorage `xplendor_cookie_consent`. Banner montado no `App.tsx` (todas as rotas). |
 | 1.10.1 | 2026-05-28 | Landing — toggle Sem IVA / Com IVA nos pacotes. IVA calculado (× 1.23), formatado pt-PT tradicional (ponto de milhar, vírgula decimal via `de-DE`). Default Sem IVA. Helper único `formatPlanPrice`. Budget de ads não afectado. |
+| 1.10.2 | 2026-05-28 | Landing — página pública `/privacy` (Política de Privacidade) em pt-PT. Reutiliza nav + footer. Resolve link partido do banner e footer. Dados reais XPLENDOR; documento-base, não revisto juridicamente. |
 
 ---
 
@@ -1262,6 +1263,9 @@ Adicionada nota "Valores sem IVA à taxa legal em vigor (23%)" ao bloco geral da
 
 **Toggle Sem IVA / Com IVA nos pacotes**
 Toggle (pill segmentado, dois botões) acima dos cards em `Pricing.tsx` que alterna os 3 preços entre Sem IVA (default) e Com IVA (23%). IVA **calculado** (`priceFrom × 1.23`), não hardcoded — se um preço mudar, o c/IVA acompanha. Helper único `formatPlanPrice(priceFrom, withVat)` em `data/pricing.ts` (constante `VAT_RATE = 0.23`). Formatação no formato tradicional português (ponto de milhar, vírgula decimal) via `toLocaleString('de-DE', …)` — escolhido de propósito porque o CLDR moderno de `pt-PT` usa espaço estreito como separador de milhar e suprime grupos de 4 dígitos. Resultado: Sem IVA `€490 / €890 / €1.490`; Com IVA `€602,70 / €1.094,70 / €1.832,70`. O toggle aplica-se só ao valor base — o budget de ads (texto `adsBudgetNote`) não é afectado. CSS do toggle em `landing.css` (paleta `--lp-*`, verde no estado activo). Nota de rodapé alterna para "IVA (23%) incluído nos valores indicados." quando em Com IVA.
+
+**Página /privacy (Política de Privacidade)**
+Nova rota pública `/privacy` (sem auth) em `publicRoutes` de `allRoutes.tsx`, componente `web/src/pages/Privacy/index.tsx`. Resolve o link partido do `CookieBanner` e do `LandingFooter` (ambos linkam `/privacy` via `<a href>`). Reutiliza `LandingNav` + `LandingFooter` + tokens `--lp-*` (envolto em `.xplndor-landing`); CSS `.lp-legal*` em `landing.css` (largura máx 720px). Conteúdo pt-PT: responsável (XPLENDOR, NIPC 517343355, morada Rio Tinto, simoncosta@xplendor.tech, +351 938 963 526, xplendor.tech), dados recolhidos, finalidade/base legal, cookies (GA4 + Meta Pixel, só após consentimento), conservação, direitos RGPD, reclamação à CNPD, partilha com terceiros, contacto. **Documento-base honesto, NÃO revisto juridicamente** — sujeito a revisão jurídica futura. Nota: menciona Meta Pixel, que ainda não está instalado (tarefa separada). `/terms` continua por criar (link no footer).
 
 ### 🚧 Próximo
 

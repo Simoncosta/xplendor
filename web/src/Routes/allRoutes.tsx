@@ -29,6 +29,7 @@ import UsersList from "pages/Users/UsersList";
 
 // Landing
 import Landing from "pages/Landing";
+import PrivacyPolicy from "pages/Privacy";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
 
@@ -114,6 +115,9 @@ const publicRoutes = [
 
     // Landing Page
     { path: "/", component: <Landing /> },
+
+    // Privacy Policy
+    { path: "/privacy", component: <PrivacyPolicy /> },
 ];
 
 export { authProtectedRoutes, publicRoutes };

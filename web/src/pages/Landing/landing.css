@@ -381,6 +381,63 @@
     line-height: 1.65;
 }
 
+/* ─── Legal / Privacy page ──────────────────────────────────────────────── */
+.xplndor-landing .lp-legal {
+    max-width: 720px;
+    margin: 0 auto;
+    color: var(--lp-text);
+}
+
+.xplndor-landing .lp-legal-title {
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    margin-bottom: 0.5rem;
+}
+
+.xplndor-landing .lp-legal-meta {
+    font-size: 0.875rem;
+    color: var(--lp-muted);
+    margin-bottom: 2rem;
+}
+
+.xplndor-landing .lp-legal h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 2.25rem;
+    margin-bottom: 0.75rem;
+    color: var(--lp-text);
+}
+
+.xplndor-landing .lp-legal p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--lp-text);
+    margin-bottom: 1rem;
+}
+
+.xplndor-landing .lp-legal ul {
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.xplndor-landing .lp-legal li {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--lp-text);
+    margin-bottom: 0.5rem;
+}
+
+.xplndor-landing .lp-legal a {
+    color: var(--lp-green);
+    text-decoration: underline;
+}
+
+.xplndor-landing .lp-legal a:hover {
+    color: var(--lp-green-hover);
+}
+
 /* ─── Problem cards ─────────────────────────────────────────────────────── */
 .xplndor-landing .lp-problem-card {
     background: #fff;
