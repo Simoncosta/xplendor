@@ -14,8 +14,10 @@ class MarketSnapshotService
 {
     private const SCRAPER_SUPPORTED_TYPES = ['car', 'motorhome'];
 
-    /** Faixa de preço (±) para o fallback de autocaravanas por marca+preço. Afinável. */
-    private const MOTORHOME_PRICE_BAND = 0.25;
+    /** Faixa de preço (±) para o fallback de autocaravanas por marca+preço.
+     *  Calibração afinável — ±35% porque a gama de preços de autocaravanas da
+     *  mesma marca é muito dispersa (ex: McLouis vai de ~€26k a ~€124k). */
+    private const MOTORHOME_PRICE_BAND = 0.35;
 
     public function __construct(
         private readonly CarMarketSnapshotRepositoryInterface $snapshotRepo,

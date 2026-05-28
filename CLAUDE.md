@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.9
+> Última actualização: 2026-05-28 · Versão 1.10.10
 
 ---
 
@@ -55,6 +55,7 @@
 | 1.10.7 | 2026-05-28 | Landing dedicada `/autocaravanas` (nicho). Hero + 3 dores + análise de mercado (exemplo fictício Adria) + diferenciadores próprios; reutiliza CSS, componentes, Meta Pixel, tracking e pacotes. Landing principal `/` intacta. Nav/footer partilhados não alterados. |
 | 1.10.8 | 2026-05-28 | Fix scraper Standvirtual — URL path-based (`/{categoria}/{marca}/desde-{ano}` + fuel/year:to em query sem `[0]`). Corrigido em PHP (`MarketSnapshotService::buildSearchUrl`) e Python (`config.py`/`scraper.py`), consistentes. Modelo abandonado no URL. Resolve "Sem comparáveis" / posição no mercado partida. |
 | 1.10.9 | 2026-05-28 | Fix starvation de comparáveis (autocaravanas). Novo degrau na cascata `getComparables` só para motorhome: marca + faixa de preço ±25% (preço efectivo) + ano, sem modelo (`getComparableSnapshotsByBrandPrice`). Carros mantêm modelo exacto (intactos). `fallback_used=true`. Resolve item 43. 4 testes novos. |
+| 1.10.10 | 2026-05-28 | Afinação Posição no Mercado autocaravanas: `MOTORHOME_PRICE_BAND` ±25% → ±35% (gama de preços dispersa) e `--max-results` do scraper para motorhome 10 → 30 (`ScrapeMarketSnapshotJob`, por tipo). Carros inalterados (modelo exacto, max 10). |
 
 ---
 
@@ -901,7 +902,7 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 
 - **Cascata de comparáveis** (`MarketSnapshotService::getComparables()`, lado Laravel, sobre snapshots já scraped na BD) — difere por tipo de viatura:
   - **Carros** (modelo exacto, há volume): (1) estrita (modelo + ano±1 + fuel + gearbox + power±25); (2) ano alargado (±3); (3) loose (modelo + ano, sem fuel/gearbox/power).
-  - **Autocaravanas** (modelo fragmentado): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (25%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only.
+  - **Autocaravanas** (modelo fragmentado): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (35%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only. O scraper recolhe **30** resultados para motorhome (`ScrapeMarketSnapshotJob` passa `--max-results` por tipo: motorhome 30, car 10) — gama de preços dispersa precisa de mais amostra.
   - Qualquer fallback (2/3/4) marca `fallback_used=true` (comparação aproximada — o UI pode sinalizar). `selectTop5` (5 mais próximos da mediana) e o cálculo da mediana são iguais para ambos.
 
 ### Google Analytics 4 + Consent Mode v2 (RGPD)

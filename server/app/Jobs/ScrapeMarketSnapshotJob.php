@@ -48,6 +48,11 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
 
         $vehicleType = $car->vehicle_type ?? 'car';
 
+        // Autocaravanas precisam de mais resultados: a gama de preços da mesma
+        // marca é dispersa e a comparação é por marca+faixa (não modelo exacto).
+        // Carros mantêm 10 (modelo exacto, há volume). Hard cap do Python = 100.
+        $maxResults = $vehicleType === 'motorhome' ? '30' : '10';
+
         $command = [
             'docker', 'exec',
             env('SCRAPER_CONTAINER', 'xplendor-scraper'),
@@ -55,7 +60,7 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
             '--source',       'standvirtual',
             '--mode',         'run',
             '--vehicle-type', $vehicleType,
-            '--max-results',  '10',
+            '--max-results',  $maxResults,
             '--brand',        $car->brand->name,
             '--model',        $car->model->name,
         ];
