@@ -8,8 +8,7 @@ echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
 
 echo "📥 Git pull"
-git fetch origin main
-git reset --hard origin/main
+git pull origin main
 
 echo "🐳 Backend: build + up"
 docker compose -f docker-compose.prod.yml up -d --build
@@ -25,7 +24,7 @@ docker exec -it xplendor-php php artisan route:cache
 
 echo "⚛️ Frontend build"
 cd "./web"
-yarn install --frozen-lockfile || yarn install
+yarn install
 echo "⚛️ Delete old build"
 rm -rf build/
 echo "⚛️ Build new build"
