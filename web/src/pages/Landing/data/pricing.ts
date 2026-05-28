@@ -73,7 +73,7 @@ export const PRICING_PLANS: PricingPlan[] = [
             { text: 'Reunião mensal de resultados' },
         ],
         adsMinBudget: 600,
-        adsBudgetNote: 'Investimento mínimo de €600/mês em campanhas pagas Meta',
+        adsBudgetNote: 'Investimento mínimo de €300/mês em campanhas pagas Meta',
         ctaLabel: 'Quero saber mais',
     },
     {
@@ -93,7 +93,7 @@ export const PRICING_PLANS: PricingPlan[] = [
             { text: 'Acesso à plataforma XPLENDOR' },
         ],
         adsMinBudget: 1500,
-        adsBudgetNote: 'Investimento mínimo de €1.500/mês em campanhas Meta + Google',
+        adsBudgetNote: 'Investimento mínimo de €750/mês em campanhas Meta + Google',
         ctaLabel: 'Quero saber mais',
     },
 ];
