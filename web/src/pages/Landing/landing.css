@@ -13,6 +13,19 @@
     --lp-radius:      12px;
     --lp-radius-sm:   8px;
 
+    /* Profundidade — sombras em camadas (próxima + difusa) reutilizáveis.
+       Ousadia nos destaques (glow), sobriedade nas zonas de leitura (sm/md). */
+    --lp-shadow-sm:   0 1px 2px rgba(13, 27, 54, 0.06),
+                      0 2px 8px rgba(13, 27, 54, 0.05);
+    --lp-shadow-md:   0 2px 4px rgba(13, 27, 54, 0.06),
+                      0 12px 28px rgba(13, 27, 54, 0.10);
+    --lp-shadow-lg:   0 8px 16px rgba(13, 27, 54, 0.10),
+                      0 32px 64px rgba(13, 27, 54, 0.22);
+    --lp-glow-green:  0 8px 28px rgba(30, 190, 93, 0.45);
+    --lp-glow-accent: 0 16px 60px rgba(74, 111, 220, 0.35);
+
+    --lp-ease:        cubic-bezier(0.22, 1, 0.36, 1);
+
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
         sans-serif;
     color: var(--lp-text);
@@ -27,11 +40,16 @@
     background: var(--lp-navy);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     padding: 14px 0;
-    transition: box-shadow 0.2s;
+    transition: box-shadow 0.25s var(--lp-ease), background 0.25s var(--lp-ease),
+        border-color 0.25s var(--lp-ease);
 }
 
 .xplndor-landing .lp-navbar.scrolled {
-    box-shadow: 0 2px 24px rgba(0, 0, 0, 0.28);
+    background: rgba(13, 27, 54, 0.72);
+    backdrop-filter: saturate(160%) blur(12px);
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.35);
 }
 
 .xplndor-landing .lp-navbar-brand {
@@ -126,23 +144,25 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: var(--lp-green);
+    background: linear-gradient(135deg, #25d066 0%, var(--lp-green) 55%, var(--lp-green-hover) 100%);
     color: #fff;
     font-weight: 600;
     font-size: 0.9375rem;
     padding: 13px 26px;
     border-radius: var(--lp-radius-sm);
     text-decoration: none;
-    transition: background 0.18s, transform 0.12s, box-shadow 0.18s;
+    box-shadow: 0 2px 10px rgba(30, 190, 93, 0.22);
+    transition: transform 0.18s var(--lp-ease), box-shadow 0.22s var(--lp-ease),
+        filter 0.18s var(--lp-ease);
     white-space: nowrap;
 }
 
 .xplndor-landing .lp-cta-btn:hover,
 .xplndor-landing .lp-cta-btn:focus-visible {
-    background: var(--lp-green-hover);
     color: #fff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(30, 190, 93, 0.35);
+    transform: translateY(-2px);
+    box-shadow: var(--lp-glow-green);
+    filter: brightness(1.04);
     text-decoration: none;
 }
 
@@ -181,11 +201,32 @@
 
 /* ─── Hero ──────────────────────────────────────────────────────────────── */
 .xplndor-landing .lp-hero {
+    position: relative;
     background:
-        radial-gradient(ellipse 55% 65% at 96% 6%, rgba(74, 111, 220, 0.13) 0%, transparent 68%),
+        radial-gradient(ellipse 55% 65% at 96% 6%, rgba(74, 111, 220, 0.18) 0%, transparent 68%),
+        radial-gradient(ellipse 50% 55% at 4% 92%, rgba(30, 190, 93, 0.12) 0%, transparent 70%),
         linear-gradient(150deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
     padding: 96px 0 80px;
     overflow: hidden;
+}
+
+/* Grid muito subtil sobre o gradiente do hero — profundidade "tech" discreta. */
+.xplndor-landing .lp-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 70% at 70% 20%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 70% 20%, #000 0%, transparent 75%);
+    pointer-events: none;
+}
+
+.xplndor-landing .lp-hero > * {
+    position: relative;
+    z-index: 1;
 }
 
 .xplndor-landing .lp-hero-title {
@@ -214,9 +255,15 @@
 
 /* ─── Hero dashboard mockup ─────────────────────────────────────────────── */
 .xplndor-landing .lp-hero-dashboard {
+    position: relative;
     background: #fff;
     border-radius: var(--lp-radius);
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+    /* Sombra difusa para "flutuar" + glow accent + ring subtil.
+       Box-shadow não é cortado pelo overflow:hidden, ao contrário de ::after. */
+    box-shadow:
+        0 32px 80px rgba(0, 0, 0, 0.42),
+        0 24px 70px rgba(74, 111, 220, 0.30),
+        0 0 0 1px rgba(255, 255, 255, 0.06);
     overflow: hidden;
     max-width: 500px;
     margin: 0 auto;
@@ -347,7 +394,9 @@
 }
 
 .xplndor-landing .lp-section-dark {
-    background: var(--lp-navy);
+    background:
+        radial-gradient(ellipse 50% 60% at 85% 0%, rgba(74, 111, 220, 0.16) 0%, transparent 66%),
+        linear-gradient(160deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
     color: #fff;
 }
 
@@ -441,10 +490,17 @@
 /* ─── Problem cards ─────────────────────────────────────────────────────── */
 .xplndor-landing .lp-problem-card {
     background: #fff;
-    border: 1px solid var(--lp-border);
+    border: 1px solid rgba(13, 27, 54, 0.07);
     border-radius: var(--lp-radius);
     padding: 28px 24px;
     height: 100%;
+    box-shadow: var(--lp-shadow-sm);
+    transition: transform 0.22s var(--lp-ease), box-shadow 0.22s var(--lp-ease);
+}
+
+.xplndor-landing .lp-problem-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--lp-shadow-md);
 }
 
 .xplndor-landing .lp-problem-icon {
@@ -518,8 +574,15 @@
     padding: 28px 24px;
     border-radius: var(--lp-radius);
     background: #fff;
-    border: 1px solid var(--lp-border);
+    border: 1px solid rgba(13, 27, 54, 0.07);
     height: 100%;
+    box-shadow: var(--lp-shadow-sm);
+    transition: transform 0.22s var(--lp-ease), box-shadow 0.22s var(--lp-ease);
+}
+
+.xplndor-landing .lp-diff-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--lp-shadow-md);
 }
 
 .xplndor-landing .lp-diff-icon {
@@ -545,7 +608,7 @@
 
 /* ─── Pricing ───────────────────────────────────────────────────────────── */
 .xplndor-landing .lp-pricing-card {
-    border: 1px solid var(--lp-border);
+    border: 1px solid rgba(13, 27, 54, 0.08);
     border-radius: var(--lp-radius);
     padding: 32px 28px;
     background: #fff;
@@ -553,17 +616,27 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    transition: box-shadow 0.2s;
+    box-shadow: var(--lp-shadow-sm);
+    transition: transform 0.22s var(--lp-ease), box-shadow 0.22s var(--lp-ease);
 }
 
 .xplndor-landing .lp-pricing-card:hover {
-    box-shadow: 0 8px 32px rgba(64, 81, 137, 0.1);
+    transform: translateY(-3px);
+    box-shadow: var(--lp-shadow-md);
 }
 
+/* Card popular — destaque forte: ring com gradiente accent + glow + fundo subtil. */
 .xplndor-landing .lp-pricing-card.featured {
-    border-color: var(--lp-accent);
-    border-width: 2px;
-    box-shadow: 0 8px 32px rgba(64, 81, 137, 0.14);
+    border: 2px solid transparent;
+    background:
+        linear-gradient(#fff, #fff) padding-box,
+        linear-gradient(135deg, var(--lp-accent) 0%, #4a6fdc 50%, var(--lp-green) 140%) border-box;
+    box-shadow: var(--lp-glow-accent), var(--lp-shadow-md);
+}
+
+.xplndor-landing .lp-pricing-card.featured:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 22px 70px rgba(74, 111, 220, 0.42), var(--lp-shadow-md);
 }
 
 .xplndor-landing .lp-pricing-badge {
@@ -571,7 +644,7 @@
     top: -13px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--lp-accent);
+    background: linear-gradient(135deg, var(--lp-accent) 0%, #4a6fdc 100%);
     color: #fff;
     font-size: 0.75rem;
     font-weight: 600;
@@ -579,6 +652,7 @@
     border-radius: 20px;
     white-space: nowrap;
     letter-spacing: 0.02em;
+    box-shadow: 0 6px 18px rgba(74, 111, 220, 0.4);
 }
 
 .xplndor-landing .lp-pricing-name {
@@ -724,11 +798,12 @@
 .xplndor-landing .lp-custom-plan-box {
     max-width: 620px;
     margin: 0 auto;
-    background: var(--lp-accent-bg);
+    background: linear-gradient(160deg, #f3f5fc 0%, var(--lp-accent-bg) 100%);
     border-radius: var(--lp-radius);
-    border: 1px solid rgba(64, 81, 137, 0.14);
+    border: 1px solid rgba(64, 81, 137, 0.16);
     padding: 40px 48px;
     text-align: center;
+    box-shadow: var(--lp-shadow-sm);
 }
 
 .xplndor-landing .lp-custom-plan-title {
@@ -801,9 +876,30 @@
 
 /* ─── Final CTA ─────────────────────────────────────────────────────────── */
 .xplndor-landing .lp-final-cta {
-    background: linear-gradient(150deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
+    position: relative;
+    background:
+        radial-gradient(ellipse 60% 80% at 15% 10%, rgba(74, 111, 220, 0.28) 0%, transparent 62%),
+        radial-gradient(ellipse 55% 75% at 88% 95%, rgba(30, 190, 93, 0.18) 0%, transparent 64%),
+        linear-gradient(150deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
     padding: 96px 0;
     text-align: center;
+    overflow: hidden;
+}
+
+/* Hairline luminosa no topo — fecho premium da página. */
+.xplndor-landing .lp-final-cta::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, rgba(74, 111, 220, 0.6) 50%, transparent 100%);
+}
+
+.xplndor-landing .lp-final-cta > * {
+    position: relative;
+    z-index: 1;
 }
 
 .xplndor-landing .lp-final-cta h2 {
@@ -871,10 +967,18 @@
 .xplndor-landing .lp-market-card {
     border-radius: var(--lp-radius);
     overflow: hidden;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--lp-border);
+    box-shadow: var(--lp-shadow-lg);
+    border: 1px solid rgba(13, 27, 54, 0.08);
     max-width: 520px;
     margin: 0 auto;
+    transition: transform 0.25s var(--lp-ease), box-shadow 0.25s var(--lp-ease);
+}
+
+.xplndor-landing .lp-market-card:hover {
+    transform: translateY(-4px);
+    box-shadow:
+        0 14px 24px rgba(13, 27, 54, 0.12),
+        0 40px 80px rgba(13, 27, 54, 0.26);
 }
 
 .xplndor-landing .lp-market-img {
@@ -1033,5 +1137,27 @@
 
     .xplndor-landing .lp-dash-chart {
         display: none;
+    }
+}
+
+/* Respeitar prefers-reduced-motion: manter os realces visuais (sombra/glow),
+   mas remover o movimento (translate) e transições de transform. */
+@media (prefers-reduced-motion: reduce) {
+    .xplndor-landing .lp-cta-btn,
+    .xplndor-landing .lp-problem-card,
+    .xplndor-landing .lp-diff-card,
+    .xplndor-landing .lp-pricing-card,
+    .xplndor-landing .lp-market-card {
+        transition: box-shadow 0.22s var(--lp-ease), filter 0.18s var(--lp-ease);
+    }
+
+    .xplndor-landing .lp-cta-btn:hover,
+    .xplndor-landing .lp-cta-btn:focus-visible,
+    .xplndor-landing .lp-problem-card:hover,
+    .xplndor-landing .lp-diff-card:hover,
+    .xplndor-landing .lp-pricing-card:hover,
+    .xplndor-landing .lp-pricing-card.featured:hover,
+    .xplndor-landing .lp-market-card:hover {
+        transform: none;
     }
 }

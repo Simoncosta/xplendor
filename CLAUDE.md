@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.3
+> Última actualização: 2026-05-28 · Versão 1.10.4
 
 ---
 
@@ -49,6 +49,7 @@
 | 1.10.1 | 2026-05-28 | Landing — toggle Sem IVA / Com IVA nos pacotes. IVA calculado (× 1.23), formatado pt-PT tradicional (ponto de milhar, vírgula decimal via `de-DE`). Default Sem IVA. Helper único `formatPlanPrice`. Budget de ads não afectado. |
 | 1.10.2 | 2026-05-28 | Landing — página pública `/privacy` (Política de Privacidade) em pt-PT. Reutiliza nav + footer. Resolve link partido do banner e footer. Dados reais XPLENDOR; documento-base, não revisto juridicamente. |
 | 1.10.3 | 2026-05-28 | Meta Pixel (`987402273689566`) — só na landing, só após consentimento. Carregado por código (`metaPixel.ts`), não no `index.html`. Banner dispara evento `xplendor-consent-granted`; landing escuta e inicializa. Nunca no painel autenticado. |
+| 1.10.4 | 2026-05-28 | Landing Fase 2 — polish visual "startup tech" (só `landing.css`). Glows/gradientes nos destaques (hero, navbar blur, CTAs, card popular, Final CTA), sombras em camadas + hover nos cards de leitura, tokens de sombra/glow centralizados, `prefers-reduced-motion` respeitado. Zero `.tsx`. |
 
 ---
 
@@ -1276,6 +1277,9 @@ Toggle (pill segmentado, dois botões) acima dos cards em `Pricing.tsx` que alte
 
 **Página /privacy (Política de Privacidade)**
 Nova rota pública `/privacy` (sem auth) em `publicRoutes` de `allRoutes.tsx`, componente `web/src/pages/Privacy/index.tsx`. Resolve o link partido do `CookieBanner` e do `LandingFooter` (ambos linkam `/privacy` via `<a href>`). Reutiliza `LandingNav` + `LandingFooter` + tokens `--lp-*` (envolto em `.xplndor-landing`); CSS `.lp-legal*` em `landing.css` (largura máx 720px). Conteúdo pt-PT: responsável (XPLENDOR, NIPC 517343355, morada Rio Tinto, simoncosta@xplendor.tech, +351 938 963 526, xplendor.tech), dados recolhidos, finalidade/base legal, cookies (GA4 + Meta Pixel, só após consentimento), conservação, direitos RGPD, reclamação à CNPD, partilha com terceiros, contacto. **Documento-base honesto, NÃO revisto juridicamente** — sujeito a revisão jurídica futura. O Meta Pixel referido já está instalado (só na landing, após consentimento — ver secção 13). `/terms` continua por criar (link no footer).
+
+**Fase 2 — polish visual "startup tech" (só CSS)**
+Polish visual da landing, exclusivamente em `landing.css` (zero `.tsx` alterados). Princípio: ousadia nos destaques, sobriedade nas zonas de leitura. Tokens novos de profundidade no bloco `.xplndor-landing`: `--lp-shadow-sm/md/lg` (sombras em camadas), `--lp-glow-green`, `--lp-glow-accent`, `--lp-ease` (curva de easing). Zonas ousadas: hero (2.º glow verde + grid subtil com mask + dashboard a "flutuar" via glow accent em box-shadow), navbar scrolled (`backdrop-filter` blur + fundo translúcido), CTA (`lp-cta-btn` com gradiente verde + glow no hover), card de preço popular (`featured` com ring de gradiente accent→verde via `padding-box`/`border-box` + glow), Final CTA + `lp-section-dark` (gradientes radiais ricos + hairline luminosa no topo), badge popular (gradiente + sombra). Zonas sóbrias: cards problem/diff/pricing/market com sombras em camadas + hover `translateY` discreto. Bloco `@media (prefers-reduced-motion: reduce)` remove o movimento (translate) mantendo sombras/glow. Estrutura e componentes intactos.
 
 ### 🚧 Próximo
 
