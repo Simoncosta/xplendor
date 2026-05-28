@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.4
+> Última actualização: 2026-05-28 · Versão 1.10.5
 
 ---
 
@@ -50,6 +50,7 @@
 | 1.10.2 | 2026-05-28 | Landing — página pública `/privacy` (Política de Privacidade) em pt-PT. Reutiliza nav + footer. Resolve link partido do banner e footer. Dados reais XPLENDOR; documento-base, não revisto juridicamente. |
 | 1.10.3 | 2026-05-28 | Meta Pixel (`987402273689566`) — só na landing, só após consentimento. Carregado por código (`metaPixel.ts`), não no `index.html`. Banner dispara evento `xplendor-consent-granted`; landing escuta e inicializa. Nunca no painel autenticado. |
 | 1.10.4 | 2026-05-28 | Landing Fase 2 — polish visual "startup tech" (só `landing.css`). Glows/gradientes nos destaques (hero, navbar blur, CTAs, card popular, Final CTA), sombras em camadas + hover nos cards de leitura, tokens de sombra/glow centralizados, `prefers-reduced-motion` respeitado. Zero `.tsx`. |
+| 1.10.5 | 2026-05-28 | Landing Fase 3 — animações no hero. KPIs contam de 0 ao valor (`react-countup`), barras do gráfico crescem com stagger (transição CSS + duplo rAF). `prefers-reduced-motion` → valores finais directos. Só `Hero.tsx` + `landing.css`. |
 
 ---
 
@@ -1280,6 +1281,9 @@ Nova rota pública `/privacy` (sem auth) em `publicRoutes` de `allRoutes.tsx`, c
 
 **Fase 2 — polish visual "startup tech" (só CSS)**
 Polish visual da landing, exclusivamente em `landing.css` (zero `.tsx` alterados). Princípio: ousadia nos destaques, sobriedade nas zonas de leitura. Tokens novos de profundidade no bloco `.xplndor-landing`: `--lp-shadow-sm/md/lg` (sombras em camadas), `--lp-glow-green`, `--lp-glow-accent`, `--lp-ease` (curva de easing). Zonas ousadas: hero (2.º glow verde + grid subtil com mask + dashboard a "flutuar" via glow accent em box-shadow), navbar scrolled (`backdrop-filter` blur + fundo translúcido), CTA (`lp-cta-btn` com gradiente verde + glow no hover), card de preço popular (`featured` com ring de gradiente accent→verde via `padding-box`/`border-box` + glow), Final CTA + `lp-section-dark` (gradientes radiais ricos + hairline luminosa no topo), badge popular (gradiente + sombra). Zonas sóbrias: cards problem/diff/pricing/market com sombras em camadas + hover `translateY` discreto. Bloco `@media (prefers-reduced-motion: reduce)` remove o movimento (translate) mantendo sombras/glow. Estrutura e componentes intactos.
+
+**Fase 3 — animações no hero (contadores + barras)**
+Movimento no mockup do hero (`sections/Hero.tsx` + transição CSS em `landing.css`). Os 3 KPIs (`47`, `€8,20`, `32`) contam de 0 ao valor com `react-countup` (`^6.5.3`, já instalada) — `duration 1.6s`, `delay 0.2s`, start-on-mount (hero está no topo, anima ao carregar; scrollSpy não fiável quando já está em viewport). O `€8,20` usa `prefix="€"`, `decimals={2}`, `decimal=","`. As 5 barras do gráfico "Leads por canal" crescem de `0%` até ao valor com transição CSS (`transition: width 0.9s` em `.lp-dash-bar-fill`) + stagger (`transitionDelay` incremental de 80ms por barra); estado `barsGrown` aplicado após duplo `requestAnimationFrame` (garante paint do 0% antes da transição). **`prefers-reduced-motion`:** guard manual (`window.matchMedia`) → KPIs mostram `staticText` final sem `CountUp`, barras arrancam no valor final + `transition: none` no media query CSS. Mockup já é `aria-hidden`. Reveal de secções (observer em `index.tsx`) intacto. Só `Hero.tsx` + `landing.css` alterados.
 
 ### 🚧 Próximo
 

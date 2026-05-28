@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Col, Container, Row } from 'reactstrap';
+import CountUp from 'react-countup';
 import CTAButton from '../components/CTAButton';
 import { CTA_WHATSAPP_URL } from '../data/constants';
 
@@ -18,47 +19,102 @@ const BARS: BarItem[] = [
     { name: 'Directo',   color: '#ced4da',           width: 9,  count: 1  },
 ];
 
-const HeroDashboard: React.FC = () => (
-    <div className="lp-hero-dashboard" aria-hidden="true">
-        <div className="lp-dash-header">
-            <span className="lp-dash-title">Performance do stock</span>
-            <span className="lp-dash-trend">↑ +18% vs mês anterior</span>
-        </div>
+interface KpiItem {
+    end: number;
+    label: string;
+    prefix?: string;
+    decimals?: number;
+    /** Valor final mostrado sem animação (reduced-motion / fallback). */
+    staticText: string;
+}
 
-        <div className="lp-dash-kpis">
-            <div className="lp-dash-kpi">
-                <span className="lp-dash-kpi-value">47</span>
-                <span className="lp-dash-kpi-label">Leads (mês)</span>
-            </div>
-            <div className="lp-dash-kpi lp-dash-kpi-mid">
-                <span className="lp-dash-kpi-value">€8,20</span>
-                <span className="lp-dash-kpi-label">Custo/lead</span>
-            </div>
-            <div className="lp-dash-kpi">
-                <span className="lp-dash-kpi-value">32</span>
-                <span className="lp-dash-kpi-label">Viaturas activas</span>
-            </div>
-        </div>
+const KPIS: KpiItem[] = [
+    { end: 47, label: 'Leads (mês)', staticText: '47' },
+    { end: 8.2, label: 'Custo/lead', prefix: '€', decimals: 2, staticText: '€8,20' },
+    { end: 32, label: 'Viaturas activas', staticText: '32' },
+];
 
-        <div className="lp-dash-chart">
-            <p className="lp-dash-chart-title">Leads por canal</p>
-            <div className="lp-dash-bars">
-                {BARS.map((bar) => (
-                    <div key={bar.name} className="lp-dash-bar-row">
-                        <span className="lp-dash-bar-name">{bar.name}</span>
-                        <div className="lp-dash-bar-track">
-                            <div
-                                className="lp-dash-bar-fill"
-                                style={{ width: `${bar.width}%`, background: bar.color }}
-                            />
-                        </div>
-                        <span className="lp-dash-bar-count">{bar.count}</span>
+const prefersReducedMotion = (): boolean =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const HeroDashboard: React.FC = () => {
+    const [reducedMotion] = useState(prefersReducedMotion);
+    // Barras: começam a 0% e crescem até ao valor após o primeiro paint.
+    // Com reduced-motion arrancam já no valor final (sem transição).
+    const [barsGrown, setBarsGrown] = useState(reducedMotion);
+
+    useEffect(() => {
+        if (reducedMotion) return;
+        // Duplo rAF garante que o estado inicial (0%) é pintado antes de
+        // aplicar a largura final — só assim a transição CSS de width corre.
+        let inner = 0;
+        const outer = requestAnimationFrame(() => {
+            inner = requestAnimationFrame(() => setBarsGrown(true));
+        });
+        return () => {
+            cancelAnimationFrame(outer);
+            cancelAnimationFrame(inner);
+        };
+    }, [reducedMotion]);
+
+    return (
+        <div className="lp-hero-dashboard" aria-hidden="true">
+            <div className="lp-dash-header">
+                <span className="lp-dash-title">Performance do stock</span>
+                <span className="lp-dash-trend">↑ +18% vs mês anterior</span>
+            </div>
+
+            <div className="lp-dash-kpis">
+                {KPIS.map((kpi, i) => (
+                    <div
+                        key={kpi.label}
+                        className={`lp-dash-kpi${i === 1 ? ' lp-dash-kpi-mid' : ''}`}
+                    >
+                        <span className="lp-dash-kpi-value">
+                            {reducedMotion ? (
+                                kpi.staticText
+                            ) : (
+                                <CountUp
+                                    end={kpi.end}
+                                    duration={1.6}
+                                    delay={0.2}
+                                    decimals={kpi.decimals}
+                                    decimal=","
+                                    prefix={kpi.prefix}
+                                />
+                            )}
+                        </span>
+                        <span className="lp-dash-kpi-label">{kpi.label}</span>
                     </div>
                 ))}
             </div>
+
+            <div className="lp-dash-chart">
+                <p className="lp-dash-chart-title">Leads por canal</p>
+                <div className="lp-dash-bars">
+                    {BARS.map((bar, i) => (
+                        <div key={bar.name} className="lp-dash-bar-row">
+                            <span className="lp-dash-bar-name">{bar.name}</span>
+                            <div className="lp-dash-bar-track">
+                                <div
+                                    className="lp-dash-bar-fill"
+                                    style={{
+                                        width: barsGrown ? `${bar.width}%` : '0%',
+                                        background: bar.color,
+                                        transitionDelay: reducedMotion ? undefined : `${i * 80}ms`,
+                                    }}
+                                />
+                            </div>
+                            <span className="lp-dash-bar-count">{bar.count}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const Hero: React.FC = () => (
     <section id="hero" className="lp-hero">

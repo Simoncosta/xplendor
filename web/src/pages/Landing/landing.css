@@ -373,6 +373,7 @@
 .xplndor-landing .lp-dash-bar-fill {
     height: 100%;
     border-radius: 3px;
+    transition: width 0.9s var(--lp-ease);
 }
 
 .xplndor-landing .lp-dash-bar-count {
@@ -1159,5 +1160,9 @@
     .xplndor-landing .lp-pricing-card.featured:hover,
     .xplndor-landing .lp-market-card:hover {
         transform: none;
+    }
+
+    .xplndor-landing .lp-dash-bar-fill {
+        transition: none;
     }
 }
