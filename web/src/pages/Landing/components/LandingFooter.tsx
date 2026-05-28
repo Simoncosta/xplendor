@@ -22,7 +22,7 @@ const LandingFooter: React.FC = () => (
                         </li>
                         <li>
                             <a
-                                href="https://linkedin.com/company/xplendor"
+                                href="https://linkedin.com/company/xplendorpt"
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
@@ -41,6 +41,15 @@ const LandingFooter: React.FC = () => (
                         </li>
                         <li>
                             <a href="/terms">Termos e condições</a>
+                        </li>
+                        <li>
+                            <a
+                                href="https://www.livroreclamacoes.pt/Inicio/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Livro de Reclamações
+                            </a>
                         </li>
                     </ul>
                 </Col>
