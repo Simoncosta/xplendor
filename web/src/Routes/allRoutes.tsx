@@ -29,6 +29,7 @@ import UsersList from "pages/Users/UsersList";
 
 // Landing
 import Landing from "pages/Landing";
+import LandingMotorhomes from "pages/LandingMotorhomes";
 import PrivacyPolicy from "pages/Privacy";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
@@ -115,6 +116,9 @@ const publicRoutes = [
 
     // Landing Page
     { path: "/", component: <Landing /> },
+
+    // Landing dedicada — stands de autocaravanas
+    { path: "/autocaravanas", component: <LandingMotorhomes /> },
 
     // Privacy Policy
     { path: "/privacy", component: <PrivacyPolicy /> },

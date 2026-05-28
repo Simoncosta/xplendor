@@ -3,6 +3,11 @@ export const CTA_WHATSAPP_URL =
 
 const WHATSAPP_NUMBER = '351938963526';
 
+/** CTA genérico da landing de autocaravanas (/autocaravanas). */
+export const CTA_WHATSAPP_URL_MOTORHOMES = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+    'Olá, gostaria de saber mais sobre a XPLENDOR para o meu stand de autocaravanas.'
+)}`;
+
 /** URL de WhatsApp com mensagem pré-preenchida específica de um plano.
  *  Usado só nos cards de pacote — os CTAs genéricos mantêm CTA_WHATSAPP_URL. */
 export const buildWhatsAppUrl = (planName: string): string => {
