@@ -66,6 +66,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--year-to", type=int, dest="year_to")
     parser.add_argument("--fuel")
     parser.add_argument("--gearbox")
+    parser.add_argument("--body-type", dest="body_type")
     parser.add_argument("--price-from", type=int, dest="price_from")
     parser.add_argument("--price-to", type=int, dest="price_to")
     parser.add_argument("--preview-limit", type=int, default=10, dest="preview_limit")
@@ -93,6 +94,7 @@ def build_filters_from_args(args: argparse.Namespace) -> SearchFilters:
         gearbox=args.gearbox,
         price_from=price_from,
         price_to=price_to,
+        body_type=args.body_type,
     )
 
 
@@ -135,7 +137,11 @@ def run(
                     if detail.get("doors"):
                         raw_listing.params["doors"] = str(detail["doors"])
 
-                snapshot = normalizer.normalize(raw_listing, vehicle_type=vehicle_type)
+                snapshot = normalizer.normalize(
+                    raw_listing,
+                    vehicle_type=vehicle_type,
+                    body_type_override=filters.body_type,
+                )
 
                 if not snapshot:
                     continue

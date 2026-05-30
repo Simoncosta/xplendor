@@ -165,6 +165,36 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
     }
 
     /**
+     * Motorhome fallback — same body_type (category) + year, no brand/model.
+     * Categoria é o discriminador mais forte do mercado de autocaravanas
+     * (ex: campervan vs integral são produtos diferentes mesmo na mesma marca).
+     * `$bodyType` é o slug do Standvirtual (capucine/integral/perfiladas/furgao),
+     * armazenado em `car_market_snapshots.category` pelo scraper quando filtrado
+     * por body_type. Snapshots antigos sem este valor são ignorados.
+     */
+    public function getComparableSnapshotsByCategory(
+        Car $car,
+        string $bodyType,
+        int $yearWindow,
+    ): Collection {
+        $year = $car->registration_year ? (int) $car->registration_year : null;
+
+        if (!$year || $bodyType === '') {
+            return collect();
+        }
+
+        return $this->model->newQuery()
+            ->select(['id', 'external_id', 'source', 'title', 'url', 'brand', 'model', 'year', 'price', 'fuel', 'gearbox', 'power_hp', 'region', 'price_evaluation', 'category', 'scraped_at'])
+            ->where('vehicle_type', 'motorhome')
+            ->where('category', $bodyType)
+            ->whereNotNull('price')
+            ->where('price', '>', 0)
+            ->whereBetween('year', [$year - $yearWindow, $year + $yearWindow])
+            ->orderBy('price')
+            ->get();
+    }
+
+    /**
      * Motorhome fallback — brand + price range + year, no model.
      * Motorhome models are too fragmented for exact-model match (e.g. a specific
      * McLouis Menfys Van may have 0 listings nationwide). Compares by brand within

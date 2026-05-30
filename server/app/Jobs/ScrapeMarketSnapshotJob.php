@@ -39,7 +39,7 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
         MarketSnapshotService $marketSnapshotService,
         CarMarketSnapshotRepository $snapshotRepository,
     ): void {
-        $car = Car::with(['brand:id,name', 'model:id,name'])->find($this->carId);
+        $car = Car::with(['brand:id,name', 'model:id,name', 'category:id,slug'])->find($this->carId);
 
         if (!$car) {
             Log::warning('ScrapeMarketSnapshotJob: car not found', ['car_id' => $this->carId]);
@@ -75,6 +75,18 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
         if ($car->fuel_type) {
             $command[] = '--fuel';
             $command[] = $car->fuel_type;
+        }
+
+        // Autocaravanas com categoria conhecida: filtrar por body_type no
+        // Standvirtual (validado 2026-05-30). Garante que todos os anúncios
+        // devolvidos pertencem à categoria correcta e o scraper grava o slug
+        // em car_market_snapshots.category (override no normalizer).
+        if ($vehicleType === 'motorhome') {
+            $bodyType = MarketSnapshotService::bodyTypeFor($car->category?->slug);
+            if ($bodyType !== null) {
+                $command[] = '--body-type';
+                $command[] = $bodyType;
+            }
         }
 
         Log::info('ScrapeMarketSnapshotJob: starting scrape', [

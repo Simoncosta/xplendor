@@ -6,6 +6,7 @@ namespace Tests\Unit;
 
 use App\Models\Car;
 use App\Models\CarBrand;
+use App\Models\CarCategory;
 use App\Models\CarModel;
 use App\Repositories\CarMarketSnapshotRepository;
 use App\Repositories\Contracts\CarMarketSnapshotRepositoryInterface;
@@ -137,6 +138,61 @@ class MotorhomeComparablesTest extends TestCase
     // -------------------------------------------------------------------------
     // Regression: cars do NOT use the brand+price fallback (model exact only)
     // -------------------------------------------------------------------------
+
+    private function withCategory(Car $car, string $slug): Car
+    {
+        $cat = new CarCategory();
+        $cat->forceFill(['slug' => $slug, 'name' => ucfirst($slug)]);
+        $car->setRelation('category', $cat);
+        return $car;
+    }
+
+    // -------------------------------------------------------------------------
+    // New degree: motorhome + category (body_type) + year
+    // -------------------------------------------------------------------------
+
+    public function test_getComparables_motorhome_uses_category_when_available(): void
+    {
+        // Snapshots no body_type 'furgao' (Standvirtual slug para campervan).
+        $this->seedSnapshot(['external_id' => 'fv-1', 'category' => 'furgao', 'brand' => 'Adria', 'model' => 'Twin', 'year' => 2019, 'price' => 56000]);
+        $this->seedSnapshot(['external_id' => 'fv-2', 'category' => 'furgao', 'brand' => 'Pössl', 'model' => 'Roadcar', 'year' => 2020, 'price' => 60000]);
+        // Outras categorias — não devem entrar.
+        $this->seedSnapshot(['external_id' => 'int-1', 'category' => 'integral', 'brand' => 'McLouis', 'model' => 'Nevis', 'year' => 2019, 'price' => 95000]);
+
+        $car = $this->withCategory(
+            $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000),
+            'campervan',
+        );
+
+        $result = $this->makeService()->getComparables($car);
+
+        $ids = $result['snapshots']->pluck('external_id')->all();
+        $this->assertTrue($result['fallback_used']);
+        $this->assertContains('fv-1', $ids);
+        $this->assertContains('fv-2', $ids);
+        $this->assertNotContains('int-1', $ids);
+    }
+
+    public function test_getComparables_motorhome_falls_back_to_brand_price_when_category_empty(): void
+    {
+        // Sem snapshots da mesma categoria, mas a marca tem snapshots dentro
+        // da faixa de preço → cai para o degrau brand+price (Attempt 5).
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'category' => 'perfiladas']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'category' => 'perfiladas']);
+
+        $car = $this->withCategory(
+            $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000),
+            'campervan',
+        );
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $result = $this->makeService()->getComparables($car);
+
+        $this->assertTrue($result['fallback_used']);
+        $this->assertGreaterThanOrEqual(1, $result['snapshots']->count());
+        // Veio do brand+price (Attempt 5), não do category (Attempt 4).
+        $this->assertContains('mc-1', $result['snapshots']->pluck('external_id')->all());
+    }
 
     public function test_getComparables_car_does_not_use_brand_price_fallback(): void
     {

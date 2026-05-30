@@ -55,6 +55,11 @@ class SearchFilters:
     gearbox: Optional[str] = None
     price_from: Optional[int] = None
     price_to: Optional[int] = None
+    # body_type (filter_enum_body_type): só faz sentido para autocaravanas.
+    # Valores Standvirtual validados 2026-05-30: capucine, integral,
+    # perfiladas (plural), furgao. Mapeamento interno→Standvirtual no PHP
+    # (MarketSnapshotService) e a categoria interna é convertida no Job.
+    body_type: Optional[str] = None
 
     def to_path_suffix(self) -> str:
         """Marca e ano 'desde' vão no PATH (formato path-based do Standvirtual).
@@ -81,6 +86,9 @@ class SearchFilters:
             params["search[filter_enum_fuel_type]"] = _normalize_fuel(self.fuel)
         if self.year_to is not None:
             params["search[filter_float_first_registration_year:to]"] = int(self.year_to)
+        if self.body_type:
+            # SEM índice [0] — formato validado no browser (2026-05-30).
+            params["search[filter_enum_body_type]"] = self.body_type
         if self.gearbox:
             params["search[filter_enum_gearbox]"] = _normalize_gearbox(self.gearbox)
         if self.price_from is not None:

@@ -96,7 +96,12 @@ class ListingNormalizer:
         "sequencial": "semi_automatic",
     }
 
-    def normalize(self, raw: RawListing, vehicle_type: Optional[str] = None) -> Optional[NormalizedSnapshot]:
+    def normalize(
+        self,
+        raw: RawListing,
+        vehicle_type: Optional[str] = None,
+        body_type_override: Optional[str] = None,
+    ) -> Optional[NormalizedSnapshot]:
         try:
             brand, model = self._parse_brand_model(raw.title, raw.params)
             year = self._parse_year(raw.params)
@@ -109,6 +114,11 @@ class ListingNormalizer:
             doors = self._parse_doors(raw.params)
             price_evaluation = self._normalize_price_evaluation(raw.price_evaluation)
 
+            # Quando o scrape foi filtrado por body_type, TODOS os anúncios
+            # devolvidos pertencem a esse body_type — gravamos esse slug em
+            # `category` (override seguro do código numérico que o site devolve).
+            category = body_type_override if body_type_override else raw.category
+
             return NormalizedSnapshot(
                 external_id=raw.external_id,
                 source=raw.source,
@@ -117,7 +127,7 @@ class ListingNormalizer:
                 year=year,
                 title=raw.title,
                 url=raw.url,
-                category=raw.category,
+                category=category,
                 region=raw.region,
                 price=price,
                 price_evaluation=price_evaluation,

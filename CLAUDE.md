@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-28 · Versão 1.10.11
+> Última actualização: 2026-05-30 · Versão 1.10.12
 
 ---
 
@@ -57,6 +57,7 @@
 | 1.10.9 | 2026-05-28 | Fix starvation de comparáveis (autocaravanas). Novo degrau na cascata `getComparables` só para motorhome: marca + faixa de preço ±25% (preço efectivo) + ano, sem modelo (`getComparableSnapshotsByBrandPrice`). Carros mantêm modelo exacto (intactos). `fallback_used=true`. Resolve item 43. 4 testes novos. |
 | 1.10.10 | 2026-05-28 | Afinação Posição no Mercado autocaravanas: `MOTORHOME_PRICE_BAND` ±25% → ±35% (gama de preços dispersa) e `--max-results` do scraper para motorhome 10 → 30 (`ScrapeMarketSnapshotJob`, por tipo). Carros inalterados (modelo exacto, max 10). |
 | 1.10.11 | 2026-05-28 | IPS — unificação do cálculo (`score` = soma dos 7 fatores do breakdown; `VehicleIpsService` eliminado) + estado "a calibrar" (`score` null / `classification` 'pending' quando sem views e sem mercado). UI neutra via `helpers/ips.ts` (`formatIpsBadge`). Migration score nullable + enum 'pending'. Comando `cars:recalculate-scores`. Pesos inalterados (calibração = fase separada). Carros + autocaravanas. |
+| 1.10.12 | 2026-05-30 | Comparação de mercado por categoria (autocaravanas). Novo degrau na cascata `getComparables` (Attempt 4, só motorhome): categoria do Standvirtual (`capucine`/`integral`/`perfiladas`/`furgao`) + ano. Antes do brand+price (que passa a Attempt 5). Scraper aceita `--body-type`, grava o slug em `car_market_snapshots.category` (override no normalizer — todos os anúncios são desse body_type por filtro). Mapa interno→Standvirtual validado empiricamente. Carros inalterados. 3 testes novos. |
 
 ---
 
@@ -903,8 +904,11 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 
 - **Cascata de comparáveis** (`MarketSnapshotService::getComparables()`, lado Laravel, sobre snapshots já scraped na BD) — difere por tipo de viatura:
   - **Carros** (modelo exacto, há volume): (1) estrita (modelo + ano±1 + fuel + gearbox + power±25); (2) ano alargado (±3); (3) loose (modelo + ano, sem fuel/gearbox/power).
-  - **Autocaravanas** (modelo fragmentado): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (35%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only. O scraper recolhe **30** resultados para motorhome (`ScrapeMarketSnapshotJob` passa `--max-results` por tipo: motorhome 30, car 10) — gama de preços dispersa precisa de mais amostra.
-  - Qualquer fallback (2/3/4) marca `fallback_used=true` (comparação aproximada — o UI pode sinalizar). `selectTop5` (5 mais próximos da mediana) e o cálculo da mediana são iguais para ambos.
+  - **Autocaravanas** (modelo fragmentado, marca pouco discriminadora): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) categoria (body_type Standvirtual) + ano±5**, sem marca/modelo (`getComparableSnapshotsByCategory`) — curto-circuita se houver ≥`MIN_CATEGORY_COMPARABLES` (2); senão **(5) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (35%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only.
+  - Categoria interna → body_type Standvirtual (`MOTORHOME_CATEGORY_BODY_TYPE_MAP`, validado 2026-05-30): `capucino→capucine`, `integral→integral`, `perfilada→perfiladas` (plural), `campervan→furgao`. Standvirtual não usa "campervan" nem "perfilada singular" — testar primeiro um URL real no browser se o mapa parecer falhar.
+  - O scraper aceita `--body-type` (`ScrapeMarketSnapshotJob` passa o slug Standvirtual quando o motorhome tem `category` mapeada). Como o URL filtra por body_type, todos os anúncios devolvidos pertencem a essa categoria — o normalizer **sobrescreve** `category` com o slug do filtro (em vez do código numérico do Standvirtual, que era o que se gravava antes). Snapshots motorhome anteriores a 2026-05-30 têm `category` NULL ou o código numérico antigo, e por isso ficam fora do Attempt 4 — só os novos scrapes alimentam o degrau categoria.
+  - O scraper recolhe **30** resultados para motorhome (`ScrapeMarketSnapshotJob` passa `--max-results` por tipo: motorhome 30, car 10) — gama de preços dispersa precisa de mais amostra.
+  - Qualquer fallback (2/3/4/5) marca `fallback_used=true` (comparação aproximada — o UI pode sinalizar). `selectTop5` (5 mais próximos da mediana) e o cálculo da mediana são iguais para ambos.
 
 ### Google Analytics 4 + Consent Mode v2 (RGPD)
 

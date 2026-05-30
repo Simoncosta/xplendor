@@ -19,6 +19,32 @@ class MarketSnapshotService
      *  mesma marca é muito dispersa (ex: McLouis vai de ~€26k a ~€124k). */
     private const MOTORHOME_PRICE_BAND = 0.35;
 
+    /** Limiar mínimo de comparáveis para o degrau categoria curto-circuitar
+     *  a cascata. Abaixo disto, cai para marca+preço. Afinável. */
+    private const MIN_CATEGORY_COMPARABLES = 2;
+
+    /** Mapa categoria interna (car_categories.slug) → body_type do Standvirtual.
+     *  Validado empiricamente no browser em 2026-05-30. Atenção: 'perfilada'
+     *  interno é singular, no Standvirtual é 'perfiladas'; 'campervan' interno
+     *  é 'furgao' no Standvirtual. Se o Standvirtual mudar a taxonomia, testar
+     *  primeiro um URL real no browser antes de alterar. */
+    public const MOTORHOME_CATEGORY_BODY_TYPE_MAP = [
+        'capucino'  => 'capucine',
+        'integral'  => 'integral',
+        'perfilada' => 'perfiladas',
+        'campervan' => 'furgao',
+    ];
+
+    /** Resolve o slug do body_type do Standvirtual a partir do slug da
+     *  categoria interna do car_categories. Devolve null se não houver mapa. */
+    public static function bodyTypeFor(?string $categorySlug): ?string
+    {
+        if ($categorySlug === null || $categorySlug === '') {
+            return null;
+        }
+        return self::MOTORHOME_CATEGORY_BODY_TYPE_MAP[$categorySlug] ?? null;
+    }
+
     public function __construct(
         private readonly CarMarketSnapshotRepositoryInterface $snapshotRepo,
     ) {}
@@ -127,7 +153,24 @@ class MarketSnapshotService
             }
         }
 
-        // Attempt 4 (motorhome only): brand + price band + year, NO model.
+        // Attempt 4 (motorhome only): categoria (body_type) + ano.
+        // O mercado de autocaravanas compara melhor por categoria (integral,
+        // perfilada, capucine, campervan) do que por marca — McLouis Menfys Van
+        // (campervan) e McLouis Nevis (integral) não são comparáveis. Só corre
+        // se o car tiver categoria mapeada (ver MOTORHOME_CATEGORY_BODY_TYPE_MAP).
+        if (($car->vehicle_type ?? null) === 'motorhome') {
+            $car->loadMissing('category:id,slug');
+            $bodyType = self::bodyTypeFor($car->category?->slug);
+
+            if ($bodyType !== null) {
+                $snapshots = $this->snapshotRepo->getComparableSnapshotsByCategory($car, $bodyType, $yearWindow);
+                if ($snapshots->count() >= self::MIN_CATEGORY_COMPARABLES) {
+                    return ['snapshots' => $snapshots, 'fallback_used' => true];
+                }
+            }
+        }
+
+        // Attempt 5 (motorhome only): brand + price band + year, NO model.
         // Motorhome models are too fragmented for exact-model match — compare
         // by brand within ±MOTORHOME_PRICE_BAND of the effective price instead.
         if (($car->vehicle_type ?? null) === 'motorhome') {
