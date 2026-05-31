@@ -35,7 +35,7 @@ class CarPublicResource extends JsonResource
         'cama_transversal'         => 'Cama transversal',
         'cama_elevatoria_eletrica' => 'Cama elevatória eléctrica',
         'cama_suspensa'            => 'Cama suspensa',
-        'cama_convertivel'         => 'Cama convertível',
+        'cama_convertivel'         => 'Cama convertível de mesa',
         'outra'                    => 'Outra',
         'cama_rebativel_cabine'    => 'Rebatível na cabine',
     ];
@@ -232,7 +232,7 @@ class CarPublicResource extends JsonResource
 
         $result = [];
 
-        $boolEc = ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_external_power_socket'];
+        $boolEc = ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_generator', 'has_external_power_socket'];
         foreach ($boolEc as $key) {
             if (isset($ec[$key])) $result[$key] = (bool) $ec[$key];
         }

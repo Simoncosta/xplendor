@@ -245,6 +245,22 @@ class VehicleAttributeNormalizationTest extends TestCase
         $this->assertTrue($result['energy_climate']['has_solar_panel']);
     }
 
+    public function test_normalizeShape_passes_has_generator_through(): void
+    {
+        // has_generator: campo novo (boolean) — pass-through directo.
+        // Registos antigos sem o campo NÃO falham: a chave simplesmente
+        // não existe e o frontend trata undefined como false.
+        $withGenerator = VehicleAttribute::normalizeShape([
+            'energy_climate' => ['has_generator' => true],
+        ]);
+        $this->assertTrue($withGenerator['energy_climate']['has_generator']);
+
+        $withoutGenerator = VehicleAttribute::normalizeShape([
+            'energy_climate' => ['has_solar_panel' => true],
+        ]);
+        $this->assertArrayNotHasKey('has_generator', $withoutGenerator['energy_climate']);
+    }
+
     public function test_old_flat_record_does_not_gain_spurious_b2_sections(): void
     {
         // Typical old DB record — none of the B2 section keys should appear in output.

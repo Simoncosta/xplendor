@@ -164,6 +164,13 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                         </Col>
                     )}
                     <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.energy_climate.has_generator"
+                            label="Gerador (gasóleo)"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
                         <XInput
                             type="number"
                             name="vehicle_attributes.energy_climate.battery_count"

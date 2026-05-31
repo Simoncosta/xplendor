@@ -103,6 +103,7 @@ This version returns a curated, stable payload.
     "has_solar_panel": true,
     "has_inverter": false,
     "has_gpl": false,
+    "has_generator": false,
     "has_external_power_socket": true,
     "water_heater_source": "electric",
     "ambient_heating_source": "diesel",
@@ -226,7 +227,7 @@ The external site decides how to render each status:
 | `cama_transversal` | Cama transversal |
 | `cama_elevatoria_eletrica` | Cama elevatória eléctrica |
 | `cama_suspensa` | Cama suspensa |
-| `cama_convertivel` | Cama convertível |
+| `cama_convertivel` | Cama convertível de mesa |
 | `outra` | Outra |
 | `cama_rebativel_cabine` | Rebatível na cabine *(legacy — only shown when already stored)* |
 

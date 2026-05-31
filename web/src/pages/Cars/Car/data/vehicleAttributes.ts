@@ -24,7 +24,7 @@ export const BED_LABELS: Record<BedType, string> = {
     cama_transversal:        "Cama transversal",
     cama_elevatoria_eletrica: "Cama elevatória eléctrica",
     cama_suspensa:           "Cama suspensa",
-    cama_convertivel:        "Cama convertível",
+    cama_convertivel:        "Cama convertível de mesa",
     outra:                   "Outra",
     cama_rebativel_cabine:   "Rebatível na cabine",
 };
@@ -89,6 +89,7 @@ export interface VehicleAttributeEnergyClimate {
     inverter_watts?: number;
     has_gpl?: boolean;
     gpl_bottles_count?: number;
+    has_generator?: boolean;
     has_external_power_socket?: boolean;
     battery_count?: number;
     cabin_battery_count?: number;

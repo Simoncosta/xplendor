@@ -31,7 +31,7 @@ class CarController extends Controller
         'cama_transversal'         => 'Cama transversal',
         'cama_elevatoria_eletrica' => 'Cama elevatória eléctrica',
         'cama_suspensa'            => 'Cama suspensa',
-        'cama_convertivel'         => 'Cama convertível',
+        'cama_convertivel'         => 'Cama convertível de mesa',
         'outra'                    => 'Outra',
         'cama_rebativel_cabine'    => 'Rebatível na cabine',
     ];

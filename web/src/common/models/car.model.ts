@@ -87,6 +87,7 @@ export interface VehicleAttributeEnergyClimate {
     inverter_watts?: number;
     has_gpl?: boolean;
     gpl_bottles_count?: number;
+    has_generator?: boolean;
     has_external_power_socket?: boolean;
     battery_count?: number;
     cabin_battery_count?: number;

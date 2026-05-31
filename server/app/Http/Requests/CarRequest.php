@@ -117,6 +117,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.energy_climate.inverter_watts'                          => ['nullable', 'integer', 'min:0', 'max:10000'],
             'vehicle_attributes.energy_climate.has_gpl'                                 => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.gpl_bottles_count'                       => ['nullable', 'integer', 'min:0', 'max:10'],
+            'vehicle_attributes.energy_climate.has_generator'                           => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.has_external_power_socket'               => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.battery_count'                           => ['nullable', 'integer', 'min:0', 'max:10'],
             'vehicle_attributes.energy_climate.cabin_battery_count'                     => ['nullable', 'integer', 'min:0', 'max:5'],
