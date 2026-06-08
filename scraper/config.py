@@ -14,21 +14,32 @@ def _slugify_search_value(value: str) -> str:
 
 
 def _normalize_fuel(value: str) -> str:
+    # Valores do RHS são os slugs reais do Standvirtual (filter_enum_fuel_type),
+    # validados empiricamente no browser. Slugs antigos como "petrol", "lpg" e
+    # "plug_in_hybrid" davam 0 resultados — ver tabela validada abaixo.
+    # Manter consistente com MarketSnapshotService::normalizeFuelForSearch (PHP).
+    #
+    # Híbrido: o Standvirtual NÃO tem um slug genérico para híbrido — separa
+    # em "hibride-gaz" e "hibride-diesel". Como a BD não distingue o
+    # combustível-base do híbrido, usamos "hibride-gaz" como fallback (mais
+    # comum em PT). Revisitar quando aparecer um híbrido real (BD não tem
+    # híbridos hoje).
     slug = _slugify_search_value(value)
     aliases = {
-        "gasolina": "petrol",
-        "petrol": "petrol",
+        "gasolina": "gaz",
+        "petrol": "gaz",
+        "gasoline": "gaz",
         "diesel": "diesel",
         "eletrico": "electric",
         "electrico": "electric",
         "electric": "electric",
-        "hibrido": "hybrid",
-        "hybrid": "hybrid",
-        "plug-in-hybrid": "plug_in_hybrid",
-        "plugin-hybrid": "plug_in_hybrid",
-        "hibrido-plug-in": "plug_in_hybrid",
-        "gpl": "lpg",
-        "lpg": "lpg",
+        "hibrido": "hibride-gaz",
+        "hybrid": "hibride-gaz",
+        "plug-in-hybrid": "plugin-hybrid",
+        "plugin-hybrid": "plugin-hybrid",
+        "hibrido-plug-in": "plugin-hybrid",
+        "gpl": "gpl",
+        "lpg": "gpl",
     }
     return aliases.get(slug, slug)
 

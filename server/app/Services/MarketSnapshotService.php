@@ -375,13 +375,23 @@ class MarketSnapshotService
     {
         $slug = $this->slugifySearchValue($fuel);
 
+        // Valores do RHS são os slugs reais do Standvirtual (filter_enum_fuel_type),
+        // validados empiricamente no browser. Slugs antigos como 'petrol', 'lpg'
+        // e 'plug_in_hybrid' davam 0 resultados — ver tabela validada abaixo.
+        // Manter consistente com scraper/config.py _normalize_fuel().
+        //
+        // Híbrido: o Standvirtual NÃO tem um slug genérico para híbrido — separa
+        // em 'hibride-gaz' e 'hibride-diesel'. Como a BD não distingue o
+        // combustível-base do híbrido, usamos 'hibride-gaz' como fallback (mais
+        // comum em PT). Revisitar quando aparecer um híbrido real (BD não tem
+        // híbridos hoje).
         return match ($slug) {
-            'gasolina', 'petrol', 'gasoline' => 'petrol',
+            'gasolina', 'petrol', 'gasoline' => 'gaz',
             'diesel'                          => 'diesel',
             'eletrico', 'electrico', 'electric' => 'electric',
-            'hibrido', 'hybrid'               => 'hybrid',
-            'hibrido-plug-in', 'plug-in-hybrid', 'plugin-hybrid' => 'plug_in_hybrid',
-            'gpl', 'lpg'                      => 'lpg',
+            'hibrido', 'hybrid'               => 'hibride-gaz',
+            'hibrido-plug-in', 'plug-in-hybrid', 'plugin-hybrid' => 'plugin-hybrid',
+            'gpl', 'lpg'                      => 'gpl',
             default                           => $slug,
         };
     }
