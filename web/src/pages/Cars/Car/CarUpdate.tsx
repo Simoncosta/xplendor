@@ -13,7 +13,7 @@ import { closeCarSale } from "slices/car-sales/thunk";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
 import { ICarSalePayload } from "common/models/car-sale.model";
-import { showApiErrorToast } from "helpers/error_helper";
+import { showApiErrorToast, parseApiValidationErrors, type ApiValidationError } from "helpers/error_helper";
 
 const selectCarState = (state: any) => state.Car;
 const selectCarSaleState = (state: any) => state.CarSale;
@@ -37,6 +37,7 @@ export default function CarUpdate() {
 
     // State
     const [companyId, setCompanyId] = useState<number>(0);
+    const [validationErrors, setValidationErrors] = useState<ApiValidationError[] | null>(null);
 
     const { car, loadingShow, loadingUpdate, loadingSale } = useSelector(selectCarUpdateViewModel);
 
@@ -59,9 +60,12 @@ export default function CarUpdate() {
                 loading={loadingUpdate}
                 saleLoading={loadingSale}
                 companyId={companyId}
+                validationErrors={validationErrors}
+                onDismissValidationErrors={() => setValidationErrors(null)}
                 onSubmit={async (values: any) => {
                     if (loadingUpdate) return;
 
+                    setValidationErrors(null);
                     const fd = buildCarFormData(values);
                     fd.append("_method", "PUT");
 
@@ -69,12 +73,14 @@ export default function CarUpdate() {
                         await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
                         toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     } catch (error) {
+                        setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao actualizar viatura.");
                     }
                 }}
                 onSubmitSold={async (values: any, saleData: ICarSalePayload) => {
                     if (loadingSale) return;
 
+                    setValidationErrors(null);
                     const fd = buildCarFormData({
                         ...values,
                         status: "sold",
@@ -108,6 +114,7 @@ export default function CarUpdate() {
                         await dispatch(showCar({ companyId, id: Number(id) })).unwrap();
                         toast("Venda concluída com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                     } catch (error) {
+                        setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao registar venda.");
                     }
                 }}

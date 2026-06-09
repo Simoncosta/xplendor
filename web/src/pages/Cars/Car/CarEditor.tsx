@@ -12,6 +12,8 @@ import type { BedType } from "./data/vehicleAttributes";
 import { ICarSalePayload } from "common/models/car-sale.model";
 // Components
 import XButton from "Components/Common/XButton";
+import ValidationAlert from "Components/Common/ValidationAlert";
+import type { ApiValidationError } from "helpers/error_helper";
 import CarInformationDataFields from "./components/CarInformationDataFields";
 import CarVehicleDataFields from "./components/CarVehicleDataFields";
 import CarVehicleDetailsDataFields from "./components/CarVehicleDetailsDataFields";
@@ -36,6 +38,8 @@ type CarEditorProps = {
     loading?: boolean;
     saleLoading?: boolean;
     companyId?: number;
+    validationErrors?: ApiValidationError[] | null;
+    onDismissValidationErrors?: () => void;
 };
 
 const CarEditor = ({
@@ -46,6 +50,8 @@ const CarEditor = ({
     loading = false,
     saleLoading = false,
     companyId,
+    validationErrors = null,
+    onDismissValidationErrors,
 }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
     const initialStatus = data.status ?? "draft";
@@ -239,6 +245,10 @@ const CarEditor = ({
                             <CardBody>
                                 <FormikProvider value={formik}>
                                     <form onSubmit={formik.handleSubmit}>
+                                        <ValidationAlert
+                                            errors={validationErrors}
+                                            onDismiss={onDismissValidationErrors}
+                                        />
                                         <CarInformationDataFields
                                             isEdit={isEdit}
                                             companyId={companyId}

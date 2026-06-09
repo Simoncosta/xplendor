@@ -35,6 +35,13 @@ axios.interceptors.response.use(
         return response.data ? response.data : response;
     },
     function (error) {
+        // 422 (validation): preservar o body desempacotado ({ message, errors })
+        // para os catches/thunks lerem a estrutura campo-a-campo. Caminho exclusivo
+        // — outros status mantêm o comportamento legacy (string). Ver T2 / X7.1.
+        if (error?.response?.status === 422 && error?.response?.data) {
+            return Promise.reject(error.response.data);
+        }
+
         // Any status codes that falls outside the range of 2xx cause this function to trigger
         let message;
         switch (error.status) {

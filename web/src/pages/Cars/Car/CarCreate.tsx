@@ -11,7 +11,7 @@ import { createCar } from "slices/cars/thunk";
 import CarEditor from "./CarEditor";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
-import { showApiErrorToast } from "helpers/error_helper";
+import { showApiErrorToast, parseApiValidationErrors, type ApiValidationError } from "helpers/error_helper";
 
 const selectCarState = (state: any) => state.Car;
 
@@ -30,6 +30,7 @@ export default function CarCreate() {
 
     // States
     const [companyId, setCompanyId] = useState(0);
+    const [validationErrors, setValidationErrors] = useState<ApiValidationError[] | null>(null);
     const { loadingCreate } = useSelector(selectCarCreateViewModel);
 
     useEffect(() => {
@@ -47,9 +48,12 @@ export default function CarCreate() {
                 data={CAR_CREATE_DEFAULTS}
                 loading={loadingCreate}
                 companyId={companyId}
+                validationErrors={validationErrors}
+                onDismissValidationErrors={() => setValidationErrors(null)}
                 onSubmit={async (values: any) => {
                     if (loadingCreate) return;
 
+                    setValidationErrors(null);
                     const fd = buildCarFormData(values, { isUpdate: false });
 
                     try {
@@ -57,6 +61,7 @@ export default function CarCreate() {
                         toast("Carro criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                         navigate(-1);
                     } catch (error) {
+                        setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao criar viatura.");
                     }
                 }}

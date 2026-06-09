@@ -59,13 +59,23 @@ export const showCar = createAsyncThunk(
     }
 );
 
+// Preserva o body 422 desempacotado pelo interceptor ({ message, errors? }).
+// Cobre também 422 só com message (sem errors) — Laravel pode devolver isso
+// em alguns caminhos (ex: AuthorizationException convertida em 422).
+const preserveValidationOrFallback = (error: any) => {
+    if (error && typeof error === "object" && (error.errors || error.message)) {
+        return error;
+    }
+    return error?.response?.data || error?.message || error;
+};
+
 export const createCar = createAsyncThunk(
     "car/createCar",
     async ({ companyId, formData }: { companyId: number, formData: FormData }, { rejectWithValue }) => {
         try {
             return await createCarApi(companyId, formData);
         } catch (error: any) {
-            return rejectWithValue(error?.response?.data || error?.message || error);
+            return rejectWithValue(preserveValidationOrFallback(error));
         }
     }
 );
@@ -76,7 +86,7 @@ export const updateCar = createAsyncThunk(
         try {
             return await updateCarApi(companyId, id, formData);
         } catch (error: any) {
-            return rejectWithValue(error?.response?.data || error?.message || error);
+            return rejectWithValue(preserveValidationOrFallback(error));
         }
     }
 );

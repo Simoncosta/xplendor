@@ -113,7 +113,14 @@ const ScraperForm: React.FC<ScraperFormProps> = ({ companyId, onRunComplete }) =
             startPolling(res.data.run_id);
         } catch (err: any) {
             setRunning(false);
-            setError(err?.errors?.source?.[0] ?? err ?? "Erro ao iniciar scraping.");
+            // Defensivo: após o fix do T2/X7.1, 422 vem como objecto. Garante
+            // que setError (state: string|null) nunca recebe objecto (JSX `{error}`
+            // partiria com "Objects are not valid as React child").
+            setError(
+                err?.errors?.source?.[0]
+                ?? (typeof err === "string" ? err : err?.message)
+                ?? "Erro ao iniciar scraping."
+            );
         }
     };
 
