@@ -78,6 +78,7 @@ class Car extends Model implements AuditableContract
         'promo_price_gross' => 'decimal:2',
         'is_resume' => 'boolean',
         'is_metallic' => 'boolean',
+        'hide_price_online' => 'boolean',
         'mileage_km' => 'integer',
         'power_hp' => 'integer',
         'engine_capacity_cc' => 'integer',

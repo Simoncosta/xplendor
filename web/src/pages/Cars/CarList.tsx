@@ -295,10 +295,11 @@ const CarList = () => {
                                     src={getCarThumbnailUrl(car) as string}
                                     alt=""
                                     className="img-thumbnail border-0"
-                                    width={150}
                                     style={{
-                                        borderRadius: "1rem",
+                                        width: 150,
+                                        aspectRatio: "16 / 9",
                                         objectFit: "cover",
+                                        borderRadius: "1rem",
                                         boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
                                     }}
                                 />
@@ -342,6 +343,7 @@ const CarList = () => {
                         priceGross={car.price_gross}
                         promoPriceGross={car.promo_price_gross}
                         promoDiscountPct={car.promo_discount_pct}
+                        hidePriceOnline={car.hide_price_online}
                         size="sm"
                         badgeLabel="Oportunidade"
                     />
@@ -492,6 +494,7 @@ const CarList = () => {
                             priceGross={car.price_gross}
                             promoPriceGross={car.promo_price_gross}
                             promoDiscountPct={car.promo_discount_pct}
+                            hidePriceOnline={car.hide_price_online}
                             size="sm"
                             badgeLabel="Oportunidade"
                         />

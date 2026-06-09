@@ -57,6 +57,7 @@ class CarSpecsResource extends JsonResource
                 'gross'              => $this->price_gross ? (float) $this->price_gross : null,
                 'promo_gross'        => $this->promo_price_gross ? (float) $this->promo_price_gross : null,
                 'promo_discount_pct' => $this->promo_discount_pct ? (float) $this->promo_discount_pct : null,
+                'hide_price_online'  => (bool) $this->hide_price_online,
             ],
 
             'registration' => [

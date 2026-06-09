@@ -198,6 +198,14 @@ Only keys with explicit non-null values are included in `habitation`, `features`
 
 ---
 
+## `hide_price_online` — "Sob consulta"
+
+When `hide_price_online: true`, the stand has marked the price as **"Sob consulta"** (price on request). The external site **MUST NOT** show the numeric price (`price_gross` / `price_promo`) — display the literal label **`Sob consulta`** instead, regardless of what `price_gross` contains. The raw values are still emitted in the payload (for internal/admin consumers) but should be ignored by the public rendering.
+
+This is the canonical signal for "preço sob consulta" and replaces any ad-hoc handling of empty/zero prices.
+
+---
+
 ## Status Values in the Response
 
 The `status` field is emitted raw. Public endpoints only return cars whose status is one of `active`, `sold`, `available_soon`, `reserved` (single source: `CarPublicRepository::PUBLIC_STATUSES`). The `draft` and `inactive` statuses are never exposed.

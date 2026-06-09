@@ -30,10 +30,16 @@ class CarDescriptionService
         $model          = $data['model_name'];
         $year           = $data['registration_year'] ?? '';
         $version        = $data['version'] ?? '';
-        $priceGross     = isset($data['price_gross']) && $data['price_gross'] > 0
+        // Quando o stand marca "Preço sob consulta" (hide_price_online), não
+        // passamos qualquer valor à IA — appendPrice() lida com null, e a regra
+        // crítica abaixo instrui a IA a tratar o preço como sob consulta.
+        $hidePriceOnline = (bool) ($data['hide_price_online'] ?? false);
+
+        $priceGross     = !$hidePriceOnline && isset($data['price_gross']) && $data['price_gross'] > 0
             ? number_format((float) $data['price_gross'], 0, ',', '.') . '€'
             : null;
-        $promoPriceGross = isset($data['promo_price_gross'])
+        $promoPriceGross = !$hidePriceOnline
+            && isset($data['promo_price_gross'])
             && $data['promo_price_gross'] > 0
             && (float) $data['promo_price_gross'] < (float) ($data['price_gross'] ?? PHP_INT_MAX)
             ? number_format((float) $data['promo_price_gross'], 0, ',', '.') . '€'
@@ -63,6 +69,11 @@ SYSTEM;
         $lines[] = '- NÃO repitas o que já está nos campos visíveis do anúncio: marca, modelo, ano, preço, km, combustível, potência, cilindrada, transmissão, lugares, dimensões';
         $lines[] = '- Esses dados já estão na ficha — o comprador já os vê';
         $lines[] = '- A descrição deve acrescentar o que os campos não capturam: estado de conservação percetível, combinação de equipamentos que se destaca, historial relevante, ou o que torna este veículo específico interessante face a outros iguais';
+
+        if ($hidePriceOnline) {
+            $lines[] = '- O preço é apresentado como "sob consulta": NÃO menciones valores, NÃO inventes preços, NÃO faças comparações monetárias';
+        }
+
         $lines[] = '';
 
         match ($vehicleType) {

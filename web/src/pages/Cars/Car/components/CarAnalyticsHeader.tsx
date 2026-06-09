@@ -45,6 +45,7 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                                     priceGross={car?.price_gross ?? car?.price}
                                     promoPriceGross={car?.promo_price_gross}
                                     promoDiscountPct={car?.promo_discount_pct}
+                                    hidePriceOnline={car?.hide_price_online}
                                     size="sm"
                                     badgeLabel="Oportunidade"
                                 />

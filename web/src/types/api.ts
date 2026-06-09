@@ -46,6 +46,7 @@ export interface CarSpecs {
         gross: number | null;
         promo_gross: number | null;
         promo_discount_pct: number | null;
+        hide_price_online: boolean;
     };
     registration: {
         year: number | null;

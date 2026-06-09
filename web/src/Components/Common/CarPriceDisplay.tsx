@@ -4,6 +4,8 @@ type CarPriceDisplayProps = {
     priceGross?: number | string | null;
     promoPriceGross?: number | string | null;
     promoDiscountPct?: number | string | null;
+    /** Quando true, esconde o preço e mostra "Sob consulta" (flag hide_price_online). */
+    hidePriceOnline?: boolean;
     align?: "start" | "center" | "end";
     size?: "sm" | "md" | "lg";
     badgeLabel?: string;
@@ -23,6 +25,7 @@ export default function CarPriceDisplay({
     priceGross,
     promoPriceGross,
     promoDiscountPct,
+    hidePriceOnline = false,
     align = "start",
     size = "md",
     badgeLabel = "Em promoção",
@@ -47,6 +50,16 @@ export default function CarPriceDisplay({
         : align === "end"
             ? "align-items-end text-end"
             : "align-items-start text-start";
+
+    if (hidePriceOnline) {
+        return (
+            <div className={`d-flex flex-column gap-1 ${justifyClass} ${className}`.trim()}>
+                <div className={`${sizeClass} fw-bold text-body`}>
+                    Sob consulta
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`d-flex flex-column gap-1 ${justifyClass} ${className}`.trim()}>

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 // Models
 import { ICarFormValues } from "./CarImagesDataFields";
 import XInput from "Components/Common/XInput";
+import XInputCheckbox from "Components/Common/XInputCheckbox";
 
 export default function CarPriceDataFields({ isEdit }: { isEdit: boolean }) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarFormValues>();
@@ -38,6 +39,12 @@ export default function CarPriceDataFields({ isEdit }: { isEdit: boolean }) {
                         label="Preço (€) s/ IVA"
                         name="price_net"
                         step="0.01"
+                    />
+                </Col>
+                <Col lg={2} className="d-flex align-items-end pb-3">
+                    <XInputCheckbox
+                        name="hide_price_online"
+                        label="Preço sob consulta"
                     />
                 </Col>
             </Row>

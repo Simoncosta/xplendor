@@ -160,6 +160,7 @@ export default function CarFichaPage() {
                                 priceGross={specs.price.gross}
                                 promoPriceGross={specs.price.promo_gross}
                                 promoDiscountPct={specs.price.promo_discount_pct}
+                                hidePriceOnline={specs.price.hide_price_online}
                                 align="center"
                                 size="lg"
                                 badgeLabel="Em promoção"
