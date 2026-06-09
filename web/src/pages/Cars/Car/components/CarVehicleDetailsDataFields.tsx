@@ -30,16 +30,16 @@ import LivingRoomAccordion from "./vehicleAttributes/LivingRoomAccordion";
 import { BED_LABELS, BedType } from "../data/vehicleAttributes";
 
 const fridgeTypeOptions = [
-    { value: "trivalent",  label: "Trivalente" },
+    { value: "trivalent", label: "Trivalente" },
     { value: "compressor", label: "Compressor" },
     { value: "absorption", label: "Absorção" },
-    { value: "none",       label: "Nenhum" },
+    { value: "none", label: "Nenhum" },
 ];
 
 const showerTypeOptions = [
-    { value: "separate",    label: "Separado" },
+    { value: "separate", label: "Separado" },
     { value: "independent", label: "Independente" },
-    { value: "combined",    label: "Combinado" },
+    { value: "combined", label: "Combinado" },
 ];
 
 // 12 options shown by default; cama_rebativel_cabine is legacy and only injected
@@ -520,11 +520,11 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                         </AccordionItem>
 
                         <EnergyClimateAccordion accordionId="4" />
-                        <ExteriorAccordion      accordionId="5" />
-                        <SecurityAccordion      accordionId="6" />
+                        <ExteriorAccordion accordionId="5" />
+                        <SecurityAccordion accordionId="6" />
                         <ChassisStructureAccordion accordionId="7" />
                         <InteriorFurnitureAccordion accordionId="8" />
-                        <LivingRoomAccordion        accordionId="9" />
+                        <LivingRoomAccordion accordionId="9" />
 
                     </Accordion>
                 </div>

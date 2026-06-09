@@ -132,6 +132,8 @@ export const showCar = (params: { companyId: number; id: number; }) => api.get(u
 export const createCar = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const updateCar = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const closeCarSale = (companyId: number, carId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + url.GET_CAR_SALES, data, { headers: { "Content-Type": "multipart/form-data" } });
+// PATCH dos dados PII do comprador (sem mexer no car nem disparar notificações).
+export const updateCarSale = (companyId: number, carId: number, data: any) => api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + url.GET_CAR_SALE, data);
 export const generateCarDescriptionApi = (companyId: number, data: any) =>
     api.create(
         url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + url.POST_CAR_GENERATE_DESCRIPTION,

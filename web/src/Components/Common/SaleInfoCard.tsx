@@ -1,5 +1,6 @@
-import React from "react";
-import { Card, CardBody } from "reactstrap";
+import React, { useState } from "react";
+import { Button, Card, CardBody } from "reactstrap";
+import SaleEditModal from "Components/Common/SaleEditModal";
 import type { CarSpecsSale } from "types/api";
 
 // Labels pt-PT para os enums de venda. Mantidas locais ao componente porque
@@ -53,70 +54,116 @@ const formatDate = (value: string | null): string | null => {
 };
 
 interface SaleInfoCardProps {
-    sale: CarSpecsSale;
+    sale: CarSpecsSale | null;     // null permite "criar" via modal (car vendido sem registo)
+    companyId: number;
+    carId: number;
+    onSaved: () => void;            // refrescar specs depois de gravar
 }
 
-export default function SaleInfoCard({ sale }: SaleInfoCardProps) {
+export default function SaleInfoCard({ sale, companyId, carId, onSaved }: SaleInfoCardProps) {
+    const [isEditOpen, setIsEditOpen] = useState(false);
+    // null vs objecto: quando null, secção mostra placeholder + botão Adicionar.
+    const safeSale: CarSpecsSale = sale ?? {
+        sale_price: null,
+        sale_channel: null,
+        buyer_name: null,
+        buyer_phone: null,
+        buyer_email: null,
+        buyer_gender: null,
+        buyer_age_range: null,
+        contact_consent: false,
+        notes: null,
+        sold_at: null,
+    };
     const rows: Array<{ label: string; value: React.ReactNode | null }> = [
-        { label: "Comprador",        value: sale.buyer_name },
-        { label: "Telefone",         value: sale.buyer_phone
-            ? <a href={`tel:${sale.buyer_phone}`} className="text-decoration-none">{sale.buyer_phone}</a>
+        { label: "Comprador",        value: safeSale.buyer_name },
+        { label: "Telefone",         value: safeSale.buyer_phone
+            ? <a href={`tel:${safeSale.buyer_phone}`} className="text-decoration-none">{safeSale.buyer_phone}</a>
             : null },
-        { label: "Email",            value: sale.buyer_email
-            ? <a href={`mailto:${sale.buyer_email}`} className="text-decoration-none">{sale.buyer_email}</a>
+        { label: "Email",            value: safeSale.buyer_email
+            ? <a href={`mailto:${safeSale.buyer_email}`} className="text-decoration-none">{safeSale.buyer_email}</a>
             : null },
-        { label: "Canal de venda",   value: labelOf(sale.sale_channel, SALE_CHANNEL_LABELS) },
-        { label: "Data da venda",    value: formatDate(sale.sold_at) },
-        { label: "Preço de venda",   value: formatCurrency(sale.sale_price) },
-        { label: "Género",           value: labelOf(sale.buyer_gender, BUYER_GENDER_LABELS) },
-        { label: "Faixa etária",     value: labelOf(sale.buyer_age_range, BUYER_AGE_RANGE_LABELS) },
-        { label: "Consentimento de contacto", value: sale.contact_consent ? "Sim" : "Não" },
+        { label: "Canal de venda",   value: labelOf(safeSale.sale_channel, SALE_CHANNEL_LABELS) },
+        { label: "Data da venda",    value: formatDate(safeSale.sold_at) },
+        { label: "Preço de venda",   value: formatCurrency(safeSale.sale_price) },
+        { label: "Género",           value: labelOf(safeSale.buyer_gender, BUYER_GENDER_LABELS) },
+        { label: "Faixa etária",     value: labelOf(safeSale.buyer_age_range, BUYER_AGE_RANGE_LABELS) },
+        { label: "Consentimento de contacto", value: safeSale.contact_consent ? "Sim" : "Não" },
     ];
 
+    const hasAnyData = rows.some((r) => r.value != null && r.value !== "");
+
     return (
-        <Card className="mt-4 mb-0">
-            <CardBody>
-                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
-                    <h6 className="mb-0 fw-semibold">
-                        <i className="ri-shopping-bag-3-line me-2 text-success" />
-                        Venda concluída
-                    </h6>
-                    <span className="badge bg-light text-muted fs-12">
-                        <i className="ri-lock-line me-1" />
-                        Dados do comprador — uso interno
-                    </span>
-                </div>
-
-                <div
-                    className="row g-2"
-                    role="list"
-                    aria-label="Detalhes da venda"
-                >
-                    {rows.map((row) => row.value != null && row.value !== "" && (
-                        <div key={row.label} className="col-md-6" role="listitem">
-                            <div
-                                className="d-flex align-items-center gap-2 fs-13"
-                                style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}
+        <>
+            <Card className="mt-4 mb-0">
+                <CardBody>
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                        <h6 className="mb-0 fw-semibold">
+                            <i className="ri-shopping-bag-3-line me-2 text-success" />
+                            Venda concluída
+                        </h6>
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                            <span className="badge bg-light text-muted fs-12">
+                                <i className="ri-lock-line me-1" />
+                                Dados do comprador — uso interno
+                            </span>
+                            <Button
+                                color="success"
+                                outline
+                                size="sm"
+                                onClick={() => setIsEditOpen(true)}
                             >
-                                <span className="text-muted flex-grow-1">{row.label}</span>
-                                <span className="fw-medium text-end">{row.value}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {sale.notes && (
-                    <div className="mt-3">
-                        <p className="text-muted fs-12 mb-1">Notas</p>
-                        <div
-                            className="fs-13 bg-light rounded p-3"
-                            style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
-                        >
-                            {sale.notes}
+                                <i className={`me-1 ${sale ? "ri-edit-2-line" : "ri-add-line"}`} />
+                                {sale ? "Editar" : "Adicionar dados"}
+                            </Button>
                         </div>
                     </div>
-                )}
-            </CardBody>
-        </Card>
+
+                    {hasAnyData ? (
+                        <>
+                            <div className="row g-2" role="list" aria-label="Detalhes da venda">
+                                {rows.map((row) => row.value != null && row.value !== "" && (
+                                    <div key={row.label} className="col-md-6" role="listitem">
+                                        <div
+                                            className="d-flex align-items-center gap-2 fs-13"
+                                            style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}
+                                        >
+                                            <span className="text-muted flex-grow-1">{row.label}</span>
+                                            <span className="fw-medium text-end">{row.value}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {safeSale.notes && (
+                                <div className="mt-3">
+                                    <p className="text-muted fs-12 mb-1">Notas</p>
+                                    <div
+                                        className="fs-13 bg-light rounded p-3"
+                                        style={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
+                                    >
+                                        {safeSale.notes}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <p className="text-muted fs-13 mb-0">
+                            Esta viatura foi vendida sem dados do comprador registados.
+                            Clica em <strong>Adicionar dados</strong> para preencher.
+                        </p>
+                    )}
+                </CardBody>
+            </Card>
+
+            <SaleEditModal
+                isOpen={isEditOpen}
+                onClose={() => setIsEditOpen(false)}
+                onSaved={onSaved}
+                companyId={companyId}
+                carId={carId}
+                initial={sale}
+            />
+        </>
     );
 }

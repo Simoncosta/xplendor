@@ -35,6 +35,15 @@ export default function CarFichaPage() {
         return Number(JSON.parse(authUser).company_id);
     }, []);
 
+    // Função partilhada — também usada pelo SaleInfoCard como callback onSaved
+    // (para refrescar o bloco da venda depois de editar/adicionar).
+    const refreshSpecs = () => {
+        if (!companyId || !id) return;
+        fetchCarSpecs(companyId, Number(id))
+            .then((res: any) => setSpecs(res?.data ?? null))
+            .catch(() => {/* silencioso — o erro já foi mostrado via toast */});
+    };
+
     useEffect(() => {
         if (!companyId || !id) return;
         setLoading(true);
@@ -227,7 +236,17 @@ export default function CarFichaPage() {
 
                 </Row>
 
-                {specs.sale && <SaleInfoCard sale={specs.sale} />}
+                {/* SaleInfoCard só aparece para viaturas vendidas. Cobre os dois
+                    casos pedidos no B3: sale existe → editar; sale === null →
+                    adicionar dados (caso do car 1, vendido sem registo). */}
+                {specs.status === "sold" && companyId > 0 && id && (
+                    <SaleInfoCard
+                        sale={specs.sale}
+                        companyId={companyId}
+                        carId={Number(id)}
+                        onSaved={refreshSpecs}
+                    />
+                )}
 
             </Container>
         </div>

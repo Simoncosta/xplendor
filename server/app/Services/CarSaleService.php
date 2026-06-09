@@ -25,6 +25,54 @@ class CarSaleService extends BaseService
         parent::__construct($carSaleRepository);
     }
 
+    /**
+     * Update OR create os dados PII do comprador num car_sale existente.
+     *
+     * Difere do closeSale():
+     *   - NÃO actualiza o car (apenas o sale).
+     *   - NÃO chama markAsSold (car já está sold por pré-condição).
+     *   - NÃO dispara email/notificações de venda.
+     *   - Idempotente: pode ser chamado N vezes.
+     *
+     * Pré-condição: o car tem de pertencer à empresa (tenant) E estar sold.
+     * Garante upsert por car_id (UNIQUE constraint em car_sales.car_id).
+     */
+    public function updateSale(int $companyId, int $carId, array $data): CarSale
+    {
+        $car = Car::query()
+            ->where('id', $carId)
+            ->where('company_id', $companyId)
+            ->firstOrFail();
+
+        if ($car->status !== 'sold') {
+            throw new \DomainException('A viatura tem de estar vendida para editar os dados do comprador.');
+        }
+
+        return DB::transaction(function () use ($companyId, $carId, $data) {
+            $existing = CarSale::query()->where('car_id', $carId)->first();
+
+            $payload = array_merge($data, [
+                'car_id'     => $carId,
+                'company_id' => $companyId,
+            ]);
+
+            if ($existing) {
+                $existing->update($payload);
+                $sale = $existing->refresh();
+            } else {
+                $sale = CarSale::create($payload);
+            }
+
+            Log::info('[Car Sale] Dados do comprador actualizados', [
+                'company_id' => $companyId,
+                'car_id'     => $carId,
+                'created'    => !$existing,
+            ]);
+
+            return $sale;
+        });
+    }
+
     public function closeSale(int $companyId, int $carId, array $data): CarSale
     {
         $car = $this->carRepository->findOrFail(

@@ -119,6 +119,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('cars/{car}/performance/summary', [CarPerformanceMetricController::class, 'summary']);
                 Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
                 Route::post('cars/{car}/sales', [CarSaleController::class, 'store']);
+                Route::patch('cars/{car}/sale', [CarSaleController::class, 'updateSale']);
 
                 Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
                 Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);

@@ -28,6 +28,7 @@ export const GET_CARS = "/cars";
 export const GET_CAR_AD_CAMPAIGNS = "/ad-campaigns";
 export const GET_CAR_AD_CAMPAIGN_ACTIVE_TARGETS = "/ad-campaigns/active-targets";
 export const GET_CAR_SALES = "/sales";
+export const GET_CAR_SALE = "/sale"; // singular — PATCH update do car_sale 1:1
 export const GET_CAR_DECISION = "/decision";
 export const POST_CAR_EXECUTE_ACTION = "/execute-action";
 export const POST_CAR_META_ADS_REFRESH = "/meta-ads/refresh";

@@ -238,12 +238,6 @@ function AlertsList({ alerts, markingAlertId, onMarkAsRead }: AlertsListProps) {
                     </div>
                 </div>
             ))}
-
-            <div className="my-3 text-center">
-                <Link to="/actions" className="btn btn-soft-success waves-effect waves-light">
-                    Ver Action Center <i className="ri-arrow-right-line align-middle"></i>
-                </Link>
-            </div>
         </SimpleBar>
     );
 }
