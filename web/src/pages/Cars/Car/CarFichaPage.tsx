@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Col, Container, Row, Spinner } from "reactstrap";
+import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
+import SaleInfoCard from "Components/Common/SaleInfoCard";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
 
 import { fetchCarSpecs } from "helpers/carSpecs_helper";
 import { fmtDate, ipsClassBadge } from "./helpers/CarAnalyticsData";
+import {
+    labelOf,
+    FUEL_TYPE_LABELS,
+    TRANSMISSION_LABELS,
+    CONDITION_LABELS,
+    ORIGIN_LABELS,
+    EXTERIOR_COLOR_LABELS,
+} from "helpers/labels";
 import type { CarSpecs } from "types/api";
 
 export default function CarFichaPage() {
@@ -99,105 +108,126 @@ export default function CarFichaPage() {
                 <Row className="g-3">
 
                     <Col md={6} xl={4}>
-                        <h6 className="fs-13 fw-semibold mb-3">
-                            <i className="ri-settings-3-line me-2 text-primary" />
-                            Informação Técnica
-                        </h6>
-                        <div className="vstack gap-2">
-                            {[
-                                { icon: "ri-oil-line", label: "Combustível", val: specs.specs.fuel_type },
-                                { icon: "ri-settings-2-line", label: "Caixa", val: specs.specs.transmission },
-                                { icon: "ri-flashlight-line", label: "Potência", val: specs.specs.power_hp ? `${specs.specs.power_hp} cv` : null },
-                                { icon: "ri-speed-up-line", label: "Cilindrada", val: specs.specs.engine_capacity_cc ? `${specs.specs.engine_capacity_cc} cc` : null },
-                                { icon: "ri-door-open-line", label: "Portas", val: specs.specs.doors },
-                                { icon: "ri-group-line", label: "Lugares", val: specs.specs.seats },
-                                { icon: "ri-palette-line", label: "Cor exterior", val: specs.specs.exterior_color },
-                                { icon: "ri-layout-grid-line", label: "Segmento", val: specs.specs.segment },
-                            ].map((row, idx) => row.val && (
-                                <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
-                                    <i className={`${row.icon} text-primary fs-16 flex-shrink-0`} style={{ width: 20 }} />
-                                    <span className="text-muted flex-grow-1">{row.label}</span>
-                                    <span className="fw-medium">{row.val}</span>
+                        <Card className="h-100 mb-0">
+                            <CardBody>
+                                <h6 className="fs-13 fw-semibold mb-3">
+                                    <i className="ri-settings-3-line me-2 text-primary" />
+                                    Informação Técnica
+                                </h6>
+                                <div className="vstack gap-2">
+                                    {[
+                                        { icon: "ri-oil-line", label: "Combustível", val: labelOf(specs.specs.fuel_type, FUEL_TYPE_LABELS) },
+                                        { icon: "ri-settings-2-line", label: "Caixa", val: labelOf(specs.specs.transmission, TRANSMISSION_LABELS) },
+                                        { icon: "ri-flashlight-line", label: "Potência", val: specs.specs.power_hp ? `${specs.specs.power_hp} cv` : null },
+                                        { icon: "ri-speed-up-line", label: "Cilindrada", val: specs.specs.engine_capacity_cc ? `${specs.specs.engine_capacity_cc} cc` : null },
+                                        { icon: "ri-door-open-line", label: "Portas", val: specs.specs.doors },
+                                        { icon: "ri-group-line", label: "Lugares", val: specs.specs.seats },
+                                        { icon: "ri-palette-line", label: "Cor exterior", val: labelOf(specs.specs.exterior_color, EXTERIOR_COLOR_LABELS) },
+                                        // NOTA: specs.segment vem com lixo de dados em motorhomes
+                                        // ("motorhome" — cópia do vehicle_type). NÃO traduzir aqui — é
+                                        // problema de dados, registado como follow-up para fixar na BD.
+                                        { icon: "ri-layout-grid-line", label: "Segmento", val: specs.specs.segment },
+                                    ].map((row, idx) => row.val && (
+                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
+                                            <i className={`${row.icon} text-primary fs-16 flex-shrink-0`} style={{ width: 20 }} />
+                                            <span className="text-muted flex-grow-1">{row.label}</span>
+                                            <span className="fw-medium">{row.val}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </CardBody>
+                        </Card>
                     </Col>
 
                     <Col md={6} xl={4}>
-                        <h6 className="fs-13 fw-semibold mb-3">
-                            <i className="ri-file-shield-2-line me-2 text-success" />
-                            Estado & Documentação
-                        </h6>
-                        <div className="vstack gap-2">
-                            {[
-                                { icon: "ri-calendar-2-line", label: "Registo", val: specs.registration.month && specs.registration.year ? `${specs.registration.month}/${specs.registration.year}` : null },
-                                { icon: "ri-hashtag", label: "Matrícula", val: specs.identification.license_plate },
-                                { icon: "ri-shield-star-line", label: "Condição", val: specs.state.condition, badge: true },
-                                { icon: "ri-key-2-line", label: "Chave extra", val: specs.state.has_spare_key ? "Sim" : "Não", badge: true, bColor: specs.state.has_spare_key ? "success" : "danger" },
-                                { icon: "ri-book-open-line", label: "Livro revisões", val: specs.state.has_manuals ? "Sim" : "Não", badge: true, bColor: specs.state.has_manuals ? "success" : "danger" },
-                                { icon: "ri-truck-line", label: "Origem", val: specs.state.origin },
-                                { icon: "ri-global-line", label: "Quilometragem", val: specs.state.mileage_km ? `${specs.state.mileage_km.toLocaleString("pt-PT")} km` : null },
-                            ].map((row, idx) => row.val != null && (
-                                <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
-                                    <i className={`${row.icon} text-success fs-16 flex-shrink-0`} style={{ width: 20 }} />
-                                    <span className="text-muted flex-grow-1">{row.label}</span>
-                                    {(row as any).badge
-                                        ? <span className={`badge badge-soft-${(row as any).bColor || "secondary"}`}>{row.val}</span>
-                                        : <span className="fw-medium">{row.val}</span>}
+                        <Card className="h-100 mb-0">
+                            <CardBody>
+                                <h6 className="fs-13 fw-semibold mb-3">
+                                    <i className="ri-file-shield-2-line me-2 text-success" />
+                                    Estado & Documentação
+                                </h6>
+                                <div className="vstack gap-2">
+                                    {[
+                                        { icon: "ri-calendar-2-line", label: "Registo", val: specs.registration.month && specs.registration.year ? `${specs.registration.month}/${specs.registration.year}` : null },
+                                        { icon: "ri-hashtag", label: "Matrícula", val: specs.identification.license_plate },
+                                        { icon: "ri-shield-star-line", label: "Condição", val: labelOf(specs.state.condition, CONDITION_LABELS), badge: true },
+                                        { icon: "ri-key-2-line", label: "Chave extra", val: specs.state.has_spare_key ? "Sim" : "Não", badge: true, bColor: specs.state.has_spare_key ? "success" : "danger" },
+                                        { icon: "ri-book-open-line", label: "Livro revisões", val: specs.state.has_manuals ? "Sim" : "Não", badge: true, bColor: specs.state.has_manuals ? "success" : "danger" },
+                                        { icon: "ri-truck-line", label: "Origem", val: labelOf(specs.state.origin, ORIGIN_LABELS) },
+                                        { icon: "ri-global-line", label: "Quilometragem", val: specs.state.mileage_km ? `${specs.state.mileage_km.toLocaleString("pt-PT")} km` : null },
+                                    ].map((row, idx) => row.val != null && (
+                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
+                                            <i className={`${row.icon} text-success fs-16 flex-shrink-0`} style={{ width: 20 }} />
+                                            <span className="text-muted flex-grow-1">{row.label}</span>
+                                            {(row as any).badge
+                                                ? <span className={`badge badge-soft-${(row as any).bColor || "secondary"}`}>{row.val}</span>
+                                                : <span className="fw-medium">{row.val}</span>}
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
+                            </CardBody>
+                        </Card>
                     </Col>
 
                     <Col xl={4}>
-                        <h6 className="fs-13 fw-semibold mb-3">
-                            <i className="ri-price-tag-3-line me-2 text-warning" />
-                            Preço & Notas
-                        </h6>
-                        <div className="bg-primary-subtle rounded p-3 mb-3 text-center">
-                            <p className="text-muted fs-12 mb-1">Preço de venda</p>
-                            <CarPriceDisplay
-                                priceGross={specs.price.gross}
-                                promoPriceGross={specs.price.promo_gross}
-                                promoDiscountPct={specs.price.promo_discount_pct}
-                                hidePriceOnline={specs.price.hide_price_online}
-                                align="center"
-                                size="lg"
-                                badgeLabel="Em promoção"
-                            />
-                        </div>
-                        {specs.description && (
-                            <>
-                                <h6 className="fs-13 fw-semibold mb-2">Descrição</h6>
-                                <div
-                                    className="fs-13 text-muted bg-light rounded p-3"
-                                    style={{ maxHeight: 280, overflowY: "auto", lineHeight: 1.7 }}
-                                    dangerouslySetInnerHTML={{ __html: specs.description }}
-                                />
-                            </>
-                        )}
+                        <Card className="h-100 mb-0">
+                            <CardBody>
+                                <h6 className="fs-13 fw-semibold mb-3">
+                                    <i className="ri-price-tag-3-line me-2 text-warning" />
+                                    Preço & Notas
+                                </h6>
+                                <div className="bg-primary-subtle rounded p-3 mb-3 text-center">
+                                    <p className="text-muted fs-12 mb-1">Preço de venda</p>
+                                    <CarPriceDisplay
+                                        priceGross={specs.price.gross}
+                                        promoPriceGross={specs.price.promo_gross}
+                                        promoDiscountPct={specs.price.promo_discount_pct}
+                                        hidePriceOnline={specs.price.hide_price_online}
+                                        align="center"
+                                        size="lg"
+                                        badgeLabel="Em promoção"
+                                    />
+                                </div>
+                                {specs.description && (
+                                    <>
+                                        <h6 className="fs-13 fw-semibold mb-2">Descrição</h6>
+                                        <div
+                                            className="fs-13 text-muted bg-light rounded p-3"
+                                            style={{ maxHeight: 280, overflowY: "auto", lineHeight: 1.7 }}
+                                            dangerouslySetInnerHTML={{ __html: specs.description }}
+                                        />
+                                    </>
+                                )}
+                            </CardBody>
+                        </Card>
                     </Col>
 
                     {specs.images.length > 0 && (
                         <Col xs={12}>
-                            <h6 className="fs-13 fw-semibold mb-3">
-                                <i className="ri-image-line me-2 text-info" />
-                                Imagens ({specs.images.length})
-                            </h6>
-                            <div className="d-flex flex-wrap gap-2">
-                                {specs.images.map((img) => (
-                                    <img
-                                        key={img.id}
-                                        src={`${process.env.REACT_APP_PUBLIC_URL ?? ""}${img.url}`}
-                                        alt=""
-                                        style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 6, border: img.is_primary ? "2px solid #405189" : "1px solid #e9ebec", cursor: "pointer" }}
-                                    />
-                                ))}
-                            </div>
+                            <Card className="mb-0">
+                                <CardBody>
+                                    <h6 className="fs-13 fw-semibold mb-3">
+                                        <i className="ri-image-line me-2 text-info" />
+                                        Imagens ({specs.images.length})
+                                    </h6>
+                                    <div className="d-flex flex-wrap gap-2">
+                                        {specs.images.map((img) => (
+                                            <img
+                                                key={img.id}
+                                                src={`${process.env.REACT_APP_PUBLIC_URL ?? ""}${img.url}`}
+                                                alt=""
+                                                style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 6, border: img.is_primary ? "2px solid #405189" : "1px solid #e9ebec", cursor: "pointer" }}
+                                            />
+                                        ))}
+                                    </div>
+                                </CardBody>
+                            </Card>
                         </Col>
                     )}
 
                 </Row>
+
+                {specs.sale && <SaleInfoCard sale={specs.sale} />}
 
             </Container>
         </div>
