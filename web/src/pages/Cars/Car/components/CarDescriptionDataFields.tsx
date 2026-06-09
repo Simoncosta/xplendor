@@ -30,7 +30,10 @@ function getMissingFields(values: ICarFormValues): string[] {
     if (!values.car_brand_id) missing.push(FIELD_LABELS.car_brand_id);
     if (!values.car_model_id) missing.push(FIELD_LABELS.car_model_id);
     if (!values.registration_year) missing.push(FIELD_LABELS.registration_year);
-    if (!values.price_gross) missing.push(FIELD_LABELS.price_gross);
+    // Preço deixa de ser obrigatório quando 'Sob consulta' (hide_price_online) está marcado.
+    // O backend (CarDescriptionService) já interpreta o flag e instrui a IA a tratar o preço
+    // como "sob consulta" sem mencionar valores.
+    if (!values.price_gross && !values.hide_price_online) missing.push(FIELD_LABELS.price_gross);
 
     if (type === "car") {
         if (!values.fuel_type) missing.push(FIELD_LABELS.fuel_type);
@@ -119,6 +122,7 @@ export default function CarDescriptionDataFields({
                 exterior_color:      values.exterior_color,
                 price_gross:         values.price_gross,
                 promo_price_gross:   values.promo_price_gross,
+                hide_price_online:   values.hide_price_online,
                 extras:              values.extras ?? [],
                 vehicle_attributes:  values.vehicle_attributes,
             };
