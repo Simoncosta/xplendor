@@ -17,6 +17,19 @@ export interface CarSpecsAnalyses {
     analysis: Record<string, unknown> | null;
 }
 
+export interface CarSpecsSale {
+    sale_price: number | null;
+    sale_channel: string | null;
+    buyer_name: string | null;
+    buyer_phone: string | null;
+    buyer_email: string | null;
+    buyer_gender: string | null;
+    buyer_age_range: string | null;
+    contact_consent: boolean;
+    notes: string | null;
+    sold_at: string | null;
+}
+
 export interface CarSpecs {
     id: number;
     status: string;
@@ -62,6 +75,7 @@ export interface CarSpecs {
         potential_score: CarSpecsPotentialScore | null;
         analyses: CarSpecsAnalyses | null;
     };
+    sale: CarSpecsSale | null;
 }
 
 // ── MarketAggregate ───────────────────────────────────────────────────────────

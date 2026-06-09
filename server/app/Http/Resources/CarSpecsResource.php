@@ -92,6 +92,21 @@ class CarSpecsResource extends JsonResource
                     'analysis'      => $latestAnalysis->analysis,
                 ] : null,
             ],
+
+            // PII do comprador — só visível em endpoint interno autenticado e
+            // tenant-scoped. NUNCA expor isto no CarPublicResource.
+            'sale' => $this->whenLoaded('sale', fn () => $this->sale ? [
+                'sale_price'      => $this->sale->sale_price !== null ? (float) $this->sale->sale_price : null,
+                'sale_channel'    => $this->sale->sale_channel,
+                'buyer_name'      => $this->sale->buyer_name,
+                'buyer_phone'     => $this->sale->buyer_phone,
+                'buyer_email'     => $this->sale->buyer_email,
+                'buyer_gender'    => $this->sale->buyer_gender,
+                'buyer_age_range' => $this->sale->buyer_age_range,
+                'contact_consent' => (bool) $this->sale->contact_consent,
+                'notes'           => $this->sale->notes,
+                'sold_at'         => $this->sale->sold_at,
+            ] : null),
         ];
     }
 }

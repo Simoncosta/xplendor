@@ -380,7 +380,7 @@ class CarController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $car = Car::with(['brand', 'model', 'images'])
+        $car = Car::with(['brand', 'model', 'images', 'sale'])
             ->find($carId);
 
         if (!$car || (int) $car->company_id !== $companyId) {
