@@ -22,8 +22,12 @@
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!-- force="true": sobrescreve qualquer DB_CONNECTION vinda de .env*
+             para garantir que os testes NUNCA tocam na BD de dev/prod.
+             Sem isto, .env.testing ou .env podiam ganhar precedência num
+             cenário com config:cache (incidente 2026-06-09, CLAUDE.md 14.3). -->
+        <env name="DB_CONNECTION" value="sqlite" force="true"/>
+        <env name="DB_DATABASE" value=":memory:" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

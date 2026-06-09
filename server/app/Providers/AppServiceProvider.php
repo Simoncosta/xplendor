@@ -85,6 +85,7 @@ use App\Repositories\{
     UserRepository
 };
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckCompanyApiToken;
 use App\Http\Middleware\CheckCompanySubscription;
@@ -134,6 +135,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ────────────────────────────────────────────────────────────────────
+        // Blindagem contra wipe acidental da BD (incidente 2026-06-09,
+        // CLAUDE.md sec 14.3).
+        //
+        // Bloqueia migrate:fresh, migrate:refresh e db:wipe em TODOS os
+        // ambientes EXCEPTO 'testing'. Em testing, o trait RefreshDatabase
+        // precisa de chamar migrate:fresh internamente para preparar a SQLite
+        // em memória — por isso a excepção.
+        //
+        // Bónus de segurança: se alguém voltar a fazer `config:cache` em dev,
+        // a env cacheada vai dizer 'local' em vez de 'testing', a prohibição
+        // activa-se durante a corrida de testes e o RefreshDatabase falha FAST
+        // com mensagem clara — em vez de fazer wipe silencioso da BD de dev.
+        //
+        // Para correr `migrate:fresh` em dev de propósito: comentar esta linha
+        // temporariamente. Em prod, nunca descomentar.
+        // ────────────────────────────────────────────────────────────────────
+        DB::prohibitDestructiveCommands(!$this->app->environment('testing'));
+
         Company::observe(CompanyObserver::class);
         Blog::observe(BlogObserver::class);
         Car::observe(CarObserver::class);
