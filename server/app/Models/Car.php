@@ -137,7 +137,14 @@ class Car extends Model implements AuditableContract
 
     public function images(): HasMany
     {
-        return $this->hasMany(CarImage::class);
+        // Ordem canónica: primary primeiro, depois pela ordem definida no upload
+        // (FilePond reorder), depois id como desempate determinístico.
+        // Sem este orderBy, qualquer reordenação manual ficava ignorada e o
+        // thumbnail da listagem mostrava a imagem com menor id em vez da actual 1.ª.
+        return $this->hasMany(CarImage::class)
+            ->orderByDesc('is_primary')
+            ->orderBy('order')
+            ->orderBy('id');
     }
 
     public function externalImages(): HasMany
