@@ -21,9 +21,11 @@ docker exec -it xplendor-php php artisan storage:link || true
 docker exec -it xplendor-php sh -lc "chmod -R 775 storage bootstrap/cache && chown -R www-data:www-data storage bootstrap/cache"
 
 echo "🧹 Clear caches"
-docker exec -it xplendor-php php artisan optimize:clear
+docker exec -it xplendor-php php artisan config:clear
 docker exec -it xplendor-php php artisan config:cache
+docker exec -it xplendor-php php artisan route:clear
 docker exec -it xplendor-php php artisan route:cache
+docker exec -it xplendor-php php artisan view:clear
 
 echo "⚛️ Frontend build"
 cd "./web"

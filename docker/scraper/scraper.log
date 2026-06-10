@@ -14,3 +14,22 @@
 2026-06-08 21:19:31 [INFO] scraper: Total de páginas a scraper: 1
 2026-06-08 21:19:31 [WARNING] scraper: Nenhum edge/anúncio encontrado no advertSearch.
 2026-06-08 21:19:31 [INFO] scraper: Página 1/1: 0 anúncios
+2026-06-10 14:29:18 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 14:29:18 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 14:29:18 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 14:29:18 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2021
+2026-06-10 14:29:18 [INFO] scraper: Filtros ativos: {'brand': 'Challenger', 'model': '308', 'year_from': 2021, 'year_to': 2023, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-10 14:29:19 [WARNING] scraper: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 14:29:20 [INFO] scraper: [widen] após retry sem fuel: 1 anúncios
+2026-06-10 14:29:20 [INFO] scraper: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 14:29:20 [INFO] scraper: Página 1/1: 1 anúncios
+2026-06-10 14:29:22 [INFO] sender: Batch enviado: 1 snapshots. Total: 1
+2026-06-10 14:33:00 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-06-10 14:33:00 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2016}
+2026-06-10 14:33:00 [INFO] scraper: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2016}
+2026-06-10 14:33:00 [INFO] scraper: A iniciar scraping: https://www.standvirtual.com/carros/peugeot/desde-2014
+2026-06-10 14:33:00 [INFO] scraper: Filtros ativos: {'brand': 'Peugeot', 'model': '308 SW', 'year_from': 2014, 'year_to': 2016, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-06-10 14:33:02 [INFO] scraper: Total de páginas a scraper: 6 (widened=False)
+2026-06-10 14:33:02 [INFO] scraper: Página 1/6: 32 anúncios
+2026-06-10 14:33:27 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-06-10 14:33:27 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
