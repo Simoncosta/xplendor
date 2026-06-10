@@ -121,3 +121,130 @@ class TestSmokeCli:
         """Passing an unknown vehicle_type must be rejected by argparse (exit 2)."""
         result = _docker_run("--source", "standvirtual", "--mode", "preview", "--vehicle-type", "caravan")
         assert result.returncode != 0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MS1.a — slugs de combustível por vertical (validados empiricamente 2026-06-10)
+# ─────────────────────────────────────────────────────────────────────────────
+from config import _normalize_fuel, FUEL_SLUGS_BY_VERTICAL, SearchFilters
+
+
+class TestFuelSlugsByVertical:
+    """O Standvirtual usa dicionários diferentes por secção: /carros (gaz, lpg)
+    vs /autocaravanas (gasolina). Slug não validado → omitir (omissão > slug
+    errado, que zeraria a pesquisa silenciosamente)."""
+
+    # ── /carros — regressão (mapa antigo continua a funcionar) ────────────
+    def test_car_gasolina_to_gaz(self):
+        assert _normalize_fuel("gasolina", "car") == "gaz"
+
+    def test_car_petrol_to_gaz(self):
+        assert _normalize_fuel("petrol", "car") == "gaz"
+
+    def test_car_diesel_to_diesel(self):
+        assert _normalize_fuel("diesel", "car") == "diesel"
+
+    def test_car_lpg_to_gpl(self):
+        assert _normalize_fuel("lpg", "car") == "gpl"
+
+    def test_car_hybrid_to_hibride_gaz(self):
+        assert _normalize_fuel("hybrid", "car") == "hibride-gaz"
+
+    def test_car_plugin_hybrid_to_plugin_hybrid(self):
+        assert _normalize_fuel("plug-in-hybrid", "car") == "plugin-hybrid"
+
+    def test_car_electric_to_electric(self):
+        assert _normalize_fuel("electric", "car") == "electric"
+
+    # ── /autocaravanas — só slugs validados ───────────────────────────────
+    def test_motorhome_gasolina_stays_gasolina(self):
+        """Validado live 2026-06-10: ?fuel=gasolina → 2 anúncios."""
+        assert _normalize_fuel("gasolina", "motorhome") == "gasolina"
+
+    def test_motorhome_petrol_aliased_to_gasolina(self):
+        """Alias EN → slug pt-PT do Standvirtual motorhome."""
+        assert _normalize_fuel("petrol", "motorhome") == "gasolina"
+
+    def test_motorhome_diesel_stays_diesel(self):
+        """Validado live 2026-06-10: ?fuel=diesel → 321 anúncios (88% do mercado)."""
+        assert _normalize_fuel("diesel", "motorhome") == "diesel"
+
+    # ── /autocaravanas — slugs NÃO validados → omitir ─────────────────────
+    def test_motorhome_lpg_returns_none(self):
+        """0 resultados em 364 anúncios (inconclusivo). MS1.a: omite o parâmetro."""
+        assert _normalize_fuel("lpg", "motorhome") is None
+
+    def test_motorhome_gpl_returns_none(self):
+        assert _normalize_fuel("gpl", "motorhome") is None
+
+    def test_motorhome_electric_returns_none(self):
+        assert _normalize_fuel("electric", "motorhome") is None
+
+    def test_motorhome_hybrid_returns_none(self):
+        assert _normalize_fuel("hybrid", "motorhome") is None
+
+    def test_motorhome_plug_in_hybrid_returns_none(self):
+        assert _normalize_fuel("plug-in-hybrid", "motorhome") is None
+
+    # ── Controlo negativo: slug carro NÃO se aplica a motorhome ───────────
+    def test_motorhome_gaz_returns_none(self):
+        """Slug Standvirtual de /carros — em /autocaravanas dá 0 anúncios.
+        Validado live 2026-06-10. MS1.a: omite o parâmetro."""
+        assert _normalize_fuel("gaz", "motorhome") is None
+
+    # ── Vertical desconhecida ─────────────────────────────────────────────
+    def test_unknown_vertical_returns_none(self):
+        assert _normalize_fuel("diesel", "tractor") is None
+
+    # ── Mapas têm a estrutura esperada ────────────────────────────────────
+    def test_both_verticals_present(self):
+        assert "car" in FUEL_SLUGS_BY_VERTICAL
+        assert "motorhome" in FUEL_SLUGS_BY_VERTICAL
+
+
+class TestSearchFiltersOmitFuelWhenUnvalidated:
+    """SearchFilters.to_query_params omite filter_enum_fuel_type quando o slug
+    não tem mapeamento para a vertical — não envia slug errado."""
+
+    def test_motorhome_with_gasolina_emits_fuel(self):
+        f = SearchFilters(brand="Carado", year_from=2018, year_to=2022,
+                          fuel="gasolina", vehicle_type="motorhome")
+        params = f.to_query_params()
+        assert params.get("search[filter_enum_fuel_type]") == "gasolina"
+
+    def test_motorhome_with_diesel_emits_fuel(self):
+        f = SearchFilters(fuel="diesel", vehicle_type="motorhome")
+        assert f.to_query_params().get("search[filter_enum_fuel_type]") == "diesel"
+
+    def test_motorhome_with_lpg_omits_fuel(self):
+        """Caso central do bug MS1.a: lpg em motorhome zerava a pesquisa.
+        Agora omite e o scrape devolve mercado da marca/ano sem filtro de fuel."""
+        f = SearchFilters(brand="Carado", year_from=2018, year_to=2022,
+                          fuel="lpg", vehicle_type="motorhome")
+        params = f.to_query_params()
+        assert "search[filter_enum_fuel_type]" not in params
+        # restantes filtros mantêm-se
+        assert params["search[filter_float_first_registration_year:to]"] == 2022
+
+    def test_motorhome_with_electric_omits_fuel(self):
+        f = SearchFilters(fuel="electric", vehicle_type="motorhome")
+        assert "search[filter_enum_fuel_type]" not in f.to_query_params()
+
+    def test_car_with_gasolina_emits_gaz(self):
+        """Regressão: carros continuam a usar o slug 'gaz' (validado 984 anúncios)."""
+        f = SearchFilters(brand="Bmw", year_from=2018, year_to=2022,
+                          fuel="gasolina", vehicle_type="car")
+        assert f.to_query_params().get("search[filter_enum_fuel_type]") == "gaz"
+
+    def test_car_with_lpg_emits_gpl(self):
+        """Regressão: carros mantêm o mapa antigo."""
+        f = SearchFilters(fuel="lpg", vehicle_type="car")
+        assert f.to_query_params().get("search[filter_enum_fuel_type]") == "gpl"
+
+    def test_default_vehicle_type_is_car(self):
+        """Caller que não passe vehicle_type cai no comportamento de carros (default)."""
+        f = SearchFilters(fuel="gasolina")
+        # Sem vehicle_type → "car" → "gaz"
+        assert f.to_query_params().get("search[filter_enum_fuel_type]") == "gaz"
+
+

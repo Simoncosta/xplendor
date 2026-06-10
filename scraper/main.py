@@ -95,6 +95,9 @@ def build_filters_from_args(args: argparse.Namespace) -> SearchFilters:
         price_from=price_from,
         price_to=price_to,
         body_type=args.body_type,
+        # vehicle_type circula para o slug de combustível ser resolvido contra
+        # o dicionário da vertical correcta (MS1.a, 2026-06-10).
+        vehicle_type=args.vehicle_type,
     )
 
 

@@ -13,35 +13,63 @@ def _slugify_search_value(value: str) -> str:
     return "-".join(part for part in cleaned.split() if part)
 
 
-def _normalize_fuel(value: str) -> str:
-    # Valores do RHS são os slugs reais do Standvirtual (filter_enum_fuel_type),
-    # validados empiricamente no browser. Slugs antigos como "petrol", "lpg" e
-    # "plug_in_hybrid" davam 0 resultados — ver tabela validada abaixo.
-    # Manter consistente com MarketSnapshotService::normalizeFuelForSearch (PHP).
-    #
-    # Híbrido: o Standvirtual NÃO tem um slug genérico para híbrido — separa
-    # em "hibride-gaz" e "hibride-diesel". Como a BD não distingue o
-    # combustível-base do híbrido, usamos "hibride-gaz" como fallback (mais
-    # comum em PT). Revisitar quando aparecer um híbrido real (BD não tem
-    # híbridos hoje).
+# ─────────────────────────────────────────────────────────────────────────────
+# Mapa de slugs de combustível por vertical do Standvirtual (MS1.a)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# O Standvirtual usa DICIONÁRIOS DIFERENTES por secção:
+#   /carros        — slugs herdados da plataforma OLX/Otomoto (gaz, lpg, ...)
+#   /autocaravanas — slugs em português (gasolina, ...)
+#
+# Validação empírica em 2026-06-10 (curl ao live, contagem de "N anúncios"):
+#
+#   /autocaravanas?...=gasolina  → 2 anúncios   ✅ válido
+#   /autocaravanas?...=diesel    → 321 anúncios ✅ válido (88% do mercado)
+#   /autocaravanas?...=gaz       → 0 anúncios   ❌ inválido (controlo negativo)
+#   /carros?...=gaz              → 984 anúncios ✅ mantém-se (regressão)
+#
+# Inconclusivos (0 resultados em 364 anúncios → ambíguo entre "slug inválido"
+# e "mercado sem stock"): electric, eletrico, hibrido, hibride-gaz,
+# hibride-diesel, hybrid, plug-in-hybrid, plugin-hybrid, gpl, lpg.
+# → Estes ficam FORA do mapa motorhome. Regra: slug ausente = OMITIR o
+#   parâmetro (omissão > slug errado → devolve mercado da marca/ano sem
+#   filtro de fuel, melhor que zerar).
+# → MS1.b (widen-on-empty) é a 2.ª rede de segurança se um slug futuro estiver
+#   errado: scraper detecta 0 anúncios e repete sem fuel.
+#
+# TEM DE FICAR CONSISTENTE com MarketSnapshotService::FUEL_SLUGS_BY_VERTICAL
+# (PHP). Mudança aqui → mudança no PHP no mesmo PR (item 42 dívida técnica).
+FUEL_SLUGS_BY_VERTICAL: dict[str, dict[str, str]] = {
+    "car": {
+        "gasolina":         "gaz",
+        "petrol":           "gaz",
+        "gasoline":         "gaz",
+        "diesel":           "diesel",
+        "eletrico":         "electric",
+        "electrico":        "electric",
+        "electric":         "electric",
+        "hibrido":          "hibride-gaz",
+        "hybrid":           "hibride-gaz",
+        "plug-in-hybrid":   "plugin-hybrid",
+        "plugin-hybrid":    "plugin-hybrid",
+        "hibrido-plug-in":  "plugin-hybrid",
+        "gpl":              "gpl",
+        "lpg":              "gpl",
+    },
+    "motorhome": {
+        "gasolina":  "gasolina",
+        "petrol":    "gasolina",
+        "gasoline":  "gasolina",
+        "diesel":    "diesel",
+    },
+}
+
+
+def _normalize_fuel(value: str, vehicle_type: str) -> Optional[str]:
+    """Devolve o slug Standvirtual para a vertical, ou None se não houver
+    mapeamento validado (caller omite o parâmetro)."""
     slug = _slugify_search_value(value)
-    aliases = {
-        "gasolina": "gaz",
-        "petrol": "gaz",
-        "gasoline": "gaz",
-        "diesel": "diesel",
-        "eletrico": "electric",
-        "electrico": "electric",
-        "electric": "electric",
-        "hibrido": "hibride-gaz",
-        "hybrid": "hibride-gaz",
-        "plug-in-hybrid": "plugin-hybrid",
-        "plugin-hybrid": "plugin-hybrid",
-        "hibrido-plug-in": "plugin-hybrid",
-        "gpl": "gpl",
-        "lpg": "gpl",
-    }
-    return aliases.get(slug, slug)
+    return FUEL_SLUGS_BY_VERTICAL.get(vehicle_type, {}).get(slug)
 
 
 def _normalize_gearbox(value: str) -> str:
@@ -71,6 +99,11 @@ class SearchFilters:
     # perfiladas (plural), furgao. Mapeamento interno→Standvirtual no PHP
     # (MarketSnapshotService) e a categoria interna é convertida no Job.
     body_type: Optional[str] = None
+    # vehicle_type circula nos filtros para o slug de combustível ser resolvido
+    # contra o dicionário da vertical correcta (MS1.a, 2026-06-10).
+    # Default "car" mantém o comportamento legado para qualquer caller que
+    # ainda não passe o vertical.
+    vehicle_type: str = "car"
 
     def to_path_suffix(self) -> str:
         """Marca e ano 'desde' vão no PATH (formato path-based do Standvirtual).
@@ -94,7 +127,11 @@ class SearchFilters:
         params = {}
 
         if self.fuel:
-            params["search[filter_enum_fuel_type]"] = _normalize_fuel(self.fuel)
+            # Slug pode ser None se não houver mapeamento validado para a
+            # vertical → omitir (omissão > slug errado, MS1.a).
+            fuel_slug = _normalize_fuel(self.fuel, self.vehicle_type)
+            if fuel_slug is not None:
+                params["search[filter_enum_fuel_type]"] = fuel_slug
         if self.year_to is not None:
             params["search[filter_float_first_registration_year:to]"] = int(self.year_to)
         if self.body_type:

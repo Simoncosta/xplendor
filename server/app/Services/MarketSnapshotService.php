@@ -339,7 +339,8 @@ class MarketSnapshotService
             'car'       => '/carros',
             'motorhome' => '/autocaravanas',
         ];
-        $path = $paths[$car->vehicle_type ?? 'car'] ?? '/carros';
+        $vehicleType = $car->vehicle_type ?? 'car';
+        $path        = $paths[$vehicleType] ?? '/carros';
 
         $url = 'https://www.standvirtual.com' . $path;
 
@@ -352,9 +353,14 @@ class MarketSnapshotService
         }
 
         // Combustível e limite superior do ano em query (fuel SEM índice [0]).
+        // Combustível: omitir se não houver slug validado para o vertical em
+        // causa (slug errado = 0 resultados silenciosos, MS1.a 2026-06-10).
         $query = [];
         if ($car->fuel_type) {
-            $query['search[filter_enum_fuel_type]'] = $this->normalizeFuelForSearch($car->fuel_type);
+            $fuelSlug = $this->normalizeFuelForSearch($car->fuel_type, $vehicleType);
+            if ($fuelSlug !== null) {
+                $query['search[filter_enum_fuel_type]'] = $fuelSlug;
+            }
         }
         if ($car->registration_year) {
             $query['search[filter_float_first_registration_year:to]'] = $car->registration_year + 1;
@@ -371,28 +377,71 @@ class MarketSnapshotService
         return implode('-', array_filter(explode(' ', $cleaned)));
     }
 
-    private function normalizeFuelForSearch(string $fuel): string
+    /*
+    |--------------------------------------------------------------------------
+    | Mapa de slugs de combustível por vertical do Standvirtual (MS1.a)
+    |--------------------------------------------------------------------------
+    |
+    | O Standvirtual usa DICIONÁRIOS DIFERENTES por secção:
+    |   /carros        — slugs herdados da plataforma OLX/Otomoto (gaz, lpg, ...)
+    |   /autocaravanas — slugs em português (gasolina, ...)
+    |
+    | Validação empírica em 2026-06-10 (curl ao live, contagem de "N anúncios"):
+    |
+    |   /autocaravanas?...=gasolina  → 2 anúncios   ✅ válido
+    |   /autocaravanas?...=diesel    → 321 anúncios ✅ válido (88% do mercado)
+    |   /autocaravanas?...=gaz       → 0 anúncios   ❌ inválido (controlo negativo)
+    |   /carros?...=gaz              → 984 anúncios ✅ mantém-se (regressão)
+    |
+    | Inconclusivos (0 resultados em 364 anúncios → ambíguo entre "slug inválido"
+    | e "mercado sem stock"): electric, eletrico, hibrido, hibride-gaz,
+    | hibride-diesel, hybrid, plug-in-hybrid, plugin-hybrid, gpl, lpg.
+    | → Estes ficam FORA do mapa motorhome. Regra: slug ausente = OMITIR o
+    |   parâmetro (omissão > slug errado → devolve mercado da marca/ano sem
+    |   filtro de fuel, melhor que zerar).
+    | → MS1.b (widen-on-empty) é a 2.ª rede de segurança se um slug futuro estiver
+    |   errado: scraper detecta 0 anúncios e repete sem fuel.
+    |
+    | TEM DE FICAR CONSISTENTE com scraper/config.py FUEL_SLUGS_BY_VERTICAL.
+    | Mudança aqui → mudança no Python no mesmo PR (item 42 dívida técnica).
+    |
+    | Híbrido em /carros: o Standvirtual NÃO tem slug genérico, separa em
+    | 'hibride-gaz' e 'hibride-diesel'. Como a BD não distingue o base, usamos
+    | 'hibride-gaz' como fallback (mais comum em PT).
+    */
+    private const FUEL_SLUGS_BY_VERTICAL = [
+        'car' => [
+            'gasolina'         => 'gaz',
+            'petrol'           => 'gaz',
+            'gasoline'         => 'gaz',
+            'diesel'           => 'diesel',
+            'eletrico'         => 'electric',
+            'electrico'        => 'electric',
+            'electric'         => 'electric',
+            'hibrido'          => 'hibride-gaz',
+            'hybrid'           => 'hibride-gaz',
+            'hibrido-plug-in'  => 'plugin-hybrid',
+            'plug-in-hybrid'   => 'plugin-hybrid',
+            'plugin-hybrid'    => 'plugin-hybrid',
+            'gpl'              => 'gpl',
+            'lpg'              => 'gpl',
+        ],
+        'motorhome' => [
+            'gasolina'  => 'gasolina',
+            'petrol'    => 'gasolina',
+            'gasoline'  => 'gasolina',
+            'diesel'    => 'diesel',
+        ],
+    ];
+
+    /**
+     * Devolve o slug de combustível para a vertical, ou null se não houver
+     * mapeamento validado (caller omite o parâmetro).
+     */
+    private function normalizeFuelForSearch(string $fuel, string $vehicleType): ?string
     {
         $slug = $this->slugifySearchValue($fuel);
 
-        // Valores do RHS são os slugs reais do Standvirtual (filter_enum_fuel_type),
-        // validados empiricamente no browser. Slugs antigos como 'petrol', 'lpg'
-        // e 'plug_in_hybrid' davam 0 resultados — ver tabela validada abaixo.
-        // Manter consistente com scraper/config.py _normalize_fuel().
-        //
-        // Híbrido: o Standvirtual NÃO tem um slug genérico para híbrido — separa
-        // em 'hibride-gaz' e 'hibride-diesel'. Como a BD não distingue o
-        // combustível-base do híbrido, usamos 'hibride-gaz' como fallback (mais
-        // comum em PT). Revisitar quando aparecer um híbrido real (BD não tem
-        // híbridos hoje).
-        return match ($slug) {
-            'gasolina', 'petrol', 'gasoline' => 'gaz',
-            'diesel'                          => 'diesel',
-            'eletrico', 'electrico', 'electric' => 'electric',
-            'hibrido', 'hybrid'               => 'hibride-gaz',
-            'hibrido-plug-in', 'plug-in-hybrid', 'plugin-hybrid' => 'plugin-hybrid',
-            'gpl', 'lpg'                      => 'gpl',
-            default                           => $slug,
-        };
+        return self::FUEL_SLUGS_BY_VERTICAL[$vehicleType][$slug] ?? null;
     }
 }
