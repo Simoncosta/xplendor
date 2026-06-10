@@ -27,6 +27,7 @@ class CarMarketSnapshot extends Model
         'color',
         'doors',
         'scraped_at',
+        'dedup_hash',
     ];
 
     protected $casts = [

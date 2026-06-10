@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreMarketSnapshotRequest extends FormRequest
 {
@@ -11,12 +12,23 @@ class StoreMarketSnapshotRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Fontes válidas para ingestão de snapshots de mercado (MS2.a).
+     *
+     * Aperto deliberado de `required string max:100` para enum fechado:
+     * o scraper actual JÁ envia source obrigatoriamente (auditado 2026-06-10),
+     * logo não há retro-compatibilidade a manter. Adicionar uma fonte exige
+     * actualizar este array em conjunto com os adapters Python — falha
+     * controlada vs slug silente que infectaria a BD.
+     */
+    public const VALID_SOURCES = ['standvirtual', 'custojusto'];
+
     public function rules(): array
     {
         return [
             'snapshots' => ['required', 'array', 'min:1'],
             'snapshots.*.external_id' => ['required', 'string', 'max:255'],
-            'snapshots.*.source' => ['required', 'string', 'max:100'],
+            'snapshots.*.source' => ['required', Rule::in(self::VALID_SOURCES)],
             'snapshots.*.vehicle_type' => ['nullable', 'string', 'in:car,motorhome,caravan,motorcycle'],
             'snapshots.*.brand' => ['nullable', 'string', 'max:255'],
             'snapshots.*.model' => ['nullable', 'string', 'max:255'],

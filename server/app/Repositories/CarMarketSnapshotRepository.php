@@ -43,6 +43,7 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
                 'color',
                 'doors',
                 'scraped_at',
+                'dedup_hash',
                 'updated_at',
             ]
         );
