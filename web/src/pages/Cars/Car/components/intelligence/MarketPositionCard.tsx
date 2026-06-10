@@ -8,6 +8,7 @@ import type {
 } from "../../../../../types/api";
 import { fetchMarketAggregate, refreshMarketAggregate } from "../../../../../helpers/marketAggregate_helper";
 import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
+import { extractApiError } from "../../../../../helpers/error_helper";
 import ComparablesList from "./ComparablesList";
 
 const POLL_INTERVAL_MS  = 10_000;
@@ -142,11 +143,16 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
         } catch (err: unknown) {
             if (!mountedRef.current) return;
             setRefreshing(false);
-            const status = (err as { response?: { status?: number } })?.response?.status;
+            // MS2.g item 1 — extractApiError consolida status+message do shape
+            // que o interceptor preserva em 4xx. Antes, o catch lia
+            // `err.response.status` mas o interceptor já tinha desempacotado o
+            // body → status sempre undefined → todos os 4xx caíam no else.
+            // Mensagem 422/429 vem do backend em pt-PT (sem hardcoded).
+            const { status, message } = extractApiError(err);
             if (status === 429) {
-                toast.warning("Aguarda alguns minutos antes de actualizar novamente.");
+                toast.warning(message ?? "Aguarda alguns minutos antes de actualizar novamente.");
             } else if (status === 422) {
-                toast.info("Este tipo de viatura não suporta análise de mercado.");
+                toast.info(message ?? "Análise de mercado não disponível para esta viatura.");
             } else {
                 toast.error("Não foi possível iniciar a análise de mercado.");
             }
@@ -182,17 +188,30 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>
                     Posição no mercado
                 </p>
-                {(pollTimedOut || (aggregate && TERMINAL_STATUSES.includes(aggregate.status))) && (
-                    <button
-                        className="btn btn-sm btn-outline-secondary py-1 px-2 fs-12"
-                        onClick={handleRefresh}
-                        disabled={refreshing}
-                    >
-                        {refreshing
-                            ? <><Spinner size="sm" className="me-1" />A actualizar</>
-                            : "↻ Actualizar agora"}
-                    </button>
-                )}
+                {(pollTimedOut || (aggregate && TERMINAL_STATUSES.includes(aggregate.status))) && (() => {
+                    // MS2.g item 2 — disabled quando preço efectivo é null/≤0.
+                    // Sem preço interno, o degrau 5 da cascata fica matematicamente
+                    // inútil (guard backend MS1.c) e os outros degraus dão poucos
+                    // sinais. Evita scrapes redundantes + tooltip orienta o user.
+                    // hide_price_online não influencia — preço INTERNO é o que conta.
+                    const carPrice = aggregate?.comparison?.car_price ?? null;
+                    const noPrice  = carPrice === null || carPrice <= 0;
+                    const disabledReason = noPrice
+                        ? "Define um preço interno para esta viatura para activar a análise de mercado."
+                        : undefined;
+                    return (
+                        <button
+                            className="btn btn-sm btn-outline-secondary py-1 px-2 fs-12"
+                            onClick={handleRefresh}
+                            disabled={refreshing || noPrice}
+                            title={disabledReason}
+                        >
+                            {refreshing
+                                ? <><Spinner size="sm" className="me-1" />A actualizar</>
+                                : "↻ Actualizar agora"}
+                        </button>
+                    );
+                })()}
             </div>
 
             {loadingInitial
@@ -345,7 +364,16 @@ function Body({
                     <MetricBox
                         label="Mediana mercado"
                         value={formatCurrency(aggregate.prices.median)}
-                        hint={`${CONFIDENCE_LABEL[aggregate.confidence] ?? "—"} confiança`}
+                        // MS2.g item 4 — Em pesquisa alargada (fallback_used), o
+                        // pool inclui modelos semelhantes (não idênticos) da mesma
+                        // marca/categoria. "Alta" continua a referir-se ao volume
+                        // de amostra; o sufixo "modelos semelhantes" sinaliza
+                        // honestamente o que está dentro do pool.
+                        hint={
+                            (CONFIDENCE_LABEL[aggregate.confidence] ?? "—")
+                            + " confiança"
+                            + (aggregate.fallback_used ? " (modelos semelhantes)" : "")
+                        }
                     />
                 </div>
                 <div className="col-sm-4">
@@ -381,7 +409,24 @@ function Body({
                             })()
                         }
                         {aggregate.fallback_used && (
-                            <span className="ms-2 badge bg-light text-muted">pesquisa alargada</span>
+                            // MS2.g item 4 — tooltip explica o que "pesquisa
+                            // alargada" significa em modelos fragmentados de
+                            // autocaravanas (pool inclui modelos semelhantes
+                            // da mesma marca/categoria, não modelo idêntico).
+                            // `cursor: help` sinaliza visualmente que há mais.
+                            <span
+                                className="ms-2 badge bg-light text-muted"
+                                style={{ cursor: "help" }}
+                                title={
+                                    "Não há anúncios suficientes deste modelo exacto à venda. " +
+                                    "A análise usa autocaravanas semelhantes da mesma marca e " +
+                                    "categoria (ex.: outras perfiladas/capucines da mesma marca " +
+                                    "em anos próximos). Útil para posicionar o preço no mercado, " +
+                                    "menos preciso que uma comparação modelo-a-modelo."
+                                }
+                            >
+                                pesquisa alargada ⓘ
+                            </span>
                         )}
                     </div>
                     {aggregate.top_comparables.length > 0 && (
@@ -460,15 +505,16 @@ function ErrorState({ userRole }: { userRole?: string }) {
     );
 }
 
-// MS1.c — mensagem accionável quando o aggregate está vazio.
-// Lógica das 3 variantes:
-//   - preço > 0:  mensagem actual (mercado sem comparáveis para este modelo)
-//   - preço ≤ 0 ou null E hide_price_online === false:
-//       nudge directo para definir preço
-//   - preço ≤ 0 ou null E hide_price_online === true:
+// MS1.c + MS2.g item 3 — mensagem accionável quando o aggregate está vazio.
+// 4 variantes:
+//   - preço ≤ 0 + hide_price_online === true:
 //       nudge consciente do estado 'Sob consulta' (preço interno ≠ publicado)
-// O guard do degrau 5 no backend já evita correr aritmética com preço 0;
-// esta mensagem é o feedback ao utilizador para activar a análise.
+//   - preço ≤ 0 + hide_price_online === false:
+//       nudge directo para definir preço
+//   - preço > 0 + comparables = 0 (MS2.g item 3 — "tentou mas vazio"):
+//       texto orientador, sugere ao user verificar dados na Ficha
+//   - (default — não usado actualmente, mas defensivo)
+// O botão fica disabled quando noPrice (MS2.g item 2) — evita scrapes inúteis.
 function NoneState({
     onRefresh,
     refreshing,
@@ -488,8 +534,16 @@ function NoneState({
     } else if (noPrice) {
         message = "Define um preço para esta viatura para activar a análise de mercado.";
     } else {
-        message = "Sem comparáveis disponíveis no mercado para este modelo no momento.";
+        // MS2.g item 3 — preço > 0 + scrape correu + 0 comparáveis: caso real
+        // das McLouis gasolina / modelos invulgares. Orienta a verificar dados
+        // em vez de parecer um erro técnico.
+        message = "Não encontrámos viaturas semelhantes à venda neste momento. Pode ser um modelo invulgar no mercado — confirma na Ficha que o combustível e o ano estão correctos.";
     }
+
+    // MS2.g item 2 — botão off quando não há preço. Tooltip explica porquê.
+    const disabledReason = noPrice
+        ? "Define um preço interno para esta viatura para activar a análise de mercado."
+        : undefined;
 
     return (
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap py-1">
@@ -497,7 +551,8 @@ function NoneState({
             <button
                 className="btn btn-sm btn-outline-secondary"
                 onClick={onRefresh}
-                disabled={refreshing}
+                disabled={refreshing || noPrice}
+                title={disabledReason}
             >
                 {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
             </button>

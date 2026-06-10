@@ -35,11 +35,22 @@ axios.interceptors.response.use(
         return response.data ? response.data : response;
     },
     function (error) {
-        // 422 (validation): preservar o body desempacotado ({ message, errors })
-        // para os catches/thunks lerem a estrutura campo-a-campo. Caminho exclusivo
-        // — outros status mantêm o comportamento legacy (string). Ver T2 / X7.1.
-        if (error?.response?.status === 422 && error?.response?.data) {
-            return Promise.reject(error.response.data);
+        // MS2.g item 1 — Qualquer 4xx com body-objecto preservado para os
+        // catches lerem o shape directamente. Generalização da regra T2
+        // (que era 422-only) — bug latente confirmado: o ramo 429 do
+        // handleRefresh também nunca disparava porque o status se perdia.
+        // `__status` (prefixo __ para não colidir com payloads reais) deixa
+        // o catch distinguir 422/429/etc. sem reler `error.response`.
+        // Caminho exclusivo — 5xx/network mantêm comportamento legacy (string).
+        // Ver T2 / X7.1 / MS1.e — 4.ª ocorrência do padrão do interceptor.
+        const status = error?.response?.status;
+        const body   = error?.response?.data;
+        if (
+            typeof status === "number" &&
+            status >= 400 && status < 500 &&
+            body && typeof body === "object"
+        ) {
+            return Promise.reject({ ...body, __status: status });
         }
 
         // Any status codes that falls outside the range of 2xx cause this function to trigger

@@ -14,6 +14,65 @@ export interface ApiValidationError {
  *
  * Devolve `null` se não houver nenhuma estrutura reconhecível.
  */
+/**
+ * Shape consolidado para erros de API. Inclui `status` (HTTP status code,
+ * preservado pelo interceptor em qualquer 4xx via `__status`), e o body
+ * desempacotado (`message`, `errors`).
+ *
+ * Status pode ser undefined em 2 caminhos legacy:
+ *   - 5xx/network → interceptor devolve string, sem status estruturado
+ *   - Caller que bypassa o interceptor → AxiosError raw, status em response
+ */
+export interface ApiErrorShape {
+    status?: number;
+    message?: string;
+    errors?: Record<string, string[]>;
+}
+
+/**
+ * MS2.g item 1 — Extracção consolidada de status+message+errors de qualquer
+ * uma das 4 formas que o sistema produz:
+ *   A. AxiosError raw (`err.response.data` + `err.response.status`)
+ *   B. Body desempacotado pelo interceptor 4xx (MS2.g): `err = {...body, __status}`
+ *   C. Body via thunk (rejectWithValue) — igual ao B
+ *   D. String legacy de 5xx/network — apenas em `message`
+ */
+export const extractApiError = (error: any): ApiErrorShape => {
+    if (!error) return {};
+
+    // Forma D — string (5xx, network, fallback do switch)
+    if (typeof error === "string") {
+        return { message: error };
+    }
+
+    // Formas B / C — body desempacotado pelo interceptor com __status (MS2.g)
+    if (typeof error === "object" && typeof error.__status === "number") {
+        return {
+            status:   error.__status,
+            message:  error.message,
+            errors:   error.errors,
+        };
+    }
+
+    // Forma A — AxiosError raw (caller que bypassa o interceptor)
+    if (typeof error === "object" && error.response) {
+        const status = error.response.status;
+        const body   = error.response.data ?? {};
+        return {
+            status:  typeof status === "number" ? status : undefined,
+            message: body?.message,
+            errors:  body?.errors,
+        };
+    }
+
+    // Forma fallback — body cru sem __status (compatibilidade com pré-MS2.g)
+    if (typeof error === "object" && (error.errors || error.message)) {
+        return { message: error.message, errors: error.errors };
+    }
+
+    return {};
+};
+
 const extractValidationBody = (error: any): { message?: string; errors?: Record<string, string[]> } | null => {
     if (!error) return null;
 
