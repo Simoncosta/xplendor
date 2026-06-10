@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-05-30 · Versão 1.10.12
+> Última actualização: 2026-06-09 · Versão 1.11.0
 
 ---
 
@@ -58,6 +58,7 @@
 | 1.10.10 | 2026-05-28 | Afinação Posição no Mercado autocaravanas: `MOTORHOME_PRICE_BAND` ±25% → ±35% (gama de preços dispersa) e `--max-results` do scraper para motorhome 10 → 30 (`ScrapeMarketSnapshotJob`, por tipo). Carros inalterados (modelo exacto, max 10). |
 | 1.10.11 | 2026-05-28 | IPS — unificação do cálculo (`score` = soma dos 7 fatores do breakdown; `VehicleIpsService` eliminado) + estado "a calibrar" (`score` null / `classification` 'pending' quando sem views e sem mercado). UI neutra via `helpers/ips.ts` (`formatIpsBadge`). Migration score nullable + enum 'pending'. Comando `cars:recalculate-scores`. Pesos inalterados (calibração = fase separada). Carros + autocaravanas. |
 | 1.10.12 | 2026-05-30 | Comparação de mercado por categoria (autocaravanas). Novo degrau na cascata `getComparables` (Attempt 4, só motorhome): categoria do Standvirtual (`capucine`/`integral`/`perfiladas`/`furgao`) + ano. Antes do brand+price (que passa a Attempt 5). Scraper aceita `--body-type`, grava o slug em `car_market_snapshots.category` (override no normalizer — todos os anúncios são desse body_type por filtro). Mapa interno→Standvirtual validado empiricamente. Carros inalterados. 3 testes novos. |
+| 1.11.0 | 2026-06-09 | **Capítulo S — Ficha da viatura + Blindagem de testes.** T1: botão "Gerar IA" aceita `hide_price_online` como alternativa ao preço. T2: `<ValidationAlert>` 422 no topo dos forms de viatura + mensagens em pt-PT (`server/lang/pt/validation.php` completo + `APP_LOCALE=pt`). Interceptor Axios passa a preservar body 422 (corrige natureza X7.1). T3: `Car::images()` ganha `orderByDesc('is_primary')→orderBy('order')`. T5/B3: secção "Venda concluída" na Ficha — `CarSpecsResource` emite `sale` via `whenLoaded`; novo `SaleInfoCard` + `SaleEditModal` editáveis; novo endpoint `PATCH cars/{car}/sale` (upsert PII, sem disparar `markAsSold`/email, pré-condição `status='sold'`). B1: `helpers/labels.ts` (camada de tradução de VALORES no frontend; case-insensitive) com FUEL/TRANSMISSION/CONDITION/ORIGIN/EXTERIOR_COLOR. B2: 4 blocos da Ficha + SaleInfoCard envoltos em `<Card><CardBody>`. **Incidente BD:** `config:cache` em dev contaminou phpunit → `RefreshDatabase` apagou MariaDB de dev. Restaurado por backup. **Blindagem:** `.env.testing` reescrito para sqlite isolado; `force="true"` em `phpunit.xml`; `DB::prohibitDestructiveCommands(!testing)` em local/staging/prod. |
 
 ---
 
@@ -149,6 +150,7 @@ Os sites públicos dos stands são projectos React **separados** do XPLENDOR. Co
 - Worker mantém `--max-time=3600` (restart horário coberto por Docker `restart: always`).
 - Scheduler em prod com output visível desde D6 (`docker logs xplendor-scheduler`).
 - Quando alterar `.env` em produção, **correr `php artisan config:cache`** — restart de workers não chega (descoberto em D2).
+- **Em DEV NUNCA fazer `php artisan config:cache`** (descoberto no incidente 2026-06-09, ver 14.3). A config cacheada baked-in com `database.default=mysql` do `.env` passa a **ignorar os `<env>` do `phpunit.xml`** que forçam SQLite. Os testes (`RefreshDatabase`) passam então a correr `migrate:fresh` contra a MariaDB de dev — apaga a BD. Em dev usar **só `php artisan config:clear`** se precisar de purgar cache; o `.env` é lido directamente em cada request.
 
 ---
 
@@ -630,7 +632,7 @@ A entidade `seller` na resposta pública contém apenas: `name`, `avatar`, `mobi
 
 **Documentação completa:** `app/Http/Resources/Public/RESOURCE_SHAPE.md`.
 
-### 8.4 Endpoints internos relevantes adicionados em 2026-05
+### 8.4 Endpoints internos relevantes adicionados em 2026-05/06
 
 Documentados aqui porque foram introduzidos em sub-fases recentes e ainda não estavam reflectidos no documento.
 
@@ -645,6 +647,10 @@ Proxies HEAD para Standvirtual, devolve `{ available: bool }`. SSRF-guardado a `
 **GET aggregate por id específico (X7 Fix C):**
 `GET /api/v1/companies/{companyId}/cars/{carId}/market-aggregate?aggregate_id=N`
 Query param `aggregate_id` opcional. Quando presente, devolve o aggregate específico (com verificação de `car_id` para isolamento). Sem o param, devolve `latestOfMany` (comportamento legado, ainda usado em alguns paths). Usado pelo polling do MarketPositionCard com `aggregate_id` persistido em sessionStorage (chave `xplendor:mkt_agg:{carId}`, TTL 20 min).
+
+**Editar dados do comprador num car_sale (S/B3, 2026-06-09):**
+`PATCH /api/v1/companies/{companyId}/cars/{carId}/sale` (singular, distinto do `POST /sales` que fecha a venda inteira).
+Faz **upsert idempotente por `car_id`** (UNIQUE constraint em `car_sales.car_id`): se existe → UPDATE, senão → CREATE. **NÃO** chama `markAsSold`, **NÃO** dispara email, **NÃO** mexe no car. **Pré-condição:** `car.status === 'sold'` — caso contrário lança `\DomainException` → controller devolve **422** com mensagem pt-PT *"A viatura tem de estar vendida para editar os dados do comprador."* (não 409 cru). Validação via `UpdateCarSaleRequest` (só campos do sale, todos `nullable`, enums fechados via `Rule::in`; **`sold_at` não é editável** por efeitos colaterais em métricas/learning). Tenant: `Auth::user()->company_id !== $companyId` → 403. PII — **NUNCA** exposto no `CarPublicResource` (continua sem `buyer_*` / `sale_*`). Consumido pelo `SaleEditModal` na Ficha, com o `ValidationAlert` do T2 a renderizar erros 422 estruturados em pt-PT.
 
 ### Segurança a reforçar (parte do refactor contínuo)
 
@@ -777,6 +783,16 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 - Tipos derivam das API Resources do Laravel
 - Optional chaining (`?.`) só é justificado quando o contrato genuinamente permite `undefined`
 
+### Tradução de VALORES no frontend (B1, 2026-06-09)
+
+`web/src/helpers/labels.ts` é a fonte canónica para traduzir VALORES de domínio devolvidos crus pelo backend (`fuel_type`, `transmission`, `condition`, `origin`, `exterior_color`). API:
+
+- `labelOf(value, map)` — devolve `map[value.toLowerCase()] ?? value`. **Case-insensitive** (chaves dos maps são lowercase por convenção). Graceful degradation: se o valor não estiver no mapa devolve o **original** (não o lowercased), portanto valores já em pt-PT como `"Branco"` passam intactos.
+- Maps cobrem **EN**, **slugs Standvirtual** (`gaz`, `lpg`, `plugin-hybrid`, `hibride-gaz`, `hibride-diesel`) e variantes pt já em uso na BD (Carmine sync, imports).
+- `BED_LABELS` é re-exportado de `pages/Cars/Car/data/vehicleAttributes.ts` (fonte canónica) — **não duplicar**.
+
+**FRONTEIRA DE CAMADAS importante:** isto traduz **valores**. As **mensagens** de validação (frases inteiras com `:attribute`) vivem em `server/lang/pt/validation.php` e são geradas pelo Laravel. Camadas separadas, não misturar — labels.ts nunca toca em frases de erro; validation.php nunca toca em valores de enum/slug.
+
 ### Convenções de chamadas API
 
 - **Um único padrão:** Redux Toolkit thunks + selectors
@@ -874,7 +890,7 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 
 - Páginas: `/cars/create` e `/cars/edit`
 - Botão "Gerar descrição com IA" junto ao campo de descrição
-- **Botão disabled** enquanto faltar preencher: Tipo de Veículo, Marca, Modelo, Ano, Preço (sempre); Combustível (só Carro); Cilindrada+Potência (Carro e Autocaravana)
+- **Botão disabled** enquanto faltar preencher: Tipo de Veículo, Marca, Modelo, Ano, Preço (excepto se "Sob consulta" `hide_price_online` estiver marcado — T1, 2026-06-09); Combustível (só Carro); Cilindrada+Potência (Carro e Autocaravana). O flag `hide_price_online` é também enviado no payload para o `CarDescriptionService` tratar a descrição sem mencionar valor.
 - **Princípio inviolável:** a descrição NÃO repete informação visível na ficha técnica
 - Português de Portugal, 60–100 palavras, texto corrido, sem bullet points
 - Proibido: "Descubra", "perfeito para", "aventuras", "liberdade", "elegante", "moderno"
@@ -971,7 +987,7 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 10. **`CarAnalyticsHeader` recebe `car` como objecto plano sem tipo** — props definidas como `any`. Após H2b, a Ficha passa adapter `carForHeader` construído a partir de `CarSpecs`. Tipar com interface própria (item antigo 40).
 
-11. **Toast de erros 422 só em CarCreate/CarUpdate** — M3.preview implementou em escopo mínimo via `showApiErrorToast` em `helpers/error_helper.ts`. Outros forms (Leads, Users, Companies, Blogs) continuam silenciosos perante 422. Alargar quando houver feedback de bug ou em sessão dedicada de UX.
+11. **Toast + Alert de erros 422 só em forms de viatura (CarCreate/CarUpdate/SaleEditModal)** — M3.preview começou com `showApiErrorToast`; T2 (2026-06-09) adicionou o `<ValidationAlert>` persistente no topo do form (parser dual via `extractValidationBody` aceita 3 formas: AxiosError raw, body desempacotado pelo interceptor, body propagado via `rejectWithValue`). Backend já devolve mensagens em pt-PT (`server/lang/pt/validation.php`). Outros forms (Leads, Users, Companies, Blogs) **continuam** silenciosos perante 422. Alargar quando houver feedback de bug ou em sessão dedicada de UX.
 
 12. **Backend gera `action.label`, `action.suggestion`, `problem` em `immediate_actions`** que o frontend já não renderiza (após F1c). Continuam a ser gerados (custo potencial de IA) mas não aparecem. Decidir destino quando voltarmos com lógica nova (item antigo 34).
 
@@ -1024,6 +1040,14 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 43. **~~Starvation de comparáveis em autocaravanas~~ — RESOLVIDO 2026-05-28.** As 3 tentativas exigiam modelo exacto e a 3.ª (loose) era car-only → autocaravanas com modelo fragmentado (ex: McLouis Menfys Van, 0 anúncios) davam 0 comparáveis. Fix: novo degrau (Attempt 4) na cascata `getComparables`, **só para motorhome**, via `getComparableSnapshotsByBrandPrice` — marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (25%, afinável) sobre o preço efectivo + ano (janela ±5 existente), **sem modelo/fuel/gearbox/power**. Carros mantêm modelo exacto (têm volume). Ver cascata documentada na secção 13.
 
+44. **Segmento em motorhomes/caravans é dados mal preenchidos** (descoberto B1, 2026-06-09) — `cars.segment` guarda **cópia do `vehicle_type`** ("motorhome") em **10/10** motorhomes do stand Quebom. Para carros o factory tem segmentos legítimos (`Sedan`/`SUV`/`Carrinha`); para motorhomes o seeder/importador pôs `segment=vehicle_type` como default. A categoria real do mercado já vive em `car_category_id` (Perfilada/Capucino/Integral/Campervan). 3 opções para sessão dedicada: **(1)** corrigir dados via MIGRATION REVERSÍVEL com `down()` (regra sec 6 + 16 — nunca SQL solto, especialmente pós-incidente 2026-06-09); **(2)** esconder o campo na Ficha quando `vehicle_type ∈ {motorhome, caravan}`, talvez mostrando a categoria em vez do segmento; **(3)** ambos. Recomendação: (1)+(2). **NÃO tapar com tradução cosmética** — confirmado empiricamente que é dados, não apresentação.
+
+45. **15 testes pré-existentes a falhar na suite completa** (descobertos durante a blindagem 2026-06-09, **não causados** pelo trabalho desta sessão): `AuthTest` (2, faz `User::where('admin@xplendor.eu')->firstOrFail()` em `RefreshDatabase` sem seed); `Public Api CarControllerTest` (11, força `config(['database.default'=>'mysql'])` no `setUp` e tenta `127.0.0.1:3306` dentro do container PHP); `RefreshStaleMarketAggregatesJobTest` (1, pollution do anterior — config global mysql); `CarRequestSubsegmentTest` (1, regra com `nullable` aceita `null` mas o teste espera erro). **Nota de processo:** durante toda a sessão validámos contra **SUBCONJUNTOS filtrados** (`--filter "CarSpecsControllerTest|..."` 57/57), nunca a suite completa. Doravante reportar sempre se o número é subset ou full.
+
+46. **Public Api CarControllerTest força MariaDB de dev** — o mesmo padrão perigoso que causou o incidente de BD: `setUp()` faz `config(['database.default' => 'mysql'])` + `DB::purge('mysql')` deliberadamente para correr contra a BD real. Comentário no código: *"These tests require the real MariaDB dev database."* Candidato a refactor para usar SQLite como os outros testes (RefreshDatabase + fixtures via factory). Mantém-se na blindagem actual porque os testes já falham por outras razões (host 127.0.0.1 dentro do container PHP não tem MySQL). Sessão dedicada de cleanup.
+
+47. **`CarSpecsResource` não emite habitação/features/beds** — só `specs.fuel_type, transmission, power_hp, engine_capacity_cc, doors, seats, segment, exterior_color` + `state.condition/origin/has_*` + `registration` + `identification` + `price` + `sale` (T5). Para mostrar `fridge_type`, `shower_type`, `chassis_type`, `inverter_type`, tipos de cama, etc. na Ficha será tarefa separada — toca `CarSpecsResource` + `RESOURCE_SHAPE.md` + tipo `CarSpecs` + render na `CarFichaPage`. Não fazer dentro de tarefa de tradução.
+
 ### 14.2 Itens resolvidos (histórico compactado)
 
 Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
@@ -1046,6 +1070,10 @@ Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
 | ~~50~~ Fix D | Fila/cache em MariaDB em vez de Redis em prod | 2026-05-26 | D2/D3/D4/D6 |
 | ~~52~~ | Comparação de mercado ignorava `promo_price_gross` | 2026-05-25 | Y2 (+ Y2.1 UX, Y2.2 search_url) |
 | ~~P0~~ | Label 'Cilindradas' (name=`cylinders`) confundia utilizadora; corrigido para 'Cilindros' + oculto para motorhome/caravan | 2026-05-27 | P0 |
+| ~~T1~~ | Botão "Gerar IA" rejeitava `hide_price_online=true` por falta de preço — disabled mesmo com "Sob consulta" marcado | 2026-06-09 | T1 |
+| ~~T3~~ | `Car::images()` sem `orderBy` — thumbnail e Ficha ignoravam reorder do FilePond, devolviam por `id ASC`. Corrigido para `orderByDesc('is_primary')→orderBy('order')→orderBy('id')`. `car_external_images` já usava `sort_order` correcto, intacta. | 2026-06-09 | T3 |
+| ~~T2 interceptor~~ | Interceptor Axios "comia" o body 422 — devolvia só `error.message` (string), perdendo `{message, errors}`. **Mesma natureza do X7.1.** Fix: `api_helper` preserva body em 422; `cars/thunk` + `car-sales/thunk` ganham `preserveValidationOrFallback`; `error_helper` reescrito com `extractValidationBody` que aceita 3 formas (AxiosError raw, body desempacotado, `rejectWithValue`). `ScraperForm` patch defensivo para nunca pôr objecto num state `string`. | 2026-06-09 | T2 |
+| ~~T5~~ | Carros vendidos sem secção de dados do comprador na Ficha — endpoint `/specs` não emitia `sale` | 2026-06-09 | T5 |
 
 ### 14.3 Aprendizagens de processo (descobertas em sessões recentes)
 
@@ -1062,6 +1090,23 @@ Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
 - **Falsos positivos em detectores de overflow** — o `findOverflow()` pode listar muitos elementos sem que haja overflow real no documento. A âncora de verdade é `document.documentElement.scrollWidth === window.innerWidth`. Tudo o resto pode ser overflow contido (`overflow: auto/hidden`).
 
 - **Migração de queue/cache em prod precisa de validação imediata** — em D2/D3/D4 confirmámos com `redis-cli KEYS` que o Redis tinha as chaves esperadas (`xplendor-database-xplendor-cache-confirm-redis`). Sem isso, fica a dúvida se a config foi mesmo aplicada.
+
+- **INCIDENTE DE BD — `config:cache` em dev apagou a MariaDB de dev (2026-06-09).** Sequência: (1) durante o trabalho de mensagens pt-PT, foi corrido `php artisan config:cache` para aplicar `APP_LOCALE=pt`. (2) O cache foi gerado a partir do **CLI** onde `$_ENV['DB_CONNECTION'] = 'mysql'` (do `.env`); `bootstrap/cache/config.php` ficou com `database.default = 'mysql'` baked-in. (3) `php artisan test` carregou a config cacheada e **ignorou os `<env>` do `phpunit.xml`** que forçam SQLite. (4) `RefreshDatabase` trait correu `migrate:fresh` contra a **MariaDB de dev** → BD apagada. (5) O sintoma visível ("Data truncated for column 'origin' at row 1") foi diagnosticado depois — `config:clear` chegou tarde, o `migrate:fresh` já tinha corrido. Agravante: o `.env.testing` que já existia apontava para a mesma MariaDB (`DB_CONNECTION=mysql`, `DB_DATABASE=xplendor`) — bomba latente que só não rebentava antes porque os `<env>` do phpunit.xml ganhavam por ordem de precedência sem cache. **Lições:**
+    - **(a) NUNCA `config:cache` em dev.** Em dev o `.env` é lido directamente em cada request.
+    - **(b) `.env.testing` tem de ser sqlite isolado**, não pode apontar para uma BD real.
+    - **(c) Testes verdes não bastam — validar a CONNECTION usada empiricamente**, não só o resultado dos asserts. Confirmar com `php artisan db:show` ou similar antes de qualquer corrida que possa correr migrations.
+    - **(d) `RefreshDatabase` é destrutivo por design** — qualquer drift de config aponta-o para o sítio errado e perde dados.
+
+#### Blindagem aplicada na sequência do incidente (commit `15d1470`)
+
+Camadas defensivas independentes:
+
+1. **`server/.env.testing` reescrito** — `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`, `APP_ENV=testing`, `CACHE_STORE=array`, `QUEUE_CONNECTION=sync`, `SESSION_DRIVER=array`. Antes apontava para `mysql/xplendor` (a BD real). `APP_LOCALE=pt` para os testes reflectirem a app.
+2. **`phpunit.xml` com `force="true"`** nos `<env>` `DB_CONNECTION` e `DB_DATABASE` — sobrescrevem qualquer `.env*` que esteja em conflito.
+3. **`DB::prohibitDestructiveCommands(!$this->app->environment('testing'))`** no `AppServiceProvider::boot()` — bloqueia `migrate:fresh`, `migrate:refresh`, `db:wipe` em **local + staging + production**. Excepção em `testing` porque `RefreshDatabase` precisa internamente. **Bónus de segurança:** se alguém voltar a fazer `config:cache` em dev, `environment('testing')` deixa de bater (cached como `local`), a proibição activa-se e os testes falham FAST com mensagem clara em vez de wipe silencioso.
+4. **Regra operacional:** nunca `migrate:fresh` / `db:wipe` / `migrate:rollback` em dev sem autorização explícita do utilizador; em prod nunca; testes só no ambiente isolado do `.env.testing`. Qualquer limpeza de dados faz-se via **MIGRATION REVERSÍVEL** (com `down()`), nunca SQL solto.
+
+Prova empírica pós-blindagem: `php artisan db:show` mostra connection `sqlite`, database `:memory:`, env `testing`. `php artisan migrate:fresh --force` em dev devolve *"This command is prohibited from running in this environment."*
 
 ---
 
@@ -1330,6 +1375,52 @@ Cada card de pacote passa a abrir WhatsApp com mensagem pré-preenchida do plano
 
 **Aplicado a carros e autocaravanas** (unificado). 2 testes novos (`IpsPendingStateTest`): no-signal → pending; views=0 + mercado → score numérico. Regressões verdes (CarSpecsControllerTest, NextBestCarToPromoteServiceTest).
 
+#### Capítulo S — Ficha da viatura (T1/T2/T3/T5/B1/B2/B3) + Blindagem de testes (sessão 2026-06-09)
+
+Sessão multi-faceta: 6 tarefas de UX/UI/backend sobre a Ficha de viatura + incidente de BD + blindagem.
+
+**T1 — Botão "Gerar IA" aceita "Sob consulta"**
+`CarDescriptionDataFields.tsx`: condição de disabled passa de `!values.price_gross` para `(!values.price_gross && !values.hide_price_online)`. O flag também vai no payload da chamada para o `CarDescriptionService` tratar a descrição sem mencionar valor. Sec 13 actualizada.
+
+**T2 — `<ValidationAlert>` 422 no topo dos forms + mensagens em pt-PT**
+
+*Frontend (Opção A do diagnóstico):* interceptor Axios em `api_helper.ts` passa a preservar o `error.response.data` quando o status é 422 (incluindo 422 só com `message` sem `errors`). Outros status mantêm string. Os thunks `createCar`, `updateCar`, `closeCarSale` ganham helper `preserveValidationOrFallback` que detecta `{message|errors}` e passa o body inteiro ao `rejectWithValue`. `error_helper.ts` reescrito com `extractValidationBody(error)` que aceita 3 formas: AxiosError raw (`err.response.data`), body desempacotado (`err.errors`/`err.message`), ou cru via thunk. `parseApiValidationErrors` + `showApiErrorToast` ambos passam pelo extractor. Novo `ValidationAlert.tsx` (lista bullet com mensagens do backend, sem prefixo de label próprio — a frase já contém o nome do campo). `CarEditor.tsx` recebe prop `validationErrors` e renderiza-o no topo. `CarCreate`/`CarUpdate` adicionam `useState<ApiValidationError[]>` (3 catches no `CarUpdate`: update + venda). `ScraperForm.tsx` ganha patch defensivo no `setError` (`typeof === "string" ? err : err?.message`) — fallback seguro mesmo recebendo objecto após o fix do interceptor.
+
+*Backend (mensagens em pt-PT):* `APP_LOCALE=pt` + `APP_FALLBACK_LOCALE=pt` no `.env`. Novo `server/lang/pt/validation.php` — cópia **completa** do `vendor/laravel/framework/.../lang/en/validation.php` (70+ rules incluindo todas as variantes `array/numeric/file/string` de `min/max/between/gt/gte/lt/lte/size`). Tom pt-PT (não pt-BR): *"O campo X é obrigatório."*, *"tem de ser um número."*, *"não pode ser superior a Y."*. Bloco `attributes` mapeia chaves técnicas para labels (top-level dos Form Requests + nested mais comuns de `vehicle_attributes`: dimensões, pesos, litros, energia + campos de venda). Antes os erros saíam *"The vehicle attributes.dimensions.length m field must not be greater than 30."*; agora *"O campo comprimento (m) não pode ser superior a 30."*. Tema do interceptor é o mesmo do X7.1 — confirmado por diagnóstico empírico.
+
+**T3 — `Car::images()` respeita ordem do FilePond**
+A relação era plain `hasMany` sem `orderBy`. Imagens devolvidas por `id ASC` ignoravam qualquer reorder no FilePond — thumbnail da CarList mostrava sempre a imagem com menor id. Fix: `orderByDesc('is_primary') → orderBy('order') → orderBy('id')`. A coluna é `order` (não `sort_order`, que era o do `car_external_images`, esse já estava correcto). Beneficia todos os consumers: CarList desktop+mobile, CarFichaPage, CarPublicResource, CarSpecsResource (herdam via `$this->images`). Sem migration.
+
+**T5 — Secção "Venda concluída" na Ficha + componente**
+`CarController::specs` eager-loads relação `sale`. `CarSpecsResource` adiciona bloco `'sale' => $this->whenLoaded('sale', fn() => ...)` com `sale_price`, `sale_channel`, `buyer_name`, `buyer_phone`, `buyer_email`, `buyer_gender`, `buyer_age_range`, `contact_consent`, `notes`, `sold_at`. **PII tenant-scoped + auth (endpoint interno apenas).** `CarPublicResource` continua sem campos de buyer — confirmado por grep. Tipo `CarSpecsSale` adicionado a `types/api.ts`. Novo `SaleInfoCard.tsx` — secção full-width abaixo do Row principal, padrão `Card`/`CardBody`. Labels pt-PT locais (`SALE_CHANNEL_LABELS`, `BUYER_GENDER_LABELS`, `BUYER_AGE_RANGE_LABELS`) — locais ao componente porque só fazem sentido no contexto venda (não justificam `helpers/labels.ts` global). Preço formatado em `Intl.NumberFormat('pt-PT', currency: EUR)`, data em `toLocaleDateString('pt-PT')`. Telefone como `tel:`, email como `mailto:`. Badge *"Dados do comprador — uso interno"* sinaliza PII.
+
+**B1 — Ficha em pt-PT (valores)**
+Novo `helpers/labels.ts` (ver sec 10 actualizada). `labelOf(value, map)` com lookup **case-insensitive** (`map[value.toLowerCase()] ?? value`) — `"white"` / `"White"` / `"WHITE"` batem todos; `"Branco"` cai no fallback e mostra-se intacto. Maps: `FUEL_TYPE_LABELS` (cobre EN, slugs Standvirtual, variantes pt já em uso), `TRANSMISSION_LABELS`, `CONDITION_LABELS`, `ORIGIN_LABELS`, `EXTERIOR_COLOR_LABELS` (30 mappings cobrindo as 11 cores observadas na BD + comuns). `BED_LABELS` re-exportado de `pages/Cars/Car/data/vehicleAttributes.ts` (canónico). `CarFichaPage.tsx`: `labelOf` aplicado em 5 sítios — `fuel_type`, `transmission`, `condition`, `origin`, `exterior_color`. **`segment` NÃO traduzido** — investigação empírica revelou problema de dados (item 44 nova dívida técnica).
+
+**B2 — Padrão Card nos blocos da Ficha**
+Os 3 blocos principais (Informação Técnica, Estado & Documentação, Preço & Notas) + Imagens passam de `<Col>` directos para `<Card className="h-100 mb-0"><CardBody>`. `h-100` uniformiza altura entre Cards na Row. `SaleInfoCard` refactor de `<section>` com border inline para `<Card>/<CardBody>` consistente. Items internos com `dashed border` mantêm-se inline (são items compactos, não wrappers — sec 10 diz "não criar mais `sectionStyle` inline para wrapper de secção"; para items dentro do Card é aceitável).
+
+**B3 — Editar dados da venda no SaleInfoCard**
+Endpoint novo `PATCH /api/v1/companies/{id}/cars/{car}/sale` (singular, ver 8.4). Novo `UpdateCarSaleRequest` valida só campos do sale (todos `nullable`, enums fechados via `Rule::in`, **sem `sold_at`**). Novo `CarSaleService::updateSale()` — carrega car com tenant scope, lança `\DomainException` se `status !== 'sold'` (controller traduz para 422 com mensagem pt-PT), upsert atómico por `car_id` (UNIQUE constraint). **NÃO** chama `markAsSold`, **NÃO** dispara email. Frontend: novo `SaleEditModal.tsx` Reactstrap com 9 campos, reutiliza o `<ValidationAlert>` do T2 para 422 estruturado. Conversão de strings vazias para `null` no payload. `SaleInfoCard.tsx` ganha botão verde *"Editar"* ou *"Adicionar dados"* (texto/ícone muda consoante `sale === null`), aceita `sale: CarSpecsSale | null` + props `companyId`/`carId`/`onSaved`. Quando `sale` é `null` ou vazio → mostra placeholder *"Esta viatura foi vendida sem dados do comprador registados. Clica em Adicionar dados para preencher."* (cobre o caso do car 1). `CarFichaPage.tsx`: extrai `refreshSpecs()`, passa como `onSaved`, **render condicional a `specs.status === "sold"`** — o botão NÃO aparece em carros não-vendidos (utilizador nunca bate na parede). Tenant: `Auth::user()->company_id` no controller + service (defesa em profundidade).
+
+**Incidente de BD + Blindagem**
+Documentado em 14.3. **`config:cache` em dev** corrido durante T2 fez `RefreshDatabase` correr `migrate:fresh` contra a MariaDB de dev → BD apagada. Restaurado por backup. Blindagem em 3 camadas (`.env.testing` sqlite isolado + `force="true"` no phpunit + `DB::prohibitDestructiveCommands` em local/staging/prod) commitada isoladamente (`15d1470`) antes do trabalho aplicacional, para fixar a defesa primeiro.
+
+**Commits** (sequência: blindagem primeiro, depois trabalho aplicacional):
+
+```
+15d1470 Blindagem: isolar testes em sqlite + bloquear migrate:fresh/db:wipe fora de testing
+33f984b T1: botão Gerar IA aceita 'Sob consulta' como alternativa ao preço
+07072a4 T2: Alert de validação 422 no form de viatura + mensagens em pt-PT
+fae8033 T3: Car::images() respeita a ordem definida no upload (FilePond reorder)
+18e86e8 T5: ver dados do comprador após venda — backend + componente
+6fce3d2 B1+B2: Ficha em pt-PT (labels) + padrão Card nos blocos + render do SaleInfoCard
+```
+
+(B3 fica em commit próprio depois da validação visual final.)
+
+**Validação:** testes correm em **subconjunto filtrado** (`CarSpecsControllerTest|CarImageUpdateTest|CarImageUploadCropTest|MotorhomeComparablesTest|IpsPendingStateTest|MarketSnapshotServiceTest|VehicleAttributeNormalizationTest`) → **57/57 verdes**. **Suite completa tem 15 falhas pré-existentes** (item 45 nova dívida técnica) **não causadas** pelo trabalho desta sessão. `tsc --noEmit` EXIT=0.
+
 ### 🚧 Próximo
 
 **Curto prazo (próximas 2-3 sessões)**
@@ -1447,6 +1538,8 @@ Antes disto, **SaaS aberto é distração.** A agência é o negócio.
 - **Aggregate de mercado** — registo em `car_market_aggregates` com mediana, top 5 comparáveis, confidence e `price_signal`. Substitui parcialmente os `car_market_snapshots` (Fase E2). Item 3 da dívida técnica documenta a migração da pipeline IA pendente.
 - **Off-canvas** — pattern Reactstrap (`<Offcanvas>`) para sidebars móveis. Aplicado em CarList (Y3.b) para os filtros em viewports mobile. Pattern reutilizável.
 - **`useIsMobile(breakpoint)`** — hook em `web/src/hooks/useIsMobile.ts`. Substitui `useState(window.innerWidth < N)` (que não actualiza em resize). Padrão estabelecido na Fase Y1/Y3.
+- **`labelOf(value, map)`** — função em `web/src/helpers/labels.ts`. Tradução case-insensitive de valores de domínio (enum/slug) para pt-PT, com graceful degradation (devolve original se não houver match). Camada **separada** das mensagens de validação que vivem em `server/lang/pt/validation.php`. Maps disponíveis: `FUEL_TYPE_LABELS`, `TRANSMISSION_LABELS`, `CONDITION_LABELS`, `ORIGIN_LABELS`, `EXTERIOR_COLOR_LABELS`, `BED_LABELS` (re-exportado). Estabelecido no B1 (2026-06-09).
+- **`.env.testing`** — ficheiro de ambiente carregado pelo Laravel quando `APP_ENV=testing`. Após o incidente 2026-06-09 contém **apenas** sqlite isolado em memória (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), nunca a BD real. Combinado com `force="true"` no `phpunit.xml` e `DB::prohibitDestructiveCommands` em local/staging/prod, forma a blindagem em 3 camadas.
 
 ---
 

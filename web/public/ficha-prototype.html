@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>Ficha Técnica — Protótipo A4 (Fase 1)</title>
+    <meta name="description" content="Protótipo visual A4 vertical da Ficha Técnica para autocaravanas. Dados hardcoded.">
+    <style>
+        /* ─────────────────────────────────────────────────────────────────
+           A4 setup
+           A4 vertical = 210mm × 297mm. @page sem margens, o ficheiro
+           controla todo o miolo. print-color-adjust garante que os
+           fundos pintados saem no PDF.
+           ───────────────────────────────────────────────────────────── */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        :root {
+            --ink:        #1f2730;       /* texto principal */
+            --ink-soft:   #5a6772;       /* texto secundário */
+            --line:       #d8dde2;       /* linhas finas */
+            --line-soft:  #ecf0f3;       /* linhas muito subtis */
+            --bg-soft:    #f6f8fa;       /* fundo dos blocos */
+            --accent:     #0e3a5f;       /* navy do stand */
+            --accent-2:   #15795a;       /* verde — preço/destaque */
+            --warn:       #b1280f;       /* aviso legal */
+            --paper:      #ffffff;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #e3e6ea;       /* só visível em ecrã, fora do papel */
+            font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+            color: var(--ink);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* O "papel" A4. fixed size para o Ctrl+P sair certinho. */
+        .page {
+            width: 210mm;
+            height: 297mm;
+            margin: 12mm auto;          /* só para folga em ecrã */
+            background: var(--paper);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
+            padding: 12mm 12mm 10mm 12mm;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* ── HEADER ───────────────────────────────────────────────────── */
+        .header {
+            display: grid;
+            grid-template-columns: 38mm 1fr;
+            gap: 8mm;
+            align-items: center;
+            padding-bottom: 5mm;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .logo-slot {
+            width: 38mm;
+            height: 22mm;
+            border: 1.5px dashed var(--line);
+            border-radius: 2mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-soft);
+            font-size: 8pt;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .stand-meta {
+            text-align: right;
+        }
+        .stand-meta .stand-name {
+            font-size: 13pt;
+            font-weight: 700;
+            color: var(--accent);
+            line-height: 1.1;
+        }
+        .stand-meta .stand-line {
+            font-size: 9pt;
+            color: var(--ink-soft);
+            margin-top: 1mm;
+        }
+
+        /* ── TÍTULO + PREÇO ──────────────────────────────────────────── */
+        .title-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6mm;
+            align-items: flex-end;
+            padding: 5mm 0 4mm 0;
+        }
+        .title-row h1 {
+            margin: 0;
+            font-size: 22pt;
+            font-weight: 800;
+            color: var(--ink);
+            line-height: 1.05;
+            letter-spacing: -0.01em;
+        }
+        .title-row .tagline {
+            font-size: 10pt;
+            color: var(--ink-soft);
+            margin-top: 1.5mm;
+            max-width: 110mm;
+            line-height: 1.35;
+        }
+        .price-tag {
+            text-align: right;
+            background: var(--accent-2);
+            color: white;
+            padding: 4mm 5mm;
+            border-radius: 2mm;
+            min-width: 50mm;
+        }
+        .price-tag .price-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            opacity: 0.85;
+        }
+        .price-tag .price-value {
+            font-size: 20pt;
+            font-weight: 800;
+            line-height: 1;
+            margin-top: 1.5mm;
+        }
+        .price-tag .price-vat {
+            font-size: 8pt;
+            opacity: 0.85;
+            margin-top: 1.5mm;
+        }
+
+        /* ── BLOCO IDENTIFICAÇÃO ─────────────────────────────────────── */
+        .id-block {
+            margin-top: 4mm;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            border: 1px solid var(--line);
+            border-radius: 2mm;
+            overflow: hidden;
+        }
+        .id-cell {
+            padding: 2.5mm 3mm;
+            border-right: 1px solid var(--line-soft);
+            background: var(--bg-soft);
+        }
+        .id-cell:last-child { border-right: none; }
+        .id-cell .label {
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink-soft);
+        }
+        .id-cell .value {
+            font-size: 10.5pt;
+            font-weight: 600;
+            color: var(--ink);
+            margin-top: 0.8mm;
+            line-height: 1.15;
+        }
+
+        /* ── SECÇÃO COM TÍTULO ───────────────────────────────────────── */
+        .section {
+            margin-top: 5mm;
+        }
+        .section-title {
+            font-size: 9pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--paper);
+            background: var(--accent);
+            padding: 1.8mm 3mm;
+            border-radius: 1mm;
+        }
+
+        /* ── CARACTERÍSTICAS GERAIS (grelha) ─────────────────────────── */
+        .spec-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 0;
+            margin-top: 2.5mm;
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+        }
+        .spec-grid .spec {
+            padding: 2.5mm 3mm;
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+        }
+        .spec .spec-label {
+            font-size: 7.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--ink-soft);
+        }
+        .spec .spec-value {
+            font-size: 11pt;
+            font-weight: 600;
+            color: var(--ink);
+            margin-top: 0.8mm;
+            line-height: 1.15;
+        }
+
+        /* ── AS MINHAS QUALIDADES (3 colunas) ────────────────────────── */
+        .qualities {
+            margin-top: 5mm;
+        }
+        .qualities-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 4mm;
+            margin-top: 3mm;
+        }
+        .quality-col {
+            border: 1px solid var(--line);
+            border-radius: 2mm;
+            padding: 3mm 4mm;
+            background: var(--paper);
+        }
+        .quality-col h3 {
+            margin: 0 0 2mm 0;
+            font-size: 10pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            padding-bottom: 1.5mm;
+            border-bottom: 1.5px solid var(--accent);
+        }
+        .quality-col ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        .quality-col li {
+            position: relative;
+            font-size: 9.2pt;
+            line-height: 1.45;
+            color: var(--ink);
+            padding-left: 4mm;
+            padding-block: 0.8mm;
+        }
+        .quality-col li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 2.4mm;
+            width: 1.6mm;
+            height: 1.6mm;
+            background: var(--accent-2);
+            border-radius: 50%;
+        }
+
+        /* ── RODAPÉ ──────────────────────────────────────────────────── */
+        .footer {
+            margin-top: auto;
+            padding-top: 4mm;
+            border-top: 1px solid var(--line);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 6mm;
+            align-items: flex-end;
+        }
+        .legal {
+            font-size: 7.5pt;
+            color: var(--ink-soft);
+            line-height: 1.35;
+            max-width: 120mm;
+        }
+        .legal strong { color: var(--warn); }
+        .stand-contact {
+            font-size: 8pt;
+            color: var(--ink);
+            text-align: right;
+            line-height: 1.4;
+        }
+        .stand-contact .stand-contact-name {
+            font-weight: 700;
+            color: var(--accent);
+            font-size: 9pt;
+            margin-bottom: 1mm;
+        }
+
+        /* ── PRINT ───────────────────────────────────────────────────── */
+        @media print {
+            html, body { background: white; }
+            .page {
+                margin: 0;
+                box-shadow: none;
+                width: 210mm;
+                height: 297mm;
+                page-break-after: avoid;
+            }
+            .preview-hint { display: none !important; }
+        }
+
+        /* dica em ecrã (não imprime) */
+        .preview-hint {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            font-family: ui-monospace, Menlo, monospace;
+            font-size: 11px;
+            background: #1f2730;
+            color: white;
+            padding: 7px 12px;
+            border-radius: 6px;
+            opacity: 0.9;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+
+<div class="preview-hint">Protótipo Fase 1 · dados hardcoded · Ctrl/Cmd + P para ver em A4</div>
+
+<div class="page">
+
+    <!-- HEADER ─────────────────────────────────────────────────────── -->
+    <header class="header">
+        <div class="logo-slot">LOGO DO STAND</div>
+        <div class="stand-meta">
+            <div class="stand-name">Quebom &amp; Parracho — Autocaravanas</div>
+            <div class="stand-line">Rua Exemplo 123 · 4435-000 Rio Tinto · Portugal</div>
+        </div>
+    </header>
+
+    <!-- TÍTULO + PREÇO ─────────────────────────────────────────────── -->
+    <div class="title-row">
+        <div>
+            <h1>Carado T 449 · Ford Transit 130cv</h1>
+            <p class="tagline">Integral familiar de 7,40 m com 5 lugares homologados e 5 dormidas. Painel solar, inversor de onda pura e garagem traseira espaçosa.</p>
+        </div>
+        <div class="price-tag">
+            <div class="price-label">Preço de venda</div>
+            <div class="price-value">68.500 €</div>
+            <div class="price-vat">IVA incluído</div>
+        </div>
+    </div>
+
+    <!-- BLOCO IDENTIFICAÇÃO ────────────────────────────────────────── -->
+    <div class="id-block">
+        <div class="id-cell">
+            <div class="label">Matrícula</div>
+            <div class="value">AB-12-CD</div>
+        </div>
+        <div class="id-cell">
+            <div class="label">Categoria</div>
+            <div class="value">Integral</div>
+        </div>
+        <div class="id-cell">
+            <div class="label">Estilo</div>
+            <div class="value">Familiar c/ garagem</div>
+        </div>
+        <div class="id-cell">
+            <div class="label">Marca</div>
+            <div class="value">Carado</div>
+        </div>
+        <div class="id-cell">
+            <div class="label">Motor</div>
+            <div class="value">Ford Transit 2.0 TDCi</div>
+        </div>
+        <div class="id-cell">
+            <div class="label">Garantia</div>
+            <div class="value">6 meses</div>
+        </div>
+    </div>
+
+    <!-- CARACTERÍSTICAS GERAIS ─────────────────────────────────────── -->
+    <section class="section">
+        <div class="section-title">Características gerais</div>
+        <div class="spec-grid">
+            <div class="spec">
+                <div class="spec-label">Ano</div>
+                <div class="spec-value">2021</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Nacional</div>
+                <div class="spec-value">Sim</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Quilometragem</div>
+                <div class="spec-value">35 000 km</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Potência</div>
+                <div class="spec-value">130 cv</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Cilindrada</div>
+                <div class="spec-value">1 996 cc</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Combustível</div>
+                <div class="spec-value">Diesel</div>
+            </div>
+
+            <div class="spec">
+                <div class="spec-label">Lugares</div>
+                <div class="spec-value">5</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Dormidas</div>
+                <div class="spec-value">5</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Comprimento</div>
+                <div class="spec-value">7,40 m</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Largura</div>
+                <div class="spec-value">2,32 m</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Altura</div>
+                <div class="spec-value">2,85 m</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Caixa</div>
+                <div class="spec-value">Manual 6 vel.</div>
+            </div>
+
+            <div class="spec">
+                <div class="spec-label">Peso bruto</div>
+                <div class="spec-value">3 500 kg</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Tara</div>
+                <div class="spec-value">2 900 kg</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Rebocável</div>
+                <div class="spec-value">1 500 kg</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Autonomia</div>
+                <div class="spec-value">~ 800 km</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Cor exterior</div>
+                <div class="spec-value">Branco</div>
+            </div>
+            <div class="spec">
+                <div class="spec-label">Chassis</div>
+                <div class="spec-value">Al-Ko</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AS MINHAS QUALIDADES ───────────────────────────────────────── -->
+    <section class="qualities">
+        <div class="section-title">As minhas qualidades</div>
+        <div class="qualities-grid">
+
+            <div class="quality-col">
+                <h3>Cabine</h3>
+                <ul>
+                    <li>Ar condicionado</li>
+                    <li>Direcção assistida</li>
+                    <li>Vidros eléctricos</li>
+                    <li>Cruise control</li>
+                    <li>Sensores de marcha-atrás</li>
+                    <li>Câmara de marcha-atrás</li>
+                    <li>Rádio com Bluetooth</li>
+                    <li>Bancos rotativos</li>
+                    <li>Airbags condutor e passageiro</li>
+                </ul>
+            </div>
+
+            <div class="quality-col">
+                <h3>Conforto</h3>
+                <ul>
+                    <li>Cozinha com fogão de 3 lumes e forno</li>
+                    <li>Acrescento de banca</li>
+                    <li>Frigorífico trivalente 142 L (3 prateleiras)</li>
+                    <li>Casa-de-banho com duche independente</li>
+                    <li>Aquecimento Truma a gás</li>
+                    <li>Aquecimento de água Truma</li>
+                    <li>2 painéis solares 150 W</li>
+                    <li>Inversor onda pura 2000 W</li>
+                    <li>Mosquiteiros em todas as janelas</li>
+                    <li>TV com suporte</li>
+                    <li>Sala face a face com mesa extensível</li>
+                </ul>
+            </div>
+
+            <div class="quality-col">
+                <h3>Exterior</h3>
+                <ul>
+                    <li>Toldo Thule</li>
+                    <li>Garagem traseira espaçosa</li>
+                    <li>Abertura de garagem dos dois lados</li>
+                    <li>Porta-bicicletas</li>
+                    <li>Degrau eléctrico</li>
+                    <li>Estabilizadores</li>
+                    <li>Roda de socorro</li>
+                    <li>Escada exterior</li>
+                    <li>Antena parabólica</li>
+                    <li>Tomada exterior 220 V</li>
+                </ul>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- RODAPÉ ─────────────────────────────────────────────────────── -->
+    <footer class="footer">
+        <div class="legal">
+            <strong>Aviso:</strong> Ficha técnica meramente informativa. Pode conter pequenas imprecisões. As características e equipamentos descritos correspondem ao estado da viatura à data de emissão. Consulte o stand para confirmação e demonstração. Preço com IVA incluído à taxa legal em vigor.
+        </div>
+        <div class="stand-contact">
+            <div class="stand-contact-name">Quebom &amp; Parracho</div>
+            <div>+351 938 963 526</div>
+            <div>geral@quebomeparracho.pt</div>
+            <div>www.quebomeparracho.pt</div>
+        </div>
+    </footer>
+
+</div>
+
+</body>
+</html>
