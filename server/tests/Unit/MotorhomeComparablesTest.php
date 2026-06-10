@@ -248,4 +248,104 @@ class MotorhomeComparablesTest extends TestCase
     }
 
     // -------------------------------------------------------------------------
+    // MS1.d — listing url propaga em TODOS os degraus da cascata + selectTop5
+    // -------------------------------------------------------------------------
+    //
+    // Auditoria 2026-06-10 confirmou que a coluna `url` existe no schema
+    // (migration original 2026-03-30) e todos os 5 selects do repo a incluem.
+    // Estes testes blindam essa garantia contra regressões futuras (ex: alguém
+    // a apertar selects nos degraus 4 ou 5 e deixar o link de fora).
+
+    public function test_url_propagates_through_attempt_4_category(): void
+    {
+        // 3 snapshots na mesma categoria com URLs distintos → degrau 4.
+        $this->seedSnapshot(['external_id' => 'fv-1', 'category' => 'furgao', 'brand' => 'Adria', 'model' => 'Twin', 'year' => 2019, 'price' => 56000, 'url' => 'https://standvirtual.com/anuncio/fv-1']);
+        $this->seedSnapshot(['external_id' => 'fv-2', 'category' => 'furgao', 'brand' => 'Pössl', 'model' => 'Roadcar', 'year' => 2020, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/fv-2']);
+
+        $car = $this->withCategory(
+            $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000),
+            'campervan',
+        );
+
+        $result = $this->makeService()->getComparables($car);
+
+        // Todos os snapshots têm URL preenchido.
+        foreach ($result['snapshots'] as $snap) {
+            $this->assertNotEmpty($snap->url, "snapshot {$snap->external_id} sem URL");
+            $this->assertStringStartsWith('https://standvirtual.com/', $snap->url);
+        }
+    }
+
+    public function test_url_propagates_through_attempt_5_brand_price(): void
+    {
+        // Snapshots da mesma marca, modelos diferentes, dentro da faixa de preço
+        // → degrau 5 (brand+price).
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/mc-2']);
+
+        $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000);
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $result = $this->makeService()->getComparables($car);
+
+        $this->assertTrue($result['fallback_used']);
+        foreach ($result['snapshots'] as $snap) {
+            $this->assertNotEmpty($snap->url, "snapshot {$snap->external_id} sem URL");
+        }
+    }
+
+    public function test_selectTop5_includes_url_field(): void
+    {
+        // selectTop5 é privado — invocação via Reflection. Garante que cada
+        // item de top_comparables tem 'url' (consumido pelo ComparablesList
+        // do frontend para o link clicável Y2.2).
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/mc-2']);
+
+        $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000);
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $service = $this->makeService();
+        $result  = $service->getComparables($car);
+
+        $ref    = new \ReflectionClass($service);
+        $method = $ref->getMethod('selectTop5');
+        $method->setAccessible(true);
+        $median = (float) $result['snapshots']->avg('price');
+        $top    = $method->invoke($service, $result['snapshots'], $median);
+
+        $this->assertNotEmpty($top);
+        foreach ($top as $item) {
+            $this->assertArrayHasKey('url', $item, 'selectTop5 perdeu o url');
+            $this->assertNotEmpty($item['url']);
+            $this->assertStringStartsWith('https://standvirtual.com/', $item['url']);
+        }
+    }
+
+    public function test_selectTop5_tolerates_empty_url_gracefully(): void
+    {
+        // Snapshots legacy podem ter URL vazio (text NOT NULL mas string vazia).
+        // selectTop5 deve incluir o item na mesma com url='' — UI degrada
+        // (não mostra ↗), mas não rebenta.
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => '']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/mc-2']);
+
+        $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000);
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $service = $this->makeService();
+        $result  = $service->getComparables($car);
+
+        $ref    = new \ReflectionClass($service);
+        $method = $ref->getMethod('selectTop5');
+        $method->setAccessible(true);
+        $median = (float) $result['snapshots']->avg('price');
+        $top    = $method->invoke($service, $result['snapshots'], $median);
+
+        $this->assertCount(2, $top);
+        // Cada item tem a chave 'url', mesmo que vazia.
+        foreach ($top as $item) {
+            $this->assertArrayHasKey('url', $item);
+        }
+    }
 }

@@ -1,22 +1,26 @@
-import { useRef, useState } from "react";
 import { toast } from "react-toastify";
 import type { MarketComparable } from "../../../../../types/api";
-import { checkMarketLink } from "../../../../../helpers/marketAggregate_helper";
+
+// MS1.e (2026-06-10) — o ↗ abre o anúncio individual directamente em nova aba.
+// O endpoint check-link foi removido do caminho do clique: o seu helper estava
+// a fazer `res.data?.available` quando o interceptor Axios já desempacota o
+// body (mesmo padrão do X7.1/T2), resultando sempre em `false` e divergindo
+// para search_url mesmo em anúncios vivos. Mesmo corrigindo isso, fail-open
+// para search_url perante ambiguidade (timeout, 403 anti-bot ocasional, etc.)
+// tirava ao utilizador o destino certo na maioria dos cliques. Comportamento
+// novo:
+//   - url do comparável não vazio → abre directamente. Sem pré-flight.
+//   - url vazio (snapshot legacy) → abre searchUrl + toast informativo.
+// Anúncios vendidos no Standvirtual levam o utilizador à página "já não
+// disponível" do próprio Standvirtual — honesto e mais útil que nunca chegar
+// ao anúncio. Endpoint check-link mantém-se para reuso futuro mas sai do
+// fluxo de UI desta secção.
 
 interface Props {
     comparables: MarketComparable[];
     effectivePrice: number | null;
-    companyId: number;
-    carId: number;
     searchUrl: string | null;
 }
-
-interface LinkCacheEntry {
-    available: boolean;
-    expiresAt: number;
-}
-
-const LINK_CACHE_TTL_MS = 60_000; // 60 seconds per URL
 
 const FUEL_LABELS: Record<string, string> = {
     gasoline:      "Gasolina",
@@ -42,49 +46,20 @@ function formatCurrency(value: number): string {
     }).format(value);
 }
 
+function openSearchFallback(searchUrl: string | null): void {
+    const target = searchUrl ?? "https://www.standvirtual.com/";
+    window.open(target, "_blank", "noopener,noreferrer");
+    toast.info(
+        "Sem link directo para este anúncio. Abrimos uma pesquisa por viaturas similares no Standvirtual.",
+        { autoClose: 6000 }
+    );
+}
+
 export default function ComparablesList({
     comparables,
     effectivePrice,
-    companyId,
-    carId,
     searchUrl,
 }: Props) {
-    const linkCache = useRef<Map<string, LinkCacheEntry>>(new Map());
-    const [checkingUrl, setCheckingUrl] = useState<string | null>(null);
-
-    const handleLinkClick = async (e: React.MouseEvent<HTMLAnchorElement>, url: string) => {
-        e.preventDefault();
-
-        const now = Date.now();
-        const cached = linkCache.current.get(url);
-
-        if (cached && cached.expiresAt > now) {
-            if (cached.available) {
-                window.open(url, "_blank", "noopener,noreferrer");
-            } else {
-                openFallback(url, searchUrl);
-            }
-            return;
-        }
-
-        setCheckingUrl(url);
-        try {
-            const available = await checkMarketLink(companyId, carId, url);
-            linkCache.current.set(url, { available, expiresAt: now + LINK_CACHE_TTL_MS });
-
-            if (available) {
-                window.open(url, "_blank", "noopener,noreferrer");
-            } else {
-                openFallback(url, searchUrl);
-            }
-        } catch {
-            // Network error — fail-open to search URL
-            openFallback(url, searchUrl);
-        } finally {
-            setCheckingUrl(null);
-        }
-    };
-
     if (comparables.length === 0) {
         return (
             <p className="text-muted fs-13 mb-0 mt-2">
@@ -108,7 +83,7 @@ export default function ComparablesList({
                         ? ((item.price - effectivePrice) / effectivePrice) * 100
                         : null;
 
-                    const isChecking = checkingUrl === item.url;
+                    const hasUrl = !!item.url;
 
                     return (
                         <div
@@ -130,19 +105,35 @@ export default function ComparablesList({
                                     >
                                         {item.title}
                                     </span>
-                                    <a
-                                        href={item.url}
-                                        onClick={(e) => handleLinkClick(e, item.url)}
-                                        className="text-muted fs-11 text-decoration-none flex-shrink-0"
-                                        style={{
-                                            lineHeight: 1,
-                                            cursor: isChecking ? "wait" : "pointer",
-                                            opacity: isChecking ? 0.5 : 1,
-                                        }}
-                                        aria-label="Ver anúncio no Standvirtual"
-                                    >
-                                        {isChecking ? "…" : "↗"}
-                                    </a>
+                                    {hasUrl ? (
+                                        // Link nativo do browser: abre o anúncio individual em nova
+                                        // aba sem pré-flight nem JS. noopener+noreferrer por segurança.
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-muted fs-11 text-decoration-none flex-shrink-0"
+                                            style={{ lineHeight: 1, cursor: "pointer" }}
+                                            aria-label="Ver anúncio no Standvirtual"
+                                        >
+                                            ↗
+                                        </a>
+                                    ) : (
+                                        // Snapshot legacy sem url: abre a pesquisa pré-computada e
+                                        // sinaliza ao utilizador via toast.
+                                        <a
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                openSearchFallback(searchUrl);
+                                            }}
+                                            className="text-muted fs-11 text-decoration-none flex-shrink-0"
+                                            style={{ lineHeight: 1, cursor: "pointer" }}
+                                            aria-label="Pesquisar viaturas similares no Standvirtual"
+                                        >
+                                            ↗
+                                        </a>
+                                    )}
                                 </div>
                                 {chips && (
                                     <span className="text-muted fs-12">{chips}</span>
@@ -162,14 +153,5 @@ export default function ComparablesList({
                 })}
             </div>
         </div>
-    );
-}
-
-function openFallback(deadUrl: string, searchUrl: string | null): void {
-    const target = searchUrl ?? `https://www.standvirtual.com/carros`;
-    window.open(target, "_blank", "noopener,noreferrer");
-    toast.info(
-        "Este anúncio já não está disponível. Abrimos uma pesquisa por carros similares no Standvirtual.",
-        { autoClose: 6000 }
     );
 }
