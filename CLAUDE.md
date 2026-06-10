@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-06-09 · Versão 1.11.0
+> Última actualização: 2026-06-10 · Versão 1.12.0
 
 ---
 
@@ -59,6 +59,7 @@
 | 1.10.11 | 2026-05-28 | IPS — unificação do cálculo (`score` = soma dos 7 fatores do breakdown; `VehicleIpsService` eliminado) + estado "a calibrar" (`score` null / `classification` 'pending' quando sem views e sem mercado). UI neutra via `helpers/ips.ts` (`formatIpsBadge`). Migration score nullable + enum 'pending'. Comando `cars:recalculate-scores`. Pesos inalterados (calibração = fase separada). Carros + autocaravanas. |
 | 1.10.12 | 2026-05-30 | Comparação de mercado por categoria (autocaravanas). Novo degrau na cascata `getComparables` (Attempt 4, só motorhome): categoria do Standvirtual (`capucine`/`integral`/`perfiladas`/`furgao`) + ano. Antes do brand+price (que passa a Attempt 5). Scraper aceita `--body-type`, grava o slug em `car_market_snapshots.category` (override no normalizer — todos os anúncios são desse body_type por filtro). Mapa interno→Standvirtual validado empiricamente. Carros inalterados. 3 testes novos. |
 | 1.11.0 | 2026-06-09 | **Capítulo S — Ficha da viatura + Blindagem de testes.** T1: botão "Gerar IA" aceita `hide_price_online` como alternativa ao preço. T2: `<ValidationAlert>` 422 no topo dos forms de viatura + mensagens em pt-PT (`server/lang/pt/validation.php` completo + `APP_LOCALE=pt`). Interceptor Axios passa a preservar body 422 (corrige natureza X7.1). T3: `Car::images()` ganha `orderByDesc('is_primary')→orderBy('order')`. T5/B3: secção "Venda concluída" na Ficha — `CarSpecsResource` emite `sale` via `whenLoaded`; novo `SaleInfoCard` + `SaleEditModal` editáveis; novo endpoint `PATCH cars/{car}/sale` (upsert PII, sem disparar `markAsSold`/email, pré-condição `status='sold'`). B1: `helpers/labels.ts` (camada de tradução de VALORES no frontend; case-insensitive) com FUEL/TRANSMISSION/CONDITION/ORIGIN/EXTERIOR_COLOR. B2: 4 blocos da Ficha + SaleInfoCard envoltos em `<Card><CardBody>`. **Incidente BD:** `config:cache` em dev contaminou phpunit → `RefreshDatabase` apagou MariaDB de dev. Restaurado por backup. **Blindagem:** `.env.testing` reescrito para sqlite isolado; `force="true"` em `phpunit.xml`; `DB::prohibitDestructiveCommands(!testing)` em local/staging/prod. |
+| 1.12.0 | 2026-06-10 | **Capítulo MS1 — Robustez do motor de mercado (Standvirtual).** MS1.a: slugs de combustível por vertical (validação empírica em browser: `/autocaravanas?fuel=gasolina`→2, `=diesel`→321, `=gaz`→0; `/carros?fuel=gaz`→984 mantém). PHP `FUEL_SLUGS_BY_VERTICAL` constante + Python `FUEL_SLUGS_BY_VERTICAL` idêntico + `SearchFilters.vehicle_type` propagado por `main.py`. Slug não validado → **omite** o parâmetro. MS1.b: widen-on-empty no `scrape_all` (só motorhome) — se 1.ª tentativa devolveu 0 anúncios E fuel filter presente, repete sem fuel. Distingue falha técnica (HTTP/parse) de zero legítimo (`totalCount==0`). Log `[widen]` visível. MS1.c: guard explícito `effectivePrice <= 0` no degrau 5 com log (`getComparables` motorhome); `CarMarketAggregateResource` emite `hide_price_online` (via `loadMissing('car:id,hide_price_online')` no único call site); `MarketPositionCard` `NoneState` com 3 variantes pt-PT (preço>0 mantém actual; preço 0 e `hide_price_online=false` → "Define um preço…"; preço 0 e `hide_price_online=true` → "Viatura 'Sob consulta' sem preço interno…"). MS1.d: auditoria confirmou que `url` JÁ propaga ponta-a-ponta (coluna `text('url')` desde migration original 2026-03-30; todos os 5 selects da cascata incluem; `selectTop5` propaga; Resource emite via `top_comparables`); 4 testes novos blindam contra regressões. **MS1.e:** `↗` do comparável abria a pesquisa em vez do anúncio individual. Causa real (não anti-bot): helper `checkMarketLink` com bug X7.1-like (`res.data?.available` sempre `undefined` após o interceptor desempacotar). Fix: remover check-link do caminho do clique; `↗` passa a `<a target="_blank">` nativo; fallback `searchUrl` só para `url` vazio. **Testes:** PHPUnit subset 85/85 (300 assertions); pytest suite **completa** scraper 46/46 (16 pré-existentes + 30 novos). |
 
 ---
 
@@ -918,6 +919,13 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 - Não tem testes — adicionar pelo menos smoke tests (nota: existe `scraper/tests/` com 16 testes a passar)
 - **Formato de URL do Standvirtual (validado 2026-05-28):** path-based — `/{categoria}/{marca}/desde-{ano-1}?search[filter_enum_fuel_type]={fuel}&search[filter_float_first_registration_year:to]={ano+1}`. Marca e ano-from no PATH; fuel e year:to em query **sem índice `[0]`**; modelo abandonado no URL. Construído em **dois sítios que têm de ficar consistentes**: PHP `MarketSnapshotService::buildSearchUrl()` (gera o `search_url` guardado no aggregate) e Python `SearchFilters.to_path_suffix()` + `to_query_params()` (`scraper/config.py`) usado por `scrape_all()` (`scraper/scraper.py`). **Se a Posição no Mercado voltar a falhar, testar primeiro um URL real no browser — este formato muda periodicamente — antes de alterar.**
 
+- **Slugs de combustível por vertical (MS1.a, validado 2026-06-10):** o Standvirtual usa **dicionários diferentes** por secção. `FUEL_SLUGS_BY_VERTICAL` em PHP (`MarketSnapshotService`) e Python (`scraper/config.py`) — **têm de ser idênticos em conteúdo** (item 42).
+  - **/carros**: slugs herdados de OLX/Otomoto — `gasolina`→`gaz`, `lpg`→`gpl`, `plug-in-hybrid`→`plugin-hybrid`, `hybrid`→`hibride-gaz`, `electric`→`electric`, `diesel`→`diesel`. Confirmado `/carros?fuel=gaz`→984 anúncios (regressão).
+  - **/autocaravanas**: slugs em português — `gasolina`→`gasolina` (validado 2 anúncios), `diesel`→`diesel` (validado 321 anúncios = 88% do mercado). Aliases `petrol`/`gasoline` resolvem para `gasolina`. **Outros slugs (lpg, gpl, electric, hibrido, hibride-*, hybrid, plug-in-hybrid) ficam FORA do mapa** — testes deram 0 em 364 anúncios, ambíguo entre "slug inválido" e "stock real zero". Regra: ausente → **OMITIR** o parâmetro (envia mercado da marca/ano sem filtro de fuel; melhor que zerar silenciosamente com slug errado).
+  - **Widen-on-empty (MS1.b, só motorhome)**: 2.ª rede de segurança. Em `scrape_all()`, se a 1.ª tentativa devolveu 0 anúncios E fuel filter estava presente E `vehicle_type==motorhome`, scraper repete sem `filter_enum_fuel_type`. Distingue **falha técnica** (HTTP/parse → desiste) de **zero legítimo** (`totalCount==0` → faz widen). Log `[widen] fuel filter widened: 0 results with fuel=X, retrying without fuel` visível em `scraper_executions.output`. **O `search_url` que o backend grava no aggregate continua a incluir o slug correcto** (ou omitido se desconhecido); o widening é **runtime do scraper**, não divergência de formato de URL.
+
+- **Guard de preço efectivo ≤ 0 no degrau 5 (MS1.c, motorhome only):** `getComparables` salta o degrau 5 (brand+price band) quando `effectivePrice <= 0` (preço 0 ou null). Sem o guard, a faixa degenera em `[0, 0]` e a query é matematicamente inútil. Os degraus 1–4 não dependem do preço da viatura — correm na mesma e podem ainda devolver matches. Log explícito `[market] degrau 5 (brand+price) saltado: preço efectivo <= 0` para visibilidade.
+
 - **Cascata de comparáveis** (`MarketSnapshotService::getComparables()`, lado Laravel, sobre snapshots já scraped na BD) — difere por tipo de viatura:
   - **Carros** (modelo exacto, há volume): (1) estrita (modelo + ano±1 + fuel + gearbox + power±25); (2) ano alargado (±3); (3) loose (modelo + ano, sem fuel/gearbox/power).
   - **Autocaravanas** (modelo fragmentado, marca pouco discriminadora): (1) e (2) iguais (modelo exacto, ano±5); se falharem, **(4) categoria (body_type Standvirtual) + ano±5**, sem marca/modelo (`getComparableSnapshotsByCategory`) — curto-circuita se houver ≥`MIN_CATEGORY_COMPARABLES` (2); senão **(5) marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (35%, const afinável) sobre preço efectivo + ano±5, sem modelo** (`getComparableSnapshotsByBrandPrice`). A tentativa (3) loose é car-only.
@@ -1036,7 +1044,7 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 
 41. **Consistência de enums com `none` nos outros 3 enums de habitação** — Após M1.c (shower_type sem 'none'), avaliar com Matilde se `fridge_type`, `water_heater_source`, `ambient_heating_source` também deviam perder `'none'` por consistência UX ("não marca = não tem"). Baixa prioridade — funciona como está.
 
-42. **Construtor do URL Standvirtual duplicado PHP/Python** — a lógica do URL path-based existe em dois sítios (`MarketSnapshotService::buildSearchUrl` em PHP e `SearchFilters.to_path_suffix`/`to_query_params` em `scraper/config.py`). Têm de ser mantidos manualmente em sincronia; se o formato do Standvirtual mudar, é preciso corrigir os dois. Não há fonte única. Aceitável (são linguagens diferentes), mas registar como risco — qualquer alteração futura ao formato tem de tocar ambos.
+42. **Construtor do URL Standvirtual duplicado PHP/Python** — a lógica do URL path-based existe em dois sítios (`MarketSnapshotService::buildSearchUrl` em PHP e `SearchFilters.to_path_suffix`/`to_query_params` em `scraper/config.py`). Têm de ser mantidos manualmente em sincronia; se o formato do Standvirtual mudar, é preciso corrigir os dois. Não há fonte única. **Risco arquitectural mantém-se aberto** — sintoma concreto do slug por vertical foi mitigado em 2026-06-10 (MS1.a) com **mapas por vertical idênticos** (`FUEL_SLUGS_BY_VERTICAL` nos dois ficheiros) + **comentários cruzados** apontando entre os dois + **testes nos dois lados** (`MarketSearchUrlPerVerticalTest` PHP + `TestFuelSlugsByVertical`/`TestSearchFiltersOmitFuelWhenUnvalidated` Python) — mas qualquer alteração futura ao formato tem de continuar a tocar ambos. Solução definitiva (single source via JSON partilhado ou geração de código) fica para fase futura.
 
 43. **~~Starvation de comparáveis em autocaravanas~~ — RESOLVIDO 2026-05-28.** As 3 tentativas exigiam modelo exacto e a 3.ª (loose) era car-only → autocaravanas com modelo fragmentado (ex: McLouis Menfys Van, 0 anúncios) davam 0 comparáveis. Fix: novo degrau (Attempt 4) na cascata `getComparables`, **só para motorhome**, via `getComparableSnapshotsByBrandPrice` — marca + faixa de preço ±`MOTORHOME_PRICE_BAND` (25%, afinável) sobre o preço efectivo + ano (janela ±5 existente), **sem modelo/fuel/gearbox/power**. Carros mantêm modelo exacto (têm volume). Ver cascata documentada na secção 13.
 
@@ -1047,6 +1055,20 @@ Esta secção foi reorganizada na revisão 1.8 (DOCS, 2026-05-26): itens activos
 46. **Public Api CarControllerTest força MariaDB de dev** — o mesmo padrão perigoso que causou o incidente de BD: `setUp()` faz `config(['database.default' => 'mysql'])` + `DB::purge('mysql')` deliberadamente para correr contra a BD real. Comentário no código: *"These tests require the real MariaDB dev database."* Candidato a refactor para usar SQLite como os outros testes (RefreshDatabase + fixtures via factory). Mantém-se na blindagem actual porque os testes já falham por outras razões (host 127.0.0.1 dentro do container PHP não tem MySQL). Sessão dedicada de cleanup.
 
 47. **`CarSpecsResource` não emite habitação/features/beds** — só `specs.fuel_type, transmission, power_hp, engine_capacity_cc, doors, seats, segment, exterior_color` + `state.condition/origin/has_*` + `registration` + `identification` + `price` + `sale` (T5). Para mostrar `fridge_type`, `shower_type`, `chassis_type`, `inverter_type`, tipos de cama, etc. na Ficha será tarefa separada — toca `CarSpecsResource` + `RESOURCE_SHAPE.md` + tipo `CarSpecs` + render na `CarFichaPage`. Não fazer dentro de tarefa de tradução.
+
+48. **`CarPublicResource` emite `price_gross`, `price_promo` e `hide_price_online` crus** (descoberto MS1.c Verificação A, 2026-06-10) — o site externo decide mostrar preço ou "Sob consulta" baseado no flag. **Mesmo padrão deliberado do `status`** (sec 8.1: Resource emite cru, consumidor renderiza). **Risco:** um consumidor que ignore o flag expõe inadvertidamente o preço de uma viatura "Sob consulta". Avaliar ocultar `price_gross`/`price_promo` no Resource quando `hide_price_online=true`. É **breaking change na API pública**: exige actualização do `RESOURCE_SHAPE.md` + deploy coordenado com os sites externos (sec 2.5 e 17). **Não corrigir sem essa coordenação.**
+
+49. **Padrão recorrente de bug — interceptor Axios desempacota `response.data` mas consumidores voltam a aceder `res.data.X`** (descoberto nesta sessão, 3 ocorrências documentadas: X7.1 em 2026-05-25, T2 em 2026-06-09, MS1.e em 2026-06-10). O interceptor global em `api_helper.ts` faz `return response.data ? response.data : response;` no sucesso — logo o que cada chamada Axios recebe **é o body JSON directo**, não um `AxiosResponse`. Padrão típico do erro: `const res = await axios.get<...>(...); return res.data?.X;` → `res.data` é sempre `undefined` → comportamento silenciosamente errado. Defesa estrutural a criar em sessão dedicada (opções a discutir):
+    - **Helper tipado único** para chamadas API que torne o shape inequívoco (`apiGet<T>(url): Promise<T>` em vez de `axios.get<{...}>(url): Promise<AxiosResponse<...>>`). Reduz a ambiguidade no ponto de uso.
+    - **Regra ESLint custom** que proíba `.data` em valores devolvidos por `await axios.get(...)` (ou um wrapper marcado).
+    - **TypeScript stricter** com tipo de retorno do `axios.get` redefinido no namespace via `module augmentation` para devolver `T` directamente, alinhando com o interceptor.
+    Decisão fica para tarefa dedicada — risco arquitectural conhecido, atrapalhar todos os fluxos novos sem isto.
+
+50. **Endpoint `check-link` removido do caminho do clique do ↗** (MS1.e, 2026-06-10). Estratégia de "verificar se o anúncio está vivo antes de abrir" estava partida por dois motivos:
+    - **Bug pré-existente no helper frontend** (mesmo padrão X7.1/T2): `checkMarketLink` fazia `res.data?.available` quando o interceptor Axios já desempacotava o body → resposta `{available: true}` era lida como `undefined ?? false` → todo clique caía em `openFallback` mesmo em anúncios vivos.
+    - **Fail-open ambíguo:** qualquer timeout/network/403 ocasional do anti-bot do Standvirtual também cai em `available:false`. Mesmo com o bug corrigido, fail-open por ambiguidade transformava o clique em pesquisa em vez de levar ao anúncio.
+    - **Decisão MS1.e:** remover do caminho do clique. `↗` abre o `url` directamente (`<a target="_blank">` nativo). Snapshots vendidos no Standvirtual mostram a página "já não disponível" do próprio Standvirtual — honesto e mais útil. Anchor com `searchUrl` só se o `url` for vazio (snapshot legacy).
+    - **Endpoint backend `checkMarketLink` mantém-se** no Controller para potencial reuso futuro, mas fora do fluxo de UI. **Para MS2** (multi-fonte: CustoJusto, OLX, dealer-direct) a fiabilidade de uma verificação de "anúncio vivo" tem de ser **reavaliada por fonte** — algumas podem ter sinais 410 fiáveis, outras não; nem todas devem usar a mesma estratégia. Não há decisão única à frente.
 
 ### 14.2 Itens resolvidos (histórico compactado)
 
@@ -1074,6 +1096,10 @@ Resolvidos em 2026-05-22 a 2026-05-26. Para detalhe técnico ver secção 15.
 | ~~T3~~ | `Car::images()` sem `orderBy` — thumbnail e Ficha ignoravam reorder do FilePond, devolviam por `id ASC`. Corrigido para `orderByDesc('is_primary')→orderBy('order')→orderBy('id')`. `car_external_images` já usava `sort_order` correcto, intacta. | 2026-06-09 | T3 |
 | ~~T2 interceptor~~ | Interceptor Axios "comia" o body 422 — devolvia só `error.message` (string), perdendo `{message, errors}`. **Mesma natureza do X7.1.** Fix: `api_helper` preserva body em 422; `cars/thunk` + `car-sales/thunk` ganham `preserveValidationOrFallback`; `error_helper` reescrito com `extractValidationBody` que aceita 3 formas (AxiosError raw, body desempacotado, `rejectWithValue`). `ScraperForm` patch defensivo para nunca pôr objecto num state `string`. | 2026-06-09 | T2 |
 | ~~T5~~ | Carros vendidos sem secção de dados do comprador na Ficha — endpoint `/specs` não emitia `sale` | 2026-06-09 | T5 |
+| ~~MS1.a slug~~ | Slug `gaz` em `/autocaravanas` devolvia 0 anúncios silenciosamente — Standvirtual usa dicionário diferente em cars vs motorhomes. Mapas por vertical (PHP+Python idênticos); slug não validado → omitir o parâmetro | 2026-06-10 | MS1.a |
+| ~~MS1.b widen~~ | Em motorhome, qualquer filtro de fuel que zere a pesquisa abandonava sem retry. Scraper passa a fazer `widen on empty` (1 degrau, só motorhome, distingue HTTP error de zero legítimo) | 2026-06-10 | MS1.b |
+| ~~MS1.c guard~~ | Degrau 5 (brand+price) corria com `effectivePrice=0` produzindo faixa `[0,0]` matematicamente inútil; sem mensagem ao utilizador. Guard explícito + log + UI accionável (3 variantes consoante preço/hide_price_online) | 2026-06-10 | MS1.c |
+| ~~MS1.e ↗ click~~ | `↗` do comparável abria a pesquisa em vez do anúncio individual. Causa real: bug X7.1-like no helper `checkMarketLink` (`res.data?.available` sempre `undefined`). Fix: remover check-link do caminho do clique; `↗` passa a `<a target="_blank">` nativo; fallback só para `url` vazio | 2026-06-10 | MS1.e |
 
 ### 14.3 Aprendizagens de processo (descobertas em sessões recentes)
 
@@ -1421,6 +1447,90 @@ fae8033 T3: Car::images() respeita a ordem definida no upload (FilePond reorder)
 
 **Validação:** testes correm em **subconjunto filtrado** (`CarSpecsControllerTest|CarImageUpdateTest|CarImageUploadCropTest|MotorhomeComparablesTest|IpsPendingStateTest|MarketSnapshotServiceTest|VehicleAttributeNormalizationTest`) → **57/57 verdes**. **Suite completa tem 15 falhas pré-existentes** (item 45 nova dívida técnica) **não causadas** pelo trabalho desta sessão. `tsc --noEmit` EXIT=0.
 
+#### Capítulo MS1 — Robustez do motor de mercado (Standvirtual) (sessão 2026-06-10)
+
+Primeira fase do capítulo "MS — Market Sources" (roadmap multi-fonte, ver fim da secção 15). Objectivo desta fase: corrigir a fundação numa fonte única (Standvirtual) antes de alargar a outras fontes em MS2+.
+
+**Bug-raiz diagnosticado e validado empiricamente.** O Standvirtual usa **dicionários de slugs de combustível diferentes por vertical**: em `/carros` herda os slugs OLX/Otomoto (`gaz`, `lpg`, `plugin-hybrid`); em `/autocaravanas` usa slugs em português (`gasolina`). O código corria um mapa universal de carro e enviava `gaz` para motorhome → Standvirtual devolvia 0 anúncios em silêncio (HTTP 200, `totalCount=0`) → toda a cascata de comparáveis falhava → aggregate com `comparables_count=0`, `confidence=none`, preços `null`, IPS sem o factor `price_vs_market`.
+
+**MS1.a — Slugs de combustível por vertical** ([MarketSnapshotService.php](server/app/Services/MarketSnapshotService.php), [scraper/config.py](scraper/config.py), [scraper/main.py](scraper/main.py))
+
+Validação empírica feita primeiro (curl ao live em 2026-06-10 — protocolo da sec 14.3 "testar URLs reais antes de codificar"):
+
+```
+/autocaravanas?fuel=gasolina  → 2 anúncios   ✅
+/autocaravanas?fuel=diesel    → 321 anúncios ✅ (88% do mercado)
+/autocaravanas?fuel=gaz       → 0 anúncios   ❌ (controlo negativo)
+/carros?fuel=gaz              → 984 anúncios ✅ (regressão)
+```
+
+Outros slugs candidatos (`lpg`, `gpl`, `electric`, `hibrido`, `hibride-gaz`, `hibride-diesel`, `hybrid`, `plug-in-hybrid`, `plugin-hybrid`) deram **0 em 364 anúncios** — inconclusivo (ambíguo entre "slug inválido" e "mercado sem stock"; autocaravanas eléctricas/híbridas em PT são raríssimas). **Decisão conservadora:** ficam **fora** do mapa motorhome; regra é **omitir o parâmetro** quando não há mapeamento validado (omissão > slug errado, que zera silenciosamente).
+
+Mapas idênticos em PHP (`FUEL_SLUGS_BY_VERTICAL` constante na classe) e Python (módulo-level dict), com **bloco de comentário grande nos dois ficheiros** documentando a tabela validada + cross-reference ao outro. Item 42 mantém-se aberto (risco arquitectural permanece), mas com texto actualizado a mencionar a mitigação. `SearchFilters.vehicle_type` foi adicionado como campo da dataclass (default `"car"` para retrocompatibilidade), propagado por `build_filters_from_args` em `main.py`. Slug não validado → `to_query_params()` omite a chave `filter_enum_fuel_type`.
+
+**Testes MS1.a:** 14 testes PHP (`MarketSearchUrlPerVerticalTest`, via Reflection sobre `buildSearchUrl` privado) + 25 testes pytest (`TestFuelSlugsByVertical` 18, `TestSearchFiltersOmitFuelWhenUnvalidated` 7) cobrindo regressão de carro, slugs válidos em motorhome, omissão de slugs não validados, controlo negativo `gaz` em motorhome, e vertical desconhecida.
+
+**MS1.b — Widen-on-empty no scraper** ([scraper/scraper.py](scraper/scraper.py))
+
+Em `/autocaravanas` 88% do mercado é diesel — o filtro de combustível discrimina pouco e é exactamente o que zera pesquisas (slug errado OU stock real zero). **2.ª rede de segurança** caso MS1.a tenha um slug futuro com mapeamento errado: se a 1.ª tentativa de scrape devolveu 0 anúncios E é motorhome E fuel filter estava presente, scraper **remove apenas o fuel** e repete uma vez. **Crítico: distinguir falha técnica de zero legítimo** — `_fetch_first_page` devolve `None` em HTTP/parse error (não dispara widen) e `(next_data, total_count)` em sucesso (`total_count==0` é o gatilho). Carros não disparam widening (mercado tem volume, 0 é provavelmente real). Log `[widen] fuel filter widened: 0 results with fuel=X, retrying without fuel` visível em `scraper_executions.output`. O `search_url` que o backend grava no aggregate continua a incluir o slug correcto (ou omitido) — o widening é **runtime do scraper**, não divergência de formato.
+
+**Testes MS1.b:** 5 testes pytest (`TestWidenOnEmpty`) — mock de `_fetch_first_page`: motorhome+fuel=0 → 2.ª call sem fuel; HTTP error → não dispara; carro → não dispara; motorhome sem fuel inicial → não dispara; motorhome com resultados → não dispara.
+
+**MS1.c — Guard preço efectivo ≤ 0 + UI accionável** ([MarketSnapshotService.php](server/app/Services/MarketSnapshotService.php), [CarController.php](server/app/Http/Controllers/Api/V1/CarController.php), [CarMarketAggregateResource.php](server/app/Http/Resources/CarMarketAggregateResource.php), [types/api.ts](web/src/types/api.ts), [MarketPositionCard.tsx](web/src/pages/Cars/Car/components/intelligence/MarketPositionCard.tsx))
+
+A viatura de teste que expôs o bug tinha `price_gross=0`. Degrau 5 (brand+price ±35%) com preço 0 dá faixa `[0,0]` — matematicamente inútil. O guard `effectivePrice > 0.0` **já existia** mas era silencioso; adicionado **log explícito** `[market] degrau 5 (brand+price) saltado: preço efectivo <= 0` com `car_id` e `effective_price`. Os degraus 1–4 não dependem do preço e mantêm-se intactos.
+
+Frontend: o `MarketPositionCard.NoneState` ganha **3 variantes** de mensagem accionável. Para isso, o aggregate emite agora `hide_price_online` (derivado do `Car` associado via `loadMissing('car:id,hide_price_online')` no único call site — `marketAggregate` action; grep confirmou). `MarketAggregate.hide_price_online?: boolean` no tipo (optional para tolerar payloads sem o campo). Lógica:
+- `carPrice > 0` → mensagem actual *"Sem comparáveis disponíveis no mercado para este modelo no momento."*
+- `carPrice ≤ 0 || null` E `hide_price_online === false` → *"Define um preço para esta viatura para activar a análise de mercado."*
+- `carPrice ≤ 0 || null` E `hide_price_online === true` → *"Viatura 'Sob consulta' sem preço interno definido. Define um preço para activar a análise de mercado."*
+
+Verificação A da sessão revelou que o `CarPublicResource` emite `price_gross`/`price_promo`/`hide_price_online` crus (mesmo padrão do `status`) — registado como item 48 da dívida técnica (não corrigir sem coordenação de breaking change da API pública).
+
+**Testes MS1.c:** 2 testes PHPUnit (`MotorhomeComparablesTest`): guard salta degrau 5 quando preço=0; regressão com preço>0 corre como hoje. 1 asserção nova no `CarMarketAggregateApiTest::test_shapes_response_correctly` confirma `hide_price_online` no payload (`assertIsBool`).
+
+**MS1.d — `listing_url` ponta-a-ponta + testes** ([MotorhomeComparablesTest.php](server/tests/Unit/MotorhomeComparablesTest.php))
+
+Auditoria MS1.d.0 confirmou empiricamente que o `url` **já propaga ponta-a-ponta**: coluna `text('url')` na migration original 2026-03-30; **os 5 selects** do `CarMarketSnapshotRepository` (`getComparableSnapshots`, `Wide`, `Loose`, `ByCategory`, `ByBrandPrice`) incluem `'url'`; `selectTop5` propaga; `CarMarketAggregateResource` emite via `top_comparables`; `MarketComparable.url: string` no tipo; `ComparablesList` já consome (Y2.2 com `↗` + `checkMarketLink`). **Zero código novo necessário.** Suspeita do prompt sobre degraus 4/5 com selects magros foi infundada.
+
+Adicionados 4 **testes de regressão** que blindam a propagação contra alguém apertar selects no futuro: `url_propagates_through_attempt_4_category`, `url_propagates_through_attempt_5_brand_price`, `selectTop5_includes_url_field` (via Reflection), `selectTop5_tolerates_empty_url_gracefully` (snapshot legacy com `url=""` não rebenta).
+
+**MS1.e — `↗` do comparável abre o anúncio individual** ([ComparablesList.tsx](web/src/pages/Cars/Car/components/intelligence/ComparablesList.tsx), [MarketPositionCard.tsx](web/src/pages/Cars/Car/components/intelligence/MarketPositionCard.tsx))
+
+Em teste local, clicar no `↗` abria a página de **pesquisa** do Standvirtual (`search_url`), não o **anúncio individual**. Diagnóstico empírico distinguiu causa real de hipótese (anti-bot):
+
+| Teste | Resultado |
+|---|---|
+| `curl` ao anúncio real fora do container | HTTP 200 (anúncio vivo) |
+| `curl` de dentro do container PHP | HTTP 200 (sem bloqueio anti-bot) |
+| `Http::timeout(4)->get($url)` (igual ao backend) | HTTP 200, `successful=true` |
+
+Anti-bot **não** era a causa. Causa real: **bug pré-existente do helper `checkMarketLink`** (mesmo padrão do X7.1/T2): `res.data?.available` quando o interceptor Axios já desempacota o body → `undefined ?? false` → **sempre false** → todo clique caía no fallback de pesquisa, mesmo em anúncios vivos.
+
+Decisão: **remover o `checkMarketLink` do caminho do clique** em vez de o corrigir. Razões:
+- Mesmo corrigindo o helper, **fail-open por ambiguidade** (timeout, 403 anti-bot ocasional) continuava a divergir cliques em anúncios vivos para a pesquisa.
+- Anúncios vendidos no Standvirtual mostram a página "já não disponível" do próprio Standvirtual — feedback honesto e mais útil ao utilizador que nunca chegar ao anúncio.
+- Para MS2 (multi-fonte), a estratégia de verificação tem de ser **reavaliada por fonte** — não há uma única "verdade" que sirva para todas.
+
+Refactor: `ComparablesList` reescrito sem `useState/useRef/checkMarketLink`. `↗` passa a ser `<a target="_blank" rel="noopener noreferrer">` HTML nativo — abre o anúncio sem JS. Só intercepta `onClick` quando `item.url` é vazio (snapshot legacy) — nesse caso `preventDefault` + abre `searchUrl` + toast pt-PT *"Sem link directo para este anúncio. Abrimos uma pesquisa por viaturas similares no Standvirtual."* (texto novo; substitui a mensagem antiga sobre "já não está disponível" que era mentira no caso comum). Props `companyId`/`carId` removidas do componente (já não há fetch). Endpoint backend `checkMarketLink` mantém-se no `CarController` para reuso futuro mas sai do fluxo de UI desta secção. Allowlist SSRF para `https://www.standvirtual.com/` **não tocada** (multi-domínio é MS2). Item 49 da dívida técnica regista a re-avaliação por fonte para MS2.
+
+**Validação MS1.e:** `tsc --noEmit` EXIT=0. Manualmente, `↗` num comparável vivo abre o anúncio em nova aba sem pré-flight nem toast; comparável sem URL (raro) cai no fallback com toast.
+
+**Validação:**
+
+| Frente | Resultado |
+|---|---|
+| `tsc --noEmit` | EXIT=0 |
+| **PHPUnit subset** (9 grupos: `MarketSearchUrlPerVertical\|MarketSnapshotService\|MotorhomeComparables\|CarMarketAggregateApi\|CarSpecsController\|IpsPendingState\|CarImageUpdate\|CarImageUploadCrop\|VehicleAttributeNormalization`) | **85 passed (300 assertions)** |
+| **pytest suite COMPLETA do scraper** | **46 passed** (16 pré-existentes + 25 MS1.a + 5 MS1.b — zero regressões) |
+| Suite PHP completa | **NÃO corrida** — continua com as 15 falhas pré-existentes (item 45), não tocadas nesta fase |
+
+#### Roadmap do capítulo MS (para sessões futuras)
+
+- **MS2** — Coluna `source` + adapter CustoJusto + dedup hash + allowlist SSRF por fonte no `check-link` + UI "N anúncios · M fontes".
+- **MS3** — Adapter OLX.pt + dedup cross-posting Standvirtual↔OLX.
+- **MS4** — Registry dealer-direct de autocaravanas + adapters leves por stand.
+
 ### 🚧 Próximo
 
 **Curto prazo (próximas 2-3 sessões)**
@@ -1540,6 +1650,7 @@ Antes disto, **SaaS aberto é distração.** A agência é o negócio.
 - **`useIsMobile(breakpoint)`** — hook em `web/src/hooks/useIsMobile.ts`. Substitui `useState(window.innerWidth < N)` (que não actualiza em resize). Padrão estabelecido na Fase Y1/Y3.
 - **`labelOf(value, map)`** — função em `web/src/helpers/labels.ts`. Tradução case-insensitive de valores de domínio (enum/slug) para pt-PT, com graceful degradation (devolve original se não houver match). Camada **separada** das mensagens de validação que vivem em `server/lang/pt/validation.php`. Maps disponíveis: `FUEL_TYPE_LABELS`, `TRANSMISSION_LABELS`, `CONDITION_LABELS`, `ORIGIN_LABELS`, `EXTERIOR_COLOR_LABELS`, `BED_LABELS` (re-exportado). Estabelecido no B1 (2026-06-09).
 - **`.env.testing`** — ficheiro de ambiente carregado pelo Laravel quando `APP_ENV=testing`. Após o incidente 2026-06-09 contém **apenas** sqlite isolado em memória (`DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`), nunca a BD real. Combinado com `force="true"` no `phpunit.xml` e `DB::prohibitDestructiveCommands` em local/staging/prod, forma a blindagem em 3 camadas.
+- **Widen on empty** — pattern de resiliência do scraper (MS1.b, 2026-06-10). Quando uma pesquisa devolve 0 anúncios **legitimamente** (HTTP 200 + `totalCount=0`, não erro técnico) com filtros restritivos, repete a pesquisa removendo o filtro mais frágil em vez de desistir. Versão actual remove apenas `filter_enum_fuel_type` e só para motorhome — 88% diesel torna o filtro pouco discriminador e candidato natural ao alargamento. Distingue **falha técnica** (HTTP/parse error) de **zero legítimo**: só o segundo dispara o widen. Log `[widen]` visível.
 
 ---
 
