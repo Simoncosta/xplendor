@@ -308,7 +308,14 @@ function Body({
     }
 
     if (aggregate.status === "none" || aggregate.comparables_count === 0) {
-        return <NoneState onRefresh={onRefresh} refreshing={refreshing} />;
+        return (
+            <NoneState
+                onRefresh={onRefresh}
+                refreshing={refreshing}
+                carPrice={aggregate.comparison.car_price}
+                hidePriceOnline={aggregate.hide_price_online ?? false}
+            />
+        );
     }
 
     const signal = aggregate.comparison.signal;
@@ -378,8 +385,6 @@ function Body({
                 <ComparablesList
                     comparables={aggregate.top_comparables}
                     effectivePrice={aggregate.comparison.car_price}
-                    companyId={companyId}
-                    carId={carId}
                     searchUrl={aggregate.search_url}
                 />
             )}
@@ -438,12 +443,40 @@ function ErrorState({ userRole }: { userRole?: string }) {
     );
 }
 
-function NoneState({ onRefresh, refreshing }: { onRefresh: () => void; refreshing: boolean }) {
+// MS1.c — mensagem accionável quando o aggregate está vazio.
+// Lógica das 3 variantes:
+//   - preço > 0:  mensagem actual (mercado sem comparáveis para este modelo)
+//   - preço ≤ 0 ou null E hide_price_online === false:
+//       nudge directo para definir preço
+//   - preço ≤ 0 ou null E hide_price_online === true:
+//       nudge consciente do estado 'Sob consulta' (preço interno ≠ publicado)
+// O guard do degrau 5 no backend já evita correr aritmética com preço 0;
+// esta mensagem é o feedback ao utilizador para activar a análise.
+function NoneState({
+    onRefresh,
+    refreshing,
+    carPrice,
+    hidePriceOnline,
+}: {
+    onRefresh: () => void;
+    refreshing: boolean;
+    carPrice: number | null;
+    hidePriceOnline: boolean;
+}) {
+    const noPrice = carPrice === null || carPrice <= 0;
+
+    let message: string;
+    if (noPrice && hidePriceOnline) {
+        message = "Viatura 'Sob consulta' sem preço interno definido. Define um preço para activar a análise de mercado.";
+    } else if (noPrice) {
+        message = "Define um preço para esta viatura para activar a análise de mercado.";
+    } else {
+        message = "Sem comparáveis disponíveis no mercado para este modelo no momento.";
+    }
+
     return (
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap py-1">
-            <span className="text-muted fs-13">
-                Sem comparáveis disponíveis no mercado para este modelo no momento.
-            </span>
+            <span className="text-muted fs-13">{message}</span>
             <button
                 className="btn btn-sm btn-outline-secondary"
                 onClick={onRefresh}

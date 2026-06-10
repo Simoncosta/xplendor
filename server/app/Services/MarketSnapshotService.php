@@ -173,6 +173,11 @@ class MarketSnapshotService
         // Attempt 5 (motorhome only): brand + price band + year, NO model.
         // Motorhome models are too fragmented for exact-model match — compare
         // by brand within ±MOTORHOME_PRICE_BAND of the effective price instead.
+        //
+        // MS1.c — Guard: com effectivePrice <= 0 (preço 0 ou null), a faixa
+        // degenera em [0, 0] e a query é matematicamente inútil. SALTAR este
+        // degrau e logar — UI mostra mensagem accionável ao utilizador para
+        // definir um preço. Os degraus 1-4 não dependem do preço da viatura.
         if (($car->vehicle_type ?? null) === 'motorhome') {
             $effectivePrice = $this->effectivePriceFor($car);
             if ($effectivePrice > 0.0) {
@@ -182,6 +187,11 @@ class MarketSnapshotService
                 if ($snapshots->isNotEmpty()) {
                     return ['snapshots' => $snapshots, 'fallback_used' => true];
                 }
+            } else {
+                \Illuminate\Support\Facades\Log::info(
+                    '[market] degrau 5 (brand+price) saltado: preço efectivo <= 0',
+                    ['car_id' => $car->id, 'effective_price' => $effectivePrice]
+                );
             }
         }
 

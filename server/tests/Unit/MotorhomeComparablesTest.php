@@ -209,4 +209,43 @@ class MotorhomeComparablesTest extends TestCase
         $this->assertFalse($result['fallback_used']);
         $this->assertTrue($result['snapshots']->isEmpty());
     }
+
+    // -------------------------------------------------------------------------
+    // MS1.c — Guard: degrau 5 (brand+price) saltado quando preço efectivo <= 0
+    // -------------------------------------------------------------------------
+
+    public function test_getComparables_motorhome_skips_brand_price_when_effective_price_is_zero(): void
+    {
+        // Snapshots que NÃO bateriam nos degraus 1-3 (modelo diferente, sem
+        // categoria) — só o degrau 5 (brand+price) os poderia apanhar. Mas
+        // com preço efectivo 0, a faixa degenera em [0, 0] e o degrau salta
+        // sem chamar o repo (e sem dividir por zero).
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'fuel' => 'diesel']);
+
+        // Preço gross 0 + sem promo → effectivePrice() == 0.0
+        $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 0.0);
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $result = $this->makeService()->getComparables($car);
+
+        // Degrau 5 saltado → snapshots vazios + fallback_used == false.
+        $this->assertFalse($result['fallback_used']);
+        $this->assertTrue($result['snapshots']->isEmpty());
+    }
+
+    public function test_getComparables_motorhome_uses_brand_price_when_effective_price_positive(): void
+    {
+        // Regressão do guard: preço > 0 → degrau 5 corre como hoje.
+        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'fuel' => 'diesel']);
+
+        $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000.0);
+        $car->forceFill(['fuel_type' => 'Diesel']);
+
+        $result = $this->makeService()->getComparables($car);
+
+        $this->assertTrue($result['fallback_used']);
+        $this->assertGreaterThanOrEqual(1, $result['snapshots']->count());
+    }
+
+    // -------------------------------------------------------------------------
 }

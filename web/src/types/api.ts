@@ -128,6 +128,10 @@ export interface MarketAggregate {
     top_comparables: MarketComparable[];
     fallback_used: boolean;
     search_url: string | null;
+    /** MS1.c — derivado do car, permite ao UI escolher a mensagem accionável
+     *  quando o aggregate está vazio (preço 0 vs 'Sob consulta'). Optional para
+     *  tolerar payloads de versões antigas ou outras fontes que não o emitam. */
+    hide_price_online?: boolean;
     created_at: string;
     updated_at: string;
 }

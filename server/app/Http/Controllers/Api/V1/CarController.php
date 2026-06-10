@@ -339,6 +339,11 @@ class CarController extends Controller
             return response()->json(['data' => null], 200);
         }
 
+        // MS1.c — Resource emite hide_price_online derivado do car associado.
+        // Permite ao UI escolher a mensagem accionável certa quando o aggregate
+        // está vazio (preço 0 vs viatura 'Sob consulta').
+        $aggregate->loadMissing('car:id,hide_price_online');
+
         return CarMarketAggregateResource::make($aggregate)->response();
     }
 

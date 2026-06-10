@@ -32,6 +32,11 @@ class CarMarketAggregateResource extends JsonResource
             'top_comparables' => $this->top_comparables ?? [],
             'fallback_used'   => (bool) $this->fallback_used,
             'search_url'      => $this->search_url,
+            // MS1.c — flag derivado do car associado para o UI escolher a mensagem
+            // accionável quando o aggregate está vazio. Carregado via
+            // loadMissing('car:id,hide_price_online') no controller. Defensivo:
+            // se o car não estiver carregado por algum caminho, devolve false.
+            'hide_price_online' => (bool) ($this->car?->hide_price_online ?? false),
             'created_at'      => $this->created_at->toIso8601String(),
             'updated_at'      => $this->updated_at->toIso8601String(),
         ];

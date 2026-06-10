@@ -99,7 +99,7 @@ class CarMarketAggregateApiTest extends TestCase
     {
         $this->makeAggregate();
 
-        $this->actingAs($this->user, 'sanctum')
+        $response = $this->actingAs($this->user, 'sanctum')
             ->getJson($this->url())
             ->assertStatus(200)
             ->assertJsonStructure([
@@ -112,10 +112,15 @@ class CarMarketAggregateApiTest extends TestCase
                     'comparison' => ['car_price', 'difference_percent', 'signal'],
                     'top_comparables',
                     'fallback_used',
+                    'hide_price_online',
                     'created_at',
                     'updated_at',
                 ],
             ]);
+
+        // MS1.c — hide_price_online emitido como boolean (deriva do car).
+        $data = $response->json('data');
+        $this->assertIsBool($data['hide_price_online']);
     }
 
     public function test_market_aggregate_returns_404_for_unknown_car(): void
