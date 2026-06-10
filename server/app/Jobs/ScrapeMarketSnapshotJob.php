@@ -25,6 +25,25 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
     public int $tries   = 1;
     public int $timeout = 200;
 
+    /**
+     * Fontes de mercado a executar por tipo de veículo (MS2.e).
+     *
+     * Multi-fonte entra primeiro onde dói: autocaravanas e caravanas (modelo
+     * fragmentado, particulares cross-postam regularmente entre plataformas).
+     * Carros ficam Standvirtual-only nesta fase — CustoJusto para carros é
+     * follow-up depois de validado em motorhomes.
+     *
+     * Tem de manter-se consistente com:
+     *   - scraper/sources/__init__.py ADAPTERS registry
+     *   - StoreMarketSnapshotRequest::VALID_SOURCES
+     *   - MARKET_SOURCE_LABELS no frontend (MS2.f)
+     */
+    private const SOURCES_BY_VEHICLE_TYPE = [
+        'motorhome' => 'standvirtual,custojusto',
+        'caravan'   => 'standvirtual,custojusto',
+        'car'       => 'standvirtual',
+    ];
+
     public function __construct(
         private readonly int $carId,
         private readonly int $aggregateId,
@@ -53,6 +72,12 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
         // Carros mantêm 10 (modelo exacto, há volume). Hard cap do Python = 100.
         $maxResults = $vehicleType === 'motorhome' ? '30' : '10';
 
+        // MS2.e — fontes por vehicle_type. CustoJusto entra primeiro onde dói
+        // (autocaravanas/caravanas, modelo fragmentado, particulares
+        // cross-postam). Carros mantêm-se Standvirtual-only nesta fase —
+        // CustoJusto para carros é follow-up depois de validado em motorhomes.
+        $sources = self::SOURCES_BY_VEHICLE_TYPE[$vehicleType] ?? 'standvirtual';
+
         $command = [
             'docker', 'exec',
             env('SCRAPER_CONTAINER', 'xplendor-scraper'),
@@ -61,6 +86,7 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
             '--mode',         'run',
             '--vehicle-type', $vehicleType,
             '--max-results',  $maxResults,
+            '--sources',      $sources,
             '--brand',        $car->brand->name,
             '--model',        $car->model->name,
         ];

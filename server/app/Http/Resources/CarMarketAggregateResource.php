@@ -32,6 +32,9 @@ class CarMarketAggregateResource extends JsonResource
             'top_comparables' => $this->top_comparables ?? [],
             'fallback_used'   => (bool) $this->fallback_used,
             'search_url'      => $this->search_url,
+            // MS2.e — contagens por fonte sobre o pool POS-dedup que alimentou
+            // a mediana. Optional no payload (snapshots históricos não têm).
+            'sources_breakdown' => $this->sources_breakdown,
             // MS1.c — flag derivado do car associado para o UI escolher a mensagem
             // accionável quando o aggregate está vazio. Carregado via
             // loadMissing('car:id,hide_price_online') no controller. Defensivo:

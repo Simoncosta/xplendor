@@ -209,9 +209,22 @@ class MarketSnapshotService
 
     /**
      * Pure computation — no DB writes. Returns the data array ready for persistence.
+     *
+     * MS2.e — acréscimo 1: dedup em leitura cross-execução. O dedup de
+     * ingestão (MS2.d) só cobre o mesmo POST; entre execuções, o mesmo anúncio
+     * pode entrar pelas duas fontes em runs diferentes → duas linhas, mesmo
+     * dedup_hash. Deduplicamos AQUI antes da mediana/contagem/selectTop5,
+     * para que o pool reflicta o número real de anúncios distintos.
+     *
+     * MS2.e — acréscimo 2: sources_breakdown é calculado DEPOIS do dedup.
+     * Cross-postings contam na fonte vencedora (standvirtual por
+     * SOURCE_PRIORITY) — coerente com "Análise baseada em N anúncios" no UI.
      */
     public function computeAggregateData(Collection $comparables, bool $fallbackUsed = false): array
     {
+        // 1. Dedup em leitura (snapshots sem dedup_hash passam intactos).
+        $comparables = $this->dedupPoolByHash($comparables);
+
         $prices = $comparables
             ->pluck('price')
             ->map(fn ($p) => (float) $p)
@@ -226,6 +239,7 @@ class MarketSnapshotService
                 'comparables_count' => 0,
                 'fallback_used'     => $fallbackUsed,
                 'top_comparables'   => null,
+                'sources_breakdown' => null,
             ];
         }
 
@@ -245,7 +259,46 @@ class MarketSnapshotService
             'std_dev'           => $stdDev,
             'fallback_used'     => $fallbackUsed,
             'top_comparables'   => $this->selectTop5($comparables, $median),
+            'sources_breakdown' => $this->computeSourcesBreakdown($comparables),
         ];
+    }
+
+    /**
+     * Source priority for cross-source dedup (MS2.e).
+     *
+     * Coerente com CarMarketSnapshotService::SOURCE_PRIORITY: standvirtual
+     * vence porque tem campos mais ricos (fuel/gearbox/power_hp). Snapshots
+     * sem dedup_hash (legacy pré-MS2.d) passam intactos sem competição.
+     */
+    private const SOURCE_PRIORITY_READ = [
+        'standvirtual' => 0,
+        'custojusto'   => 1,
+    ];
+
+    private function dedupPoolByHash(Collection $snapshots): Collection
+    {
+        return $snapshots
+            ->sortBy(fn ($s) => self::SOURCE_PRIORITY_READ[(string) ($s->source ?? '')] ?? PHP_INT_MAX)
+            ->unique(function ($s) {
+                $hash = (string) ($s->dedup_hash ?? '');
+                if ($hash !== '') {
+                    return $hash;
+                }
+                // Snapshots legacy (pré-MS2.d) ou in-memory sem id passam
+                // intactos. Para persistidos usa $id (estável); para
+                // in-memory (testes/synthetic) usa spl_object_id (único por
+                // objecto). Garante keys únicas em ambos os casos — evita
+                // colapso espúrio do dedup sem dados de hash.
+                return 'no-hash-' . ($s->id ?? spl_object_id($s));
+            })
+            ->values();
+    }
+
+    private function computeSourcesBreakdown(Collection $snapshots): array
+    {
+        return $snapshots
+            ->countBy(fn ($s) => (string) ($s->source ?? 'unknown'))
+            ->toArray();
     }
 
     /**
@@ -262,6 +315,11 @@ class MarketSnapshotService
 
         if (isset($data['top_comparables']) && \is_array($data['top_comparables'])) {
             $data['top_comparables'] = json_encode($data['top_comparables']);
+        }
+        // sources_breakdown (MS2.e) — `update()` bypassa o cast 'array' do model
+        // quando os valores chegam aqui directamente; serializar à mão.
+        if (isset($data['sources_breakdown']) && \is_array($data['sources_breakdown'])) {
+            $data['sources_breakdown'] = json_encode($data['sources_breakdown']);
         }
 
         $data['updated_at'] = now();

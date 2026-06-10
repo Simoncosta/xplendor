@@ -41,6 +41,9 @@ class MotorhomeComparablesTest extends TestCase
             'price_currency' => 'EUR',
             'fuel'           => 'diesel',
             'gearbox'        => 'manual',
+            // MS2.d/e — dedup_hash: default null (legacy); testes que querem
+            // colidir passam o mesmo hash explicitamente via $extra.
+            'dedup_hash'     => null,
             'scraped_at'     => now()->toDateTimeString(),
             'created_at'     => now()->toDateTimeString(),
             'updated_at'     => now()->toDateTimeString(),
@@ -259,8 +262,9 @@ class MotorhomeComparablesTest extends TestCase
     public function test_url_propagates_through_attempt_4_category(): void
     {
         // 3 snapshots na mesma categoria com URLs distintos → degrau 4.
-        $this->seedSnapshot(['external_id' => 'fv-1', 'category' => 'furgao', 'brand' => 'Adria', 'model' => 'Twin', 'year' => 2019, 'price' => 56000, 'url' => 'https://standvirtual.com/anuncio/fv-1']);
-        $this->seedSnapshot(['external_id' => 'fv-2', 'category' => 'furgao', 'brand' => 'Pössl', 'model' => 'Roadcar', 'year' => 2020, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/fv-2']);
+        // MS2.e — extensão: source também propaga (CustoJusto alimenta degrau 4).
+        $this->seedSnapshot(['external_id' => 'fv-1', 'source' => 'standvirtual', 'category' => 'furgao', 'brand' => 'Adria', 'model' => 'Twin', 'year' => 2019, 'price' => 56000, 'url' => 'https://standvirtual.com/anuncio/fv-1']);
+        $this->seedSnapshot(['external_id' => 'fv-2', 'source' => 'custojusto',   'category' => 'furgao', 'brand' => 'Pössl', 'model' => 'Roadcar', 'year' => 2020, 'price' => 60000, 'url' => 'https://www.custojusto.pt/x/.../fv-2']);
 
         $car = $this->withCategory(
             $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000),
@@ -269,19 +273,24 @@ class MotorhomeComparablesTest extends TestCase
 
         $result = $this->makeService()->getComparables($car);
 
-        // Todos os snapshots têm URL preenchido.
         foreach ($result['snapshots'] as $snap) {
             $this->assertNotEmpty($snap->url, "snapshot {$snap->external_id} sem URL");
-            $this->assertStringStartsWith('https://standvirtual.com/', $snap->url);
+            // MS2.e — source preenchido e é uma das fontes válidas.
+            $this->assertContains($snap->source, ['standvirtual', 'custojusto'],
+                "snapshot {$snap->external_id} sem source válido");
         }
+        // Ambas as fontes representadas (CJ alimenta degrau 4 sem brand).
+        $sources = $result['snapshots']->pluck('source')->unique()->toArray();
+        $this->assertContains('standvirtual', $sources);
+        $this->assertContains('custojusto',   $sources);
     }
 
     public function test_url_propagates_through_attempt_5_brand_price(): void
     {
         // Snapshots da mesma marca, modelos diferentes, dentro da faixa de preço
-        // → degrau 5 (brand+price).
-        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
-        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/mc-2']);
+        // → degrau 5 (brand+price). MS2.e — source propaga.
+        $this->seedSnapshot(['external_id' => 'mc-1', 'source' => 'standvirtual', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'source' => 'custojusto',   'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://www.custojusto.pt/x/.../mc-2']);
 
         $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000);
         $car->forceFill(['fuel_type' => 'Diesel']);
@@ -291,16 +300,16 @@ class MotorhomeComparablesTest extends TestCase
         $this->assertTrue($result['fallback_used']);
         foreach ($result['snapshots'] as $snap) {
             $this->assertNotEmpty($snap->url, "snapshot {$snap->external_id} sem URL");
+            $this->assertNotEmpty($snap->source, "snapshot {$snap->external_id} sem source");
         }
     }
 
-    public function test_selectTop5_includes_url_field(): void
+    public function test_selectTop5_includes_url_and_source_fields(): void
     {
-        // selectTop5 é privado — invocação via Reflection. Garante que cada
-        // item de top_comparables tem 'url' (consumido pelo ComparablesList
-        // do frontend para o link clicável Y2.2).
-        $this->seedSnapshot(['external_id' => 'mc-1', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
-        $this->seedSnapshot(['external_id' => 'mc-2', 'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://standvirtual.com/anuncio/mc-2']);
+        // MS2.e — extensão: cada item de top_comparables tem 'url' + 'source'
+        // (consumido pelo ComparablesList do frontend para chip da fonte na UI).
+        $this->seedSnapshot(['external_id' => 'mc-1', 'source' => 'standvirtual', 'brand' => 'McLouis', 'model' => 'Yearling', 'year' => 2019, 'price' => 55000, 'url' => 'https://standvirtual.com/anuncio/mc-1']);
+        $this->seedSnapshot(['external_id' => 'mc-2', 'source' => 'custojusto',   'brand' => 'McLouis', 'model' => 'Nevis',    'year' => 2018, 'price' => 60000, 'url' => 'https://www.custojusto.pt/x/.../mc-2']);
 
         $car = $this->makeCar('motorhome', 'McLouis', 'Menfys Van', 2019, 58000);
         $car->forceFill(['fuel_type' => 'Diesel']);
@@ -316,9 +325,9 @@ class MotorhomeComparablesTest extends TestCase
 
         $this->assertNotEmpty($top);
         foreach ($top as $item) {
-            $this->assertArrayHasKey('url', $item, 'selectTop5 perdeu o url');
-            $this->assertNotEmpty($item['url']);
-            $this->assertStringStartsWith('https://standvirtual.com/', $item['url']);
+            $this->assertArrayHasKey('url',    $item, 'selectTop5 perdeu o url');
+            $this->assertArrayHasKey('source', $item, 'selectTop5 perdeu o source');
+            $this->assertContains($item['source'], ['standvirtual', 'custojusto']);
         }
     }
 
@@ -347,5 +356,119 @@ class MotorhomeComparablesTest extends TestCase
         foreach ($top as $item) {
             $this->assertArrayHasKey('url', $item);
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // MS2.e — dedup em LEITURA + sources_breakdown + isolamento de falha
+    //
+    // Testamos directamente `computeAggregateData(Collection)` em vez de
+    // passar pela cascata — isola o teste da LÓGICA do dedup-em-leitura
+    // (selectTop5, breakdown, dedup por hash) das regras de selecção da
+    // cascata (que filtram por marca/modelo/categoria antes).
+    // ─────────────────────────────────────────────────────────────────────
+
+    private function makeSnapshotModel(array $extra): \App\Models\CarMarketSnapshot
+    {
+        $s = new \App\Models\CarMarketSnapshot();
+        $s->forceFill(array_merge([
+            'id'          => rand(100000, 999999),
+            'external_id' => 'x-' . uniqid(),
+            'source'      => 'standvirtual',
+            'title'       => 'Test listing',
+            'url'         => 'https://standvirtual.com/x',
+            'brand'       => 'A',
+            'model'       => 'M',
+            'year'        => 2019,
+            'price'       => 56000,
+            'category'    => 'furgao',
+            'fuel'        => null,
+            'gearbox'     => null,
+            'region'      => null,
+            'price_evaluation' => null,
+            'scraped_at'  => now(),
+            'dedup_hash'  => null,
+        ], $extra));
+        return $s;
+    }
+
+    public function test_dedup_on_read_collapses_cross_source_with_same_hash(): void
+    {
+        // Mesmo anúncio (Adria Twin) entrou pelas duas fontes em execuções
+        // separadas. Cross-source com mesmo dedup_hash deve colapsar; SV vence.
+        $hash = sha1('adria_twin|2019|56000');
+        $pool = collect([
+            $this->makeSnapshotModel(['external_id' => 'cj-AAA', 'source' => 'custojusto',   'price' => 56000, 'dedup_hash' => $hash, 'brand' => 'Adria', 'model' => 'Twin']),
+            $this->makeSnapshotModel(['external_id' => 'sv-BBB', 'source' => 'standvirtual', 'price' => 56000, 'dedup_hash' => $hash, 'brand' => 'Adria', 'model' => 'Twin']),
+            $this->makeSnapshotModel(['external_id' => 'sv-CCC', 'source' => 'standvirtual', 'price' => 60000, 'dedup_hash' => sha1('possl_roadcar|2019|60000'), 'brand' => 'Pössl', 'model' => 'Roadcar']),
+        ]);
+
+        $data = $this->makeService()->computeAggregateData($pool, false);
+
+        $this->assertSame(2, $data['comparables_count'],
+            'Cross-source com mesmo dedup_hash deve colapsar para 1');
+
+        // Standvirtual venceu em colisão; CJ foi dropado.
+        $externals = collect($data['top_comparables'])->pluck('external_id')->all();
+        $this->assertContains('sv-BBB',    $externals);
+        $this->assertNotContains('cj-AAA', $externals, 'CustoJusto deve ser dropado em colisão');
+        $this->assertContains('sv-CCC',    $externals);
+    }
+
+    public function test_dedup_on_read_leaves_null_hashes_intact(): void
+    {
+        // Snapshots legacy pré-MS2.d têm dedup_hash NULL — passam intactos.
+        // 3 nulls → 3 no pool (key única por id evita colapso espúrio).
+        $pool = collect([
+            $this->makeSnapshotModel(['id' => 1, 'external_id' => 'leg-1', 'price' => 55000, 'dedup_hash' => null]),
+            $this->makeSnapshotModel(['id' => 2, 'external_id' => 'leg-2', 'price' => 56000, 'dedup_hash' => null]),
+            $this->makeSnapshotModel(['id' => 3, 'external_id' => 'leg-3', 'price' => 57000, 'dedup_hash' => null]),
+        ]);
+
+        $data = $this->makeService()->computeAggregateData($pool, false);
+
+        $this->assertSame(3, $data['comparables_count'],
+            'Snapshots sem hash devem passar intactos no dedup em leitura');
+    }
+
+    public function test_sources_breakdown_computed_after_read_dedup(): void
+    {
+        // Pool com SV+CJ + cross-posting que colapsa. Breakdown reflecte
+        // o pool POS-dedup; cross-postings contam na fonte vencedora (SV).
+        $sharedHash = sha1('adria_matrix|2019|56000');
+        $pool = collect([
+            $this->makeSnapshotModel(['external_id' => 'cj-shared', 'source' => 'custojusto',   'price' => 56000, 'dedup_hash' => $sharedHash]),
+            $this->makeSnapshotModel(['external_id' => 'sv-shared', 'source' => 'standvirtual', 'price' => 56000, 'dedup_hash' => $sharedHash]),
+            $this->makeSnapshotModel(['external_id' => 'sv-only',   'source' => 'standvirtual', 'price' => 60000, 'dedup_hash' => sha1('possl|2020|60000')]),
+            $this->makeSnapshotModel(['external_id' => 'cj-only',   'source' => 'custojusto',   'price' => 58000, 'dedup_hash' => sha1('burstner|2019|58000')]),
+        ]);
+
+        $data = $this->makeService()->computeAggregateData($pool, false);
+
+        // Pool final: 3 (cross-posting colapsou). SV ficou com 2 (cross-posting
+        // pertence-lhe + sv-only); CJ ficou com 1 (cj-only).
+        $this->assertSame(3, $data['comparables_count']);
+        $this->assertSame(
+            ['standvirtual' => 2, 'custojusto' => 1],
+            $data['sources_breakdown'],
+            'Breakdown reflecte pool pós-dedup; cross-posting conta no vencedor SV'
+        );
+    }
+
+    public function test_aggregate_survives_when_custojusto_empty_isolation(): void
+    {
+        // Critério de aceitação MS2.e (isolamento de falha): CJ devolve []
+        // (bloqueado/timeout/HTTP error) → aggregate sai com SV; breakdown só SV.
+        $pool = collect([
+            $this->makeSnapshotModel(['external_id' => 'sv-1', 'source' => 'standvirtual', 'price' => 55000, 'dedup_hash' => sha1('a|2019|55000')]),
+            $this->makeSnapshotModel(['external_id' => 'sv-2', 'source' => 'standvirtual', 'price' => 60000, 'dedup_hash' => sha1('b|2019|60000')]),
+            // Zero snapshots CustoJusto — simula bloqueio.
+        ]);
+
+        $data = $this->makeService()->computeAggregateData($pool, false);
+
+        $this->assertSame('success', $data['status']);
+        $this->assertSame(2, $data['comparables_count']);
+        $this->assertSame(['standvirtual' => 2], $data['sources_breakdown']);
+        $this->assertArrayNotHasKey('custojusto', $data['sources_breakdown']);
     }
 }

@@ -23,6 +23,7 @@ class CarMarketAggregate extends Model
         'car_price_gross',
         'promo_price_gross',
         'search_url',
+        'sources_breakdown',
         'top_comparables',
         'fallback_used',
     ];
@@ -36,6 +37,7 @@ class CarMarketAggregate extends Model
         'car_price_gross'   => 'decimal:2',
         'promo_price_gross' => 'decimal:2',
         'top_comparables'   => 'array',
+        'sources_breakdown' => 'array',
         'fallback_used'     => 'boolean',
         'comparables_count' => 'integer',
     ];
