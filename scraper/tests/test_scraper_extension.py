@@ -248,3 +248,155 @@ class TestSearchFiltersOmitFuelWhenUnvalidated:
         assert f.to_query_params().get("search[filter_enum_fuel_type]") == "gaz"
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# MS1.b — widen-on-empty (só motorhome)
+# ─────────────────────────────────────────────────────────────────────────────
+# Em /autocaravanas 88% do mercado é diesel — o filtro de combustível
+# discrimina pouco e zera pesquisas. Se a tentativa 1 com fuel devolveu 0
+# anúncios, scraper tenta de novo sem fuel.
+# Tem de distinguir "zero legítimo" (HTTP 200 + totalCount 0) de "falha
+# técnica" (HTTP error, parse falhou) — só o primeiro caso dispara o widen.
+from unittest.mock import patch, MagicMock
+from scraper import StandvirtualScraper
+
+FUEL_KEY = "search[filter_enum_fuel_type]"
+
+
+def _make_scraper(vehicle_type: str, fuel: str | None) -> StandvirtualScraper:
+    """Cria scraper com search_path do vertical certo (config é global)."""
+    from config import VEHICLE_TYPE_PATHS, config
+    config.search_path = VEHICLE_TYPE_PATHS[vehicle_type]
+    filters = SearchFilters(
+        brand="Carado",
+        year_from=2018,
+        year_to=2022,
+        fuel=fuel,
+        vehicle_type=vehicle_type,
+    )
+    return StandvirtualScraper(filters=filters)
+
+
+def _fake_next_data(total_count: int) -> dict:
+    """Estrutura mínima compatível com _get_advert_search → totalCount.
+    Importante: urqlState[key].data é uma JSON STRING (o parser faz json.loads
+    interno), não um dict. Fixture replica essa forma."""
+    import json
+    return {
+        "props": {
+            "pageProps": {
+                "urqlState": {
+                    "x": {
+                        "data": json.dumps({
+                            "advertSearch": {
+                                "totalCount": total_count,
+                                "edges": [],
+                                "pageInfo": {"pageSize": 32},
+                            }
+                        })
+                    }
+                }
+            }
+        }
+    }
+
+
+class TestWidenOnEmpty:
+    """Critérios de aceitação MS1.b."""
+
+    def test_motorhome_fuel_zero_triggers_retry_without_fuel(self):
+        """Tentativa 1 com fuel → 0 anúncios. Tentativa 2 sem fuel acontece."""
+        scraper = _make_scraper("motorhome", "gasolina")
+
+        first_response = _fake_next_data(0)
+        second_response = _fake_next_data(50)
+
+        captured_params: list[dict] = []
+
+        def fake_fetch_first(url, params):
+            captured_params.append(dict(params))
+            return (first_response if len(captured_params) == 1 else second_response,
+                    0 if len(captured_params) == 1 else 50)
+
+        with patch.object(scraper, "_fetch_first_page", side_effect=fake_fetch_first), \
+             patch.object(scraper, "_parse_listings_from_next_data", return_value=[]):
+            list(scraper.scrape_all())
+
+        # 2 chamadas
+        assert len(captured_params) == 2
+        # 1ª tem fuel
+        assert captured_params[0].get(FUEL_KEY) == "gasolina"
+        # 2ª NÃO tem fuel (foi widened)
+        assert FUEL_KEY not in captured_params[1]
+        # year_to preservado (só removeu fuel)
+        assert captured_params[1]["search[filter_float_first_registration_year:to]"] == 2022
+
+    def test_motorhome_http_error_does_not_trigger_widen(self):
+        """HTTP/parse error na 1ª tentativa → return sem retry-sem-fuel.
+        Distinção crítica: erro não é zero legítimo."""
+        scraper = _make_scraper("motorhome", "gasolina")
+
+        call_count = [0]
+
+        def fake_fetch_first(url, params):
+            call_count[0] += 1
+            return None  # simula HTTP/parse fail
+
+        with patch.object(scraper, "_fetch_first_page", side_effect=fake_fetch_first):
+            list(scraper.scrape_all())
+
+        # Só 1 chamada (a 2ª não acontece em caso de erro)
+        assert call_count[0] == 1
+
+    def test_car_with_zero_does_not_trigger_widen(self):
+        """Carros não disparam widening — mercado tem volume, 0 é provavelmente real."""
+        scraper = _make_scraper("car", "gasolina")
+
+        call_count = [0]
+        captured_params: list[dict] = []
+
+        def fake_fetch_first(url, params):
+            call_count[0] += 1
+            captured_params.append(dict(params))
+            return (_fake_next_data(0), 0)
+
+        with patch.object(scraper, "_fetch_first_page", side_effect=fake_fetch_first), \
+             patch.object(scraper, "_parse_listings_from_next_data", return_value=[]):
+            list(scraper.scrape_all())
+
+        # Carros: só 1 tentativa (não dispara widening mesmo com 0)
+        assert call_count[0] == 1
+
+    def test_motorhome_without_initial_fuel_does_not_trigger_widen(self):
+        """Se já não havia fuel filter, nada a alargar — não dispara widen."""
+        scraper = _make_scraper("motorhome", None)
+
+        call_count = [0]
+
+        def fake_fetch_first(url, params):
+            call_count[0] += 1
+            return (_fake_next_data(0), 0)
+
+        with patch.object(scraper, "_fetch_first_page", side_effect=fake_fetch_first), \
+             patch.object(scraper, "_parse_listings_from_next_data", return_value=[]):
+            list(scraper.scrape_all())
+
+        # Sem fuel inicial: não há nada para remover
+        assert call_count[0] == 1
+
+    def test_motorhome_with_results_does_not_trigger_widen(self):
+        """Se a 1ª tentativa devolveu anúncios, não há widening."""
+        scraper = _make_scraper("motorhome", "diesel")
+
+        call_count = [0]
+
+        def fake_fetch_first(url, params):
+            call_count[0] += 1
+            return (_fake_next_data(321), 321)
+
+        with patch.object(scraper, "_fetch_first_page", side_effect=fake_fetch_first), \
+             patch.object(scraper, "_parse_listings_from_next_data", return_value=[]), \
+             patch.object(scraper, "_get_total_pages", return_value=1):
+            list(scraper.scrape_all())
+
+        # Diesel → 321 anúncios, sem widening
+        assert call_count[0] == 1

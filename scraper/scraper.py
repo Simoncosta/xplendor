@@ -288,9 +288,29 @@ class StandvirtualScraper:
 
         return 1
 
+    def _get_total_count(self, next_data: dict) -> int:
+        """Devolve totalCount declarado pelo Standvirtual (0 se ausente).
+        Distinto de "parsing falhou": esse caminho devolve None em _extract_next_data."""
+        advert_search = self._get_advert_search(next_data)
+        if not advert_search:
+            return 0
+        return int(advert_search.get("totalCount") or 0)
+
     # ------------------------------------------------------------------
     # Entry point: scrape_all
     # ------------------------------------------------------------------
+
+    def _fetch_first_page(self, url: str, params: dict):
+        """Fetch + parse da página 1. Devolve (next_data, total_count) ou None
+        em caso de falha HTTP/parse. Distingue "falha técnica" (None) de "zero
+        legítimo" (total_count == 0) — necessário para o widen-on-empty (MS1.b)."""
+        html = self._fetch_page(url, params)
+        if not html:
+            return None
+        next_data = self._extract_next_data(html)
+        if not next_data:
+            return None
+        return next_data, self._get_total_count(next_data)
 
     def scrape_all(self) -> Generator[list[RawListing], None, None]:
         """
@@ -311,18 +331,44 @@ class StandvirtualScraper:
         if self.filters.to_log_dict():
             logger.info(f"Filtros ativos: {self.filters.to_log_dict()}")
 
-        # Fetch da primeira página para saber total de páginas
-        html = self._fetch_page(url, params)
-        if not html:
+        # MS1.b — Widen-on-empty (só motorhome):
+        # Em /autocaravanas 88% do mercado é diesel — o filtro de combustível
+        # discrimina pouco e é exactamente o que zera pesquisas (slug errado
+        # OU stock real zero). Se a tentativa 1 com fuel devolveu 0 anúncios,
+        # repete sem fuel para devolver mercado da marca/ano.
+        #
+        # Aplica-se só a motorhome (carros têm volume e o mapa do MS1.a já
+        # cobre os slugs corrigidos). Zero anúncios em /carros é provavelmente
+        # mercado real, não erro de slug.
+        first = self._fetch_first_page(url, params)
+        if first is None:
             logger.error("Falhou fetch da primeira página.")
             return
 
-        next_data = self._extract_next_data(html)
-        if not next_data:
-            return
+        next_data, total_count = first
+        fuel_param_key = "search[filter_enum_fuel_type]"
+
+        widened = False
+        if (
+            total_count == 0
+            and self.filters.vehicle_type == "motorhome"
+            and fuel_param_key in params
+        ):
+            dropped_fuel = params.pop(fuel_param_key)
+            logger.warning(
+                f"[widen] fuel filter widened: 0 results with fuel={dropped_fuel}, "
+                f"retrying without fuel (vehicle_type=motorhome)"
+            )
+            widened = True
+            second = self._fetch_first_page(url, params)
+            if second is None:
+                logger.error("Falhou fetch da primeira página após widen.")
+                return
+            next_data, total_count = second
+            logger.info(f"[widen] após retry sem fuel: {total_count} anúncios")
 
         total_pages = self._get_total_pages(next_data)
-        logger.info(f"Total de páginas a scraper: {total_pages}")
+        logger.info(f"Total de páginas a scraper: {total_pages} (widened={widened})")
 
         # Processa página 1
         listings = self._parse_listings_from_next_data(next_data)
