@@ -121,3 +121,15 @@ export const EXTERIOR_COLOR_LABELS: Record<string, string> = {
 // Re-export do BED_LABELS canónico (fonte: pages/Cars/Car/data/vehicleAttributes.ts).
 // Não duplicar — qualquer Ficha/PublicResource que queira labels de cama importa daqui.
 export { BED_LABELS };
+
+// MS2.f — fontes de mercado (Standvirtual + CustoJusto na MS2; OLX/dealer-direct
+// vêm em MS3/MS4). Slug minúsculo na BD (snapshots.source ∈ {standvirtual,
+// custojusto}), label respeita a capitalização canónica da marca de cada site.
+// Sincronizar com:
+//   - StoreMarketSnapshotRequest::VALID_SOURCES (Laravel)
+//   - scraper/sources/__init__.py ADAPTERS registry (Python)
+//   - ScrapeMarketSnapshotJob::SOURCES_BY_VEHICLE_TYPE (Laravel)
+export const MARKET_SOURCE_LABELS: Record<string, string> = {
+    "standvirtual": "Standvirtual",
+    "custojusto":   "CustoJusto",
+};

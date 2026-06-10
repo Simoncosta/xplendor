@@ -7,6 +7,7 @@ import type {
     MarketPriceSignal,
 } from "../../../../../types/api";
 import { fetchMarketAggregate, refreshMarketAggregate } from "../../../../../helpers/marketAggregate_helper";
+import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
 import ComparablesList from "./ComparablesList";
 
 const POLL_INTERVAL_MS  = 10_000;
@@ -362,7 +363,23 @@ function Body({
             >
                 <div>
                     <div className="text-muted fs-12">
-                        Análise baseada em {aggregate.comparables_count} anúncios · Standvirtual
+                        {/* MS2.f — atribuição da fonte:
+                              · M fontes > 1 → "N anúncios · M fontes"
+                              · M = 1        → "N anúncios · {NomeDaFonte}"
+                              · Sem breakdown (legacy) → fallback "Standvirtual" */}
+                        Análise baseada em {aggregate.comparables_count} anúncios · {
+                            (() => {
+                                const bd = aggregate.sources_breakdown;
+                                const sourceKeys = bd ? Object.keys(bd).filter(k => (bd[k] ?? 0) > 0) : [];
+                                if (sourceKeys.length > 1) {
+                                    return `${sourceKeys.length} fontes`;
+                                }
+                                if (sourceKeys.length === 1) {
+                                    return labelOf(sourceKeys[0], MARKET_SOURCE_LABELS);
+                                }
+                                return "Standvirtual";
+                            })()
+                        }
                         {aggregate.fallback_used && (
                             <span className="ms-2 badge bg-light text-muted">pesquisa alargada</span>
                         )}

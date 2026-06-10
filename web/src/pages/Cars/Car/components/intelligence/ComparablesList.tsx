@@ -1,5 +1,6 @@
 import { toast } from "react-toastify";
 import type { MarketComparable } from "../../../../../types/api";
+import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
 
 // MS1.e (2026-06-10) — o ↗ abre o anúncio individual directamente em nova aba.
 // O endpoint check-link foi removido do caminho do clique: o seu helper estava
@@ -72,11 +73,15 @@ export default function ComparablesList({
         <div className="mt-3" style={{ borderTop: "1px solid #eef0f2", paddingTop: 12 }}>
             <div className="d-flex flex-column gap-2">
                 {comparables.map((item, i) => {
+                    // MS2.f — chip da fonte por comparável, no padrão dos outros
+                    // chips. Omissão graciosa se source faltar (legacy payload).
+                    const sourceLabel = labelOf(item.source, MARKET_SOURCE_LABELS);
                     const chips = [
                         item.fuel    ? (FUEL_LABELS[item.fuel]       ?? item.fuel)    : null,
                         item.gearbox ? (GEARBOX_LABELS[item.gearbox] ?? item.gearbox) : null,
                         item.region  ?? null,
                         item.year    ? String(item.year) : null,
+                        sourceLabel,
                     ].filter(Boolean).join(" · ");
 
                     const diffPct = effectivePrice && effectivePrice > 0

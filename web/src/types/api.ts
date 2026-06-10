@@ -101,6 +101,10 @@ export interface MarketComparable {
     fuel?: string;
     gearbox?: string;
     region?: string;
+    /** MS2.f — fonte do anúncio. NOT optional após MS2 (backend sempre o emite
+     *  via selectTop5 → top_comparables[i].source). Slug ∈ {standvirtual,
+     *  custojusto, …}; traduzido para apresentação via MARKET_SOURCE_LABELS. */
+    source: string;
 }
 
 export interface MarketAggregatePrices {
@@ -132,6 +136,10 @@ export interface MarketAggregate {
      *  quando o aggregate está vazio (preço 0 vs 'Sob consulta'). Optional para
      *  tolerar payloads de versões antigas ou outras fontes que não o emitam. */
     hide_price_online?: boolean;
+    /** MS2.f — contagens por fonte sobre o pool POS-dedup que alimentou a
+     *  mediana. Ex.: {"standvirtual": 8, "custojusto": 4}. Optional para
+     *  fallback gracioso quando o payload é de versões pré-MS2 ou está vazio. */
+    sources_breakdown?: Record<string, number>;
     created_at: string;
     updated_at: string;
 }
