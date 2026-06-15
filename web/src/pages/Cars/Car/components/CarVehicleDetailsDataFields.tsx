@@ -5,7 +5,7 @@
 //React
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, Label, Row } from "reactstrap";
+import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, Input, Label, Row } from "reactstrap";
 
 // Components
 import XInput from "Components/Common/XInput";
@@ -306,6 +306,44 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                 </Row>
 
                                 <div className="border rounded-3 p-3 mb-1">
+                                    {/* "Dorme [N] pessoas" encima a lista de camas.
+                                        Mesmo assunto que o array de tipos de camas; agrupar
+                                        evita o utilizador ter de procurar em dois sítios.
+                                        JSON path: vehicle_attributes.habitation_basics.sleeps
+                                        (mantido — só renderização mudou de LivingRoomAccordion
+                                        para aqui). */}
+                                    <Row className="align-items-end mb-3">
+                                        <Col lg={3}>
+                                            <Label
+                                                for="vehicle_attributes.habitation_basics.sleeps"
+                                                className="mb-1"
+                                            >
+                                                Dorme
+                                            </Label>
+                                            <Input
+                                                type="number"
+                                                id="vehicle_attributes.habitation_basics.sleeps"
+                                                name="vehicle_attributes.habitation_basics.sleeps"
+                                                min={1}
+                                                max={12}
+                                                step={1}
+                                                value={values.vehicle_attributes?.habitation_basics?.sleeps ?? ""}
+                                                onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setFieldValue(
+                                                        "vehicle_attributes.habitation_basics.sleeps",
+                                                        v === "" ? null : Number(v),
+                                                    );
+                                                }}
+                                            />
+                                            <small className="text-muted">
+                                                Pessoas que a autocaravana acomoda para dormir
+                                                — pode diferir do número de camas (ex.: uma
+                                                cama de casal conta como 2).
+                                            </small>
+                                        </Col>
+                                    </Row>
+
                                     <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                         <div>
                                             <Label className="mb-1">Camas</Label>

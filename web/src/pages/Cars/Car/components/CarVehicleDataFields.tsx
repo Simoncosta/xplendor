@@ -115,6 +115,10 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                 <h5 className="card-title">Dados da Viatura</h5>
             </div>
 
+            {/* Grelha distribuída em 3 linhas de 12 col, sem buracos:
+                  L1: identidade           (Marca+Modelo+Mês+Ano)
+                  L2: motor                (Combust+CC+CV+Transm+Portas) — só hasMotorFields
+                  L3: versões + (Portas se caravan) */}
             <Row>
                 <Col lg={4}>
                     <Label for="car_brand_id">
@@ -177,50 +181,41 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         className="mb-3"
                     />
                 </Col>
-                {hasMotorFields && (
-                    <>
-                        <Col lg={2}>
-                            <Label for="fuel_type">
-                                Combustível:
-                            </Label>
-                            <Select
-                                id="fuel_type"
-                                name="fuel_type"
-                                options={fuelTypeOptions}
-                                value={fuelTypeOptions.find((option: any) => option.value === values.fuel_type) || null}
-                                onChange={(option: any) => {
-                                    setFieldValue("fuel_type", option?.value || null);
-                                    setFieldTouched("fuel_type", true);
-                                }}
-                                className="mb-3"
-                            />
-                        </Col>
-                        <Col lg={2}>
-                            <XInput
-                                name="engine_capacity_cc"
-                                label="Capacidade do Motor (CC)"
-                                className="mb-3"
-                            />
-                        </Col>
-                        <Col lg={2}>
-                            <XInput
-                                name="power_hp"
-                                label="Potência (CV)"
-                                className="mb-3"
-                            />
-                        </Col>
-                    </>
-                )}
-                <Col lg={2}>
-                    <XInput
-                        type="number"
-                        name="doors"
-                        label="Portas"
-                        className="mb-3"
-                    />
-                </Col>
-                {hasMotorFields && (
+            </Row>
+
+            {hasMotorFields && (
+                <Row>
+                    <Col lg={3}>
+                        <Label for="fuel_type">
+                            Combustível:
+                        </Label>
+                        <Select
+                            id="fuel_type"
+                            name="fuel_type"
+                            options={fuelTypeOptions}
+                            value={fuelTypeOptions.find((option: any) => option.value === values.fuel_type) || null}
+                            onChange={(option: any) => {
+                                setFieldValue("fuel_type", option?.value || null);
+                                setFieldTouched("fuel_type", true);
+                            }}
+                            className="mb-3"
+                        />
+                    </Col>
                     <Col lg={2}>
+                        <XInput
+                            name="engine_capacity_cc"
+                            label="Capacidade (CC)"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            name="power_hp"
+                            label="Potência (CV)"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={3}>
                         <Label for="transmission">
                             Transmissão:
                         </Label>
@@ -236,8 +231,29 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                             className="mb-3"
                         />
                     </Col>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="doors"
+                            label="Portas"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+            )}
+
+            <Row>
+                {!hasMotorFields && (
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="doors"
+                            label="Portas"
+                            className="mb-3"
+                        />
+                    </Col>
                 )}
-                <Col lg={2}>
+                <Col lg={4}>
                     <XInput
                         name="version"
                         label="Versão"
@@ -245,12 +261,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         required
                     />
                 </Col>
-                <Col lg={3}>
-                    {/* Coluna `public_version_name` já existia (migration original
-                        + $fillable + validação + tipo TS + defaults Redux), mas
-                        sem UI até aqui. Quando preenchido, o CarPublicResource
-                        usa-o em vez de `version` no `title` da API pública —
-                        zero alterações de Resource. */}
+                <Col lg={6}>
                     <XInput
                         name="public_version_name"
                         label="Versão (web)"
@@ -259,8 +270,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                     <small className="text-muted">
                         Opcional. Se preenchido, substitui a "Versão" na ficha
                         pública do site. Útil quando o nome interno é técnico
-                        (ex.: "4 Matic 381") e queres algo mais comercial no
-                        site.
+                        (ex.: "4 Matic 381") e queres algo mais comercial.
                     </small>
                 </Col>
             </Row>
