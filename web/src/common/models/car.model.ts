@@ -68,6 +68,9 @@ export interface VehicleAttributeBathroom {
 }
 
 export interface VehicleAttributeHabitationBasics {
+    /** Pessoas que a autocaravana acomoda para dormir. Distinto de cars.seats
+     *  (= lugares com cinto homologados para viajar). Range 1-12. */
+    sleeps?: number | null;
     has_bathroom?: boolean;
     has_kitchen?: boolean;
     kitchen?: VehicleAttributeKitchen;

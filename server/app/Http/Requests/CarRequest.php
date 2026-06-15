@@ -67,6 +67,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.weights'                      => ['nullable', 'array'],
             'vehicle_attributes.weights.gross_weight_kg'      => ['nullable', 'integer', 'min:100', 'max:10000'],
             'vehicle_attributes.habitation_basics'                              => ['nullable', 'array'],
+            'vehicle_attributes.habitation_basics.sleeps'                      => ['nullable', 'integer', 'min:1', 'max:12'],
             'vehicle_attributes.habitation_basics.has_bathroom'                => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.has_kitchen'                 => ['nullable', 'boolean'],
             'vehicle_attributes.habitation_basics.kitchen'                     => ['nullable', 'array'],

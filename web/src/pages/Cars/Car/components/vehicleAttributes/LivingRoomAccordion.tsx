@@ -1,4 +1,4 @@
-import { AccordionBody, AccordionHeader, AccordionItem, Col, Label, Row } from "reactstrap";
+import { AccordionBody, AccordionHeader, AccordionItem, Col, Input, Label, Row } from "reactstrap";
 import { useFormikContext } from "formik";
 import Select from "react-select";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
@@ -17,6 +17,7 @@ const layoutOptions = [
 export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const lr = values.vehicle_attributes?.living_room;
+    const hb = values.vehicle_attributes?.habitation_basics;
 
     return (
         <AccordionItem>
@@ -43,6 +44,35 @@ export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
                             label="Acrescento de mesa"
                             className="mb-3"
                         />
+                    </Col>
+                    <Col lg={3}>
+                        {/* habitation_basics.sleeps — campo da habitação (capacidade
+                            base da célula), renderizado aqui por proximidade ao
+                            layout. Distinto de cars.seats (lugares com cinto). */}
+                        <Label for="vehicle_attributes.habitation_basics.sleeps">
+                            Número de dormidas
+                        </Label>
+                        <Input
+                            type="number"
+                            id="vehicle_attributes.habitation_basics.sleeps"
+                            name="vehicle_attributes.habitation_basics.sleeps"
+                            min={1}
+                            max={12}
+                            step={1}
+                            value={hb?.sleeps ?? ""}
+                            onChange={(e) => {
+                                const v = e.target.value;
+                                setFieldValue(
+                                    "vehicle_attributes.habitation_basics.sleeps",
+                                    v === "" ? null : Number(v),
+                                );
+                            }}
+                            className="mb-1"
+                        />
+                        <small className="text-muted">
+                            Pessoas que a autocaravana acomoda para dormir
+                            (pode ser diferente do número de lugares).
+                        </small>
                     </Col>
                 </Row>
 

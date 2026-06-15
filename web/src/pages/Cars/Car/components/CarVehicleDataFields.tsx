@@ -245,6 +245,24 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         required
                     />
                 </Col>
+                <Col lg={3}>
+                    {/* Coluna `public_version_name` já existia (migration original
+                        + $fillable + validação + tipo TS + defaults Redux), mas
+                        sem UI até aqui. Quando preenchido, o CarPublicResource
+                        usa-o em vez de `version` no `title` da API pública —
+                        zero alterações de Resource. */}
+                    <XInput
+                        name="public_version_name"
+                        label="Versão (web)"
+                        className="mb-1"
+                    />
+                    <small className="text-muted">
+                        Opcional. Se preenchido, substitui a "Versão" na ficha
+                        pública do site. Útil quando o nome interno é técnico
+                        (ex.: "4 Matic 381") e queres algo mais comercial no
+                        site.
+                    </small>
+                </Col>
             </Row>
         </div>
     )

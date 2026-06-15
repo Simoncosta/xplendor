@@ -70,6 +70,55 @@ class VehicleAttributeNormalizationTest extends TestCase
         $this->assertArrayNotHasKey('has_kitchen', $result);
     }
 
+    // ------------------------------------------------------------------ //
+    //  habitation_basics.sleeps (TAREFA A)
+    //  Capacidade de dormidas — distinto de cars.seats (lugares com cinto).
+    // ------------------------------------------------------------------ //
+
+    public function test_preserves_sleeps_when_present_in_new_format(): void
+    {
+        // Registo novo com sleeps preenchido → preserva valor sem alterações.
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => [
+                'sleeps'       => 4,
+                'has_bathroom' => true,
+            ],
+        ]);
+
+        $this->assertSame(4, $result['habitation_basics']['sleeps']);
+        $this->assertTrue($result['habitation_basics']['has_bathroom']);
+    }
+
+    public function test_legacy_record_without_sleeps_is_graceful(): void
+    {
+        // Registo antigo (formato novo já adoptado mas sem o campo sleeps,
+        // que só existe a partir de 2026-06-10): normalizeShape não rebenta
+        // e o campo fica ausente — read no UI traduz para null.
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => [
+                'has_bathroom' => true,
+                'has_kitchen'  => true,
+            ],
+        ]);
+
+        $this->assertArrayNotHasKey('sleeps', $result['habitation_basics']);
+        // E a estrutura no resto continua intacta.
+        $this->assertTrue($result['habitation_basics']['has_bathroom']);
+        $this->assertTrue($result['habitation_basics']['has_kitchen']);
+    }
+
+    public function test_old_flat_format_does_not_invent_sleeps(): void
+    {
+        // Migração do formato antigo flat: nunca houve campo sleeps; logo
+        // após migrate, o habitation_basics não deve ter sleeps inventado.
+        $result = VehicleAttribute::normalizeShape([
+            'has_bathroom' => true,
+            'has_kitchen'  => true,
+        ]);
+
+        $this->assertArrayNotHasKey('sleeps', $result['habitation_basics']);
+    }
+
     public function test_renames_autonomy_to_autonomy_km_at_root(): void
     {
         $result = VehicleAttribute::normalizeShape(['autonomy' => 800]);
