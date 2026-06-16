@@ -5,6 +5,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { useDispatch, useSelector } from "react-redux";
 // Components
 import XTanStackTable from "Components/Common/XTanStackTable";
+import CarThumbnail from "Components/Common/CarThumbnail";
 import LeadStatusBadge from "./components/LeadStatusBadge";
 import {
     Container,
@@ -94,18 +95,11 @@ export default function LeadList() {
             cell: ({ row }: any) => {
                 const car = row.original.car;
 
-                const image = car?.images?.find((img: any) => img.is_primary)?.image;
+                const image = car?.images?.find((img: any) => img.is_primary)?.image ?? null;
 
                 return (
                     <div className="d-flex align-items-center gap-2">
-                        {image && (
-                            <img
-                                src={process.env.REACT_APP_PUBLIC_URL + image}
-                                alt=""
-                                className="rounded"
-                                style={{ width: 50, height: 35, objectFit: "cover" }}
-                            />
-                        )}
+                        <CarThumbnail src={image} variant="compact" width={50} height={35} />
                         <div>
                             <h6 className="mb-0">
                                 {car?.brand?.name} {car?.model?.name}
@@ -205,7 +199,7 @@ export default function LeadList() {
         const phone = lead.phone?.replace(/\D/g, "");
         const car = lead.car;
         const initial = lead.name?.charAt(0)?.toUpperCase() ?? "?";
-        const carImage = car?.images?.find((img: any) => img.is_primary)?.image;
+        const carImage = car?.images?.find((img: any) => img.is_primary)?.image ?? null;
 
         return (
             <div
@@ -242,14 +236,7 @@ export default function LeadList() {
                 <div style={{ borderTop: "1px solid #e9ebec", padding: "10px 14px" }}>
                     {car && (
                         <div className="d-flex align-items-center gap-2 mb-2">
-                            {carImage && (
-                                <img
-                                    src={process.env.REACT_APP_PUBLIC_URL + carImage}
-                                    alt=""
-                                    className="rounded flex-shrink-0"
-                                    style={{ width: 44, height: 30, objectFit: "cover" }}
-                                />
-                            )}
+                            <CarThumbnail src={carImage} variant="compact" width={44} height={30} />
                             <span className="fw-semibold text-body fs-13 text-truncate">
                                 {car.brand?.name} {car.model?.name}
                             </span>

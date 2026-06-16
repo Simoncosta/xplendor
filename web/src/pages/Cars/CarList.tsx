@@ -26,6 +26,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
+import CarThumbnail from "Components/Common/CarThumbnail";
 import { createSelector } from "reselect";
 // Slices
 import { showCarmine, syncCarmine } from "slices/thunks";
@@ -289,22 +290,13 @@ const CarList = () => {
 
                 return (
                     <div className="d-flex align-items-center">
-                        {getCarThumbnailUrl(car) && (
-                            <div className="flex-shrink-0 me-3">
-                                <img
-                                    src={getCarThumbnailUrl(car) as string}
-                                    alt=""
-                                    className="img-thumbnail border-0"
-                                    style={{
-                                        width: 150,
-                                        aspectRatio: "16 / 9",
-                                        objectFit: "cover",
-                                        borderRadius: "1rem",
-                                        boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
-                                    }}
-                                />
-                            </div>
-                        )}
+                        <div className="flex-shrink-0 me-3">
+                            <CarThumbnail
+                                src={getCarThumbnailUrl(car)}
+                                variant="row"
+                                width={150}
+                            />
+                        </div>
                         <div className="flex-grow-1" style={{ minWidth: 0 }}>
                             <div className="d-flex align-items-center flex-wrap gap-2 mb-1">
                                 <h5 className="fs-14 mb-0 fw-semibold text-body text-truncate">
@@ -448,35 +440,7 @@ const CarList = () => {
                     cursor: "pointer",
                 }}
             >
-                <div style={{ position: "relative", paddingBottom: "56.25%", background: "#f1f3f5" }}>
-                    {thumbnailUrl ? (
-                        <img
-                            src={thumbnailUrl}
-                            alt=""
-                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                    ) : (
-                        <div
-                            style={{
-                                position: "absolute",
-                                inset: 0,
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 4,
-                            }}
-                        >
-                            <i className="ri-car-line" style={{ fontSize: 32, color: "#adb5bd" }} />
-                            <span
-                                className="fw-semibold text-uppercase"
-                                style={{ fontSize: 11, color: "#adb5bd", letterSpacing: "0.06em" }}
-                            >
-                                Sem imagem
-                            </span>
-                        </div>
-                    )}
-                </div>
+                <CarThumbnail src={thumbnailUrl} variant="fullwidth" />
 
                 <div style={{ padding: "12px 14px" }}>
                     <div className="d-flex align-items-center gap-2 mb-2" style={{ minWidth: 0 }}>
