@@ -7,6 +7,17 @@ use Illuminate\Validation\Rule;
 
 class CarRequest extends FormRequest
 {
+    /**
+     * M2.2 — marcas de chassis aceites (autocaravanas e caravanas).
+     * Constante extensível: novas marcas entram com 1 linha + sem migration
+     * (string nullable na BD). Inclui marcas de chassis mais comuns no
+     * mercado português 2026.
+     */
+    public const VALID_CHASSIS_BRANDS = [
+        'Fiat', 'Renault', 'Ford', 'Citroën', 'Mercedes', 'Iveco',
+        'Peugeot', 'VW',
+    ];
+
     protected function prepareForValidation(): void
     {
         $vehicleType = $this->input('vehicle_type') ?: 'car';
@@ -198,6 +209,7 @@ class CarRequest extends FormRequest
             'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],
             'public_version_name' => ['nullable', 'string', 'max:150'],
+            'chassis_brand'       => ['nullable', 'string', Rule::in(self::VALID_CHASSIS_BRANDS)],
             'fuel_type' => ['nullable', 'required_unless:vehicle_type,caravan', 'string', 'max:50'],
             'power_hp' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:2000'],
             'engine_capacity_cc' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:10000'],

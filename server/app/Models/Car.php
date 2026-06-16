@@ -30,6 +30,7 @@ class Car extends Model implements AuditableContract
         'car_category_id',
         'version',
         'public_version_name',
+        'chassis_brand',
         'fuel_type',
         'power_hp',
         'engine_capacity_cc',

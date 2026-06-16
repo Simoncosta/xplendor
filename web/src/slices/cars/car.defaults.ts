@@ -38,6 +38,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
 
     version: "",
     public_version_name: null,
+    chassis_brand: null,
 
     fuel_type: "",
     power_hp: 0,

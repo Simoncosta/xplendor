@@ -19,6 +19,13 @@ import { getCarModels } from "slices/car-models/thunk";
 import { fuelTypeOptions, monthsOptions, transmissionOptions } from "common/data/cars";
 import { createSelector } from "reselect";
 
+// M2.2 — marcas de chassis aceites. Tem de manter-se em sincronia com a
+// constante VALID_CHASSIS_BRANDS em server/app/Http/Requests/CarRequest.php
+// (defesa em profundidade — backend faz Rule::in com a mesma lista).
+const chassisBrandOptions = [
+    "Fiat", "Renault", "Ford", "Citroën", "Mercedes", "Iveco", "Peugeot", "VW",
+].map(b => ({ value: b, label: b }));
+
 const selectCarBrandState = (state: any) => state.CarBrand;
 const selectCarModelState = (state: any) => state.CarModel;
 
@@ -46,6 +53,10 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const { brands, loading } = useSelector(selectCarBrandOptionsState);
     const { models } = useSelector(selectCarModelOptionsState);
     const hasMotorFields = values.vehicle_type !== "caravan";
+    const isHabitationVehicle = values.vehicle_type === "motorhome" || values.vehicle_type === "caravan";
+    // M2.2 — em motorhome/caravan, a Row 1 ganha Marca do chassis ao lado
+    // do Modelo; Marca/Modelo encolhem de lg=4 para lg=3 para acomodar 12.
+    const brandModelLg = isHabitationVehicle ? 3 : 4;
 
     const brandOptions = useMemo(() => brands.map((brand: any) => ({
         value: brand.id,
@@ -120,7 +131,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                   L2: motor                (Combust+CC+CV+Transm+Portas) — só hasMotorFields
                   L3: versões + (Portas se caravan) */}
             <Row>
-                <Col lg={4}>
+                <Col lg={brandModelLg}>
                     <Label for="car_brand_id">
                         Marca: <span className="text-danger">*</span>
                     </Label>
@@ -140,7 +151,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         className="mb-3"
                     />
                 </Col>
-                <Col lg={4}>
+                <Col lg={brandModelLg}>
                     <Label for="car_model_id">
                         Modelo: <span className="text-danger">*</span>
                     </Label>
@@ -157,6 +168,24 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         className="mb-3"
                     />
                 </Col>
+                {isHabitationVehicle && (
+                    <Col lg={2}>
+                        <Label for="chassis_brand">Marca do chassis:</Label>
+                        <Select
+                            id="chassis_brand"
+                            name="chassis_brand"
+                            isClearable
+                            placeholder="Selecionar"
+                            options={chassisBrandOptions}
+                            value={chassisBrandOptions.find((o) => o.value === values.chassis_brand) || null}
+                            onChange={(option: any) => {
+                                setFieldValue("chassis_brand", option?.value || null);
+                                setFieldTouched("chassis_brand", true);
+                            }}
+                            className="mb-3"
+                        />
+                    </Col>
+                )}
                 <Col lg={2}>
                     <Label for="registration_month">
                         Mês:

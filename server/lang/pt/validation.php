@@ -232,6 +232,7 @@ return [
         'vehicle_attributes.weights.gross_weight_kg'                          => 'peso bruto (kg)',
         'vehicle_attributes.weights.tare_kg'                                  => 'tara (kg)',
         'vehicle_attributes.weights.towable_weight_kg'                        => 'peso de reboque (kg)',
+        'chassis_brand'                                                       => 'marca do chassis',
         'vehicle_attributes.habitation_basics.sleeps'                         => 'número de dormidas',
         'vehicle_attributes.beds.*.type'                                      => 'tipo de cama',
         'vehicle_attributes.beds.*.capacity'                                  => 'capacidade da cama',

@@ -204,6 +204,7 @@ export interface ICar {
 
     version: string;
     public_version_name: string | null;
+    chassis_brand: string | null;
 
     fuel_type: string | null;
     power_hp: number | null;
