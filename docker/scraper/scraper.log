@@ -33,3 +33,420 @@
 2026-06-10 14:33:02 [INFO] scraper: Página 1/6: 32 anúncios
 2026-06-10 14:33:27 [INFO] main: Limite de resultados atingido (10). A parar.
 2026-06-10 14:33:27 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-06-10 16:54:11 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 16:54:11 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 16:54:11 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 16:54:11 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 16:54:11 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/mclouis/desde-2025
+2026-06-10 16:54:11 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'McLouis', 'model': 'MC4', 'year_from': 2025, 'year_to': 2027, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-10 16:54:12 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 16:54:13 [INFO] sources.standvirtual: [widen] após retry sem fuel: 16 anúncios
+2026-06-10 16:54:13 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 16:54:13 [INFO] sources.standvirtual: Página 1/1: 16 anúncios
+2026-06-10 16:54:50 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='McLouis'
+2026-06-10 16:54:52 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=mclouis: 0 listings após filtros (de 6 brutos, 0 excluídos por preço<=0)
+2026-06-10 16:54:56 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='McLouis' (retry sem filtro de marca — pool de categoria)
+2026-06-10 16:54:56 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 16:55:00 [INFO] main: [ingest] consolidando POST único · total=16 · por fonte (pré-dedup-backend)={'standvirtual': 16, 'custojusto': 0}
+2026-06-10 16:55:00 [INFO] sender: Batch enviado: 16 snapshots. Total: 16
+2026-06-10 16:56:33 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 16:56:33 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 16:56:33 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 16:56:33 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-10 16:56:33 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/mclouis/desde-2025
+2026-06-10 16:56:33 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'McLouis', 'model': 'MC4', 'year_from': 2025, 'year_to': 2027, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-10 16:56:34 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 16:56:35 [INFO] sources.standvirtual: [widen] após retry sem fuel: 16 anúncios
+2026-06-10 16:56:35 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 16:56:35 [INFO] sources.standvirtual: Página 1/1: 16 anúncios
+2026-06-10 16:57:11 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='McLouis'
+2026-06-10 16:57:12 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=mclouis: 0 listings após filtros (de 6 brutos, 0 excluídos por preço<=0)
+2026-06-10 16:57:15 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='McLouis' (retry sem filtro de marca — pool de categoria)
+2026-06-10 16:57:16 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 16:57:19 [INFO] main: [ingest] consolidando POST único · total=16 · por fonte (pré-dedup-backend)={'standvirtual': 16, 'custojusto': 0}
+2026-06-10 16:57:20 [INFO] sender: Batch enviado: 16 snapshots. Total: 16
+2026-06-10 17:01:57 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 17:01:57 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 17:01:57 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2018}
+2026-06-10 17:01:57 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2018}
+2026-06-10 17:01:57 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/benimar/desde-2016
+2026-06-10 17:01:57 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Benimar', 'model': 'Sport', 'year_from': 2016, 'year_to': 2018, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-10 17:01:58 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 17:01:58 [INFO] sources.standvirtual: [widen] após retry sem fuel: 1 anúncios
+2026-06-10 17:01:58 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 17:01:58 [INFO] sources.standvirtual: Página 1/1: 1 anúncios
+2026-06-10 17:02:00 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Benimar'
+2026-06-10 17:02:03 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=benimar: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:09 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=benimar: 1 listings após filtros (de 2 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:15 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=benimar: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:19 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=benimar: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:24 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=benimar: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:29 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=benimar: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:32 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Benimar' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:02:34 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-10 17:02:43 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Benimar' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:02:43 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:02:48 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Benimar' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:02:49 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 2 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-10 17:02:55 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Benimar' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:02:57 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 5 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:03:07 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Benimar' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:03:08 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 4 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:03:17 [INFO] main: [ingest] consolidando POST único · total=18 · por fonte (pré-dedup-backend)={'standvirtual': 1, 'custojusto': 17}
+2026-06-10 17:03:17 [INFO] sender: Batch enviado: 18 snapshots. Total: 18
+2026-06-10 17:04:15 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 17:04:15 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 17:04:15 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:04:15 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:04:15 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2006
+2026-06-10 17:04:15 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': 'Genesis', 'year_from': 2006, 'year_to': 2008, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-10 17:04:16 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 17:04:17 [INFO] sources.standvirtual: [widen] após retry sem fuel: 4 anúncios
+2026-06-10 17:04:17 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 17:04:17 [INFO] sources.standvirtual: Página 1/1: 4 anúncios
+2026-06-10 17:04:25 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Challenger'
+2026-06-10 17:04:27 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:04:32 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 2 listings após filtros (de 14 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:04:40 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:04:46 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:04:52 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:04:58 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:05:00 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:05:02 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-10 17:05:10 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:05:13 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 9 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:05:30 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:05:31 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 3 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-10 17:05:39 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:05:39 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 5 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:05:49 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:05:51 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:05:55 [INFO] main: [ingest] consolidando POST único · total=27 · por fonte (pré-dedup-backend)={'standvirtual': 4, 'custojusto': 23}
+2026-06-10 17:05:55 [INFO] sender: Batch enviado: 27 snapshots. Total: 27
+2026-06-10 17:54:33 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 17:54:33 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 17:54:33 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:54:33 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:54:33 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2006
+2026-06-10 17:54:33 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': 'Genesis', 'year_from': 2006, 'year_to': 2008, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-10 17:54:33 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 17:54:34 [INFO] sources.standvirtual: [widen] após retry sem fuel: 4 anúncios
+2026-06-10 17:54:34 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 17:54:34 [INFO] sources.standvirtual: Página 1/1: 4 anúncios
+2026-06-10 17:54:43 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Challenger'
+2026-06-10 17:54:46 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:54:51 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 2 listings após filtros (de 14 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:54:59 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:55:05 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:55:09 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:55:15 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:55:18 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:55:20 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-10 17:55:29 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:55:30 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 9 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:55:47 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:55:49 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 3 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-10 17:55:56 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:55:58 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 5 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:09 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:56:10 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:13 [INFO] main: [ingest] consolidando POST único · total=27 · por fonte (pré-dedup-backend)={'standvirtual': 4, 'custojusto': 23}
+2026-06-10 17:56:13 [INFO] sender: Batch enviado: 27 snapshots. Total: 27
+2026-06-10 17:56:13 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-10 17:56:13 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-10 17:56:13 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:56:13 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-10 17:56:13 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2006
+2026-06-10 17:56:13 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': 'Genesis', 'year_from': 2006, 'year_to': 2008, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-10 17:56:14 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-10 17:56:15 [INFO] sources.standvirtual: [widen] após retry sem fuel: 4 anúncios
+2026-06-10 17:56:15 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-10 17:56:15 [INFO] sources.standvirtual: Página 1/1: 4 anúncios
+2026-06-10 17:56:23 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Challenger'
+2026-06-10 17:56:25 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:30 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 2 listings após filtros (de 14 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:37 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:41 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:44 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:48 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:56:51 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:56:52 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-10 17:57:01 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:57:02 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 9 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:57:18 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:57:19 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 3 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-10 17:57:26 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:57:28 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 5 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:57:38 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-10 17:57:40 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-10 17:57:44 [INFO] main: [ingest] consolidando POST único · total=27 · por fonte (pré-dedup-backend)={'standvirtual': 4, 'custojusto': 23}
+2026-06-10 17:57:44 [INFO] sender: Batch enviado: 27 snapshots. Total: 27
+2026-06-15 21:38:53 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:38:53 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:38:53 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-15 21:38:53 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2008}
+2026-06-15 21:38:53 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2006
+2026-06-15 21:38:53 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': 'Genesis', 'year_from': 2006, 'year_to': 2008, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-15 21:38:53 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:38:54 [INFO] sources.standvirtual: [widen] após retry sem fuel: 4 anúncios
+2026-06-15 21:38:54 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:38:54 [INFO] sources.standvirtual: Página 1/1: 4 anúncios
+2026-06-15 21:39:03 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Challenger'
+2026-06-15 21:39:07 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:12 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 2 listings após filtros (de 15 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:19 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:23 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=challenger: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:27 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:32 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=challenger: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:39:35 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:39:36 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 5 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:39:47 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:39:49 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 9 listings após filtros (de 39 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:40:06 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:40:07 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 3 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:40:15 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:40:17 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 5 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:40:27 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:40:29 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 2 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:40:32 [INFO] main: Limite de resultados atingido (30). A parar.
+2026-06-15 21:40:32 [INFO] main: [ingest] consolidando POST único · total=30 · por fonte (pré-dedup-backend)={'standvirtual': 4, 'custojusto': 26}
+2026-06-15 21:40:32 [INFO] sender: Batch enviado: 30 snapshots. Total: 30
+2026-06-15 21:40:32 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:40:32 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:40:32 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:40:32 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2023, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:40:32 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2021
+2026-06-15 21:40:32 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': '308', 'year_from': 2021, 'year_to': 2023, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-15 21:40:34 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:40:35 [INFO] sources.standvirtual: [widen] após retry sem fuel: 2 anúncios
+2026-06-15 21:40:35 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:40:35 [INFO] sources.standvirtual: Página 1/1: 2 anúncios
+2026-06-15 21:40:39 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='Challenger'
+2026-06-15 21:40:42 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 0 listings após filtros (de 15 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:40:45 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='Challenger' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:40:48 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:40:51 [INFO] main: [ingest] consolidando POST único · total=2 · por fonte (pré-dedup-backend)={'standvirtual': 2, 'custojusto': 0}
+2026-06-15 21:40:51 [INFO] sender: Batch enviado: 2 snapshots. Total: 2
+2026-06-15 21:40:51 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:40:51 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:40:51 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2001, 'search[filter_enum_body_type]': 'integral'}
+2026-06-15 21:40:51 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2001, 'search[filter_enum_body_type]': 'integral'}
+2026-06-15 21:40:51 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/fiat/desde-1999
+2026-06-15 21:40:51 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Fiat', 'model': 'Hymer', 'year_from': 1999, 'year_to': 2001, 'fuel': 'gasoline', 'body_type': 'integral', 'vehicle_type': 'motorhome'}
+2026-06-15 21:40:52 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:40:52 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:40:52 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:40:52 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:40:52 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:40:52 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='Fiat'
+2026-06-15 21:40:55 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=fiat: 0 listings após filtros (de 17 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:40:58 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Fiat' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:41:00 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 1 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:41:04 [INFO] main: [ingest] consolidando POST único · total=1 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 1}
+2026-06-15 21:41:04 [INFO] sender: Batch enviado: 1 snapshots. Total: 1
+2026-06-15 21:41:04 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:41:04 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:41:04 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 1998}
+2026-06-15 21:41:04 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 1998}
+2026-06-15 21:41:04 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/ford/desde-1996
+2026-06-15 21:41:04 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Ford', 'model': 'Transit', 'year_from': 1996, 'year_to': 1998, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-15 21:41:05 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:41:05 [INFO] sources.standvirtual: [widen] após retry sem fuel: 2 anúncios
+2026-06-15 21:41:05 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:41:05 [INFO] sources.standvirtual: Página 1/1: 2 anúncios
+2026-06-15 21:41:10 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Ford'
+2026-06-15 21:41:13 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=ford: 0 listings após filtros (de 2 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:21 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=ford: 0 listings após filtros (de 10 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:26 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=ford: 1 listings após filtros (de 5 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:33 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=ford: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:39 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=ford: 0 listings após filtros (de 6 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:45 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=ford: 0 listings após filtros (de 6 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:41:48 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:41:50 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:41:59 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:41:59 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:02 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:42:04 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 0 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:42:07 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:42:09 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:13 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:42:16 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:18 [INFO] main: [ingest] consolidando POST único · total=8 · por fonte (pré-dedup-backend)={'standvirtual': 2, 'custojusto': 6}
+2026-06-15 21:42:18 [INFO] sender: Batch enviado: 8 snapshots. Total: 8
+2026-06-15 21:42:19 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:42:19 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:42:19 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2009, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:42:19 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2009, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:42:19 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/rapido/desde-2007
+2026-06-15 21:42:19 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Rapido', 'model': 'Serie 90dF', 'year_from': 2007, 'year_to': 2009, 'fuel': 'gasoline', 'body_type': 'furgao', 'vehicle_type': 'motorhome'}
+2026-06-15 21:42:20 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:42:20 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:42:20 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:42:20 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:42:20 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:42:20 [INFO] sources.custojusto: [custojusto] iniciando com 2 path(s); brand='Rapido'
+2026-06-15 21:42:23 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=rapido: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:30 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=rapido: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:33 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Rapido' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:42:35 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 4 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:42:44 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Rapido' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:42:45 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 4 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:42:53 [INFO] main: [ingest] consolidando POST único · total=8 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 8}
+2026-06-15 21:42:54 [INFO] sender: Batch enviado: 8 snapshots. Total: 8
+2026-06-15 21:42:54 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:42:54 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:42:54 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2007, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:42:54 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2007, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:42:54 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/challenger/desde-2005
+2026-06-15 21:42:54 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Challenger', 'model': 'Genesis', 'year_from': 2005, 'year_to': 2007, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-15 21:42:54 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:42:55 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:42:55 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:42:55 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:42:55 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:42:55 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='Challenger'
+2026-06-15 21:42:57 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=challenger: 2 listings após filtros (de 15 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:03 [INFO] main: [ingest] consolidando POST único · total=2 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 2}
+2026-06-15 21:43:03 [INFO] sender: Batch enviado: 2 snapshots. Total: 2
+2026-06-15 21:43:04 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:43:04 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:43:04 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:43:04 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2020, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:43:04 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/mclouis/desde-2018
+2026-06-15 21:43:04 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'McLouis', 'model': 'Menfys Van', 'year_from': 2018, 'year_to': 2020, 'fuel': 'gasoline', 'body_type': 'furgao', 'vehicle_type': 'motorhome'}
+2026-06-15 21:43:04 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:43:05 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:43:05 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:43:05 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:43:05 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:43:05 [INFO] sources.custojusto: [custojusto] iniciando com 2 path(s); brand='McLouis'
+2026-06-15 21:43:07 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=mclouis: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:13 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=mclouis: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:15 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='McLouis' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:43:16 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 1 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:43:21 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='McLouis' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:43:22 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 3 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:30 [INFO] main: [ingest] consolidando POST único · total=4 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 4}
+2026-06-15 21:43:30 [INFO] sender: Batch enviado: 4 snapshots. Total: 4
+2026-06-15 21:43:30 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:43:30 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:43:30 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2012}
+2026-06-15 21:43:30 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2012}
+2026-06-15 21:43:30 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/ci-international/desde-2010
+2026-06-15 21:43:30 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'CI International', 'model': 'Carioca', 'year_from': 2010, 'year_to': 2012, 'fuel': 'gasoline', 'vehicle_type': 'motorhome'}
+2026-06-15 21:43:32 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:43:33 [INFO] sources.standvirtual: [widen] após retry sem fuel: 2 anúncios
+2026-06-15 21:43:33 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:43:33 [INFO] sources.standvirtual: Página 1/1: 2 anúncios
+2026-06-15 21:43:38 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='CI International'
+2026-06-15 21:43:41 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=ci+international: 0 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:43:49 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=ci+international: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:54 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=ci+international: 0 listings após filtros (de 39 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:43:58 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=ci+international: 0 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:44:03 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=ci+international: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:44:11 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=ci+international: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:44:14 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:44:15 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 4 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:44:24 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:44:27 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 7 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:44:40 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:44:43 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 2 listings após filtros (de 39 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:44:49 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:44:52 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 1 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:44:57 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:44:59 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 2 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:05 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='CI International' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:45:07 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:10 [INFO] main: [ingest] consolidando POST único · total=18 · por fonte (pré-dedup-backend)={'standvirtual': 2, 'custojusto': 16}
+2026-06-15 21:45:10 [INFO] sender: Batch enviado: 18 snapshots. Total: 18
+2026-06-15 21:45:10 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:45:10 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:45:10 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2009, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:45:10 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2009, 'search[filter_enum_body_type]': 'perfiladas'}
+2026-06-15 21:45:10 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/rimor/desde-2007
+2026-06-15 21:45:10 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Rimor', 'model': 'Katamarano', 'year_from': 2007, 'year_to': 2009, 'fuel': 'gasoline', 'body_type': 'perfiladas', 'vehicle_type': 'motorhome'}
+2026-06-15 21:45:12 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:45:12 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:45:12 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:45:12 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:45:12 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:45:12 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='Rimor'
+2026-06-15 21:45:15 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=rimor: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:19 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='Rimor' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:45:21 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 12 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:42 [INFO] main: [ingest] consolidando POST único · total=12 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 12}
+2026-06-15 21:45:42 [INFO] sender: Batch enviado: 12 snapshots. Total: 12
+2026-06-15 21:45:42 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:45:42 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:45:42 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2015, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:45:42 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2015, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:45:42 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/ford/desde-2013
+2026-06-15 21:45:42 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Ford', 'model': 'Nugget', 'year_from': 2013, 'year_to': 2015, 'fuel': 'gasoline', 'body_type': 'furgao', 'vehicle_type': 'motorhome'}
+2026-06-15 21:45:44 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:45:44 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:45:44 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:45:44 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:45:44 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:45:44 [INFO] sources.custojusto: [custojusto] iniciando com 2 path(s); brand='Ford'
+2026-06-15 21:45:48 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=ford: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:51 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=ford: 0 listings após filtros (de 6 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:45:54 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:45:56 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 3 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:46:03 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Ford' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:46:05 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 2 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:11 [INFO] main: [ingest] consolidando POST único · total=5 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 5}
+2026-06-15 21:46:11 [INFO] sender: Batch enviado: 5 snapshots. Total: 5
+2026-06-15 21:46:11 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:46:11 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:46:11 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:46:11 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:46:11 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/sunlight/desde-2025
+2026-06-15 21:46:11 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Sunlight', 'model': 'Cliff', 'year_from': 2025, 'year_to': 2027, 'fuel': 'gasoline', 'body_type': 'furgao', 'vehicle_type': 'motorhome'}
+2026-06-15 21:46:12 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:46:12 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:46:12 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:46:12 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:46:12 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:46:12 [INFO] sources.custojusto: [custojusto] iniciando com 2 path(s); brand='Sunlight'
+2026-06-15 21:46:15 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=sunlight: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:21 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=sunlight: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:23 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Sunlight' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:46:25 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 0 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:46:29 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Sunlight' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:46:29 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:32 [INFO] main: [ingest] consolidando POST único · total=0 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 0}
+2026-06-15 21:46:32 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:46:32 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:46:32 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:46:32 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'furgao'}
+2026-06-15 21:46:32 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/sunlight/desde-2025
+2026-06-15 21:46:32 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Sunlight', 'model': 'Cliff', 'year_from': 2025, 'year_to': 2027, 'fuel': 'gasoline', 'body_type': 'furgao', 'vehicle_type': 'motorhome'}
+2026-06-15 21:46:34 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:46:35 [INFO] sources.standvirtual: [widen] após retry sem fuel: 0 anúncios
+2026-06-15 21:46:35 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:46:35 [WARNING] sources.standvirtual: Nenhum edge/anúncio encontrado no advertSearch.
+2026-06-15 21:46:35 [INFO] sources.standvirtual: Página 1/1: 0 anúncios
+2026-06-15 21:46:35 [INFO] sources.custojusto: [custojusto] iniciando com 2 path(s); brand='Sunlight'
+2026-06-15 21:46:36 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=sunlight: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:42 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=sunlight: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:44 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Sunlight' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:46:46 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 0 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-15 21:46:49 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Sunlight' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:46:51 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 0 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:46:54 [INFO] main: [ingest] consolidando POST único · total=0 · por fonte (pré-dedup-backend)={'standvirtual': 0, 'custojusto': 0}
+2026-06-15 21:46:54 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-15 21:46:54 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-15 21:46:54 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'integral'}
+2026-06-15 21:46:54 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gasolina', 'search[filter_float_first_registration_year:to]': 2027, 'search[filter_enum_body_type]': 'integral'}
+2026-06-15 21:46:54 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/mclouis/desde-2025
+2026-06-15 21:46:54 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'McLouis', 'model': 'Nevis', 'year_from': 2025, 'year_to': 2027, 'fuel': 'gasoline', 'body_type': 'integral', 'vehicle_type': 'motorhome'}
+2026-06-15 21:46:55 [WARNING] sources.standvirtual: [widen] fuel filter widened: 0 results with fuel=gasolina, retrying without fuel (vehicle_type=motorhome)
+2026-06-15 21:46:56 [INFO] sources.standvirtual: [widen] após retry sem fuel: 3 anúncios
+2026-06-15 21:46:56 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=True)
+2026-06-15 21:46:56 [INFO] sources.standvirtual: Página 1/1: 3 anúncios
+2026-06-15 21:47:02 [INFO] sources.custojusto: [custojusto] iniciando com 1 path(s); brand='McLouis'
+2026-06-15 21:47:05 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=mclouis: 0 listings após filtros (de 3 brutos, 0 excluídos por preço<=0)
+2026-06-15 21:47:08 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='McLouis' (retry sem filtro de marca — pool de categoria)
+2026-06-15 21:47:09 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 1 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-15 21:47:13 [INFO] main: [ingest] consolidando POST único · total=4 · por fonte (pré-dedup-backend)={'standvirtual': 3, 'custojusto': 1}
+2026-06-15 21:47:13 [INFO] sender: Batch enviado: 4 snapshots. Total: 4
