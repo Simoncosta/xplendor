@@ -54,14 +54,30 @@ export async function unmarkPromotion(
 }
 
 /**
- * Limpa params para axios — remove keys undefined/null/string vazia, e
- * normaliza arrays no formato esperado pelo Laravel (`status[]=active`).
+ * Limpa params para axios:
+ *   - remove keys undefined/null/string vazia / arrays vazios
+ *   - **booleans → `1` quando true, OMITIDO quando false**
+ *
+ * Razão (validada empiricamente em 2026-06-16): axios serializa JS `true` como
+ * string literal `"true"` na query string, e a regra `boolean` do Laravel
+ * aceita `1`/`0`/`"1"`/`"0"` mas **NÃO** aceita `"true"`/`"false"` — devolve 422
+ * *"O campo X tem de ser verdadeiro ou falso."* Filtros booleanos opcionais
+ * em query string seguem a convenção *presença=1, ausência=omitido* — mais
+ * limpo que enviar `"false"` (que também dá 422).
+ *
+ * Esta normalização é o ponto canónico para QUALQUER filtro booleano futuro
+ * deste helper. Não duplicar a conversão nos call-sites.
  */
 function normalizeParams(p: ListPromotionCandidatesParams): Record<string, unknown> {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(p)) {
         if (v === undefined || v === null || v === "") continue;
         if (Array.isArray(v) && v.length === 0) continue;
+        if (typeof v === "boolean") {
+            if (v) out[k] = 1;
+            // false → omitido, semântica "filtro inactivo"
+            continue;
+        }
         out[k] = v;
     }
     return out;
