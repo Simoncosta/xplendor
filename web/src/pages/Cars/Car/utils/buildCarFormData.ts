@@ -96,7 +96,21 @@ export function buildCarFormData(values: any, opts?: { isUpdate?: boolean }) {
         });
     }
 
-    const vehicleAttributes = values.vehicle_attributes ?? {};
+    // M2.1 — sleeps DERIVADO: source of truth = soma de beds[i].capacity.
+    // Calcula no submit e sobrepõe-se a qualquer valor manual legacy do JSON
+    // (incluindo registos pré-1.13.3 com habitation_basics.sleeps gravado à
+    // mão). Backend valida (defesa em profundidade) e grava — BD consistente.
+    const rawAttrs = values.vehicle_attributes ?? {};
+    const computedSleeps = Array.isArray(rawAttrs.beds)
+        ? rawAttrs.beds.reduce((acc: number, b: any) => acc + (Number(b?.capacity) || 1), 0)
+        : 0;
+    const vehicleAttributes = {
+        ...rawAttrs,
+        habitation_basics: {
+            ...(rawAttrs.habitation_basics ?? {}),
+            sleeps: computedSleeps > 0 ? computedSleeps : null,
+        },
+    };
 
     const appendVehicleAttr = (prefix: string, value: any) => {
         if (isNil(value) || value === "") return;

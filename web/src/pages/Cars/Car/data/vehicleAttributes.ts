@@ -10,8 +10,18 @@ export type BedType =
     | "cama_elevatoria_eletrica"
     | "cama_suspensa"
     | "cama_convertivel"
+    | "cama_sofa"
     | "outra"
     | "cama_rebativel_cabine"; // legacy — não mostrar em viatura nova
+
+/** M2.1 — cada cama declara a sua capacidade (pessoas que acomoda).
+ *  `sleeps` total da autocaravana = Σ beds[i].capacity (calculado, não input
+ *  manual). Range 1-4 cobre cama de casal (=2) e cama larga com 2 crianças
+ *  como limite raro (=4). Default 1 quando ausente (legacy graceful). */
+export interface VehicleAttributeBed {
+    type: BedType;
+    capacity?: number | null;
+}
 
 export const BED_LABELS: Record<BedType, string> = {
     camas_gemeas:            "Camas gémeas",
@@ -25,6 +35,7 @@ export const BED_LABELS: Record<BedType, string> = {
     cama_elevatoria_eletrica: "Cama elevatória eléctrica",
     cama_suspensa:           "Cama suspensa",
     cama_convertivel:        "Cama convertível de mesa",
+    cama_sofa:               "Cama de sofá",
     outra:                   "Outra",
     cama_rebativel_cabine:   "Rebatível na cabine",
 };
@@ -175,7 +186,7 @@ export interface VehicleAttributesB1 {
     dimensions?: VehicleAttributeDimensions;
     weights?: VehicleAttributeWeights;
     habitation_basics?: VehicleAttributeHabitationBasics;
-    beds?: Array<{ type: BedType }>;
+    beds?: VehicleAttributeBed[];
     autonomy_km?: number;
     energy_climate?: VehicleAttributeEnergyClimate;
     exterior?: VehicleAttributeExterior;

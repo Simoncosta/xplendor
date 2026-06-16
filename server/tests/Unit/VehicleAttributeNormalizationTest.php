@@ -175,7 +175,8 @@ class VehicleAttributeNormalizationTest extends TestCase
         $this->assertSame(3300, $result['weights']['gross_weight_kg']);
         $this->assertTrue($result['habitation_basics']['has_bathroom']);
         $this->assertTrue($result['habitation_basics']['has_kitchen']);
-        $this->assertSame([['type' => 'cama_garagem']], $result['beds']);
+        // M2.1 — beds agora carregam capacity default=1 quando ausente.
+        $this->assertSame([['type' => 'cama_garagem', 'capacity' => 1]], $result['beds']);
     }
 
     // ------------------------------------------------------------------ //
@@ -414,5 +415,77 @@ class VehicleAttributeNormalizationTest extends TestCase
         $result = VehicleAttribute::normalizeShape(['beds' => [['type' => 'dupla']]]);
 
         $this->assertSame('outra', $result['beds'][0]['type']);
+    }
+
+    // ------------------------------------------------------------------ //
+    //  beds[i].capacity (M2.1) — capacity por cama + cama_sofa novo slug
+    // ------------------------------------------------------------------ //
+
+    public function test_legacy_bed_without_capacity_defaults_to_one(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => ['has_bathroom' => true],
+            'beds' => [
+                ['type' => 'cama_central'],
+                ['type' => 'cama_capucino'],
+            ],
+        ]);
+
+        $this->assertSame('cama_central', $result['beds'][0]['type']);
+        $this->assertSame(1, $result['beds'][0]['capacity']);
+        $this->assertSame('cama_capucino', $result['beds'][1]['type']);
+        $this->assertSame(1, $result['beds'][1]['capacity']);
+    }
+
+    public function test_legacy_bed_string_solta_gains_default_capacity(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'has_bathroom' => true,
+            'beds' => ['central', 'transversal'],
+        ]);
+
+        $this->assertSame('cama_central', $result['beds'][0]['type']);
+        $this->assertSame(1, $result['beds'][0]['capacity']);
+        $this->assertSame('cama_transversal', $result['beds'][1]['type']);
+        $this->assertSame(1, $result['beds'][1]['capacity']);
+    }
+
+    public function test_cama_sofa_is_a_valid_slug(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => [],
+            'beds' => [['type' => 'cama_sofa', 'capacity' => 2]],
+        ]);
+
+        $this->assertSame('cama_sofa', $result['beds'][0]['type']);
+        $this->assertSame(2, $result['beds'][0]['capacity']);
+    }
+
+    public function test_new_format_bed_preserves_type_and_capacity(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => [],
+            'beds' => [
+                ['type' => 'cama_central', 'capacity' => 2],
+                ['type' => 'cama_garagem', 'capacity' => 4],
+            ],
+        ]);
+
+        $this->assertSame(2, $result['beds'][0]['capacity']);
+        $this->assertSame(4, $result['beds'][1]['capacity']);
+    }
+
+    public function test_capacity_out_of_range_is_clamped(): void
+    {
+        $result = VehicleAttribute::normalizeShape([
+            'habitation_basics' => [],
+            'beds' => [
+                ['type' => 'cama_central', 'capacity' => 99],
+                ['type' => 'cama_garagem', 'capacity' => 0],
+            ],
+        ]);
+
+        $this->assertSame(4, $result['beds'][0]['capacity']);
+        $this->assertSame(1, $result['beds'][1]['capacity']);
     }
 }

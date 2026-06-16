@@ -1,5 +1,5 @@
-import type { BedType } from "pages/Cars/Car/data/vehicleAttributes";
-export type { BedType };
+import type { BedType, VehicleAttributeBed } from "pages/Cars/Car/data/vehicleAttributes";
+export type { BedType, VehicleAttributeBed };
 
 export type CarStatus = "draft" | "active" | "inactive" | "sold";
 export type CarOrigin = "national" | "imported";
@@ -173,7 +173,7 @@ export interface VehicleAttributes {
     dimensions?: VehicleAttributeDimensions;
     weights?: VehicleAttributeWeights;
     habitation_basics?: VehicleAttributeHabitationBasics;
-    beds?: Array<{ type: BedType }> | null;
+    beds?: VehicleAttributeBed[] | null;
     autonomy_km?: number;
     energy_climate?: VehicleAttributeEnergyClimate;
     exterior?: VehicleAttributeExterior;

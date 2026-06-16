@@ -307,59 +307,43 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                 </Row>
 
                                 <div className="border rounded-3 p-3 mb-1">
-                                    {/* "Dorme [N] pessoas" encima a lista de camas.
-                                        Mesmo assunto que o array de tipos de camas; agrupar
-                                        evita o utilizador ter de procurar em dois sítios.
-                                        JSON path: vehicle_attributes.habitation_basics.sleeps
-                                        (mantido — só renderização mudou de LivingRoomAccordion
-                                        para aqui). */}
-                                    <Row className="align-items-end mb-3">
-                                        <Col lg={3}>
-                                            <FieldLabelWithHint
-                                                label="Dorme"
-                                                hint="Pessoas que a autocaravana acomoda para dormir — pode diferir do número de camas (ex.: uma cama de casal conta como 2)."
-                                                htmlFor="vehicle_attributes.habitation_basics.sleeps"
-                                            />
-                                            <Input
-                                                type="number"
-                                                id="vehicle_attributes.habitation_basics.sleeps"
-                                                name="vehicle_attributes.habitation_basics.sleeps"
-                                                min={1}
-                                                max={12}
-                                                step={1}
-                                                value={values.vehicle_attributes?.habitation_basics?.sleeps ?? ""}
-                                                onChange={(e) => {
-                                                    const v = e.target.value;
-                                                    setFieldValue(
-                                                        "vehicle_attributes.habitation_basics.sleeps",
-                                                        v === "" ? null : Number(v),
-                                                    );
-                                                }}
-                                            />
-                                        </Col>
-                                    </Row>
-
-                                    <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
-                                        <div>
-                                            <Label className="mb-1">Camas</Label>
-                                            <div className="text-muted fs-12">Adiciona quantas camas forem necessárias.</div>
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            color="light"
-                                            className="border"
-                                            onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "outra" as BedType }])}
-                                        >
-                                            Adicionar cama
-                                        </Button>
-                                    </div>
+                                    {/* M2.1 — "Dorme [N]" passa a ser DERIVADO da soma das
+                                        capacidades das camas. Sem input manual. O frontend
+                                        calcula no submit e envia ao backend (que valida e
+                                        grava) — BD consistente, source of truth = camas. */}
+                                    {(() => {
+                                        const sleepsTotal = beds.reduce(
+                                            (acc, b) => acc + (Number(b?.capacity) || 1),
+                                            0,
+                                        );
+                                        return (
+                                            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
+                                                <div>
+                                                    <Label className="mb-1 me-2">Camas</Label>
+                                                    <FieldLabelWithHint
+                                                        label={`Dorme ${sleepsTotal}`}
+                                                        hint="Calculado automaticamente a partir da capacidade de cada cama (uma cama de casal conta como 2)."
+                                                    />
+                                                    <div className="text-muted fs-12">Adiciona quantas camas forem necessárias e define a capacidade de cada.</div>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    color="light"
+                                                    className="border"
+                                                    onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "outra" as BedType, capacity: 1 }])}
+                                                >
+                                                    Adicionar cama
+                                                </Button>
+                                            </div>
+                                        );
+                                    })()}
 
                                     {beds.length === 0 ? (
                                         <div className="text-muted fs-13">Sem camas adicionadas.</div>
                                     ) : (
                                         <Row>
                                             {beds.map((bed, index) => (
-                                                <Col lg={3} key={`bed-${index}`}>
+                                                <Col lg={4} key={`bed-${index}`}>
                                                     <div className="d-flex gap-2 align-items-start mb-3">
                                                         <div className="flex-grow-1">
                                                             <Select
@@ -369,11 +353,33 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                                                 placeholder="Tipo de cama"
                                                                 onChange={(option: { value: BedType; label: string } | null) => {
                                                                     const nextBeds = [...beds];
-                                                                    nextBeds[index] = { type: option?.value ?? "outra" };
+                                                                    nextBeds[index] = {
+                                                                        ...nextBeds[index],
+                                                                        type: option?.value ?? "outra",
+                                                                    };
                                                                     setFieldValue("vehicle_attributes.beds", nextBeds);
                                                                 }}
                                                             />
                                                         </div>
+                                                        <Input
+                                                            type="number"
+                                                            min={1}
+                                                            max={4}
+                                                            step={1}
+                                                            style={{ width: "4.5rem" }}
+                                                            value={bed?.capacity ?? 1}
+                                                            title="Capacidade da cama (1-4)"
+                                                            onChange={(e) => {
+                                                                const v = e.target.value;
+                                                                const parsed = v === "" ? 1 : Math.max(1, Math.min(4, Number(v)));
+                                                                const nextBeds = [...beds];
+                                                                nextBeds[index] = {
+                                                                    ...nextBeds[index],
+                                                                    capacity: parsed,
+                                                                };
+                                                                setFieldValue("vehicle_attributes.beds", nextBeds);
+                                                            }}
+                                                        />
                                                         <Button
                                                             type="button"
                                                             color="light"

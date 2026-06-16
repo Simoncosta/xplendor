@@ -233,6 +233,8 @@ return [
         'vehicle_attributes.weights.tare_kg'                                  => 'tara (kg)',
         'vehicle_attributes.weights.towable_weight_kg'                        => 'peso de reboque (kg)',
         'vehicle_attributes.habitation_basics.sleeps'                         => 'número de dormidas',
+        'vehicle_attributes.beds.*.type'                                      => 'tipo de cama',
+        'vehicle_attributes.beds.*.capacity'                                  => 'capacidade da cama',
         'vehicle_attributes.habitation_basics.kitchen.fridge_litres'          => 'litros do frigorífico',
         'vehicle_attributes.habitation_basics.kitchen.fridge_shelves'         => 'prateleiras do frigorífico',
         'vehicle_attributes.habitation_basics.bathroom.clean_water_litres'    => 'litros água limpa',

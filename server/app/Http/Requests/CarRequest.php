@@ -99,9 +99,12 @@ class CarRequest extends FormRequest
                 'cama_elevatoria_eletrica',
                 'cama_suspensa',
                 'cama_convertivel',
+                'cama_sofa',
                 'outra',
                 'cama_rebativel_cabine',
             ])],
+            // M2.1 — capacity por cama (1-4); frontend envia o cálculo, validação é defesa.
+            'vehicle_attributes.beds.*.capacity'                               => ['nullable', 'integer', 'min:1', 'max:4'],
             'vehicle_attributes.autonomy_km'                                   => ['nullable', 'integer', 'min:0', 'max:5000'],
 
             // B2 — Energia e Aquecimento

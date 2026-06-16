@@ -140,17 +140,25 @@ class VehicleAttribute extends Model
             'camas_gemeas', 'cama_central', 'cama_francesa', 'cama_basculante',
             'cama_capucino', 'cama_garagem', 'beliche', 'cama_transversal',
             'cama_elevatoria_eletrica', 'cama_suspensa', 'cama_convertivel',
-            'outra', 'cama_rebativel_cabine',
+            'cama_sofa', 'outra', 'cama_rebativel_cabine',
         ];
 
-        return array_map(static function (array $bed) use ($map, $validSlugs): array {
-            $type = $bed['type'] ?? '';
-
-            if (in_array($type, $validSlugs, true)) {
-                return $bed;
+        return array_map(static function ($bed) use ($map, $validSlugs): array {
+            // M2.1 — aceita 3 formas legacy:
+            //   (a) string solta "central"           → {type: 'cama_central', capacity: 1}
+            //   (b) {type: 'cama_X'} pré-M2.1        → {type: 'cama_X', capacity: 1}
+            //   (c) {type, capacity} novo formato    → preserva
+            // Default capacity = 1 (uma pessoa por cama).
+            if (!is_array($bed)) {
+                $bed = ['type' => is_string($bed) ? $bed : ''];
             }
-
-            $bed['type'] = $map[$type] ?? 'outra';
+            $type = $bed['type'] ?? '';
+            if (!in_array($type, $validSlugs, true)) {
+                $bed['type'] = $map[$type] ?? 'outra';
+            }
+            $bed['capacity'] = isset($bed['capacity']) && is_numeric($bed['capacity'])
+                ? max(1, min(4, (int) $bed['capacity']))
+                : 1;
             return $bed;
         }, $beds);
     }
