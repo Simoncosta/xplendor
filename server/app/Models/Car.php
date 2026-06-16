@@ -255,6 +255,29 @@ class Car extends Model implements AuditableContract
         return $this->hasOne(CarMarketAggregate::class)->latestOfMany();
     }
 
+    /**
+     * IPS mais recente da viatura (`MAX(id)` é o critério canónico — sec 6
+     * do CLAUDE.md). Pode ter `score === null` e `classification === 'pending'`
+     * quando ainda não há sinais (estado "a calibrar").
+     */
+    public function latestSalePotentialScore(): HasOne
+    {
+        return $this->hasOne(CarSalePotentialScore::class)->latestOfMany('id');
+    }
+
+    /**
+     * Prioridade de promoção ACTIVA (única por viatura — garantido em código
+     * por `StockPromotionService::markForPromotion()`, não por unique constraint
+     * porque MariaDB não suporta partial unique). `latestOfMany('id')` é
+     * defensivo: se por algum erro houver duas activas, devolve a mais recente.
+     */
+    public function promotionPriority(): HasOne
+    {
+        return $this->hasOne(CarPromotionPriority::class)
+            ->where('is_active', true)
+            ->latestOfMany('id');
+    }
+
     public function adCampaigns(): HasMany
     {
         return $this->hasMany(CarAdCampaign::class, 'car_id');

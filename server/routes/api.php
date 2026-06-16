@@ -34,6 +34,7 @@ use App\Http\Controllers\Api\V1\{
     PlanController,
     PromotionRankingController,
     ScraperController,
+    StockPromotionController,
     UserController
 };
 use Illuminate\Http\Request;
@@ -94,6 +95,13 @@ Route::prefix('v1')->group(function () {
                 Route::get('/cars/{carId}/market-aggregate', [CarController::class, 'marketAggregate']);
                 Route::post('/cars/{carId}/market-aggregate/refresh', [CarController::class, 'refreshMarketAggregate']);
                 Route::get('/cars/{carId}/market-aggregate/check-link', [CarController::class, 'checkMarketLink']);
+
+                // Relatório A — candidatas a promoção (Camada 1: flag manual).
+                // Camada 2 (orçamento + Meta) entra depois.
+                Route::get('/stock/promotion-candidates', [StockPromotionController::class, 'index']);
+                Route::get('/stock/promotion-candidates/summary', [StockPromotionController::class, 'summary']);
+                Route::post('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'store']);
+                Route::delete('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'destroy']);
 
                 Route::post('/scraper/run', [ScraperController::class, 'run']);
                 Route::get('/scraper/executions', [ScraperController::class, 'executions']);
