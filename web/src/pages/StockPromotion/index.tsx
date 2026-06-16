@@ -511,7 +511,7 @@ const StockPromotionPage = () => {
                             <StarToggle
                                 companyId={selectedCompanyId}
                                 carId={r.id}
-                                initial={r.promotion}
+                                priority={r.promotion}
                                 onChange={(next) => handlePriorityChanged(r.id, next)}
                                 size="md"
                             />

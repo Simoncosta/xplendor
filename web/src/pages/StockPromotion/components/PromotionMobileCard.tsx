@@ -177,7 +177,7 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
                         <StarToggle
                             companyId={companyId}
                             carId={candidate.id}
-                            initial={candidate.promotion}
+                            priority={candidate.promotion}
                             onChange={(next) => onPriorityChanged(candidate.id, next)}
                             size="lg"
                         />

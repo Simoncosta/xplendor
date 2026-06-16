@@ -8,25 +8,31 @@ import type { PromotionCandidatePriority } from "../../../types/api";
 interface PromotionToggleProps {
     companyId: number;
     carId: number;
-    initial: PromotionCandidatePriority | null;
+    /** Estado actual da prioridade (vindo do parent). `null` = não marcada.
+     *  **Componente totalmente controlado** — sem state interno de priority. */
+    priority: PromotionCandidatePriority | null;
+    /** Notificação ao parent: optimistic update (placeholder), valor final
+     *  (do backend) ou revert em erro. O parent é dono da source of truth. */
     onChange?: (next: PromotionCandidatePriority | null) => void;
-    /** "lg" para mobile cards (32px), "md" para tabela desktop (24px). */
+    /** "lg" para mobile cards (28px), "md" para tabela desktop (22px). */
     size?: "md" | "lg";
 }
 
 /**
  * Estrela ☆/★ pura — sem label, sem botão amarelo.
  *
- * Affordance feita por:
- *   - cor (cinza outline vs amarelo Velzon `#f7b84b` quando preenchida)
- *   - mudança de ícone (ri-star-line vs ri-star-fill)
- *   - cursor pointer + hover shift
- *   - tooltip touch-friendly explicando a acção
+ * **Controlado pelo parent.** `priority` vem do prop; o componente não tem
+ * state local desta informação. O optimistic update vive no parent (que
+ * já faz `setPage(prev.data.map(c => c.id === carId ? {...c, promotion} : c))`).
  *
- * Mantém POST/DELETE com optimistic update + revert (Etapas 4-5).
+ * Razão para ser controlado: quando a lista re-ordena/filtra, o XTanStackTable
+ * reaproveita os `<tr>` (key={row.id} é índice TanStack, não car.id), e o
+ * React reaproveita os StarToggle pela posição na árvore. Um `useState(initial)`
+ * interno ignoraria o novo `initial` em re-render → state local stale do car
+ * anterior → UI mente sobre o estado de marcação. Sendo controlado, o
+ * componente reflecte sempre o car correcto, em qualquer ordem.
  */
-const StarToggle = ({ companyId, carId, initial, onChange, size = "md" }: PromotionToggleProps) => {
-    const [priority, setPriority] = useState<PromotionCandidatePriority | null>(initial);
+const StarToggle = ({ companyId, carId, priority, onChange, size = "md" }: PromotionToggleProps) => {
     const [pending, setPending] = useState(false);
     const [hover, setHover] = useState(false);
     const isMarked = priority !== null;
@@ -35,13 +41,12 @@ const StarToggle = ({ companyId, carId, initial, onChange, size = "md" }: Promot
     const toggle = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (pending) return;
-        const previous = priority;
+        const previous = priority; // snapshot para revert
         setPending(true);
 
         try {
             if (isMarked) {
-                setPriority(null);
-                onChange?.(null);
+                onChange?.(null); // optimistic
                 await unmarkPromotion(companyId, carId);
                 toast.success("Removida da promoção.", { autoClose: 2000 });
             } else {
@@ -51,16 +56,13 @@ const StarToggle = ({ companyId, carId, initial, onChange, size = "md" }: Promot
                     note: null,
                     marked_by: null,
                 };
-                setPriority(placeholder);
-                onChange?.(placeholder);
+                onChange?.(placeholder); // optimistic
                 const result = await markPromotion(companyId, carId, null);
-                setPriority(result);
-                onChange?.(result);
+                onChange?.(result); // valor final do backend
                 toast.success("Marcada para promoção.", { autoClose: 2000 });
             }
         } catch (err: any) {
-            setPriority(previous);
-            onChange?.(previous);
+            onChange?.(previous); // revert
             showApiErrorToast(err, "Não foi possível guardar a prioridade.");
         } finally {
             setPending(false);
