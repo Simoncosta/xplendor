@@ -4,7 +4,7 @@
 > Define o que existe, como está estruturado, e que decisões já estão tomadas.
 > Se este documento contradiz o código, **o documento ganha** — abrir issue antes de seguir o código.
 >
-> Última actualização: 2026-06-15 · Versão 1.13.2
+> Última actualização: 2026-06-15 · Versão 1.13.3
 
 ---
 
@@ -59,6 +59,7 @@
 | 1.10.11 | 2026-05-28 | IPS — unificação do cálculo (`score` = soma dos 7 fatores do breakdown; `VehicleIpsService` eliminado) + estado "a calibrar" (`score` null / `classification` 'pending' quando sem views e sem mercado). UI neutra via `helpers/ips.ts` (`formatIpsBadge`). Migration score nullable + enum 'pending'. Comando `cars:recalculate-scores`. Pesos inalterados (calibração = fase separada). Carros + autocaravanas. |
 | 1.10.12 | 2026-05-30 | Comparação de mercado por categoria (autocaravanas). Novo degrau na cascata `getComparables` (Attempt 4, só motorhome): categoria do Standvirtual (`capucine`/`integral`/`perfiladas`/`furgao`) + ano. Antes do brand+price (que passa a Attempt 5). Scraper aceita `--body-type`, grava o slug em `car_market_snapshots.category` (override no normalizer — todos os anúncios são desse body_type por filtro). Mapa interno→Standvirtual validado empiricamente. Carros inalterados. 3 testes novos. |
 | 1.11.0 | 2026-06-09 | **Capítulo S — Ficha da viatura + Blindagem de testes.** T1: botão "Gerar IA" aceita `hide_price_online` como alternativa ao preço. T2: `<ValidationAlert>` 422 no topo dos forms de viatura + mensagens em pt-PT (`server/lang/pt/validation.php` completo + `APP_LOCALE=pt`). Interceptor Axios passa a preservar body 422 (corrige natureza X7.1). T3: `Car::images()` ganha `orderByDesc('is_primary')→orderBy('order')`. T5/B3: secção "Venda concluída" na Ficha — `CarSpecsResource` emite `sale` via `whenLoaded`; novo `SaleInfoCard` + `SaleEditModal` editáveis; novo endpoint `PATCH cars/{car}/sale` (upsert PII, sem disparar `markAsSold`/email, pré-condição `status='sold'`). B1: `helpers/labels.ts` (camada de tradução de VALORES no frontend; case-insensitive) com FUEL/TRANSMISSION/CONDITION/ORIGIN/EXTERIOR_COLOR. B2: 4 blocos da Ficha + SaleInfoCard envoltos em `<Card><CardBody>`. **Incidente BD:** `config:cache` em dev contaminou phpunit → `RefreshDatabase` apagou MariaDB de dev. Restaurado por backup. **Blindagem:** `.env.testing` reescrito para sqlite isolado; `force="true"` em `phpunit.xml`; `DB::prohibitDestructiveCommands(!testing)` em local/staging/prod. |
+| 1.13.3 | 2026-06-15 | **Capítulo Matilde 2 — Lote A.** M2.1 camas com capacidade: `beds[i]` passa de `{type}` para `{type, capacity}` (integer 1-4, default 1, clamping no `normalizeBedTypes`); `cama_sofa` novo slug; `normalizeBedTypes` aceita 3 formas legacy graceful (string solta, `{type}` pré-M2.1, novo formato); **sleeps DERIVADO**: input manual removido — label "Dorme [N]" read-only mostra Σ capacity ao vivo; `buildCarFormData` calcula no submit e envia (BD consistente sobrepondo legacy manual); 5 testes novos. M2.2 chassis_brand: coluna nullable em `cars` (migration reversível), constante extensível `CarRequest::VALID_CHASSIS_BRANDS` (Fiat/Renault/Ford/Citroën/Mercedes/Iveco/Peugeot/VW), UI condicional motorhome/caravan na Row 1 (Marca/Modelo encolhem `lg=4→3` para acomodar Marca chassis `lg=2`); API pública NÃO tocada. M2.3: `"Rádio"` no grupo `comfort_multimedia` dos extras (1 linha). M2.5 booleanos: `energy_climate.has_battery_cutoff` ("Corta-corrente"), `interior_furniture.has_wardrobe` ("Guarda-fatos"). M2.6 renomeações: "Acrescento de mesa" → "Mesa telescópica" (slug `has_extending_table` intacto); "Frente a Frente" → "Face to Face" (slug `face_to_face` intacto — Matilde confirmou termo de mercado; **excepção registada na sec 12**). M2.6 layout novo: `double_dinette` ("Sala dupla") em `living_room.layout`. Labels pt-PT em `validation.php` para todos os campos novos. Tipos TS nos 2 sítios para cada interface (`car.model.ts` + `vehicleAttributes.ts`). VIESA + TV count/locations ficam no Lote B (pendente Matilde). Save real end-to-end provado em car 104 (McLouis). |
 | 1.13.2 | 2026-06-15 | **Ficha — reorganização da grelha + dormidas junto às camas.** Ajuste 1: `CarVehicleDataFields.tsx` passa a 3 `<Row>` explícitas com distribuição controlada (em vez de 1 monolítica com wrap implícito que deixava "Versão (web)" sozinha em linha 3). Carros/motorhomes: identidade 4+4+2+2 / motor 3+2+2+3+2 / versões 4+6. Caravans: identidade 4+4+2+2 / Portas+versões 2+4+6. Sem buracos > 17%. Selects "Combustível" e "Transmissão" subiram `lg=2→3` (encaixe exacto da linha de motor). Ajuste 2: input "Dorme [N]" (`habitation_basics.sleeps`) move do `LivingRoomAccordion` para o TOPO do bloco "Camas" no accordion 1 "Dimensões e Pesos" — mesmo assunto que o array de tipos de cama, juntos. Helper-text actualizado: "pode diferir do número de camas (ex.: uma cama de casal conta como 2)". `LivingRoomAccordion` volta a só ter `layout` + `has_extending_table`. JSON path `vehicle_attributes.habitation_basics.sleeps` inalterado — só renderização mudou. Save real provado em car 104 (sleeps=5 + 2 camas persistem cross-reload; revertido pós-teste). Carros/motos continuam sem ver camas nem dormidas (wrapper `hasHabitationAttributes` em `CarVehicleDetailsDataFields:253`). |
 | 1.13.1 | 2026-06-15 | **Ficha — número de dormidas + UI da versão web.** Tarefa A: `habitation_basics.sleeps` (integer nullable 1-12) — capacidade da célula para dormir, distinto de `cars.seats` (lugares com cinto homologados). Adicionado no topo do bloco "Camas" no accordion 1 "Dimensões e Pesos" de `CarVehicleDetailsDataFields.tsx` (relocado da localização original no `LivingRoomAccordion` na 1.13.2). Validação `CarRequest` + label pt-PT em `server/lang/pt/validation.php`. Tipos TS nos 2 sítios (`car.model.ts` + `vehicleAttributes.ts`). `VehicleAttribute::normalizeShape` aceita graceful: raw passthrough em formato novo; formato antigo flat nunca teve este campo (sem migração). 3 testes novos no `VehicleAttributeNormalizationTest`. Tarefa B1: input UI `<XInput name="public_version_name" label="Versão (web)">` em `CarVehicleDataFields.tsx` junto ao `version` existente. **B2 era nula** — coluna `public_version_name` já existia (migration original 2025-12-22 + $fillable + validação + tipo TS + defaults Redux) E `CarPublicResource:57` já fazia `'title' => $this->public_version_name ?: $this->version`, logo o site público JÁ honra `public_version_name` quando preenchido. UI era a única peça em falta — coluna passou de órfã a editável. **Save real provado** via tinker: ambos os campos persistem; API pública `title` muda automaticamente para `public_version_name` quando preenchido; `/specs.version` interno intacto. |
 | 1.13.0 | 2026-06-10 | **Capítulo MS2 — Multi-fonte de mercado.** MS2.a: `dedup_hash` em `car_market_snapshots` (nullable indexed) + Form Request `source` apertado para enum `['standvirtual', 'custojusto']` (auditoria confirmou que scraper já envia obrigatório). MS2.b: refactor do scraper em `sources/` com `SourceAdapter` ABC + registry `ADAPTERS`; `scraper.py` vira shim retro-compat de 15 linhas; `main.py` ganha `--sources` CSV com default `standvirtual` (preserva comportamento pré-MS2 até flip). Logs `[widen]` byte-a-byte preservados. MS2.c: `CustojustoAdapter` (motorhome) com validação empírica de 8 URLs no live (6 sub-categorias autocaravana + 2 reboques excluídos), parsing de `__NEXT_DATA__.props.pageProps.listItems`, 3 fixtures commitadas + **2 passadas** (brand-matched de TODAS as paths antes de qualquer widen-pool — bug do top-N cortar brand-matched de paths tardias). MS2.d: dedup na ingestão `sha1(normalized_title \| year \| price_bucket_100)` com `SOURCE_PRIORITY=['standvirtual','custojusto']` + 1 POST consolidado no scraper + contadores logados antes do merge. MS2.e: `--sources` por vehicle_type em constante (motorhome/caravan → SV+CJ; car → SV); migration `sources_breakdown` json nullable em `car_market_aggregates`; **dedup em leitura** em `computeAggregateData` (snapshots cross-execução colapsam); `sources_breakdown` calculado pós-dedup com cross-postings a contar no vencedor (SV). MS2.f: tipos + `MARKET_SOURCE_LABELS` (`labelOf`) + chip de fonte por comparável + contador "N anúncios · M fontes" (M>1) ou "· {Fonte}" (M=1). |
@@ -313,7 +314,7 @@ web/src/
 |---|---|---|
 | `companies` | Tenant raiz | Token público em `public_api_token` |
 | `users` | Utilizadores por empresa | Role enum: `root` / `admin` / `user` |
-| `cars` | Viaturas por empresa | `price_gross`, `power_hp`, `segment`, `seats`, `status`, `car_category_id` |
+| `cars` | Viaturas por empresa | `price_gross`, `power_hp`, `segment`, `seats`, `status`, `car_category_id`, `chassis_brand` (M2.2, nullable — marca do chassis, só motorhome/caravan) |
 | `car_categories` | Lookup de categorias por tipo de viatura | Atrelado a `vehicle_type` |
 | `car_views` | Visualizações em tempo real | Por sessão/canal/fonte |
 | `car_leads` | Leads capturados | Por canal (form, whatsapp, phone, etc.) |
@@ -416,7 +417,8 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "has_external_power_socket": true,
     "battery_count": 2,
     "cabin_battery_count": 1,
-    "cell_battery_count": 1
+    "cell_battery_count": 1,
+    "has_battery_cutoff": true
   },
   "exterior": {
     "has_awning": true,
@@ -469,6 +471,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "has_rotating_seats": true,
     "upholstery_state": "good",
     "has_curtains": true,
+    "has_wardrobe": true,
     "has_led_lighting": true,
     "has_halo_lighting": false,
     "has_tv_support": true,
@@ -482,15 +485,15 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
     "has_extending_table": true
   },
   "beds": [
-    { "type": "cama_garagem" },
-    { "type": "cama_central" }
+    { "type": "cama_garagem", "capacity": 2 },
+    { "type": "cama_central", "capacity": 2 }
   ],
   "autonomy_km": 800
 }
 ```
 
 **Tipos de cama válidos** (13 slugs):
-- Visíveis no UI (12): `camas_gemeas`, `cama_central`, `cama_francesa`, `cama_basculante`, `cama_capucino`, `cama_garagem`, `beliche`, `cama_transversal`, `cama_elevatoria_eletrica`, `cama_suspensa`, `cama_convertivel`, `outra`
+- Visíveis no UI (13): `camas_gemeas`, `cama_central`, `cama_francesa`, `cama_basculante`, `cama_capucino`, `cama_garagem`, `beliche`, `cama_transversal`, `cama_elevatoria_eletrica`, `cama_suspensa`, `cama_convertivel`, `cama_sofa` (M2.1, 2026-06-15), `outra`
 - Legacy preservado (1): `cama_rebativel_cabine` — só aparece como opção quando já está seleccionado num registo existente
 
 **Enums:**
@@ -500,7 +503,7 @@ Estrutura por secções, normalizada via `VehicleAttribute::normalizeShape()`. A
 - `water_heater_source` / `ambient_heating_source`: `electric` | `gas` | `diesel` | `none`
 - `chassis_type`: `standard` | `alko` | `other`
 - `upholstery_state`: `good` | `fair` | `worn` | `replaced`
-- `living_room.layout`: `face_to_face` | `l_shape` | `panoramic`
+- `living_room.layout`: `face_to_face` | `l_shape` | `panoramic` | `double_dinette` (M2.6, 2026-06-15)
 
 **Helper único de normalização:** `VehicleAttribute::normalizeShape($raw)`. Usado por:
 1. `Car::getVehicleAttributesAttribute()` (accessor)
@@ -849,6 +852,7 @@ Lê todos os elementos cuja `scrollWidth > viewport`. O primeiro na ordem DOM é
 
 - **Língua de identificadores:** inglês (variáveis, funções, classes, tabelas, colunas)
 - **Língua de conteúdo voltado ao utilizador:** Português de Portugal (pt-PT, não pt-BR)
+  - **Excepção (M2.6, 2026-06-15):** vocabulário técnico do sector autocaravanas pode usar inglês quando é o padrão de mercado reconhecido. Exemplo confirmado pela Matilde: layout `face_to_face` mostra-se como **"Face to Face"** (não "Frente a Frente"). Os restantes labels do sector mantêm-se em pt-PT. Quando em dúvida sobre um novo termo, **default é pt-PT** — inglês exige confirmação de stand real.
 - **Comentários:** preferencialmente inglês, mas pt-PT aceite em código de domínio
 - **Slugs e enums:** snake_case (`cama_central`, `chassis_alko`)
 - **Labels:** pt-PT factual, sem buzzwords (sem "moderno", "elegante", "perfeito para…")
@@ -1733,6 +1737,8 @@ Tipos: `MarketComparable.source: string` (NOT optional após MS2 — backend sem
 | **Caso de aceitação cross-posting (Ness 80)** | hash `c5080054ff7847a398933f689b65d64aa73ca709`; SV ganha, CJ skipped; log `[market-snapshots] dedup completed before_dedup={SV:1,CJ:1} after_dedup=1 duplicates_skipped={CJ:1}` |
 
 ### 🚧 Próximo
+
+> **Estado de prod (2026-06-15):** MS2 (multi-fonte de mercado, 8 commits a/b/c/d/e/f + docs + g) deployada em produção desde 2026-06-10+ — deploy + canário motorhome + release em massa + janela de observação executados pelo Simon. O `git log` local pode dar a impressão errada de que está pendente; **está em prod**. As faixas posteriores (Ficha, FieldLabelWithHint, Capítulo Matilde 2 Lote A) ficam por subir no próximo deploy.
 
 **Curto prazo (próximas 2-3 sessões)**
 - **Fase E** — investigar congelamento do scheduler (item 5 de 14.1) com logs visíveis desde D6
