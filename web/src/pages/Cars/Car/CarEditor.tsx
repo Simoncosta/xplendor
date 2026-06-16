@@ -244,7 +244,11 @@ const CarEditor = ({
                         <Card>
                             <CardBody>
                                 <FormikProvider value={formik}>
-                                    <form onSubmit={formik.handleSubmit}>
+                                    {/* paddingBottom: 80px no <form> garante espaço
+                                        de respiração abaixo do último campo
+                                        (CarImagesDataFields), para a barra sticky
+                                        não tapar o conteúdo durante o scroll. */}
+                                    <form onSubmit={formik.handleSubmit} style={{ paddingBottom: "80px" }}>
                                         <ValidationAlert
                                             errors={validationErrors}
                                             onDismiss={onDismissValidationErrors}
@@ -262,8 +266,28 @@ const CarEditor = ({
                                         <CarDescriptionDataFields isEdit={isEdit} companyId={companyId} />
                                         <CarImagesDataFields isEdit={isEdit} companyId={companyId} />
 
-                                        <Col lg={12}>
-                                            <div className="hstack gap-2 justify-content-end mt-4">
+                                        {/* Barra de ações STICKY no fundo do form.
+                                            Vive dentro do CardBody (não fixed ao viewport)
+                                            → respeita sidebar à esquerda; quando o user faz
+                                            scroll até ao fim, sai do scroll natural e fica
+                                            estática (Velzon footer aparece abaixo sem
+                                            colisão). Margens negativas no eixo X ocupam
+                                            largura total do CardBody. */}
+                                        <div
+                                            style={{
+                                                position: "sticky",
+                                                bottom: 0,
+                                                zIndex: 10,
+                                                background: "#fff",
+                                                borderTop: "1px solid #e9ebec",
+                                                marginLeft: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
+                                                marginRight: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
+                                                marginBottom: "calc(-1 * var(--vz-card-spacer-y, 1.5rem))",
+                                                marginTop: "1.5rem",
+                                                padding: "12px 18px",
+                                            }}
+                                        >
+                                            <div className="hstack gap-2 justify-content-end">
                                                 <XButton
                                                     variant="success"
                                                     type='submit'
@@ -274,14 +298,14 @@ const CarEditor = ({
                                                     disabled={isSubmitting}
                                                 >
                                                     {saleLoading
-                                                        ? "A concluir venda..."
+                                                        ? <>A concluir<span className="d-none d-sm-inline"> venda</span>…</>
                                                         : isSubmitting
                                                             ? isEdit
-                                                                ? "A guardar alterações..."
-                                                                : "A criar viatura..."
+                                                                ? <>A guardar<span className="d-none d-sm-inline"> alterações</span>…</>
+                                                                : <>A criar<span className="d-none d-sm-inline"> viatura</span>…</>
                                                             : isEdit
-                                                            ? "Guardar alterações"
-                                                            : "Criar viatura"}
+                                                                ? <>Guardar<span className="d-none d-sm-inline"> alterações</span></>
+                                                                : <>Criar<span className="d-none d-sm-inline"> viatura</span></>}
                                                 </XButton>
                                                 <XButton
                                                     variant="danger"
@@ -294,7 +318,7 @@ const CarEditor = ({
                                                     Cancelar
                                                 </XButton>
                                             </div>
-                                        </Col>
+                                        </div>
                                     </form>
                                 </FormikProvider>
                             </CardBody>
