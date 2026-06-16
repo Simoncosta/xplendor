@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Select from "react-select";
 import { AccordionBody, AccordionHeader, AccordionItem, Col, Label, Row } from "reactstrap";
 import { useFormikContext } from "formik";
@@ -20,6 +21,18 @@ const chassisTypeOptions: ChassisOpt[] = [
 export default function ChassisStructureAccordion({ accordionId }: AccordionProps) {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const cs = values.vehicle_attributes?.chassis_structure;
+
+    // M2.7 — limpeza activa: quando o user desmarca a suspensão pneumática,
+    // o compressor passa também a false. Impede o estado absurdo "compressor
+    // sem suspensão pneumática" mesmo depois de o user marcar e desmarcar.
+    useEffect(() => {
+        if (!cs?.has_air_suspension && cs?.has_air_suspension_compressor) {
+            setFieldValue(
+                "vehicle_attributes.chassis_structure.has_air_suspension_compressor",
+                false,
+            );
+        }
+    }, [cs?.has_air_suspension, cs?.has_air_suspension_compressor, setFieldValue]);
 
     return (
         <AccordionItem>
@@ -80,6 +93,28 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                             className="mb-3"
                         />
                     </Col>
+                </Row>
+
+                {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
+                    condicional (só editável quando a pneumática está activa).
+                    Padrão dos sub-campos da garagem (ExteriorAccordion). */}
+                <Row className="mb-2">
+                    <Col lg={3}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_air_suspension"
+                            label="Suspensão pneumática"
+                            className="mb-3"
+                        />
+                    </Col>
+                    {cs?.has_air_suspension && (
+                        <Col lg={3}>
+                            <XInputCheckbox
+                                name="vehicle_attributes.chassis_structure.has_air_suspension_compressor"
+                                label="Com compressor"
+                                className="mb-3"
+                            />
+                        </Col>
+                    )}
                 </Row>
 
                 <Row>

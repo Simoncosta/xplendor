@@ -237,6 +237,8 @@ return [
         'vehicle_attributes.beds.*.type'                                      => 'tipo de cama',
         'vehicle_attributes.beds.*.capacity'                                  => 'capacidade da cama',
         'vehicle_attributes.energy_climate.has_battery_cutoff'                => 'corta-corrente',
+        'vehicle_attributes.chassis_structure.has_air_suspension'             => 'suspensão pneumática',
+        'vehicle_attributes.chassis_structure.has_air_suspension_compressor'  => 'compressor da suspensão pneumática',
         'vehicle_attributes.interior_furniture.has_wardrobe'                  => 'guarda-fatos',
         'vehicle_attributes.living_room.layout'                               => 'tipo de sala',
         'vehicle_attributes.habitation_basics.kitchen.fridge_litres'          => 'litros do frigorífico',

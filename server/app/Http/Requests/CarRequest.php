@@ -180,6 +180,8 @@ class CarRequest extends FormRequest
             'vehicle_attributes.chassis_structure.has_panoramic_skylight'               => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_40x40_skylight'                   => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.other_skylights_notes'                => ['nullable', 'string', 'max:500'],
+            'vehicle_attributes.chassis_structure.has_air_suspension'                   => ['nullable', 'boolean'],
+            'vehicle_attributes.chassis_structure.has_air_suspension_compressor'        => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_remifront'                        => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_window_blackouts'                 => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_mosquito_nets'                    => ['nullable', 'boolean'],

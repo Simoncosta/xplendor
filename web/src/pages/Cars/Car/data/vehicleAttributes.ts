@@ -161,6 +161,12 @@ export interface VehicleAttributeChassisStructure {
     has_door_mosquito_net?: boolean;
     has_cabin_blackouts?: boolean;
     cabin_blackout_type?: string;
+    /** M2.7 — suspensão pneumática. `has_air_suspension_compressor` só faz
+     *  sentido quando `has_air_suspension === true`; padrão dos sub-campos
+     *  do `garage.has_garage`. UI esconde o compressor quando a pneumática
+     *  é desmarcada E faz limpeza activa via useEffect. */
+    has_air_suspension?: boolean;
+    has_air_suspension_compressor?: boolean;
 }
 
 export interface VehicleAttributeInteriorFurniture {

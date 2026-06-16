@@ -148,6 +148,9 @@ export interface VehicleAttributeChassisStructure {
     has_door_mosquito_net?: boolean;
     has_cabin_blackouts?: boolean;
     cabin_blackout_type?: string;
+    /** M2.7 — suspensão pneumática + sub-campo condicional do compressor. */
+    has_air_suspension?: boolean;
+    has_air_suspension_compressor?: boolean;
 }
 
 export interface VehicleAttributeInteriorFurniture {
