@@ -65,6 +65,15 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
                             className="mb-3"
                         />
                     </Col>
+                    {/* M2.5 — Guarda-fatos. Mobiliário típico de
+                        autocaravana, encaixa naturalmente nesta Row. */}
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.interior_furniture.has_wardrobe"
+                            label="Guarda-fatos"
+                            className="mb-3"
+                        />
+                    </Col>
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.interior_furniture.has_led_lighting"

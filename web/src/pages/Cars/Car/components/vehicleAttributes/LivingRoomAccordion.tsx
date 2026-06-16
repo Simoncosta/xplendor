@@ -8,10 +8,14 @@ export interface AccordionProps {
     accordionId: string;
 }
 
+// M2.6 — "Face to Face" mantém-se em inglês por ser o padrão de mercado
+// reconhecido no sector autocaravanas (excepção registada no CLAUDE.md
+// sec 12). Restantes labels permanecem em pt-PT.
 const layoutOptions = [
-    { value: "face_to_face", label: "Frente a Frente" },
-    { value: "l_shape",      label: "Sala em L" },
-    { value: "panoramic",    label: "Salão Panorâmico" },
+    { value: "face_to_face",    label: "Face to Face" },
+    { value: "l_shape",         label: "Sala em L" },
+    { value: "panoramic",       label: "Salão Panorâmico" },
+    { value: "double_dinette",  label: "Sala dupla" },
 ];
 
 export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
@@ -40,7 +44,7 @@ export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
                     <Col lg={2} className="d-flex align-items-end">
                         <XInputCheckbox
                             name="vehicle_attributes.living_room.has_extending_table"
-                            label="Acrescento de mesa"
+                            label="Mesa telescópica"
                             className="mb-3"
                         />
                     </Col>

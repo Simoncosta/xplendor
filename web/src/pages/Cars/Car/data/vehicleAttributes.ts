@@ -108,6 +108,8 @@ export interface VehicleAttributeEnergyClimate {
     battery_count?: number;
     cabin_battery_count?: number;
     cell_battery_count?: number;
+    /** M2.5 — dispositivo de corte de corrente das baterias. */
+    has_battery_cutoff?: boolean;
 }
 
 export interface VehicleAttributeGarage {
@@ -173,9 +175,11 @@ export interface VehicleAttributeInteriorFurniture {
     has_command_panel?: boolean;
     has_water_infiltrations?: boolean;
     infiltrations_notes?: string;
+    /** M2.5 — guarda-fatos no interior. */
+    has_wardrobe?: boolean;
 }
 
-export type LivingRoomLayout = "face_to_face" | "l_shape" | "panoramic";
+export type LivingRoomLayout = "face_to_face" | "l_shape" | "panoramic" | "double_dinette";
 
 export interface VehicleAttributeLivingRoom {
     layout?: LivingRoomLayout;

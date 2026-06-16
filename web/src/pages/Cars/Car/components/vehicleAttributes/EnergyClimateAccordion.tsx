@@ -194,6 +194,15 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                             className="mb-3"
                         />
                     </Col>
+                    {/* M2.5 — corta-corrente de baterias. Acompanha o resto da
+                        gestão de bateria (cell/cabin/inversor/painel/GPL). */}
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.energy_climate.has_battery_cutoff"
+                            label="Corta-corrente"
+                            className="mb-3"
+                        />
+                    </Col>
                 </Row>
 
             </AccordionBody>

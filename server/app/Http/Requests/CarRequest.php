@@ -131,6 +131,7 @@ class CarRequest extends FormRequest
             'vehicle_attributes.energy_climate.inverter_type'                           => ['nullable', Rule::in(['pure_sine', 'modified_sine'])],
             'vehicle_attributes.energy_climate.inverter_watts'                          => ['nullable', 'integer', 'min:0', 'max:10000'],
             'vehicle_attributes.energy_climate.has_gpl'                                 => ['nullable', 'boolean'],
+            'vehicle_attributes.energy_climate.has_battery_cutoff'                      => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.gpl_bottles_count'                       => ['nullable', 'integer', 'min:0', 'max:10'],
             'vehicle_attributes.energy_climate.has_generator'                           => ['nullable', 'boolean'],
             'vehicle_attributes.energy_climate.has_external_power_socket'               => ['nullable', 'boolean'],
@@ -198,11 +199,12 @@ class CarRequest extends FormRequest
             'vehicle_attributes.interior_furniture.has_tv'                              => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_command_panel'                   => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_water_infiltrations'             => ['nullable', 'boolean'],
+            'vehicle_attributes.interior_furniture.has_wardrobe'                        => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.infiltrations_notes'                 => ['nullable', 'string', 'max:500'],
 
             // Sala (M5)
             'vehicle_attributes.living_room'                                             => ['nullable', 'array'],
-            'vehicle_attributes.living_room.layout'                                     => ['nullable', Rule::in(['face_to_face', 'l_shape', 'panoramic'])],
+            'vehicle_attributes.living_room.layout'                                     => ['nullable', Rule::in(['face_to_face', 'l_shape', 'panoramic', 'double_dinette'])],
             'vehicle_attributes.living_room.has_extending_table'                        => ['nullable', 'boolean'],
 
             'car_brand_id' => ['required', 'exists:car_brands,id'],
