@@ -133,3 +133,28 @@ export const MARKET_SOURCE_LABELS: Record<string, string> = {
     "standvirtual": "Standvirtual",
     "custojusto":   "CustoJusto",
 };
+
+// Relatório A — sinal de preço vs mercado. Vocabulário discutido com Matilde:
+// "competitive" não é "competitivo" no sentido pt-PT (que sugere "concorrencial"
+// = caro demais). É "abaixo do mercado" = uma boa oferta de venda.
+export const PRICE_SIGNAL_LABELS: Record<string, string> = {
+    "overpriced":    "Acima do mercado",
+    "slightly_high": "Ligeiramente acima",
+    "fair":          "Alinhado",
+    "competitive":   "Abaixo do mercado",
+};
+
+// Vehicle type — uniformiza o que se mostra em filtros e chips.
+export const VEHICLE_TYPE_LABELS: Record<string, string> = {
+    "car":        "Carro",
+    "motorcycle": "Mota",
+    "motorhome":  "Autocaravana",
+    "caravan":    "Caravana",
+};
+
+// Car/motorhome status — para o filtro multi-select.
+export const CAR_STATUS_LABELS: Record<string, string> = {
+    "active":         "Ativa",
+    "available_soon": "Brevemente",
+    "reserved":       "Reservada",
+};

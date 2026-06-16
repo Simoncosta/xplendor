@@ -43,6 +43,9 @@ import BlogShow from "pages/Blogs/Blog/BlogShow";
 // Leads
 import LeadList from "pages/Leads/LeadList";
 
+// Stock & Promoção (Relatório A — flag manual de prioridade)
+import StockPromotionPage from "pages/StockPromotion";
+
 // Internal tools
 import ScraperRunner from "pages/Internal/ScraperRunner";
 
@@ -80,6 +83,9 @@ const authProtectedRoutes = [
 
     // Leads
     { path: "/leads", component: <LeadList /> },
+
+    // Stock & Promoção
+    { path: "/stock/promotion", component: <StockPromotionPage /> },
 
     // Users
     { path: "/users", component: <UsersList /> },

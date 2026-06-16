@@ -148,3 +148,116 @@ export interface RefreshMarketAggregateResult {
     aggregate_id: number;
     status: MarketAggregateStatus;
 }
+
+// ── Relatório A — candidatas a promoção ───────────────────────────────────────
+//
+// Linha tabular consumida por `/stock/promotion`. Null states são CASOS REAIS:
+//   - `market: null`             → motorhome sem aggregate (frequente)
+//   - `ips.score: null`          → sem sinais; classification "pending" (frequente)
+//   - `promotion: null`          → não marcada
+//   - `category: null`           → carro (não tem categoria — só motorhome)
+//   - `engine_brand: null`       → carro (só motorhome/caravan)
+//
+// Numéricos seguros (sem null mascarado):
+//   - `engagement.{views,leads}: number`   (0 é real)
+//   - `days_in_stock: number`              (0 = entrou hoje)
+
+export type PromotionVehicleType = 'car' | 'motorcycle' | 'motorhome' | 'caravan';
+export type PromotionVehicleStatus = 'active' | 'available_soon' | 'reserved';
+
+export interface PromotionCandidateMarket {
+    status: MarketAggregateStatus;
+    confidence: MarketAggregateConfidence;
+    comparables_count: number;
+    median_price: number | null;
+    price_signal: MarketPriceSignal | null;
+    price_difference_percent: number | null;
+}
+
+export interface PromotionCandidateIps {
+    score: number | null;             // null + classification "pending" = a calibrar
+    classification: 'hot' | 'warm' | 'cold' | 'pending';
+    calculated_at: string | null;
+}
+
+export interface PromotionCandidatePriority {
+    id: number;
+    marked_at: string | null;
+    note: string | null;
+    marked_by: { id: number; name: string } | null;
+}
+
+export interface PromotionCandidate {
+    id: number;
+    vehicle_type: PromotionVehicleType;
+    status: PromotionVehicleStatus;
+    brand: { id: number; name: string } | null;
+    model: { id: number; name: string } | null;
+    category: { id: number; name: string; slug: string } | null;
+    segment: string | null;
+    engine_brand: string | null;
+    version: string | null;
+    public_version_name: string | null;
+    registration_year: number | null;
+    mileage_km: number | null;
+    /** Caminho relativo da imagem principal. Frontend prefixa com REACT_APP_PUBLIC_URL.
+     *  `null` quando a viatura ainda não tem imagens — placeholder gracioso. */
+    thumbnail: string | null;
+    price: {
+        gross: number | null;
+        promo: number | null;
+        effective: number | null;
+        has_promo: boolean;
+        hide_online: boolean;
+    };
+    days_in_stock: number;
+    is_stale: boolean;
+    engagement: { views_count: number; leads_count: number };
+    market: PromotionCandidateMarket | null;
+    ips: PromotionCandidateIps | null;
+    promotion: PromotionCandidatePriority | null;
+}
+
+export interface PromotionCandidatesMeta {
+    current_page?: number;
+    last_page?: number;
+    per_page?: number;
+    total?: number;
+    from?: number;
+    to?: number;
+    thresholds: {
+        stock_age_days: Record<string, number>;
+        default: number;
+    };
+}
+
+export interface PromotionSummary {
+    visible_by_type: Record<string, number>;
+    visible_total: number;
+    marked_total: number;
+}
+
+export interface PromotionCandidatesPage {
+    data: PromotionCandidate[];
+    meta: PromotionCandidatesMeta;
+    links?: unknown;
+    current_page?: number;
+    last_page?: number;
+    per_page?: number;
+    total?: number;
+}
+
+export interface ListPromotionCandidatesParams {
+    page?: number;
+    per_page?: number;
+    vehicle_type?: PromotionVehicleType;
+    status?: PromotionVehicleStatus[];
+    min_price?: number;
+    max_price?: number;
+    min_days_in_stock?: number;
+    max_days_in_stock?: number;
+    price_signal?: MarketPriceSignal[];
+    only_marked?: boolean;
+    sort_by?: 'days_in_stock' | 'price' | 'views' | 'leads' | 'ips';
+    sort_dir?: 'asc' | 'desc';
+}

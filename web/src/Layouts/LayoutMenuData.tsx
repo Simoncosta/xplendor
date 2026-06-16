@@ -124,6 +124,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "stock-promotion",
+            label: "Candidatas a promoção",
+            icon: "ri-star-line",
+            link: "/stock/promotion",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('StockPromotion');
+            }
+        },
+        {
             id: "blogs",
             label: "Blogs",
             icon: "bx bxl-blogger",
