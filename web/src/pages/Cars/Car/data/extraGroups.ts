@@ -30,6 +30,7 @@ export const EXTRA_GROUPS: ExtraGroup[] = [
             "Entrada AUX",
             "Entrada USB",
             "GPS",
+            "Rádio",
             "GPS via Tlm",
             "Head-up display",
             "Internet a bordo",
