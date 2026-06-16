@@ -9,6 +9,7 @@ import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, 
 
 // Components
 import XInput from "Components/Common/XInput";
+import FieldLabelWithHint from "Components/Common/FieldLabelWithHint";
 
 // Forms
 import { useFormikContext } from "formik";
@@ -314,12 +315,11 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                         para aqui). */}
                                     <Row className="align-items-end mb-3">
                                         <Col lg={3}>
-                                            <Label
-                                                for="vehicle_attributes.habitation_basics.sleeps"
-                                                className="mb-1"
-                                            >
-                                                Dorme
-                                            </Label>
+                                            <FieldLabelWithHint
+                                                label="Dorme"
+                                                hint="Pessoas que a autocaravana acomoda para dormir — pode diferir do número de camas (ex.: uma cama de casal conta como 2)."
+                                                htmlFor="vehicle_attributes.habitation_basics.sleeps"
+                                            />
                                             <Input
                                                 type="number"
                                                 id="vehicle_attributes.habitation_basics.sleeps"
@@ -336,11 +336,6 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                                                     );
                                                 }}
                                             />
-                                            <small className="text-muted">
-                                                Pessoas que a autocaravana acomoda para dormir
-                                                — pode diferir do número de camas (ex.: uma
-                                                cama de casal conta como 2).
-                                            </small>
                                         </Col>
                                     </Row>
 

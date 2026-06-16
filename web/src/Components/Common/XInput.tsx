@@ -4,12 +4,17 @@ import React from "react";
 import { useField } from "formik";
 // Components
 import { Input, Label, FormFeedback } from "reactstrap";
+import FieldLabelWithHint from "./FieldLabelWithHint";
 // Models
 import { InputType } from "reactstrap/types/lib/Input";
 
 interface XInputProps {
     name: string;
     label?: string;
+    /** Helper-text on-demand. Quando presente, o label ganha um ícone de
+     *  informação que mostra o hint num tooltip (hover/focus/click — funciona
+     *  em touch). Substitui o padrão de <small> permanente por baixo. */
+    hint?: string;
     type?: InputType;
     placeholder?: string;
     step?: string;
@@ -20,6 +25,7 @@ interface XInputProps {
 
 const XInput: React.FC<XInputProps> = ({
     label,
+    hint,
     required = false,
     type = "text",
     className,
@@ -32,9 +38,16 @@ const XInput: React.FC<XInputProps> = ({
     return (
         <div className={className}>
             {label && (
-                <Label className="form-label">
-                    {label}: {required && <span className="text-danger">*</span>}
-                </Label>
+                hint
+                    ? <FieldLabelWithHint
+                          label={label}
+                          hint={hint}
+                          htmlFor={props.name}
+                          required={required}
+                      />
+                    : <Label className="form-label" htmlFor={props.name}>
+                          {label}: {required && <span className="text-danger">*</span>}
+                      </Label>
             )}
 
             <Input

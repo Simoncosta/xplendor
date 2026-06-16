@@ -262,16 +262,15 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                     />
                 </Col>
                 <Col lg={6}>
+                    {/* Helper passa para tooltip on-demand (ícone ⓘ no label)
+                        em vez de bloco permanente por baixo — liberta espaço
+                        vertical e a info fica acessível em hover/focus/tap. */}
                     <XInput
                         name="public_version_name"
                         label="Versão (web)"
-                        className="mb-1"
+                        hint="Opcional. Se preenchido, substitui a 'Versão' na ficha pública do site. Útil quando o nome interno é técnico (ex.: '4 Matic 381') e queres algo mais comercial."
+                        className="mb-3"
                     />
-                    <small className="text-muted">
-                        Opcional. Se preenchido, substitui a "Versão" na ficha
-                        pública do site. Útil quando o nome interno é técnico
-                        (ex.: "4 Matic 381") e queres algo mais comercial.
-                    </small>
                 </Col>
             </Row>
         </div>
