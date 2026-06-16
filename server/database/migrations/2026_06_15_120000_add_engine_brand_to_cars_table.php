@@ -5,11 +5,18 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * M2.2 — chassis_brand em cars
+ * M2.2 — engine_brand em cars
  *
- * Marca do chassis (Fiat / Renault / Ford / …) — distinta da marca COMERCIAL
- * (Challenger / McLouis / …). Aplica-se a autocaravanas e caravanas
- * (motorhome/caravan); carros ficam com NULL (sem coerção).
+ * Marca do MOTOR (Fiat / Renault / Ford / Mercedes / Citroën / …) — distinta
+ * da marca COMERCIAL da autocaravana (Challenger / McLouis / …). A Matilde
+ * confirmou: "a autocaravana é Challenger, o motor por baixo é Fiat".
+ *
+ * Aplica-se a autocaravanas e caravanas (motorhome/caravan); carros ficam
+ * com NULL (sem coerção).
+ *
+ * NÃO confundir com `vehicle_attributes.chassis_structure.chassis_type` —
+ * que é o TIPO de chassis (standard / alko / other), atributo de habitação
+ * no JSON. `engine_brand` é coluna de `cars`, propriedade base do veículo.
  *
  * String nullable + Rule::in com whitelist no Form Request (constante
  * extensível). Valor sai cru ao /specs interno; API pública NÃO tocada
@@ -21,14 +28,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('cars', function (Blueprint $table) {
-            $table->string('chassis_brand')->nullable()->after('public_version_name');
+            $table->string('engine_brand')->nullable()->after('public_version_name');
         });
     }
 
     public function down(): void
     {
         Schema::table('cars', function (Blueprint $table) {
-            $table->dropColumn('chassis_brand');
+            $table->dropColumn('engine_brand');
         });
     }
 };

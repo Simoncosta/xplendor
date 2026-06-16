@@ -8,12 +8,15 @@ use Illuminate\Validation\Rule;
 class CarRequest extends FormRequest
 {
     /**
-     * M2.2 — marcas de chassis aceites (autocaravanas e caravanas).
+     * M2.2 — marcas de motor aceites (autocaravanas e caravanas).
+     * A Matilde confirmou: a autocaravana é Challenger/McLouis, o MOTOR
+     * por baixo é Fiat/Renault/Ford/etc. (não confundir com
+     * `vehicle_attributes.chassis_structure.chassis_type`, que é o TIPO de
+     * chassis — standard/alko/other — atributo de habitação).
      * Constante extensível: novas marcas entram com 1 linha + sem migration
-     * (string nullable na BD). Inclui marcas de chassis mais comuns no
-     * mercado português 2026.
+     * (string nullable na BD).
      */
-    public const VALID_CHASSIS_BRANDS = [
+    public const VALID_ENGINE_BRANDS = [
         'Fiat', 'Renault', 'Ford', 'Citroën', 'Mercedes', 'Iveco',
         'Peugeot', 'VW',
     ];
@@ -213,7 +216,7 @@ class CarRequest extends FormRequest
             'car_model_id' => ['required', 'exists:car_models,id'],
             'version' => ['required', 'string', 'max:150'],
             'public_version_name' => ['nullable', 'string', 'max:150'],
-            'chassis_brand'       => ['nullable', 'string', Rule::in(self::VALID_CHASSIS_BRANDS)],
+            'engine_brand'        => ['nullable', 'string', Rule::in(self::VALID_ENGINE_BRANDS)],
             'fuel_type' => ['nullable', 'required_unless:vehicle_type,caravan', 'string', 'max:50'],
             'power_hp' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:2000'],
             'engine_capacity_cc' => ['nullable', 'required_unless:vehicle_type,caravan', 'integer', 'min:1', 'max:10000'],

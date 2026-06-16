@@ -19,10 +19,13 @@ import { getCarModels } from "slices/car-models/thunk";
 import { fuelTypeOptions, monthsOptions, transmissionOptions } from "common/data/cars";
 import { createSelector } from "reselect";
 
-// M2.2 — marcas de chassis aceites. Tem de manter-se em sincronia com a
-// constante VALID_CHASSIS_BRANDS em server/app/Http/Requests/CarRequest.php
+// M2.2 — marcas de motor aceites. A autocaravana tem marca COMERCIAL
+// (Challenger/McLouis), o MOTOR por baixo é Fiat/Renault/etc. Distinto
+// também de `vehicle_attributes.chassis_structure.chassis_type` (tipo
+// de chassis, atributo de habitação). Lista tem de ficar em sincronia
+// com VALID_ENGINE_BRANDS em server/app/Http/Requests/CarRequest.php
 // (defesa em profundidade — backend faz Rule::in com a mesma lista).
-const chassisBrandOptions = [
+const engineBrandOptions = [
     "Fiat", "Renault", "Ford", "Citroën", "Mercedes", "Iveco", "Peugeot", "VW",
 ].map(b => ({ value: b, label: b }));
 
@@ -54,7 +57,7 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
     const { models } = useSelector(selectCarModelOptionsState);
     const hasMotorFields = values.vehicle_type !== "caravan";
     const isHabitationVehicle = values.vehicle_type === "motorhome" || values.vehicle_type === "caravan";
-    // M2.2 — em motorhome/caravan, a Row 1 ganha Marca do chassis ao lado
+    // M2.2 — em motorhome/caravan, a Row 1 ganha Marca do motor ao lado
     // do Modelo; Marca/Modelo encolhem de lg=4 para lg=3 para acomodar 12.
     const brandModelLg = isHabitationVehicle ? 3 : 4;
 
@@ -170,17 +173,17 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                 </Col>
                 {isHabitationVehicle && (
                     <Col lg={2}>
-                        <Label for="chassis_brand">Marca do chassis:</Label>
+                        <Label for="engine_brand">Marca do motor:</Label>
                         <Select
-                            id="chassis_brand"
-                            name="chassis_brand"
+                            id="engine_brand"
+                            name="engine_brand"
                             isClearable
                             placeholder="Selecionar"
-                            options={chassisBrandOptions}
-                            value={chassisBrandOptions.find((o) => o.value === values.chassis_brand) || null}
+                            options={engineBrandOptions}
+                            value={engineBrandOptions.find((o) => o.value === values.engine_brand) || null}
                             onChange={(option: any) => {
-                                setFieldValue("chassis_brand", option?.value || null);
-                                setFieldTouched("chassis_brand", true);
+                                setFieldValue("engine_brand", option?.value || null);
+                                setFieldTouched("engine_brand", true);
                             }}
                             className="mb-3"
                         />
