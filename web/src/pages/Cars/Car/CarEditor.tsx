@@ -253,18 +253,36 @@ const CarEditor = ({
                                             errors={validationErrors}
                                             onDismiss={onDismissValidationErrors}
                                         />
-                                        <CarInformationDataFields
-                                            isEdit={isEdit}
-                                            companyId={companyId}
-                                            onStatusChange={handleStatusChange}
-                                        />
-                                        <CarVehicleDataFields isEdit={isEdit} />
+                                        {/* Ids nas secções soltas — busca universal usa
+                                            `getElementById` para scrollIntoView.
+                                            CarVehicleDetailsDataFields já tem `id="section-details"`
+                                            no seu próprio wrapper (acolhe campos base + 9 accordions
+                                            de habitação). CarEquipmentDataFields é só accordion-container,
+                                            scroll vai via ref do accordion (ver useFieldSpotlight). */}
+                                        <div id="section-information">
+                                            <CarInformationDataFields
+                                                isEdit={isEdit}
+                                                companyId={companyId}
+                                                onStatusChange={handleStatusChange}
+                                            />
+                                        </div>
+                                        <div id="section-vehicle">
+                                            <CarVehicleDataFields isEdit={isEdit} />
+                                        </div>
                                         <CarVehicleDetailsDataFields isEdit={isEdit} />
-                                        <CarAdditionalDataFields isEdit={isEdit} />
-                                        <CarPriceDataFields isEdit={isEdit} />
+                                        <div id="section-additional">
+                                            <CarAdditionalDataFields isEdit={isEdit} />
+                                        </div>
+                                        <div id="section-price">
+                                            <CarPriceDataFields isEdit={isEdit} />
+                                        </div>
                                         <CarEquipmentDataFields isEdit={isEdit} />
-                                        <CarDescriptionDataFields isEdit={isEdit} companyId={companyId} />
-                                        <CarImagesDataFields isEdit={isEdit} companyId={companyId} />
+                                        <div id="section-description">
+                                            <CarDescriptionDataFields isEdit={isEdit} companyId={companyId} />
+                                        </div>
+                                        <div id="section-images">
+                                            <CarImagesDataFields isEdit={isEdit} companyId={companyId} />
+                                        </div>
 
                                         {/* Barra de ações STICKY no fundo do form.
                                             Vive dentro do CardBody (não fixed ao viewport)

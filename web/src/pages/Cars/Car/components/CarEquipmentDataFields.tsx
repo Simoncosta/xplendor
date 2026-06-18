@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useFormikContext } from "formik";
 import XInputCheckboxArray from "Components/Common/XInputCheckboxArray";
 import type { ICarUpdatePayload, CarExtraGroup, CarExtrasGroup } from "common/models/car.model";
@@ -40,7 +40,15 @@ const arrayToMap = (arr?: CarExtrasGroup[]) => {
     return map;
 };
 
-export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) {
+/**
+ * Handle exposto ao pai para a busca universal abrir um dos 4 grupos
+ * de extras programaticamente. Não interfere com o `toggle` manual.
+ */
+export interface CarEquipmentHandle {
+    openAccordion: (id: string) => void;
+}
+
+const CarEquipmentDataFields = forwardRef<CarEquipmentHandle, { isEdit: boolean }>(function CarEquipmentDataFields({ isEdit }, ref) {
     const { values, setFieldValue } = useFormikContext<FormValues>();
 
     const [open, setOpen] = useState<string>("");
@@ -48,6 +56,11 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
     const toggle = (id: string) => {
         setOpen(open === id ? "" : id);
     };
+
+    // Busca universal — FORÇA aberto. Fechar via openAccordion("").
+    useImperativeHandle(ref, () => ({
+        openAccordion: (id: string) => setOpen(id),
+    }), []);
 
     const isSyncingFromExtras = useRef(false);
 
@@ -79,7 +92,7 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
     }, [values.extrasByGroup]);
 
     return (
-        <div className="mt-4">
+        <div className="mt-4" id="section-extras">
             <Accordion flush open={open} toggle={toggle}>
 
                 {EXTRA_GROUPS.map((group, index) => {
@@ -116,4 +129,6 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
             </Accordion>
         </div>
     );
-}
+});
+
+export default CarEquipmentDataFields;

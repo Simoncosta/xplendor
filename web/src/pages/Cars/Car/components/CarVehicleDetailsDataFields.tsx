@@ -3,7 +3,7 @@
 // alinhando com o padrão dos B2 accordions.
 
 //React
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import Select from "react-select";
 import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, Input, Label, Row } from "reactstrap";
 
@@ -63,7 +63,17 @@ function getBedOptions(currentType: string | undefined): { value: BedType; label
     return BED_OPTIONS_DEFAULT;
 }
 
-export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolean }) {
+/**
+ * Handle exposto ao pai (CarEditor) para a busca universal abrir o
+ * accordion certo (ex.: id "4" = Energia e Aquecimento). NÃO interfere
+ * com o `toggle` manual (clique no header) — apenas força aberto.
+ * Para fechar, o pai chama `openAccordion("")`.
+ */
+export interface CarVehicleDetailsHandle {
+    openAccordion: (id: string) => void;
+}
+
+const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit: boolean }>(function CarVehicleDetailsDataFields({ isEdit }, ref) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
     const [categoryOptions, setCategoryOptions] = useState<{ value: number; label: string }[]>([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
@@ -136,8 +146,14 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
     const [attrAccordion, setAttrAccordion] = useState<string>("1");
     const toggleAttrAccordion = (id: string) => setAttrAccordion(attrAccordion === id ? "" : id);
 
+    // Busca universal — expõe abrir programaticamente. `setAttrAccordion(id)`
+    // FORÇA aberto (não toggla); fechar é responsabilidade do pai (`""`).
+    useImperativeHandle(ref, () => ({
+        openAccordion: (id: string) => setAttrAccordion(id),
+    }), []);
+
     return (
-        <div className="mt-4">
+        <div className="mt-4" id="section-details">
             <div className={`mb-2 border-bottom pb-2`}>
                 <h5 className="card-title">Detalhes da Viatura</h5>
             </div>
@@ -569,5 +585,7 @@ export default function CarVehicleDetailsDataFields({ isEdit }: { isEdit: boolea
                 </div>
             )}
         </div>
-    )
-}
+    );
+});
+
+export default CarVehicleDetailsDataFields;
