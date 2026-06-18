@@ -44,6 +44,36 @@ const NON_HABITATION:  FormSearchVehicleType[] = ["car", "motorcycle"];
 const MOTORHOME_ONLY:  FormSearchVehicleType[] = ["motorhome"];
 
 /**
+ * Anotação opcional de checkbox-pai. Quando presente, o campo só renderiza
+ * no formulário se o pai estiver "ligado". O dropdown mostra a entrada em
+ * estado AMARELO SOFT com nota "Marca primeiro '<parentLabel>'"; clicar
+ * leva ao PAI (não ao filho — o filho não está visível).
+ *
+ * `isOn` default = `Boolean(value)`. Selects-enum como `water_heater_source`
+ * passam custom (`(v) => v != null && v !== "none"`).
+ *
+ * O `parentLabel` é resolvido AUTOMATICAMENTE por lookup no índice via
+ * `parentFieldName` — não duplicamos texto. Se quiseres override, define
+ * `parentLabel` explicitamente.
+ *
+ * LIMITAÇÃO CONHECIDA (v1): cadeia de 3 camadas (avô→pai→neto) testa apenas
+ * o pai imediato. Se o avô também está off, o click leva ao pai-imediato
+ * que está invisível. ~5 entradas afectadas (fridge_litres/shelves/type
+ * dependem de has_fridge dependente de has_kitchen; shower_type e águas
+ * dependem de has_shower dependente de has_bathroom). Uso natural da
+ * Matilde preenche top-down, raramente começa pelo neto.
+ */
+export interface FormSearchParentField {
+    /** Path Formik do checkbox/select-enum pai. */
+    fieldName: string;
+    /** Override do label do pai. Default: lookup no índice pelo `fieldName`. */
+    parentLabel?: string;
+    /** Quando devolve true, o pai está "on" e o filho renderiza.
+     *  Default: `Boolean(value)`. */
+    isOn?: (value: unknown) => boolean;
+}
+
+/**
  * Localização de um campo dentro do formulário.
  *
  * - `section`: secção "solta" (não em accordion). Scroll directo por `domId`.
@@ -82,6 +112,11 @@ export interface FormSearchEntry {
      * herdada > undefined (todos).
      */
     vehicleTypes?: FormSearchVehicleType[];
+    /**
+     * Anotação opcional de checkbox-pai. Quando o pai está off, o filho
+     * mostra-se no dropdown em estado amarelo soft e o clique leva ao pai.
+     */
+    parentField?: FormSearchParentField;
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -159,7 +194,15 @@ type RawEntry = {
      *  é restrita apesar da location ser universal (ex.: Segmento, Cilindros,
      *  Categoria, Marca do motor, motor base em não-caravan). */
     vehicleTypes?: FormSearchVehicleType[];
+    /** Anotação de checkbox-pai. Ver `FormSearchParentField`. */
+    parentField?: FormSearchParentField;
 };
+
+// Helpers de parentField — reutilizados nas anotações abaixo.
+// Selects-enum (water_heater_source / ambient_heating_source / chassis_type)
+// usam comparação com "none" ou null.
+const ENUM_NOT_NONE = (v: unknown): boolean => v != null && v !== "none" && v !== "";
+const TRUTHY        = (v: unknown): boolean => Boolean(v);
 
 const RAW_MANUAL: RawEntry[] = [
     // ── Identificação (CarInformationDataFields) ─────────────────────────
@@ -228,51 +271,63 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Dorme (lugares para dormir)",name: "vehicle_attributes.habitation_basics.sleeps", loc: HAB_DIMENSIONS },
 
     // ── HAB.2 Cozinha (accordionId="2") ──────────────────────────────────
+    // Pai: has_kitchen → fogão/forno/acrescento/micro-ondas/exaustor/frigorífico
+    // (CarVehicleDetailsDataFields:433)
     { label: "Tem cozinha",       name: "vehicle_attributes.habitation_basics.has_kitchen", loc: HAB_KITCHEN },
-    { label: "Fogão",             name: "vehicle_attributes.habitation_basics.kitchen.has_stove", loc: HAB_KITCHEN },
-    { label: "Forno",             name: "vehicle_attributes.habitation_basics.kitchen.has_oven", loc: HAB_KITCHEN },
-    { label: "Acrescento de banca",name: "vehicle_attributes.habitation_basics.kitchen.has_extending_counter", loc: HAB_KITCHEN },
-    { label: "Micro-ondas",       name: "vehicle_attributes.habitation_basics.kitchen.has_microwave", loc: HAB_KITCHEN },
-    { label: "Exaustor",          name: "vehicle_attributes.habitation_basics.kitchen.has_extractor", loc: HAB_KITCHEN },
-    { label: "Frigorífico",       name: "vehicle_attributes.habitation_basics.kitchen.has_fridge", loc: HAB_KITCHEN },
-    { label: "Tipo de frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_type", loc: HAB_KITCHEN },
-    { label: "Capacidade do frigorífico (L)", name: "vehicle_attributes.habitation_basics.kitchen.fridge_litres", loc: HAB_KITCHEN },
-    { label: "Prateleiras do frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_shelves", loc: HAB_KITCHEN },
+    { label: "Fogão",             name: "vehicle_attributes.habitation_basics.kitchen.has_stove", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    { label: "Forno",             name: "vehicle_attributes.habitation_basics.kitchen.has_oven", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    { label: "Acrescento de banca",name: "vehicle_attributes.habitation_basics.kitchen.has_extending_counter", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    { label: "Micro-ondas",       name: "vehicle_attributes.habitation_basics.kitchen.has_microwave", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    { label: "Exaustor",          name: "vehicle_attributes.habitation_basics.kitchen.has_extractor", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    { label: "Frigorífico",       name: "vehicle_attributes.habitation_basics.kitchen.has_fridge", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_kitchen" } },
+    // Pai imediato: has_fridge (CarVehicleDetailsDataFields:477).
+    // CADEIA 3-CAMADAS: has_kitchen → has_fridge → estes 3. v1 só testa pai imediato.
+    { label: "Tipo de frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_type", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
+    { label: "Capacidade do frigorífico (L)", name: "vehicle_attributes.habitation_basics.kitchen.fridge_litres", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
+    { label: "Prateleiras do frigorífico", name: "vehicle_attributes.habitation_basics.kitchen.fridge_shelves", loc: HAB_KITCHEN, parentField: { fieldName: "vehicle_attributes.habitation_basics.kitchen.has_fridge" } },
 
     // ── HAB.3 Casa de Banho (accordionId="3") ────────────────────────────
+    // Pai: has_bathroom → sanita/duche/águas (CarVehicleDetailsDataFields:527)
     { label: "Tem casa de banho", name: "vehicle_attributes.habitation_basics.has_bathroom", loc: HAB_BATHROOM },
-    { label: "Sanita",            name: "vehicle_attributes.habitation_basics.bathroom.has_toilet", loc: HAB_BATHROOM },
-    { label: "Duche",             name: "vehicle_attributes.habitation_basics.bathroom.has_shower", loc: HAB_BATHROOM },
-    { label: "Tipo de duche",     name: "vehicle_attributes.habitation_basics.bathroom.shower_type", loc: HAB_BATHROOM },
-    { label: "Água limpa (L)",    name: "vehicle_attributes.habitation_basics.bathroom.clean_water_litres", loc: HAB_BATHROOM },
-    { label: "Águas residuais (L)", name: "vehicle_attributes.habitation_basics.bathroom.waste_water_litres", loc: HAB_BATHROOM },
+    { label: "Sanita",            name: "vehicle_attributes.habitation_basics.bathroom.has_toilet", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    { label: "Duche",             name: "vehicle_attributes.habitation_basics.bathroom.has_shower", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    // CADEIA 3-CAMADAS: has_bathroom → has_shower → shower_type
+    { label: "Tipo de duche",     name: "vehicle_attributes.habitation_basics.bathroom.shower_type", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.bathroom.has_shower" } },
+    { label: "Água limpa (L)",    name: "vehicle_attributes.habitation_basics.bathroom.clean_water_litres", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    { label: "Águas residuais (L)", name: "vehicle_attributes.habitation_basics.bathroom.waste_water_litres", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
 
     // ── HAB.4 Energia e Aquecimento (accordionId="4") ────────────────────
     { label: "Aquecimento de água", name: "vehicle_attributes.energy_climate.water_heater_source", loc: HAB_ENERGY },
-    { label: "Marca (aquec. água)", name: "vehicle_attributes.energy_climate.water_heater_brand", loc: HAB_ENERGY },
+    // Pai (select-enum): water_heater_source != "none" (EnergyClimateAccordion:50)
+    { label: "Marca (aquec. água)", name: "vehicle_attributes.energy_climate.water_heater_brand", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.water_heater_source", isOn: ENUM_NOT_NONE } },
     { label: "Aquecimento ambiente", name: "vehicle_attributes.energy_climate.ambient_heating_source", loc: HAB_ENERGY },
-    { label: "Marca (aquec. ambiente)", name: "vehicle_attributes.energy_climate.ambient_heating_brand", loc: HAB_ENERGY },
+    { label: "Marca (aquec. ambiente)", name: "vehicle_attributes.energy_climate.ambient_heating_brand", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.ambient_heating_source", isOn: ENUM_NOT_NONE } },
     { label: "Painel solar",      name: "vehicle_attributes.energy_climate.has_solar_panel", loc: HAB_ENERGY },
-    { label: "Quantidade de painéis solares", name: "vehicle_attributes.energy_climate.solar_panel_count", loc: HAB_ENERGY },
-    { label: "Potência painel solar (W)", name: "vehicle_attributes.energy_climate.solar_panel_watts", loc: HAB_ENERGY },
+    // Pai: has_solar_panel → quantidade + potência (EnergyClimateAccordion:89)
+    { label: "Quantidade de painéis solares", name: "vehicle_attributes.energy_climate.solar_panel_count", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_solar_panel" } },
+    { label: "Potência painel solar (W)", name: "vehicle_attributes.energy_climate.solar_panel_watts", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_solar_panel" } },
     { label: "Inversor/Conversor",name: "vehicle_attributes.energy_climate.has_inverter", loc: HAB_ENERGY },
-    { label: "Tipo de inversor",  name: "vehicle_attributes.energy_climate.inverter_type", loc: HAB_ENERGY },
-    { label: "Potência inversor (W)", name: "vehicle_attributes.energy_climate.inverter_watts", loc: HAB_ENERGY },
+    // Pai: has_inverter → tipo + potência (EnergyClimateAccordion:116)
+    { label: "Tipo de inversor",  name: "vehicle_attributes.energy_climate.inverter_type", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_inverter" } },
+    { label: "Potência inversor (W)", name: "vehicle_attributes.energy_climate.inverter_watts", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_inverter" } },
     { label: "Tomada exterior 220V", name: "vehicle_attributes.energy_climate.has_external_power_socket", loc: HAB_ENERGY },
     { label: "GPL",               name: "vehicle_attributes.energy_climate.has_gpl", loc: HAB_ENERGY },
-    { label: "Garrafas GPL",      name: "vehicle_attributes.energy_climate.gpl_bottles_count", loc: HAB_ENERGY },
+    // Pai: has_gpl → garrafas (EnergyClimateAccordion:156)
+    { label: "Garrafas GPL",      name: "vehicle_attributes.energy_climate.gpl_bottles_count", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_gpl" } },
     { label: "Gerador (gasóleo)", name: "vehicle_attributes.energy_climate.has_generator", loc: HAB_ENERGY },
     { label: "Baterias (total)",  name: "vehicle_attributes.energy_climate.battery_count", loc: HAB_ENERGY },
     { label: "Baterias cabine",   name: "vehicle_attributes.energy_climate.cabin_battery_count", loc: HAB_ENERGY },
     { label: "Baterias célula",   name: "vehicle_attributes.energy_climate.cell_battery_count", loc: HAB_ENERGY },
     { label: "Corta-corrente",    name: "vehicle_attributes.energy_climate.has_battery_cutoff", loc: HAB_ENERGY },
     { label: "Ar condicionado 220V", name: "vehicle_attributes.energy_climate.has_aircon_220v", loc: HAB_ENERGY },
-    { label: "Marca (A/C 220V)",  name: "vehicle_attributes.energy_climate.aircon_220v_brand", loc: HAB_ENERGY },
+    // Pai: has_aircon_220v → marca (EnergyClimateAccordion:219, Lote 3 A)
+    { label: "Marca (A/C 220V)",  name: "vehicle_attributes.energy_climate.aircon_220v_brand", loc: HAB_ENERGY, parentField: { fieldName: "vehicle_attributes.energy_climate.has_aircon_220v" } },
     { label: "VIESA",             name: "vehicle_attributes.energy_climate.has_viesa", loc: HAB_ENERGY },
 
     // ── HAB.5 Exterior (accordionId="5") ─────────────────────────────────
     { label: "Toldo",             name: "vehicle_attributes.exterior.has_awning", loc: HAB_EXTERIOR },
-    { label: "Marca do toldo",    name: "vehicle_attributes.exterior.awning_brand", loc: HAB_EXTERIOR },
+    // Pai: has_awning → awning_brand (ExteriorAccordion:30)
+    { label: "Marca do toldo",    name: "vehicle_attributes.exterior.awning_brand", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.has_awning" } },
     { label: "Antena nacional",   name: "vehicle_attributes.exterior.has_national_antenna", loc: HAB_EXTERIOR },
     { label: "Antena parabólica", name: "vehicle_attributes.exterior.has_parabolic_antenna", loc: HAB_EXTERIOR },
     { label: "Suporte de bicicletas", name: "vehicle_attributes.exterior.has_bike_rack", loc: HAB_EXTERIOR },
@@ -286,9 +341,10 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Tampões",           name: "vehicle_attributes.exterior.has_hubcaps", loc: HAB_EXTERIOR },
     { label: "Escada exterior",   name: "vehicle_attributes.exterior.has_external_ladder", loc: HAB_EXTERIOR },
     { label: "Garagem",           name: "vehicle_attributes.exterior.garage.has_garage", loc: HAB_EXTERIOR },
-    { label: "Garagem — abertura dos dois lados", name: "vehicle_attributes.exterior.garage.has_double_opening", loc: HAB_EXTERIOR },
-    { label: "Garagem — espaçosa",name: "vehicle_attributes.exterior.garage.is_spacious", loc: HAB_EXTERIOR },
-    { label: "Garagem — altura ajustável", name: "vehicle_attributes.exterior.garage.has_height_adjuster", loc: HAB_EXTERIOR },
+    // Pai: garage.has_garage → 3 sub-checkboxes (ExteriorAccordion:146)
+    { label: "Garagem — abertura dos dois lados", name: "vehicle_attributes.exterior.garage.has_double_opening", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.garage.has_garage" } },
+    { label: "Garagem — espaçosa",name: "vehicle_attributes.exterior.garage.is_spacious", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.garage.has_garage" } },
+    { label: "Garagem — altura ajustável", name: "vehicle_attributes.exterior.garage.has_height_adjuster", loc: HAB_EXTERIOR, parentField: { fieldName: "vehicle_attributes.exterior.garage.has_garage" } },
 
     // ── HAB.6 Segurança e Fechaduras (accordionId="6") ───────────────────
     { label: "Alarme",            name: "vehicle_attributes.security.has_alarm", loc: HAB_SECURITY },
@@ -301,14 +357,17 @@ const RAW_MANUAL: RawEntry[] = [
 
     // ── HAB.7 Chassis e Estrutura (accordionId="7") ──────────────────────
     { label: "Tipo de chassis",   name: "vehicle_attributes.chassis_structure.chassis_type", loc: HAB_CHASSIS },
-    { label: "Notas de chassis",  name: "vehicle_attributes.chassis_structure.chassis_notes", loc: HAB_CHASSIS },
+    // Pai (select): chassis_type != null/"" (ChassisStructureAccordion:56)
+    { label: "Notas de chassis",  name: "vehicle_attributes.chassis_structure.chassis_notes", loc: HAB_CHASSIS, parentField: { fieldName: "vehicle_attributes.chassis_structure.chassis_type", isOn: ENUM_NOT_NONE } },
     { label: "Suspensão pneumática", name: "vehicle_attributes.chassis_structure.has_air_suspension", loc: HAB_CHASSIS },
-    { label: "Compressor (suspensão pneumática)", name: "vehicle_attributes.chassis_structure.has_air_suspension_compressor", loc: HAB_CHASSIS },
+    // Pai: has_air_suspension → compressor (ChassisStructureAccordion:88)
+    { label: "Compressor (suspensão pneumática)", name: "vehicle_attributes.chassis_structure.has_air_suspension_compressor", loc: HAB_CHASSIS, parentField: { fieldName: "vehicle_attributes.chassis_structure.has_air_suspension" } },
     { label: "Rodado duplo",      name: "vehicle_attributes.chassis_structure.has_dual_rear_wheel", loc: HAB_CHASSIS },
     { label: "Macacos estabilizadores", name: "vehicle_attributes.exterior.has_stabilizers", loc: HAB_CHASSIS },
     { label: "Tapa-luz janelas",  name: "vehicle_attributes.chassis_structure.has_window_blackouts", loc: HAB_CHASSIS },
     { label: "Tapa-luz cabine",   name: "vehicle_attributes.chassis_structure.has_cabin_blackouts", loc: HAB_CHASSIS },
-    { label: "Tipo tapa-luz cabine", name: "vehicle_attributes.chassis_structure.cabin_blackout_type", loc: HAB_CHASSIS },
+    // Pai: has_cabin_blackouts → cabin_blackout_type (ChassisStructureAccordion:128)
+    { label: "Tipo tapa-luz cabine", name: "vehicle_attributes.chassis_structure.cabin_blackout_type", loc: HAB_CHASSIS, parentField: { fieldName: "vehicle_attributes.chassis_structure.has_cabin_blackouts" } },
 
     // ── HAB.8 Mobiliário Interior (accordionId="8") ──────────────────────
     { label: "Mesa rebatível",    name: "vehicle_attributes.interior_furniture.has_foldable_table", loc: HAB_INTERIOR },
@@ -331,7 +390,8 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Mosquiteiras janelas", name: "vehicle_attributes.chassis_structure.has_mosquito_nets", loc: HAB_INTERIOR },
     { label: "Porta mosquiteira", name: "vehicle_attributes.chassis_structure.has_door_mosquito_net", loc: HAB_INTERIOR },
     { label: "Infiltrações de água", name: "vehicle_attributes.interior_furniture.has_water_infiltrations", loc: HAB_INTERIOR },
-    { label: "Notas sobre infiltrações", name: "vehicle_attributes.interior_furniture.infiltrations_notes", loc: HAB_INTERIOR },
+    // Pai: has_water_infiltrations → notas (InteriorFurnitureAccordion:186)
+    { label: "Notas sobre infiltrações", name: "vehicle_attributes.interior_furniture.infiltrations_notes", loc: HAB_INTERIOR, parentField: { fieldName: "vehicle_attributes.interior_furniture.has_water_infiltrations" } },
 
     // ── HAB.9 Sala (accordionId="9") ─────────────────────────────────────
     { label: "Tipo de sala",      name: "vehicle_attributes.living_room.layout", loc: HAB_LIVING_ROOM },
@@ -370,13 +430,14 @@ let CACHED_INDEX: FormSearchEntry[] | null = null;
 
 export const getFormSearchIndex = (): FormSearchEntry[] => {
     if (CACHED_INDEX) return CACHED_INDEX;
-    const manual: FormSearchEntry[] = RAW_MANUAL.map(({ label, name, loc, vehicleTypes }) => ({
+    const manual: FormSearchEntry[] = RAW_MANUAL.map(({ label, name, loc, vehicleTypes, parentField }) => ({
         label,
         fieldName: name,
         location: loc,
         normalizedLabel: normalizeForSearch(label),
         // Override da entrada > herdado da location > undefined (todos).
         vehicleTypes: vehicleTypes ?? loc.vehicleTypes,
+        parentField,
     }));
     CACHED_INDEX = [...manual, ...buildExtrasEntries()];
     return CACHED_INDEX;
@@ -386,6 +447,10 @@ export const getFormSearchIndex = (): FormSearchEntry[] => {
  * Filtra o índice pelo tipo de viatura corrente. Entradas sem `vehicleTypes`
  * (undefined) aplicam-se a todos — caso da maioria (~50 entradas universais
  * + 142 extras).
+ *
+ * NOTA: o FormSearchBar v1 NÃO chama isto — em vez de esconder, mostra os
+ * resultados de tipo errado em estado desactivado (com nota). A função fica
+ * exportada para outros consumidores e como prova da regra de pertença.
  */
 export const filterIndexByVehicleType = (
     index: FormSearchEntry[],
@@ -394,4 +459,97 @@ export const filterIndexByVehicleType = (
     return index.filter(
         (e) => !e.vehicleTypes || e.vehicleTypes.includes(vehicleType),
     );
+};
+
+// ═════════════════════════════════════════════════════════════════════════
+// AVAILABILITY — 3 estados que o dropdown precisa de saber:
+//   • "ok"          : campo renderizado AGORA, click navega ao campo
+//   • "wrong_type"  : campo nunca existe neste tipo de viatura, click INERTE
+//   • "parent_off"  : campo existe mas pai está off, click leva ao PAI
+// ═════════════════════════════════════════════════════════════════════════
+
+export type EntryAvailability =
+    | { kind: "ok" }
+    | { kind: "wrong_type"; note: string }
+    | { kind: "parent_off"; note: string; parentEntry: FormSearchEntry };
+
+/**
+ * Lê valor por path `a.b.c` de um objecto. Espelha o que o Formik faz
+ * internamente — sem acoplar a libs externas.
+ */
+const readByPath = (obj: unknown, path: string): unknown => {
+    if (obj == null) return undefined;
+    const parts = path.split(".");
+    let cur: any = obj;
+    for (const p of parts) {
+        if (cur == null) return undefined;
+        cur = cur[p];
+    }
+    return cur;
+};
+
+/** Tradução pt-PT de um conjunto de tipos para a nota "Só em <...>". */
+const formatVehicleTypesNote = (types: FormSearchVehicleType[]): string => {
+    const labels: Record<FormSearchVehicleType, string> = {
+        car:        "carros",
+        motorcycle: "motos",
+        motorhome:  "autocaravanas",
+        caravan:    "caravanas",
+    };
+    const named = types.map((t) => labels[t]);
+    if (named.length === 1) return `Só em ${named[0]}`;
+    if (named.length === 2) return `Só em ${named[0]} e ${named[1]}`;
+    // 3+ — vírgulas e " e " no último
+    const last = named[named.length - 1];
+    return `Só em ${named.slice(0, -1).join(", ")} e ${last}`;
+};
+
+// Lookup pelo fieldName — para resolver `parentEntry` (e o label dele) sem
+// duplicar texto. Construído lazy no 1º uso.
+let PARENT_LOOKUP: Map<string, FormSearchEntry> | null = null;
+const getParentLookup = (): Map<string, FormSearchEntry> => {
+    if (PARENT_LOOKUP) return PARENT_LOOKUP;
+    PARENT_LOOKUP = new Map();
+    for (const e of getFormSearchIndex()) {
+        if (e.fieldName) PARENT_LOOKUP.set(e.fieldName, e);
+    }
+    return PARENT_LOOKUP;
+};
+
+/**
+ * Avalia disponibilidade da entrada face ao Formik values + vehicle_type.
+ * Ordem de precedência: wrong_type > parent_off > ok. (Se o tipo está
+ * errado, parent_off é irrelevante — o campo nem existe.)
+ */
+export const getEntryAvailability = (
+    entry: FormSearchEntry,
+    values: unknown,
+    currentVehicleType: FormSearchVehicleType,
+): EntryAvailability => {
+    // 1) wrong_type
+    if (entry.vehicleTypes && !entry.vehicleTypes.includes(currentVehicleType)) {
+        return {
+            kind: "wrong_type",
+            note: formatVehicleTypesNote(entry.vehicleTypes),
+        };
+    }
+    // 2) parent_off
+    if (entry.parentField) {
+        const parentValue = readByPath(values, entry.parentField.fieldName);
+        const isOn = entry.parentField.isOn ?? ((v: unknown) => Boolean(v));
+        if (!isOn(parentValue)) {
+            const parentEntry = getParentLookup().get(entry.parentField.fieldName);
+            const parentLabel = entry.parentField.parentLabel ?? parentEntry?.label ?? entry.parentField.fieldName;
+            return {
+                kind: "parent_off",
+                note: `Marca primeiro '${parentLabel}'`,
+                // Se o pai não estiver no índice (não deveria acontecer com a
+                // anotação manual disciplinada), usamos a própria entry como
+                // navigateTo — o useFieldSpotlight cairá no fallback (scroll
+                // ao topo do accordion).
+                parentEntry: parentEntry ?? entry,
+            };
+        }
+    }
+    return { kind: "ok" };
 };

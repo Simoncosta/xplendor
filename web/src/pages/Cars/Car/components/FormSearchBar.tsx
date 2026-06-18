@@ -3,9 +3,10 @@ import { useFormikContext } from "formik";
 import { Input, InputGroup, InputGroupText } from "reactstrap";
 import type { ICarUpdatePayload } from "common/models/car.model";
 import {
-    filterIndexByVehicleType,
+    getEntryAvailability,
     getFormSearchIndex,
     normalizeForSearch,
+    type EntryAvailability,
     type FormSearchEntry,
     type FormSearchVehicleType,
 } from "../data/formSearchIndex";
@@ -51,14 +52,12 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
     const currentVehicleType: FormSearchVehicleType =
         (values?.vehicle_type as FormSearchVehicleType) ?? "car";
 
-    // Índice completo (memoizado pelo próprio getFormSearchIndex) filtrado
-    // pelo tipo actual. Recalcula só quando o tipo muda (raro — utilizador
-    // troca uma vez no início e depois fica).
-    const fullIndex = useMemo(() => getFormSearchIndex(), []);
-    const index = useMemo(
-        () => filterIndexByVehicleType(fullIndex, currentVehicleType),
-        [fullIndex, currentVehicleType],
-    );
+    // Índice COMPLETO — NÃO filtramos por vehicle_type aqui. Os campos do
+    // tipo errado aparecem desactivados (estado wrong_type) para a Matilde
+    // ver que o campo existe e perceber porque não está visível no form.
+    // (Decisão de produto: "esconder também esconde da Matilde, duplica
+    // o problema de fundo. Revela mas desactiva.")
+    const index = useMemo(() => getFormSearchIndex(), []);
 
     const normalizedQuery = useMemo(() => normalizeForSearch(query.trim()), [query]);
     const trimmedQuery = query.trim();
@@ -102,8 +101,22 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
         return () => document.removeEventListener("mousedown", onClickOutside);
     }, [open]);
 
-    const selectEntry = useCallback((entry: FormSearchEntry) => {
-        onSelect(entry);
+    /**
+     * Decide o que fazer ao seleccionar uma entrada baseado na disponibilidade:
+     *   - "ok"         : envia ao pai a entrada → Etapa 5 leva ao campo
+     *   - "wrong_type" : INERTE (no-op + dropdown fica aberto para feedback)
+     *   - "parent_off" : envia ao pai a ENTRADA DO PAI → Etapa 5 leva ao pai
+     */
+    const selectEntry = useCallback((entry: FormSearchEntry, availability: EntryAvailability) => {
+        if (availability.kind === "wrong_type") {
+            // Inerte. Deixa o dropdown aberto para a Matilde continuar a procurar
+            // ou ler a nota com calma.
+            return;
+        }
+        const target = availability.kind === "parent_off"
+            ? availability.parentEntry
+            : entry;
+        onSelect(target);
         // Não limpa o input para a Matilde poder repetir / refinar — apenas
         // fecha o dropdown.
         setOpen(false);
@@ -120,7 +133,9 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
         } else if (e.key === "Enter") {
             if (open && results[activeIndex]) {
                 e.preventDefault();
-                selectEntry(results[activeIndex]);
+                const activeEntry = results[activeIndex];
+                const availability = getEntryAvailability(activeEntry, values, currentVehicleType);
+                selectEntry(activeEntry, availability);
             }
         } else if (e.key === "Escape") {
             setOpen(false);
@@ -198,33 +213,73 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
                     )}
                     {results.map((entry, i) => {
                         const isActive = i === activeIndex;
+                        const availability = getEntryAvailability(entry, values, currentVehicleType);
                         const sectionLabel = entry.location.kind === "section"
                             ? entry.location.sectionLabel
                             : entry.location.accordionLabel;
-                        const kindIcon = entry.location.kind === "extras"
-                            ? "ri-checkbox-multiple-line"
-                            : entry.location.kind === "habitation"
-                                ? "ri-home-gear-line"
-                                : "ri-file-list-3-line";
+
+                        // Três estados visuais distintos (decisão DE6 — importa
+                        // que a Matilde leia "este não dá mesmo" vs "este dá,
+                        // falta um passo" só pela cor/ícone, antes da nota).
+                        const isWrongType = availability.kind === "wrong_type";
+                        const isParentOff = availability.kind === "parent_off";
+
+                        // Cor de fundo: amarelo soft para parent_off; activeIndex
+                        // para hover/keyboard sobreposto.
+                        let background = "transparent";
+                        if (isParentOff)        background = "rgba(247, 184, 75, 0.10)"; // bg-warning-subtle-ish
+                        if (isActive && !isWrongType) background = isParentOff
+                            ? "rgba(247, 184, 75, 0.18)"
+                            : "#f1f5f9";
+                        if (isActive && isWrongType)  background = "#f8f9fa"; // hover discreto
+
+                        // Opacidade dos 3 estados.
+                        const opacity = isWrongType ? 0.5 : isParentOff ? 0.85 : 1;
+
+                        // Ícone principal (lado esquerdo).
+                        let kindIcon: string;
+                        let kindIconColor = "var(--vz-secondary-color, #878a99)";
+                        if (isWrongType) {
+                            kindIcon = "ri-information-line";
+                        } else if (isParentOff) {
+                            kindIcon = "ri-arrow-up-line"; // "vai mais acima — marca o pai"
+                            kindIconColor = "#d68a1a"; // warning forte para sinalizar acção
+                        } else {
+                            kindIcon = entry.location.kind === "extras"
+                                ? "ri-checkbox-multiple-line"
+                                : entry.location.kind === "habitation"
+                                    ? "ri-home-gear-line"
+                                    : "ri-file-list-3-line";
+                        }
+
+                        // Nota (sub-label) — substitui o sectionLabel nos
+                        // estados desactivados; combina com ele no "ok".
+                        const subLabel = availability.kind === "ok"
+                            ? sectionLabel
+                            : `${availability.note} · ${sectionLabel}`;
+
                         return (
                             <button
                                 key={`${entry.label}-${i}`}
                                 type="button"
                                 role="option"
                                 aria-selected={isActive}
+                                aria-disabled={isWrongType}
+                                title={isWrongType ? availability.note : undefined}
                                 onMouseEnter={() => setActiveIndex(i)}
-                                onClick={() => selectEntry(entry)}
+                                onClick={() => selectEntry(entry, availability)}
                                 className="d-flex align-items-center w-100 text-start border-0 px-3"
                                 style={{
                                     minHeight: 48,
-                                    background: isActive ? "#f1f5f9" : "transparent",
-                                    cursor: "pointer",
+                                    background,
+                                    cursor: isWrongType ? "not-allowed" : "pointer",
+                                    opacity,
                                     gap: 12,
                                 }}
                             >
                                 <i
-                                    className={`${kindIcon} text-muted`}
-                                    style={{ fontSize: 16, flexShrink: 0 }}
+                                    className={kindIcon}
+                                    style={{ fontSize: 16, flexShrink: 0, color: kindIconColor }}
                                     aria-hidden="true"
                                 />
                                 <span style={{ minWidth: 0, flex: 1 }}>
@@ -232,7 +287,7 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
                                         {entry.label}
                                     </span>
                                     <span className="d-block text-muted fs-12 text-truncate">
-                                        {sectionLabel}
+                                        {subLabel}
                                     </span>
                                 </span>
                             </button>
