@@ -115,19 +115,26 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
     const showDropdown = open && trimmedQuery.length >= MIN_QUERY_LEN;
     const showEmptyState = showDropdown && results.length === 0;
 
+    // Padrão espelhado do sticky action bar de baixo (CarEditor commit 35e5d82):
+    // fundo SÓLIDO branco, margens negativas X para ocupar largura total do
+    // CardBody (cobre o `--vz-card-spacer-x` do Velzon), borda inferior limpa
+    // a separar do conteúdo abaixo, marginBottom 1.5rem para o conteúdo ter
+    // respiro real e não colar à barra durante o scroll. Z-index 10 chega
+    // (não há overlays acima — o dropdown ainda fica acima, no z-index 11).
     return (
         <div
             ref={containerRef}
             style={{
                 position: "sticky",
                 top: 0,
-                zIndex: 1020,
-                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
-                paddingTop: 12,
-                paddingBottom: 12,
-                marginBottom: 8,
-                boxShadow: showDropdown ? "0 8px 24px rgba(15, 23, 42, 0.06)" : undefined,
-                transition: "box-shadow 160ms ease",
+                zIndex: 10,
+                background: "#fff",
+                borderBottom: "1px solid #e9ebec",
+                marginLeft: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
+                marginRight: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
+                marginTop: "calc(-1 * var(--vz-card-spacer-y, 1.5rem))",
+                marginBottom: "1.5rem",
+                padding: "12px 18px",
             }}
         >
             <InputGroup>
