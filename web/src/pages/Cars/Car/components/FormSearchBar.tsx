@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFormikContext } from "formik";
 import { Input, InputGroup, InputGroupText } from "reactstrap";
+import type { ICarUpdatePayload } from "common/models/car.model";
 import {
+    filterIndexByVehicleType,
     getFormSearchIndex,
     normalizeForSearch,
     type FormSearchEntry,
+    type FormSearchVehicleType,
 } from "../data/formSearchIndex";
 
 interface FormSearchBarProps {
@@ -41,8 +45,20 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Índice é memoizado pelo próprio getFormSearchIndex (módulo-level cache).
-    const index = useMemo(() => getFormSearchIndex(), []);
+    // Tipo de viatura corrente do Formik. Default "car" quando não preenchido
+    // (CarEditor:143 faz o mesmo default na inicialização do form).
+    const { values } = useFormikContext<ICarUpdatePayload>();
+    const currentVehicleType: FormSearchVehicleType =
+        (values?.vehicle_type as FormSearchVehicleType) ?? "car";
+
+    // Índice completo (memoizado pelo próprio getFormSearchIndex) filtrado
+    // pelo tipo actual. Recalcula só quando o tipo muda (raro — utilizador
+    // troca uma vez no início e depois fica).
+    const fullIndex = useMemo(() => getFormSearchIndex(), []);
+    const index = useMemo(
+        () => filterIndexByVehicleType(fullIndex, currentVehicleType),
+        [fullIndex, currentVehicleType],
+    );
 
     const normalizedQuery = useMemo(() => normalizeForSearch(query.trim()), [query]);
     const trimmedQuery = query.trim();

@@ -5,20 +5,43 @@
 // Select, accordion novo, secção nova), ADICIONA-O AQUI — senão a busca
 // universal NÃO o encontra e a Matilde volta a perder-se a procurar.
 //
+// ADICIONALMENTE, anota o filtro por vehicle_type quando o campo é
+// CONDICIONAL (só renderiza para certos tipos):
+//
+//   - As 9 LOCATIONS de habitação (HAB_DIMENSIONS, HAB_KITCHEN, … HAB_LIVING_ROOM)
+//     já têm `vehicleTypes: HABITATION_ONLY` — qualquer entrada que usa essa
+//     location HERDA automaticamente. Não anotes na entrada.
+//   - Campos restritos por outras condições (Combustível/CC/CV/Transmissão
+//     escondidos em caravan, Segmento/Cilindros escondidos em motorhome/caravan,
+//     Categoria só em motorhome, Marca do motor só em habitação) ganham
+//     `vehicleTypes:` próprio na entrada (override da location).
+//   - Sem anotação = aplica-se a TODOS os tipos. É o caso da maioria
+//     (Marca, Modelo, Ano, Preço, Imagens, Descrição, Status, …).
+//
+// Os items de extras (~142 entradas em `safety_performance` etc.) NÃO vivem
+// aqui — são auto-derivados de `EXTRA_GROUPS` pela função `getFormSearchIndex`
+// no fim do ficheiro. Aplicam-se a todos os tipos (sem vehicleTypes).
+//
 // Não é gerado automaticamente (parser AST seria frágil dada a heterogeneidade
 // real do código: <XInput label="X" name="Y">, <Select> + <Label> irmão,
 // <XInputCheckbox> idem, items de extras como strings…). A escolha foi
 // manual deliberada — fiável, revisível, custa pouca manutenção desde que
 // não esqueçamos no code-review.
 //
-// Os items de extras (~142 entradas em `safety_performance` etc.) NÃO vivem
-// aqui — são auto-derivados de `EXTRA_GROUPS` pela função `getFormSearchIndex`
-// no fim do ficheiro. Só os campos JSX são manuais.
-//
 // Documentado no CLAUDE.md sec 10 ("Busca universal do formulário de viatura").
 // ═════════════════════════════════════════════════════════════════════════
 
 import { EXTRA_GROUPS } from "./extraGroups";
+
+/** Tipos de viatura suportados (espelha `cars.vehicle_type`). */
+export type FormSearchVehicleType = "car" | "motorcycle" | "motorhome" | "caravan";
+
+// Conjuntos prontos para anotar entradas / locations condicionais.
+// (Convenção: `vehicleTypes` ausente OU undefined = aplica-se a TODOS.)
+const HABITATION_ONLY: FormSearchVehicleType[] = ["motorhome", "caravan"];
+const NON_CARAVAN:     FormSearchVehicleType[] = ["car", "motorcycle", "motorhome"];
+const NON_HABITATION:  FormSearchVehicleType[] = ["car", "motorcycle"];
+const MOTORHOME_ONLY:  FormSearchVehicleType[] = ["motorhome"];
 
 /**
  * Localização de um campo dentro do formulário.
@@ -28,11 +51,14 @@ import { EXTRA_GROUPS } from "./extraGroups";
  *   `accordionId` = "1"..."9" (corresponde ao targetId Reactstrap).
  * - `extras`: accordion dentro de `CarEquipmentDataFields`.
  *   `accordionId` = "1"..."4".
+ *
+ * Locations podem ter `vehicleTypes?` próprio — entradas herdam-no por
+ * defeito (override possível na própria entrada).
  */
 export type FormSearchLocation =
-    | { kind: "section"; domId: string; sectionLabel: string }
-    | { kind: "habitation"; accordionId: string; accordionLabel: string }
-    | { kind: "extras"; accordionId: string; accordionLabel: string };
+    | { kind: "section"; domId: string; sectionLabel: string; vehicleTypes?: FormSearchVehicleType[] }
+    | { kind: "habitation"; accordionId: string; accordionLabel: string; vehicleTypes?: FormSearchVehicleType[] }
+    | { kind: "extras"; accordionId: string; accordionLabel: string; vehicleTypes?: FormSearchVehicleType[] };
 
 export interface FormSearchEntry {
     /** Texto visível ao utilizador (label do campo). */
@@ -50,6 +76,12 @@ export interface FormSearchEntry {
      * fino até ao campo específico). Para items de extras é null.
      */
     fieldName: string | null;
+    /**
+     * Tipos de viatura onde este campo aparece. `undefined` = todos.
+     * Computado pelo `getFormSearchIndex`: entrada override > location
+     * herdada > undefined (todos).
+     */
+    vehicleTypes?: FormSearchVehicleType[];
 }
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -77,15 +109,17 @@ const LBL_IMG     = "Imagens";
 // Accordions de Habitação (CarVehicleDetailsDataFields :256 → AccordionId "1"-"9")
 // ═════════════════════════════════════════════════════════════════════════
 
-const HAB_DIMENSIONS  = { kind: "habitation" as const, accordionId: "1", accordionLabel: "Dimensões e Pesos" };
-const HAB_KITCHEN     = { kind: "habitation" as const, accordionId: "2", accordionLabel: "Cozinha" };
-const HAB_BATHROOM    = { kind: "habitation" as const, accordionId: "3", accordionLabel: "Casa de Banho" };
-const HAB_ENERGY      = { kind: "habitation" as const, accordionId: "4", accordionLabel: "Energia e Aquecimento" };
-const HAB_EXTERIOR    = { kind: "habitation" as const, accordionId: "5", accordionLabel: "Exterior" };
-const HAB_SECURITY    = { kind: "habitation" as const, accordionId: "6", accordionLabel: "Segurança e Fechaduras" };
-const HAB_CHASSIS     = { kind: "habitation" as const, accordionId: "7", accordionLabel: "Chassis e Estrutura" };
-const HAB_INTERIOR    = { kind: "habitation" as const, accordionId: "8", accordionLabel: "Mobiliário Interior" };
-const HAB_LIVING_ROOM = { kind: "habitation" as const, accordionId: "9", accordionLabel: "Sala" };
+// Todos os 9 accordions de habitação herdam vehicleTypes: HABITATION_ONLY.
+// Entradas que usam estas locations NÃO precisam de anotação repetida.
+const HAB_DIMENSIONS  = { kind: "habitation" as const, accordionId: "1", accordionLabel: "Dimensões e Pesos",       vehicleTypes: HABITATION_ONLY };
+const HAB_KITCHEN     = { kind: "habitation" as const, accordionId: "2", accordionLabel: "Cozinha",                  vehicleTypes: HABITATION_ONLY };
+const HAB_BATHROOM    = { kind: "habitation" as const, accordionId: "3", accordionLabel: "Casa de Banho",            vehicleTypes: HABITATION_ONLY };
+const HAB_ENERGY      = { kind: "habitation" as const, accordionId: "4", accordionLabel: "Energia e Aquecimento",    vehicleTypes: HABITATION_ONLY };
+const HAB_EXTERIOR    = { kind: "habitation" as const, accordionId: "5", accordionLabel: "Exterior",                 vehicleTypes: HABITATION_ONLY };
+const HAB_SECURITY    = { kind: "habitation" as const, accordionId: "6", accordionLabel: "Segurança e Fechaduras",   vehicleTypes: HABITATION_ONLY };
+const HAB_CHASSIS     = { kind: "habitation" as const, accordionId: "7", accordionLabel: "Chassis e Estrutura",      vehicleTypes: HABITATION_ONLY };
+const HAB_INTERIOR    = { kind: "habitation" as const, accordionId: "8", accordionLabel: "Mobiliário Interior",      vehicleTypes: HABITATION_ONLY };
+const HAB_LIVING_ROOM = { kind: "habitation" as const, accordionId: "9", accordionLabel: "Sala",                     vehicleTypes: HABITATION_ONLY };
 
 // ═════════════════════════════════════════════════════════════════════════
 // Accordions de Extras (CarEquipmentDataFields → AccordionId "1"-"4")
@@ -117,7 +151,15 @@ export const normalizeForSearch = (s: string): string =>
 // mantemos por secção para revisão humana.
 // ═════════════════════════════════════════════════════════════════════════
 
-type RawEntry = { label: string; name: string | null; loc: FormSearchLocation };
+type RawEntry = {
+    label: string;
+    name: string | null;
+    loc: FormSearchLocation;
+    /** Override do vehicleTypes da location. Anota AQUI quando a entrada
+     *  é restrita apesar da location ser universal (ex.: Segmento, Cilindros,
+     *  Categoria, Marca do motor, motor base em não-caravan). */
+    vehicleTypes?: FormSearchVehicleType[];
+};
 
 const RAW_MANUAL: RawEntry[] = [
     // ── Identificação (CarInformationDataFields) ─────────────────────────
@@ -131,20 +173,25 @@ const RAW_MANUAL: RawEntry[] = [
     // ── Dados da Viatura (CarVehicleDataFields) ──────────────────────────
     { label: "Marca",             name: "car_brand_id",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Modelo",            name: "car_model_id",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
-    { label: "Marca do motor",    name: "engine_brand",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
+    // engine_brand só em motorhome/caravan (CarVehicleDataFields:59 isHabitationVehicle)
+    { label: "Marca do motor",    name: "engine_brand",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: HABITATION_ONLY },
     { label: "Mês de matrícula",  name: "registration_month",  loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Ano",               name: "registration_year",   loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
-    { label: "Combustível",       name: "fuel_type",           loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
-    { label: "Capacidade (CC)",   name: "engine_capacity_cc",  loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
-    { label: "Potência (CV)",     name: "power_hp",            loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
-    { label: "Transmissão",       name: "transmission",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
+    // Motor (Combustível/CC/CV/Transmissão) escondido em caravan
+    // (CarVehicleDataFields:58 hasMotorFields = type !== "caravan")
+    { label: "Combustível",       name: "fuel_type",           loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
+    { label: "Capacidade (CC)",   name: "engine_capacity_cc",  loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
+    { label: "Potência (CV)",     name: "power_hp",            loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
+    { label: "Transmissão",       name: "transmission",        loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE }, vehicleTypes: NON_CARAVAN },
     { label: "Portas",            name: "doors",               loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Versão",            name: "version",             loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
     { label: "Versão (web)",      name: "public_version_name", loc: { kind: "section", domId: SECTION_VEHICLE, sectionLabel: LBL_VEHICLE } },
 
     // ── Detalhes (CarVehicleDetailsDataFields — campos base fora dos accordions) ──
-    { label: "Segmento",          name: "segment",          loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS } },
-    { label: "Categoria",         name: "car_category_id",  loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS } },
+    // Segmento só em car/motorcycle (CarVehicleDetailsDataFields:162 !hasHabitationAttributes)
+    { label: "Segmento",          name: "segment",          loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS }, vehicleTypes: NON_HABITATION },
+    // Categoria só em motorhome (CarVehicleDetailsDataFields:181 type === "motorhome")
+    { label: "Categoria",         name: "car_category_id",  loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS }, vehicleTypes: MOTORHOME_ONLY },
     { label: "Lugares",           name: "seats",            loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS } },
     { label: "Cor exterior",      name: "exterior_color",   loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS } },
     { label: "Cor Metálica",      name: "is_metallic",      loc: { kind: "section", domId: SECTION_DETAILS, sectionLabel: LBL_DETAILS } },
@@ -154,7 +201,8 @@ const RAW_MANUAL: RawEntry[] = [
     // ── Dados Adicionais (CarAdditionalDataFields) ───────────────────────
     { label: "Emissões CO2 (g/km)", name: "co2_emissions", loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
     { label: "Classe de portagem", name: "toll_class",      loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
-    { label: "Cilindros",         name: "cylinders",        loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
+    // Cilindros escondido em motorhome/caravan (CarAdditionalDataFields:60 !isMotorhomeOrCaravan)
+    { label: "Cilindros",         name: "cylinders",        loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD }, vehicleTypes: NON_HABITATION },
     { label: "Tem Chave Reserva", name: "has_spare_key",    loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
     { label: "Tem Manual",        name: "has_manuals",      loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
 
@@ -322,12 +370,28 @@ let CACHED_INDEX: FormSearchEntry[] | null = null;
 
 export const getFormSearchIndex = (): FormSearchEntry[] => {
     if (CACHED_INDEX) return CACHED_INDEX;
-    const manual: FormSearchEntry[] = RAW_MANUAL.map(({ label, name, loc }) => ({
+    const manual: FormSearchEntry[] = RAW_MANUAL.map(({ label, name, loc, vehicleTypes }) => ({
         label,
         fieldName: name,
         location: loc,
         normalizedLabel: normalizeForSearch(label),
+        // Override da entrada > herdado da location > undefined (todos).
+        vehicleTypes: vehicleTypes ?? loc.vehicleTypes,
     }));
     CACHED_INDEX = [...manual, ...buildExtrasEntries()];
     return CACHED_INDEX;
+};
+
+/**
+ * Filtra o índice pelo tipo de viatura corrente. Entradas sem `vehicleTypes`
+ * (undefined) aplicam-se a todos — caso da maioria (~50 entradas universais
+ * + 142 extras).
+ */
+export const filterIndexByVehicleType = (
+    index: FormSearchEntry[],
+    vehicleType: FormSearchVehicleType,
+): FormSearchEntry[] => {
+    return index.filter(
+        (e) => !e.vehicleTypes || e.vehicleTypes.includes(vehicleType),
+    );
 };
