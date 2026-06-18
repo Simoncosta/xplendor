@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormikContext } from "formik";
 import XInputCheckboxArray from "Components/Common/XInputCheckboxArray";
 import type { ICarUpdatePayload, CarExtraGroup, CarExtrasGroup } from "common/models/car.model";
-import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Input } from 'reactstrap';
+import { Accordion, AccordionBody, AccordionHeader, AccordionItem } from 'reactstrap';
 import { EXTRA_GROUPS } from "../data/extraGroups";
 
 type FormValues = ICarUpdatePayload & {
@@ -49,20 +49,6 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
         setOpen(open === id ? "" : id);
     };
 
-    // Lote 3 — busca client-side por grupo. Filtra apenas o que é exibido,
-    // NÃO toca em `extrasByGroup` — items já seleccionados permanecem
-    // seleccionados mesmo quando escondidos pelo filtro. Preserva clusters
-    // semânticos do `safety_performance` (ESP/EDS/MSR juntos) — escolha
-    // deliberada de NÃO alfabetizar.
-    const [searchByGroup, setSearchByGroup] = useState<Record<CarExtraGroup, string>>({
-        comfort_multimedia: "",
-        exterior_equipment: "",
-        interior_equipment: "",
-        safety_performance: "",
-    });
-    const setGroupSearch = (g: CarExtraGroup, v: string) =>
-        setSearchByGroup((prev) => ({ ...prev, [g]: v }));
-
     const isSyncingFromExtras = useRef(false);
 
     useEffect(() => {
@@ -100,11 +86,6 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
                     const selectedCount = counts.get(group.key) ?? 0;
                     const total = group.items.length;
                     const id = String(index + 1);
-                    const search = searchByGroup[group.key] ?? "";
-                    const normSearch = search.trim().toLowerCase();
-                    const visibleItems = normSearch.length === 0
-                        ? group.items
-                        : group.items.filter((item) => item.toLowerCase().includes(normSearch));
 
                     return (
                         <AccordionItem key={group.key}>
@@ -116,25 +97,8 @@ export default function CarEquipmentDataFields({ isEdit }: { isEdit: boolean }) 
                             </AccordionHeader>
 
                             <AccordionBody accordionId={id}>
-                                {/* Lote 3 — busca por grupo (client-side). NÃO altera
-                                    state de selecção; items marcados que ficam fora
-                                    do filtro continuam guardados. */}
-                                <div className="mb-3">
-                                    <Input
-                                        type="search"
-                                        bsSize="sm"
-                                        placeholder={`Procurar em ${group.title.toLowerCase()}…`}
-                                        value={search}
-                                        onChange={(e) => setGroupSearch(group.key, e.target.value)}
-                                    />
-                                    {normSearch.length > 0 && (
-                                        <small className="text-muted d-block mt-1">
-                                            A mostrar {visibleItems.length} de {total} (selecção preservada para os escondidos).
-                                        </small>
-                                    )}
-                                </div>
                                 <div className="row">
-                                    {visibleItems.map((item) => (
+                                    {group.items.map((item) => (
                                         <div key={item} className="col-12 col-md-6 col-lg-4 col-xl-3 mb-2">
                                             <XInputCheckboxArray
                                                 name={`extrasByGroup.${group.key}`}
