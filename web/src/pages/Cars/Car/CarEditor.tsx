@@ -16,19 +16,19 @@ import ValidationAlert from "Components/Common/ValidationAlert";
 import type { ApiValidationError } from "helpers/error_helper";
 import CarInformationDataFields from "./components/CarInformationDataFields";
 import CarVehicleDataFields from "./components/CarVehicleDataFields";
-import CarVehicleDetailsDataFields from "./components/CarVehicleDetailsDataFields";
+import CarVehicleDetailsDataFields, { type CarVehicleDetailsHandle } from "./components/CarVehicleDetailsDataFields";
 import FormSearchBar from "./components/FormSearchBar";
-import type { FormSearchEntry } from "./data/formSearchIndex";
+import { useFieldSpotlight } from "./hooks/useFieldSpotlight";
 import CarAdditionalDataFields from "./components/CarAdditionalDataFields";
 import CarImagesDataFields from "./components/CarImagesDataFields";
 import CarPriceDataFields from "./components/CarPriceDataFields";
-import CarEquipmentDataFields from "./components/CarEquipmentDataFields";
+import CarEquipmentDataFields, { type CarEquipmentHandle } from "./components/CarEquipmentDataFields";
 import CarDescriptionDataFields from "./components/CarDescriptionDataFields";
 import CarSaleClosingModal from "./components/CarSaleClosingModal";
 
 //formik
 import { FormikProvider, useFormik } from "formik";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as Yup from "yup";
 import { DEFAULT_VEHICLE_ATTRIBUTES } from "slices/cars/car.defaults";
 
@@ -57,6 +57,13 @@ const CarEditor = ({
 }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
     const initialStatus = data.status ?? "draft";
+
+    // Etapa 5 da busca universal — refs aos 2 accordion-containers para o
+    // useFieldSpotlight conseguir abrir programaticamente.
+    const habitationRef = useRef<CarVehicleDetailsHandle | null>(null);
+    const equipmentRef = useRef<CarEquipmentHandle | null>(null);
+    const spotlightField = useFieldSpotlight({ habitationRef, equipmentRef });
+
     const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
     const [saleDraft, setSaleDraft] = useState<ICarSalePayload | null>(null);
     const [pendingSubmitValues, setPendingSubmitValues] = useState<ICarUpdatePayload | null>(null);
@@ -251,17 +258,15 @@ const CarEditor = ({
                                         (CarImagesDataFields), para a barra sticky
                                         não tapar o conteúdo durante o scroll. */}
                                     <form onSubmit={formik.handleSubmit} style={{ paddingBottom: "80px" }}>
-                                        {/* Busca universal — sticky no topo. Etapa 4: encontra
-                                            campos e mostra-os no dropdown. Etapa 5 (próxima) liga
-                                            o `onSelect` ao `useFieldSpotlight` que abre o accordion
-                                            certo + faz scroll + destaca header. */}
-                                        <FormSearchBar
-                                            onSelect={(entry: FormSearchEntry) => {
-                                                // Etapa 4 dummy — só loga. Etapa 5 substitui.
-                                                // eslint-disable-next-line no-console
-                                                console.log("[FormSearch] selected:", entry.label, entry.location);
-                                            }}
-                                        />
+                                        {/* Busca universal — sticky no topo. Etapa 5: o
+                                            `useFieldSpotlight` abre o accordion certo (via ref
+                                            exposta com useImperativeHandle), scrolla até ao
+                                            topo do .accordion-item, e anima destaque amarelo soft
+                                            de 1.5s no header. Para `parent_off`, o FormSearchBar
+                                            já substituiu upstream a entrada do filho pela entrada
+                                            do PAI — este `spotlightField` recebe a entrada-pai e
+                                            abre o accordion onde o pai vive. */}
+                                        <FormSearchBar onSelect={spotlightField} />
                                         <ValidationAlert
                                             errors={validationErrors}
                                             onDismiss={onDismissValidationErrors}
@@ -282,14 +287,14 @@ const CarEditor = ({
                                         <div id="section-vehicle">
                                             <CarVehicleDataFields isEdit={isEdit} />
                                         </div>
-                                        <CarVehicleDetailsDataFields isEdit={isEdit} />
+                                        <CarVehicleDetailsDataFields ref={habitationRef} isEdit={isEdit} />
                                         <div id="section-additional">
                                             <CarAdditionalDataFields isEdit={isEdit} />
                                         </div>
                                         <div id="section-price">
                                             <CarPriceDataFields isEdit={isEdit} />
                                         </div>
-                                        <CarEquipmentDataFields isEdit={isEdit} />
+                                        <CarEquipmentDataFields ref={equipmentRef} isEdit={isEdit} />
                                         <div id="section-description">
                                             <CarDescriptionDataFields isEdit={isEdit} companyId={companyId} />
                                         </div>
