@@ -17,6 +17,8 @@ import type { ApiValidationError } from "helpers/error_helper";
 import CarInformationDataFields from "./components/CarInformationDataFields";
 import CarVehicleDataFields from "./components/CarVehicleDataFields";
 import CarVehicleDetailsDataFields from "./components/CarVehicleDetailsDataFields";
+import FormSearchBar from "./components/FormSearchBar";
+import type { FormSearchEntry } from "./data/formSearchIndex";
 import CarAdditionalDataFields from "./components/CarAdditionalDataFields";
 import CarImagesDataFields from "./components/CarImagesDataFields";
 import CarPriceDataFields from "./components/CarPriceDataFields";
@@ -249,6 +251,17 @@ const CarEditor = ({
                                         (CarImagesDataFields), para a barra sticky
                                         não tapar o conteúdo durante o scroll. */}
                                     <form onSubmit={formik.handleSubmit} style={{ paddingBottom: "80px" }}>
+                                        {/* Busca universal — sticky no topo. Etapa 4: encontra
+                                            campos e mostra-os no dropdown. Etapa 5 (próxima) liga
+                                            o `onSelect` ao `useFieldSpotlight` que abre o accordion
+                                            certo + faz scroll + destaca header. */}
+                                        <FormSearchBar
+                                            onSelect={(entry: FormSearchEntry) => {
+                                                // Etapa 4 dummy — só loga. Etapa 5 substitui.
+                                                // eslint-disable-next-line no-console
+                                                console.log("[FormSearch] selected:", entry.label, entry.location);
+                                            }}
+                                        />
                                         <ValidationAlert
                                             errors={validationErrors}
                                             onDismiss={onDismissValidationErrors}
