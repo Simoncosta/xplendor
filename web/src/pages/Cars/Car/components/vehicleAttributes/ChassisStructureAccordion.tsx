@@ -35,7 +35,7 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
     }, [cs?.has_air_suspension, cs?.has_air_suspension_compressor, setFieldValue]);
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-tools-line me-2" />Chassis e Estrutura</strong>
             </AccordionHeader>

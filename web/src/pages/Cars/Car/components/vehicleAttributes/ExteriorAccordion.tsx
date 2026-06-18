@@ -13,7 +13,7 @@ export default function ExteriorAccordion({ accordionId }: AccordionProps) {
     const ext = values.vehicle_attributes?.exterior;
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-road-map-line me-2" />Exterior</strong>
             </AccordionHeader>

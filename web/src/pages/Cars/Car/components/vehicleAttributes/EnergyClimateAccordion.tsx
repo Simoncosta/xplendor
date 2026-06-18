@@ -29,7 +29,7 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
     const ec = values.vehicle_attributes?.energy_climate;
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-flashlight-line me-2" />Energia e Aquecimento</strong>
             </AccordionHeader>

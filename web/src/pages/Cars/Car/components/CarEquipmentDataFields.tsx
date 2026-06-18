@@ -101,7 +101,7 @@ const CarEquipmentDataFields = forwardRef<CarEquipmentHandle, { isEdit: boolean 
                     const id = String(index + 1);
 
                     return (
-                        <AccordionItem key={group.key}>
+                        <AccordionItem key={group.key} id={`extras-acc-${id}`}>
                             <AccordionHeader targetId={id}>
                                 <div className="d-flex justify-content-between w-100 pe-3">
                                     <strong>{group.title}</strong>

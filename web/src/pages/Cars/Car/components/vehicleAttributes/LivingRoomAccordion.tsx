@@ -23,7 +23,7 @@ export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
     const lr = values.vehicle_attributes?.living_room;
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-sofa-line me-2" />Sala</strong>
             </AccordionHeader>

@@ -26,7 +26,7 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
     const inf = values.vehicle_attributes?.interior_furniture;
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-layout-3-line me-2" />Mobiliário Interior</strong>
             </AccordionHeader>

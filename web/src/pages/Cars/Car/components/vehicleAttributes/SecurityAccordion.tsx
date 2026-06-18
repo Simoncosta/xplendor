@@ -12,7 +12,7 @@ export default function SecurityAccordion({ accordionId }: AccordionProps) {
     useFormikContext<ICarUpdatePayload>();
 
     return (
-        <AccordionItem>
+        <AccordionItem id={`hab-acc-${accordionId}`}>
             <AccordionHeader targetId={accordionId}>
                 <strong><i className="ri-lock-line me-2" />Segurança e Fechaduras</strong>
             </AccordionHeader>

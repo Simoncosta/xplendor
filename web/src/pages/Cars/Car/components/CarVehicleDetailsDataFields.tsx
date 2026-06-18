@@ -271,7 +271,7 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                 <div className="mt-2">
                     <Accordion flush open={attrAccordion} toggle={toggleAttrAccordion}>
 
-                        <AccordionItem>
+                        <AccordionItem id="hab-acc-1">
                             <AccordionHeader targetId="1">
                                 <strong>Dimensões e Pesos</strong>
                             </AccordionHeader>
@@ -416,7 +416,7 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                             </AccordionBody>
                         </AccordionItem>
 
-                        <AccordionItem>
+                        <AccordionItem id="hab-acc-2">
                             <AccordionHeader targetId="2">
                                 <strong>Cozinha</strong>
                             </AccordionHeader>
@@ -510,7 +510,7 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                             </AccordionBody>
                         </AccordionItem>
 
-                        <AccordionItem>
+                        <AccordionItem id="hab-acc-3">
                             <AccordionHeader targetId="3">
                                 <strong>Casa de Banho</strong>
                             </AccordionHeader>

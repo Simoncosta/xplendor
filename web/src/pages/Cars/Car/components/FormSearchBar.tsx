@@ -155,6 +155,7 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
     return (
         <div
             ref={containerRef}
+            data-form-search-bar
             style={{
                 position: "sticky",
                 top: 0,
