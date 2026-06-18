@@ -35,7 +35,7 @@ export type InverterType = "pure_sine" | "modified_sine";
 export type WaterHeaterSource = "electric" | "gas" | "diesel" | "none";
 export type AmbientHeatingSource = "electric" | "gas" | "diesel" | "none";
 export type ChassisType = "standard" | "alko" | "other";
-export type UpholsteryState = "good" | "fair" | "worn" | "replaced";
+export type UpholsteryState = "excellent" | "good" | "fair" | "worn" | "replaced";
 
 export interface VehicleAttributeDimensions {
     length_m?: number;
@@ -97,6 +97,12 @@ export interface VehicleAttributeEnergyClimate {
     cell_battery_count?: number;
     /** M2.5 — dispositivo de corte de corrente das baterias. */
     has_battery_cutoff?: boolean;
+    /** Lote 3 — A/C 220V de habitação (distinto do "Ar condicionado"
+     *  dos extras `comfort_multimedia` que é da cabine). */
+    has_aircon_220v?: boolean;
+    aircon_220v_brand?: string;
+    /** Lote 3 — VIESA (boolean simples). */
+    has_viesa?: boolean;
 }
 
 export interface VehicleAttributeGarage {
@@ -151,6 +157,8 @@ export interface VehicleAttributeChassisStructure {
     /** M2.7 — suspensão pneumática + sub-campo condicional do compressor. */
     has_air_suspension?: boolean;
     has_air_suspension_compressor?: boolean;
+    /** Lote 3 — Rodado duplo. */
+    has_dual_rear_wheel?: boolean;
 }
 
 export interface VehicleAttributeInteriorFurniture {

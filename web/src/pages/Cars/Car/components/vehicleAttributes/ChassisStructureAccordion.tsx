@@ -97,7 +97,8 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
 
                 {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
                     condicional (só editável quando a pneumática está activa).
-                    Padrão dos sub-campos da garagem (ExteriorAccordion). */}
+                    Padrão dos sub-campos da garagem (ExteriorAccordion).
+                    Lote 3 — rodado duplo adicionado nesta Row. */}
                 <Row className="mb-2">
                     <Col lg={3}>
                         <XInputCheckbox
@@ -115,6 +116,13 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                             />
                         </Col>
                     )}
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_dual_rear_wheel"
+                            label="Rodado duplo"
+                            className="mb-3"
+                        />
+                    </Col>
                 </Row>
 
                 <Row>

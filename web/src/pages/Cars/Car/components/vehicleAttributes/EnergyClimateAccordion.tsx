@@ -205,6 +205,35 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                     </Col>
                 </Row>
 
+                {/* Lote 3 — A/C 220V (com marca, padrão has_awning+awning_brand)
+                    e VIESA (boolean simples). Distintos do "Ar condicionado"
+                    dos extras `comfort_multimedia` (esse é da cabine). */}
+                <Row>
+                    <Col lg={3}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.energy_climate.has_aircon_220v"
+                            label="Ar condicionado 220V"
+                            className="mb-3"
+                        />
+                    </Col>
+                    {ec?.has_aircon_220v && (
+                        <Col lg={3}>
+                            <XInput
+                                name="vehicle_attributes.energy_climate.aircon_220v_brand"
+                                label="Marca (A/C 220V)"
+                                className="mb-3"
+                            />
+                        </Col>
+                    )}
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.energy_climate.has_viesa"
+                            label="VIESA"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+
             </AccordionBody>
         </AccordionItem>
     );

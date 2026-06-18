@@ -141,6 +141,11 @@ class CarRequest extends FormRequest
             'vehicle_attributes.energy_climate.battery_count'                           => ['nullable', 'integer', 'min:0', 'max:10'],
             'vehicle_attributes.energy_climate.cabin_battery_count'                     => ['nullable', 'integer', 'min:0', 'max:5'],
             'vehicle_attributes.energy_climate.cell_battery_count'                      => ['nullable', 'integer', 'min:0', 'max:10'],
+            // Lote 3 — A/C 220V de habitação (boolean + marca opcional; padrão
+            // has_awning + awning_brand) + VIESA (boolean simples).
+            'vehicle_attributes.energy_climate.has_aircon_220v'                         => ['nullable', 'boolean'],
+            'vehicle_attributes.energy_climate.aircon_220v_brand'                       => ['nullable', 'string', 'max:100'],
+            'vehicle_attributes.energy_climate.has_viesa'                               => ['nullable', 'boolean'],
 
             // B2 — Exterior
             'vehicle_attributes.exterior'                                               => ['nullable', 'array'],
@@ -185,6 +190,8 @@ class CarRequest extends FormRequest
             'vehicle_attributes.chassis_structure.other_skylights_notes'                => ['nullable', 'string', 'max:500'],
             'vehicle_attributes.chassis_structure.has_air_suspension'                   => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_air_suspension_compressor'        => ['nullable', 'boolean'],
+            // Lote 3 — Rodado duplo.
+            'vehicle_attributes.chassis_structure.has_dual_rear_wheel'                  => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_remifront'                        => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_window_blackouts'                 => ['nullable', 'boolean'],
             'vehicle_attributes.chassis_structure.has_mosquito_nets'                    => ['nullable', 'boolean'],
@@ -196,7 +203,8 @@ class CarRequest extends FormRequest
             'vehicle_attributes.interior_furniture'                                     => ['nullable', 'array'],
             'vehicle_attributes.interior_furniture.has_foldable_table'                  => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_rotating_seats'                  => ['nullable', 'boolean'],
-            'vehicle_attributes.interior_furniture.upholstery_state'                    => ['nullable', Rule::in(['good', 'fair', 'worn', 'replaced'])],
+            // Lote 3 — `excellent` adicionado (qualidade decrescente: excellent > good > fair > worn).
+            'vehicle_attributes.interior_furniture.upholstery_state'                    => ['nullable', Rule::in(['excellent', 'good', 'fair', 'worn', 'replaced'])],
             'vehicle_attributes.interior_furniture.has_curtains'                        => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_led_lighting'                    => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_halo_lighting'                   => ['nullable', 'boolean'],

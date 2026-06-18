@@ -11,7 +11,10 @@ export interface AccordionProps {
 
 type UpholsteryOpt = { value: UpholsteryState; label: string };
 
+// Lote 3 — `excellent` ordena ACIMA de `good` (qualidade decrescente);
+// `replaced` fica em paralelo (estofos refeitos é dimensão ortogonal).
 const upholsteryOptions: UpholsteryOpt[] = [
+    { value: "excellent", label: "Excelente / como novo" },
     { value: "good",      label: "Bom" },
     { value: "fair",      label: "Razoável" },
     { value: "worn",      label: "Desgastado" },
