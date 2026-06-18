@@ -69,6 +69,7 @@ This version returns a curated, stable payload.
   "warranty_available": null,
   "warranty_due_date": null,
   "warranty_km": null,
+  "warranty_months": 36,
   "service_records": null,
   "has_spare_key": false,
   "has_manuals": true,
@@ -195,6 +196,21 @@ This version returns a curated, stable payload.
 
 `specs` is always present (at minimum `{ "seats": N }`).  
 Only keys with explicit non-null values are included in `habitation`, `features`, and `specs`.
+
+---
+
+## Warranty fields — `warranty_months` is the only one in active use
+
+Four warranty-related fields are emitted, but only **one** is filled by the panel UI:
+
+| Field | Source | Notes |
+|---|---|---|
+| `warranty_months` | **Active** — set in the panel form (Sub-fase F, 2026-06-18). Duration in months (`1..180`). | Use this as the source of truth for warranty duration. To compute an expiry date, combine with the sale date externally (`sold_at + warranty_months`). |
+| `warranty_available` | **Orphan** — historical column, no UI. Always `null` in production. | Do not display. Removal requires coordination with consumers (breaking change). |
+| `warranty_due_date` | **Orphan** — historical, no UI. Always `null`. | Do not display. |
+| `warranty_km` | **Orphan** — historical, no UI. Always `null`. | Do not display. |
+
+The three orphan columns are kept emitted to preserve the existing contract until a coordinated cleanup. External sites should ignore them and read only `warranty_months`.
 
 ---
 

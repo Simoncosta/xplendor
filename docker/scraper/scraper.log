@@ -450,3 +450,32 @@
 2026-06-15 21:47:09 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 1 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
 2026-06-15 21:47:13 [INFO] main: [ingest] consolidando POST único · total=4 · por fonte (pré-dedup-backend)={'standvirtual': 3, 'custojusto': 1}
 2026-06-15 21:47:13 [INFO] sender: Batch enviado: 4 snapshots. Total: 4
+2026-06-18 14:29:26 [INFO] main: vehicle_type=motorhome search_path=/autocaravanas max_results=30
+2026-06-18 14:29:26 [INFO] main: sources=['standvirtual', 'custojusto']
+2026-06-18 14:29:26 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2021}
+2026-06-18 14:29:26 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2021}
+2026-06-18 14:29:26 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/autocaravanas/adria/desde-2019
+2026-06-18 14:29:26 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Adria', 'model': 'Action', 'year_from': 2019, 'year_to': 2021, 'fuel': 'diesel', 'vehicle_type': 'motorhome'}
+2026-06-18 14:29:27 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=False)
+2026-06-18 14:29:27 [INFO] sources.standvirtual: Página 1/1: 2 anúncios
+2026-06-18 14:29:31 [INFO] sources.custojusto: [custojusto] iniciando com 6 path(s); brand='Adria'
+2026-06-18 14:29:32 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral?q=adria: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:37 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada?q=adria: 0 listings após filtros (de 3 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:42 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino?q=adria: 0 listings após filtros (de 0 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:46 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao?q=adria: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:49 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan?q=adria: 0 listings após filtros (de 1 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:55 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana?q=adria: 0 listings após filtros (de 3 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:29:58 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/integral marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:29:59 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/integral: 2 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:30:05 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/perfilada marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:30:07 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/perfilada: 0 listings após filtros (de 40 brutos, 1 excluídos por preço<=0)
+2026-06-18 14:30:11 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/capucino marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:30:12 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/capucino: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:30:17 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/a_furgao marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:30:19 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/a_furgao: 1 listings após filtros (de 22 brutos, 2 excluídos por preço<=0)
+2026-06-18 14:30:23 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/campervan marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:30:24 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/campervan: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:30:29 [WARNING] sources.custojusto: [custojusto] widen sem q: path=/caravana marca='Adria' (retry sem filtro de marca — pool de categoria)
+2026-06-18 14:30:29 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
+2026-06-18 14:30:34 [INFO] main: [ingest] consolidando POST único · total=8 · por fonte (pré-dedup-backend)={'standvirtual': 2, 'custojusto': 6}
+2026-06-18 14:30:34 [INFO] sender: Batch enviado: 8 snapshots. Total: 8

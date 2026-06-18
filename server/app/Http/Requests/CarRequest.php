@@ -247,6 +247,9 @@ class CarRequest extends FormRequest
             'warranty_available' => ['nullable', 'string', 'max:50'],
             'warranty_due_date' => ['nullable', 'date'],
             'warranty_km' => ['nullable', 'integer', 'min:0'],
+            // Sub-fase F (Lote Matilde 3) — duração em meses. Cap 180 (15 anos) corta
+            // erros de digitação evidentes sem bloquear garantias longas reais.
+            'warranty_months' => ['nullable', 'integer', 'min:1', 'max:180'],
             'service_records' => ['nullable', 'string', 'max:10'],
             'has_spare_key' => ['boolean'],
             'has_manuals' => ['boolean'],

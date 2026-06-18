@@ -246,6 +246,7 @@ export interface ICar {
     warranty_available: string | null;
     warranty_due_date: string | null; // YYYY-MM-DD
     warranty_km: number | null;
+    warranty_months: number | null;
 
     service_records: string | null;
 

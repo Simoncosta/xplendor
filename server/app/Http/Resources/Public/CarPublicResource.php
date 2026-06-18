@@ -110,6 +110,7 @@ class CarPublicResource extends JsonResource
             'warranty_available' => $this->warranty_available,
             'warranty_due_date'  => $this->warranty_due_date,
             'warranty_km'        => $this->warranty_km,
+            'warranty_months'    => $this->warranty_months,
             'service_records'    => $this->service_records,
             'has_spare_key'      => (bool) $this->has_spare_key,
             'has_manuals'        => (bool) $this->has_manuals,

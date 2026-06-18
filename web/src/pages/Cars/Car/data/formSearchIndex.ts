@@ -246,6 +246,8 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Classe de portagem", name: "toll_class",      loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
     // Cilindros escondido em motorhome/caravan (CarAdditionalDataFields:60 !isMotorhomeOrCaravan)
     { label: "Cilindros",         name: "cylinders",        loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD }, vehicleTypes: NON_HABITATION },
+    // Sub-fase F (2026-06-18) — duração da garantia em meses (universal, sem vehicleTypes/parentField)
+    { label: "Garantia (meses)",  name: "warranty_months",  loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
     { label: "Tem Chave Reserva", name: "has_spare_key",    loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
     { label: "Tem Manual",        name: "has_manuals",      loc: { kind: "section", domId: SECTION_ADDITIONAL, sectionLabel: LBL_ADD } },
 

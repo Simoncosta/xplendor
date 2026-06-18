@@ -49,6 +49,7 @@ class Car extends Model implements AuditableContract
         'warranty_available',
         'warranty_due_date',
         'warranty_km',
+        'warranty_months',
         'service_records',
         'has_spare_key',
         'has_manuals',
@@ -87,6 +88,16 @@ class Car extends Model implements AuditableContract
         'seats' => 'integer',
         'registration_year' => 'integer',
         'registration_month' => 'integer',
+        'warranty_months' => 'integer',
+        'warranty_km' => 'integer',
+        // 2026-06-18 (auditoria pós Sub-fase F) — sem estes casts, a UPDATE
+        // mass-assignment com '0'/'1' (string da FormData) preservava a STRING
+        // em $attributes. A resposta da update endpoint (raw $car, sem Resource)
+        // serializava como JSON "0" (string), e o `Boolean("0")` no FE é `true`
+        // → checkbox aparecia marcado mesmo depois de desmarcar.
+        // Convenção fixada: TODO boolean novo na tabela `cars` vai ao $casts.
+        'has_spare_key' => 'boolean',
+        'has_manuals' => 'boolean',
     ];
 
     protected $appends = [

@@ -205,6 +205,7 @@ return [
         'power_hp'          => 'potência',
         'engine_capacity_cc'=> 'cilindrada',
         'cylinders'         => 'cilindros',
+        'warranty_months'   => 'garantia (meses)',
         'doors'             => 'portas',
         'seats'             => 'lugares',
         'segment'           => 'segmento',

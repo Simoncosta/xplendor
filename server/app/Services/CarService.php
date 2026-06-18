@@ -734,6 +734,16 @@ class CarService extends BaseService
         }
 
         if ($key === 'beds') {
+            // Fix 1.C (auditoria pós Sub-fase F, 2026-06-18): preserva `capacity`.
+            // Antes devolvia só `['type' => $type]` e descartava o `capacity` do
+            // payload. M2.1 (1.13.3, 2026-06-15) adicionou `capacity` ao FE
+            // (`buildCarFormData`), à Form Request (linha 121:
+            // `vehicle_attributes.beds.*.capacity` min:1 max:4) e ao
+            // `VehicleAttribute::normalizeBedTypes`, mas este bloco ficou
+            // esquecido. Resultado: cada save destruía o capacity, e o "Dorme N"
+            // derivado caía para N × 1.
+            // Clamp 1-4 espelha as constraints da Form Request. Default 1 para
+            // payloads legacy sem o campo (registos pré-M2.1).
             return collect($value)
                 ->map(function ($bed) {
                     $type = is_array($bed)
@@ -744,7 +754,15 @@ class CarService extends BaseService
                         $type = trim($type);
                     }
 
-                    return $type ? ['type' => $type] : null;
+                    if (!$type) {
+                        return null;
+                    }
+
+                    $capacity = is_array($bed) && is_numeric($bed['capacity'] ?? null)
+                        ? max(1, min(4, (int) $bed['capacity']))
+                        : 1;
+
+                    return ['type' => $type, 'capacity' => $capacity];
                 })
                 ->filter()
                 ->values()

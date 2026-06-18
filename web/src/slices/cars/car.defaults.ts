@@ -65,6 +65,7 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
     warranty_available: null,
     warranty_due_date: null,
     warranty_km: null,
+    warranty_months: null,
 
     service_records: null,
 

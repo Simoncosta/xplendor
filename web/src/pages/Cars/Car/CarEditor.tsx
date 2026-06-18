@@ -85,25 +85,46 @@ const CarEditor = ({
         return map;
     };
 
+    // Fix 1.D (auditoria pós Sub-fase F, 2026-06-18): `cama_sofa` adicionado em
+    // M2.1 (1.13.3, 2026-06-15) à BD e ao seeder, mas estava em falta neste set.
+    // Sem isto, escolher "Cama sofá" no dropdown reverte para "outra" no próximo
+    // init do Formik.
     const validBedSlugs = new Set<BedType>([
         "camas_gemeas", "cama_central", "cama_francesa", "cama_basculante",
         "cama_capucino", "cama_garagem", "beliche", "cama_transversal",
         "cama_elevatoria_eletrica", "cama_suspensa", "cama_convertivel",
+        "cama_sofa",
         "outra", "cama_rebativel_cabine",
     ]);
 
-    const normalizeBeds = (beds: unknown): Array<{ type: BedType }> => {
+    // Fix 1.A (auditoria pós Sub-fase F, 2026-06-18): preserva `capacity`.
+    // Antes, esta função devolvia só `{type}` e descartava `capacity` no init
+    // dos initialValues do Formik. Combinado com `enableReinitialize: true`,
+    // a capacity desaparecia sempre depois de gravar — o input caía no
+    // fallback `value={bed?.capacity ?? 1}` e mostrava "1".
+    // Clamp 1-4 espelha as constraints da Form Request backend
+    // (`vehicle_attributes.beds.*.capacity` → min:1 max:4) e da
+    // `VehicleAttribute::normalizeBedTypes`. Fallback 1 para registos legacy
+    // sem capacity.
+    const normalizeBeds = (beds: unknown): Array<{ type: BedType; capacity: number }> => {
         if (!Array.isArray(beds)) return [];
 
-        return beds
-            .map((bed): { type: BedType } | null => {
-                const raw = typeof bed === "string" ? bed : (bed as Record<string, unknown>)?.type;
-                const type = typeof raw === "string" && validBedSlugs.has(raw as BedType)
-                    ? (raw as BedType)
-                    : "outra";
-                return { type };
-            })
-            .filter((bed): bed is { type: BedType } => bed !== null);
+        return beds.map((bed) => {
+            const raw = typeof bed === "string" ? bed : (bed as Record<string, unknown>)?.type;
+            const type = typeof raw === "string" && validBedSlugs.has(raw as BedType)
+                ? (raw as BedType)
+                : "outra";
+
+            const capRaw = typeof bed === "object" && bed !== null
+                ? (bed as Record<string, unknown>).capacity
+                : undefined;
+            const capNum = typeof capRaw === "number" ? capRaw : Number(capRaw);
+            const capacity = Number.isFinite(capNum)
+                ? Math.max(1, Math.min(4, Math.floor(capNum)))
+                : 1;
+
+            return { type, capacity };
+        });
     };
 
     const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => {

@@ -65,6 +65,13 @@ export default function CarAdditionalDataFields({ isEdit }: { isEdit: boolean })
                         />
                     </Col>
                 )}
+                <Col lg={2}>
+                    <XInput
+                        type="number"
+                        name="warranty_months"
+                        label="Garantia (meses)"
+                    />
+                </Col>
                 <Col lg={1}>
                     <XInputCheckbox
                         name="has_spare_key"
