@@ -81,13 +81,9 @@ export default function ExteriorAccordion({ accordionId }: AccordionProps) {
                             className="mb-3"
                         />
                     </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.exterior.has_stabilizers"
-                            label="Macacos estabilizadores"
-                            className="mb-3"
-                        />
-                    </Col>
+                    {/* Lote 3 — `has_stabilizers` (chave JSON intacta em
+                        `exterior.has_stabilizers`) renderiza agora no
+                        Chassis e Estrutura (decisão UX Matilde). */}
                 </Row>
 
                 <Row>

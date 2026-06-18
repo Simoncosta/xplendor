@@ -114,6 +114,67 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
                     </Col>
                 </Row>
 
+                {/* Lote 3 — claraboias movidas do Chassis. Chaves JSON
+                    permanecem em `chassis_structure.has_*_skylight` /
+                    `other_skylights_notes` para NÃO partir dados em prod
+                    (CLAUDE.md sec 6.1 documenta o desalinhamento intencional). */}
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_turbovent_skylight"
+                            label="Clarabóia turbovent"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_panoramic_skylight"
+                            label="Clarabóia panorâmica"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_40x40_skylight"
+                            label="Clarabóia 40×40"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={4}>
+                        <XInput
+                            name="vehicle_attributes.chassis_structure.other_skylights_notes"
+                            label="Outras clarabóias"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+
+                {/* Lote 3 — remifront + mosquiteiras movidos do Chassis.
+                    Chaves JSON permanecem em `chassis_structure.*`. */}
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_remifront"
+                            label="Remifront"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_mosquito_nets"
+                            label="Mosquiteiras janelas"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_door_mosquito_net"
+                            label="Porta mosquiteira"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+
                 <Row>
                     <Col lg={2}>
                         <XInputCheckbox

@@ -64,41 +64,19 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                     )}
                 </Row>
 
-                <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_turbovent_skylight"
-                            label="Clarabóia turbovent"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_panoramic_skylight"
-                            label="Clarabóia panorâmica"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_40x40_skylight"
-                            label="Clarabóia 40×40"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={4}>
-                        <XInput
-                            name="vehicle_attributes.chassis_structure.other_skylights_notes"
-                            label="Outras clarabóias"
-                            className="mb-3"
-                        />
-                    </Col>
-                </Row>
+                {/* Lote 3 — skylights, remifront e mosquiteiras movidos para
+                    Mobiliário Interior (decisão UX Matilde). As CHAVES JSON
+                    permanecem em `chassis_structure.*` (`has_turbovent_skylight`,
+                    `has_panoramic_skylight`, `has_40x40_skylight`,
+                    `other_skylights_notes`, `has_remifront`, `has_mosquito_nets`,
+                    `has_door_mosquito_net`) para NÃO partir dados em prod —
+                    desalinhamento intencional documentado no CLAUDE.md sec 6.1. */}
 
                 {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
                     condicional (só editável quando a pneumática está activa).
                     Padrão dos sub-campos da garagem (ExteriorAccordion).
-                    Lote 3 — rodado duplo adicionado nesta Row. */}
+                    Lote 3 — rodado duplo + estabilizadores adicionados nesta Row
+                    (`has_stabilizers` permanece com chave JSON em `exterior.*`). */}
                 <Row className="mb-2">
                     <Col lg={3}>
                         <XInputCheckbox
@@ -123,34 +101,20 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                             className="mb-3"
                         />
                     </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.exterior.has_stabilizers"
+                            label="Macacos estabilizadores"
+                            className="mb-3"
+                        />
+                    </Col>
                 </Row>
 
                 <Row>
                     <Col lg={2}>
                         <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_remifront"
-                            label="Remifront"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
                             name="vehicle_attributes.chassis_structure.has_window_blackouts"
                             label="Tapa-luz janelas"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_mosquito_nets"
-                            label="Mosquiteiras janelas"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_door_mosquito_net"
-                            label="Porta mosquiteira"
                             className="mb-3"
                         />
                     </Col>
