@@ -36,9 +36,14 @@ type CarEditorProps = {
     data: ICarUpdatePayload;
     onSubmit: (data: ICarUpdatePayload) => void | Promise<void>;
     onSubmitSold?: (carData: ICarUpdatePayload, saleData: ICarSalePayload) => void | Promise<void>;
+    // R2 (1.14.7) — "Guardar rascunho": payload com status forçado a 'draft' +
+    // flag `__save_as_draft=1`. Validação backend relaxa-se, BD aceita.
+    // O pai (CarCreate/CarUpdate) é quem despacha o thunk e mostra toast.
+    onSubmitDraft?: (data: ICarUpdatePayload) => void | Promise<void>;
     onCancel: () => void;
     loading?: boolean;
     saleLoading?: boolean;
+    draftLoading?: boolean;
     companyId?: number;
     validationErrors?: ApiValidationError[] | null;
     onDismissValidationErrors?: () => void;
@@ -48,9 +53,11 @@ const CarEditor = ({
     data,
     onSubmit,
     onSubmitSold,
+    onSubmitDraft,
     onCancel,
     loading = false,
     saleLoading = false,
+    draftLoading = false,
     companyId,
     validationErrors = null,
     onDismissValidationErrors,
@@ -160,8 +167,8 @@ const CarEditor = ({
     });
 
     const isSubmitting = useMemo(
-        () => loading || saleLoading,
-        [loading, saleLoading]
+        () => loading || saleLoading || draftLoading,
+        [loading, saleLoading, draftLoading]
     );
 
     const formik = useFormik({
@@ -345,18 +352,40 @@ const CarEditor = ({
                                             }}
                                         >
                                             <div className="hstack gap-2 justify-content-end">
+                                                {onSubmitDraft && (
+                                                    <XButton
+                                                        variant="secondary"
+                                                        type="button"
+                                                        outline
+                                                        rounded
+                                                        icon={<i className="ri-draft-line" />}
+                                                        loading={draftLoading}
+                                                        disabled={isSubmitting}
+                                                        onClick={async () => {
+                                                            // R2 (1.14.7) — força status='draft' antes do submit, mesmo
+                                                            // que o <Select> esteja noutro valor. Garante que rascunhos
+                                                            // gravam como rascunhos independentemente do dropdown.
+                                                            const draftValues = { ...formik.values, status: "draft" as const };
+                                                            await onSubmitDraft(draftValues);
+                                                        }}
+                                                    >
+                                                        {draftLoading
+                                                            ? <>A guardar<span className="d-none d-sm-inline"> rascunho</span>…</>
+                                                            : <>Guardar<span className="d-none d-sm-inline"> rascunho</span></>}
+                                                    </XButton>
+                                                )}
                                                 <XButton
                                                     variant="success"
                                                     type='submit'
                                                     outline
                                                     rounded
                                                     icon={<i className="ri-check-double-line" />}
-                                                    loading={isSubmitting}
+                                                    loading={loading || saleLoading}
                                                     disabled={isSubmitting}
                                                 >
                                                     {saleLoading
                                                         ? <>A concluir<span className="d-none d-sm-inline"> venda</span>…</>
-                                                        : isSubmitting
+                                                        : (loading || saleLoading)
                                                             ? isEdit
                                                                 ? <>A guardar<span className="d-none d-sm-inline"> alterações</span>…</>
                                                                 : <>A criar<span className="d-none d-sm-inline"> viatura</span>…</>

@@ -38,6 +38,7 @@ export default function CarUpdate() {
     // State
     const [companyId, setCompanyId] = useState<number>(0);
     const [validationErrors, setValidationErrors] = useState<ApiValidationError[] | null>(null);
+    const [draftLoading, setDraftLoading] = useState(false);
 
     const { car, loadingShow, loadingUpdate, loadingSale } = useSelector(selectCarUpdateViewModel);
 
@@ -59,6 +60,7 @@ export default function CarUpdate() {
                 data={car ?? CAR_CREATE_DEFAULTS}
                 loading={loadingUpdate}
                 saleLoading={loadingSale}
+                draftLoading={draftLoading}
                 companyId={companyId}
                 validationErrors={validationErrors}
                 onDismissValidationErrors={() => setValidationErrors(null)}
@@ -75,6 +77,26 @@ export default function CarUpdate() {
                     } catch (error) {
                         setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao actualizar viatura.");
+                    }
+                }}
+                onSubmitDraft={async (values: any) => {
+                    if (draftLoading || loadingUpdate) return;
+
+                    setValidationErrors(null);
+                    setDraftLoading(true);
+                    const fd = buildCarFormData(values);
+                    fd.append("_method", "PUT");
+                    // R2 (1.14.7) — flag dispara `CarRequest::isDraftSave()` no BE.
+                    fd.append("__save_as_draft", "1");
+
+                    try {
+                        await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
+                        toast("Rascunho guardado. Podes continuar mais tarde.", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                    } catch (error) {
+                        setValidationErrors(parseApiValidationErrors(error));
+                        showApiErrorToast(error, "Erro ao guardar rascunho.");
+                    } finally {
+                        setDraftLoading(false);
                     }
                 }}
                 onSubmitSold={async (values: any, saleData: ICarSalePayload) => {

@@ -24,6 +24,10 @@ const upholsteryOptions: UpholsteryOpt[] = [
 export default function InteriorFurnitureAccordion({ accordionId }: AccordionProps) {
     const { values, setFieldValue } = useFormikContext<ICarUpdatePayload>();
     const inf = values.vehicle_attributes?.interior_furniture;
+    // Tapa-luz movidos do Chassis para junto dos remifront (decisão UX Matilde,
+    // 2026-06-22). Chaves JSON permanecem em `chassis_structure.*` — só a
+    // apresentação muda. Mesmo padrão da sub-fase C do Lote 3.
+    const cs = values.vehicle_attributes?.chassis_structure;
 
     return (
         <AccordionItem id={`hab-acc-${accordionId}`}>
@@ -173,6 +177,37 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
                             className="mb-3"
                         />
                     </Col>
+                </Row>
+
+                {/* 2026-06-22 — Tapa-luz movidos do Chassis (decisão Matilde —
+                    junto aos remifront faz mais sentido UX). Chaves JSON em
+                    `chassis_structure.*` permanecem intactas (mesmo padrão dos
+                    remifront/skylights da sub-fase C — desalinhamento semântico
+                    intencional, ver CLAUDE.md sec 6.1). */}
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_window_blackouts"
+                            label="Tapa-luz janelas"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInputCheckbox
+                            name="vehicle_attributes.chassis_structure.has_cabin_blackouts"
+                            label="Tapa-luz cabine"
+                            className="mb-3"
+                        />
+                    </Col>
+                    {cs?.has_cabin_blackouts && (
+                        <Col lg={3}>
+                            <XInput
+                                name="vehicle_attributes.chassis_structure.cabin_blackout_type"
+                                label="Tipo tapa-luz cabine"
+                                className="mb-3"
+                            />
+                        </Col>
+                    )}
                 </Row>
 
                 <Row>

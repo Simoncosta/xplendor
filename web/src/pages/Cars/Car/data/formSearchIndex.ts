@@ -366,10 +366,10 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Compressor (suspensão pneumática)", name: "vehicle_attributes.chassis_structure.has_air_suspension_compressor", loc: HAB_CHASSIS, parentField: { fieldName: "vehicle_attributes.chassis_structure.has_air_suspension" } },
     { label: "Rodado duplo",      name: "vehicle_attributes.chassis_structure.has_dual_rear_wheel", loc: HAB_CHASSIS },
     { label: "Macacos estabilizadores", name: "vehicle_attributes.exterior.has_stabilizers", loc: HAB_CHASSIS },
-    { label: "Tapa-luz janelas",  name: "vehicle_attributes.chassis_structure.has_window_blackouts", loc: HAB_CHASSIS },
-    { label: "Tapa-luz cabine",   name: "vehicle_attributes.chassis_structure.has_cabin_blackouts", loc: HAB_CHASSIS },
-    // Pai: has_cabin_blackouts → cabin_blackout_type (ChassisStructureAccordion:128)
-    { label: "Tipo tapa-luz cabine", name: "vehicle_attributes.chassis_structure.cabin_blackout_type", loc: HAB_CHASSIS, parentField: { fieldName: "vehicle_attributes.chassis_structure.has_cabin_blackouts" } },
+    // Tapa-luz movidos para HAB_INTERIOR em 2026-06-22 (decisão UX Matilde —
+    // chaves JSON em `chassis_structure.*` permanecem; só a apresentação muda,
+    // mesmo padrão de remifront/skylights da sub-fase C). Entradas estão na
+    // secção HAB_INTERIOR abaixo.
 
     // ── HAB.8 Mobiliário Interior (accordionId="8") ──────────────────────
     { label: "Mesa rebatível",    name: "vehicle_attributes.interior_furniture.has_foldable_table", loc: HAB_INTERIOR },
@@ -391,6 +391,11 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Remifront",         name: "vehicle_attributes.chassis_structure.has_remifront", loc: HAB_INTERIOR },
     { label: "Mosquiteiras janelas", name: "vehicle_attributes.chassis_structure.has_mosquito_nets", loc: HAB_INTERIOR },
     { label: "Porta mosquiteira", name: "vehicle_attributes.chassis_structure.has_door_mosquito_net", loc: HAB_INTERIOR },
+    // 2026-06-22 — tapa-luz (chave JSON em chassis_structure.* permanece intacta)
+    { label: "Tapa-luz janelas",  name: "vehicle_attributes.chassis_structure.has_window_blackouts", loc: HAB_INTERIOR },
+    { label: "Tapa-luz cabine",   name: "vehicle_attributes.chassis_structure.has_cabin_blackouts", loc: HAB_INTERIOR },
+    // Pai: has_cabin_blackouts → cabin_blackout_type (renderizado em InteriorFurnitureAccordion)
+    { label: "Tipo tapa-luz cabine", name: "vehicle_attributes.chassis_structure.cabin_blackout_type", loc: HAB_INTERIOR, parentField: { fieldName: "vehicle_attributes.chassis_structure.has_cabin_blackouts" } },
     { label: "Infiltrações de água", name: "vehicle_attributes.interior_furniture.has_water_infiltrations", loc: HAB_INTERIOR },
     // Pai: has_water_infiltrations → notas (InteriorFurnitureAccordion:186)
     { label: "Notas sobre infiltrações", name: "vehicle_attributes.interior_furniture.infiltrations_notes", loc: HAB_INTERIOR, parentField: { fieldName: "vehicle_attributes.interior_furniture.has_water_infiltrations" } },

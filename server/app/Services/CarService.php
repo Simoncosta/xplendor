@@ -52,7 +52,14 @@ class CarService extends BaseService
         unset($data['vehicle_attributes']);
 
         $car = $this->repository->store($data); // Cria carro e retorna ID
-        $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
+        // R1 (rascunho, 1.14.7): brand_id/model_id podem faltar quando é
+        // "Guardar rascunho" (apenas vehicle_type obrigatório). Fallback para
+        // slug `draft-{id}` para não rebentar nas folder-paths das imagens.
+        $slug = Str::slug(
+            (($data['car_brand_id'] ?? null) && ($data['car_model_id'] ?? null))
+                ? "{$data['car_brand_id']}-{$data['car_model_id']}"
+                : "draft-{$car->id}"
+        );
 
         // Salvar imagens normais
         if (!empty($data['images'])) {
@@ -106,7 +113,11 @@ class CarService extends BaseService
         unset($data['vehicle_attributes']);
 
         $car = $this->carRepository->findOrFail($id, 'id');
-        $slug = Str::slug("{$data['car_brand_id']}-{$data['car_model_id']}");
+        // R1 (rascunho, 1.14.7): brand_id/model_id podem faltar em update de
+        // rascunho — usa os valores actuais do car ou fallback `draft-{id}`.
+        $brandId = $data['car_brand_id'] ?? $car->car_brand_id ?? null;
+        $modelId = $data['car_model_id'] ?? $car->car_model_id ?? null;
+        $slug = Str::slug(($brandId && $modelId) ? "{$brandId}-{$modelId}" : "draft-{$car->id}");
 
         // Atualiza dados principais do carro
         $car->update($data);

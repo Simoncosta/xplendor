@@ -49,11 +49,125 @@ class CarRequest extends FormRequest
     }
 
     /**
+     * "Guardar rascunho" (R1, 2026-06-22) — campos top-level que devem ser
+     * obrigatórios em publicação MAS opcionais em rascunho. Inclui os 4
+     * `required_unless:vehicle_type,caravan` do motor.
+     *
+     * Convenção: adicionar campo novo `required` (ou `required_unless`) à
+     * regra principal? Acrescenta a chave aqui também, senão o rascunho
+     * passa a rejeitar a sua ausência (defeats the purpose).
+     */
+    private const FIELDS_RELAXED_IN_DRAFT = [
+        'origin',
+        'registration_year',
+        'car_brand_id',
+        'car_model_id',
+        'version',
+        'doors',
+        'segment',
+        'seats',
+        'exterior_color',
+        'condition',
+        'fuel_type',
+        'power_hp',
+        'engine_capacity_cc',
+        'transmission',
+    ];
+
+    /**
+     * Detecta se este request é uma gravação como rascunho. Dispara em DOIS
+     * casos (qualquer um chega):
+     *  (a) flag explícita `__save_as_draft=1` no payload (botão "Guardar
+     *      rascunho" no FE);
+     *  (b) `status === 'draft'` no payload (utilizador escolheu Rascunho no
+     *      <Select> e gravou com o botão normal).
+     *
+     * Os 2 caminhos chegam ao mesmo resultado — a Matilde pode esquecer-se
+     * do dropdown e o botão dedicado força status='draft' antes do submit.
+     */
+    private function isDraftSave(): bool
+    {
+        return $this->boolean('__save_as_draft')
+            || $this->input('status') === 'draft';
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
+    {
+        $rules = $this->baseRules();
+
+        if ($this->isDraftSave()) {
+            return $this->relaxForDraft($rules);
+        }
+
+        return $rules;
+    }
+
+    /**
+     * Relaxa apenas o "obrigatório" de cada campo da allow-list — preserva
+     * todas as regras de TIPO/FORMATO (`integer`, `min:1`, `max:10`, `exists:`,
+     * `Rule::in(...)`, etc.).
+     *
+     * Lógica: campo VAZIO num rascunho passa; campo PREENCHIDO com lixo é
+     * rejeitado na mesma. "Relaxar obrigatório" ≠ "aceitar tudo".
+     */
+    private function relaxForDraft(array $rules): array
+    {
+        foreach (self::FIELDS_RELAXED_IN_DRAFT as $key) {
+            if (!isset($rules[$key])) {
+                continue;
+            }
+            $rules[$key] = $this->stripRequiredKeepNullable($rules[$key]);
+        }
+
+        // vehicle_type: único obrigatório no rascunho. Já vinha como
+        // ['nullable', Rule::in(...)] na regra base (prepareForValidation
+        // injecta default 'car'); aqui forçamos explicit required + enum.
+        $rules['vehicle_type'] = ['required', Rule::in(['car', 'motorcycle', 'motorhome', 'caravan'])];
+
+        return $rules;
+    }
+
+    /**
+     * Remove `required` e `required_unless:*` do array de regras; garante
+     * que `nullable` está presente. As restantes regras (`integer`, `min`,
+     * `max`, `exists`, etc.) ficam intactas.
+     */
+    private function stripRequiredKeepNullable(array $fieldRules): array
+    {
+        $filtered = array_values(array_filter(
+            $fieldRules,
+            static function ($rule) {
+                if (!is_string($rule)) {
+                    return true; // Rule::in(...) e outros objects
+                }
+                if ($rule === 'required') {
+                    return false;
+                }
+                return !str_starts_with($rule, 'required_unless')
+                    && !str_starts_with($rule, 'required_if')
+                    && !str_starts_with($rule, 'required_with')
+                    && !str_starts_with($rule, 'required_without');
+            }
+        ));
+
+        if (!in_array('nullable', $filtered, true)) {
+            array_unshift($filtered, 'nullable');
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Regras completas — a defesa que estava aqui antes da R1. Idempotente.
+     *
+     * @return array<string, mixed>
+     */
+    private function baseRules(): array
     {
         return [
             // Status

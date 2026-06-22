@@ -73,6 +73,73 @@ export interface CarVehicleDetailsHandle {
     openAccordion: (id: string) => void;
 }
 
+/**
+ * Input de capacidade da cama com estado local da string raw.
+ *
+ * 2026-06-22 (resolve dívida 67) — antes era um `<Input controlled>` directo
+ * que clampava a cada keystroke e forçava capacity=1 no estado vazio. Dois
+ * sintomas observados em browser:
+ *   - escrever "2" sobre "1" → onChange recebia "12" → clamp a 4 (concatena
+ *     digitos em vez de substituir);
+ *   - apagar com Backspace → snap-back imediato a 1 (impede limpar e reescrever).
+ *
+ * Solução: estado local `raw` (string) que representa o que o utilizador está
+ * a escrever. Commit ao Formik SÓ quando o valor é válido (1-4). Clamp e
+ * normalização ocorrem **apenas no `onBlur`** — permite mostrar "8" durante
+ * o typing e normalizar para 4 (max) ao sair do campo. Sincroniza com o prop
+ * via `useEffect` quando o valor muda de fora (post-save / reinitialize).
+ *
+ * Hooks-in-loop seriam violação se este fosse inline no `.map()` dos beds —
+ * por isso é sub-componente.
+ */
+const MIN_BED_CAPACITY = 1;
+const MAX_BED_CAPACITY = 4;
+
+function BedCapacityInput({ value, onCommit }: { value: number; onCommit: (n: number) => void }) {
+    const [raw, setRaw] = useState<string>(String(value ?? 1));
+
+    // Sincroniza estado local quando o `value` muda externamente (post-save,
+    // enableReinitialize do Formik). Sem isto, o local fica stale após save.
+    useEffect(() => {
+        setRaw(String(value ?? 1));
+    }, [value]);
+
+    return (
+        <Input
+            type="number"
+            min={MIN_BED_CAPACITY}
+            max={MAX_BED_CAPACITY}
+            step={1}
+            style={{ width: "4.5rem" }}
+            value={raw}
+            title="Capacidade da cama (1-4)"
+            onChange={(e) => {
+                const v = e.target.value;
+                setRaw(v);                                                 // sempre actualiza o que o utilizador vê
+                if (v === "") return;                                      // typing intermédio — não commit
+                const num = Number(v);
+                if (!Number.isFinite(num)) return;
+                if (num >= MIN_BED_CAPACITY && num <= MAX_BED_CAPACITY) {
+                    onCommit(Math.floor(num));                             // commit só com valor válido
+                }
+                // Out-of-range (ex.: "8") fica visível no input, sem commit;
+                // o onBlur normaliza para o cap.
+            }}
+            onBlur={() => {
+                const num = Number(raw);
+                if (raw === "" || !Number.isFinite(num)) {
+                    setRaw(String(MIN_BED_CAPACITY));
+                    onCommit(MIN_BED_CAPACITY);
+                    return;
+                }
+                const clamped = Math.max(MIN_BED_CAPACITY, Math.min(MAX_BED_CAPACITY, Math.floor(num)));
+                setRaw(String(clamped));
+                onCommit(clamped);
+            }}
+        />
+    );
+}
+
 const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit: boolean }>(function CarVehicleDetailsDataFields({ isEdit }, ref) {
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
     const [categoryOptions, setCategoryOptions] = useState<{ value: number; label: string }[]>([]);
@@ -377,21 +444,13 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                                 }}
                                                             />
                                                         </div>
-                                                        <Input
-                                                            type="number"
-                                                            min={1}
-                                                            max={4}
-                                                            step={1}
-                                                            style={{ width: "4.5rem" }}
+                                                        <BedCapacityInput
                                                             value={bed?.capacity ?? 1}
-                                                            title="Capacidade da cama (1-4)"
-                                                            onChange={(e) => {
-                                                                const v = e.target.value;
-                                                                const parsed = v === "" ? 1 : Math.max(1, Math.min(4, Number(v)));
+                                                            onCommit={(capacity) => {
                                                                 const nextBeds = [...beds];
                                                                 nextBeds[index] = {
                                                                     ...nextBeds[index],
-                                                                    capacity: parsed,
+                                                                    capacity,
                                                                 };
                                                                 setFieldValue("vehicle_attributes.beds", nextBeds);
                                                             }}

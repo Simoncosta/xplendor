@@ -64,12 +64,14 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                     )}
                 </Row>
 
-                {/* Lote 3 — skylights, remifront e mosquiteiras movidos para
-                    Mobiliário Interior (decisão UX Matilde). As CHAVES JSON
-                    permanecem em `chassis_structure.*` (`has_turbovent_skylight`,
-                    `has_panoramic_skylight`, `has_40x40_skylight`,
-                    `other_skylights_notes`, `has_remifront`, `has_mosquito_nets`,
-                    `has_door_mosquito_net`) para NÃO partir dados em prod —
+                {/* Lote 3 + 2026-06-22 — skylights, remifront, mosquiteiras E
+                    tapa-luz movidos para Mobiliário Interior (decisão UX Matilde).
+                    As CHAVES JSON permanecem em `chassis_structure.*`
+                    (`has_turbovent_skylight`, `has_panoramic_skylight`,
+                    `has_40x40_skylight`, `other_skylights_notes`, `has_remifront`,
+                    `has_mosquito_nets`, `has_door_mosquito_net`,
+                    `has_window_blackouts`, `has_cabin_blackouts`,
+                    `cabin_blackout_type`) para NÃO partir dados em prod —
                     desalinhamento intencional documentado no CLAUDE.md sec 6.1. */}
 
                 {/* M2.7 — Suspensão pneumática. Compressor é sub-campo
@@ -108,32 +110,6 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                             className="mb-3"
                         />
                     </Col>
-                </Row>
-
-                <Row>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_window_blackouts"
-                            label="Tapa-luz janelas"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_cabin_blackouts"
-                            label="Tapa-luz cabine"
-                            className="mb-3"
-                        />
-                    </Col>
-                    {cs?.has_cabin_blackouts && (
-                        <Col lg={2}>
-                            <XInput
-                                name="vehicle_attributes.chassis_structure.cabin_blackout_type"
-                                label="Tipo tapa-luz cabine"
-                                className="mb-3"
-                            />
-                        </Col>
-                    )}
                 </Row>
 
             </AccordionBody>
