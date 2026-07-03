@@ -50,8 +50,26 @@ class CarController extends Controller
 
         $filter = $user->role === 'root' ? [] : ['company_id' => $user->company_id];
 
+        // Status pode chegar como string única (comportamento antigo) OU CSV
+        // (nova selecção múltipla, 2026-06-26). O BaseRepository::getAll aplica
+        // `whereIn` automaticamente quando o valor é array (linha 148 do
+        // BaseRepository). Whitelist defensiva contra valores fora do enum.
         if ($request->input('status')) {
-            $filter['status'] = $request->input('status');
+            $raw = (array) $request->input('status');
+            // Aceita "active,draft" (CSV) ou já array.
+            $statuses = [];
+            foreach ($raw as $value) {
+                foreach (explode(',', (string) $value) as $s) {
+                    $s = trim($s);
+                    if ($s !== '' && in_array($s, ['draft', 'active', 'inactive', 'sold', 'available_soon', 'reserved'], true)) {
+                        $statuses[] = $s;
+                    }
+                }
+            }
+            $statuses = array_values(array_unique($statuses));
+            if (!empty($statuses)) {
+                $filter['status'] = count($statuses) === 1 ? $statuses[0] : $statuses;
+            }
         }
 
         if ($request->has('is_resume') && $request->input('is_resume') !== '') {

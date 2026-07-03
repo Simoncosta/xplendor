@@ -49,6 +49,22 @@ export const markCompanyAlertReadApi = (companyId: number, alertId: number) =>
 // DASHBOARDS
 export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS);
 
+// Visões 1+2 (2026-06-25) — stock por marca + tipo. Endpoint próprio, não
+// inflar o blob do getAnalyticsDashboard.
+export const getDashboardStockBreakdown = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS + "/stock-breakdown");
+
+// Visão 3 (2026-06-25) — FATURAÇÃO (NÃO é lucro) por período.
+// `api.get` aceita um objecto plano que é serializado como query string.
+export const getDashboardSalesRevenue = (
+    companyId: number,
+    params: { from: string; to: string; granularity?: "month" | "year" },
+) =>
+    api.get(
+        url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS + "/sales-revenue",
+        params,
+    );
+
 // META ADS
 export const getCompanyIntegrationsApi = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS);
 export const getMetaOAuthUrlApi = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_OAUTH_URL);
@@ -104,7 +120,11 @@ export const getCarsPaginate = (
         perPage: number;
         page: number;
         companyId: number;
-        status?: 'active' | 'sold' | 'draft' | 'available_soon';
+        // 2026-06-26 — filtro status passa a suportar múltipla selecção.
+        // FE serializa como CSV (padrão de `car_brand_id`); BE aceita CSV OU
+        // array e converte para `whereIn`. Uma única string continua a
+        // funcionar para retro-compat.
+        status?: Array<'active' | 'sold' | 'draft' | 'available_soon' | 'reserved' | 'inactive'> | string;
         is_resume?: boolean;
         has_active_campaign?: boolean;
         carBrandIds?: number[];
@@ -117,7 +137,9 @@ export const getCarsPaginate = (
         params: {
             perPage: params.perPage,
             page: params.page,
-            status: params.status,
+            status: Array.isArray(params.status)
+                ? (params.status.length > 0 ? params.status.join(",") : undefined)
+                : params.status,
             is_resume: params.is_resume,
             has_active_campaign: params.has_active_campaign,
             car_brand_id: params.carBrandIds?.join(",") ?? undefined,

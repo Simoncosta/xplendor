@@ -34,18 +34,35 @@ import { getCarsPaginate } from "slices/cars/thunk";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { getCarModels } from "slices/car-models/thunk";
 
-type CarStatusFilter = "active" | "sold" | "available_soon" | "draft";
-type StatusFilterOption = { value: CarStatusFilter | null; label: string };
+// 2026-06-26 — filtro status passa a múltipla selecção.
+type CarStatusFilter = "active" | "sold" | "available_soon" | "reserved" | "draft" | "inactive";
+type StatusFilterOption = { value: CarStatusFilter; label: string };
 type StockTypeOption = { value: boolean | null; label: string };
 type InvestmentFilterOption = { value: boolean | null; label: string };
 
 const statusFilterOptions: StatusFilterOption[] = [
-    { value: null, label: "Todos" },
-    { value: "active", label: "Ativos" },
-    { value: "sold", label: "Vendidos" },
+    { value: "active",         label: "Ativos" },
+    { value: "draft",          label: "Em Rascunho" },
     { value: "available_soon", label: "Disponível Brevemente" },
-    { value: "draft", label: "Em Rascunho" },
+    { value: "reserved",       label: "Reservados" },
+    { value: "sold",           label: "Vendidos" },
+    { value: "inactive",       label: "Inativos" },
 ];
+
+/**
+ * Selecção inicial ao abrir /cars: os 3 estados que o stand normalmente
+ * quer ver — activo, rascunho, disponível brevemente. É só o ponto de
+ * partida; o utilizador pode desmarcar/marcar à vontade. Desmarcar TUDO
+ * = lista vazia com mensagem explicativa.
+ */
+const DEFAULT_STATUS_FILTERS: CarStatusFilter[] = ["active", "draft", "available_soon"];
+
+/** Compara duas listas de status ignorando ordem (para o activeFilterCount). */
+const sameStatusSet = (a: CarStatusFilter[], b: CarStatusFilter[]): boolean => {
+    if (a.length !== b.length) return false;
+    const setB = new Set(b);
+    return a.every((v) => setB.has(v));
+};
 
 const stockTypeOptions: StockTypeOption[] = [
     { value: null, label: "Todos" },
@@ -171,7 +188,7 @@ const CarList = () => {
     const [companyId, setCompanyId] = useState<any>(null);
     const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
-    const [statusFilter, setStatusFilter] = useState<CarStatusFilter | null>("active");
+    const [statusFilters, setStatusFilters] = useState<CarStatusFilter[]>(DEFAULT_STATUS_FILTERS);
     const [isResumeFilter, setIsResumeFilter] = useState<boolean | null>(null);
     const [hasActiveCampaignFilter, setHasActiveCampaignFilter] = useState<boolean | null>(null);
     const [mincost, setMincost] = useState<number | undefined>(undefined);
@@ -185,10 +202,13 @@ const CarList = () => {
     });
     const [filtersOpen, setFiltersOpen] = useState(false);
 
+    // "Filtro activo" = difere do estado inicial. Para o status considera-se
+    // activo quando difere do DEFAULT_STATUS_FILTERS (independentemente da
+    // ordem em que os chips aparecem no react-select).
     const activeFilterCount = [
         carBrandIds.length > 0,
         carModelIds.length > 0,
-        statusFilter !== null && statusFilter !== "active",
+        !sameStatusSet(statusFilters, DEFAULT_STATUS_FILTERS),
         isResumeFilter !== null,
         hasActiveCampaignFilter !== null,
         mincost !== undefined,
@@ -219,7 +239,9 @@ const CarList = () => {
         setCarModelIds([]);
         setMincost(undefined);
         setMaxcost(undefined);
-        setStatusFilter(null);
+        // "Limpar filtros" repõe o default (não zero — zero = lista vazia
+        // com aviso, que seria pior UX que voltar ao ponto inicial).
+        setStatusFilters(DEFAULT_STATUS_FILTERS);
         setIsResumeFilter(null);
         setHasActiveCampaignFilter(null);
         setSort({ field: null, direction: null });
@@ -238,22 +260,28 @@ const CarList = () => {
             const obj = JSON.parse(authUser);
             setCompanyId(obj.company_id);
 
-            dispatch(
-                getCarsPaginate({
-                    page: pagination.pageIndex + 1,
-                    perPage: pagination.pageSize,
-                    companyId: obj.company_id,
-                    status: statusFilter ?? undefined,
-                    is_resume: isResumeFilter ?? undefined,
-                    has_active_campaign: hasActiveCampaignFilter ?? undefined,
-                    carBrandIds: carBrandIds,
-                    carModelIds: carModelIds,
-                    mincost: mincost,
-                    maxcost: maxcost,
-                    sort_by: sort.field ?? undefined,
-                    sort_direction: sort.direction ?? undefined,
-                })
-            );
+            // Se o utilizador desmarcou todos os estados, NÃO fazer fetch —
+            // o aviso é renderizado em vez da tabela. Evita bater no backend
+            // e evita que o BaseRepository devolva "tudo" ao ver `status`
+            // vazio (linha 130: `[] → skip filter`).
+            if (statusFilters.length > 0) {
+                dispatch(
+                    getCarsPaginate({
+                        page: pagination.pageIndex + 1,
+                        perPage: pagination.pageSize,
+                        companyId: obj.company_id,
+                        status: statusFilters,
+                        is_resume: isResumeFilter ?? undefined,
+                        has_active_campaign: hasActiveCampaignFilter ?? undefined,
+                        carBrandIds: carBrandIds,
+                        carModelIds: carModelIds,
+                        mincost: mincost,
+                        maxcost: maxcost,
+                        sort_by: sort.field ?? undefined,
+                        sort_direction: sort.direction ?? undefined,
+                    })
+                );
+            }
             dispatch(showCarmine({ companyId: obj.company_id, id: 0 }));
             dispatch(getCarBrands());
             if (carBrandIds.length > 0) dispatch(getCarModels(carBrandIds));
@@ -262,7 +290,7 @@ const CarList = () => {
         dispatch,
         carBrandIds,
         carModelIds,
-        statusFilter,
+        statusFilters,
         isResumeFilter,
         hasActiveCampaignFilter,
         mincost,
@@ -565,12 +593,13 @@ const CarList = () => {
                 <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
                 <Select
                     inputId="car_status"
-                    placeholder="Todos os estados"
+                    placeholder="Seleciona um ou mais estados"
                     options={statusFilterOptions}
-                    isClearable={false}
-                    value={statusFilterOptions.find((option) => option.value === statusFilter) ?? statusFilterOptions[0]}
-                    onChange={(selected: StatusFilterOption | null) => {
-                        setStatusFilter(selected?.value ?? null);
+                    isMulti
+                    closeMenuOnSelect={false}
+                    value={statusFilterOptions.filter((opt) => statusFilters.includes(opt.value))}
+                    onChange={(selected: readonly StatusFilterOption[] | null) => {
+                        setStatusFilters((selected ?? []).map((s) => s.value));
                     }}
                 />
             </div>
@@ -756,20 +785,37 @@ const CarList = () => {
                                     </div>
                                 </div>
                                 <div className="pt-1">
-                                    <XTanStackTable
-                                        columns={columns}
-                                        data={cars || []}
-                                        loading={loading}
-                                        pagination={pagination}
-                                        onPaginationChange={setPagination}
-                                        pageCount={meta?.last_page ?? 0}
-                                        total={meta?.total}
-                                        isBordered={true}
-                                        theadClass="text-muted table-light"
-                                        mobileMode={isMobile}
-                                        renderMobileCard={renderCarMobileCard}
-                                        onSortingChange={handleSortChange}
-                                    />
+                                    {statusFilters.length === 0 ? (
+                                        <div
+                                            className="text-center py-5"
+                                            style={{
+                                                background: "#f8f9fa",
+                                                border: "1px dashed #d1d5db",
+                                                borderRadius: 12,
+                                            }}
+                                        >
+                                            <i className="ri-filter-line text-muted" style={{ fontSize: 28 }} />
+                                            <h6 className="fw-semibold mt-2 mb-1">Nenhum estado selecionado</h6>
+                                            <p className="text-muted small mb-0">
+                                                Seleciona pelo menos um estado no filtro de <strong>Status</strong> para veres viaturas.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <XTanStackTable
+                                            columns={columns}
+                                            data={cars || []}
+                                            loading={loading}
+                                            pagination={pagination}
+                                            onPaginationChange={setPagination}
+                                            pageCount={meta?.last_page ?? 0}
+                                            total={meta?.total}
+                                            isBordered={true}
+                                            theadClass="text-muted table-light"
+                                            mobileMode={isMobile}
+                                            renderMobileCard={renderCarMobileCard}
+                                            onSortingChange={handleSortChange}
+                                        />
+                                    )}
                                 </div>
                             </CardBody>
                         </Card>

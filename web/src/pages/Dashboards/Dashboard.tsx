@@ -6,10 +6,13 @@ import { useDispatch, useSelector } from 'react-redux';
 // Components
 import { Container, Row } from 'reactstrap';
 import SummaryDashboard from './components/SummaryDashboard';
-import { getAnalyticsDashboard } from 'slices/dashboards/thunk';
+import { getAnalyticsDashboard, getStockBreakdown, getSalesRevenue } from 'slices/dashboards/thunk';
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
 import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
+import StockBreakdownCard from './components/StockBreakdownCard';
+import SalesRevenueCard from './components/SalesRevenueCard';
+import type { SalesRevenueGranularity } from "../../types/api";
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
@@ -17,6 +20,10 @@ const selectDashboardViewModel = createSelector(
     (dashboardState) => ({
         analytics: dashboardState.data.analytics,
         loading: dashboardState.loading.list,
+        stockBreakdown: dashboardState.data.stockBreakdown,
+        stockBreakdownLoading: dashboardState.loading.stockBreakdown,
+        salesRevenue: dashboardState.data.salesRevenue,
+        salesRevenueLoading: dashboardState.loading.salesRevenue,
     })
 );
 
@@ -24,7 +31,11 @@ const Dashboard = () => {
     const dispatch: any = useDispatch();
     document.title = "Dashboard | Xplendor";
 
-    const { analytics, loading } = useSelector(selectDashboardViewModel);
+    const {
+        analytics, loading,
+        stockBreakdown, stockBreakdownLoading,
+        salesRevenue, salesRevenueLoading,
+    } = useSelector(selectDashboardViewModel);
 
     // Effects
     useEffect(() => {
@@ -35,7 +46,24 @@ const Dashboard = () => {
         if (!obj?.company_id) return;
 
         dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
+        // Visões 1+2 (2026-06-25) — endpoint próprio, paralelo ao blob principal.
+        dispatch(getStockBreakdown({ companyId: obj.company_id }));
+        // V3 dispara o seu próprio fetch via callback no SalesRevenueCard
+        // (preset default "Este ano" no primeiro mount).
     }, [dispatch]);
+
+    const handleSalesRangeChange = (range: { from: string; to: string; granularity: SalesRevenueGranularity }) => {
+        const authUser = sessionStorage.getItem("authUser");
+        if (!authUser) return;
+        const obj = JSON.parse(authUser);
+        if (!obj?.company_id) return;
+        dispatch(getSalesRevenue({
+            companyId: obj.company_id,
+            from: range.from,
+            to: range.to,
+            granularity: range.granularity,
+        }));
+    };
 
     if (loading) return null;
     if (!analytics) return null;
@@ -49,6 +77,16 @@ const Dashboard = () => {
                     </Row>
                     <Row className="g-3 mb-3">
                         <SubscriptionTrialBanner />
+                    </Row>
+                    <Row className="g-3 mb-3">
+                        <StockBreakdownCard data={stockBreakdown} loading={stockBreakdownLoading} />
+                    </Row>
+                    <Row className="g-3 mb-3">
+                        <SalesRevenueCard
+                            data={salesRevenue}
+                            loading={salesRevenueLoading}
+                            onRangeChange={handleSalesRangeChange}
+                        />
                     </Row>
                     <Row className="g-3 mb-3">
                         <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />

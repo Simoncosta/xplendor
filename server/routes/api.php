@@ -89,6 +89,12 @@ Route::prefix('v1')->group(function () {
                 Route::patch('/cars/{carId}/ad-campaigns/{campaign}/toggle', [CarAdCampaignController::class, 'toggle']);
 
                 Route::get('dashboard', [DashboardController::class, 'index']);
+                // Visões 1+2 do Dashboard (2026-06-25) — stock por marca + tipo.
+                // Endpoint separado para não inflar o blob do index (dívida 9).
+                Route::get('dashboard/stock-breakdown', [DashboardController::class, 'stockBreakdown']);
+                // Visão 3 do Dashboard (2026-06-25) — FATURAÇÃO por período
+                // (NÃO É LUCRO). ?from=Y-m-d&to=Y-m-d&granularity=month|year.
+                Route::get('dashboard/sales-revenue', [DashboardController::class, 'salesRevenue']);
 
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);

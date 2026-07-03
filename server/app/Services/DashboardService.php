@@ -67,6 +67,39 @@ class DashboardService extends BaseService
         ];
     }
 
+    /**
+     * Visões 1+2 do Dashboard (2026-06-25) — stock visível por marca + tipo.
+     *
+     * Endpoint próprio (`GET /companies/{id}/dashboard/stock-breakdown`) em
+     * vez de inflar `getDashboard()` (que já tem 18 chaves para 4 usadas —
+     * dívida 9 do CLAUDE.md). Mantém o blob existente intacto.
+     *
+     * Service fino: delega a query ao Repository; controller wrappa em
+     * Resource (sec 9 do CLAUDE.md).
+     *
+     * @return array{by_brand: array, by_type: array}
+     */
+    public function getStockBreakdown(int $companyId): array
+    {
+        return $this->dashboardRepository->getStockBreakdown($companyId);
+    }
+
+    /**
+     * Visão 3 do Dashboard (2026-06-25) — **FATURAÇÃO** (valor das vendas)
+     * por período. **NÃO É LUCRO** (sem `purchase_price` em prod).
+     *
+     * Service fino — toda a lógica (SUM, bucketing, tratamento NULL) vive
+     * no Repository. Endpoint próprio também, pelo mesmo motivo da V1+V2.
+     */
+    public function getSalesRevenue(
+        int $companyId,
+        string $fromDate,
+        string $toDate,
+        string $granularity = 'month'
+    ): array {
+        return $this->dashboardRepository->getSalesRevenue($companyId, $fromDate, $toDate, $granularity);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     /**

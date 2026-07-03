@@ -261,3 +261,60 @@ export interface ListPromotionCandidatesParams {
     sort_by?: 'days_in_stock' | 'price' | 'views' | 'leads' | 'ips';
     sort_dir?: 'asc' | 'desc';
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Visões 1+2 do Dashboard (2026-06-25) — stock por marca + tipo.
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface StockBreakdownBrandRow {
+    name: string;
+    count: number;
+}
+
+export interface StockBreakdownTypeRow {
+    /** Slug cru emitido pelo backend — frontend traduz via VEHICLE_TYPE_LABELS. */
+    type: PromotionVehicleType;
+    count: number;
+}
+
+export interface StockBreakdown {
+    by_brand: StockBreakdownBrandRow[];
+    by_type: StockBreakdownTypeRow[];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Visão 3 do Dashboard (2026-06-25) — FATURAÇÃO (NÃO é lucro) por período.
+// Sem `purchase_price` em prod, lucro real só existirá quando essa faixa
+// entrar. Rotular sempre "Vendas no período" / "Faturação" — nunca "Lucro".
+// ────────────────────────────────────────────────────────────────────────────
+
+export type SalesRevenueGranularity = "month" | "year";
+
+export type SalesRevenuePreset =
+    | "this_month"
+    | "last_month"
+    | "this_quarter"
+    | "this_year"
+    | "custom";
+
+export interface SalesRevenueBucket {
+    /** `YYYY-MM` para granularity=month, `YYYY` para granularity=year. */
+    period: string;
+    revenue: number;
+    sales_count: number;
+}
+
+export interface SalesRevenueRange {
+    from: string;             // Y-m-d
+    to: string;               // Y-m-d
+    granularity: SalesRevenueGranularity;
+}
+
+export interface SalesRevenue {
+    total_revenue: number;
+    sales_count: number;
+    /** Vendas no período sem `sale_price` registado — reportar honestamente. */
+    sales_without_value_count: number;
+    buckets: SalesRevenueBucket[];
+    range: SalesRevenueRange;
+}

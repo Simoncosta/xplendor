@@ -28,6 +28,8 @@ return [
         'https://www.spacedrive.pt',
         'https://standspacedrive.pt',
         'https:/www.standspacedrive.pt',
+        'https://quebom.pt/',
+        'https://www.quebom.pt/',
 
         // Localhost
         'https://0833-2001-818-c523-5900-d8c5-9e4a-97e9-1b60.ngrok-free.app',

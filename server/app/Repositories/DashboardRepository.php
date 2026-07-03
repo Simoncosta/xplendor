@@ -164,6 +164,134 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             });
     }
 
+    /**
+     * Visões 1+2 do Dashboard (2026-06-25) — contagem de stock por marca e
+     * tipo de veículo. Stock "visível" = mesmas semânticas do
+     * `StockPromotionRepository::VISIBLE_STATUSES` (`active`, `available_soon`,
+     * `reserved`); rascunhos, vendidas e inactivas ficam fora.
+     *
+     * Resultado já pronto para o Resource: arrays ordenados por contagem desc
+     * (com desempate alfabético) — alimenta directamente bar chart (marcas)
+     * e donut (tipos).
+     */
+    public function getStockBreakdown(int $companyId): array
+    {
+        $visibleStatuses = ['active', 'available_soon', 'reserved'];
+
+        $brandRows = DB::table('cars')
+            ->join('car_brands', 'cars.car_brand_id', '=', 'car_brands.id')
+            ->where('cars.company_id', $companyId)
+            ->whereIn('cars.status', $visibleStatuses)
+            ->groupBy('car_brands.name')
+            ->selectRaw('car_brands.name as name, COUNT(*) as count')
+            ->orderByDesc('count')
+            ->orderBy('car_brands.name')
+            ->get();
+
+        $typeRows = DB::table('cars')
+            ->where('company_id', $companyId)
+            ->whereIn('status', $visibleStatuses)
+            ->whereNotNull('vehicle_type')
+            ->groupBy('vehicle_type')
+            ->selectRaw('vehicle_type as type, COUNT(*) as count')
+            ->orderByDesc('count')
+            ->orderBy('vehicle_type')
+            ->get();
+
+        return [
+            'by_brand' => $brandRows->map(fn ($r) => [
+                'name'  => (string) $r->name,
+                'count' => (int) $r->count,
+            ])->all(),
+            'by_type' => $typeRows->map(fn ($r) => [
+                'type'  => (string) $r->type,
+                'count' => (int) $r->count,
+            ])->all(),
+        ];
+    }
+
+    /**
+     * Visão 3 do Dashboard (2026-06-25) — **FATURAÇÃO** (valor das vendas)
+     * por período. NÃO É LUCRO (sem `purchase_price` em prod, lucro real
+     * fica para futuro).
+     *
+     * SUM(sale_price) por bucket (`month` ou `year`) filtrado por
+     * `sold_at` no range fechado [from, to]. **Tratamento honesto de NULL**:
+     *  - `total_revenue` e `revenue` por bucket somam APENAS vendas com
+     *    `sale_price NOT NULL` — não inventam 0 que deflaciona.
+     *  - `sales_count` conta TODAS as vendas no range (com e sem valor).
+     *  - `sales_without_value_count` reporta separadamente as vendas sem
+     *    `sale_price` para o FE poder ser honesto ("X vendas sem valor
+     *    registado neste período").
+     *
+     * Expressões de data portáveis MariaDB ↔ SQLite (precedente:
+     * `CarSalePotentialScoreService::scoreModelHistory`).
+     */
+    public function getSalesRevenue(
+        int $companyId,
+        string $fromDate,
+        string $toDate,
+        string $granularity = 'month'
+    ): array {
+        $granularity = $granularity === 'year' ? 'year' : 'month';
+        $bucketExpr = $this->salesPeriodBucketExpr('car_sales.sold_at', $granularity);
+
+        // Agregado total + contadores honestos (com e sem sale_price).
+        $totals = DB::table('car_sales')
+            ->where('car_sales.company_id', $companyId)
+            ->whereBetween('car_sales.sold_at', [$fromDate . ' 00:00:00', $toDate . ' 23:59:59'])
+            ->selectRaw('
+                COALESCE(SUM(sale_price), 0) AS total_revenue,
+                COUNT(*) AS sales_count,
+                SUM(CASE WHEN sale_price IS NULL THEN 1 ELSE 0 END) AS sales_without_value_count
+            ')
+            ->first();
+
+        // Bucketing — SUM apenas onde sale_price NOT NULL para alimentar o
+        // gráfico de barras (a contagem de vendas inclui null para o tooltip).
+        $bucketRows = DB::table('car_sales')
+            ->where('car_sales.company_id', $companyId)
+            ->whereBetween('car_sales.sold_at', [$fromDate . ' 00:00:00', $toDate . ' 23:59:59'])
+            ->selectRaw("
+                {$bucketExpr} AS period,
+                COALESCE(SUM(sale_price), 0) AS revenue,
+                COUNT(*) AS sales_count
+            ")
+            ->groupBy(DB::raw($bucketExpr))
+            ->orderBy(DB::raw($bucketExpr))
+            ->get();
+
+        return [
+            'total_revenue'             => (float) ($totals->total_revenue ?? 0),
+            'sales_count'               => (int) ($totals->sales_count ?? 0),
+            'sales_without_value_count' => (int) ($totals->sales_without_value_count ?? 0),
+            'buckets' => $bucketRows->map(fn ($r) => [
+                'period'      => (string) $r->period,
+                'revenue'     => (float) $r->revenue,
+                'sales_count' => (int) $r->sales_count,
+            ])->all(),
+            'range' => [
+                'from'        => $fromDate,
+                'to'          => $toDate,
+                'granularity' => $granularity,
+            ],
+        ];
+    }
+
+    /**
+     * Bucket de período portável MariaDB ↔ SQLite.
+     * MariaDB: `DATE_FORMAT(sold_at, '%Y-%m')` / `'%Y'`.
+     * SQLite : `strftime('%Y-%m', sold_at)` / `'%Y'`.
+     */
+    private function salesPeriodBucketExpr(string $column, string $granularity): string
+    {
+        $format = $granularity === 'year' ? '%Y' : '%Y-%m';
+
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "strftime('{$format}', {$column})"
+            : "DATE_FORMAT({$column}, '{$format}')";
+    }
+
     public function getCapitalSummary(int $companyId): array
     {
         $result = $this->model->where('company_id', $companyId)

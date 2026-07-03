@@ -14,7 +14,8 @@ export const getCarsPaginate = createAsyncThunk(
             perPage: number;
             page: number;
             companyId: number;
-            status?: 'active' | 'sold' | 'draft' | 'available_soon';
+            // 2026-06-26 — múltipla selecção (retro-compat com string única).
+            status?: Array<'active' | 'sold' | 'draft' | 'available_soon' | 'reserved' | 'inactive'> | string;
             is_resume?: boolean;
             has_active_campaign?: boolean;
             carBrandIds?: number[];
