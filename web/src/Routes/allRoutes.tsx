@@ -22,6 +22,7 @@ import CarUpdate from "pages/Cars/Car/CarUpdate";
 import CarAnalytics from "pages/Cars/Car/CarAnalytics";
 import CarIntelligencePage from "pages/Cars/Car/CarIntelligencePage";
 import CarFichaPage from "pages/Cars/Car/CarFichaPage";
+import CarPrintSheet from "pages/Cars/Car/CarPrintSheet";
 import ActionCenterPage from "pages/Actions/ActionCenterPage";
 
 // Users
@@ -79,6 +80,9 @@ const authProtectedRoutes = [
     { path: "/cars/:id/intelligence", component: <CarIntelligencePage /> },
     { path: "/cars/:id/ads", component: <CarAdsRedirect /> },
     { path: "/cars/:id/ficha", component: <CarFichaPage /> },
+    // Ficha de impressão A4 (2026-06-27) — rota própria com companyId no path
+    // para simetria com os endpoints internos que scope por company (sec 11).
+    { path: "/companies/:companyId/cars/:id/print-sheet", component: <CarPrintSheet /> },
     { path: "/cars/:id/marketing", component: <CarMarketingRedirect /> },
 
     // Leads

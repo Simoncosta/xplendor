@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
@@ -109,8 +109,19 @@ export default function CarFichaPage() {
                 </Row>
 
                 <Row className="mb-3">
-                    <Col>
+                    <Col className="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <CarPageNav active="ficha" />
+                        {/* Ficha de impressão A4 (fix 2026-06-27) — navega na
+                            MESMA ABA. Antes usava target="_blank", mas
+                            sessionStorage.authUser (sec 11) é por-aba: a nova
+                            aba abria sem sessão → redirect para /login. Na
+                            página da ficha há botão "Voltar" que regressa. */}
+                        <Link
+                            to={`/companies/${companyId}/cars/${id}/print-sheet`}
+                            className="btn btn-outline-primary btn-sm"
+                        >
+                            <i className="ri-printer-line me-1" /> Imprimir ficha
+                        </Link>
                     </Col>
                 </Row>
 

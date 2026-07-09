@@ -318,3 +318,71 @@ export interface SalesRevenue {
     buckets: SalesRevenueBucket[];
     range: SalesRevenueRange;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Ficha de impressão A4 (2026-06-27) — payload do endpoint dedicado.
+// FE flatten-a os grupos de `vehicle_attributes` para renderização; a shape
+// aqui reflecte o que o backend devolve directamente do accessor
+// `Car::vehicle_attributes` (normalizado via `VehicleAttribute::normalizeShape`).
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface PrintSheetCompany {
+    trade_name: string | null;
+    fiscal_name: string | null;
+    logo_path: string | null;
+    address: string | null;
+    postal_code: string | null;
+    phone: string | null;
+    mobile: string | null;
+    email: string | null;
+    website: string | null;
+}
+
+export interface PrintSheetHeadlineStats {
+    seats: number | null;
+    sleeps: number | null;
+    length_m: number | null;
+    gross_weight_kg: number | null;
+    mileage_km: number | null;
+}
+
+export interface CarPrintSheet {
+    company: PrintSheetCompany;
+    vehicle_type: 'car' | 'motorcycle' | 'motorhome' | 'caravan' | null;
+    brand: { id: number; name: string } | null;
+    model: { id: number; name: string } | null;
+    category: { id: number; name: string; slug: string } | null;
+    version: string | null;
+    engine_brand: string | null;
+    license_plate: string | null;
+    vin: string | null;
+    registration: { year: number | null; month: number | null };
+    price: {
+        gross: number | null;
+        promo_gross: number | null;
+        hide_price_online: boolean;
+    };
+    headline_stats: PrintSheetHeadlineStats;
+    specs: {
+        fuel_type: string | null;
+        transmission: string | null;
+        power_hp: number | null;
+        engine_capacity_cc: number | null;
+        doors: number | null;
+        segment: string | null;
+        exterior_color: string | null;
+        is_metallic: boolean;
+        interior_color: string | null;
+    };
+    state: {
+        condition: string | null;
+        origin: string | null;
+        has_spare_key: boolean;
+        has_manuals: boolean;
+        is_trade_in: boolean;
+    };
+    warranty_months: number | null;
+    /** Shape completo normalizado (habitation_basics, energy_climate, exterior, security, chassis_structure, interior_furniture, living_room, beds…). */
+    vehicle_attributes: Record<string, any>;
+    extras: Array<{ group: string; items: string[] }>;
+}

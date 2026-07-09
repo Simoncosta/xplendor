@@ -74,6 +74,8 @@ Route::prefix('v1')->group(function () {
                 Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
                 Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
                 Route::get('/cars/{carId}/specs', [CarController::class, 'specs']);
+                // Ficha de impressão A4 (2026-06-27) — payload dedicado.
+                Route::get('/cars/{carId}/print-sheet', [CarController::class, 'printSheet']);
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
                 Route::get('/cars/promotion-ranking', [PromotionRankingController::class, 'index']);
                 Route::post('/cars/{carId}/execute-action', [ActionExecutionController::class, 'store']);

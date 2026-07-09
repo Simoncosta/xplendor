@@ -54,6 +54,10 @@ export const getAnalyticsDashboard = (companyId: number) => api.get(url.GET_COMP
 export const getDashboardStockBreakdown = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS + "/stock-breakdown");
 
+// Ficha de impressão A4 (2026-06-27) — endpoint próprio.
+export const getCarPrintSheet = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/print-sheet`);
+
 // Visão 3 (2026-06-25) — FATURAÇÃO (NÃO é lucro) por período.
 // `api.get` aceita um objecto plano que é serializado como query string.
 export const getDashboardSalesRevenue = (

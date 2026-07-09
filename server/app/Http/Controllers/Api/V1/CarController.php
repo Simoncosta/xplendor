@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CarRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CarMarketAggregateResource;
+use App\Http\Resources\CarPrintSheetResource;
 use App\Http\Resources\CarSpecsResource;
 use App\Models\Car;
 use App\Models\CarImage;
@@ -413,6 +414,34 @@ class CarController extends Controller
         return ApiResponse::success(
             CarSpecsResource::make($car)->resolve(),
             'Specs carregados com sucesso.'
+        );
+    }
+
+    /**
+     * Ficha de impressão A4 (2026-06-27) — payload dedicado ao layout
+     * imprimível. Devolve Company (logo + contactos) + Car completo com
+     * `vehicle_attributes` normalizado (habitação/features/beds/sleeps) —
+     * shape que o `CarSpecsResource` não expõe (dívida 47).
+     *
+     * Auth + tenant como o `specs`. PII (matrícula/VIN) emitidos porque a
+     * ficha é impressa dentro do stand; endpoint é interno.
+     */
+    public function printSheet(int $companyId, int $carId): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $car = Car::with(['brand', 'model', 'category', 'vehicleAttribute', 'company'])
+            ->find($carId);
+
+        if (!$car || (int) $car->company_id !== $companyId) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
+        return ApiResponse::success(
+            CarPrintSheetResource::make($car)->resolve(),
+            'Ficha de impressão carregada com sucesso.'
         );
     }
 
