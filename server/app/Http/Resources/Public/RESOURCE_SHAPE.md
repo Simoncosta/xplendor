@@ -23,6 +23,12 @@ This version returns a curated, stable payload.
 | `views_count`, `leads_count` | Appended via analytics | **Removed** (not for public) |
 | `status` filter | Not enforced | **Enforced: `active`, `sold`, `available_soon`, `reserved`** (single source: `CarPublicRepository::PUBLIC_STATUSES`) |
 
+### Additive changes (non-breaking — safe to ignore in existing consumers)
+
+| Date | Field | Notes |
+|---|---|---|
+| 2026-07-23 | `engine_brand` | Engine manufacturer (Fiat, Ford, Mercedes…). Nullable string. Emitted on **both** index and show (same Resource). Distinct from `brand.name` (commercial brand). See "Engine fields" section below. |
+
 ---
 
 ## Full Payload Shape
@@ -56,6 +62,7 @@ This version returns a curated, stable payload.
   "doors": null,
   "power_hp": 140,
   "engine_capacity_cc": 1995,
+  "engine_brand": "Fiat",
   "cylinders": 4,
   "co2_emissions": null,
   "toll_class": null,
@@ -196,6 +203,16 @@ This version returns a curated, stable payload.
 
 `specs` is always present (at minimum `{ "seats": N }`).  
 Only keys with explicit non-null values are included in `habitation`, `features`, and `specs`.
+
+---
+
+## Engine fields — `engine_brand` vs. commercial brand
+
+`engine_brand` (added 2026-07-23) is the **engine manufacturer** (e.g. Fiat, Ford, Mercedes, Iveco). Distinct from `brand.name`, which is the **commercial brand** of the vehicle (e.g. Challenger, McLouis, Hymer for motorhomes; Volkswagen, BMW for cars).
+
+- Type: `string` or `null`.
+- Populated by the panel for motorhomes/caravans only; expected `null` for cars/motorcycles (the commercial brand is already the engine maker in those cases).
+- Never inferred by the API — value is exactly what the panel stored.
 
 ---
 

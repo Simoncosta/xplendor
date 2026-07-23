@@ -95,6 +95,7 @@ class CarPublicResource extends JsonResource
             'doors'              => $this->doors,
             'power_hp'           => $this->power_hp,
             'engine_capacity_cc' => $this->engine_capacity_cc,
+            'engine_brand'       => $this->engine_brand,
             'cylinders'          => $this->cylinders,
             'co2_emissions'      => $this->co2_emissions,
             'toll_class'         => $this->toll_class,
