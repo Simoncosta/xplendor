@@ -118,7 +118,7 @@ export default function ExteriorAccordion({ accordionId }: AccordionProps) {
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.exterior.has_hubcaps"
-                            label="Tampões"
+                            label="Tampões de Roda"
                             className="mb-3"
                         />
                     </Col>

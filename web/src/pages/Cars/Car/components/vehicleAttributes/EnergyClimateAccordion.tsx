@@ -205,6 +205,28 @@ export default function EnergyClimateAccordion({ accordionId }: AccordionProps) 
                     </Col>
                 </Row>
 
+                {/* 2026-06-29 — Baterias de lítio: quantidade + capacidade Ah.
+                    Padrão SEM checkbox pai (igual às baterias existentes).
+                    Layout lado-a-lado visualmente coerente com o solar (M2). */}
+                <Row className="mb-2">
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="vehicle_attributes.energy_climate.lithium_battery_count"
+                            label="Baterias de lítio"
+                            className="mb-3"
+                        />
+                    </Col>
+                    <Col lg={2}>
+                        <XInput
+                            type="number"
+                            name="vehicle_attributes.energy_climate.lithium_battery_ah"
+                            label="Capacidade (Ah)"
+                            className="mb-3"
+                        />
+                    </Col>
+                </Row>
+
                 {/* Lote 3 — A/C 220V (com marca, padrão has_awning+awning_brand)
                     e VIESA (boolean simples). Distintos do "Ar condicionado"
                     dos extras `comfort_multimedia` (esse é da cabine). */}

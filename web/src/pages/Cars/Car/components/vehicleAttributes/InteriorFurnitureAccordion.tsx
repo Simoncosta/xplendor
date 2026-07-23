@@ -36,18 +36,16 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
             </AccordionHeader>
             <AccordionBody accordionId={accordionId}>
 
+                {/* 2026-06-28 — `has_rotating_seats` movido para o accordion
+                    "Cabine" (accordionId=10) por decisão UX Matilde: bancos
+                    giratórios são da CABINE do veículo, não da célula
+                    habitacional. Chave JSON `interior_furniture.has_rotating_seats`
+                    permanece intacta. Ver CLAUDE.md sec 6.1. */}
                 <Row className="mb-2">
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.interior_furniture.has_foldable_table"
                             label="Mesa rebatível"
-                            className="mb-3"
-                        />
-                    </Col>
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.interior_furniture.has_rotating_seats"
-                            label="Bancos giratórios"
                             className="mb-3"
                         />
                     </Col>
@@ -109,6 +107,28 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
                             className="mb-3"
                         />
                     </Col>
+                    {/* 2026-06-29 — TVs condicionais a has_tv=true (padrão
+                        has_fridge → fridge_type/litres). Localização é texto
+                        livre por decisão Matilde (múltiplas TVs/sítios). */}
+                    {inf?.has_tv && (
+                        <>
+                            <Col lg={2}>
+                                <XInput
+                                    type="number"
+                                    name="vehicle_attributes.interior_furniture.tv_count"
+                                    label="Quantidade"
+                                    className="mb-3"
+                                />
+                            </Col>
+                            <Col lg={3}>
+                                <XInput
+                                    name="vehicle_attributes.interior_furniture.tv_location"
+                                    label="Localização"
+                                    className="mb-3"
+                                />
+                            </Col>
+                        </>
+                    )}
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.interior_furniture.has_command_panel"
@@ -153,16 +173,11 @@ export default function InteriorFurnitureAccordion({ accordionId }: AccordionPro
                     </Col>
                 </Row>
 
-                {/* Lote 3 — remifront + mosquiteiras movidos do Chassis.
-                    Chaves JSON permanecem em `chassis_structure.*`. */}
+                {/* 2026-06-28 — `has_remifront` movido para o accordion
+                    "Cabine" (accordionId=10) e renomeado para "Estores Remifront"
+                    (decisão UX Matilde). Chave JSON `chassis_structure.has_remifront`
+                    permanece intacta. Ver CLAUDE.md sec 6.1. */}
                 <Row className="mb-2">
-                    <Col lg={2}>
-                        <XInputCheckbox
-                            name="vehicle_attributes.chassis_structure.has_remifront"
-                            label="Remifront"
-                            className="mb-3"
-                        />
-                    </Col>
                     <Col lg={2}>
                         <XInputCheckbox
                             name="vehicle_attributes.chassis_structure.has_mosquito_nets"

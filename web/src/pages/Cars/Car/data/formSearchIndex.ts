@@ -155,6 +155,9 @@ const HAB_SECURITY    = { kind: "habitation" as const, accordionId: "6", accordi
 const HAB_CHASSIS     = { kind: "habitation" as const, accordionId: "7", accordionLabel: "Chassis e Estrutura",      vehicleTypes: HABITATION_ONLY };
 const HAB_INTERIOR    = { kind: "habitation" as const, accordionId: "8", accordionLabel: "Mobiliário Interior",      vehicleTypes: HABITATION_ONLY };
 const HAB_LIVING_ROOM = { kind: "habitation" as const, accordionId: "9", accordionLabel: "Sala",                     vehicleTypes: HABITATION_ONLY };
+// 2026-06-28 — Cabine (accordionId "10" para não renumerar). Equipamentos da
+// cabine do veículo (não da célula habitacional). Ver CLAUDE.md sec 6.1.
+const HAB_CABINE      = { kind: "habitation" as const, accordionId: "10", accordionLabel: "Cabine",                  vehicleTypes: HABITATION_ONLY };
 
 // ═════════════════════════════════════════════════════════════════════════
 // Accordions de Extras (CarEquipmentDataFields → AccordionId "1"-"4")
@@ -295,8 +298,12 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Duche",             name: "vehicle_attributes.habitation_basics.bathroom.has_shower", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
     // CADEIA 3-CAMADAS: has_bathroom → has_shower → shower_type
     { label: "Tipo de duche",     name: "vehicle_attributes.habitation_basics.bathroom.shower_type", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.bathroom.has_shower" } },
-    { label: "Água limpa (L)",    name: "vehicle_attributes.habitation_basics.bathroom.clean_water_litres", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
-    { label: "Águas residuais (L)", name: "vehicle_attributes.habitation_basics.bathroom.waste_water_litres", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    // 2026-06-29 — Depósitos como campos próprios; litros condicionais à
+    // checkbox do respectivo depósito.
+    { label: "Depósito águas limpas",    name: "vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank",  loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    { label: "Depósito águas residuais", name: "vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank",  loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.has_bathroom" } },
+    { label: "Água limpa (L)",    name: "vehicle_attributes.habitation_basics.bathroom.clean_water_litres",  loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank" } },
+    { label: "Águas residuais (L)", name: "vehicle_attributes.habitation_basics.bathroom.waste_water_litres", loc: HAB_BATHROOM, parentField: { fieldName: "vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank" } },
 
     // ── HAB.4 Energia e Aquecimento (accordionId="4") ────────────────────
     { label: "Aquecimento de água", name: "vehicle_attributes.energy_climate.water_heater_source", loc: HAB_ENERGY },
@@ -320,6 +327,9 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Baterias (total)",  name: "vehicle_attributes.energy_climate.battery_count", loc: HAB_ENERGY },
     { label: "Baterias cabine",   name: "vehicle_attributes.energy_climate.cabin_battery_count", loc: HAB_ENERGY },
     { label: "Baterias célula",   name: "vehicle_attributes.energy_climate.cell_battery_count", loc: HAB_ENERGY },
+    // 2026-06-29 — Baterias de lítio (padrão sem checkbox pai).
+    { label: "Baterias de lítio", name: "vehicle_attributes.energy_climate.lithium_battery_count", loc: HAB_ENERGY },
+    { label: "Capacidade lítio (Ah)", name: "vehicle_attributes.energy_climate.lithium_battery_ah", loc: HAB_ENERGY },
     { label: "Corta-corrente",    name: "vehicle_attributes.energy_climate.has_battery_cutoff", loc: HAB_ENERGY },
     { label: "Ar condicionado 220V", name: "vehicle_attributes.energy_climate.has_aircon_220v", loc: HAB_ENERGY },
     // Pai: has_aircon_220v → marca (EnergyClimateAccordion:219, Lote 3 A)
@@ -340,7 +350,7 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Kit Fix&Go",        name: "vehicle_attributes.exterior.has_fix_n_go_kit", loc: HAB_EXTERIOR },
     { label: "Olho de boi",       name: "vehicle_attributes.exterior.has_bull_eye", loc: HAB_EXTERIOR },
     { label: "Sanita exterior",   name: "vehicle_attributes.exterior.has_external_wc", loc: HAB_EXTERIOR },
-    { label: "Tampões",           name: "vehicle_attributes.exterior.has_hubcaps", loc: HAB_EXTERIOR },
+    { label: "Tampões de Roda",   name: "vehicle_attributes.exterior.has_hubcaps", loc: HAB_EXTERIOR },
     { label: "Escada exterior",   name: "vehicle_attributes.exterior.has_external_ladder", loc: HAB_EXTERIOR },
     { label: "Garagem",           name: "vehicle_attributes.exterior.garage.has_garage", loc: HAB_EXTERIOR },
     // Pai: garage.has_garage → 3 sub-checkboxes (ExteriorAccordion:146)
@@ -373,7 +383,8 @@ const RAW_MANUAL: RawEntry[] = [
 
     // ── HAB.8 Mobiliário Interior (accordionId="8") ──────────────────────
     { label: "Mesa rebatível",    name: "vehicle_attributes.interior_furniture.has_foldable_table", loc: HAB_INTERIOR },
-    { label: "Bancos giratórios", name: "vehicle_attributes.interior_furniture.has_rotating_seats", loc: HAB_INTERIOR },
+    // 2026-06-28 — "Bancos giratórios" movido para HAB_CABINE (accordion 10)
+    //             — entrada canónica na secção HAB.10 abaixo.
     { label: "Estado dos estofos",name: "vehicle_attributes.interior_furniture.upholstery_state", loc: HAB_INTERIOR },
     { label: "Cortinas",          name: "vehicle_attributes.interior_furniture.has_curtains", loc: HAB_INTERIOR },
     { label: "Guarda-fatos",      name: "vehicle_attributes.interior_furniture.has_wardrobe", loc: HAB_INTERIOR },
@@ -381,6 +392,9 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Iluminação halo",   name: "vehicle_attributes.interior_furniture.has_halo_lighting", loc: HAB_INTERIOR },
     { label: "Suporte TV",        name: "vehicle_attributes.interior_furniture.has_tv_support", loc: HAB_INTERIOR },
     { label: "TV",                name: "vehicle_attributes.interior_furniture.has_tv", loc: HAB_INTERIOR },
+    // 2026-06-29 — TVs: quantidade + localização (texto livre). Condicionais a has_tv=true.
+    { label: "TV: quantidade",    name: "vehicle_attributes.interior_furniture.tv_count", loc: HAB_INTERIOR, parentField: { fieldName: "vehicle_attributes.interior_furniture.has_tv" } },
+    { label: "TV: localização",   name: "vehicle_attributes.interior_furniture.tv_location", loc: HAB_INTERIOR, parentField: { fieldName: "vehicle_attributes.interior_furniture.has_tv" } },
     { label: "Painel de comandos",name: "vehicle_attributes.interior_furniture.has_command_panel", loc: HAB_INTERIOR },
     // Claraboias + remifront + mosquiteiras movidos para Interior no Lote 3 C
     // (chaves JSON permanecem em chassis_structure.* — desalinhamento documentado)
@@ -388,7 +402,8 @@ const RAW_MANUAL: RawEntry[] = [
     { label: "Clarabóia panorâmica", name: "vehicle_attributes.chassis_structure.has_panoramic_skylight", loc: HAB_INTERIOR },
     { label: "Clarabóia 40×40",   name: "vehicle_attributes.chassis_structure.has_40x40_skylight", loc: HAB_INTERIOR },
     { label: "Outras clarabóias", name: "vehicle_attributes.chassis_structure.other_skylights_notes", loc: HAB_INTERIOR },
-    { label: "Remifront",         name: "vehicle_attributes.chassis_structure.has_remifront", loc: HAB_INTERIOR },
+    // 2026-06-28 — "Estores Remifront" movido para HAB_CABINE (accordion 10)
+    //             — entrada canónica na secção HAB.10 abaixo.
     { label: "Mosquiteiras janelas", name: "vehicle_attributes.chassis_structure.has_mosquito_nets", loc: HAB_INTERIOR },
     { label: "Porta mosquiteira", name: "vehicle_attributes.chassis_structure.has_door_mosquito_net", loc: HAB_INTERIOR },
     // 2026-06-22 — tapa-luz (chave JSON em chassis_structure.* permanece intacta)
@@ -403,6 +418,12 @@ const RAW_MANUAL: RawEntry[] = [
     // ── HAB.9 Sala (accordionId="9") ─────────────────────────────────────
     { label: "Tipo de sala",      name: "vehicle_attributes.living_room.layout", loc: HAB_LIVING_ROOM },
     { label: "Mesa telescópica",  name: "vehicle_attributes.living_room.has_extending_table", loc: HAB_LIVING_ROOM },
+
+    // ── HAB.10 Cabine (accordionId="10", 2026-06-28) ─────────────────────
+    // Chaves JSON permanecem nos sítios originais (chassis_structure e
+    // interior_furniture). Só a apresentação vive aqui. Ver CLAUDE.md sec 6.1.
+    { label: "Estores Remifront", name: "vehicle_attributes.chassis_structure.has_remifront", loc: HAB_CABINE },
+    { label: "Bancos giratórios", name: "vehicle_attributes.interior_furniture.has_rotating_seats", loc: HAB_CABINE },
 ];
 
 // ═════════════════════════════════════════════════════════════════════════

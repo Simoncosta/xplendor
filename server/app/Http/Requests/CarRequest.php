@@ -214,6 +214,12 @@ class CarRequest extends FormRequest
             'vehicle_attributes.habitation_basics.bathroom.shower_type'        => ['nullable', Rule::in(['separate', 'independent', 'combined'])],
             'vehicle_attributes.habitation_basics.bathroom.clean_water_litres' => ['nullable', 'integer', 'min:0', 'max:1000'],
             'vehicle_attributes.habitation_basics.bathroom.waste_water_litres' => ['nullable', 'integer', 'min:0', 'max:1000'],
+            // 2026-06-29 — separar "tem depósito" de "quantos litros": a cliente
+            // pode saber que tem sem saber a capacidade. Retro-compat garantida
+            // no FE (`normalizeVehicleAttributes` marca a checkbox quando os
+            // litros > 0 mas o campo ainda não existe no JSON).
+            'vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank' => ['nullable', 'boolean'],
+            'vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank' => ['nullable', 'boolean'],
             'vehicle_attributes.beds'                                          => ['nullable', 'array'],
             'vehicle_attributes.beds.*.type'                                   => ['nullable', Rule::in([
                 'camas_gemeas',
@@ -255,6 +261,10 @@ class CarRequest extends FormRequest
             'vehicle_attributes.energy_climate.battery_count'                           => ['nullable', 'integer', 'min:0', 'max:10'],
             'vehicle_attributes.energy_climate.cabin_battery_count'                     => ['nullable', 'integer', 'min:0', 'max:5'],
             'vehicle_attributes.energy_climate.cell_battery_count'                      => ['nullable', 'integer', 'min:0', 'max:10'],
+            // 2026-06-29 — Baterias de lítio (quantidade + capacidade Ah).
+            // Padrão SEM checkbox pai igual às baterias existentes: null = "não tem".
+            'vehicle_attributes.energy_climate.lithium_battery_count'                   => ['nullable', 'integer', 'min:0', 'max:20'],
+            'vehicle_attributes.energy_climate.lithium_battery_ah'                      => ['nullable', 'integer', 'min:0', 'max:2000'],
             // Lote 3 — A/C 220V de habitação (boolean + marca opcional; padrão
             // has_awning + awning_brand) + VIESA (boolean simples).
             'vehicle_attributes.energy_climate.has_aircon_220v'                         => ['nullable', 'boolean'],
@@ -324,6 +334,11 @@ class CarRequest extends FormRequest
             'vehicle_attributes.interior_furniture.has_halo_lighting'                   => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_tv_support'                      => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_tv'                              => ['nullable', 'boolean'],
+            // 2026-06-29 — TVs: quantidade + localização (texto livre, decisão
+            // Matilde: quer descrever livremente onde estão as TVs). Ambas
+            // condicionais no UI a has_tv=true.
+            'vehicle_attributes.interior_furniture.tv_count'                            => ['nullable', 'integer', 'min:0', 'max:10'],
+            'vehicle_attributes.interior_furniture.tv_location'                         => ['nullable', 'string', 'max:255'],
             'vehicle_attributes.interior_furniture.has_command_panel'                   => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_water_infiltrations'             => ['nullable', 'boolean'],
             'vehicle_attributes.interior_furniture.has_wardrobe'                        => ['nullable', 'boolean'],

@@ -65,6 +65,11 @@ export interface VehicleAttributeBathroom {
     has_toilet?: boolean;
     has_shower?: boolean;
     shower_type?: ShowerType;
+    // 2026-06-29 — checkbox "tem depósito" separada dos litros. Retro-compat
+    // no CarEditor.normalizeVehicleAttributes: se litros > 0 e a checkbox
+    // ainda não existe no JSON, considera-se que tem.
+    has_clean_water_tank?: boolean;
+    has_waste_water_tank?: boolean;
     clean_water_litres?: number;
     waste_water_litres?: number;
 }
@@ -108,6 +113,10 @@ export interface VehicleAttributeEnergyClimate {
     battery_count?: number;
     cabin_battery_count?: number;
     cell_battery_count?: number;
+    /** 2026-06-29 — Baterias de lítio (quantidade + capacidade em Ah).
+     *  Padrão SEM checkbox pai (igual às baterias existentes): null = "não tem". */
+    lithium_battery_count?: number;
+    lithium_battery_ah?: number;
     /** M2.5 — dispositivo de corte de corrente das baterias. */
     has_battery_cutoff?: boolean;
     /** Lote 3 — A/C 220V de habitação (distinto do "Ar condicionado"
@@ -187,6 +196,11 @@ export interface VehicleAttributeInteriorFurniture {
     has_halo_lighting?: boolean;
     has_tv_support?: boolean;
     has_tv?: boolean;
+    /** 2026-06-29 — TVs: quantidade + localização em texto livre. Condicionais
+     *  no UI a has_tv=true. Decisão Matilde: texto livre para descrever onde
+     *  estão as TVs (multi-localização). */
+    tv_count?: number;
+    tv_location?: string;
     has_command_panel?: boolean;
     has_water_infiltrations?: boolean;
     infiltrations_notes?: string;

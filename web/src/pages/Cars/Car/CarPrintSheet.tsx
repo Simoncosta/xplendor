@@ -158,8 +158,17 @@ const buildBathroom = (va: VA): Group => {
         const type = enumLabel(b.shower_type, SHOWER_TYPE_LABELS);
         items.push(collect("Duche", type ? `(${type})` : null).join(" "));
     }
-    if (b.clean_water_litres) items.push(`Águas limpas ${b.clean_water_litres} L`);
-    if (b.waste_water_litres) items.push(`Águas residuais ${b.waste_water_litres} L`);
+    // 2026-06-29 — Depósitos: checkbox própria + litros. Se checkbox true
+    // sem litros: "Depósito águas limpas"; com litros: "Depósito águas limpas
+    // (100 L)". Retro-compat: se legacy só tem litros, mostrar como antes.
+    if (b.has_clean_water_tank || b.clean_water_litres) {
+        const litres = b.clean_water_litres ? ` (${b.clean_water_litres} L)` : "";
+        items.push(`Depósito águas limpas${litres}`);
+    }
+    if (b.has_waste_water_tank || b.waste_water_litres) {
+        const litres = b.waste_water_litres ? ` (${b.waste_water_litres} L)` : "";
+        items.push(`Depósito águas residuais${litres}`);
+    }
     return { title: "Casa de banho", items: capAll(items) };
 };
 
@@ -185,6 +194,11 @@ const buildEnergy = (va: VA): Group => {
     if (e.battery_count)             items.push(`${e.battery_count} bateria(s)`);
     if (e.cabin_battery_count)       items.push(`${e.cabin_battery_count} bat. cabine`);
     if (e.cell_battery_count)        items.push(`${e.cell_battery_count} bat. célula`);
+    // 2026-06-29 — Baterias de lítio (quantidade + capacidade Ah opcional).
+    if (e.lithium_battery_count) {
+        const ah = e.lithium_battery_ah ? ` (${e.lithium_battery_ah} Ah)` : "";
+        items.push(`${e.lithium_battery_count} bat. lítio${ah}`);
+    }
     if (e.has_battery_cutoff)        items.push("Corta-corrente");
     if (e.has_aircon_220v) {
         const brand = e.aircon_220v_brand ? `(${e.aircon_220v_brand})` : null;
@@ -228,7 +242,7 @@ const buildExterior = (va: VA): Group => {
     if (ext.has_fix_n_go_kit)       items.push("Kit Fix'n'Go");
     if (ext.has_bull_eye)           items.push("Olho de boi");
     if (ext.has_external_wc)        items.push("WC exterior");
-    if (ext.has_hubcaps)            items.push("Tampas de roda");
+    if (ext.has_hubcaps)            items.push("Tampões de roda");
     if (ext.has_external_ladder)    items.push("Escada exterior");
     const g = ext.garage ?? {};
     if (g.has_garage) {
@@ -254,7 +268,9 @@ const buildChassis = (va: VA): Group => {
     if (cs.has_panoramic_skylight)    items.push("Clarabóia panorâmica");
     if (cs.has_40x40_skylight)        items.push("Clarabóia 40×40");
     if (cs.other_skylights_notes)     items.push(String(cs.other_skylights_notes));
-    if (cs.has_remifront)             items.push("Remifront");
+    // 2026-06-28 — `has_remifront` movido para o grupo "Cabine" (buildCabin
+    // abaixo). Chave JSON permanece em `chassis_structure.has_remifront`,
+    // só a apresentação vive na Cabine agora. Ver CLAUDE.md sec 6.1.
     if (cs.has_mosquito_nets)         items.push("Mosquiteiras janelas");
     if (cs.has_door_mosquito_net)     items.push("Mosquiteira porta");
     if (cs.has_window_blackouts)      items.push("Tapa-luz janelas");
@@ -272,13 +288,20 @@ const buildInterior = (va: VA): Group => {
     if (layout) items.push(`Sala: ${layout}`);
     if (lr.has_extending_table)  items.push("Mesa telescópica");
     if (inf.has_foldable_table)  items.push("Mesa rebatível");
-    if (inf.has_rotating_seats)  items.push("Bancos giratórios");
+    // 2026-06-28 — `has_rotating_seats` movido para o grupo "Cabine"
+    // (buildCabin). Chave JSON `interior_furniture.has_rotating_seats`
+    // permanece intacta. Ver CLAUDE.md sec 6.1.
     if (inf.has_curtains)        items.push("Cortinas");
     if (inf.has_wardrobe)        items.push("Guarda-fatos");
     if (inf.has_led_lighting)    items.push("Iluminação LED");
     if (inf.has_halo_lighting)   items.push("Iluminação halo");
     if (inf.has_tv_support)      items.push("Suporte TV");
-    if (inf.has_tv)              items.push("TV");
+    if (inf.has_tv) {
+        // 2026-06-29 — TV com quantidade + localização opcionais.
+        const count = inf.tv_count ? `${inf.tv_count}× ` : "";
+        const loc = inf.tv_location ? ` (${inf.tv_location})` : "";
+        items.push(`${count}TV${loc}`.trim());
+    }
     if (inf.has_command_panel)   items.push("Painel de comandos");
     const upho = enumLabel(inf.upholstery_state, UPHOLSTERY_LABELS);
     if (upho) items.push(`Estofos: ${upho}`);
@@ -296,6 +319,21 @@ const buildSecurity = (va: VA): Group => {
     if (s.has_entry_door_lock) items.push("Fechadura porta entrada");
     if (s.other_locks_notes)   items.push(String(s.other_locks_notes));
     return { title: "Segurança", items: capAll(items) };
+};
+
+/** Categoria (B) — Cabine: equipamentos da cabine (não da célula).
+ *  2026-06-28 — junta os 2 campos que vivem no accordion Cabine do form
+ *  (chaves JSON continuam em chassis_structure e interior_furniture — só
+ *  a apresentação vive aqui) com os EXTRAS de checkbox do form. */
+const buildCabin = (va: VA, extraItems: string[]): Group => {
+    const cs = va?.chassis_structure ?? {};
+    const inf = va?.interior_furniture ?? {};
+    const items: string[] = [];
+    if (cs.has_remifront)       items.push("Estores Remifront");
+    if (inf.has_rotating_seats) items.push("Bancos giratórios");
+    // Extras livres do form (checkboxes marcados por grupo).
+    items.push(...extraItems);
+    return { title: "Cabine", items: capAll(items) };
 };
 
 const buildBeds = (va: VA): Group => {
@@ -332,6 +370,22 @@ const fmtDec = (v: number | null | undefined, decimals: number, suffix = "") =>
         : `${Number(v).toFixed(decimals).replace(".", ",")}${suffix}`;
 const fmtOr = (v: string | null | undefined) => (v && String(v).trim().length ? String(v) : DASH);
 const kv = (label: string, value: string) => `${label} ${value}`;
+
+/**
+ * 2026-06-28 — Política de garantia (decisão Simon): campo por viatura
+ * (`warranty_months`) manda; se vazio, cai na política por condição:
+ *   USADO (used/like_new/good) → 18 meses
+ *   NOVO (new) → 36 meses
+ * Nunca devolve `—` — há sempre valor próprio ou política.
+ * `service`/`classic`/`trade_in` caem também em 18 meses (padrão "usado").
+ */
+const resolveWarrantyMonths = (
+    warrantyMonths: number | null | undefined,
+    condition: string | null | undefined,
+): number => {
+    if (warrantyMonths && warrantyMonths > 0) return warrantyMonths;
+    return condition === "new" ? 36 : 18;
+};
 
 /** Categoria (A) — Dimensões: comprimento, largura, altura. Sempre visíveis. */
 const buildDimensions = (va: VA): Group => {
@@ -462,20 +516,22 @@ export default function CarPrintSheet() {
               ]
             : [];
 
-        // Extras do form (checkboxes): concatena todas as strings marcadas.
+        // 2026-06-28 — Grupo "Cabine" = Estores Remifront + Bancos giratórios
+        // (que vivem no accordion Cabine do form) + Extras livres (checkboxes
+        // marcados). Substitui o antigo grupo "Extras". Nome do subtítulo:
+        // "Cabine" (renome pedido Matilde).
         const extraItems = (data.extras ?? []).flatMap((g) => g.items ?? []);
-        const extrasGroup: Group | null = extraItems.length > 0
-            ? { title: "Extras", items: capAll(extraItems) }
-            : null;
+        const cabinGroup = buildCabin(va, extraItems);
+        const cabinNonEmpty: Group | null = cabinGroup.items.length > 0 ? cabinGroup : null;
 
         // Ordem final: factuais primeiro, depois opcionais habitação, depois
-        // extras. Só se filtram os OPCIONAIS vazios — os factuais aparecem
+        // Cabine. Só se filtram os OPCIONAIS vazios — os factuais aparecem
         // sempre por definição.
         const result: Group[] = [
             ...factualGroups,
             ...optionalGroups.filter((g) => g.items.length > 0),
         ];
-        if (extrasGroup) result.push(extrasGroup);
+        if (cabinNonEmpty) result.push(cabinNonEmpty);
         return result;
     }, [data]);
 
@@ -520,12 +576,15 @@ export default function CarPrintSheet() {
     // ── Faixa de dados-chave ─────────────────────────────────────────────────
     const stats = data.headline_stats;
     const showSleeps = data.vehicle_type === "motorhome" || data.vehicle_type === "caravan";
-    const showLength = showSleeps;
     const showWeight = showSleeps;
+    // 2026-06-28 — "Comprimento" saiu da faixa (continua visível no grupo
+    // "Dimensões" no corpo). Substituído por "Ano" (registration_year) —
+    // decisão de produto Matilde: ano é decisor mais imediato que
+    // comprimento numa autocaravana.
     const headlineCells: Array<{ label: string; value: string }> = [];
     if (stats.seats != null) headlineCells.push({ label: "Lugares", value: numFmt(stats.seats) });
     if (showSleeps)          headlineCells.push({ label: "Dormidas", value: numFmt(stats.sleeps) });
-    if (showLength)          headlineCells.push({ label: "Comprimento", value: stats.length_m ? `${stats.length_m.toFixed(2).replace(".", ",")} m` : "—" });
+    headlineCells.push({ label: "Ano", value: fmtOr(data.registration.year != null ? String(data.registration.year) : null) });
     if (showWeight)          headlineCells.push({ label: "Peso bruto", value: stats.gross_weight_kg ? `${numFmt(stats.gross_weight_kg)} kg` : "—" });
     headlineCells.push({ label: "Km", value: numFmt(stats.mileage_km) });
 
@@ -631,17 +690,36 @@ export default function CarPrintSheet() {
                             data.company.email,
                         ].filter(Boolean).join(" · ")}
                     </div>
-                    {/* Categoria (A) — Garantia SEMPRE visível (pedido Matilde
-                        2026-06-28). Matrícula continua condicional (é factual
-                        mas discreta; ficha faz sentido sem ela para viaturas
-                        sem matrícula portuguesa). */}
-                    <div className="ps-footer-meta">
-                        {data.license_plate ? <span>Matrícula {data.license_plate}</span> : null}
-                        <span className="ps-warranty">
-                            Garantia · {data.warranty_months ? `${data.warranty_months} meses` : DASH}
+                    {/* Matrícula à parte (condicional). Garantia migrou para
+                        o bloco de destaque abaixo (2026-06-28). */}
+                    {data.license_plate && (
+                        <div className="ps-footer-meta">
+                            <span>Matrícula {data.license_plate}</span>
+                        </div>
+                    )}
+                </footer>
+
+                {/* Bloco de destaque — Garantia + confiança pós-venda.
+                    Cor de marca (verde escuro do cabeçalho) para atrair olhar,
+                    fora do fluxo do disclaimer legal. Política aplicada quando
+                    warranty_months vazio (18/36 meses conforme condição). */}
+                <aside className="ps-trust">
+                    <div className="ps-trust-warranty">
+                        <span className="ps-trust-warranty-label">GARANTIA</span>
+                        <span className="ps-trust-warranty-value">
+                            {resolveWarrantyMonths(data.warranty_months, data.state.condition)} meses
                         </span>
                     </div>
-                </footer>
+                    <div className="ps-trust-body">
+                        <p className="ps-trust-line">
+                            A nossa oficina é composta por técnicos especializados com mais de 20 anos
+                            de experiência, permitindo-lhe usufruir do seu sonho sem preocupações!
+                        </p>
+                        <p className="ps-trust-line ps-trust-muted">
+                            Se desejar saber as coberturas, solicite ao comercial essa informação.
+                        </p>
+                    </div>
+                </aside>
                 </div>
             </div>
         </>
@@ -796,15 +874,16 @@ const PRINT_STYLES = `
     column-gap: 16px;
     flex: 1;
 }
-/* Estirado moderadamente (2026-06-28): +respiro entre grupos, tipografia
-   ligeiramente maior. Margem de segurança conservadora — testado
-   mentalmente numa viatura com 9 grupos cheios + 30+ extras: continua
-   a caber em A4. Se o Simon reportar overflow, reduzir font-size a 12px
-   e margin-bottom dos grupos a 12px. */
+/* 2026-06-28 — downgrade parcial do esticar da 1.14.14 para acomodar o
+   novo bloco de destaque no rodapé (garantia + texto oficina + nota
+   coberturas) sem estourar A4. Reduzi margin-bottom (14→10) e
+   padding-bottom (8→6) — mantendo font-size 12.5px e line-height 1.5
+   (legibilidade essencial). Poupa ~5px por grupo × ~12 grupos ≈ 60px,
+   suficiente para o novo bloco (~55px). */
 .ps-group {
     break-inside: avoid;
-    margin-bottom: 14px;
-    padding-bottom: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
     border-bottom: 1px solid ${COLORS.ruleLight};
 }
 .ps-group-title {
@@ -812,7 +891,7 @@ const PRINT_STYLES = `
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: ${COLORS.groupTitle};
-    margin: 0 0 4px 0;
+    margin: 0 0 3px 0;
     font-weight: 700;
 }
 .ps-group-body {
@@ -854,5 +933,56 @@ const PRINT_STYLES = `
     color: ${COLORS.muted};
     justify-content: flex-end;
 }
-.ps-warranty { color: ${COLORS.groupTitle}; font-weight: 700; }
+
+/* ── Bloco de destaque — GARANTIA + confiança pós-venda (2026-06-28) ────── */
+/* Fora do <footer> (que tem borda superior própria) para ter cor de marca
+   destacada. Layout: pastilha da garantia à esquerda + texto à direita. */
+.ps-trust {
+    margin-top: 8px;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    background: ${COLORS.headerBg};
+    color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.ps-trust-warranty {
+    background: ${COLORS.accentBg};
+    padding: 10px 14px;
+    min-width: 96px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: #ffffff;
+}
+.ps-trust-warranty-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.9;
+    font-weight: 700;
+}
+.ps-trust-warranty-value {
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+.ps-trust-body {
+    flex: 1;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.ps-trust-line {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.35;
+}
+.ps-trust-line + .ps-trust-line { margin-top: 3px; }
+.ps-trust-muted { opacity: 0.82; font-style: italic; font-size: 9.5px; }
 `;

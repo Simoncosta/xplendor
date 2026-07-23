@@ -26,6 +26,7 @@ import EnergyClimateAccordion from "./vehicleAttributes/EnergyClimateAccordion";
 import ExteriorAccordion from "./vehicleAttributes/ExteriorAccordion";
 import SecurityAccordion from "./vehicleAttributes/SecurityAccordion";
 import ChassisStructureAccordion from "./vehicleAttributes/ChassisStructureAccordion";
+import CabinAccordion from "./vehicleAttributes/CabinAccordion";
 import InteriorFurnitureAccordion from "./vehicleAttributes/InteriorFurnitureAccordion";
 import LivingRoomAccordion from "./vehicleAttributes/LivingRoomAccordion";
 import { BED_LABELS, BedType } from "../data/vehicleAttributes";
@@ -612,22 +613,45 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                 />
                                             </Col>
                                         )}
+                                        {/* 2026-06-29 — Separação "tem depósito" (checkbox)
+                                            de "quantos litros". Padrão has_fridge → fridge_*.
+                                            Retro-compat: `normalizeVehicleAttributes` do
+                                            CarEditor marca as checkboxes quando os litros
+                                            > 0 e o campo ainda não existe no JSON. */}
                                         <Col lg={2}>
-                                            <XInput
-                                                type="number"
-                                                name="vehicle_attributes.habitation_basics.bathroom.clean_water_litres"
-                                                label="Água limpa (L)"
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.bathroom.has_clean_water_tank"
+                                                label="Dep. águas limpas"
                                                 className="mb-3"
                                             />
                                         </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_clean_water_tank && (
+                                            <Col lg={2}>
+                                                <XInput
+                                                    type="number"
+                                                    name="vehicle_attributes.habitation_basics.bathroom.clean_water_litres"
+                                                    label="Litros"
+                                                    className="mb-3"
+                                                />
+                                            </Col>
+                                        )}
                                         <Col lg={2}>
-                                            <XInput
-                                                type="number"
-                                                name="vehicle_attributes.habitation_basics.bathroom.waste_water_litres"
-                                                label="Águas residuais (L)"
+                                            <XInputCheckbox
+                                                name="vehicle_attributes.habitation_basics.bathroom.has_waste_water_tank"
+                                                label="Dep. águas residuais"
                                                 className="mb-3"
                                             />
                                         </Col>
+                                        {values.vehicle_attributes?.habitation_basics?.bathroom?.has_waste_water_tank && (
+                                            <Col lg={2}>
+                                                <XInput
+                                                    type="number"
+                                                    name="vehicle_attributes.habitation_basics.bathroom.waste_water_litres"
+                                                    label="Litros"
+                                                    className="mb-3"
+                                                />
+                                            </Col>
+                                        )}
                                     </Row>
                                 )}
                             </AccordionBody>
@@ -637,6 +661,11 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                         <ExteriorAccordion accordionId="5" />
                         <SecurityAccordion accordionId="6" />
                         <ChassisStructureAccordion accordionId="7" />
+                        {/* Cabine (2026-06-28) — accordionId=10 para não
+                            renumerar. Ordem visual entre Chassis e Interior:
+                            temática frontal/estrutural, antes da célula
+                            habitacional. */}
+                        <CabinAccordion accordionId="10" />
                         <InteriorFurnitureAccordion accordionId="8" />
                         <LivingRoomAccordion accordionId="9" />
 

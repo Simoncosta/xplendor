@@ -637,7 +637,10 @@ class CarService extends BaseService
         if ($key === 'habitation_basics') {
             $topBoolKeys     = ['has_bathroom', 'has_kitchen', 'has_garage', 'has_awning', 'has_solar_panel'];
             $kitchenBoolKeys = ['has_stove', 'has_oven', 'has_microwave', 'has_extractor', 'has_fridge'];
-            $bathroomBoolKeys = ['has_toilet', 'has_shower'];
+            // 2026-06-29 — Depósitos: checkbox própria + retro-compat FE
+            // (`normalizeVehicleAttributes` marca a checkbox quando os litros
+            // > 0 e o campo ainda não existe no JSON).
+            $bathroomBoolKeys = ['has_toilet', 'has_shower', 'has_clean_water_tank', 'has_waste_water_tank'];
             $result = [];
 
             foreach ($value as $k => $v) {
@@ -708,7 +711,11 @@ class CarService extends BaseService
         if ($key === 'energy_climate') {
             return $this->normalizeFlatSection($value,
                 ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_external_power_socket'],
-                ['solar_panel_watts', 'inverter_watts', 'gpl_bottles_count', 'battery_count', 'cabin_battery_count', 'cell_battery_count']
+                // 2026-06-29 — `lithium_battery_count` + `lithium_battery_ah` (Ah)
+                // acrescentados ao array de int keys.
+                ['solar_panel_watts', 'inverter_watts', 'gpl_bottles_count',
+                 'battery_count', 'cabin_battery_count', 'cell_battery_count',
+                 'lithium_battery_count', 'lithium_battery_ah']
             );
         }
 
@@ -740,7 +747,9 @@ class CarService extends BaseService
             return $this->normalizeFlatSection($value,
                 ['has_foldable_table', 'has_rotating_seats', 'has_curtains', 'has_led_lighting', 'has_halo_lighting',
                  'has_tv_support', 'has_tv', 'has_command_panel', 'has_water_infiltrations'],
-                []
+                // 2026-06-29 — `tv_count` acrescentado. `tv_location` é string
+                // livre e cai naturalmente no branch string do normalizeFlatSection.
+                ['tv_count']
             );
         }
 

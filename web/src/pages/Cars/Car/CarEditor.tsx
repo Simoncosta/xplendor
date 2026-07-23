@@ -137,6 +137,21 @@ const CarEditor = ({
     const normalizeVehicleAttributes = (attributes?: ICarUpdatePayload["vehicle_attributes"]) => {
         const { autonomy_km, ...restAttributes } = attributes ?? {};
 
+        // 2026-06-29 — Retro-compat dos depósitos de água: viaturas antigas
+        // podem ter `clean_water_litres` / `waste_water_litres` > 0 mas ainda
+        // sem as checkboxes novas. Neste caso o UI marca a checkbox como
+        // true automaticamente (litros > 0 implica "tem depósito"). O JSON
+        // gravado a partir do próximo save fica com a checkbox explícita.
+        const hb = attributes?.habitation_basics ?? {};
+        const b = (hb as any).bathroom ?? {};
+        const cleanLitres = Number(b.clean_water_litres) || 0;
+        const wasteLitres = Number(b.waste_water_litres) || 0;
+        const bathroomWithRetroCompat = {
+            ...b,
+            has_clean_water_tank: b.has_clean_water_tank === true || cleanLitres > 0,
+            has_waste_water_tank: b.has_waste_water_tank === true || wasteLitres > 0,
+        };
+
         return {
             ...DEFAULT_VEHICLE_ATTRIBUTES,
             ...restAttributes,
@@ -150,6 +165,10 @@ const CarEditor = ({
                 attributes?.has_kitchen === true
                 || attributes?.has_kitchen === 1
                 || String(attributes?.has_kitchen ?? "") === "1",
+            habitation_basics: {
+                ...hb,
+                bathroom: bathroomWithRetroCompat,
+            },
         };
     };
 
