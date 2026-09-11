@@ -1,31 +1,40 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-    Col,
-    Dropdown,
-    DropdownMenu,
-    DropdownToggle,
-    Nav,
-    NavItem,
-    NavLink,
-    Row,
-    TabContent,
-    TabPane
-} from 'reactstrap';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Col, Dropdown, DropdownMenu, DropdownToggle, Row } from 'reactstrap';
 import { Link, useLocation } from 'react-router-dom';
 import classnames from 'classnames';
 
 import bell from "../../assets/images/svg/bell.svg";
 import SimpleBar from "simplebar-react";
 
-import { getCompanyAlertsApi, markCompanyAlertReadApi } from '../../helpers/laravel_helper';
+import {
+    getCompanyAlertsApi,
+    getCompanyAlertsUnreadCountApi,
+    markCompanyAlertReadApi,
+    markCompanyAlertsReadApi,
+} from '../../helpers/laravel_helper';
 import { AlertItem } from '../../pages/Actions/types';
+
+// O interceptor Axios (api_helper) desempacota `response.data`, portanto cada
+// chamada devolve directamente o body JSON. Tipamos esse body aqui (sem `any`).
+interface AlertsListResponse {
+    data?: AlertItem[];
+}
+
+interface UnreadCountResponse {
+    count?: number;
+}
+
+// Outros sítios (ex.: Action Center) re-sincronizam ao ouvir este evento;
+// continuamos a emiti-lo sempre que marcamos algo como lido.
+const ALERTS_UPDATED_EVENT = "xplendor-alerts-updated";
 
 const NotificationDropdown = () => {
     const location = useLocation();
-    const [isNotificationDropdown, setIsNotificationDropdown] = useState(false);
-    const [activeTab, setActiveTab] = useState('1');
+    const [isOpen, setIsOpen] = useState(false);
     const [alerts, setAlerts] = useState<AlertItem[]>([]);
-    const [markingAlertId, setMarkingAlertId] = useState<number | null>(null);
+    // Contagem verdadeira de não-lidos, vinda do endpoint dedicado — o badge
+    // não pode depender da lista (limitada a 12) senão mente acima de 12.
+    const [unreadTotal, setUnreadTotal] = useState(0);
 
     const companyId = useMemo(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -35,139 +44,132 @@ const NotificationDropdown = () => {
         return Number(JSON.parse(authUser).company_id || 0);
     }, []);
 
-    const unreadCount = alerts.filter((alert) => !alert.is_read).length;
-    const unreadAlerts = alerts.filter((alert) => !alert.is_read);
-
-    const toggleNotificationDropdown = () => {
-        setIsNotificationDropdown(!isNotificationDropdown);
-    };
-
-    const toggleTab = (tab: string) => {
-        if (activeTab !== tab) {
-            setActiveTab(tab);
-        }
-    };
-
-    useEffect(() => {
+    const fetchAll = useCallback(async () => {
         if (!companyId) {
             setAlerts([]);
+            setUnreadTotal(0);
             return;
         }
 
-        const fetchAlerts = async () => {
-            try {
-                const response: any = await getCompanyAlertsApi(companyId, { limit: 12 });
-                setAlerts(response?.data ?? []);
-            } catch {
-                setAlerts([]);
-            }
-        };
-
-        fetchAlerts();
-
-        const handleAlertsUpdated = () => {
-            fetchAlerts();
-        };
-
-        window.addEventListener("xplendor-alerts-updated", handleAlertsUpdated);
-
-        return () => {
-            window.removeEventListener("xplendor-alerts-updated", handleAlertsUpdated);
-        };
-    }, [companyId, location.pathname]);
-
-    const handleMarkAsRead = async (alertId: number) => {
-        if (!companyId || markingAlertId === alertId) {
-            return;
-        }
-
-        setMarkingAlertId(alertId);
+        let list: AlertItem[] = [];
 
         try {
-            await markCompanyAlertReadApi(companyId, alertId);
-            setAlerts((current) => current.map((alert) => (
-                alert.id === alertId ? { ...alert, is_read: true } : alert
-            )));
-            window.dispatchEvent(new Event("xplendor-alerts-updated"));
-        } finally {
-            setMarkingAlertId(null);
+            const res = (await getCompanyAlertsApi(companyId, { limit: 12 })) as unknown as AlertsListResponse;
+            list = res?.data ?? [];
+        } catch {
+            list = [];
+        }
+
+        setAlerts(list);
+
+        try {
+            const res = (await getCompanyAlertsUnreadCountApi(companyId)) as unknown as UnreadCountResponse;
+            setUnreadTotal(Number(res?.count ?? 0));
+        } catch {
+            // Fallback: se o endpoint de contagem falhar, deriva da lista carregada.
+            setUnreadTotal(list.filter((alert) => !alert.is_read).length);
+        }
+    }, [companyId]);
+
+    useEffect(() => {
+        fetchAll();
+
+        const handleAlertsUpdated = () => fetchAll();
+
+        window.addEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
+
+        return () => {
+            window.removeEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
+        };
+    }, [fetchAll, location.pathname]);
+
+    const toggle = () => {
+        const next = !isOpen;
+        setIsOpen(next);
+
+        // Refetch ao abrir → badge e lista sempre frescos, mesmo sem mudança de rota.
+        if (next) {
+            fetchAll();
         }
     };
 
-    const visibleAlerts = activeTab === '2' ? unreadAlerts : alerts;
+    // Marcar UM como lido. Optimista (UI actualiza já) e fire-and-forget:
+    // não bloqueia a navegação que acontece em paralelo pelo <Link>.
+    const markOneRead = useCallback((alertId: number) => {
+        if (!companyId) return;
+
+        setAlerts((current) => current.map((alert) => (
+            alert.id === alertId ? { ...alert, is_read: true } : alert
+        )));
+        setUnreadTotal((current) => Math.max(0, current - 1));
+
+        markCompanyAlertReadApi(companyId, alertId)
+            .then(() => window.dispatchEvent(new Event(ALERTS_UPDATED_EVENT)))
+            .catch(() => { /* leitura é irreversível; re-sincroniza no próximo fetch */ });
+    }, [companyId]);
+
+    const handleItemClick = (alert: AlertItem) => {
+        setIsOpen(false);
+
+        if (!alert.is_read) {
+            markOneRead(alert.id);
+        }
+    };
+
+    const handleMarkAllRead = () => {
+        if (!companyId || unreadTotal === 0) return;
+
+        setAlerts((current) => current.map((alert) => ({ ...alert, is_read: true })));
+        setUnreadTotal(0);
+
+        // Endpoint bulk sem `ids` → marca todas as não-lidas da empresa.
+        markCompanyAlertsReadApi(companyId)
+            .then(() => window.dispatchEvent(new Event(ALERTS_UPDATED_EVENT)))
+            .catch(() => { /* re-sincroniza no próximo fetch */ });
+    };
 
     return (
         <React.Fragment>
-            <Dropdown isOpen={isNotificationDropdown} toggle={toggleNotificationDropdown} className="topbar-head-dropdown ms-1 header-item">
+            <Dropdown isOpen={isOpen} toggle={toggle} className="topbar-head-dropdown ms-1 header-item">
                 <DropdownToggle type="button" tag="button" className="btn btn-icon btn-topbar btn-ghost-secondary rounded-circle position-relative">
                     <i className='bx bx-bell fs-22'></i>
-                    {unreadCount > 0 && (
+                    {unreadTotal > 0 && (
                         <span className="position-absolute topbar-badge fs-10 translate-middle badge rounded-pill bg-danger">
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                            <span className="visually-hidden">unread alerts</span>
+                            {unreadTotal > 9 ? "9+" : unreadTotal}
+                            <span className="visually-hidden">notificações por ler</span>
                         </span>
                     )}
                 </DropdownToggle>
+
                 <DropdownMenu className="dropdown-menu-lg dropdown-menu-end p-0">
                     <div className="dropdown-head bg-primary bg-pattern rounded-top">
                         <div className="p-3">
                             <Row className="align-items-center">
                                 <Col>
-                                    <h6 className="m-0 fs-16 fw-semibold text-white"> Alertas </h6>
+                                    <h6 className="m-0 fs-16 fw-semibold text-white">Notificações</h6>
                                 </Col>
-                                <div className="col-auto dropdown-tabs">
-                                    <span className="badge bg-light-subtle text-body fs-13"> {unreadCount} por ler</span>
-                                </div>
+                                {unreadTotal > 0 && (
+                                    <div className="col-auto">
+                                        <span className="badge bg-light-subtle text-body fs-12">{unreadTotal} por ler</span>
+                                    </div>
+                                )}
                             </Row>
                         </div>
 
-                        <div className="px-2 pt-2">
-                            <Nav className="nav-tabs dropdown-tabs nav-tabs-custom">
-                                <NavItem>
-                                    <NavLink
-                                        href="#"
-                                        className={classnames({ active: activeTab === '1' })}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            toggleTab('1');
-                                        }}
-                                    >
-                                        All ({alerts.length})
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink
-                                        href="#"
-                                        className={classnames({ active: activeTab === '2' })}
-                                        onClick={(event) => {
-                                            event.preventDefault();
-                                            toggleTab('2');
-                                        }}
-                                    >
-                                        Alerts ({unreadCount})
-                                    </NavLink>
-                                </NavItem>
-                            </Nav>
-                        </div>
+                        {unreadTotal > 0 && (
+                            <div className="px-3 pb-2 text-end">
+                                <button
+                                    type="button"
+                                    className="btn btn-link btn-sm p-0 text-white text-decoration-underline fs-12"
+                                    onClick={handleMarkAllRead}
+                                >
+                                    Marcar todas como lidas
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    <TabContent activeTab={activeTab}>
-                        <TabPane tabId="1" className="py-2 ps-2">
-                            <AlertsList
-                                alerts={visibleAlerts}
-                                markingAlertId={markingAlertId}
-                                onMarkAsRead={handleMarkAsRead}
-                            />
-                        </TabPane>
-
-                        <TabPane tabId="2" className="py-2 ps-2">
-                            <AlertsList
-                                alerts={visibleAlerts}
-                                markingAlertId={markingAlertId}
-                                onMarkAsRead={handleMarkAsRead}
-                            />
-                        </TabPane>
-                    </TabContent>
+                    <AlertsList alerts={alerts} onItemClick={handleItemClick} />
                 </DropdownMenu>
             </Dropdown>
         </React.Fragment>
@@ -176,68 +178,75 @@ const NotificationDropdown = () => {
 
 interface AlertsListProps {
     alerts: AlertItem[];
-    markingAlertId: number | null;
-    onMarkAsRead: (alertId: number) => void;
+    onItemClick: (alert: AlertItem) => void;
 }
 
-function AlertsList({ alerts, markingAlertId, onMarkAsRead }: AlertsListProps) {
+function AlertsList({ alerts, onItemClick }: AlertsListProps) {
     if (alerts.length === 0) {
         return (
-            <TabPane tabId="empty" className="p-4 d-block">
+            <div className="p-4">
                 <div className="w-25 w-sm-50 pt-3 mx-auto">
-                    <img src={bell} className="img-fluid" alt="Sem alertas" />
+                    <img src={bell} className="img-fluid" alt="Sem notificações" />
                 </div>
                 <div className="text-center pb-4 mt-2">
-                    <h6 className="fs-18 fw-semibold lh-base mb-1">Sem alertas neste momento</h6>
-                    <p className="text-muted mb-0">Quando houver risco ou oportunidade, aparece aqui.</p>
+                    <h6 className="fs-16 fw-semibold lh-base mb-1">Estás em dia!</h6>
+                    <p className="text-muted mb-0">Sem notificações por agora.</p>
                 </div>
-            </TabPane>
+            </div>
         );
     }
 
     return (
-        <SimpleBar style={{ maxHeight: "300px" }} className="pe-2">
-            {alerts.map((alert) => (
-                <div
-                    key={alert.id}
-                    className={classnames("text-reset notification-item d-block dropdown-item position-relative", {
-                        active: !alert.is_read,
-                    })}
-                >
-                    <div className="d-flex">
-                        <div className="avatar-xs me-3">
-                            <span className={`avatar-title rounded-circle fs-16 ${resolveAlertTone(alert)}`}>
-                                <i className={resolveAlertIcon(alert)}></i>
-                            </span>
-                        </div>
-                        <div className="flex-grow-1">
-                            <Link to={`/cars/${alert.car_id}`} className="stretched-link">
-                                <h6 className="mt-0 mb-1 fs-13 fw-semibold">{alert.title}</h6>
-                            </Link>
-                            <div className="fs-13 text-muted">
-                                <p className="mb-1">{alert.message}</p>
-                                <p className="mb-1 fw-medium">{alert.car_name}</p>
+        <SimpleBar style={{ maxHeight: "300px" }}>
+            {alerts.map((alert) => {
+                const isUnread = !alert.is_read;
+                // Backend fornece detail_path (/cars/{id}/ficha); fallback defensivo.
+                const detailPath = alert.detail_path || `/cars/${alert.car_id}`;
+
+                return (
+                    <Link
+                        key={alert.id}
+                        to={detailPath}
+                        onClick={() => onItemClick(alert)}
+                        className={classnames("dropdown-item notification-item d-block text-reset py-2", {
+                            active: isUnread,
+                        })}
+                    >
+                        <div className="d-flex align-items-start">
+                            <div className="avatar-xs me-3 flex-shrink-0">
+                                <span className={`avatar-title rounded-circle fs-16 ${resolveAlertTone(alert)}`}>
+                                    <i className={resolveAlertIcon(alert)}></i>
+                                </span>
                             </div>
-                            <p className="mb-0 fs-11 fw-medium text-uppercase text-muted">
-                                <span><i className="mdi mdi-clock-outline"></i> {formatRelativeDate(alert.created_at)}</span>
-                            </p>
-                        </div>
-                        <div className="px-2 fs-15">
-                            <div className="form-check notification-check">
-                                <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={alert.is_read}
-                                    disabled={alert.is_read || markingAlertId === alert.id}
-                                    onChange={() => onMarkAsRead(alert.id)}
-                                    id={`notification-alert-check-${alert.id}`}
-                                />
-                                <label className="form-check-label" htmlFor={`notification-alert-check-${alert.id}`}></label>
+
+                            <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                                <h6 className={classnames("mt-0 mb-1 fs-13 text-truncate", isUnread ? "fw-bold" : "fw-medium text-muted")}>
+                                    {alert.title}
+                                </h6>
+                                <p className={classnames("mb-1 fs-13", isUnread ? "text-body" : "text-muted")}>
+                                    {alert.message}
+                                </p>
+                                {alert.car_name && (
+                                    <p className="mb-1 fs-12 fw-medium text-muted text-truncate">{alert.car_name}</p>
+                                )}
+                                <p className="mb-0 fs-11 text-muted">
+                                    <i className="mdi mdi-clock-outline"></i> {formatRelativeDate(alert.created_at)}
+                                </p>
+                            </div>
+
+                            <div className="flex-shrink-0 ps-2 d-flex align-items-center" style={{ minWidth: 16 }}>
+                                {isUnread && (
+                                    <span
+                                        className="rounded-circle bg-primary d-inline-block"
+                                        style={{ width: 8, height: 8 }}
+                                        aria-hidden="true"
+                                    />
+                                )}
                             </div>
                         </div>
-                    </div>
-                </div>
-            ))}
+                    </Link>
+                );
+            })}
         </SimpleBar>
     );
 }

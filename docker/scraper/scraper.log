@@ -479,3 +479,222 @@
 2026-06-18 14:30:29 [INFO] sources.custojusto: [custojusto] https://www.custojusto.pt/portugal/veiculos/autocaravanas-reboques/caravana: 1 listings após filtros (de 40 brutos, 0 excluídos por preço<=0)
 2026-06-18 14:30:34 [INFO] main: [ingest] consolidando POST único · total=8 · por fonte (pré-dedup-backend)={'standvirtual': 2, 'custojusto': 6}
 2026-06-18 14:30:34 [INFO] sender: Batch enviado: 8 snapshots. Total: 8
+2026-07-24 03:35:42 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:35:42 [INFO] main: sources=['standvirtual']
+2026-07-24 03:35:42 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'electric', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:35:42 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'electric', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:35:42 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/ford/desde-2020
+2026-07-24 03:35:42 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Ford', 'model': 'Mustang Mach-E', 'year_from': 2020, 'year_to': 2022, 'fuel': 'electric', 'vehicle_type': 'car'}
+2026-07-24 03:35:44 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=False)
+2026-07-24 03:35:44 [INFO] sources.standvirtual: Página 1/1: 25 anúncios
+2026-07-24 03:36:06 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:36:06 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:36:07 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:36:07 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:36:07 [INFO] main: sources=['standvirtual']
+2026-07-24 03:36:07 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2016}
+2026-07-24 03:36:07 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2016}
+2026-07-24 03:36:07 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/audi/desde-2014
+2026-07-24 03:36:07 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Audi', 'model': 'A3 Limousine', 'year_from': 2014, 'year_to': 2016, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:36:09 [INFO] sources.standvirtual: Total de páginas a scraper: 8 (widened=False)
+2026-07-24 03:36:09 [INFO] sources.standvirtual: Página 1/8: 32 anúncios
+2026-07-24 03:36:31 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:36:31 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:36:31 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:36:31 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:36:31 [INFO] main: sources=['standvirtual']
+2026-07-24 03:36:31 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:36:31 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:36:31 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/audi/desde-2015
+2026-07-24 03:36:31 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Audi', 'model': 'A1 Sportback', 'year_from': 2015, 'year_to': 2017, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:36:32 [INFO] sources.standvirtual: Total de páginas a scraper: 8 (widened=False)
+2026-07-24 03:36:32 [INFO] sources.standvirtual: Página 1/8: 32 anúncios
+2026-07-24 03:36:54 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:36:54 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:36:54 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:36:54 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:36:54 [INFO] main: sources=['standvirtual']
+2026-07-24 03:36:54 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2018}
+2026-07-24 03:36:54 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2018}
+2026-07-24 03:36:54 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/mercedes-benz/desde-2016
+2026-07-24 03:36:54 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'C 200', 'year_from': 2016, 'year_to': 2018, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:36:55 [INFO] sources.standvirtual: Total de páginas a scraper: 26 (widened=False)
+2026-07-24 03:36:55 [INFO] sources.standvirtual: Página 1/26: 32 anúncios
+2026-07-24 03:37:20 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:37:20 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:37:20 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:37:20 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:37:20 [INFO] main: sources=['standvirtual']
+2026-07-24 03:37:20 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:37:20 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:37:20 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/peugeot/desde-2015
+2026-07-24 03:37:20 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Peugeot', 'model': '308 SW', 'year_from': 2015, 'year_to': 2017, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:37:22 [INFO] sources.standvirtual: Total de páginas a scraper: 8 (widened=False)
+2026-07-24 03:37:22 [INFO] sources.standvirtual: Página 1/8: 32 anúncios
+2026-07-24 03:37:45 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:37:45 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:37:45 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:37:45 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:37:45 [INFO] main: sources=['standvirtual']
+2026-07-24 03:37:45 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'electric', 'search[filter_float_first_registration_year:to]': 2021}
+2026-07-24 03:37:45 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'electric', 'search[filter_float_first_registration_year:to]': 2021}
+2026-07-24 03:37:45 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/smart/desde-2019
+2026-07-24 03:37:45 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Smart', 'model': 'ForFour', 'year_from': 2019, 'year_to': 2021, 'fuel': 'electric', 'vehicle_type': 'car'}
+2026-07-24 03:37:47 [INFO] sources.standvirtual: Total de páginas a scraper: 2 (widened=False)
+2026-07-24 03:37:47 [INFO] sources.standvirtual: Página 1/2: 32 anúncios
+2026-07-24 03:38:12 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:38:12 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:38:12 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:38:12 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:38:12 [INFO] main: sources=['standvirtual']
+2026-07-24 03:38:12 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2023}
+2026-07-24 03:38:12 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2023}
+2026-07-24 03:38:12 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/bmw/desde-2021
+2026-07-24 03:38:12 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'BMW', 'model': '116', 'year_from': 2021, 'year_to': 2023, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:38:13 [INFO] sources.standvirtual: Total de páginas a scraper: 16 (widened=False)
+2026-07-24 03:38:13 [INFO] sources.standvirtual: Página 1/16: 32 anúncios
+2026-07-24 03:38:37 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:38:37 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:38:37 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:38:37 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:38:37 [INFO] main: sources=['standvirtual']
+2026-07-24 03:38:37 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:38:37 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:38:37 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/lexus/desde-2015
+2026-07-24 03:38:37 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Lexus', 'model': 'RC 200t', 'year_from': 2015, 'year_to': 2017, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:38:38 [INFO] sources.standvirtual: Total de páginas a scraper: 1 (widened=False)
+2026-07-24 03:38:38 [INFO] sources.standvirtual: Página 1/1: 2 anúncios
+2026-07-24 03:38:42 [INFO] main: [ingest] consolidando POST único · total=2 · por fonte (pré-dedup-backend)={'standvirtual': 2}
+2026-07-24 03:38:42 [INFO] sender: Batch enviado: 2 snapshots. Total: 2
+2026-07-24 03:38:42 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:38:42 [INFO] main: sources=['standvirtual']
+2026-07-24 03:38:42 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:38:42 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:38:42 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/nissan/desde-2018
+2026-07-24 03:38:42 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Nissan', 'model': 'Juke', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:38:43 [INFO] sources.standvirtual: Total de páginas a scraper: 4 (widened=False)
+2026-07-24 03:38:43 [INFO] sources.standvirtual: Página 1/4: 32 anúncios
+2026-07-24 03:39:07 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:39:07 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:39:07 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:39:08 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:39:08 [INFO] main: sources=['standvirtual']
+2026-07-24 03:39:08 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:39:08 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:39:08 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/peugeot/desde-2018
+2026-07-24 03:39:08 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Peugeot', 'model': '2008', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:39:09 [INFO] sources.standvirtual: Total de páginas a scraper: 16 (widened=False)
+2026-07-24 03:39:09 [INFO] sources.standvirtual: Página 1/16: 32 anúncios
+2026-07-24 03:39:31 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:39:31 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:39:31 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:39:31 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:39:31 [INFO] main: sources=['standvirtual']
+2026-07-24 03:39:31 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2023}
+2026-07-24 03:39:31 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2023}
+2026-07-24 03:39:31 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/ds/desde-2021
+2026-07-24 03:39:31 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'DS', 'model': 'DS7 Crossback', 'year_from': 2021, 'year_to': 2023, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:39:33 [INFO] sources.standvirtual: Total de páginas a scraper: 2 (widened=False)
+2026-07-24 03:39:33 [INFO] sources.standvirtual: Página 1/2: 32 anúncios
+2026-07-24 03:39:54 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:39:54 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:39:54 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:39:54 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:39:54 [INFO] main: sources=['standvirtual']
+2026-07-24 03:39:54 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:39:54 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:39:54 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/ford/desde-2020
+2026-07-24 03:39:54 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Ford', 'model': 'Puma', 'year_from': 2020, 'year_to': 2022, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:39:56 [INFO] sources.standvirtual: Total de páginas a scraper: 6 (widened=False)
+2026-07-24 03:39:56 [INFO] sources.standvirtual: Página 1/6: 32 anúncios
+2026-07-24 03:40:20 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:40:20 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:40:20 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:40:21 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:40:21 [INFO] main: sources=['standvirtual']
+2026-07-24 03:40:21 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:40:21 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:40:21 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/opel/desde-2020
+2026-07-24 03:40:21 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Opel', 'model': 'Corsa', 'year_from': 2020, 'year_to': 2022, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:40:22 [INFO] sources.standvirtual: Total de páginas a scraper: 5 (widened=False)
+2026-07-24 03:40:22 [INFO] sources.standvirtual: Página 1/5: 32 anúncios
+2026-07-24 03:40:44 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:40:44 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:40:45 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:40:45 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:40:45 [INFO] main: sources=['standvirtual']
+2026-07-24 03:40:45 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:40:45 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:40:45 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/peugeot/desde-2018
+2026-07-24 03:40:45 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Peugeot', 'model': '308', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:40:46 [INFO] sources.standvirtual: Total de páginas a scraper: 16 (widened=False)
+2026-07-24 03:40:46 [INFO] sources.standvirtual: Página 1/16: 32 anúncios
+2026-07-24 03:41:08 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:41:08 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:41:08 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:41:08 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:41:08 [INFO] main: sources=['standvirtual']
+2026-07-24 03:41:08 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:41:08 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2020}
+2026-07-24 03:41:08 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/citroen/desde-2018
+2026-07-24 03:41:08 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Citroën', 'model': 'C4 Cactus', 'year_from': 2018, 'year_to': 2020, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:41:09 [INFO] sources.standvirtual: Total de páginas a scraper: 5 (widened=False)
+2026-07-24 03:41:09 [INFO] sources.standvirtual: Página 1/5: 32 anúncios
+2026-07-24 03:41:29 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:41:29 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:41:29 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:41:30 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:41:30 [INFO] main: sources=['standvirtual']
+2026-07-24 03:41:30 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:41:30 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2017}
+2026-07-24 03:41:30 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/renault/desde-2015
+2026-07-24 03:41:30 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Renault', 'model': 'Espace', 'year_from': 2015, 'year_to': 2017, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:41:31 [INFO] sources.standvirtual: Total de páginas a scraper: 9 (widened=False)
+2026-07-24 03:41:31 [INFO] sources.standvirtual: Página 1/9: 32 anúncios
+2026-07-24 03:41:52 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:41:52 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:41:52 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:41:52 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:41:52 [INFO] main: sources=['standvirtual']
+2026-07-24 03:41:52 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2019}
+2026-07-24 03:41:52 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'diesel', 'search[filter_float_first_registration_year:to]': 2019}
+2026-07-24 03:41:52 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/mercedes-benz/desde-2017
+2026-07-24 03:41:52 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Mercedes-Benz', 'model': 'A 180', 'year_from': 2017, 'year_to': 2019, 'fuel': 'diesel', 'vehicle_type': 'car'}
+2026-07-24 03:41:53 [INFO] sources.standvirtual: Total de páginas a scraper: 26 (widened=False)
+2026-07-24 03:41:53 [INFO] sources.standvirtual: Página 1/26: 32 anúncios
+2026-07-24 03:42:16 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:42:16 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:42:16 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:42:16 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:42:16 [INFO] main: sources=['standvirtual']
+2026-07-24 03:42:16 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2016}
+2026-07-24 03:42:16 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2016}
+2026-07-24 03:42:16 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/seat/desde-2014
+2026-07-24 03:42:16 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Seat', 'model': 'Ibiza', 'year_from': 2014, 'year_to': 2016, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:42:18 [INFO] sources.standvirtual: Total de páginas a scraper: 2 (widened=False)
+2026-07-24 03:42:18 [INFO] sources.standvirtual: Página 1/2: 32 anúncios
+2026-07-24 03:42:41 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:42:41 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:42:41 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:42:41 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:42:41 [INFO] main: sources=['standvirtual']
+2026-07-24 03:42:41 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:42:41 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2022}
+2026-07-24 03:42:41 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/citroen/desde-2020
+2026-07-24 03:42:41 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Citroën', 'model': 'C4', 'year_from': 2020, 'year_to': 2022, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:42:44 [INFO] sources.standvirtual: Total de páginas a scraper: 8 (widened=False)
+2026-07-24 03:42:44 [INFO] sources.standvirtual: Página 1/8: 32 anúncios
+2026-07-24 03:43:08 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:43:08 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:43:08 [INFO] sender: Batch enviado: 10 snapshots. Total: 10
+2026-07-24 03:43:08 [INFO] main: vehicle_type=car search_path=/carros max_results=10
+2026-07-24 03:43:08 [INFO] main: sources=['standvirtual']
+2026-07-24 03:43:08 [INFO] debug: QUERY PARAMS FINAL: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2024}
+2026-07-24 03:43:08 [INFO] sources.standvirtual: PARAMS USADOS NA REQUEST: {'search[order]': 'created_at_first:desc', 'page': 1, 'search[filter_enum_fuel_type]': 'gaz', 'search[filter_float_first_registration_year:to]': 2024}
+2026-07-24 03:43:08 [INFO] sources.standvirtual: A iniciar scraping: https://www.standvirtual.com/carros/citroen/desde-2022
+2026-07-24 03:43:08 [INFO] sources.standvirtual: Filtros ativos: {'brand': 'Citroën', 'model': 'C3', 'year_from': 2022, 'year_to': 2024, 'fuel': 'gasoline', 'vehicle_type': 'car'}
+2026-07-24 03:43:10 [INFO] sources.standvirtual: Total de páginas a scraper: 10 (widened=False)
+2026-07-24 03:43:10 [INFO] sources.standvirtual: Página 1/10: 32 anúncios
+2026-07-24 03:43:32 [INFO] main: Limite de resultados atingido (10). A parar.
+2026-07-24 03:43:32 [INFO] main: [ingest] consolidando POST único · total=10 · por fonte (pré-dedup-backend)={'standvirtual': 10}
+2026-07-24 03:43:32 [INFO] sender: Batch enviado: 10 snapshots. Total: 10

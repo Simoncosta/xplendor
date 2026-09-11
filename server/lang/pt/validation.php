@@ -221,6 +221,8 @@ return [
         'price_gross'       => 'preço com IVA',
         'promo_price_gross' => 'preço promo',
         'price_net'         => 'preço sem IVA',
+        'purchase_price'    => 'preço de compra',
+        'vat_regime'        => 'regime de IVA',
         'hide_price_online' => 'preço sob consulta',
         'monthly_payment'   => 'mensalidade',
         'status'            => 'estado',

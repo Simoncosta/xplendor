@@ -39,6 +39,7 @@ class Company extends Model
         'export_promotion_price',
         'credit_intermediation_link',
         'vat_value',
+        'uses_vat',
         'facebook_page_id',
         'facebook_pixel_id',
         'facebook_access_token',
@@ -68,6 +69,7 @@ class Company extends Model
             'trial_starts_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
+            'uses_vat' => 'boolean',
         ];
     }
 

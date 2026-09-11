@@ -114,6 +114,47 @@ export const createBlog = (companyId: number, data: FormData | any) => api.creat
 export const updateBlog = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const deleteBlog = (companyId: number, id: number) => api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id);
 
+// SUPPLIERS (DMS 1c.1)
+export const getSuppliers = (companyId: number, params?: { perPage?: number; page?: number; search?: string; only_active?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS, params);
+export const showSupplier = (companyId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`);
+export const createSupplier = (companyId: number, data: any) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS, data);
+export const updateSupplier = (companyId: number, id: number, data: any) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`, data);
+export const deleteSupplier = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`);
+
+// EXPENSE CATEGORIES (DMS 1c.2a)
+export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, params);
+export const createExpenseCategory = (companyId: number, data: any) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, data);
+export const updateExpenseCategory = (companyId: number, id: number, data: any) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES + `/${id}`, data);
+export const deleteExpenseCategory = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES + `/${id}`);
+export const importSuggestedExpenseCategories = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.POST_EXPENSE_CATEGORIES_IMPORT, {});
+export const getSuggestedExpenseCategories = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES_SUGGESTED);
+
+// EXPENSES (DMS 1c.2b)
+export const getExpenses = (companyId: number, params?: Record<string, any>) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES, params);
+export const getExpensesSummary = (companyId: number, params?: Record<string, any>) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES_SUMMARY, params);
+// JSON explícito: o axios default de POST é multipart/form-data (api_helper),
+// que converte booleanos em "true"/"false" e o Laravel rejeita-os na regra
+// `boolean` (ex.: is_paid). Forçar JSON preserva booleanos e nulls.
+export const createExpense = (companyId: number, data: any) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES, data, { headers: { "Content-Type": "application/json" } });
+export const updateExpense = (companyId: number, id: number, data: any) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES + `/${id}`, data);
+export const deleteExpense = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES + `/${id}`);
+
 // LEADS
 export const getLeads = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_LEADS_APIS, { params });
 export const updateLead = (companyId: number, leadId: number, data: { status: string }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);

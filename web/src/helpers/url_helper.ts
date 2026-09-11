@@ -23,6 +23,18 @@ export const GET_LEADS_APIS = "/leads";
 // BLOGS
 export const GET_BLOGS_APIS = "/blogs";
 
+// SUPPLIERS (DMS 1c.1)
+export const GET_SUPPLIERS = "/suppliers";
+
+// EXPENSE CATEGORIES (DMS 1c.2a)
+export const GET_EXPENSE_CATEGORIES = "/expense-categories";
+export const GET_EXPENSE_CATEGORIES_SUGGESTED = "/expense-categories/suggested";
+export const POST_EXPENSE_CATEGORIES_IMPORT = "/expense-categories/import-suggested";
+
+// EXPENSES (DMS 1c.2b)
+export const GET_EXPENSES = "/expenses";
+export const GET_EXPENSES_SUMMARY = "/expenses/summary";
+
 // CARS
 export const GET_CARS = "/cars";
 export const GET_CAR_AD_CAMPAIGNS = "/ad-campaigns";

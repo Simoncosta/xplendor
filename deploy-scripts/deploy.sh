@@ -7,6 +7,9 @@ ENV_FILE="$APP_DIR/server/.env"
 echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
 
+echo "cd ../home/xplendor"
+cd ../home/xplendor
+
 echo "Docker Down"
 docker compose down
 

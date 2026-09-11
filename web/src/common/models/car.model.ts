@@ -14,6 +14,10 @@ export type CarCondition =
     | "service"
     | "damaged";
 
+// DMS Fase 1a — regime de IVA da compra. Enum extensível: a taxonomia final
+// será validada com contabilista na Fase 2 (aqui só se captura).
+export type CarVatRegime = "margem" | "normal" | "isento";
+
 /**
  * Extras no backend: array de grupos { group, items }
  * O accessor do Laravel garante sempre estes 4 grupos.
@@ -267,6 +271,10 @@ export interface ICar {
     price_net: number | null;
     promo_discount_value?: number | null;
     promo_discount_pct?: number | null;
+
+    // DMS Fase 1a — dados internos da compra (confidencial; nunca público).
+    purchase_price: number | null;
+    vat_regime: CarVatRegime | null;
 
     hide_price_online: boolean;
 

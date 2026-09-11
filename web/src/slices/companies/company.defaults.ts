@@ -23,6 +23,7 @@ export const COMPANY_CREATE_DEFAULTS: ICompanyUpdatePayload = {
     export_promotion_price: 0,
     credit_intermediation_link: null,
     vat_value: null,
+    uses_vat: false,
     facebook_page_id: null,
     facebook_pixel_id: null,
     facebook_access_token: null,

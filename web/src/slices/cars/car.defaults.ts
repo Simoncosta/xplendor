@@ -76,6 +76,10 @@ export const CAR_CREATE_DEFAULTS: ICarUpdatePayload = {
     promo_price_gross: null,
     price_net: null,
 
+    // DMS Fase 1a — dados internos da compra.
+    purchase_price: null,
+    vat_regime: null,
+
     hide_price_online: false,
 
     monthly_payment: null,

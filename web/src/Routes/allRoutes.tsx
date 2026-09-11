@@ -35,6 +35,12 @@ import PrivacyPolicy from "pages/Privacy";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
 
+// Suppliers (DMS 1c.1)
+import SupplierList from "pages/Suppliers/SupplierList";
+// Expense categories (DMS 1c.2a)
+import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
+// Expenses (DMS 1c.2b)
+import ExpenseList from "pages/Expenses/ExpenseList";
 // Blogs
 import BlogList from "pages/Blogs/BlogList";
 import BlogCreate from "pages/Blogs/Blog/BlogCreate";
@@ -101,6 +107,15 @@ const authProtectedRoutes = [
     { path: "/blogs/create", component: <BlogCreate /> },
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
+
+    // Suppliers (DMS 1c.1)
+    { path: "/suppliers", component: <SupplierList /> },
+
+    // Expense categories (DMS 1c.2a)
+    { path: "/expense-categories", component: <ExpenseCategoryList /> },
+
+    // Expenses (DMS 1c.2b)
+    { path: "/expenses", component: <ExpenseList /> },
 
     // Internal tools
     { path: "/internal/scraper", component: <ScraperRunner /> },

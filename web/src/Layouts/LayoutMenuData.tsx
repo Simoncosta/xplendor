@@ -164,6 +164,40 @@ const Navdata = () => {
                 setIscurrentState('Users');
             }
         },
+        {
+            label: "Finanças",
+            isHeader: true,
+        },
+        {
+            id: "expenses",
+            label: "Despesas",
+            icon: "ri-money-euro-circle-line",
+            link: "/expenses",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Expenses');
+            }
+        },
+        {
+            id: "suppliers",
+            label: "Fornecedores",
+            icon: "ri-hand-coin-line",
+            link: "/suppliers",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Suppliers');
+            }
+        },
+        {
+            id: "expense-categories",
+            label: "Categorias de Despesa",
+            icon: "ri-price-tag-3-line",
+            link: "/expense-categories",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('ExpenseCategories');
+            }
+        },
         // ── Ferramentas internas — visível apenas para role root ──────────────
         ...(isRoot ? [
             {

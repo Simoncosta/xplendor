@@ -33,8 +33,11 @@ use App\Http\Controllers\Api\V1\{
     NewsletterController,
     PlanController,
     PromotionRankingController,
+    ExpenseCategoryController,
+    ExpenseController,
     ScraperController,
     StockPromotionController,
+    SupplierController,
     UserController
 };
 use Illuminate\Http\Request;
@@ -126,6 +129,15 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
                 Route::apiResource('/blogs', BlogController::class);
+                // DMS sub-fase 1c.1 — Fornecedores (base para despesas).
+                Route::apiResource('/suppliers', SupplierController::class);
+                // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
+                Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
+                Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
+                Route::apiResource('/expense-categories', ExpenseCategoryController::class);
+                // DMS sub-fase 1c.2b — Despesas.
+                Route::get('/expenses/summary', [ExpenseController::class, 'summary']);
+                Route::apiResource('/expenses', ExpenseController::class);
                 Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
 
                 Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);

@@ -389,6 +389,11 @@ class CarRequest extends FormRequest
             'price_net' => ['nullable', 'numeric', 'min:0'],
             'hide_price_online' => ['boolean'],
             'monthly_payment' => ['nullable', 'numeric', 'min:0'],
+            // DMS Fase 1a — dados internos da compra (confidencial).
+            // vat_regime é enum extensível; a taxonomia final valida-se com
+            // contabilista na Fase 2 (aqui só se captura, não se calcula).
+            'purchase_price' => ['nullable', 'numeric', 'min:0'],
+            'vat_regime' => ['nullable', Rule::in(['margem', 'normal', 'isento'])],
 
             // Extras
             'extras' => ['nullable', 'array'],

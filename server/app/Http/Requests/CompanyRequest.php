@@ -58,6 +58,8 @@ class CompanyRequest extends FormRequest
 
             // Marketing / Integrações
             'vat_value' => ['nullable', 'integer', 'min:0'],
+            // DMS Fase 1a — interruptor "modo IVA" da empresa.
+            'uses_vat' => ['nullable', 'boolean'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
             'facebook_pixel_id' => ['nullable', 'string', 'max:255'],
             'facebook_access_token' => ['nullable', 'string'],

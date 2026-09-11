@@ -56,6 +56,8 @@ class Car extends Model implements AuditableContract
         'price_gross',
         'promo_price_gross',
         'price_net',
+        'purchase_price',
+        'vat_regime',
         'hide_price_online',
         'monthly_payment',
         'extras',
@@ -78,6 +80,10 @@ class Car extends Model implements AuditableContract
         // Fix F.2/F.3 — normaliza tipos para evitar diff fantasma no sync Carmine
         'price_gross' => 'decimal:2',
         'promo_price_gross' => 'decimal:2',
+        // DMS Fase 1a — custo de aquisição (confidencial; nunca no CarPublicResource).
+        // NÃO vai a $hidden: o form interno de edição carrega o modelo cru via show()
+        // (mesmo padrão do internal_notes) e $hidden esconderia o valor também aí.
+        'purchase_price' => 'decimal:2',
         'is_resume' => 'boolean',
         'is_metallic' => 'boolean',
         'hide_price_online' => 'boolean',
@@ -145,6 +151,12 @@ class Car extends Model implements AuditableContract
     public function category(): BelongsTo
     {
         return $this->belongsTo(CarCategory::class, 'car_category_id');
+    }
+
+    // DMS 1c.2b — despesas desta viatura (bloco de despesas na Ficha).
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
     }
 
     public function images(): HasMany

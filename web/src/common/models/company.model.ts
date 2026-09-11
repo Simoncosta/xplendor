@@ -39,6 +39,9 @@ export interface ICompany {
     credit_intermediation_link: string | null;
     vat_value: number | null;
 
+    // DMS Fase 1a — interruptor "modo IVA" da empresa.
+    uses_vat: boolean;
+
     facebook_page_id: string | null;
     facebook_pixel_id: string | null;
     facebook_access_token: string | null;

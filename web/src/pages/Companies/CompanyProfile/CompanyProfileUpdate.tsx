@@ -96,12 +96,36 @@ export default function CompanyProfileUpdate() {
                             return;
                         }
 
+                        // Booleanos como "1"/"0" — a regra `boolean` do Laravel
+                        // não aceita as strings "true"/"false" (ex.: uses_vat).
+                        if (typeof value === "boolean") {
+                            formData.append(key, value ? "1" : "0");
+                            return;
+                        }
+
                         formData.append(key, String(value));
                     });
 
                     formData.append("_method", "PUT");
 
                     dispatch(updateCompany({ id: Number(id), formData: formData }));
+
+                    // Mantém o authUser fresco: se a empresa editada é a do
+                    // utilizador autenticado, o form da viatura precisa do novo
+                    // uses_vat sem exigir re-login (o regime de IVA é condicional
+                    // a este flag). Só espelha o que acabámos de gravar.
+                    try {
+                        const raw = sessionStorage.getItem("authUser");
+                        if (raw) {
+                            const authUser = JSON.parse(raw);
+                            if (authUser?.company && Number(authUser.company_id) === Number(id)) {
+                                authUser.company.uses_vat = Boolean((values as any).uses_vat);
+                                sessionStorage.setItem("authUser", JSON.stringify(authUser));
+                            }
+                        }
+                    } catch {
+                        /* sessionStorage indisponível — o re-login resolve na mesma */
+                    }
                     toast("Empresa atualizada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                 }}
                 onSubmitCarmine={(value) => {

@@ -31,6 +31,9 @@ export default function CompanyProfileCreate() {
                             formData.append("logo", value);
                         } else if (typeof value === "object" && !(value instanceof File)) {
                             formData.append(key, JSON.stringify(value));
+                        } else if (typeof value === "boolean") {
+                            // Laravel `boolean` não aceita "true"/"false" — usar "1"/"0".
+                            formData.append(key, value ? "1" : "0");
                         } else {
                             formData.append(key, String(value));
                         }

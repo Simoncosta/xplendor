@@ -4,6 +4,7 @@ import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import SaleInfoCard from "Components/Common/SaleInfoCard";
+import CarExpensesCard from "./components/CarExpensesCard";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
@@ -257,6 +258,11 @@ export default function CarFichaPage() {
                         carId={Number(id)}
                         onSaved={refreshSpecs}
                     />
+                )}
+
+                {/* DMS 1c.2b — despesas desta viatura (car_id automático). */}
+                {companyId > 0 && id && (
+                    <CarExpensesCard companyId={companyId} carId={Number(id)} />
                 )}
 
             </Container>
