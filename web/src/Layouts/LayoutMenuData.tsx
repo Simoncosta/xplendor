@@ -195,6 +195,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "install-app",
+            label: "Instalar app",
+            icon: "ri-smartphone-line",
+            link: "/install",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('InstallApp');
+            }
+        },
+        {
             label: "Finanças",
             isHeader: true,
         },

@@ -147,7 +147,7 @@ const SignIn = (props: any) => {
                         <Row>
                             <Col lg={12}>
                                 <div className="text-center">
-                                    <p className="mb-0">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por IT Rocket</p>
+                                    <p className="mb-0">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por XPLENDOR</p>
                                 </div>
                             </Col>
                         </Row>

@@ -6,6 +6,8 @@ import { BrowserRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import rootReducer from "./slices";
+import * as serviceWorkerRegistration from "./serviceWorkerRegistration";
+import "./helpers/installPrompt"; // começa a ouvir beforeinstallprompt no arranque
 
 const store = configureStore({ reducer: rootReducer, devTools: true });
 
@@ -26,3 +28,27 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+// ── PWA ──────────────────────────────────────────────────────────────────────
+// Regista o service worker (só em produção). Estratégia de atualização: quando
+// uma versão nova fica pronta, mandamos o SW novo assumir (SKIP_WAITING) e
+// recarregamos UMA vez no controllerchange. Só recarrega em atualizações reais
+// (flag updateReady), nunca na primeira instalação — o utilizador nunca fica
+// preso a uma versão em cache velha, nem entra em loop de reload.
+let updateReady = false;
+if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (updateReady) {
+            updateReady = false;
+            window.location.reload();
+        }
+    });
+}
+serviceWorkerRegistration.register({
+    onUpdate: (registration) => {
+        updateReady = true;
+        if (registration.waiting) {
+            registration.waiting.postMessage({ type: "SKIP_WAITING" });
+        }
+    },
+});

@@ -73,6 +73,9 @@ import RequireSuperAdmin from "./RequireSuperAdmin";
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
 
+// PWA — página de instalação (pública: acessível antes do login)
+import InstallApp from "pages/Install/InstallApp";
+
 const CarMarketingRedirect = () => {
     const { id } = useParams();
     return <Navigate to={`/cars/${id}/analytics`} replace />;
@@ -178,6 +181,9 @@ const publicRoutes = [
 
     // Privacy Policy
     { path: "/privacy", component: <PrivacyPolicy /> },
+
+    // PWA — instruções/botão de instalação (aberto a todos, também antes do login)
+    { path: "/install", component: <InstallApp /> },
 
     // Pós-venda — relatório público de satisfação (aberto pelo cliente por link)
     { path: "/r/:token", component: <SatisfactionReport /> },

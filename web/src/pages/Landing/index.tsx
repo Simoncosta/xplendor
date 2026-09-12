@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './landing.css';
 
+import { isStandalone } from '../../helpers/pwa';
 import { initMetaPixel } from './lib/metaPixel';
 import LandingNav from './components/LandingNav';
 import LandingFooter from './components/LandingFooter';
@@ -17,6 +19,17 @@ import FAQSection from './sections/FAQSection';
 import FinalCTA from './sections/FinalCTA';
 
 const Landing: React.FC = () => {
+    const navigate = useNavigate();
+
+    // PWA: se a app está instalada (standalone), nunca mostramos a landing —
+    // vamos direto para /dashboard, que encaminha para /login se não autenticado.
+    // (Reforça o start_url do manifest; o browser normal continua a ver a landing.)
+    useEffect(() => {
+        if (isStandalone()) {
+            navigate('/dashboard', { replace: true });
+        }
+    }, [navigate]);
+
     useEffect(() => {
         document.title =
             'XPLENDOR — Marketing digital para stands automóveis em Portugal';

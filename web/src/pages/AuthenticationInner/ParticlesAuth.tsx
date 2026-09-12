@@ -25,7 +25,7 @@ const ParticlesAuth = ({ children }: any) => {
                         <div className="row">
                             <div className="col-lg-12">
                                 <div className="text-center">
-                                    <p className="mb-0 text-muted">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por IT Rocket</p>
+                                    <p className="mb-0 text-muted">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por XPLENDOR</p>
                                 </div>
                             </div>
                         </div>
