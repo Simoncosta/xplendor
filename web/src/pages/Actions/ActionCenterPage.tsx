@@ -177,8 +177,8 @@ export default function ActionCenterPage() {
                             style={{
                                 borderRadius: 24,
                                 padding: "24px 24px 20px",
-                                background: "linear-gradient(135deg, #fff7ed 0%, #ffffff 55%, #eff6ff 100%)",
-                                border: "1px solid #e9ebec",
+                                background: "var(--vz-tertiary-bg)",
+                                border: "1px solid var(--vz-border-color)",
                             }}
                         >
                             <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
@@ -198,7 +198,7 @@ export default function ActionCenterPage() {
 
                             <div className="d-flex gap-2 flex-wrap">
                                 {summaryOrder.map((decision) => (
-                                    <span key={decision} className="badge bg-light text-dark px-3 py-2 fs-12">
+                                    <span key={decision} className="badge bg-light text-body px-3 py-2 fs-12">
                                         {getDecisionLabel(decision)}: {summary[decision]}
                                     </span>
                                 ))}
@@ -214,8 +214,8 @@ export default function ActionCenterPage() {
                                 style={{
                                     borderRadius: 20,
                                     padding: "20px 22px",
-                                    background: "#fff",
-                                    border: "1px solid #e9ebec",
+                                    background: "var(--vz-card-bg)",
+                                    border: "1px solid var(--vz-border-color)",
                                 }}
                             >
                                 <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
@@ -225,7 +225,7 @@ export default function ActionCenterPage() {
                                         </p>
                                         <h5 className="mb-0">Inbox operacional</h5>
                                     </div>
-                                    <span className="badge bg-light text-dark px-3 py-2 fs-12">
+                                    <span className="badge bg-light text-body px-3 py-2 fs-12">
                                         {alerts.filter((alert) => !alert.is_read).length} por ler
                                     </span>
                                 </div>

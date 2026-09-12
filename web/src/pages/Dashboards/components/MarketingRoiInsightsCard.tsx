@@ -9,7 +9,7 @@ export default function MarketingRoiInsightsCard({ insights }: MarketingRoiInsig
 
     return (
         <Col xl={4}>
-            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+            <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
                 <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                     ROI insights
                 </p>

@@ -133,7 +133,7 @@ export default function SaleInfoCard({ sale, companyId, carId, onSaved }: SaleIn
                                     <div key={row.label} className="col-md-6" role="listitem">
                                         <div
                                             className="d-flex align-items-center gap-2 fs-13"
-                                            style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}
+                                            style={{ border: "1px dashed var(--vz-border-color)", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "var(--vz-card-bg)" }}
                                         >
                                             <span className="text-muted flex-grow-1">{row.label}</span>
                                             <span className="fw-medium text-end">{row.value}</span>

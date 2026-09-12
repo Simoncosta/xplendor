@@ -125,9 +125,9 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
             <article
                 key={car.car_id}
                 style={{
-                    border: "1px solid #e9ebec",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
-                    background: "#fff",
+                    background: "var(--vz-card-bg)",
                     padding: 16,
                 }}
             >
@@ -218,10 +218,10 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
                     <div
                         className="text-muted fs-14"
                         style={{
-                            border: "1px dashed #dfe3e6",
+                            border: "1px dashed var(--vz-border-color)",
                             borderRadius: 14,
                             padding: 14,
-                            background: "#fff",
+                            background: "var(--vz-card-bg)",
                         }}
                     >
                         {section.empty}
@@ -235,15 +235,15 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
         <Col xs={12}>
             <section
                 style={{
-                    border: "1px solid #e9ebec",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 18,
-                    background: "#fff",
+                    background: "var(--vz-card-bg)",
                     overflow: "hidden",
                 }}
             >
                 <div
                     className="d-flex align-items-start justify-content-between gap-3 flex-wrap"
-                    style={{ padding: "18px 20px", borderBottom: "1px solid #e9ebec" }}
+                    style={{ padding: "18px 20px", borderBottom: "1px solid var(--vz-border-color)" }}
                 >
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -264,9 +264,9 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
                                 onClick={() => setLimit(option.value)}
                                 className="btn btn-sm"
                                 style={{
-                                    border: limit === option.value ? "1px solid #405189" : "1px solid #dfe3e6",
-                                    background: limit === option.value ? "#405189" : "#fff",
-                                    color: limit === option.value ? "#fff" : "#405189",
+                                    border: limit === option.value ? "1px solid var(--vz-primary)" : "1px solid var(--vz-border-color)",
+                                    background: limit === option.value ? "var(--vz-primary)" : "var(--vz-card-bg)",
+                                    color: limit === option.value ? "#fff" : "var(--vz-primary)",
                                     minWidth: 52,
                                 }}
                             >

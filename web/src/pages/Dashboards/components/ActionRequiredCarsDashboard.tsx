@@ -37,12 +37,12 @@ const formatPrice = (value?: number | null) => {
 
 const getPriorityMeta = (score: number) => {
     if (score >= 80) {
-        return { border: "#ef4444", cardBg: "#fff6f5" };
+        return { border: "var(--vz-danger)", cardBg: "var(--vz-danger-bg-subtle)" };
     }
     if (score >= 60) {
-        return { border: "#f7b84b", cardBg: "#fffdf5" };
+        return { border: "var(--vz-warning)", cardBg: "var(--vz-warning-bg-subtle)" };
     }
-    return { border: "#cbd5e1", cardBg: "#f8fafc" };
+    return { border: "var(--vz-border-color)", cardBg: "var(--vz-tertiary-bg)" };
 };
 
 const buildFactualDescription = (signals?: IActionRequiredCar["signals"]): string => {
@@ -73,15 +73,15 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
         <Col xs={12}>
             <section
                 style={{
-                    border: "1px solid #e9ebec",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
-                    background: "#fff",
+                    background: "var(--vz-card-bg)",
                     overflow: "hidden",
                 }}
             >
                 <div
                     className="d-flex align-items-start justify-content-between gap-3 flex-wrap"
-                    style={{ padding: "16px 18px", borderBottom: "1px solid #e9ebec" }}
+                    style={{ padding: "16px 18px", borderBottom: "1px solid var(--vz-border-color)" }}
                 >
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -92,7 +92,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                             Lista das viaturas com tempo em stock prolongado ou sinais relevantes.
                         </p>
                     </div>
-                    <span className="badge bg-light text-dark fs-12 px-3 py-2">
+                    <span className="badge bg-light text-body fs-12 px-3 py-2">
                         {cars.length} prioridade{cars.length === 1 ? "" : "s"}
                     </span>
                 </div>
@@ -111,7 +111,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                         className="text-start"
                                         style={{
                                             width: "100%",
-                                            border: "1px solid #e9ebec",
+                                            border: "1px solid var(--vz-border-color)",
                                             borderLeft: `4px solid ${priority.border}`,
                                             borderRadius: 14,
                                             background: priority.cardBg,
@@ -138,10 +138,10 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                                         <div className="col-6 col-lg-3" key={signal.label}>
                                                             <div
                                                                 style={{
-                                                                    border: "1px solid #e9ebec",
+                                                                    border: "1px solid var(--vz-border-color)",
                                                                     borderRadius: 12,
                                                                     padding: "8px 10px",
-                                                                    background: "#fff",
+                                                                    background: "var(--vz-card-bg)",
                                                                 }}
                                                             >
                                                                 <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.06em" }}>

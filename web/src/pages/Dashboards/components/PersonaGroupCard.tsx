@@ -57,15 +57,15 @@ export default function PersonaGroupCard({ group }: Props) {
     return (
         <div
             style={{
-                border: "1px solid #e9ebec",
+                border: "1px solid var(--vz-border-color)",
                 borderRadius: 16,
-                background: "#fff",
+                background: "var(--vz-card-bg)",
                 overflow: "hidden",
                 opacity: group.is_campanha_viable ? 1 : 0.65,
             }}
         >
             {/* Header */}
-            <div className={`d-flex align-items-center justify-content-between gap-3 flex-wrap px-4 py-3 ${bg}`} style={{ borderBottom: "1px solid #e9ebec" }}>
+            <div className={`d-flex align-items-center justify-content-between gap-3 flex-wrap px-4 py-3 ${bg}`} style={{ borderBottom: "1px solid var(--vz-border-color)" }}>
                 <div className="d-flex align-items-center gap-3">
                     <div
                         className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
@@ -99,7 +99,7 @@ export default function PersonaGroupCard({ group }: Props) {
                         <div
                             key={car.id}
                             className="d-flex align-items-center justify-content-between gap-3 flex-wrap rounded-3 px-3 py-2"
-                            style={{ background: "#f8fafc", border: "1px solid #e9ebec" }}
+                            style={{ background: "var(--vz-tertiary-bg)", border: "1px solid var(--vz-border-color)" }}
                         >
                             <div className="d-flex align-items-center gap-2 flex-wrap">
                                 <span className="fw-medium fs-13">

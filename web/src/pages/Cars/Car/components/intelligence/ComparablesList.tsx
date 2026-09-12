@@ -94,7 +94,7 @@ export default function ComparablesList({
                         <div
                             key={i}
                             className="d-flex align-items-start justify-content-between gap-3 rounded-3 px-3 py-2"
-                            style={{ background: "#f8fafc", border: "1px solid #eef0f2" }}
+                            style={{ background: "var(--vz-tertiary-bg)", border: "1px solid #eef0f2" }}
                         >
                             <div style={{ minWidth: 0, flex: 1 }}>
                                 <div className="d-flex align-items-center gap-2">

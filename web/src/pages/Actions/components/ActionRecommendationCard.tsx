@@ -115,7 +115,7 @@ export default function ActionRecommendationCard({
         <div
             className="border rounded-4 p-3"
             style={{
-                background: "#fff",
+                background: "var(--vz-card-bg)",
                 borderLeft: `4px solid ${config.accent}`,
                 boxShadow: "0 10px 20px rgba(15, 23, 42, 0.04)",
             }}

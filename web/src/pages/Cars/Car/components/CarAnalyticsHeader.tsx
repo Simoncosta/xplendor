@@ -20,9 +20,9 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                 position: "sticky",
                 top: "72px",
                 zIndex: 10,
-                border: "1px solid #e9ebec",
+                border: "1px solid var(--vz-border-color)",
                 borderRadius: "18px",
-                background: "#fff",
+                background: "var(--vz-card-bg)",
             }}
         >
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ padding: "16px 18px" }}>
@@ -53,12 +53,12 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                         </span>
                         {car?.created_at && (
                             <span className="d-none d-md-inline">
-                                Publicado <span className="text-dark fw-semibold">{fmtDate(car.created_at)}</span>
+                                Publicado <span className="text-body fw-semibold">{fmtDate(car.created_at)}</span>
                             </span>
                         )}
                         {car?.license_plate && (
                             <span className="d-none d-md-inline">
-                                Matrícula <span className="text-dark fw-semibold">{car.license_plate}</span>
+                                Matrícula <span className="text-body fw-semibold">{car.license_plate}</span>
                             </span>
                         )}
                         {ipsBadge && (

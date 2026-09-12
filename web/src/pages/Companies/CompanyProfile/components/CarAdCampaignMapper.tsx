@@ -162,7 +162,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
         }
     };
 
-    const dashed = { border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.75rem", background: "#fff" };
+    const dashed = { border: "1px dashed var(--vz-border-color)", borderRadius: "0.4rem", padding: "0.75rem", background: "var(--vz-card-bg)" };
     const activeBadgeStyle = { background: "#198754", color: "#fff", border: "1px solid #146c43" };
     const pausedBadgeStyle = { background: "#dc3545", color: "#fff", border: "1px solid #b02a37" };
 
@@ -213,16 +213,16 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                         ...dashed,
                         cursor: "pointer",
                         marginLeft: indent,
-                        borderColor: isSelected ? "#405189" : "#e9ebec",
+                        borderColor: isSelected ? "var(--vz-primary)" : "var(--vz-border-color)",
                         borderStyle: isSelected ? "solid" : "dashed",
-                        background: isSelected ? "#f0f3ff" : "#fff",
+                        background: isSelected ? "var(--vz-primary-bg-subtle)" : "var(--vz-card-bg)",
                     }}
                     onClick={() => setSelected(target)}
                 >
                     <div className="d-flex align-items-start justify-content-between gap-3">
                         <div>
                             <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                                <Badge color="light" className="text-dark border">{getLevelLabel(target.level)}</Badge>
+                                <Badge color="light" className="text-body border">{getLevelLabel(target.level)}</Badge>
                                 <span className="fs-13 fw-medium">{title}</span>
                             </div>
                             <p className="fs-12 text-muted mb-0">{subtitle}</p>
@@ -258,7 +258,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                                     <div className="d-flex align-items-center gap-2 mb-1">
                                         <i className="ri-facebook-fill text-primary fs-14" />
                                         <span className="fs-13 fw-medium">{getMappingTitle(m)}</span>
-                                        <Badge color="light" className="text-dark border">{getLevelLabel(m.level)}</Badge>
+                                        <Badge color="light" className="text-body border">{getLevelLabel(m.level)}</Badge>
                                         <span className="badge fs-10 fw-semibold" style={m.is_active ? activeBadgeStyle : pausedBadgeStyle}>
                                             {m.is_active ? "ACTIVE" : "PAUSED"}
                                         </span>
@@ -300,7 +300,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
 
             {/* Formulário de mapeamento */}
             {showForm && (
-                <div className="p-3 rounded" style={{ background: "#f8f9fa", border: "1px dashed #e9ebec" }}>
+                <div className="p-3 rounded" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
                     <p className="fs-12 fw-semibold text-muted text-uppercase mb-3" style={{ letterSpacing: ".05em" }}>
                         Seleccionar target Meta Ads
                     </p>
@@ -364,7 +364,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                     {selected && (
                         <div className="mt-3">
                             <div className="mb-2">
-                                <Badge color="light" className="text-dark border me-2">{getLevelLabel(selected.level)}</Badge>
+                                <Badge color="light" className="text-body border me-2">{getLevelLabel(selected.level)}</Badge>
                                 <span className="fs-13 fw-medium">
                                     {selected.ad_name || selected.adset_name || selected.campaign_name || selected.campaign_id}
                                 </span>

@@ -160,8 +160,8 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                background: "#fff",
-                borderBottom: "1px solid #e9ebec",
+                background: "var(--vz-card-bg)",
+                borderBottom: "1px solid var(--vz-border-color)",
                 marginLeft: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
                 marginRight: "calc(-1 * var(--vz-card-spacer-x, 1.5rem))",
                 marginTop: "calc(-1 * var(--vz-card-spacer-y, 1.5rem))",
@@ -198,8 +198,8 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
                         left: 0,
                         right: 0,
                         marginTop: 4,
-                        background: "#fff",
-                        border: "1px solid #e9ebec",
+                        background: "var(--vz-card-bg)",
+                        border: "1px solid var(--vz-border-color)",
                         borderRadius: 10,
                         boxShadow: "0 12px 32px rgba(15, 23, 42, 0.10)",
                         maxHeight: 420,
@@ -232,7 +232,7 @@ const FormSearchBar = ({ onSelect }: FormSearchBarProps) => {
                         if (isActive && !isWrongType) background = isParentOff
                             ? "rgba(247, 184, 75, 0.18)"
                             : "#f1f5f9";
-                        if (isActive && isWrongType)  background = "#f8f9fa"; // hover discreto
+                        if (isActive && isWrongType)  background = "var(--vz-tertiary-bg)"; // hover discreto
 
                         // Opacidade dos 3 estados.
                         const opacity = isWrongType ? 0.5 : isParentOff ? 0.85 : 1;

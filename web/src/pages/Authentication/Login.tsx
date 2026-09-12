@@ -72,7 +72,7 @@ const Login = (props: any) => {
                                         <Col lg={6}>
                                             <div className="p-lg-5 p-4">
                                                 <div>
-                                                    <h5 className="text-dark">Entrar na XPLENDOR</h5>
+                                                    <h5 className="text-body">Entrar na XPLENDOR</h5>
                                                     <p className="text-muted">Introduza as suas credenciais para continuar.</p>
                                                 </div>
 

@@ -33,13 +33,13 @@ export default function MarketingWorkspaceTabs({ marketingPerformance, marketing
         <Col xs={12}>
             <section
                 style={{
-                    border: "1px solid #e9ebec",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
-                    background: "#fff",
+                    background: "var(--vz-card-bg)",
                     overflow: "hidden",
                 }}
             >
-                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap" style={{ padding: "16px 18px", borderBottom: "1px solid #e9ebec" }}>
+                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap" style={{ padding: "16px 18px", borderBottom: "1px solid var(--vz-border-color)" }}>
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
                             Marketing

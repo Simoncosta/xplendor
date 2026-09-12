@@ -174,28 +174,28 @@ export default function IntegrationsSettings() {
                                     <div className="vstack gap-2">
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
                                         >
                                             <span className="text-muted">Conta</span>
                                             <span className="fw-medium">{formatMetaAccountId(metaIntegration.account_id)}</span>
                                         </div>
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
                                         >
                                             <span className="text-muted">Campanhas ativas</span>
                                             <span className="fw-medium">{metaIntegration.active_campaigns_count ?? 0}</span>
                                         </div>
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
                                         >
                                             <span className="text-muted">Último sync</span>
                                             <span className="fw-medium">{fmtDate(metaIntegration.last_synced_at)}</span>
                                         </div>
                                         <div
                                             className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "#f8f9fa", border: "1px dashed #e9ebec", fontSize: 12 }}
+                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
                                         >
                                             <span className="text-muted">Token expira</span>
                                             <span className="fw-medium">{fmtDate(metaIntegration.token_expires_at)}</span>
@@ -240,7 +240,7 @@ export default function IntegrationsSettings() {
                                     <div className="d-flex align-items-center gap-3">
                                         <div
                                             className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
-                                            style={{ width: 44, height: 44, background: "#fff", border: "1px solid #e9ebec" }}
+                                            style={{ width: 44, height: 44, background: "var(--vz-card-bg)", border: "1px solid var(--vz-border-color)" }}
                                         >
                                             <i className="ri-google-fill fs-20" style={{ color: "#4285F4" }} />
                                         </div>

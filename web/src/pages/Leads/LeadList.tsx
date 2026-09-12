@@ -204,8 +204,8 @@ export default function LeadList() {
         return (
             <div
                 style={{
-                    background: "#fff",
-                    border: "1px solid #e9ebec",
+                    background: "var(--vz-card-bg)",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
                     overflow: "hidden",
                 }}
@@ -217,7 +217,7 @@ export default function LeadList() {
                             width: 42,
                             height: 42,
                             borderRadius: "50%",
-                            background: "#405189",
+                            background: "var(--vz-primary)",
                             color: "#fff",
                             fontSize: 16,
                         }}
@@ -233,7 +233,7 @@ export default function LeadList() {
                     </div>
                 </div>
 
-                <div style={{ borderTop: "1px solid #e9ebec", padding: "10px 14px" }}>
+                <div style={{ borderTop: "1px solid var(--vz-border-color)", padding: "10px 14px" }}>
                     {car && (
                         <div className="d-flex align-items-center gap-2 mb-2">
                             <CarThumbnail src={carImage} variant="compact" width={44} height={30} />
@@ -252,7 +252,7 @@ export default function LeadList() {
 
                 <div
                     className="d-flex align-items-center justify-content-between gap-2"
-                    style={{ borderTop: "1px solid #e9ebec", padding: "10px 14px" }}
+                    style={{ borderTop: "1px solid var(--vz-border-color)", padding: "10px 14px" }}
                 >
                     <span className="text-muted fs-12 text-truncate">
                         {formatTimeDiff(lead.created_at)} · {lead.channel} - {lead.utm_source}

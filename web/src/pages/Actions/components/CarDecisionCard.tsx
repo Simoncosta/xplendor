@@ -93,10 +93,10 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
     return (
         <article
             style={{
-                border: "1px solid #e9ebec",
+                border: "1px solid var(--vz-border-color)",
                 borderLeft: `4px solid ${accent}`,
                 borderRadius: 18,
-                background: "#fff",
+                background: "var(--vz-card-bg)",
                 padding: 20,
                 boxShadow: "0 10px 30px rgba(15, 23, 42, 0.04)",
             }}
@@ -116,7 +116,7 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                 <div
                     className="rounded-4 px-3 py-3 mb-4"
                     style={{
-                        background: "#f8fafc",
+                        background: "var(--vz-tertiary-bg)",
                         border: "1px solid #e2e8f0",
                     }}
                 >
@@ -133,7 +133,7 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                     </div>
                 </div>
             ) : (
-                <div className="rounded-4 px-4 py-4 mb-3 border" style={{ background: "#f8fafc" }}>
+                <div className="rounded-4 px-4 py-4 mb-3 border" style={{ background: "var(--vz-tertiary-bg)" }}>
                     <div className="fw-semibold fs-15 mb-1">{item.reason}</div>
                     <div className="text-muted fs-13">Sem recomendação prioritária pronta para executar neste momento.</div>
                 </div>
@@ -161,9 +161,9 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                     )}
                 </div>
                 <div className="d-flex align-items-center justify-content-center gap-3 text-muted fs-13">
-                    <span style={{ minWidth: 80, borderTop: "1px solid #e5e7eb" }} />
+                    <span style={{ minWidth: 80, borderTop: "1px solid var(--vz-border-color)" }} />
                     <span>ou</span>
-                    <span style={{ minWidth: 80, borderTop: "1px solid #e5e7eb" }} />
+                    <span style={{ minWidth: 80, borderTop: "1px solid var(--vz-border-color)" }} />
                 </div>
             </div>
 
@@ -177,7 +177,7 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
             </div>
 
             {lastExecution && (
-                <div className="border rounded-3 px-3 py-2 mb-3" style={{ background: "#f8fafc" }}>
+                <div className="border rounded-3 px-3 py-2 mb-3" style={{ background: "var(--vz-tertiary-bg)" }}>
                     <div className="fw-semibold fs-13 mb-1">Última execução</div>
                     <div className="text-muted fs-13">
                         {lastExecution.message}

@@ -17,6 +17,7 @@ import ParishReducer from "./parishes/reducer";
 import SupplierReducer from "./suppliers/reducer";
 import CustomerReducer from "./customers/reducer";
 import DocumentTemplateReducer from "./documentTemplates/reducer";
+import SupportTicketReducer from "./supportTickets/reducer";
 import ExpenseCategoryReducer from "./expense-categories/reducer";
 import ExpenseReducer from "./expenses/reducer";
 import RegisterInviteReducer from "./auth/register/reducer";
@@ -48,6 +49,7 @@ const rootReducer = combineReducers({
     Supplier: SupplierReducer,
     Customer: CustomerReducer,
     DocumentTemplate: DocumentTemplateReducer,
+    SupportTicket: SupportTicketReducer,
     ExpenseCategory: ExpenseCategoryReducer,
     Expense: ExpenseReducer,
     User: UserReducer,

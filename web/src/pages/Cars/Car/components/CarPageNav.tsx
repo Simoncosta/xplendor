@@ -20,9 +20,9 @@ export default function CarPageNav({ active }: { active: NavPage }) {
     return (
         <div
             style={{
-                border: "1px solid #e9ebec",
+                border: "1px solid var(--vz-border-color)",
                 borderRadius: "14px",
-                background: "#fff",
+                background: "var(--vz-card-bg)",
                 padding: "6px",
                 display: "flex",
                 gap: "4px",
@@ -45,9 +45,9 @@ export default function CarPageNav({ active }: { active: NavPage }) {
                         className="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none fs-13"
                         style={{
                             fontWeight: isActive ? 600 : 400,
-                            color: isActive ? "#405189" : "#878a99",
-                            background: isActive ? "#f8f9fa" : "transparent",
-                            border: isActive ? "1px solid #e9ebec" : "1px solid transparent",
+                            color: isActive ? "var(--vz-primary)" : "#878a99",
+                            background: isActive ? "var(--vz-tertiary-bg)" : "transparent",
+                            border: isActive ? "1px solid var(--vz-border-color)" : "1px solid transparent",
                             flexShrink: 0,
                         }}
                     >

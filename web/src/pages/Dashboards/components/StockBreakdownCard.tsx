@@ -64,7 +64,7 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
             axisTicks: { show: false },
         },
         yaxis: { labels: { style: { fontSize: "12px", colors: "#495057" } } },
-        grid: { borderColor: "#e9ebec", strokeDashArray: 3, padding: { right: 24 } },
+        grid: { borderColor: "var(--vz-border-color)", strokeDashArray: 3, padding: { right: 24 } },
         tooltip: {
             y: { formatter: (val) => `${val} viatura${val === 1 ? "" : "s"}` },
         },

@@ -161,6 +161,30 @@ export const updateDocumentTemplate = (companyId: number, id: number, data: any)
 export const deleteDocumentTemplate = (companyId: number, id: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES + `/${id}`);
 
+// DMS — Consola de administração (super-admin). Acesso transversal atrás do
+// portão ensure_super_admin no backend.
+export const getAdminPing = () => api.get(url.GET_ADMIN + `/ping`);
+
+// DMS — Tickets de suporte, LADO ADMIN (transversal, só root, atrás do portão).
+export const getAdminTickets = (params?: { status?: string; company_id?: number; type?: string }) =>
+    api.get(url.GET_ADMIN + `/tickets`, params);
+export const getAdminTicketsSummary = () => api.get(url.GET_ADMIN + `/tickets/summary`);
+export const showAdminTicket = (id: number) => api.get(url.GET_ADMIN + `/tickets/${id}`);
+export const updateAdminTicketStatus = (id: number, status: string) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/status`, { status });
+export const addAdminTicketMessage = (id: number, body: string) =>
+    api.create(url.GET_ADMIN + `/tickets/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
+
+// DMS — Tickets de suporte (lado stand). Create pode ser multipart (bug + print).
+export const getSupportTickets = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS);
+export const showSupportTicket = (companyId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/${id}`);
+export const createSupportTicket = (companyId: number, data: FormData) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const addSupportTicketMessage = (companyId: number, id: number, body: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
+
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, params);

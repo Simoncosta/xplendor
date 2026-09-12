@@ -43,7 +43,7 @@ export default function DashboardInsightsCard({ insights }: DashboardInsightsCar
 
     return (
         <Col xl={6}>
-            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+            <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
                 <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>

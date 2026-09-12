@@ -16,7 +16,7 @@ import { IExpenseCategory } from "common/models/expense-category.model";
 // Paleta sugerida (cores legíveis para os gráficos da 1c.2b). Opcional — a
 // categoria pode ficar sem cor.
 const COLOR_PRESETS = [
-    "#405189", "#0ab39c", "#f7b84b", "#f06548",
+    "var(--vz-primary)", "#0ab39c", "#f7b84b", "#f06548",
     "#299cdb", "#6559cc", "#f672a7", "#4b38b3",
     "#3577f1", "#45cb85", "#ffbe0b", "#e74c3c",
 ];

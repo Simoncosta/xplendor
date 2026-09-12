@@ -62,7 +62,13 @@ import LeadList from "pages/Leads/LeadList";
 import StockPromotionPage from "pages/StockPromotion";
 
 // Internal tools
-import ScraperRunner from "pages/Internal/ScraperRunner";
+// Support tickets (lado stand)
+import SupportTicketsList from "pages/Support/SupportTicketsList";
+import SupportTicketDetail from "pages/Support/SupportTicketDetail";
+// Admin (super-admin / root) — consola transversal
+import AdminTicketsList from "pages/Admin/AdminTicketsList";
+import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
+import RequireSuperAdmin from "./RequireSuperAdmin";
 
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
@@ -136,7 +142,14 @@ const authProtectedRoutes = [
     { path: "/expenses", component: <ExpenseList /> },
 
     // Internal tools
-    { path: "/internal/scraper", component: <ScraperRunner /> },
+    // Suporte (lado stand) — tickets da própria empresa.
+    { path: "/support", component: <SupportTicketsList /> },
+    { path: "/support/:id", component: <SupportTicketDetail /> },
+
+    // Consola de administração — SÓ root (segurança real no backend).
+    // Primeira consola: tickets de suporte de todas as empresas.
+    { path: "/admin", component: <RequireSuperAdmin><AdminTicketsList /></RequireSuperAdmin> },
+    { path: "/admin/tickets/:id", component: <RequireSuperAdmin><AdminTicketDetail /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

@@ -30,6 +30,10 @@ export const GET_SUPPLIERS = "/suppliers";
 export const GET_CUSTOMERS = "/customers";
 // DMS Caminho B — modelos de documento .docx
 export const GET_DOCUMENT_TEMPLATES = "/document-templates";
+// DMS — Consola de administração (super-admin / root)
+export const GET_ADMIN = "/admin";
+// DMS — Tickets de suporte (lado stand)
+export const GET_SUPPORT_TICKETS = "/support-tickets";
 
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const GET_EXPENSE_CATEGORIES = "/expense-categories";

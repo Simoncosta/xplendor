@@ -323,7 +323,7 @@ export default function ActionExecutionModal({
                                 className="border rounded-3 px-3 py-2"
                                 style={{
                                     opacity: option.implemented ? 1 : 0.65,
-                                    background: selectedAction === option.key ? "#f8fafc" : "#fff",
+                                    background: selectedAction === option.key ? "var(--vz-tertiary-bg)" : "var(--vz-card-bg)",
                                 }}
                             >
                                 <Input
@@ -341,7 +341,7 @@ export default function ActionExecutionModal({
                                             <div className="text-muted fs-13">{option.description}</div>
                                         </div>
                                         {!option.implemented && (
-                                            <Badge color="light" className="text-dark border">
+                                            <Badge color="light" className="text-body border">
                                                 Em breve
                                             </Badge>
                                         )}
@@ -378,7 +378,7 @@ export default function ActionExecutionModal({
                                                 key={option.mapping_id}
                                                 className="border rounded-3 px-3 py-2"
                                                 style={{
-                                                    background: selectedMappingId === option.mapping_id ? "#f8fafc" : "#fff",
+                                                    background: selectedMappingId === option.mapping_id ? "var(--vz-tertiary-bg)" : "var(--vz-card-bg)",
                                                 }}
                                             >
                                                 <Input

@@ -30,7 +30,7 @@ export default function MarketingRoiSummaryCards({ marketingRoi }: MarketingRoiS
 
     return (
         <Col xs={12}>
-            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+            <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
                 <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -38,7 +38,7 @@ export default function MarketingRoiSummaryCards({ marketingRoi }: MarketingRoiS
                         </p>
                         <h5 className="mb-1 fw-semibold">ROI e decisao de investimento</h5>
                     </div>
-                    <span className="badge bg-light text-dark px-3 py-2">
+                    <span className="badge bg-light text-body px-3 py-2">
                         {marketingRoi.summary.best_campaign || "Sem campanha vencedora"}
                     </span>
                 </div>

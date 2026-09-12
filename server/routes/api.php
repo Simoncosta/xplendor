@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\MarketSnapshotController;
+use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Api\Public\{
     BlogController as PublicBlogController,
     CarController as PublicCarController,
@@ -38,6 +40,7 @@ use App\Http\Controllers\Api\V1\{
     SaleDocumentController,
     SatisfactionReportController,
     DocumentTemplateController,
+    SupportTicketController,
     ExpenseCategoryController,
     ExpenseController,
     ScraperController,
@@ -161,6 +164,12 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
                 // DMS — Clientes (base para documentos de venda, Fase 3).
                 Route::apiResource('/customers', CustomerController::class);
+
+                // DMS — Tickets de suporte (lado STAND). Scoped por empresa.
+                Route::get('/support-tickets', [SupportTicketController::class, 'index']);
+                Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+                Route::get('/support-tickets/{ticket}', [SupportTicketController::class, 'show']);
+                Route::post('/support-tickets/{ticket}/messages', [SupportTicketController::class, 'storeMessage']);
                 // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
                 Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
                 Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
@@ -196,6 +205,21 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('/car-categories', CarCategoryController::class)->only(['index']);
             Route::apiResource('/car-brands', CarBrandController::class)->only(['index']);
             Route::apiResource('/car-models', CarModelController::class)->only(['index']);
+        });
+
+        // ── Consola de Administração da plataforma (super-admin / root) ───────
+        // SEM prefixo de empresa: é o ÚNICO grupo com acesso TRANSVERSAL (vê
+        // dados de todas as empresas). Portão único: ensure_super_admin. Tudo o
+        // que for transversal (tickets, consolas futuras) vive aqui dentro.
+        Route::middleware('ensure_super_admin')->prefix('admin')->group(function () {
+            Route::get('/ping', [AdminController::class, 'ping']);
+
+            // Tickets de suporte — TRANSVERSAL (todas as empresas).
+            Route::get('/tickets/summary', [AdminSupportTicketController::class, 'summary']);
+            Route::get('/tickets', [AdminSupportTicketController::class, 'index']);
+            Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
+            Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);
+            Route::post('/tickets/{ticket}/messages', [AdminSupportTicketController::class, 'storeMessage']);
         });
     });
 });

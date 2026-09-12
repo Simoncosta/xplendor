@@ -27,7 +27,7 @@ export default function StockIntelligenceDashboardCard({
 }: Props) {
     return (
         <Col xs={12}>
-            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+            <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
                 <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3">
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -93,7 +93,7 @@ function BlockTitle({ label, toneClass }: { label: string; toneClass: string }) 
 
 function StockItem({ item, toneClass }: { item: StockIntelligenceItem; toneClass: string }) {
     return (
-        <div style={{ border: "1px solid #e9ebec", borderRadius: 14, padding: "14px 16px", background: "#fff" }}>
+        <div style={{ border: "1px solid var(--vz-border-color)", borderRadius: 14, padding: "14px 16px", background: "var(--vz-card-bg)" }}>
             <div className="d-flex align-items-start justify-content-between gap-2 flex-wrap mb-1">
                 <div className="fw-semibold fs-14 text-body">{item.title}</div>
                 <span className={`badge rounded-pill px-2 py-1 fs-10 ${toneClass}`}>

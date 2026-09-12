@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import Select from "react-select";
+import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import {
     Card,
     CardBody,
@@ -50,7 +51,7 @@ import CarThumbnail from "Components/Common/CarThumbnail";
 // Reaproveitamos como objects para garantir consistência byte-a-byte.
 const CARD_SHADOW: React.CSSProperties = {
     boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-    background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+    background: "var(--vz-card-bg)",
 };
 const CARD_HEADER_GRADIENT: React.CSSProperties = {
     background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
@@ -241,6 +242,7 @@ const StockPromotionPage = () => {
                     Tipo de viatura
                 </Label>
                 <Select
+                    styles={reactSelectTheme}
                     isClearable
                     placeholder="Todos os tipos"
                     options={VEHICLE_TYPE_OPTIONS}
@@ -254,6 +256,7 @@ const StockPromotionPage = () => {
                     Estado
                 </Label>
                 <Select
+                    styles={reactSelectTheme}
                     isMulti
                     placeholder="Todos os estados"
                     options={STATUS_OPTIONS}
@@ -267,6 +270,7 @@ const StockPromotionPage = () => {
                     Posição vs mercado
                 </Label>
                 <Select
+                    styles={reactSelectTheme}
                     isMulti
                     placeholder="Qualquer posição"
                     options={PRICE_SIGNAL_OPTIONS}
@@ -345,6 +349,7 @@ const StockPromotionPage = () => {
                 <div className="d-flex gap-2 align-items-center">
                     <div style={{ flex: 1 }}>
                         <Select
+                            styles={reactSelectTheme}
                             options={SORT_OPTIONS}
                             value={SORT_OPTIONS.find((o) => o.value === sortBy)}
                             onChange={(opt: any) => setSortBy(opt?.value)}
@@ -564,6 +569,7 @@ const StockPromotionPage = () => {
                                 {isRoot && (
                                     <div style={{ minWidth: 240 }}>
                                         <Select
+                                            styles={reactSelectTheme}
                                             options={companyOptions}
                                             value={companyOptions.find((o: any) => o.value === selectedCompanyId) || null}
                                             onChange={(opt: any) => {

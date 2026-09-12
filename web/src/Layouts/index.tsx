@@ -6,6 +6,7 @@ import withRouter from '../Components/Common/withRouter';
 import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
+import SupportFab from '../Components/Common/SupportFab';
 
 //import actions
 import {
@@ -79,7 +80,10 @@ const Layout = (props: any) => {
             window.dispatchEvent(new Event('resize'));
             dispatch(changeLeftsidebarViewType(leftSidebarViewType));
             dispatch(changeLeftsidebarSizeType(leftsidbarSizeType));
-            dispatch(changeSidebarTheme(leftSidebarType));
+            // A sidebar acompanha o modo dark: em dark mode força data-sidebar="dark"
+            // (escuro E legível, pelas SCSS &[data-sidebar="dark"] do Velzon);
+            // em light respeita o tema de sidebar configurado.
+            dispatch(changeSidebarTheme(layoutModeType === "dark" ? "dark" : leftSidebarType));
             dispatch(changeLayoutMode(layoutModeType));
             dispatch(changeLayoutWidth(layoutWidthType));
             dispatch(changeLayoutPosition(layoutPositionType));
@@ -146,6 +150,7 @@ const Layout = (props: any) => {
                     <Footer />
                 </div>
             </div>
+            <SupportFab />
             {/* <RightSidebar /> */}
         </React.Fragment>
 

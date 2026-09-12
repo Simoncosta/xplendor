@@ -190,7 +190,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                 formatter: (val) => formatCurrency(Number(val)),
             },
         },
-        grid: { borderColor: "#e9ebec", strokeDashArray: 3, padding: { top: 24 } },
+        grid: { borderColor: "var(--vz-border-color)", strokeDashArray: 3, padding: { top: 24 } },
         tooltip: {
             y: { formatter: (val) => formatCurrency(Number(val)) },
             custom: ({ dataPointIndex }) => {
@@ -248,7 +248,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                     </div>
 
                     {preset === "custom" && (
-                        <div className="d-flex flex-wrap gap-2 align-items-end mb-3 p-3 rounded" style={{ background: "#f8f9fa" }}>
+                        <div className="d-flex flex-wrap gap-2 align-items-end mb-3 p-3 rounded" style={{ background: "var(--vz-tertiary-bg)" }}>
                             <div>
                                 <label className="form-label text-muted fs-12 mb-1">De (mês)</label>
                                 <input
@@ -306,7 +306,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                                     </span>
                                 )}
                             </p>
-                            <h3 className="mb-0 fw-bold" style={{ color: (Number(totalMargin) || 0) >= 0 ? "#405189" : "#f06548" }}>
+                            <h3 className="mb-0 fw-bold" style={{ color: (Number(totalMargin) || 0) >= 0 ? "var(--vz-primary)" : "#f06548" }}>
                                 {loading ? "—" : formatCurrency(Number(totalMargin) || 0)}
                             </h3>
                             {!loading && marginLbls.warning && (

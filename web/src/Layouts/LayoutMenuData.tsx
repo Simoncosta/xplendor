@@ -19,6 +19,23 @@ const Navdata = () => {
 
     const [iscurrentState, setIscurrentState] = useState('Dashboard');
     const [isRoot, setIsRoot] = useState(false);
+    const [isFinances, setIsFinances] = useState(false);
+
+    // Helper do Velzon para o modo two-column (icon sidebar). Guardado para não
+    // rebentar no layout vertical (onde #two-column-menu pode não existir).
+    function updateIconSidebar(e: any) {
+        if (e && e.target && e.target.getAttribute("subitems")) {
+            const ul: any = document.getElementById("two-column-menu");
+            if (!ul) return;
+            const iconItems: any = ul.querySelectorAll(".nav-icon.active");
+            const activeIconItems = [...iconItems];
+            activeIconItems.forEach((item: any) => {
+                item.classList.remove("active");
+                const id = item.getAttribute("subitems");
+                if (document.getElementById(id)) document.getElementById(id)?.classList.remove("show");
+            });
+        }
+    }
 
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -31,6 +48,9 @@ const Navdata = () => {
 
     useEffect(() => {
         document.body.classList.remove('twocolumn-panel');
+        if (iscurrentState !== 'Finances') {
+            setIsFinances(false);
+        }
         if (iscurrentState !== 'Dashboard') {
             setIsDashboard(false);
         }
@@ -165,73 +185,53 @@ const Navdata = () => {
             }
         },
         {
+            id: "support",
+            label: "Suporte",
+            icon: "ri-customer-service-2-line",
+            link: "/support",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Support');
+            }
+        },
+        {
             label: "Finanças",
             isHeader: true,
         },
         {
-            id: "expenses",
-            label: "Despesas",
-            icon: "ri-money-euro-circle-line",
-            link: "/expenses",
+            id: "finances",
+            label: "Finanças",
+            icon: "ri-wallet-3-line",
+            link: "/#",
+            stateVariables: isFinances,
             click: function (e: any) {
                 e.preventDefault();
-                setIscurrentState('Expenses');
-            }
+                setIsFinances(!isFinances);
+                setIscurrentState('Finances');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances" },
+                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances" },
+                { id: "customers", label: "Clientes", link: "/customers", parentId: "finances" },
+                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances" },
+                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances" },
+            ],
         },
-        {
-            id: "suppliers",
-            label: "Fornecedores",
-            icon: "ri-hand-coin-line",
-            link: "/suppliers",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Suppliers');
-            }
-        },
-        {
-            id: "customers",
-            label: "Clientes",
-            icon: "ri-user-line",
-            link: "/customers",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Customers');
-            }
-        },
-        {
-            id: "document-templates",
-            label: "Modelos de documento",
-            icon: "ri-file-word-2-line",
-            link: "/document-templates",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('DocumentTemplates');
-            }
-        },
-        {
-            id: "expense-categories",
-            label: "Categorias de Despesa",
-            icon: "ri-price-tag-3-line",
-            link: "/expense-categories",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('ExpenseCategories');
-            }
-        },
-        // ── Ferramentas internas — visível apenas para role root ──────────────
+        // ── Administração + ferramentas internas — visível apenas a role root ──
         ...(isRoot ? [
             {
-                label: "Ferramentas",
+                label: "Administração",
                 isHeader: true,
             },
             {
-                id: "scraper-runner",
-                label: "Scraper Runner",
-                icon: "ri-terminal-box-line",
-                link: "/internal/scraper",
+                id: "admin",
+                label: "Administração",
+                icon: "ri-shield-star-line",
+                link: "/admin",
                 click: function (e: any) {
                     e.preventDefault();
-                    setIscurrentState('ScraperRunner');
+                    setIscurrentState('Admin');
                 },
             },
         ] : []),

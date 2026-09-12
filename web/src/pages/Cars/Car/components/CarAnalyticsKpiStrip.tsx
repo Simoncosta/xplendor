@@ -19,13 +19,13 @@ interface Props {
 
 export default function CarAnalyticsKpiStrip({ items }: Props) {
     return (
-        <Row className="g-0 row-cols-2 row-cols-md-4 row-cols-xl-6" style={{ border: "1px solid #e9ebec", borderRadius: 16, overflow: "hidden", background: "#fff" }}>
+        <Row className="g-0 row-cols-2 row-cols-md-4 row-cols-xl-6" style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, overflow: "hidden", background: "var(--vz-card-bg)" }}>
             {items.map((item, idx) => (
                 <Col key={item.id}>
                     <div
                         className="px-3 py-3 h-100 d-flex flex-column justify-content-between"
                         style={{
-                            borderRight: idx < items.length - 1 ? "1px solid #e9ebec" : "none",
+                            borderRight: idx < items.length - 1 ? "1px solid var(--vz-border-color)" : "none",
                         }}
                     >
                         <p

@@ -22,9 +22,9 @@ import {
 
 const sectionStyle = {
     padding: "16px 18px",
-    border: "1px solid #e9ebec",
+    border: "1px solid var(--vz-border-color)",
     borderRadius: "16px",
-    background: "#fff",
+    background: "var(--vz-card-bg)",
 };
 
 const selectCarState = (state: any) => state.Car;
@@ -251,7 +251,7 @@ export default function CarAnalytics() {
                                 ) : (
                                     <div className="vstack gap-2">
                                         {timeline.map((item: any, idx: number) => (
-                                            <div key={idx} className="d-flex align-items-start gap-3" style={{ border: "1px dashed #e9ebec", borderRadius: "0.5rem", padding: "0.75rem", background: "#fff" }}>
+                                            <div key={idx} className="d-flex align-items-start gap-3" style={{ border: "1px dashed var(--vz-border-color)", borderRadius: "0.5rem", padding: "0.75rem", background: "var(--vz-card-bg)" }}>
                                                 <div
                                                     className={`avatar-title rounded-circle bg-${item.color}-subtle text-${item.color}`}
                                                     style={{ width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}

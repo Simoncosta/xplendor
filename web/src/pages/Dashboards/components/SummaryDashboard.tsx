@@ -48,9 +48,9 @@ export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
         <Col xs={12}>
             <section
                 style={{
-                    border: "1px solid #e9ebec",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
-                    background: "#fff",
+                    background: "var(--vz-card-bg)",
                     overflow: "hidden",
                 }}
             >
@@ -61,8 +61,8 @@ export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
                                 className="d-flex align-items-center justify-content-between gap-3"
                                 style={{
                                     padding: "16px 18px",
-                                    borderRight: !isCompact && index < 3 ? "1px solid #e9ebec" : "none",
-                                    borderBottom: isCompact && index < 3 ? "1px solid #e9ebec" : "none",
+                                    borderRight: !isCompact && index < 3 ? "1px solid var(--vz-border-color)" : "none",
+                                    borderBottom: isCompact && index < 3 ? "1px solid var(--vz-border-color)" : "none",
                                 }}
                             >
                                 <div>

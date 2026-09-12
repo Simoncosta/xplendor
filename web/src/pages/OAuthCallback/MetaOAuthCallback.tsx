@@ -64,16 +64,16 @@ export default function MetaOAuthCallback() {
             alignItems: "center",
             justifyContent: "center",
             fontFamily: "system-ui, sans-serif",
-            background: "#f8f9fa",
+            background: "var(--vz-tertiary-bg)",
             padding: "1rem",
         }}>
             <div style={{
-                background: "#fff",
+                background: "var(--vz-card-bg)",
                 borderRadius: 12,
                 padding: "2rem",
                 maxWidth: 420,
                 width: "100%",
-                border: "1px solid #e9ebec",
+                border: "1px solid var(--vz-border-color)",
                 textAlign: "center",
             }}>
 
@@ -106,7 +106,7 @@ export default function MetaOAuthCallback() {
                                 width: "100%",
                                 padding: "10px 14px",
                                 borderRadius: 8,
-                                border: "1px solid #e9ebec",
+                                border: "1px solid var(--vz-border-color)",
                                 fontSize: 14,
                                 marginBottom: 12,
                                 boxSizing: "border-box",
@@ -118,7 +118,7 @@ export default function MetaOAuthCallback() {
                             style={{
                                 width: "100%",
                                 padding: "10px 0",
-                                background: "#405189",
+                                background: "var(--vz-primary)",
                                 color: "#fff",
                                 border: "none",
                                 borderRadius: 8,
@@ -154,8 +154,8 @@ export default function MetaOAuthCallback() {
                             onClick={() => window.close()}
                             style={{
                                 padding: "8px 24px",
-                                background: "#f8f9fa",
-                                border: "1px solid #e9ebec",
+                                background: "var(--vz-tertiary-bg)",
+                                border: "1px solid var(--vz-border-color)",
                                 borderRadius: 8,
                                 cursor: "pointer",
                                 fontSize: 14,

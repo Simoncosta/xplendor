@@ -14,12 +14,12 @@ const normalizePlatform = (platform: string) => {
 export default function MarketingTopCampaignsCard({ campaigns }: MarketingTopCampaignsCardProps) {
     return (
         <Col xl={6}>
-            <section style={{ border: "1px solid #e9ebec", borderRadius: 16, padding: "16px 18px", background: "#fff" }}>
+            <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
                 <h6 className="mb-3 fw-semibold">Top campaigns</h6>
                 {campaigns.length > 0 ? (
                     <div className="table-responsive">
                         <table className="table table-sm align-middle mb-0">
-                            <thead style={{ background: "#f8fafc" }}>
+                            <thead style={{ background: "var(--vz-tertiary-bg)" }}>
                                 <tr>
                                     <th className="ps-0">Campanha</th>
                                     <th>Plataforma</th>

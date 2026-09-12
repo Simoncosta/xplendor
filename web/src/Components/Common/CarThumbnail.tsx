@@ -59,7 +59,7 @@ const CarThumbnail = ({ src, variant = "row", width, height, className }: Props)
             aspectRatio: "16 / 9",
             borderRadius: "1rem",
             flexShrink: 0,
-            backgroundColor: showPlaceholder ? "#f1f3f5" : undefined,
+            backgroundColor: showPlaceholder ? "var(--vz-tertiary-bg)" : undefined,
             boxShadow: "0 8px 24px rgba(15, 23, 42, 0.08)",
             overflow: "hidden",
         };
@@ -104,7 +104,7 @@ const CarThumbnail = ({ src, variant = "row", width, height, className }: Props)
             width: w,
             height: h,
             flexShrink: 0,
-            backgroundColor: showPlaceholder ? "#f1f3f5" : undefined,
+            backgroundColor: showPlaceholder ? "var(--vz-tertiary-bg)" : undefined,
             overflow: "hidden",
         };
 
@@ -138,7 +138,7 @@ const CarThumbnail = ({ src, variant = "row", width, height, className }: Props)
     const wrapperStyle: React.CSSProperties = {
         position: "relative",
         paddingBottom: "56.25%",
-        background: "#f1f3f5",
+        background: "var(--vz-tertiary-bg)",
     };
 
     if (showPlaceholder) {

@@ -16,6 +16,7 @@ import {
 
 // Select Form
 import Select from "react-select";
+import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 
 // image
 import easyDataIcon from "../../assets/images/icon-easydata.png";
@@ -461,8 +462,8 @@ const CarList = () => {
                 onClick={() => navigate(`/cars/${car.id}/analytics`)}
                 onKeyDown={(e) => { if (e.key === "Enter") navigate(`/cars/${car.id}/analytics`); }}
                 style={{
-                    background: "#fff",
-                    border: "1px solid #e9ebec",
+                    background: "var(--vz-card-bg)",
+                    border: "1px solid var(--vz-border-color)",
                     borderRadius: 16,
                     overflow: "hidden",
                     cursor: "pointer",
@@ -502,10 +503,10 @@ const CarList = () => {
                                 key={chip.label}
                                 style={{
                                     flex: 1,
-                                    border: "1px solid #e9ebec",
+                                    border: "1px solid var(--vz-border-color)",
                                     borderRadius: 8,
                                     padding: "5px 8px",
-                                    background: "#f8fafc",
+                                    background: "var(--vz-tertiary-bg)",
                                     textAlign: "center",
                                 }}
                             >
@@ -522,7 +523,7 @@ const CarList = () => {
                         ))}
                     </div>
 
-                    <div style={{ borderTop: "1px solid #e9ebec", paddingTop: 10 }}>
+                    <div style={{ borderTop: "1px solid var(--vz-border-color)", paddingTop: 10 }}>
                         <div className="d-flex align-items-center justify-content-between">
                             <span className="text-muted fs-12">
                                 {new Date(car.car_created_at ?? car.created_at).toLocaleDateString("pt-PT", {
@@ -563,6 +564,7 @@ const CarList = () => {
             <div className="filter-choices-input mb-3">
                 <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
                 <Select
+                    styles={reactSelectTheme}
                     placeholder="Selecione as marcas"
                     options={brands}
                     getOptionLabel={(option: any) => option.name}
@@ -577,6 +579,7 @@ const CarList = () => {
             <div className="filter-choices-input mb-4">
                 <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
                 <Select
+                    styles={reactSelectTheme}
                     placeholder="Selecione os modelos"
                     options={models}
                     getOptionLabel={(option: any) => option.name}
@@ -592,6 +595,7 @@ const CarList = () => {
             <div className="filter-choices-input mb-4">
                 <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
                 <Select
+                    styles={reactSelectTheme}
                     inputId="car_status"
                     placeholder="Seleciona um ou mais estados"
                     options={statusFilterOptions}
@@ -606,6 +610,7 @@ const CarList = () => {
             <div className="filter-choices-input mb-4">
                 <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
                 <Select
+                    styles={reactSelectTheme}
                     inputId="car_stock_type"
                     placeholder="Todo o stock"
                     options={stockTypeOptions}
@@ -702,7 +707,7 @@ const CarList = () => {
                                 className="border-0"
                                 style={{
                                     boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                    background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                                    background: "var(--vz-card-bg)",
                                 }}
                             >
                                 <CardHeader
@@ -743,7 +748,7 @@ const CarList = () => {
                             className="border-0 overflow-hidden"
                             style={{
                                 boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                background: "linear-gradient(180deg, #ffffff 0%, #fcfcfd 100%)",
+                                background: "var(--vz-card-bg)",
                             }}
                         >
                             <CardHeader
@@ -789,8 +794,8 @@ const CarList = () => {
                                         <div
                                             className="text-center py-5"
                                             style={{
-                                                background: "#f8f9fa",
-                                                border: "1px dashed #d1d5db",
+                                                background: "var(--vz-tertiary-bg)",
+                                                border: "1px dashed var(--vz-border-color)",
                                                 borderRadius: 12,
                                             }}
                                         >

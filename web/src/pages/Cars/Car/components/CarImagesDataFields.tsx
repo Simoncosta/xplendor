@@ -502,7 +502,7 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                                                 height: 68,
                                                 objectFit: "cover",
                                                 borderRadius: 6,
-                                                border: "1px solid #dee2e6",
+                                                border: "1px solid var(--vz-border-color)",
                                                 display: "block",
                                             }}
                                         />

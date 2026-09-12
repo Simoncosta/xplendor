@@ -53,6 +53,7 @@ use App\Repositories\Contracts\{
     SilentBuyerDetectionRepositoryInterface,
     SupplierRepositoryInterface,
     DocumentTemplateRepositoryInterface,
+    SupportTicketRepositoryInterface,
     VehicleAttributeRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
@@ -90,6 +91,7 @@ use App\Repositories\{
     SilentBuyerDetectionRepository,
     SupplierRepository,
     DocumentTemplateRepository,
+    SupportTicketRepository,
     VehicleAttributeRepository,
     UserInviteRepository,
     UserRepository
@@ -101,6 +103,7 @@ use App\Http\Middleware\CheckCompanyApiToken;
 use App\Http\Middleware\CheckCompanySubscription;
 use App\Http\Middleware\CheckScraperApiToken;
 use App\Http\Middleware\ResolveReportToken;
+use App\Http\Middleware\EnsureSuperAdmin;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -138,6 +141,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SilentBuyerDetectionRepositoryInterface::class, SilentBuyerDetectionRepository::class);
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(DocumentTemplateRepositoryInterface::class, DocumentTemplateRepository::class);
+        $this->app->bind(SupportTicketRepositoryInterface::class, SupportTicketRepository::class);
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);
@@ -181,5 +185,6 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('check_company_subscription', CheckCompanySubscription::class);
         Route::aliasMiddleware('check_scraper_api_token', CheckScraperApiToken::class);
         Route::aliasMiddleware('resolve_report_token', ResolveReportToken::class);
+        Route::aliasMiddleware('ensure_super_admin', EnsureSuperAdmin::class);
     }
 }

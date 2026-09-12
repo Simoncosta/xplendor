@@ -577,7 +577,7 @@ function MetricBox({
                 padding: "12px 14px",
                 borderRadius: "12px",
                 border: "1px solid #eef0f2",
-                background: "#fcfcfd",
+                background: "var(--vz-tertiary-bg)",
             }}
         >
             <span className="text-muted fs-12 d-block mb-1">{label}</span>
@@ -654,7 +654,7 @@ function clearStoredAggregateId(carId: number): void {
 
 const sectionStyle: React.CSSProperties = {
     padding: "16px 18px",
-    border: "1px solid #e9ebec",
+    border: "1px solid var(--vz-border-color)",
     borderRadius: "16px",
-    background: "#fff",
+    background: "var(--vz-card-bg)",
 };

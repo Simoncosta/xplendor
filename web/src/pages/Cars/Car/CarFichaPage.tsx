@@ -143,7 +143,7 @@ export default function CarFichaPage() {
                                         // problema de dados, registado como follow-up para fixar na BD.
                                         { icon: "ri-layout-grid-line", label: "Segmento", val: specs.specs.segment },
                                     ].map((row, idx) => row.val && (
-                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
+                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed var(--vz-border-color)", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "var(--vz-card-bg)" }}>
                                             <i className={`${row.icon} text-primary fs-16 flex-shrink-0`} style={{ width: 20 }} />
                                             <span className="text-muted flex-grow-1">{row.label}</span>
                                             <span className="fw-medium">{row.val}</span>
@@ -171,7 +171,7 @@ export default function CarFichaPage() {
                                         { icon: "ri-truck-line", label: "Origem", val: labelOf(specs.state.origin, ORIGIN_LABELS) },
                                         { icon: "ri-global-line", label: "Quilometragem", val: specs.state.mileage_km ? `${specs.state.mileage_km.toLocaleString("pt-PT")} km` : null },
                                     ].map((row, idx) => row.val != null && (
-                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed #e9ebec", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "#fff" }}>
+                                        <div key={idx} className="d-flex align-items-center gap-2 fs-13" style={{ border: "1px dashed var(--vz-border-color)", borderRadius: "0.4rem", padding: "0.55rem 0.75rem", background: "var(--vz-card-bg)" }}>
                                             <i className={`${row.icon} text-success fs-16 flex-shrink-0`} style={{ width: 20 }} />
                                             <span className="text-muted flex-grow-1">{row.label}</span>
                                             {(row as any).badge
@@ -231,7 +231,7 @@ export default function CarFichaPage() {
                                                 key={img.id}
                                                 src={`${process.env.REACT_APP_PUBLIC_URL ?? ""}${img.url}`}
                                                 alt=""
-                                                style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 6, border: img.is_primary ? "2px solid #405189" : "1px solid #e9ebec", cursor: "pointer" }}
+                                                style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 6, border: img.is_primary ? "2px solid var(--vz-primary)" : "1px solid var(--vz-border-color)", cursor: "pointer" }}
                                             />
                                         ))}
                                     </div>

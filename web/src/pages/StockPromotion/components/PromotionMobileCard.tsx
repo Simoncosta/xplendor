@@ -55,8 +55,8 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
             onClick={() => navigate(`/cars/${candidate.id}/ficha`)}
             onKeyDown={(e) => { if (e.key === "Enter") navigate(`/cars/${candidate.id}/ficha`); }}
             style={{
-                background: "#fff",
-                border: "1px solid #e9ebec",
+                background: "var(--vz-card-bg)",
+                border: "1px solid var(--vz-border-color)",
                 borderRadius: 16,
                 overflow: "hidden",
                 cursor: "pointer",
@@ -99,10 +99,10 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
                     <div
                         style={{
                             flex: 1,
-                            border: "1px solid #e9ebec",
+                            border: "1px solid var(--vz-border-color)",
                             borderRadius: 8,
                             padding: "5px 8px",
-                            background: "#f8fafc",
+                            background: "var(--vz-tertiary-bg)",
                             textAlign: "center",
                         }}
                     >
@@ -119,10 +119,10 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
                     <div
                         style={{
                             flex: 1,
-                            border: "1px solid #e9ebec",
+                            border: "1px solid var(--vz-border-color)",
                             borderRadius: 8,
                             padding: "5px 8px",
-                            background: "#f8fafc",
+                            background: "var(--vz-tertiary-bg)",
                             textAlign: "center",
                         }}
                     >
@@ -139,10 +139,10 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
                     <div
                         style={{
                             flex: 1,
-                            border: "1px solid #e9ebec",
+                            border: "1px solid var(--vz-border-color)",
                             borderRadius: 8,
                             padding: "5px 8px",
-                            background: "#f8fafc",
+                            background: "var(--vz-tertiary-bg)",
                             textAlign: "center",
                         }}
                     >
@@ -162,7 +162,7 @@ const PromotionMobileCard = ({ candidate, companyId, onPriorityChanged }: Props)
                 </div>
 
                 {/* Footer: marcado-por (subtil) + estrela à direita */}
-                <div style={{ borderTop: "1px solid #e9ebec", paddingTop: 10 }}>
+                <div style={{ borderTop: "1px solid var(--vz-border-color)", paddingTop: 10 }}>
                     <div className="d-flex align-items-center justify-content-between">
                         <span className="text-muted fs-12">
                             {candidate.promotion ? (
