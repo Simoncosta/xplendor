@@ -25,7 +25,15 @@ interface ReportData {
     status: string;
     rating: number | null;
     review_message: string | null;
-    company: { name: string | null; logo_path: string | null; google_review_url: string | null };
+    company: {
+        name: string | null;
+        logo_path: string | null;
+        google_review_url: string | null;
+        website: string | null;
+        instagram: string | null;
+        facebook: string | null;
+        youtube: string | null;
+    };
     car: {
         brand: string | null;
         model: string | null;
@@ -141,6 +149,54 @@ function KmDial({ km }: { km: number }) {
             <div className="xsr-gauge-label">
                 <span className="xsr-w-ico xsr-ico-sm"><Icon name="spec" /></span>
                 <span>Quilómetros</span>
+            </div>
+        </div>
+    );
+}
+
+/* Redes sociais do stand — só as preenchidas; se nenhuma, não renderiza. */
+type SocialKind = "website" | "instagram" | "facebook" | "youtube";
+const SOCIAL_ICON: Record<SocialKind, ReactElement> = {
+    website: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" />
+        </svg>
+    ),
+    instagram: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" />
+            <circle cx="17.2" cy="6.8" r="1.1" fill="currentColor" stroke="none" />
+        </svg>
+    ),
+    facebook: (
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14 8.5V7c0-.7.3-1 1-1h1.5V3H14c-2 0-3.5 1.5-3.5 3.7V8.5H8.5v3h2V21H14v-9.5h2.3l.4-3H14z" />
+        </svg>
+    ),
+    youtube: (
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22 8.2a3 3 0 0 0-2.1-2.1C18 5.6 12 5.6 12 5.6s-6 0-7.9.5A3 3 0 0 0 2 8.2 31 31 0 0 0 1.7 12 31 31 0 0 0 2 15.8a3 3 0 0 0 2.1 2.1c1.9.5 7.9.5 7.9.5s6 0 7.9-.5a3 3 0 0 0 2.1-2.1c.3-1.9.3-3.8.3-3.8s0-1.9-.3-3.8zM10 15V9l5.2 3z" />
+        </svg>
+    ),
+};
+const SOCIAL_LABEL: Record<SocialKind, string> = { website: "Website", instagram: "Instagram", facebook: "Facebook", youtube: "YouTube" };
+
+function SocialLinks({ socials }: { socials: Record<SocialKind, string | null> }) {
+    const items = (Object.keys(SOCIAL_ICON) as SocialKind[])
+        .map((k) => ({ k, url: socials[k] }))
+        .filter((i): i is { k: SocialKind; url: string } => !!i.url && i.url.trim() !== "");
+
+    if (items.length === 0) return null;
+
+    return (
+        <div className="xsr-socials-inline">
+            <span className="xsr-socials-label">Siga-nos:</span>
+            <div className="xsr-socials">
+                {items.map(({ k, url }) => (
+                    <a key={k} className="xsr-social" href={url} target="_blank" rel="noopener noreferrer" aria-label={SOCIAL_LABEL[k]}>
+                        {SOCIAL_ICON[k]}
+                    </a>
+                ))}
             </div>
         </div>
     );
@@ -590,6 +646,13 @@ export default function SatisfactionReport() {
                         <p className="xsr-welcome-text">
                             Parabéns pela sua nova viatura! 🎉 Obrigado pela confiança{companyName ? ` na ${companyName}` : ""} — desejamos-lhe muitos quilómetros felizes.
                         </p>
+                        {/* Redes sociais do stand — dentro do próprio card, só as preenchidas. */}
+                        <SocialLinks socials={{
+                            website: data.company.website,
+                            instagram: data.company.instagram,
+                            facebook: data.company.facebook,
+                            youtube: data.company.youtube,
+                        }} />
                     </section>
 
                     {/* Avaliação — estrelas + ramo ≥4/<4 (Incremento 3). */}

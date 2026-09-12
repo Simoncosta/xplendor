@@ -58,6 +58,49 @@ export function confirmDelete(text: string, title = "Eliminar?"): Promise<boolea
     });
 }
 
+/**
+ * Pergunta com campo de texto (substitui `window.prompt`).
+ * Resolve com o valor introduzido, ou `null` se o utilizador cancelar.
+ */
+export async function promptInput(options: {
+    title?: string;
+    inputLabel?: string;
+    initial?: string;
+    confirmText?: string;
+    cancelText?: string;
+    placeholder?: string;
+} = {}): Promise<string | null> {
+    const {
+        title = "Editar",
+        inputLabel = "",
+        initial = "",
+        confirmText = "Guardar",
+        cancelText = "Cancelar",
+        placeholder = "",
+    } = options;
+
+    const result: SweetAlertResult = await Swal.fire({
+        title,
+        input: "text",
+        inputLabel,
+        inputValue: initial,
+        inputPlaceholder: placeholder,
+        showCancelButton: true,
+        confirmButtonText: confirmText,
+        cancelButtonText: cancelText,
+        reverseButtons: true,
+        buttonsStyling: false,
+        customClass: {
+            confirmButton: "btn btn-primary w-xs me-2 mb-1",
+            cancelButton: "btn btn-light w-xs mb-1",
+            input: "form-control",
+        },
+        inputValidator: (value) => (value && value.trim() ? null : "Escreve um valor."),
+    });
+
+    return result.isConfirmed ? String(result.value ?? "").trim() : null;
+}
+
 /** Aviso simples (substitui `window.alert`). */
 export function alertMessage(text: string, title = "Aviso", icon: SweetAlertIcon = "info"): Promise<SweetAlertResult> {
     return Swal.fire({

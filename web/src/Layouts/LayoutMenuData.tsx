@@ -199,6 +199,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "document-templates",
+            label: "Modelos de documento",
+            icon: "ri-file-word-2-line",
+            link: "/document-templates",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('DocumentTemplates');
+            }
+        },
+        {
             id: "expense-categories",
             label: "Categorias de Despesa",
             icon: "ri-price-tag-3-line",

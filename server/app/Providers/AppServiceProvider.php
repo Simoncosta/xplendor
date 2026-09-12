@@ -52,6 +52,7 @@ use App\Repositories\Contracts\{
     ScraperExecutionRepositoryInterface,
     SilentBuyerDetectionRepositoryInterface,
     SupplierRepositoryInterface,
+    DocumentTemplateRepositoryInterface,
     VehicleAttributeRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
@@ -88,6 +89,7 @@ use App\Repositories\{
     ScraperExecutionRepository,
     SilentBuyerDetectionRepository,
     SupplierRepository,
+    DocumentTemplateRepository,
     VehicleAttributeRepository,
     UserInviteRepository,
     UserRepository
@@ -135,6 +137,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ScraperExecutionRepositoryInterface::class, ScraperExecutionRepository::class);
         $this->app->bind(SilentBuyerDetectionRepositoryInterface::class, SilentBuyerDetectionRepository::class);
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
+        $this->app->bind(DocumentTemplateRepositoryInterface::class, DocumentTemplateRepository::class);
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

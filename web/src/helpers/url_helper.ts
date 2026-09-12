@@ -28,6 +28,8 @@ export const GET_SUPPLIERS = "/suppliers";
 
 // CUSTOMERS (DMS — clientes)
 export const GET_CUSTOMERS = "/customers";
+// DMS Caminho B — modelos de documento .docx
+export const GET_DOCUMENT_TEMPLATES = "/document-templates";
 
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const GET_EXPENSE_CATEGORIES = "/expense-categories";

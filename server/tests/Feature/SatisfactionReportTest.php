@@ -153,6 +153,23 @@ class SatisfactionReportTest extends TestCase
         $this->assertSame($this->sale->sold_at->toDateString(), $res->json('data.warranty.start_date'));
     }
 
+    public function test_public_endpoint_exposes_company_socials_when_set(): void
+    {
+        $this->company->update(['instagram' => 'https://instagram.com/stand', 'facebook' => 'https://fb.com/stand']);
+        $token = SatisfactionReport::generateToken();
+        SatisfactionReport::create([
+            'company_id' => $this->company->id, 'car_sale_id' => $this->sale->id, 'car_id' => $this->car->id,
+            'public_token' => $token, 'status' => 'pending', 'expires_at' => now()->addDays(90),
+        ]);
+
+        $res = $this->getJson("/api/public/report/{$token}");
+        $res->assertStatus(200)
+            ->assertJsonPath('data.company.instagram', 'https://instagram.com/stand')
+            ->assertJsonPath('data.company.facebook', 'https://fb.com/stand')
+            ->assertJsonPath('data.company.website', null)
+            ->assertJsonPath('data.company.youtube', null);
+    }
+
     public function test_public_endpoint_marks_opened(): void
     {
         $token = SatisfactionReport::generateToken();

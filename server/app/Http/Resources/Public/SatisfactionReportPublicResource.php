@@ -45,6 +45,11 @@ class SatisfactionReportPublicResource extends JsonResource
                 'name'              => $company?->fiscal_name,
                 'logo_path'         => $company?->logo_path,
                 'google_review_url' => $company?->google_review_url,
+                // Redes sociais do STAND (links públicos, não PII).
+                'website'           => $company?->website,
+                'instagram'         => $company?->instagram,
+                'facebook'          => $company?->facebook,
+                'youtube'           => $company?->youtube,
             ],
             'car' => [
                 'brand'             => $car?->brand?->name,

@@ -147,6 +147,20 @@ export const updateCustomer = (companyId: number, id: number, data: any) =>
 export const deleteCustomer = (companyId: number, id: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}`);
 
+// DMS Caminho B — modelos de documento .docx
+export const getDocumentTemplates = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES);
+export const getDocumentTemplateVariables = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES + `/variables`);
+export const createDocumentTemplate = (companyId: number, data: FormData) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const replaceDocumentTemplateFile = (companyId: number, id: number, data: FormData) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES + `/${id}/replace`, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const updateDocumentTemplate = (companyId: number, id: number, data: any) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES + `/${id}`, data);
+export const deleteDocumentTemplate = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_DOCUMENT_TEMPLATES + `/${id}`);
+
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, params);

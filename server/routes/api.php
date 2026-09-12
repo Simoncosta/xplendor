@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\V1\{
     CustomerController,
     SaleDocumentController,
     SatisfactionReportController,
+    DocumentTemplateController,
     ExpenseCategoryController,
     ExpenseController,
     ScraperController,
@@ -90,6 +91,8 @@ Route::prefix('v1')->group(function () {
                 // Fotos que o cliente carregou no relatório (o stand vê na Ficha).
                 Route::get('/cars/{carId}/satisfaction-report/photos', [SatisfactionReportController::class, 'photos']);
                 Route::get('/cars/{carId}/satisfaction-report/review', [SatisfactionReportController::class, 'review']);
+                // DMS Caminho B — gerar documento preenchido (modelo + venda) → download .docx.
+                Route::post('/cars/{carId}/document-templates/{templateId}/generate', [DocumentTemplateController::class, 'generate']);
                 // Envio do link ao cliente (email via queue) + registo de envio (WhatsApp).
                 Route::post('/cars/{carId}/satisfaction-report/send-email', [SatisfactionReportController::class, 'sendEmail']);
                 Route::post('/cars/{carId}/satisfaction-report/mark-sent', [SatisfactionReportController::class, 'markSent']);
@@ -147,6 +150,15 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('/blogs', BlogController::class);
                 // DMS sub-fase 1c.1 — Fornecedores (base para despesas).
                 Route::apiResource('/suppliers', SupplierController::class);
+
+                // DMS Caminho B — modelos de documento .docx (gestão na empresa).
+                Route::get('/document-templates/variables', [DocumentTemplateController::class, 'variables']);
+                Route::get('/document-templates/example', [DocumentTemplateController::class, 'example']);
+                Route::get('/document-templates', [DocumentTemplateController::class, 'index']);
+                Route::post('/document-templates', [DocumentTemplateController::class, 'store']);
+                Route::post('/document-templates/{template}/replace', [DocumentTemplateController::class, 'replaceFile']);
+                Route::match(['put', 'patch'], '/document-templates/{template}', [DocumentTemplateController::class, 'update']);
+                Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
                 // DMS — Clientes (base para documentos de venda, Fase 3).
                 Route::apiResource('/customers', CustomerController::class);
                 // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).

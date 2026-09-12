@@ -43,6 +43,8 @@ import UserUpdate from "pages/Users/User/UserUpdate";
 import SupplierList from "pages/Suppliers/SupplierList";
 // Customers (DMS)
 import CustomerList from "pages/Customers/CustomerList";
+// Document templates (DMS Caminho B)
+import DocumentTemplatesList from "pages/DocumentTemplates/DocumentTemplatesList";
 // Expense categories (DMS 1c.2a)
 import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
 // Expenses (DMS 1c.2b)
@@ -123,6 +125,9 @@ const authProtectedRoutes = [
 
     // Customers (DMS)
     { path: "/customers", component: <CustomerList /> },
+
+    // Document templates (DMS Caminho B)
+    { path: "/document-templates", component: <DocumentTemplatesList /> },
 
     // Expense categories (DMS 1c.2a)
     { path: "/expense-categories", component: <ExpenseCategoryList /> },

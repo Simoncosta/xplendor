@@ -270,6 +270,26 @@
 /* ---------- Mensagem do stand ---------- */
 .xsr-welcome-text { margin: 0; font-size: 15px; line-height: 1.6; color: var(--xsr-ink-soft); }
 
+/* ---------- Redes sociais do stand (dentro do card "Uma palavra do stand") ---------- */
+.xsr-socials-inline {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid var(--xsr-line);
+}
+.xsr-socials-label { font-size: 13px; font-weight: 600; color: var(--xsr-ink-soft); }
+.xsr-socials { display: flex; flex-wrap: wrap; gap: 10px; }
+.xsr-social {
+    width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: #f4f5f7;
+    color: var(--xsr-ink);
+    transition: background .15s ease, color .15s ease, transform .12s ease;
+}
+.xsr-social svg { width: 21px; height: 21px; display: block; }
+.xsr-social:hover { background: var(--xsr-accent-soft); color: var(--xsr-accent-ink); }
+.xsr-social:active { transform: scale(.92); }
+
 /* ---------- Placeholders "Em breve" ---------- */
 .xsr-soon-pill {
     flex: 0 0 auto;
