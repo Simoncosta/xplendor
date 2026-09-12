@@ -128,6 +128,15 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
                     label="Esta empresa trabalha com IVA"
                 />
             </Col>
+            <Col lg={12} className="mb-2">
+                <XInput
+                    type="url"
+                    name="google_review_url"
+                    label="Link de avaliação do Google Business"
+                    hint='O link "Deixar avaliação" do teu Perfil de Empresa no Google (Perfil de Empresa → Pedir avaliações → copiar link). Usado no relatório de pós-venda quando o cliente dá 4 ou 5 estrelas.'
+                    placeholder="https://g.page/r/..."
+                />
+            </Col>
             <div className="mt-4 mb-2 border-bottom pb-2">
                 <h5 className="card-title">Social</h5>
             </div>

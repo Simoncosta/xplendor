@@ -20,6 +20,8 @@ class StoreCarSaleRequest extends FormRequest
         return array_merge($carRules, [
             'sale_price' => ['nullable', 'numeric', 'min:0'],
             'sold_at' => ['nullable', 'date'],
+            // DMS — cliente da venda (scoped à empresa da rota).
+            'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')->where('company_id', (int) $this->route('id'))],
             'buyer_age' => ['nullable', 'integer', 'min:18', 'max:120'],
             'buyer_gender' => ['required', Rule::in(['male', 'female', 'company'])],
             'buyer_age_range' => ['required', Rule::in(['18-30', '31-45', '46-60', '60+'])],

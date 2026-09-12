@@ -22,7 +22,9 @@ import CarUpdate from "pages/Cars/Car/CarUpdate";
 import CarAnalytics from "pages/Cars/Car/CarAnalytics";
 import CarIntelligencePage from "pages/Cars/Car/CarIntelligencePage";
 import CarFichaPage from "pages/Cars/Car/CarFichaPage";
+import CarDocumentsPage from "pages/Cars/Car/CarDocumentsPage";
 import CarPrintSheet from "pages/Cars/Car/CarPrintSheet";
+import SaleDocumentPrint from "pages/Cars/Car/documents/SaleDocumentPrint";
 import ActionCenterPage from "pages/Actions/ActionCenterPage";
 
 // Users
@@ -32,11 +34,15 @@ import UsersList from "pages/Users/UsersList";
 import Landing from "pages/Landing";
 import LandingMotorhomes from "pages/LandingMotorhomes";
 import PrivacyPolicy from "pages/Privacy";
+// Pós-venda — relatório público de satisfação (sem auth)
+import SatisfactionReport from "pages/SatisfactionReport";
 import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
 
 // Suppliers (DMS 1c.1)
 import SupplierList from "pages/Suppliers/SupplierList";
+// Customers (DMS)
+import CustomerList from "pages/Customers/CustomerList";
 // Expense categories (DMS 1c.2a)
 import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
 // Expenses (DMS 1c.2b)
@@ -86,9 +92,13 @@ const authProtectedRoutes = [
     { path: "/cars/:id/intelligence", component: <CarIntelligencePage /> },
     { path: "/cars/:id/ads", component: <CarAdsRedirect /> },
     { path: "/cars/:id/ficha", component: <CarFichaPage /> },
+    // DMS Fase 3 — tab Documentos (ficha A4 + documentos de venda).
+    { path: "/cars/:id/documents", component: <CarDocumentsPage /> },
     // Ficha de impressão A4 (2026-06-27) — rota própria com companyId no path
     // para simetria com os endpoints internos que scope por company (sec 11).
     { path: "/companies/:companyId/cars/:id/print-sheet", component: <CarPrintSheet /> },
+    // DMS Fase 3 — documentos de venda (mesma aba, motor de impressão partilhado).
+    { path: "/companies/:companyId/cars/:id/documents/:docId", component: <SaleDocumentPrint /> },
     { path: "/cars/:id/marketing", component: <CarMarketingRedirect /> },
 
     // Leads
@@ -110,6 +120,9 @@ const authProtectedRoutes = [
 
     // Suppliers (DMS 1c.1)
     { path: "/suppliers", component: <SupplierList /> },
+
+    // Customers (DMS)
+    { path: "/customers", component: <CustomerList /> },
 
     // Expense categories (DMS 1c.2a)
     { path: "/expense-categories", component: <ExpenseCategoryList /> },
@@ -147,6 +160,9 @@ const publicRoutes = [
 
     // Privacy Policy
     { path: "/privacy", component: <PrivacyPolicy /> },
+
+    // Pós-venda — relatório público de satisfação (aberto pelo cliente por link)
+    { path: "/r/:token", component: <SatisfactionReport /> },
 ];
 
 export { authProtectedRoutes, publicRoutes };

@@ -106,6 +106,16 @@ class CarSpecsResource extends JsonResource
                 'contact_consent' => (bool) $this->sale->contact_consent,
                 'notes'           => $this->sale->notes,
                 'sold_at'         => $this->sale->sold_at,
+                // DMS — cliente da venda (retro-compat: o FE usa o cliente se
+                // existir, senão os buyer_* legados). Vendas antigas: customer=null.
+                'customer_id'     => $this->sale->customer_id,
+                'customer'        => $this->sale->customer ? [
+                    'id'    => $this->sale->customer->id,
+                    'name'  => $this->sale->customer->name,
+                    'nif'   => $this->sale->customer->nif,
+                    'phone' => $this->sale->customer->phone,
+                    'email' => $this->sale->customer->email,
+                ] : null,
             ] : null),
         ];
     }

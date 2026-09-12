@@ -55,6 +55,14 @@ export const getDashboardStockBreakdown = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_DASHBOARD_APIS + "/stock-breakdown");
 
 // Ficha de impressão A4 (2026-06-27) — endpoint próprio.
+// DMS Fase 2A — margem simples da viatura vendida.
+export const getCarMargin = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/margin`);
+
+// DMS Fase 3 — dados para os documentos de venda (empresa + viatura + cliente).
+export const getSaleDocumentData = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale-document-data`);
+
 export const getCarPrintSheet = (companyId: number, carId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/print-sheet`);
 
@@ -125,6 +133,19 @@ export const updateSupplier = (companyId: number, id: number, data: any) =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`, data);
 export const deleteSupplier = (companyId: number, id: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPLIERS + `/${id}`);
+
+// CUSTOMERS (DMS — clientes). Create/update em JSON (evita o multipart default
+// que converteria booleanos como contact_consent em "true"/"false").
+export const getCustomers = (companyId: number, params?: { perPage?: number; page?: number; search?: string; only_active?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS, params);
+export const showCustomer = (companyId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}`);
+export const createCustomer = (companyId: number, data: any) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS, data, { headers: { "Content-Type": "application/json" } });
+export const updateCustomer = (companyId: number, id: number, data: any) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}`, data);
+export const deleteCustomer = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}`);
 
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>

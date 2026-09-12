@@ -51,6 +51,7 @@ export interface ICompany {
     youtube: string | null;
     facebook: string | null;
     google: string | null;
+    google_review_url: string | null;
 
     lead_hours_pending: string | null;
     lead_distribution: LeadDistribution;

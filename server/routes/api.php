@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Public\{
     CarLeadController as PublicCarLeadController,
     CarViewController,
     NewsletterController as PublicNewsletterController,
+    SatisfactionReportController as PublicSatisfactionReportController,
     TrackController
 };
 use App\Http\Controllers\Api\V1\{
@@ -33,6 +34,9 @@ use App\Http\Controllers\Api\V1\{
     NewsletterController,
     PlanController,
     PromotionRankingController,
+    CustomerController,
+    SaleDocumentController,
+    SatisfactionReportController,
     ExpenseCategoryController,
     ExpenseController,
     ScraperController,
@@ -77,6 +81,18 @@ Route::prefix('v1')->group(function () {
                 Route::post('/carmine-connection/sync', [CarmineConnectionController::class, 'sync']);
                 Route::get('/cars/{carId}/analytics', [CarAnalyticsController::class, 'show']);
                 Route::get('/cars/{carId}/specs', [CarController::class, 'specs']);
+                // DMS Fase 2A — margem simples da viatura vendida.
+                Route::get('/cars/{carId}/margin', [CarController::class, 'margin']);
+                // DMS Fase 3 — dados para os documentos de venda (empresa + viatura + cliente).
+                Route::get('/cars/{carId}/sale-document-data', [SaleDocumentController::class, 'data']);
+                // DMS Pós-venda — cria (ou reaproveita) o relatório de satisfação de uma venda.
+                Route::post('/cars/{carId}/satisfaction-report', [SatisfactionReportController::class, 'store']);
+                // Fotos que o cliente carregou no relatório (o stand vê na Ficha).
+                Route::get('/cars/{carId}/satisfaction-report/photos', [SatisfactionReportController::class, 'photos']);
+                Route::get('/cars/{carId}/satisfaction-report/review', [SatisfactionReportController::class, 'review']);
+                // Envio do link ao cliente (email via queue) + registo de envio (WhatsApp).
+                Route::post('/cars/{carId}/satisfaction-report/send-email', [SatisfactionReportController::class, 'sendEmail']);
+                Route::post('/cars/{carId}/satisfaction-report/mark-sent', [SatisfactionReportController::class, 'markSent']);
                 // Ficha de impressão A4 (2026-06-27) — payload dedicado.
                 Route::get('/cars/{carId}/print-sheet', [CarController::class, 'printSheet']);
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
@@ -131,6 +147,8 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('/blogs', BlogController::class);
                 // DMS sub-fase 1c.1 — Fornecedores (base para despesas).
                 Route::apiResource('/suppliers', SupplierController::class);
+                // DMS — Clientes (base para documentos de venda, Fase 3).
+                Route::apiResource('/customers', CustomerController::class);
                 // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
                 Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
                 Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
@@ -184,6 +202,20 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 
     Route::post('track', [TrackController::class, 'store']);
     Route::post('track/carmine', [TrackController::class, 'storeCarmine']);
+});
+
+// DMS Pós-venda — relatório público de satisfação. Grupo SEPARADO do
+// check_company_api_token: a chave é o token individual do relatório (não o da
+// empresa). Throttle por rota protege contra abuso (upload por terceiro sem login).
+Route::middleware(['resolve_report_token'])->prefix('public')->group(function () {
+    Route::get('report/{token}', [PublicSatisfactionReportController::class, 'show'])
+        ->middleware('throttle:60,1');
+    Route::post('report/{token}/rating', [PublicSatisfactionReportController::class, 'storeRating'])
+        ->middleware('throttle:15,1');
+    Route::post('report/{token}/photos', [PublicSatisfactionReportController::class, 'storePhoto'])
+        ->middleware('throttle:10,1');
+    Route::delete('report/{token}/photos/{photo}', [PublicSatisfactionReportController::class, 'destroyPhoto'])
+        ->middleware('throttle:20,1');
 });
 
 Route::get('/user', function (Request $request) {

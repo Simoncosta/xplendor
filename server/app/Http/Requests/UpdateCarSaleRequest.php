@@ -32,6 +32,8 @@ class UpdateCarSaleRequest extends FormRequest
     {
         return [
             'sale_price'      => ['nullable', 'numeric', 'min:0'],
+            // DMS — cliente da venda (scoped à empresa da rota).
+            'customer_id'     => ['nullable', 'integer', Rule::exists('customers', 'id')->where('company_id', (int) $this->route('id'))],
             'sale_channel'    => ['nullable', Rule::in(['online', 'in_person', 'referral', 'trade_in'])],
             'buyer_name'      => ['nullable', 'string', 'max:255'],
             'buyer_phone'     => ['nullable', 'string', 'max:50'],

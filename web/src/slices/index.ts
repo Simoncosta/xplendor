@@ -15,6 +15,7 @@ import MunicipalityReducer from "./municipalities/reducer";
 import MetaAdsReducer from "./metaAds/reducer";
 import ParishReducer from "./parishes/reducer";
 import SupplierReducer from "./suppliers/reducer";
+import CustomerReducer from "./customers/reducer";
 import ExpenseCategoryReducer from "./expense-categories/reducer";
 import ExpenseReducer from "./expenses/reducer";
 import RegisterInviteReducer from "./auth/register/reducer";
@@ -44,6 +45,7 @@ const rootReducer = combineReducers({
     MetaAds: MetaAdsReducer,
     Parish: ParishReducer,
     Supplier: SupplierReducer,
+    Customer: CustomerReducer,
     ExpenseCategory: ExpenseCategoryReducer,
     Expense: ExpenseReducer,
     User: UserReducer,

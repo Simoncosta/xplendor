@@ -17,6 +17,14 @@ export interface CarSpecsAnalyses {
     analysis: Record<string, unknown> | null;
 }
 
+export interface CarSpecsSaleCustomer {
+    id: number;
+    name: string;
+    nif: string | null;
+    phone: string | null;
+    email: string | null;
+}
+
 export interface CarSpecsSale {
     sale_price: number | null;
     sale_channel: string | null;
@@ -28,6 +36,9 @@ export interface CarSpecsSale {
     contact_consent: boolean;
     notes: string | null;
     sold_at: string | null;
+    // DMS — cliente da venda (retro-compat: null nas vendas antigas → usar buyer_*).
+    customer_id?: number | null;
+    customer?: CarSpecsSaleCustomer | null;
 }
 
 export interface CarSpecs {
@@ -302,6 +313,9 @@ export interface SalesRevenueBucket {
     period: string;
     revenue: number;
     sales_count: number;
+    /** Fase 2A — margem simples do período (só vendas com custo registado). */
+    margin: number;
+    margin_count: number;
 }
 
 export interface SalesRevenueRange {
@@ -315,8 +329,69 @@ export interface SalesRevenue {
     sales_count: number;
     /** Vendas no período sem `sale_price` registado — reportar honestamente. */
     sales_without_value_count: number;
+    // Fase 2A — margem SIMPLES agregada (SEM IVA). `uses_vat` comanda o rótulo.
+    total_margin: number;
+    margin_sales_count: number;
+    /** Vendas com preço mas SEM custo de compra registado (fora da margem). */
+    margin_without_cost_count: number;
+    uses_vat: boolean;
     buckets: SalesRevenueBucket[];
     range: SalesRevenueRange;
+}
+
+// Fase 3 — dados dos documentos de venda (empresa + viatura + cliente).
+export interface SaleDocCompany {
+    fiscal_name: string | null;
+    trade_name: string | null;
+    logo_path: string | null;
+    nipc: string | null;
+    address: string | null;
+    postal_code: string | null;
+    phone: string | null;
+    mobile: string | null;
+    email: string | null;
+    locality: string | null;
+}
+export interface SaleDocCar {
+    brand: string | null;
+    model: string | null;
+    version: string | null;
+    license_plate: string | null;
+    registration_month: number | null;
+    registration_year: number | null;
+}
+export interface SaleDocCustomer {
+    name: string | null;
+    nif: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+    postal_code: string | null;
+    locality: string | null;
+    citizen_card_number: string | null;
+    citizen_card_validity: string | null;
+    birth_date: string | null;
+    nationality: string | null;
+    profession: string | null;
+    marital_status: string | null;
+}
+export interface SaleDocumentData {
+    company: SaleDocCompany | null;
+    car: SaleDocCar | null;
+    customer: SaleDocCustomer | null;
+    sale: { sold_at: string | null } | null;
+}
+
+// Fase 2A — margem por viatura (ficha).
+export interface CarMargin {
+    calculable: boolean;
+    reason: string | null; // not_sold | no_sale_price | no_purchase_price | null
+    sale_price: number | null;
+    purchase_price: number | null;
+    expenses_total: number;
+    expenses_count: number;
+    margin: number | null;
+    uses_vat: boolean;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

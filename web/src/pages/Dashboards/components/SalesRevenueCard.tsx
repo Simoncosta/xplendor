@@ -3,6 +3,7 @@ import ReactApexChart from "react-apexcharts";
 import { Card, CardBody, Col } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { useIsMobile } from "../../../hooks/useIsMobile";
+import { marginLabels } from "helpers/margin";
 import type {
     SalesRevenue,
     SalesRevenueGranularity,
@@ -158,7 +159,11 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
     const buckets = data?.buckets ?? [];
     const hasData = buckets.length > 0;
     const categories = buckets.map((b) => formatBucketLabel(b.period));
-    const series = [{ name: "Faturação", data: buckets.map((b) => Number(b.revenue) || 0) }];
+    const marginLbls = marginLabels(data?.uses_vat ?? false);
+    const series = [
+        { name: "Faturação", data: buckets.map((b) => Number(b.revenue) || 0) },
+        { name: marginLbls.title, data: buckets.map((b) => Number(b.margin) || 0) },
+    ];
 
     const chartOptions: ApexCharts.ApexOptions = {
         chart: { type: "bar", height: 300, toolbar: { show: false }, parentHeightOffset: 0 },
@@ -170,16 +175,9 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                 dataLabels: { position: "top" },
             },
         },
-        dataLabels: {
-            enabled: !isMobile && buckets.length <= 12,
-            offsetY: -18,
-            style: { fontSize: "10px", colors: ["#495057"], fontWeight: 600 },
-            formatter: (val) => {
-                const n = Number(val);
-                return n > 0 ? formatCurrency(n) : "";
-            },
-        },
-        colors: getChartColorsArray('["--vz-success"]'),
+        // 2 séries (faturação + margem) → dataLabels no topo ficariam sobrepostos.
+        dataLabels: { enabled: false },
+        colors: getChartColorsArray('["--vz-success", "--vz-primary"]'),
         xaxis: {
             categories,
             labels: { style: { fontSize: "11px", colors: "#878a99" } },
@@ -203,18 +201,21 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                 return `
                     <div class="px-2 py-2" style="font-size:12px;">
                         <div class="fw-semibold">${formatBucketLabel(b.period)}</div>
-                        <div>${formatCurrency(Number(b.revenue) || 0)}</div>
+                        <div>Faturação: ${formatCurrency(Number(b.revenue) || 0)}</div>
+                        <div>${marginLbls.title}: ${formatCurrency(Number(b.margin) || 0)}</div>
                         <div class="text-muted">${salesText}</div>
                     </div>
                 `;
             },
         },
-        legend: { show: false },
+        legend: { show: true, position: "top", horizontalAlign: "right", fontSize: "12px" },
     };
 
     const totalRevenue = data?.total_revenue ?? 0;
     const salesCount = data?.sales_count ?? 0;
     const withoutValue = data?.sales_without_value_count ?? 0;
+    const totalMargin = data?.total_margin ?? 0;
+    const marginWithoutCost = data?.margin_without_cost_count ?? 0;
     const rangeLabel = preset === "custom" && data
         ? `${data.range.from} → ${data.range.to}`
         : PRESET_LABELS[preset];
@@ -292,6 +293,35 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                                 </small>
                             )}
                         </div>
+                    </div>
+
+                    {/* Fase 2A — margem do período (rótulo honesto conforme uses_vat). */}
+                    <div className="d-flex flex-wrap align-items-baseline gap-3 mb-3 pb-3 border-bottom">
+                        <div>
+                            <p className="text-muted fs-12 mb-1">
+                                {marginLbls.title}
+                                {marginLbls.warning && (
+                                    <span className="text-warning ms-1" title={marginLbls.warning}>
+                                        <i className="ri-information-line" />
+                                    </span>
+                                )}
+                            </p>
+                            <h3 className="mb-0 fw-bold" style={{ color: (Number(totalMargin) || 0) >= 0 ? "#405189" : "#f06548" }}>
+                                {loading ? "—" : formatCurrency(Number(totalMargin) || 0)}
+                            </h3>
+                            {!loading && marginLbls.warning && (
+                                <small className="text-warning d-block mt-1">{marginLbls.warning}</small>
+                            )}
+                        </div>
+                        {!loading && marginWithoutCost > 0 && (
+                            <div className="ms-auto text-end">
+                                <small className="text-warning d-block">
+                                    <i className="ri-information-line me-1" />
+                                    {marginWithoutCost} venda{marginWithoutCost === 1 ? "" : "s"} sem custo registado
+                                </small>
+                                <small className="text-muted">fora do cálculo da margem</small>
+                            </div>
+                        )}
                     </div>
 
                     {loading && (

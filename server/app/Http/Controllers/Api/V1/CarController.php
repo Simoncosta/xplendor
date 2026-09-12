@@ -10,6 +10,8 @@ use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\CarMarketAggregateResource;
 use App\Http\Resources\CarPrintSheetResource;
 use App\Http\Resources\CarSpecsResource;
+use App\Http\Resources\CarMarginResource;
+use App\Services\MarginService;
 use App\Models\Car;
 use App\Models\CarImage;
 use App\Models\CarMarketAggregate;
@@ -404,7 +406,7 @@ class CarController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $car = Car::with(['brand', 'model', 'images', 'sale'])
+        $car = Car::with(['brand', 'model', 'images', 'sale', 'sale.customer'])
             ->find($carId);
 
         if (!$car || (int) $car->company_id !== $companyId) {
@@ -414,6 +416,31 @@ class CarController extends Controller
         return ApiResponse::success(
             CarSpecsResource::make($car)->resolve(),
             'Specs carregados com sucesso.'
+        );
+    }
+
+    /**
+     * DMS Fase 2A — margem SIMPLES da viatura (venda − compra − despesas).
+     * Reutiliza a fonte única MarginService. `uses_vat` acompanha para o FE
+     * decidir o rótulo (lucro vs margem bruta s/ IVA).
+     */
+    public function margin(int $companyId, int $carId, MarginService $marginService): JsonResponse
+    {
+        if (!$this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $result = $marginService->forCar($companyId, $carId);
+
+        if (!$result['found']) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
+        $usesVat = (bool) \Illuminate\Support\Facades\DB::table('companies')->where('id', $companyId)->value('uses_vat');
+
+        return ApiResponse::success(
+            CarMarginResource::make(array_merge($result, ['uses_vat' => $usesVat]))->resolve(),
+            'Margem carregada com sucesso.'
         );
     }
 

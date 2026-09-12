@@ -12,7 +12,10 @@ import {
 } from "reactstrap";
 import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
+import CreatableSelect from "react-select/creatable";
 import { updateCarSale } from "slices/car-sales/thunk";
+import { getCustomers } from "helpers/laravel_helper";
+import QuickAddCustomerModal from "pages/Customers/components/QuickAddCustomerModal";
 import ValidationAlert from "Components/Common/ValidationAlert";
 import {
     parseApiValidationErrors,
@@ -20,6 +23,16 @@ import {
     type ApiValidationError,
 } from "helpers/error_helper";
 import type { CarSpecsSale } from "types/api";
+import type { ICustomer } from "common/models/customer.model";
+
+interface CustomerOption { value: number; label: string; }
+
+// Menu do react-select num portal → não deforma o modal (padrão das despesas).
+const SELECT_PORTAL = {
+    menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
+    menuPosition: "fixed" as const,
+    styles: { menuPortal: (base: any) => ({ ...base, zIndex: 9999 }) },
+};
 
 // Mesmas enums e labels que o SaleInfoCard usa para apresentação. Mantidas
 // locais ao módulo de venda (não vão para helpers/labels.ts global).
@@ -56,6 +69,7 @@ interface SaleEditModalProps {
 }
 
 interface FormState {
+    customer_id: number | null;   // DMS — cliente da venda
     buyer_name: string;
     buyer_phone: string;
     buyer_email: string;
@@ -68,6 +82,7 @@ interface FormState {
 }
 
 const emptyForm: FormState = {
+    customer_id: null,
     buyer_name: "",
     buyer_phone: "",
     buyer_email: "",
@@ -82,6 +97,7 @@ const emptyForm: FormState = {
 const fromInitial = (s: CarSpecsSale | null): FormState => {
     if (!s) return emptyForm;
     return {
+        customer_id:     s.customer_id ?? null,
         buyer_name:      s.buyer_name ?? "",
         buyer_phone:     s.buyer_phone ?? "",
         buyer_email:     s.buyer_email ?? "",
@@ -106,14 +122,39 @@ export default function SaleEditModal({
     const [form, setForm] = useState<FormState>(emptyForm);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<ApiValidationError[] | null>(null);
+    const [customers, setCustomers] = useState<ICustomer[]>([]);
+    const [quickCustomerName, setQuickCustomerName] = useState<string | null>(null);
 
-    // Sempre que o modal abre, pré-preenche com os valores actuais.
+    // Sempre que o modal abre, pré-preenche com os valores actuais + carrega clientes.
     useEffect(() => {
         if (isOpen) {
             setForm(fromInitial(initial));
             setErrors(null);
+            getCustomers(companyId, { only_active: 1 })
+                .then((res: any) => setCustomers((res?.data as ICustomer[]) ?? []))
+                .catch(() => setCustomers([]));
         }
-    }, [isOpen, initial]);
+    }, [isOpen, initial, companyId]);
+
+    const customerOptions: CustomerOption[] = customers.map((c) => ({ value: c.id, label: c.name }));
+    const selectedCustomer = customerOptions.find((o) => o.value === form.customer_id) ?? null;
+
+    // Seleccionar cliente → guarda customer_id e pré-preenche o snapshot buyer_*.
+    const pickCustomer = (c: ICustomer | null) => {
+        setForm((prev) => ({
+            ...prev,
+            customer_id: c?.id ?? null,
+            buyer_name: c ? c.name : prev.buyer_name,
+            buyer_phone: c && c.phone ? c.phone : prev.buyer_phone,
+            buyer_email: c && c.email ? c.email : prev.buyer_email,
+        }));
+    };
+
+    const handleCustomerCreated = (c: ICustomer) => {
+        setCustomers((prev) => [...prev, c]);
+        pickCustomer(c);
+        setQuickCustomerName(null);
+    };
 
     const setField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         setForm((prev) => ({ ...prev, [key]: value }));
@@ -128,6 +169,7 @@ export default function SaleEditModal({
         // Converte strings vazias em null para campos opcionais e parse de
         // sale_price. O backend valida tudo com a UpdateCarSaleRequest.
         const payload: Record<string, unknown> = {
+            customer_id:     form.customer_id,
             buyer_name:      form.buyer_name.trim() || null,
             buyer_phone:     form.buyer_phone.trim() || null,
             buyer_email:     form.buyer_email.trim() || null,
@@ -163,6 +205,28 @@ export default function SaleEditModal({
                     <ValidationAlert errors={errors} onDismiss={() => setErrors(null)} />
 
                     <div className="row g-3">
+                        <div className="col-12">
+                            <FormGroup className="mb-0">
+                                <Label>Cliente</Label>
+                                <CreatableSelect
+                                    isClearable
+                                    placeholder="Procurar ou adicionar cliente…"
+                                    formatCreateLabel={(input: string) => `Adicionar "${input}"`}
+                                    options={customerOptions}
+                                    value={selectedCustomer}
+                                    onChange={(opt: CustomerOption | null) => {
+                                        const c = opt ? customers.find((x) => x.id === opt.value) ?? null : null;
+                                        pickCustomer(c);
+                                    }}
+                                    onCreateOption={(input: string) => setQuickCustomerName(input)}
+                                    classNamePrefix="react-select"
+                                    {...SELECT_PORTAL}
+                                />
+                                <small className="text-muted">
+                                    Liga a venda a um cliente. Os campos abaixo são o registo da venda.
+                                </small>
+                            </FormGroup>
+                        </div>
                         <div className="col-md-6">
                             <FormGroup className="mb-0">
                                 <Label for="sale-buyer-name">Nome do comprador</Label>
@@ -291,6 +355,15 @@ export default function SaleEditModal({
                     </Button>
                 </ModalFooter>
             </Form>
+
+            {/* "Buscar ou criar" cliente — reutiliza o modal de criação rápida. */}
+            <QuickAddCustomerModal
+                isOpen={quickCustomerName !== null}
+                toggle={() => setQuickCustomerName(null)}
+                companyId={companyId}
+                initialName={quickCustomerName ?? ""}
+                onCreated={handleCustomerCreated}
+            />
         </Modal>
     );
 }

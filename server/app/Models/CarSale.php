@@ -10,6 +10,7 @@ class CarSale extends Model
     protected $fillable = [
         'car_id',
         'company_id',
+        'customer_id',
         'sale_price',
         'buyer_gender',
         'buyer_age_range',
@@ -36,5 +37,11 @@ class CarSale extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    // DMS — cliente associado à venda (nullable; vendas antigas ficam sem).
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

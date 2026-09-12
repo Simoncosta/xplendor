@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import SaleInfoCard from "Components/Common/SaleInfoCard";
+import ClientPhotosCard from "./components/ClientPhotosCard";
+import ClientReviewCard from "./components/ClientReviewCard";
 import CarExpensesCard from "./components/CarExpensesCard";
+import CarMarginCard from "./components/CarMarginCard";
 
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
@@ -110,19 +113,10 @@ export default function CarFichaPage() {
                 </Row>
 
                 <Row className="mb-3">
-                    <Col className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <Col>
+                        {/* "Imprimir ficha" migrou para a tab "Documentos"
+                            (lar de tudo o que é imprimível). */}
                         <CarPageNav active="ficha" />
-                        {/* Ficha de impressão A4 (fix 2026-06-27) — navega na
-                            MESMA ABA. Antes usava target="_blank", mas
-                            sessionStorage.authUser (sec 11) é por-aba: a nova
-                            aba abria sem sessão → redirect para /login. Na
-                            página da ficha há botão "Voltar" que regressa. */}
-                        <Link
-                            to={`/companies/${companyId}/cars/${id}/print-sheet`}
-                            className="btn btn-outline-primary btn-sm"
-                        >
-                            <i className="ri-printer-line me-1" /> Imprimir ficha
-                        </Link>
                     </Col>
                 </Row>
 
@@ -259,6 +253,21 @@ export default function CarFichaPage() {
                         onSaved={refreshSpecs}
                     />
                 )}
+
+                {/* DMS Pós-venda — avaliação + fotos que o cliente partilhou. */}
+                {specs.status === "sold" && companyId > 0 && id && (
+                    <ClientReviewCard companyId={companyId} carId={Number(id)} />
+                )}
+                {specs.status === "sold" && companyId > 0 && id && (
+                    <ClientPhotosCard companyId={companyId} carId={Number(id)} />
+                )}
+
+                {/* DMS Fase 2A — margem (só viaturas vendidas). */}
+                {specs.status === "sold" && companyId > 0 && id && (
+                    <CarMarginCard companyId={companyId} carId={Number(id)} />
+                )}
+                {/* DMS Fase 3 — os documentos migraram para a tab "Documentos"
+                    (CarDocumentsPage). A ficha deixou de os alojar. */}
 
                 {/* DMS 1c.2b — despesas desta viatura (car_id automático). */}
                 {companyId > 0 && id && (

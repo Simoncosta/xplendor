@@ -32,6 +32,7 @@ export const COMPANY_CREATE_DEFAULTS: ICompanyUpdatePayload = {
     youtube: null,
     facebook: null,
     google: null,
+    google_review_url: null,
     lead_hours_pending: null,
     lead_distribution: "manual",
     ad_text: null,

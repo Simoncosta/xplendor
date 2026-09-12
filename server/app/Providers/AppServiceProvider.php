@@ -46,6 +46,7 @@ use App\Repositories\Contracts\{
     NewsletterRepositoryInterface,
     ParishRepositoryInterface,
     PlanRepositoryInterface,
+    CustomerRepositoryInterface,
     ExpenseCategoryRepositoryInterface,
     ExpenseRepositoryInterface,
     ScraperExecutionRepositoryInterface,
@@ -81,6 +82,7 @@ use App\Repositories\{
     NewsletterRepository,
     ParishRepository,
     PlanRepository,
+    CustomerRepository,
     ExpenseCategoryRepository,
     ExpenseRepository,
     ScraperExecutionRepository,
@@ -96,6 +98,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\CheckCompanyApiToken;
 use App\Http\Middleware\CheckCompanySubscription;
 use App\Http\Middleware\CheckScraperApiToken;
+use App\Http\Middleware\ResolveReportToken;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -132,6 +135,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ScraperExecutionRepositoryInterface::class, ScraperExecutionRepository::class);
         $this->app->bind(SilentBuyerDetectionRepositoryInterface::class, SilentBuyerDetectionRepository::class);
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
+        $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);
         $this->app->bind(VehicleAttributeRepositoryInterface::class, VehicleAttributeRepository::class);
@@ -173,5 +177,6 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('check_company_api_token', CheckCompanyApiToken::class);
         Route::aliasMiddleware('check_company_subscription', CheckCompanySubscription::class);
         Route::aliasMiddleware('check_scraper_api_token', CheckScraperApiToken::class);
+        Route::aliasMiddleware('resolve_report_token', ResolveReportToken::class);
     }
 }

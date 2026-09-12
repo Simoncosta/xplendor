@@ -1,12 +1,13 @@
 import { Link, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-type NavPage = "analytics" | "intelligence" | "ficha";
+type NavPage = "analytics" | "intelligence" | "ficha" | "documents";
 
 const pages: { key: NavPage; label: string; icon: string }[] = [
     { key: "analytics", label: "Tráfego & Canais", icon: "ri-bar-chart-grouped-line" },
     { key: "intelligence", label: "Mercado & Público", icon: "ri-cpu-line" },
     { key: "ficha", label: "Ficha", icon: "ri-car-line" },
+    { key: "documents", label: "Documentos", icon: "ri-file-text-line" },
 ];
 
 export default function CarPageNav({ active }: { active: NavPage }) {

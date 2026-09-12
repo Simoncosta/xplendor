@@ -189,6 +189,16 @@ const Navdata = () => {
             }
         },
         {
+            id: "customers",
+            label: "Clientes",
+            icon: "ri-user-line",
+            link: "/customers",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Customers');
+            }
+        },
+        {
             id: "expense-categories",
             label: "Categorias de Despesa",
             icon: "ri-price-tag-3-line",

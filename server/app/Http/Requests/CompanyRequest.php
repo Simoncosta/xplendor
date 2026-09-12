@@ -68,6 +68,8 @@ class CompanyRequest extends FormRequest
             'facebook' => ['nullable', 'string', 'max:255'],
             'youtube' => ['nullable', 'string', 'max:255'],
             'google' => ['nullable', 'string', 'max:255'],
+            // DMS Pós-venda — link de avaliação do Google Business (ramo ≥4 estrelas).
+            'google_review_url' => ['nullable', 'url', 'max:255'],
 
             // Leads
             'lead_hours_pending' => ['nullable', 'string', 'max:50'],

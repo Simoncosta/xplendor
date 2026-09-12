@@ -235,40 +235,65 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
     ): array {
         $granularity = $granularity === 'year' ? 'year' : 'month';
         $bucketExpr = $this->salesPeriodBucketExpr('car_sales.sold_at', $granularity);
+        $range = [$fromDate . ' 00:00:00', $toDate . ' 23:59:59'];
 
-        // Agregado total + contadores honestos (com e sem sale_price).
+        // Fase 2A — margem SIMPLES por período (mesma fórmula do MarginService):
+        //   margem = sale_price − cars.purchase_price − Σ(despesas da viatura)
+        // Só entra na margem quando sale_price E purchase_price existem (nulos
+        // honestos — não assumir 0). Despesas: por car_id, não-arquivadas.
+        $marginExpr = 'car_sales.sale_price - cars.purchase_price - COALESCE(exp.exp_total, 0)';
+        $calculable = 'car_sales.sale_price IS NOT NULL AND cars.purchase_price IS NOT NULL';
+
+        // Agregado total: receita (com contadores) + margem (com contadores honestos).
         $totals = DB::table('car_sales')
+            ->join('cars', 'cars.id', '=', 'car_sales.car_id')
+            ->leftJoinSub($this->expenseTotalsSubquery($companyId), 'exp', 'exp.car_id', '=', 'car_sales.car_id')
             ->where('car_sales.company_id', $companyId)
-            ->whereBetween('car_sales.sold_at', [$fromDate . ' 00:00:00', $toDate . ' 23:59:59'])
-            ->selectRaw('
-                COALESCE(SUM(sale_price), 0) AS total_revenue,
+            ->whereBetween('car_sales.sold_at', $range)
+            ->selectRaw("
+                COALESCE(SUM(car_sales.sale_price), 0) AS total_revenue,
                 COUNT(*) AS sales_count,
-                SUM(CASE WHEN sale_price IS NULL THEN 1 ELSE 0 END) AS sales_without_value_count
-            ')
+                SUM(CASE WHEN car_sales.sale_price IS NULL THEN 1 ELSE 0 END) AS sales_without_value_count,
+                COALESCE(SUM(CASE WHEN {$calculable} THEN {$marginExpr} ELSE 0 END), 0) AS total_margin,
+                SUM(CASE WHEN {$calculable} THEN 1 ELSE 0 END) AS margin_sales_count,
+                SUM(CASE WHEN car_sales.sale_price IS NOT NULL AND cars.purchase_price IS NULL THEN 1 ELSE 0 END) AS margin_without_cost_count
+            ")
             ->first();
 
-        // Bucketing — SUM apenas onde sale_price NOT NULL para alimentar o
-        // gráfico de barras (a contagem de vendas inclui null para o tooltip).
+        // Bucketing — receita + margem por período.
         $bucketRows = DB::table('car_sales')
+            ->join('cars', 'cars.id', '=', 'car_sales.car_id')
+            ->leftJoinSub($this->expenseTotalsSubquery($companyId), 'exp', 'exp.car_id', '=', 'car_sales.car_id')
             ->where('car_sales.company_id', $companyId)
-            ->whereBetween('car_sales.sold_at', [$fromDate . ' 00:00:00', $toDate . ' 23:59:59'])
+            ->whereBetween('car_sales.sold_at', $range)
             ->selectRaw("
                 {$bucketExpr} AS period,
-                COALESCE(SUM(sale_price), 0) AS revenue,
-                COUNT(*) AS sales_count
+                COALESCE(SUM(car_sales.sale_price), 0) AS revenue,
+                COUNT(*) AS sales_count,
+                COALESCE(SUM(CASE WHEN {$calculable} THEN {$marginExpr} ELSE 0 END), 0) AS margin,
+                SUM(CASE WHEN {$calculable} THEN 1 ELSE 0 END) AS margin_count
             ")
             ->groupBy(DB::raw($bucketExpr))
             ->orderBy(DB::raw($bucketExpr))
             ->get();
 
+        // uses_vat comanda o RÓTULO no FE (margem bruta s/ IVA vs lucro).
+        $usesVat = (bool) DB::table('companies')->where('id', $companyId)->value('uses_vat');
+
         return [
             'total_revenue'             => (float) ($totals->total_revenue ?? 0),
             'sales_count'               => (int) ($totals->sales_count ?? 0),
             'sales_without_value_count' => (int) ($totals->sales_without_value_count ?? 0),
+            'total_margin'              => (float) ($totals->total_margin ?? 0),
+            'margin_sales_count'        => (int) ($totals->margin_sales_count ?? 0),
+            'margin_without_cost_count' => (int) ($totals->margin_without_cost_count ?? 0),
+            'uses_vat'                  => $usesVat,
             'buckets' => $bucketRows->map(fn ($r) => [
-                'period'      => (string) $r->period,
-                'revenue'     => (float) $r->revenue,
-                'sales_count' => (int) $r->sales_count,
+                'period'       => (string) $r->period,
+                'revenue'      => (float) $r->revenue,
+                'sales_count'  => (int) $r->sales_count,
+                'margin'       => (float) $r->margin,
+                'margin_count' => (int) $r->margin_count,
             ])->all(),
             'range' => [
                 'from'        => $fromDate,
@@ -276,6 +301,19 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'granularity' => $granularity,
             ],
         ];
+    }
+
+    /**
+     * Subquery de totais de despesa por viatura (não-arquivadas, todas as
+     * despesas com car_id). Reutilizada nos dois queries de margem acima.
+     */
+    private function expenseTotalsSubquery(int $companyId): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('expenses')
+            ->select('car_id', DB::raw('SUM(amount) AS exp_total'))
+            ->where('company_id', $companyId)
+            ->where('archived', false)
+            ->groupBy('car_id');
     }
 
     /**

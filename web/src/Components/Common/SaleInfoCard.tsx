@@ -75,13 +75,20 @@ export default function SaleInfoCard({ sale, companyId, carId, onSaved }: SaleIn
         notes: null,
         sold_at: null,
     };
+    // Retro-compat: se a venda está ligada a um Cliente, mostra os dados dele;
+    // senão, os buyer_* legados (vendas antigas).
+    const displayName = safeSale.customer?.name ?? safeSale.buyer_name;
+    const displayPhone = safeSale.customer?.phone ?? safeSale.buyer_phone;
+    const displayEmail = safeSale.customer?.email ?? safeSale.buyer_email;
+
     const rows: Array<{ label: string; value: React.ReactNode | null }> = [
-        { label: "Comprador",        value: safeSale.buyer_name },
-        { label: "Telefone",         value: safeSale.buyer_phone
-            ? <a href={`tel:${safeSale.buyer_phone}`} className="text-decoration-none">{safeSale.buyer_phone}</a>
+        { label: safeSale.customer ? "Cliente" : "Comprador", value: displayName },
+        { label: "NIF",              value: safeSale.customer?.nif ?? null },
+        { label: "Telefone",         value: displayPhone
+            ? <a href={`tel:${displayPhone}`} className="text-decoration-none">{displayPhone}</a>
             : null },
-        { label: "Email",            value: safeSale.buyer_email
-            ? <a href={`mailto:${safeSale.buyer_email}`} className="text-decoration-none">{safeSale.buyer_email}</a>
+        { label: "Email",            value: displayEmail
+            ? <a href={`mailto:${displayEmail}`} className="text-decoration-none">{displayEmail}</a>
             : null },
         { label: "Canal de venda",   value: labelOf(safeSale.sale_channel, SALE_CHANNEL_LABELS) },
         { label: "Data da venda",    value: formatDate(safeSale.sold_at) },

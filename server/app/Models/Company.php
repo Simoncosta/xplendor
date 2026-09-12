@@ -48,6 +48,7 @@ class Company extends Model
         'youtube',
         'facebook',
         'google',
+        'google_review_url',
         'lead_hours_pending',
         'lead_distribution',
         'ad_text',

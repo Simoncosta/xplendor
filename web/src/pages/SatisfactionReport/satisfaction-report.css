@@ -1,0 +1,489 @@
+/*
+ * DMS Pós-venda — Painel Digital do Carro (página pública, a MONTRA).
+ *
+ * ISOLAMENTO TOTAL: tudo vive sob `.xsr`, com reset local + tokens `--xsr-*` e
+ * ícones SVG inline. Zero selectores globais (nada de `body`, `*`, `html`) — não
+ * toca no painel Velzon/Bootstrap.
+ *
+ * Conceito: DASHBOARD modular (cockpit), não página linear. Base clara e
+ * arejada, hero cinematográfico do veículo + widgets em cartões brancos,
+ * preparados para crescer. Mobile-first (empilha em coluna; grelha em ecrã
+ * maior). Verde só em acentos.
+ */
+
+.xsr {
+    --xsr-bg-top: #f6f7f9;
+    --xsr-bg-bottom: #eceef2;
+    --xsr-card: #ffffff;
+    --xsr-ink: #0f1729;
+    --xsr-ink-soft: #667085;
+    --xsr-ink-faint: #98a2b3;
+    --xsr-line: #eef0f3;
+    --xsr-accent: #10b981;          /* verde vivo — presença nos acentos */
+    --xsr-accent-ink: #059669;
+    --xsr-accent-soft: #e6f8f0;
+    --xsr-glow: rgba(16, 185, 129, .38);
+    --xsr-radius: 26px;
+    --xsr-radius-sm: 18px;
+    --xsr-shadow-card: 0 1px 2px rgba(16, 24, 40, .04), 0 14px 34px rgba(16, 24, 40, .07);
+    --xsr-shadow-hero: 0 2px 6px rgba(16, 24, 40, .05), 0 30px 60px rgba(16, 24, 40, .12);
+    --xsr-shadow-soft: 0 6px 20px rgba(16, 24, 40, .12);
+    --xsr-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: linear-gradient(180deg, var(--xsr-bg-top) 0%, var(--xsr-bg-bottom) 100%);
+    color: var(--xsr-ink);
+    font-family: var(--xsr-font);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.xsr *,
+.xsr *::before,
+.xsr *::after { box-sizing: border-box; }
+
+.xsr svg { width: 100%; height: 100%; display: block; }
+
+.xsr-shell {
+    width: 100%;
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 26px 18px 40px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+}
+
+/* ---------- Topo: logo do stand ---------- */
+.xsr-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 52px;
+    margin-bottom: 22px;
+    animation: xsr-fade .6s ease both;
+}
+.xsr-brand { display: flex; align-items: center; justify-content: center; }
+.xsr-brand img { max-height: 52px; max-width: 190px; object-fit: contain; display: block; }
+.xsr-brand-fallback { font-size: 19px; font-weight: 700; letter-spacing: -0.01em; color: var(--xsr-ink); }
+
+/* ---------- Saudação (título do painel) ---------- */
+.xsr-greeting {
+    text-align: center;
+    margin-bottom: 22px;
+    animation: xsr-rise .6s cubic-bezier(.2, .7, .2, 1) both;
+    animation-delay: .04s;
+}
+.xsr-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--xsr-accent-ink);
+    margin-bottom: 8px;
+}
+.xsr-title {
+    margin: 0;
+    font-size: 30px;
+    line-height: 1.12;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    color: var(--xsr-ink);
+}
+.xsr-subline { margin-top: 12px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.xsr-chip {
+    padding: 6px 13px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: var(--xsr-shadow-card);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--xsr-ink);
+}
+
+/* ---------- Grelha do dashboard (mobile-first: 1 coluna) ---------- */
+.xsr-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+    animation: xsr-rise .7s cubic-bezier(.2, .7, .2, 1) both;
+    animation-delay: .08s;
+}
+
+/* ---------- Widget base ---------- */
+.xsr-widget {
+    background: var(--xsr-card);
+    border-radius: var(--xsr-radius);
+    box-shadow: var(--xsr-shadow-card);
+    padding: 22px;
+}
+.xsr-w-head { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.xsr-w-head h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; color: var(--xsr-ink); flex: 1; }
+.xsr-w-ico {
+    flex: 0 0 auto;
+    width: 38px; height: 38px;
+    border-radius: 12px;
+    background: var(--xsr-accent-soft);
+    color: var(--xsr-accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    padding: 9px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, .22);
+}
+
+/* ---------- HERO do veículo ---------- */
+.xsr-hero-widget {
+    padding: 14px;
+    box-shadow: var(--xsr-shadow-hero);
+    background:
+        radial-gradient(120% 80% at 50% 0%, rgba(16, 185, 129, .07) 0%, rgba(16, 185, 129, 0) 60%),
+        var(--xsr-card);
+}
+.xsr-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--xsr-radius-sm);
+    overflow: hidden;
+    background: #eceef2;
+    touch-action: pan-y;
+}
+.xsr-stage img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+    animation: xsr-fade .35s ease;
+}
+.xsr-stage-scrim {
+    position: absolute; inset: auto 0 0 0; height: 34%;
+    background: linear-gradient(180deg, rgba(15, 23, 41, 0) 0%, rgba(15, 23, 41, .28) 100%);
+    pointer-events: none;
+}
+.xsr-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px; height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .94);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    box-shadow: var(--xsr-shadow-soft);
+    color: var(--xsr-ink);
+    font-size: 21px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: transform .15s ease;
+}
+.xsr-nav:active { transform: translateY(-50%) scale(.9); }
+.xsr-nav-prev { left: 12px; }
+.xsr-nav-next { right: 12px; }
+.xsr-counter {
+    position: absolute;
+    bottom: 12px; right: 12px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 41, .55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    color: #fff; font-size: 12px; font-weight: 600; letter-spacing: .02em;
+}
+.xsr-thumbs {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding: 2px 2px 4px;
+    scrollbar-width: none;
+}
+.xsr-thumbs::-webkit-scrollbar { display: none; }
+.xsr-thumb {
+    flex: 0 0 auto;
+    width: 72px;
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    padding: 0;
+    background: #eceef2;
+    cursor: pointer;
+    opacity: .5;
+    transition: opacity .18s ease, border-color .18s ease, transform .18s ease;
+}
+.xsr-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.xsr-thumb.is-active { opacity: 1; border-color: var(--xsr-accent); transform: translateY(-1px); }
+
+.xsr-no-photos {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 48px 20px;
+    text-align: center;
+    color: var(--xsr-ink-soft);
+    font-size: 14px;
+    background: #f7f8fa;
+    border-radius: var(--xsr-radius-sm);
+}
+.xsr-no-photos .xsr-w-ico { width: 46px; height: 46px; }
+
+/* ---------- Ficha do veículo (specs) ---------- */
+.xsr-specs { margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.xsr-specs > div {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--xsr-line);
+}
+.xsr-specs > div:last-child { border-bottom: none; }
+.xsr-specs dt { margin: 0; font-size: 13px; color: var(--xsr-ink-soft); }
+.xsr-specs dd { margin: 0; font-size: 14px; font-weight: 700; color: var(--xsr-ink); text-align: right; }
+
+/* ---------- Cluster de instrumentos (o "tablier") ---------- */
+.xsr-cluster { display: flex; flex-direction: column; gap: 18px; }
+.xsr-instruments { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.xsr-cluster-specs { border-top: 1px solid var(--xsr-line); padding-top: 18px; }
+
+.xsr-gauge { display: flex; flex-direction: column; align-items: center; gap: 12px; flex: 1 1 130px; }
+.xsr-dial { position: relative; width: 130px; height: 130px; }
+.xsr-dial-track { fill: none; stroke: #edeff3; stroke-width: 11; }
+.xsr-dial-fill {
+    fill: none;
+    stroke: var(--xsr-accent);
+    stroke-width: 11;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 5px var(--xsr-glow));
+    transition: stroke-dasharray .7s cubic-bezier(.2, .7, .2, 1);
+}
+.xsr-dial-km { opacity: .9; }
+.xsr-dial-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px;
+}
+.xsr-dial-num { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; color: var(--xsr-ink); line-height: 1; }
+.xsr-dial-num-km { font-size: 25px; }
+.xsr-dial-unit { font-size: 12px; font-weight: 600; color: var(--xsr-ink-soft); }
+.xsr-dial-ended { font-size: 13.5px; font-weight: 700; color: var(--xsr-ink-soft); text-align: center; line-height: 1.25; }
+.xsr-gauge-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--xsr-ink-soft); }
+.xsr-ico-sm { width: 26px; height: 26px; padding: 6px; border-radius: 9px; }
+
+/* ---------- Mensagem do stand ---------- */
+.xsr-welcome-text { margin: 0; font-size: 15px; line-height: 1.6; color: var(--xsr-ink-soft); }
+
+/* ---------- Placeholders "Em breve" ---------- */
+.xsr-soon-pill {
+    flex: 0 0 auto;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    color: var(--xsr-ink-faint);
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+}
+.xsr-soon .xsr-w-ico { background: #f2f4f7; color: var(--xsr-ink-faint); box-shadow: none; }
+.xsr-soon-text { margin: 12px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--xsr-ink-soft); }
+.xsr-stars { display: flex; gap: 8px; }
+.xsr-star { width: 26px; height: 26px; color: #dfe3ea; }
+.xsr-drop {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 26px 16px;
+    border: 1.5px dashed #dbe0e8;
+    border-radius: var(--xsr-radius-sm);
+    color: var(--xsr-ink-faint);
+    font-size: 13.5px;
+    text-align: center;
+}
+.xsr-drop-ico { width: 34px; height: 34px; color: var(--xsr-ink-faint); }
+
+/* ---------- Widget "As suas fotos" (upload do cliente) ---------- */
+.xsr-count-pill {
+    flex: 0 0 auto;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: var(--xsr-accent-soft);
+    color: var(--xsr-accent-ink);
+    font-size: 12px; font-weight: 700; letter-spacing: .02em;
+}
+.xsr-photos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.xsr-photo {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #f1f2f5;
+    box-shadow: inset 0 0 0 1px var(--xsr-line);
+}
+.xsr-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.xsr-photo-del {
+    position: absolute; top: 6px; right: 6px;
+    width: 28px; height: 28px;
+    border: none; border-radius: 50%;
+    background: rgba(15, 23, 41, .62);
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+    color: #fff; font-size: 18px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+}
+.xsr-photo-del:active { transform: scale(.9); }
+.xsr-upload {
+    width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 24px 16px;
+    border: 1.5px dashed #cfe9dd;
+    border-radius: var(--xsr-radius-sm);
+    background: linear-gradient(180deg, var(--xsr-accent-soft) 0%, #ffffff 100%);
+    color: var(--xsr-accent-ink);
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    transition: border-color .15s ease, transform .12s ease;
+}
+.xsr-upload:hover { border-color: var(--xsr-accent); }
+.xsr-upload:active { transform: scale(.99); }
+.xsr-upload:disabled { cursor: default; opacity: .8; }
+.xsr-upload .xsr-drop-ico { color: var(--xsr-accent); }
+.xsr-upload-busy { display: inline-flex; align-items: center; gap: 9px; color: var(--xsr-ink-soft); }
+.xsr-spinner-sm { width: 18px; height: 18px; border-width: 2px; }
+.xsr-consent { margin: 12px 2px 0; font-size: 12.5px; line-height: 1.5; color: var(--xsr-ink-soft); }
+.xsr-error-text { margin: 10px 0 0; font-size: 13px; color: #d92d20; }
+
+/* ---------- Widget "A sua avaliação" (estrelas + ramos) ---------- */
+.xsr-rate-intro { margin: 0 0 10px; font-size: 14px; color: var(--xsr-ink-soft); }
+.xsr-stars-pick { gap: 4px; margin: 2px 0 14px; }
+.xsr-star-btn {
+    width: 46px; height: 46px; padding: 7px;
+    border: none; background: none;
+    color: #d7dbe2; cursor: pointer;
+    transition: transform .12s ease, color .12s ease;
+}
+.xsr-star-btn svg { width: 100%; height: 100%; display: block; }
+.xsr-star-btn.is-on { color: var(--xsr-accent); filter: drop-shadow(0 0 5px var(--xsr-glow)); }
+.xsr-star-btn:active { transform: scale(.86); }
+.xsr-stars-static { gap: 5px; margin: 2px 0 14px; }
+.xsr-stars-static .xsr-star { width: 30px; height: 30px; color: #d7dbe2; }
+.xsr-stars-static .xsr-star.is-on { color: var(--xsr-accent); }
+
+.xsr-textarea {
+    width: 100%;
+    border: 1px solid var(--xsr-line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-family: inherit; font-size: 14px; color: var(--xsr-ink);
+    background: #fbfcfd; resize: vertical; outline: none;
+    transition: border-color .15s ease;
+}
+.xsr-textarea:focus { border-color: var(--xsr-accent); }
+
+.xsr-btn-primary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    margin-top: 14px;
+    padding: 13px 22px;
+    border: none; border-radius: 14px;
+    background: var(--xsr-accent); color: #fff;
+    font-size: 15px; font-weight: 700; text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(16, 185, 129, .28);
+    transition: transform .12s ease, box-shadow .15s ease;
+}
+.xsr-btn-primary:hover { box-shadow: 0 10px 26px rgba(16, 185, 129, .38); }
+.xsr-btn-primary:active { transform: translateY(1px); }
+.xsr-btn-primary:disabled { background: #c7ccd4; box-shadow: none; cursor: default; }
+.xsr-btn-block { width: 100%; }
+
+.xsr-btn-ghost {
+    display: inline-flex; align-items: center; gap: 7px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    border: 1px solid var(--xsr-line); border-radius: 999px;
+    background: #fff; color: var(--xsr-ink);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.xsr-ico-inline { width: 16px; height: 16px; }
+.xsr-rate-thanks { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: var(--xsr-ink-soft); }
+.xsr-review-quote { margin-top: 12px; padding: 14px 16px; background: var(--xsr-accent-soft); border-radius: 14px; }
+.xsr-review-quote p { margin: 0 0 8px; font-size: 14px; font-style: italic; color: var(--xsr-ink); line-height: 1.5; }
+
+/* ---------- Rodapé XPLENDOR (discreto) ---------- */
+.xsr-foot { margin-top: 32px; text-align: center; }
+.xsr-foot a {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--xsr-ink-soft);
+    text-decoration: none;
+    font-size: 13px; letter-spacing: .02em;
+    transition: color .15s ease;
+}
+.xsr-foot a:hover { color: var(--xsr-ink); }
+.xsr-foot strong { color: var(--xsr-ink); font-weight: 800; letter-spacing: .04em; }
+.xsr-foot-spark { width: 16px; height: 16px; color: var(--xsr-accent); display: inline-flex; }
+
+/* ---------- Estados: loading / erro ---------- */
+.xsr-center {
+    min-height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; text-align: center; gap: 18px;
+}
+.xsr-spinner {
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 3px solid #e4e7ec; border-top-color: var(--xsr-accent);
+    animation: xsr-spin .8s linear infinite;
+}
+.xsr-error-card {
+    background: var(--xsr-card);
+    border-radius: var(--xsr-radius);
+    box-shadow: var(--xsr-shadow-card);
+    padding: 40px 30px; max-width: 380px;
+}
+.xsr-error-icon {
+    width: 60px; height: 60px; margin: 0 auto 18px; border-radius: 50%;
+    background: var(--xsr-accent-soft); color: var(--xsr-accent-ink);
+    display: flex; align-items: center; justify-content: center; font-size: 26px;
+}
+.xsr-error-card h2 { margin: 0 0 10px; font-size: 19px; font-weight: 800; letter-spacing: -0.01em; }
+.xsr-error-card p { margin: 0; color: var(--xsr-ink-soft); font-size: 14px; line-height: 1.6; }
+
+@keyframes xsr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes xsr-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes xsr-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .xsr-topbar, .xsr-greeting, .xsr-grid, .xsr-stage img { animation: none; }
+}
+
+/* ---------- Ecrãs maiores: grelha modular de dashboard ---------- */
+@media (min-width: 720px) {
+    .xsr-shell { padding: 40px 24px 52px; }
+    .xsr-title { font-size: 38px; }
+    .xsr-grid { grid-template-columns: 1fr 1fr; gap: 16px; }
+    /* O hero e o cluster ocupam a largura toda — o tablier do painel. */
+    .xsr-hero-widget { grid-column: 1 / -1; }
+    .xsr-stage { aspect-ratio: 16 / 9; }
+    .xsr-widget { padding: 26px; }
+
+    .xsr-cluster { grid-column: 1 / -1; flex-direction: row; align-items: stretch; gap: 30px; }
+    .xsr-instruments { flex: 0 0 auto; gap: 22px; }
+    .xsr-cluster-specs {
+        flex: 1;
+        border-top: none;
+        border-left: 1px solid var(--xsr-line);
+        padding-top: 0;
+        padding-left: 30px;
+        display: flex; flex-direction: column; justify-content: center;
+    }
+}
+
+@media (min-width: 1000px) {
+    /* Widgets de info em 3 colunas abaixo do hero. */
+    .xsr-grid { grid-template-columns: repeat(3, 1fr); }
+    .xsr-stage { aspect-ratio: 21 / 9; }
+}
+
+/* ---------- Telemóvel pequeno ---------- */
+@media (max-width: 380px) {
+    .xsr-shell { padding: 22px 14px 34px; }
+    .xsr-title { font-size: 26px; }
+    .xsr-widget { padding: 18px; }
+    .xsr-hero-widget { padding: 10px; }
+}

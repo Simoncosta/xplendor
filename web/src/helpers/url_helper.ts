@@ -26,6 +26,9 @@ export const GET_BLOGS_APIS = "/blogs";
 // SUPPLIERS (DMS 1c.1)
 export const GET_SUPPLIERS = "/suppliers";
 
+// CUSTOMERS (DMS — clientes)
+export const GET_CUSTOMERS = "/customers";
+
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const GET_EXPENSE_CATEGORIES = "/expense-categories";
 export const GET_EXPENSE_CATEGORIES_SUGGESTED = "/expense-categories/suggested";

@@ -51,10 +51,12 @@ class CarSaleService extends BaseService
         return DB::transaction(function () use ($companyId, $carId, $data) {
             $existing = CarSale::query()->where('car_id', $carId)->first();
 
-            $payload = array_merge($data, [
+            // RGPD — o MESMO gate de consentimento do fecho aplica-se aqui
+            // (antes a edição gravava PII sem verificar — buraco corrigido).
+            $payload = $this->applyBuyerConsentGate(array_merge($data, [
                 'car_id'     => $carId,
                 'company_id' => $companyId,
-            ]);
+            ]));
 
             if ($existing) {
                 $existing->update($payload);
@@ -114,6 +116,11 @@ class CarSaleService extends BaseService
                 'buyer_age' => $data['buyer_age'] ?? null,
                 'force_notification' => true,
             ]);
+
+            // DMS Pós-venda — ao fechar a venda, garante o relatório de
+            // satisfação (token estável). Idempotente: reabrir/reguardar a venda
+            // não muda o link que o cliente já recebeu.
+            \App\Models\SatisfactionReport::ensureForSale($sale);
 
             return $sale->load(['car', 'company']);
         });
@@ -208,20 +215,39 @@ class CarSaleService extends BaseService
 
     private function extractSaleData(array $data, int $companyId, int $carId): array
     {
-        return [
+        // Fecho da venda — mesmo gate de consentimento da edição (applyBuyerConsentGate).
+        return $this->applyBuyerConsentGate([
             'car_id' => $carId,
             'company_id' => $companyId,
+            'customer_id' => $data['customer_id'] ?? null, // DMS — cliente da venda
             'sale_price' => $data['sale_price'] ?? null,
             'buyer_gender' => $data['buyer_gender'],
             'buyer_age_range' => $data['buyer_age_range'],
             'sale_channel' => $data['sale_channel'],
-            'buyer_name' => $data['contact_consent'] ? ($data['buyer_name'] ?? null) : null,
-            'buyer_phone' => $data['contact_consent'] ? ($data['buyer_phone'] ?? null) : null,
-            'buyer_email' => $data['contact_consent'] ? ($data['buyer_email'] ?? null) : null,
+            'buyer_name' => $data['buyer_name'] ?? null,
+            'buyer_phone' => $data['buyer_phone'] ?? null,
+            'buyer_email' => $data['buyer_email'] ?? null,
             'contact_consent' => (bool) ($data['contact_consent'] ?? false),
             'notes' => $data['notes'] ?? null,
             'sold_at' => $data['sold_at'] ?? now(),
-        ];
+        ]);
+    }
+
+    /**
+     * RGPD — gate de consentimento ÚNICO, partilhado pelo fecho (extractSaleData)
+     * e pela edição (updateSale). Sem `contact_consent`, a PII de contacto do
+     * comprador NÃO é gravada. Só actua quando a chave `contact_consent` está
+     * presente no payload (permite updates parciais que não mexem no consentimento).
+     */
+    private function applyBuyerConsentGate(array $sale): array
+    {
+        if (array_key_exists('contact_consent', $sale) && ! (bool) $sale['contact_consent']) {
+            $sale['buyer_name'] = null;
+            $sale['buyer_phone'] = null;
+            $sale['buyer_email'] = null;
+        }
+
+        return $sale;
     }
 
     private function fillTimesToSale(Car $car, Carbon $soldAt): void

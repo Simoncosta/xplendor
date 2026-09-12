@@ -34,10 +34,19 @@ class SalesRevenueResource extends JsonResource
             'total_revenue'             => (float) ($data['total_revenue'] ?? 0),
             'sales_count'               => (int) ($data['sales_count'] ?? 0),
             'sales_without_value_count' => (int) ($data['sales_without_value_count'] ?? 0),
+            // Fase 2A — margem SIMPLES por período (SEM IVA). `uses_vat` comanda
+            // o RÓTULO no FE (margem bruta s/ IVA vs lucro). `margin_without_cost_count`
+            // = vendas sem custo de compra registado (fora da margem, honesto).
+            'total_margin'              => (float) ($data['total_margin'] ?? 0),
+            'margin_sales_count'        => (int) ($data['margin_sales_count'] ?? 0),
+            'margin_without_cost_count' => (int) ($data['margin_without_cost_count'] ?? 0),
+            'uses_vat'                  => (bool) ($data['uses_vat'] ?? false),
             'buckets' => array_map(static fn (array $row): array => [
-                'period'      => (string) $row['period'],
-                'revenue'     => (float) $row['revenue'],
-                'sales_count' => (int) $row['sales_count'],
+                'period'       => (string) $row['period'],
+                'revenue'      => (float) $row['revenue'],
+                'sales_count'  => (int) $row['sales_count'],
+                'margin'       => (float) ($row['margin'] ?? 0),
+                'margin_count' => (int) ($row['margin_count'] ?? 0),
             ], $data['buckets'] ?? []),
             'range' => [
                 'from'        => (string) ($data['range']['from'] ?? ''),
