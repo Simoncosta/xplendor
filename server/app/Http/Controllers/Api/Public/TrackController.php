@@ -242,6 +242,37 @@ class TrackController extends Controller
         }
 
         if (in_array($type, $interactionTypes, true)) {
+            // ── Dedup no ponto de entrada (defesa em profundidade) ──────────────
+            // O site externo pode disparar o mesmo evento 2x em 0-3s (duplo-disparo
+            // técnico). Se já existe uma interação IDÊNTICA (mesma empresa + carro +
+            // tipo + visitante) nos últimos 5 SEGUNDOS, NÃO gravamos de novo e
+            // devolvemos "ok" (o site não recebe erro). Janela curta de propósito:
+            // cliques humanos reais acontecem a 11s+, nunca a <5s — logo esta regra
+            // apanha só o duplo-disparo e NUNCA um clique legítimo. Só se aplica
+            // quando há visitor_id (sem ele não há como identificar o repetido).
+            $visitorId = $trackingCols['visitor_id'] ?? null;
+            if ($visitorId) {
+                $isDuplicate = CarInteraction::query()
+                    ->where('company_id', $companyId)
+                    ->where('interaction_type', $type)
+                    ->where('visitor_id', $visitorId)
+                    ->where('created_at', '>=', now()->subSeconds(5))
+                    ->when(
+                        $carId,
+                        fn ($q) => $q->where('car_id', $carId),
+                        fn ($q) => $q->whereNull('car_id')
+                    )
+                    ->exists();
+
+                if ($isDuplicate) {
+                    return response()->json([
+                        'ok' => true,
+                        'type' => $type,
+                        'deduped' => true,
+                    ], 200);
+                }
+            }
+
             $interaction = CarInteraction::create([
                 'company_id' => $companyId,
                 'car_id' => $carId,
