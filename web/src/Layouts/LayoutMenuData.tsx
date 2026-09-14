@@ -20,6 +20,9 @@ const Navdata = () => {
     const [iscurrentState, setIscurrentState] = useState('Dashboard');
     const [isRoot, setIsRoot] = useState(false);
     const [isFinances, setIsFinances] = useState(false);
+    const [isComercial, setIsComercial] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [isSettings, setIsSettings] = useState(false);
 
     // Helper do Velzon para o modo two-column (icon sidebar). Guardado para não
     // rebentar no layout vertical (onde #two-column-menu pode não existir).
@@ -50,6 +53,15 @@ const Navdata = () => {
         document.body.classList.remove('twocolumn-panel');
         if (iscurrentState !== 'Finances') {
             setIsFinances(false);
+        }
+        if (iscurrentState !== 'Comercial') {
+            setIsComercial(false);
+        }
+        if (iscurrentState !== 'Administracao') {
+            setIsAdmin(false);
+        }
+        if (iscurrentState !== 'Settings') {
+            setIsSettings(false);
         }
         if (iscurrentState !== 'Dashboard') {
             setIsDashboard(false);
@@ -123,86 +135,50 @@ const Navdata = () => {
                 setIscurrentState('Dashboard');
             }
         },
+        // ── Comercial — a operação de stock/vendas/marketing num sub-nav ──
         {
-            id: "cars",
-            label: "Carros",
-            icon: "ri-car-line",
-            link: "/cars",
+            id: "comercial",
+            label: "Comercial",
+            icon: "ri-store-2-line",
+            link: "/#",
+            stateVariables: isComercial,
             click: function (e: any) {
                 e.preventDefault();
-                setIscurrentState('Cars');
-            }
+                setIsComercial(!isComercial);
+                setIscurrentState('Comercial');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "cars", label: "Carros", link: "/cars", parentId: "comercial" },
+                { id: "leads", label: "Leads", link: "/leads", parentId: "comercial" },
+                { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial" },
+                { id: "blogs", label: "Blogs", link: "/blogs", parentId: "comercial" },
+            ],
         },
+        // ── Configurações — gestão da conta/organização + utilitários ──
+        //    "Empresas" é root-only: como o `hidden` NÃO é respeitado em
+        //    subItems, faz-se o gate ao nível do array (spread condicional).
+        //    Não-root vê 3 sub-itens; root vê também "Empresas".
         {
-            id: "leads",
-            label: "Leads",
-            icon: "ri-folder-user-line",
-            link: "/leads",
+            id: "settings",
+            label: "Configurações",
+            icon: "ri-settings-3-line",
+            link: "/#",
+            stateVariables: isSettings,
             click: function (e: any) {
                 e.preventDefault();
-                setIscurrentState('Leads');
-            }
-        },
-        {
-            id: "stock-promotion",
-            label: "Candidatas a promoção",
-            icon: "ri-star-line",
-            link: "/stock/promotion",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('StockPromotion');
-            }
-        },
-        {
-            id: "blogs",
-            label: "Blogs",
-            icon: "bx bxl-blogger",
-            link: "/blogs",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Blogs');
-            }
-        },
-        {
-            id: "company",
-            label: "Empresas",
-            icon: "bx bx-buildings",
-            link: "/companies",
-            hidden: !isRoot,
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Companies');
-            }
-        },
-        {
-            id: "user",
-            label: "Colaboradores",
-            icon: "bx bx-user-circle",
-            link: "/users",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Users');
-            }
-        },
-        {
-            id: "support",
-            label: "Suporte",
-            icon: "ri-customer-service-2-line",
-            link: "/support",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('Support');
-            }
-        },
-        {
-            id: "install-app",
-            label: "Instalar app",
-            icon: "ri-smartphone-line",
-            link: "/install",
-            click: function (e: any) {
-                e.preventDefault();
-                setIscurrentState('InstallApp');
-            }
+                setIsSettings(!isSettings);
+                setIscurrentState('Settings');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                ...(isRoot ? [
+                    { id: "company", label: "Empresas", link: "/companies", parentId: "settings" },
+                ] : []),
+                { id: "user", label: "Colaboradores", link: "/users", parentId: "settings" },
+                { id: "support", label: "Suporte", link: "/support", parentId: "settings" },
+                { id: "install-app", label: "Instalar app", link: "/install", parentId: "settings" },
+            ],
         },
         {
             label: "Finanças",
@@ -228,7 +204,9 @@ const Navdata = () => {
                 { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances" },
             ],
         },
-        // ── Administração + ferramentas internas — visível apenas a role root ──
+        // ── Administração — visível apenas a role root. Sub-nav único; a área
+        //    /admin cresce aqui dentro (novas consolas entram como sub-itens).
+        //    Gating ao nível do array (o `hidden` NÃO é respeitado em subItems).
         ...(isRoot ? [
             {
                 label: "Administração",
@@ -238,11 +216,18 @@ const Navdata = () => {
                 id: "admin",
                 label: "Administração",
                 icon: "ri-shield-star-line",
-                link: "/admin",
+                link: "/#",
+                stateVariables: isAdmin,
                 click: function (e: any) {
                     e.preventDefault();
-                    setIscurrentState('Admin');
+                    setIsAdmin(!isAdmin);
+                    setIscurrentState('Administracao');
+                    updateIconSidebar(e);
                 },
+                subItems: [
+                    { id: "admin-tickets", label: "Tickets", link: "/admin", parentId: "admin" },
+                    { id: "admin-quotes", label: "Orçamentos", link: "/admin/quotes", parentId: "admin" },
+                ],
             },
         ] : []),
         // {

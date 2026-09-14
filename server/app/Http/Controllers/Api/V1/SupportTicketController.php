@@ -125,4 +125,37 @@ class SupportTicketController extends Controller
             'Message added successfully.'
         );
     }
+
+    /**
+     * STAND — decide o orçamento de um ticket "site_change": aprovar ou rejeitar.
+     * É a ÚNICA transição de estado que o stand faz (nunca orça/paga/conclui —
+     * isso é exclusivo do super-admin). O service valida a pré-condição
+     * (só a partir de 'quoted') e devolve 422 se fora de ordem.
+     */
+    public function quoteDecision(Request $request, int $companyId, int $id)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $ticket = $this->findScoped($companyId, $id);
+        if (! $ticket) {
+            return ApiResponse::error('Ticket não encontrado.', 404);
+        }
+
+        $data = $request->validate([
+            'decision' => ['required', 'in:approve,reject'],
+        ]);
+
+        $ticket = $data['decision'] === 'approve'
+            ? $this->service->approveQuote($ticket)
+            : $this->service->rejectQuote($ticket);
+
+        $ticket->load(['user', 'messages.user']);
+
+        return ApiResponse::success(
+            (new SupportTicketResource($ticket))->resolve(),
+            'Quote decision saved successfully.'
+        );
+    }
 }

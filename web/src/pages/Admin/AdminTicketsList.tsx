@@ -5,13 +5,13 @@ import { ToastContainer } from "react-toastify";
 import { getAdminTickets, getAdminTicketsSummary } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType,
-    TICKET_TYPE_META, TICKET_STATUS_META,
+    TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
 
 interface Summary { open: number; in_review: number; pending: number; resolved: number; closed: number; total: number; }
 
 const STATUS_OPTIONS: SupportTicketStatus[] = ["open", "in_review", "resolved", "closed"];
-const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion"];
+const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", "site_change"];
 
 /**
  * DMS — Consola de administração: tickets de suporte de TODAS as empresas.
@@ -134,19 +134,26 @@ const AdminTicketsList = () => {
                             <div className="d-flex flex-column gap-2">
                                 {tickets.map((t) => {
                                     const tm = TICKET_TYPE_META[t.type];
+                                    const isPaid = t.type === "site_change";
+                                    const qm = isPaid && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
                                     const sm = TICKET_STATUS_META[t.status];
                                     return (
                                         <Link key={t.id} to={`/admin/tickets/${t.id}`} className="d-flex align-items-center gap-3 border rounded p-3 text-reset text-decoration-none">
-                                            <span className="avatar-xs flex-shrink-0"><span className="avatar-title bg-light text-primary rounded fs-18"><i className={tm.icon} /></span></span>
+                                            <span className="avatar-xs flex-shrink-0"><span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span></span>
                                             <div className="flex-grow-1 min-w-0">
-                                                <div className="fw-medium text-truncate">{t.title}</div>
+                                                <div className="fw-medium text-truncate">
+                                                    {t.title}
+                                                    {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago{t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}</span>}
+                                                </div>
                                                 <small className="text-muted">
                                                     <span className="fw-semibold">{t.company_name ?? `Empresa #${t.company_id}`}</span>
                                                     {" · "}{tm.label}{t.author_name ? ` · ${t.author_name}` : ""}
                                                     {t.messages_count ? ` · ${t.messages_count} msg` : ""}
                                                 </small>
                                             </div>
-                                            <Badge color={sm.color} className="flex-shrink-0">{sm.label}</Badge>
+                                            {qm
+                                                ? <Badge color={qm.color} className="flex-shrink-0">{qm.label}</Badge>
+                                                : <Badge color={sm.color} className="flex-shrink-0">{sm.label}</Badge>}
                                             <i className="ri-arrow-right-s-line fs-18 text-muted flex-shrink-0" />
                                         </Link>
                                     );

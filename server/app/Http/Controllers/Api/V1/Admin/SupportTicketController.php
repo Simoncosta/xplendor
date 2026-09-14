@@ -138,4 +138,74 @@ class SupportTicketController extends Controller
             'Message added successfully.'
         );
     }
+
+    // ── Camada de orçamento (só site_change, só o super-admin) ───────────────
+
+    /** ADMIN — regista/atualiza o orçamento (horas → valor). */
+    public function setQuote(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+
+        $ticket = SupportTicket::find($ticketId);
+        if (! $ticket) {
+            return ApiResponse::error('Ticket não encontrado.', 404);
+        }
+
+        $data = $request->validate([
+            'estimated_hours' => ['required', 'numeric', 'min:0.25', 'max:1000'],
+        ]);
+
+        $ticket = $this->service->setQuote($ticket, (float) $data['estimated_hours']);
+        $ticket->load(['company', 'user', 'messages.user']);
+
+        return ApiResponse::success(
+            (new SupportTicketResource($ticket))->resolve(),
+            'Quote saved successfully.'
+        );
+    }
+
+    /** ADMIN — marca pago (fora do software) e anexa o PDF da fatura. */
+    public function markPaid(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+
+        $ticket = SupportTicket::find($ticketId);
+        if (! $ticket) {
+            return ApiResponse::error('Ticket não encontrado.', 404);
+        }
+
+        // Fatura opcional, mas se vier tem de ser PDF (não-confiável).
+        if ($request->hasFile('invoice')) {
+            $request->validate([
+                'invoice' => ['file', 'mimes:pdf', 'max:8192'],
+            ]);
+        }
+
+        $ticket = $this->service->markPaid($ticket, $request->file('invoice'));
+        $ticket->load(['company', 'user', 'messages.user']);
+
+        return ApiResponse::success(
+            (new SupportTicketResource($ticket))->resolve(),
+            'Ticket marked as paid successfully.'
+        );
+    }
+
+    /** ADMIN — marca concluído quando o trabalho termina. */
+    public function markCompleted(int $ticketId)
+    {
+        $this->ensureRoot();
+
+        $ticket = SupportTicket::find($ticketId);
+        if (! $ticket) {
+            return ApiResponse::error('Ticket não encontrado.', 404);
+        }
+
+        $ticket = $this->service->markCompleted($ticket);
+        $ticket->load(['company', 'user', 'messages.user']);
+
+        return ApiResponse::success(
+            (new SupportTicketResource($ticket))->resolve(),
+            'Ticket marked as completed successfully.'
+        );
+    }
 }

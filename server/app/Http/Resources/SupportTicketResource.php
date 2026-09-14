@@ -25,6 +25,12 @@ class SupportTicketResource extends JsonResource
             'status'         => $this->status,
             'screenshot_url' => $this->screenshot_path,
             'resolved_at'    => optional($this->resolved_at)->toIso8601String(),
+            // Camada de orçamento — só relevante em tickets 'site_change' (null nos grátis).
+            'quote_status'    => $this->quote_status,
+            'estimated_hours' => $this->estimated_hours !== null ? (float) $this->estimated_hours : null,
+            'quoted_amount'   => $this->quoted_amount !== null ? (float) $this->quoted_amount : null,
+            'invoice_url'     => $this->invoice_path,
+            'hourly_rate'     => $this->type === 'site_change' ? (float) config('tickets.site_change_hourly_rate') : null,
             'author_name'    => $this->whenLoaded('user', fn () => $this->user?->name),
             'messages_count' => $this->whenCounted('messages'),
             'messages'       => SupportTicketMessageResource::collection($this->whenLoaded('messages')),

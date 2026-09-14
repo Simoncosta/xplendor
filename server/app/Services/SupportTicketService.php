@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Mail\SiteChangeDecisionMail;
+use App\Mail\SiteChangeQuotedMail;
 use App\Mail\SupportTicketCreatedMail;
 use App\Mail\SupportTicketMessageMail;
 use App\Models\SupportTicket;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
 
@@ -39,6 +42,10 @@ class SupportTicketService extends BaseService
             $screenshotPath = $this->storeScreenshot($companyId, $screenshot);
         }
 
+        // Tipo pago "site_change" arranca na camada de orçamento (a aguardar
+        // orçamento). Os tipos grátis deixam quote_status null.
+        $isSiteChange = $data['type'] === 'site_change';
+
         $ticket = $this->supportTicketRepository->store([
             'company_id'      => $companyId,
             'user_id'         => $userId,
@@ -47,11 +54,130 @@ class SupportTicketService extends BaseService
             'description'     => $data['description'],
             'status'          => 'open',
             'screenshot_path' => $screenshotPath,
+            'quote_status'    => $isSiteChange ? 'awaiting_quote' : null,
         ]);
 
         $this->notifyCreated($ticket);
 
         return $ticket;
+    }
+
+    /**
+     * ADMIN — regista o orçamento (horas × taxa). Só a partir de awaiting_quote
+     * (ou re-orçar enquanto ainda 'quoted'). Muda quote_status→quoted e avisa
+     * o stand que há valor para aprovar. Devolve o ticket fresco.
+     */
+    public function setQuote(SupportTicket $ticket, float $hours): SupportTicket
+    {
+        $this->assertSiteChange($ticket);
+        if (! in_array($ticket->quote_status, ['awaiting_quote', 'quoted'], true)) {
+            $this->reject('Só é possível orçar um pedido que aguarda orçamento.');
+        }
+
+        $rate   = (float) config('tickets.site_change_hourly_rate');
+        $amount = round($hours * $rate, 2);
+
+        $ticket->update([
+            'estimated_hours' => $hours,
+            'quoted_amount'   => $amount,
+            'quote_status'    => 'quoted',
+            'status'          => 'in_review',   // mantém coerência com o painel admin
+        ]);
+
+        $this->notifyQuoted($ticket);
+
+        return $ticket->fresh();
+    }
+
+    /**
+     * STAND — a Matilde APROVA o orçamento (só a partir de 'quoted').
+     * Fica a aguardar pagamento; avisa o Simon para faturar.
+     */
+    public function approveQuote(SupportTicket $ticket): SupportTicket
+    {
+        $this->assertSiteChange($ticket);
+        if ($ticket->quote_status !== 'quoted') {
+            $this->reject('Este orçamento não está pendente de aprovação.');
+        }
+
+        $ticket->update(['quote_status' => 'approved']);
+        $this->notifyDecision($ticket, approved: true);
+
+        return $ticket->fresh();
+    }
+
+    /**
+     * STAND — a Matilde REJEITA o orçamento (só a partir de 'quoted'). Decisão
+     * do Simon: sem renegociação — o ticket FECHA. Avisa o Simon.
+     */
+    public function rejectQuote(SupportTicket $ticket): SupportTicket
+    {
+        $this->assertSiteChange($ticket);
+        if ($ticket->quote_status !== 'quoted') {
+            $this->reject('Este orçamento não está pendente de aprovação.');
+        }
+
+        $ticket->update([
+            'quote_status' => 'rejected',
+            'status'       => 'closed',   // fecha, sem renegociar para baixo
+        ]);
+        $this->notifyDecision($ticket, approved: false);
+
+        return $ticket->fresh();
+    }
+
+    /**
+     * ADMIN — marca PAGO (pagamento acontece fora do software) e anexa o PDF da
+     * fatura. Só a partir de 'approved'. Passa a "em execução".
+     */
+    public function markPaid(SupportTicket $ticket, ?UploadedFile $invoice): SupportTicket
+    {
+        $this->assertSiteChange($ticket);
+        if ($ticket->quote_status !== 'approved') {
+            $this->reject('Só se marca pago um orçamento aprovado.');
+        }
+
+        $invoicePath = $invoice ? $this->storeInvoice($ticket->company_id, $invoice) : $ticket->invoice_path;
+
+        $ticket->update([
+            'quote_status' => 'paid',
+            'invoice_path' => $invoicePath,
+        ]);
+
+        return $ticket->fresh();
+    }
+
+    /**
+     * ADMIN — marca CONCLUÍDO quando o trabalho termina. Só a partir de 'paid'.
+     * Espelha no status genérico como resolved (grava resolved_at).
+     */
+    public function markCompleted(SupportTicket $ticket): SupportTicket
+    {
+        $this->assertSiteChange($ticket);
+        if ($ticket->quote_status !== 'paid') {
+            $this->reject('Só se conclui um pedido pago/em execução.');
+        }
+
+        $ticket->update([
+            'quote_status' => 'completed',
+            'status'       => 'resolved',
+            'resolved_at'  => now(),
+        ]);
+
+        return $ticket->fresh();
+    }
+
+    private function assertSiteChange(SupportTicket $ticket): void
+    {
+        if (! $ticket->isSiteChange()) {
+            $this->reject('Esta ação só se aplica a pedidos de "Alteração ao site".');
+        }
+    }
+
+    /** Erro de transição inválida → 422 (mensagem em pt-PT). */
+    private function reject(string $message): never
+    {
+        throw ValidationException::withMessages(['quote_status' => [$message]]);
     }
 
     /** Acrescenta uma mensagem à thread. is_staff deriva do role (root = staff). */
@@ -122,6 +248,57 @@ class SupportTicketService extends BaseService
         } catch (\Throwable $e) {
             Log::error('[Support] Falha ao enfileirar email de mensagem', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
         }
+    }
+
+    /** Email ao STAND: há orçamento novo para aprovar (via queue, fail-safe). */
+    private function notifyQuoted(SupportTicket $ticket): void
+    {
+        try {
+            $ticket->loadMissing(['company', 'user']);
+            $to = $ticket->user?->email;
+            if (! $to) {
+                return; // sem email do autor não há a quem notificar
+            }
+            Mail::to($to)->queue(new SiteChangeQuotedMail(
+                ticketId: (int) $ticket->id,
+                ticketTitle: $ticket->title,
+                estimatedHours: (float) $ticket->estimated_hours,
+                quotedAmount: (float) $ticket->quoted_amount,
+                hourlyRate: (float) config('tickets.site_change_hourly_rate'),
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[Support] Falha ao enfileirar email de orçamento', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** Email ao SIMON: o stand aprovou (para faturar) ou rejeitou (fechou). */
+    private function notifyDecision(SupportTicket $ticket, bool $approved): void
+    {
+        try {
+            $ticket->loadMissing(['company', 'user']);
+            Mail::to(self::NOTIFY_RECIPIENT)->queue(new SiteChangeDecisionMail(
+                ticketId: (int) $ticket->id,
+                ticketTitle: $ticket->title,
+                companyName: $ticket->company?->fiscal_name ?? '—',
+                authorName: $ticket->user?->name ?? '—',
+                approved: $approved,
+                quotedAmount: (float) $ticket->quoted_amount,
+            ));
+        } catch (\Throwable $e) {
+            Log::error('[Support] Falha ao enfileirar email de decisão de orçamento', ['ticket_id' => $ticket->id, 'error' => $e->getMessage()]);
+        }
+    }
+
+    /** Fatura em PDF (anexada pelo admin). Validada como pdf no controller. */
+    private function storeInvoice(int $companyId, UploadedFile $file): string
+    {
+        $folder = "company_{$companyId}/ticket-invoices";
+        Storage::disk('public')->makeDirectory($folder);
+
+        $diskPath = "{$folder}/" . now()->format('YmdHisv') . Str::lower(Str::random(6)) . '.pdf';
+        Storage::disk('public')->put($diskPath, file_get_contents($file->getRealPath()));
+
+        return Storage::url($diskPath);
     }
 
     /** Upload não-confiável: re-encode via Intervention (descarta EXIF/payloads). */

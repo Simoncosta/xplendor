@@ -2,8 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import { showSupportTicket, addSupportTicketMessage } from "helpers/laravel_helper";
-import { ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META } from "common/models/supportTicket.model";
+import { showSupportTicket, addSupportTicketMessage, decideSupportTicketQuote } from "helpers/laravel_helper";
+import {
+    ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
+} from "common/models/supportTicket.model";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
@@ -21,6 +23,7 @@ const SupportTicketDetail = () => {
     const [error, setError] = useState(false);
     const [body, setBody] = useState("");
     const [sending, setSending] = useState(false);
+    const [deciding, setDeciding] = useState(false);
 
     useEffect(() => {
         if (!companyId || !id) return;
@@ -44,6 +47,21 @@ const SupportTicketDetail = () => {
             toast.error("Não foi possível enviar a mensagem.");
         } finally {
             setSending(false);
+        }
+    };
+
+    const decide = async (decision: "approve" | "reject") => {
+        if (!id) return;
+        if (decision === "reject" && !window.confirm("Rejeitar este orçamento? O pedido será fechado (sem renegociação).")) return;
+        setDeciding(true);
+        try {
+            const res: any = await decideSupportTicketQuote(companyId, Number(id), decision);
+            setTicket(res?.data ?? ticket);
+            toast.success(decision === "approve" ? "Orçamento aprovado. Vais receber a fatura." : "Orçamento rejeitado.");
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || "Não foi possível registar a decisão.");
+        } finally {
+            setDeciding(false);
         }
     };
 
@@ -117,6 +135,72 @@ const SupportTicketDetail = () => {
                             </CardBody>
                         </Card>
                     </Col>
+
+                    {/* Painel de ORÇAMENTO — só nos tickets pagos (site_change). */}
+                    {ticket.type === "site_change" && (
+                        <Col lg={4}>
+                            <Card>
+                                <CardBody>
+                                    <h6 className="mb-3"><i className="ri-money-euro-circle-line text-warning me-1" />Orçamento</h6>
+
+                                    {ticket.quote_status && (
+                                        <Badge color={QUOTE_STATUS_META[ticket.quote_status].color} className="mb-3">
+                                            {QUOTE_STATUS_META[ticket.quote_status].label}
+                                        </Badge>
+                                    )}
+
+                                    {ticket.quote_status === "awaiting_quote" && (
+                                        <p className="text-muted fs-13 mb-0">
+                                            O teu pedido está a ser analisado. Vais receber aqui o orçamento para aprovar.
+                                            Nenhum trabalho começa sem a tua aprovação e pagamento.
+                                        </p>
+                                    )}
+
+                                    {ticket.quoted_amount != null && ticket.quote_status !== "awaiting_quote" && (
+                                        <>
+                                            <div className="p-3 rounded mb-3" style={{ background: "var(--vz-tertiary-bg)" }}>
+                                                <div className="text-muted fs-12 text-uppercase fw-semibold mb-1">Valor</div>
+                                                <div className="fs-4 fw-semibold">
+                                                    {ticket.estimated_hours ?? "—"}h × {ticket.hourly_rate ?? 25}€ = {formatEuro(ticket.quoted_amount)}
+                                                </div>
+                                                <div className="text-muted fs-12 mt-1">Acresce IVA à taxa legal em vigor.</div>
+                                            </div>
+
+                                            {ticket.quote_status === "quoted" && (
+                                                <div className="d-flex gap-2">
+                                                    <button type="button" className="btn btn-success flex-grow-1" onClick={() => decide("approve")} disabled={deciding}>
+                                                        {deciding ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar</>}
+                                                    </button>
+                                                    <button type="button" className="btn btn-outline-danger flex-grow-1" onClick={() => decide("reject")} disabled={deciding}>
+                                                        <i className="ri-close-line me-1" />Rejeitar
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {ticket.quote_status === "approved" && (
+                                                <p className="text-muted fs-13 mb-0">Aprovado. A aguardar a fatura e a confirmação de pagamento.</p>
+                                            )}
+                                            {ticket.quote_status === "paid" && (
+                                                <p className="text-muted fs-13 mb-0">Pagamento confirmado. O trabalho está em execução.</p>
+                                            )}
+                                            {ticket.quote_status === "completed" && (
+                                                <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
+                                            )}
+                                            {ticket.quote_status === "rejected" && (
+                                                <p className="text-muted fs-13 mb-0">Orçamento rejeitado — pedido fechado.</p>
+                                            )}
+
+                                            {ticket.invoice_url && (
+                                                <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-soft-primary btn-sm w-100 mt-3">
+                                                    <i className="ri-file-pdf-line me-1" />Ver fatura
+                                                </a>
+                                            )}
+                                        </>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    )}
                 </Row>
             </Container>
         </div>

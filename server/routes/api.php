@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\MarketSnapshotController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
 use App\Http\Controllers\Api\V1\Admin\SupportTicketController as AdminSupportTicketController;
+use App\Http\Controllers\Api\V1\Admin\QuoteController as AdminQuoteController;
 use App\Http\Controllers\Api\Public\{
     BlogController as PublicBlogController,
     CarController as PublicCarController,
@@ -170,6 +171,8 @@ Route::prefix('v1')->group(function () {
                 Route::post('/support-tickets', [SupportTicketController::class, 'store']);
                 Route::get('/support-tickets/{ticket}', [SupportTicketController::class, 'show']);
                 Route::post('/support-tickets/{ticket}/messages', [SupportTicketController::class, 'storeMessage']);
+                // Site_change (pago): o stand só aprova/rejeita o orçamento.
+                Route::patch('/support-tickets/{ticket}/quote-decision', [SupportTicketController::class, 'quoteDecision']);
                 // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
                 Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
                 Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
@@ -220,6 +223,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
             Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);
             Route::post('/tickets/{ticket}/messages', [AdminSupportTicketController::class, 'storeMessage']);
+            // Site_change (pago): orçar, marcar pago (+ fatura PDF), concluir.
+            Route::patch('/tickets/{ticket}/quote', [AdminSupportTicketController::class, 'setQuote']);
+            Route::post('/tickets/{ticket}/mark-paid', [AdminSupportTicketController::class, 'markPaid']);
+            Route::patch('/tickets/{ticket}/complete', [AdminSupportTicketController::class, 'markCompleted']);
+
+            // Orçamentos avulsos — gestão comercial (2ª consola da área /admin).
+            Route::get('/quotes/summary', [AdminQuoteController::class, 'summary']);
+            Route::get('/quotes', [AdminQuoteController::class, 'index']);
+            Route::post('/quotes', [AdminQuoteController::class, 'store']);
+            Route::get('/quotes/{quote}', [AdminQuoteController::class, 'show']);
+            Route::match(['put', 'patch'], '/quotes/{quote}', [AdminQuoteController::class, 'update']);
+            Route::patch('/quotes/{quote}/status', [AdminQuoteController::class, 'updateStatus']);
+            Route::delete('/quotes/{quote}', [AdminQuoteController::class, 'destroy']);
         });
     });
 });

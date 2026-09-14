@@ -68,6 +68,7 @@ import SupportTicketDetail from "pages/Support/SupportTicketDetail";
 // Admin (super-admin / root) — consola transversal
 import AdminTicketsList from "pages/Admin/AdminTicketsList";
 import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
+import AdminQuotesList from "pages/Admin/AdminQuotesList";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 
 // OAuth Meta
@@ -153,6 +154,8 @@ const authProtectedRoutes = [
     // Primeira consola: tickets de suporte de todas as empresas.
     { path: "/admin", component: <RequireSuperAdmin><AdminTicketsList /></RequireSuperAdmin> },
     { path: "/admin/tickets/:id", component: <RequireSuperAdmin><AdminTicketDetail /></RequireSuperAdmin> },
+    // 2ª consola da área /admin — gestão comercial (orçamentos avulsos).
+    { path: "/admin/quotes", component: <RequireSuperAdmin><AdminQuotesList /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

@@ -54,6 +54,7 @@ use App\Repositories\Contracts\{
     SupplierRepositoryInterface,
     DocumentTemplateRepositoryInterface,
     SupportTicketRepositoryInterface,
+    QuoteRepositoryInterface,
     VehicleAttributeRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
@@ -92,6 +93,7 @@ use App\Repositories\{
     SupplierRepository,
     DocumentTemplateRepository,
     SupportTicketRepository,
+    QuoteRepository,
     VehicleAttributeRepository,
     UserInviteRepository,
     UserRepository
@@ -142,6 +144,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SupplierRepositoryInterface::class, SupplierRepository::class);
         $this->app->bind(DocumentTemplateRepositoryInterface::class, DocumentTemplateRepository::class);
         $this->app->bind(SupportTicketRepositoryInterface::class, SupportTicketRepository::class);
+        $this->app->bind(QuoteRepositoryInterface::class, QuoteRepository::class);
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

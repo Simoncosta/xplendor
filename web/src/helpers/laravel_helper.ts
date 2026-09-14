@@ -175,6 +175,25 @@ export const updateAdminTicketStatus = (id: number, status: string) =>
 export const addAdminTicketMessage = (id: number, body: string) =>
     api.create(url.GET_ADMIN + `/tickets/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
 
+// DMS — Alteração ao site (pago): ações de ADMIN sobre o orçamento.
+export const setAdminTicketQuote = (id: number, estimatedHours: number) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/quote`, { estimated_hours: estimatedHours });
+export const markAdminTicketPaid = (id: number, data: FormData) =>
+    api.create(url.GET_ADMIN + `/tickets/${id}/mark-paid`, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const markAdminTicketCompleted = (id: number) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/complete`, {});
+
+// XPLENDOR — Orçamentos avulsos (gestão comercial, /admin, só root).
+export const getAdminQuotes = (params?: { status?: string; search?: string }) =>
+    api.get(url.GET_ADMIN + `/quotes`, params);
+export const getAdminQuotesSummary = () => api.get(url.GET_ADMIN + `/quotes/summary`);
+export const showAdminQuote = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}`);
+export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data);
+export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_ADMIN + `/quotes/${id}`, data);
+export const updateAdminQuoteStatus = (id: number, status: string) =>
+    api.update(url.GET_ADMIN + `/quotes/${id}/status`, { status });
+export const deleteAdminQuote = (id: number) => api.delete(url.GET_ADMIN + `/quotes/${id}`);
+
 // DMS — Tickets de suporte (lado stand). Create pode ser multipart (bug + print).
 export const getSupportTickets = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS);
@@ -184,6 +203,10 @@ export const createSupportTicket = (companyId: number, data: FormData) =>
     api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS, data, { headers: { "Content-Type": "multipart/form-data" } });
 export const addSupportTicketMessage = (companyId: number, id: number, body: string) =>
     api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
+
+// DMS — Alteração ao site (pago): o STAND aprova/rejeita o orçamento.
+export const decideSupportTicketQuote = (companyId: number, id: number, decision: "approve" | "reject") =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/${id}/quote-decision`, { decision });
 
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
