@@ -43,6 +43,7 @@ import UserUpdate from "pages/Users/User/UserUpdate";
 import SupplierList from "pages/Suppliers/SupplierList";
 // Customers (DMS)
 import CustomerList from "pages/Customers/CustomerList";
+import CustomerHub from "pages/Customers/CustomerHub";
 // Document templates (DMS Caminho B)
 import DocumentTemplatesList from "pages/DocumentTemplates/DocumentTemplatesList";
 // Expense categories (DMS 1c.2a)
@@ -76,6 +77,8 @@ import CompanyTasksKanban from "pages/Tasks/CompanyTasksKanban";
 import CompanyTaskDetails from "pages/Tasks/CompanyTaskDetails";
 // Tráfego do site do cliente (GA4).
 import WebsiteTraffic from "pages/Analytics/WebsiteTraffic";
+// Meta / Anúncios (leitura dos dados já ingeridos).
+import MetaAds from "pages/Analytics/MetaAds";
 // Admin (super-admin / root) — consola transversal
 import AdminTicketsList from "pages/Admin/AdminTicketsList";
 import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
@@ -153,6 +156,7 @@ const authProtectedRoutes = [
 
     // Customers (DMS)
     { path: "/customers", component: <CustomerList /> },
+    { path: "/customers/:id", component: <CustomerHub /> },
 
     // Document templates (DMS Caminho B)
     { path: "/document-templates", component: <DocumentTemplatesList /> },
@@ -175,6 +179,8 @@ const authProtectedRoutes = [
 
     // Tráfego do site — dados GA4 da propriedade do cliente (scoped por company_id).
     { path: "/trafego-site", component: <WebsiteTraffic /> },
+    // Meta / Anúncios — dados factuais que o pipeline já ingere (scoped por company_id).
+    { path: "/meta-ads", component: <MetaAds /> },
 
     // Consola de administração — SÓ root (segurança real no backend).
     // Primeira consola: tickets de suporte de todas as empresas.

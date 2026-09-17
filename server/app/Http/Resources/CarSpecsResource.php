@@ -106,6 +106,28 @@ class CarSpecsResource extends JsonResource
                 'contact_consent' => (bool) $this->sale->contact_consent,
                 'notes'           => $this->sale->notes,
                 'sold_at'         => $this->sale->sold_at,
+                // Fase 1 — registo de venda enriquecido.
+                'advertised_price' => $this->sale->advertised_price !== null ? (float) $this->sale->advertised_price : null,
+                'discount_amount'  => $this->sale->discount_amount !== null ? (float) $this->sale->discount_amount : null,
+                'offers'           => $this->sale->offers,
+                'has_financing'    => $this->sale->has_financing,
+                'financing_entity' => $this->sale->financing_entity,
+                'financed_amount'  => $this->sale->financed_amount !== null ? (float) $this->sale->financed_amount : null,
+                'has_trade_in'     => $this->sale->has_trade_in,
+                'trade_in_vehicle' => $this->sale->trade_in_vehicle,
+                'trade_in_value'   => $this->sale->trade_in_value !== null ? (float) $this->sale->trade_in_value : null,
+                'first_motorhome'  => $this->sale->first_motorhome,
+                'previous_vehicle' => $this->sale->previous_vehicle,
+                // Origem HERDADA da lead ligada (Fase 2 popula lead_id; null até lá).
+                'lead_id'          => $this->sale->lead_id,
+                'lead_origin'      => $this->sale->lead
+                    ? [
+                        'channel'      => $this->sale->lead->channel,
+                        'source'       => $this->sale->lead->source,
+                        'utm_source'   => $this->sale->lead->utm_source,
+                        'utm_campaign' => $this->sale->lead->utm_campaign,
+                    ]
+                    : null,
                 // DMS — cliente da venda (retro-compat: o FE usa o cliente se
                 // existir, senão os buyer_* legados). Vendas antigas: customer=null.
                 'customer_id'     => $this->sale->customer_id,

@@ -11,7 +11,19 @@ class CarSale extends Model
         'car_id',
         'company_id',
         'customer_id',
+        'lead_id',
         'sale_price',
+        'advertised_price',
+        'discount_amount',
+        'offers',
+        'has_financing',
+        'financing_entity',
+        'financed_amount',
+        'has_trade_in',
+        'trade_in_vehicle',
+        'trade_in_value',
+        'first_motorhome',
+        'previous_vehicle',
         'buyer_gender',
         'buyer_age_range',
         'sale_channel',
@@ -25,6 +37,13 @@ class CarSale extends Model
 
     protected $casts = [
         'sale_price' => 'decimal:2',
+        'advertised_price' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
+        'financed_amount' => 'decimal:2',
+        'trade_in_value' => 'decimal:2',
+        'has_financing' => 'boolean',
+        'has_trade_in' => 'boolean',
+        'first_motorhome' => 'boolean',
         'contact_consent' => 'boolean',
         'sold_at' => 'datetime',
     ];
@@ -43,5 +62,12 @@ class CarSale extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    // Lead que originou a venda (nullable). Fase 2 popula; a origem da venda
+    // herda-se desta lead (channel/utm) quando ligada.
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(CarLead::class, 'lead_id');
     }
 }

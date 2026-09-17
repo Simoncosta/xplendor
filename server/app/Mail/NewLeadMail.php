@@ -14,14 +14,14 @@ class NewLeadMail extends Mailable
 
     public string $carName;
     public string $customerName;
-    public string $customerPhone;
+    public ?string $customerPhone;
     public string $customerEmail;
     public ?string $message;
 
     public function __construct(
         string $carName,
         string $customerName,
-        string $customerPhone,
+        ?string $customerPhone, // leads do site podem não ter telefone → nullable
         string $customerEmail,
         ?string $message = null
     ) {

@@ -14,8 +14,9 @@ import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import CreatableSelect from "react-select/creatable";
 import { updateCarSale } from "slices/car-sales/thunk";
-import { getCustomers } from "helpers/laravel_helper";
+import { getCustomers, getSaleLeadMatch, linkSaleLead } from "helpers/laravel_helper";
 import QuickAddCustomerModal from "pages/Customers/components/QuickAddCustomerModal";
+import PostSaleLeadPrompt, { type LeadCandidate } from "Components/Common/PostSaleLeadPrompt";
 import ValidationAlert from "Components/Common/ValidationAlert";
 import {
     parseApiValidationErrors,
@@ -59,6 +60,13 @@ const BUYER_AGE_RANGE_OPTIONS = [
     { value: "60+",   label: "Mais de 60 anos" },
 ];
 
+// Sim/Não tri-estado ("" = não registado).
+const TRI_OPTIONS = [
+    { value: "",    label: "(não registado)" },
+    { value: "yes", label: "Sim" },
+    { value: "no",  label: "Não" },
+];
+
 interface SaleEditModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -67,6 +75,12 @@ interface SaleEditModalProps {
     carId: number;
     initial: CarSpecsSale | null; // null = criar
 }
+
+// Booleans tri-estado no formulário: "" = (não registado/null), "yes"/"no".
+type Tri = "" | "yes" | "no";
+const boolToTri = (b?: boolean | null): Tri => (b === true ? "yes" : b === false ? "no" : "");
+const triToBool = (t: Tri): boolean | null => (t === "yes" ? true : t === "no" ? false : null);
+const numOrNull = (s: string): number | null => (s.trim() === "" ? null : Number(s));
 
 interface FormState {
     customer_id: number | null;   // DMS — cliente da venda
@@ -79,6 +93,18 @@ interface FormState {
     buyer_age_range: string;
     contact_consent: boolean;
     notes: string;
+    // Fase 1 — registo de venda enriquecido.
+    advertised_price: string;
+    discount_amount: string;
+    offers: string;
+    has_financing: Tri;
+    financing_entity: string;
+    financed_amount: string;
+    has_trade_in: Tri;
+    trade_in_vehicle: string;
+    trade_in_value: string;
+    first_motorhome: Tri;
+    previous_vehicle: string;
 }
 
 const emptyForm: FormState = {
@@ -92,6 +118,17 @@ const emptyForm: FormState = {
     buyer_age_range: "",
     contact_consent: false,
     notes: "",
+    advertised_price: "",
+    discount_amount: "",
+    offers: "",
+    has_financing: "",
+    financing_entity: "",
+    financed_amount: "",
+    has_trade_in: "",
+    trade_in_vehicle: "",
+    trade_in_value: "",
+    first_motorhome: "",
+    previous_vehicle: "",
 };
 
 const fromInitial = (s: CarSpecsSale | null): FormState => {
@@ -107,6 +144,17 @@ const fromInitial = (s: CarSpecsSale | null): FormState => {
         buyer_age_range: s.buyer_age_range ?? "",
         contact_consent: !!s.contact_consent,
         notes:           s.notes ?? "",
+        advertised_price: s.advertised_price != null ? String(s.advertised_price) : "",
+        discount_amount:  s.discount_amount != null ? String(s.discount_amount) : "",
+        offers:           s.offers ?? "",
+        has_financing:    boolToTri(s.has_financing),
+        financing_entity: s.financing_entity ?? "",
+        financed_amount:  s.financed_amount != null ? String(s.financed_amount) : "",
+        has_trade_in:     boolToTri(s.has_trade_in),
+        trade_in_vehicle: s.trade_in_vehicle ?? "",
+        trade_in_value:   s.trade_in_value != null ? String(s.trade_in_value) : "",
+        first_motorhome:  boolToTri(s.first_motorhome),
+        previous_vehicle: s.previous_vehicle ?? "",
     };
 };
 
@@ -124,6 +172,9 @@ export default function SaleEditModal({
     const [errors, setErrors] = useState<ApiValidationError[] | null>(null);
     const [customers, setCustomers] = useState<ICustomer[]>([]);
     const [quickCustomerName, setQuickCustomerName] = useState<string | null>(null);
+    // Fase 2 — CRM: leads abertas do cliente detetadas após gravar a venda.
+    const [leadCandidates, setLeadCandidates] = useState<LeadCandidate[]>([]);
+    const [linkingLead, setLinkingLead] = useState(false);
 
     // Sempre que o modal abre, pré-preenche com os valores actuais + carrega clientes.
     useEffect(() => {
@@ -179,12 +230,38 @@ export default function SaleEditModal({
             buyer_age_range: form.buyer_age_range || null,
             contact_consent: !!form.contact_consent,
             notes:           form.notes.trim() || null,
+            // Fase 1 — registo de venda enriquecido.
+            advertised_price: numOrNull(form.advertised_price),
+            discount_amount:  numOrNull(form.discount_amount),
+            offers:           form.offers.trim() || null,
+            has_financing:    triToBool(form.has_financing),
+            financing_entity: form.financing_entity.trim() || null,
+            financed_amount:  numOrNull(form.financed_amount),
+            has_trade_in:     triToBool(form.has_trade_in),
+            trade_in_vehicle: form.trade_in_vehicle.trim() || null,
+            trade_in_value:   numOrNull(form.trade_in_value),
+            first_motorhome:  triToBool(form.first_motorhome),
+            previous_vehicle: form.previous_vehicle.trim() || null,
         };
 
         try {
             await dispatch(updateCarSale({ companyId, carId, data: payload })).unwrap();
             toast("Dados do comprador actualizados.", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
             onSaved();
+
+            // Fase 2 — CRM: detetar lead aberta do cliente para propor mover ao funil.
+            // Só pergunta se houver candidata; nunca move sozinho. Falha de deteção
+            // não bloqueia o fecho da venda.
+            try {
+                const r: any = await getSaleLeadMatch(companyId, carId);
+                const cands: LeadCandidate[] = r?.data?.candidates ?? [];
+                if (cands.length > 0) {
+                    setLeadCandidates(cands);
+                    setSaving(false);
+                    return; // mantém o modal; o prompt trata do resto
+                }
+            } catch { /* deteção é best-effort */ }
+
             onClose();
         } catch (err) {
             setErrors(parseApiValidationErrors(err));
@@ -193,6 +270,24 @@ export default function SaleEditModal({
             setSaving(false);
         }
     };
+
+    // Confirmação do prompt: mover a lead escolhida para "Venda" no funil.
+    const confirmMoveLead = async (leadId: number) => {
+        setLinkingLead(true);
+        try {
+            await linkSaleLead(companyId, carId, leadId);
+            toast("Lead movida para 'Venda' no funil.", { position: "top-right", className: "bg-success text-white" });
+            onSaved();
+        } catch (err) {
+            showApiErrorToast(err, "Não foi possível mover a lead.");
+        } finally {
+            setLinkingLead(false);
+            setLeadCandidates([]);
+            onClose();
+        }
+    };
+
+    const dismissLeadPrompt = () => { setLeadCandidates([]); onClose(); };
 
     return (
         <Modal isOpen={isOpen} toggle={onClose} centered size="lg" backdrop="static">
@@ -344,6 +439,101 @@ export default function SaleEditModal({
                                 />
                             </FormGroup>
                         </div>
+
+                        {/* ── Registo de venda enriquecido (Fase 1) ─────────── */}
+                        <div className="col-12">
+                            <hr className="my-1" />
+                            <h6 className="text-uppercase text-muted fs-12 mb-0">Registo da venda</h6>
+                        </div>
+
+                        {/* Origem herdada da lead ligada (só leitura; Fase 2 popula) */}
+                        {initial?.lead_origin && (
+                            <div className="col-12">
+                                <div className="p-2 rounded" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}>
+                                    <i className="ri-global-line me-1" />
+                                    <span className="text-muted">Origem (da lead): </span>
+                                    <span className="fw-medium">
+                                        {[initial.lead_origin.channel, initial.lead_origin.utm_source, initial.lead_origin.utm_campaign].filter(Boolean).join(" · ") || "—"}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="col-md-6">
+                            <FormGroup className="mb-0">
+                                <Label for="advertised-price">Valor anunciado (€)</Label>
+                                <Input id="advertised-price" type="number" step="0.01" min="0" value={form.advertised_price} onChange={(e) => setField("advertised_price", e.target.value)} />
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-6">
+                            <FormGroup className="mb-0">
+                                <Label for="discount-amount">Desconto (€)</Label>
+                                <Input id="discount-amount" type="number" step="0.01" min="0" value={form.discount_amount} onChange={(e) => setField("discount_amount", e.target.value)} />
+                            </FormGroup>
+                        </div>
+                        <div className="col-12">
+                            <FormGroup className="mb-0">
+                                <Label for="offers">Ofertas incluídas</Label>
+                                <Input id="offers" type="text" value={form.offers} onChange={(e) => setField("offers", e.target.value)} placeholder="Ex.: tapetes, revisão, jogo de pneus…" />
+                            </FormGroup>
+                        </div>
+
+                        <div className="col-md-4">
+                            <FormGroup className="mb-0">
+                                <Label for="has-financing">Financiamento</Label>
+                                <Input id="has-financing" type="select" value={form.has_financing} onChange={(e) => setField("has_financing", e.target.value as Tri)}>
+                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </Input>
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-4">
+                            <FormGroup className="mb-0">
+                                <Label for="financing-entity">Entidade financeira</Label>
+                                <Input id="financing-entity" type="text" value={form.financing_entity} onChange={(e) => setField("financing_entity", e.target.value)} disabled={form.has_financing !== "yes"} />
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-4">
+                            <FormGroup className="mb-0">
+                                <Label for="financed-amount">Valor financiado (€)</Label>
+                                <Input id="financed-amount" type="number" step="0.01" min="0" value={form.financed_amount} onChange={(e) => setField("financed_amount", e.target.value)} disabled={form.has_financing !== "yes"} />
+                            </FormGroup>
+                        </div>
+
+                        <div className="col-md-4">
+                            <FormGroup className="mb-0">
+                                <Label for="has-trade-in">Retoma</Label>
+                                <Input id="has-trade-in" type="select" value={form.has_trade_in} onChange={(e) => setField("has_trade_in", e.target.value as Tri)}>
+                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </Input>
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-5">
+                            <FormGroup className="mb-0">
+                                <Label for="trade-in-vehicle">Veículo de retoma</Label>
+                                <Input id="trade-in-vehicle" type="text" value={form.trade_in_vehicle} onChange={(e) => setField("trade_in_vehicle", e.target.value)} placeholder="Marca/modelo · matrícula" disabled={form.has_trade_in !== "yes"} />
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-3">
+                            <FormGroup className="mb-0">
+                                <Label for="trade-in-value">Valor retoma (€)</Label>
+                                <Input id="trade-in-value" type="number" step="0.01" min="0" value={form.trade_in_value} onChange={(e) => setField("trade_in_value", e.target.value)} disabled={form.has_trade_in !== "yes"} />
+                            </FormGroup>
+                        </div>
+
+                        <div className="col-md-4">
+                            <FormGroup className="mb-0">
+                                <Label for="first-motorhome">Primeira autocaravana</Label>
+                                <Input id="first-motorhome" type="select" value={form.first_motorhome} onChange={(e) => setField("first_motorhome", e.target.value as Tri)}>
+                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </Input>
+                            </FormGroup>
+                        </div>
+                        <div className="col-md-8">
+                            <FormGroup className="mb-0">
+                                <Label for="previous-vehicle">Veículo anterior</Label>
+                                <Input id="previous-vehicle" type="text" value={form.previous_vehicle} onChange={(e) => setField("previous_vehicle", e.target.value)} placeholder="O que o cliente tinha antes (opcional)" />
+                            </FormGroup>
+                        </div>
                     </div>
                 </ModalBody>
                 <ModalFooter>
@@ -363,6 +553,15 @@ export default function SaleEditModal({
                 companyId={companyId}
                 initialName={quickCustomerName ?? ""}
                 onCreated={handleCustomerCreated}
+            />
+
+            {/* Fase 2 — CRM: propor mover a lead do cliente para "Venda" no funil. */}
+            <PostSaleLeadPrompt
+                isOpen={leadCandidates.length > 0}
+                candidates={leadCandidates}
+                saving={linkingLead}
+                onConfirm={confirmMoveLead}
+                onCancel={dismissLeadPrompt}
             />
         </Modal>
     );

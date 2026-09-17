@@ -131,7 +131,7 @@ const TicketsKanban: React.FC<Props> = ({
                                                                                     <DropdownToggle tag="a" className="text-reset" role="button">
                                                                                         <i className="ri-more-fill" />
                                                                                     </DropdownToggle>
-                                                                                    <DropdownMenu className="dropdown-menu-end">
+                                                                                    <DropdownMenu container="body" strategy="fixed" className="dropdown-menu-end kanban-card-menu">
                                                                                         <DropdownItem header>Reclassificar tipo</DropdownItem>
                                                                                         {TYPE_KEYS.map((k) => (
                                                                                             <DropdownItem key={k} active={t.type === k}

@@ -29,7 +29,7 @@ export const getLeadsPaginate = createAsyncThunk(
 
 export const updateLeadStatus = createAsyncThunk(
     "leads/updateStatus",
-    async ({ leadId, status }: { leadId: number; status: string }, { rejectWithValue }) => {
+    async ({ leadId, status, lostReason }: { leadId: number; status: string; lostReason?: string }, { rejectWithValue }) => {
         try {
             const authUser = sessionStorage.getItem("authUser");
             const companyId = authUser ? JSON.parse(authUser)?.company_id : null;
@@ -38,7 +38,7 @@ export const updateLeadStatus = createAsyncThunk(
                 return rejectWithValue("Empresa não encontrada para atualizar lead");
             }
 
-            const response = await updateLeadApi(companyId, leadId, { status });
+            const response = await updateLeadApi(companyId, leadId, lostReason ? { status, lost_reason: lostReason } : { status });
             return response.data;
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error || "Erro ao atualizar lead");

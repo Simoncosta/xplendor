@@ -5,11 +5,19 @@
 .tasks-board {
     display: flex;
     overflow-x: auto;
-    align-items: stretch;
+    align-items: flex-start; // cada coluna com altura própria (tipo Trello)
 
     .tasks-list {
         min-width: 300px;
-        margin-right: 24px;
+        margin-right: 20px;   // respiro claro entre as faixas das colunas
+
+        // Trello-like: a COLUNA é um contentor visível com fundo próprio
+        // (cinza distinto do card branco), cantos arredondados e padding
+        // interno — é daqui que os cards brancos "saltam".
+        background-color: var(--#{$prefix}light);
+        border: 1px solid var(--#{$prefix}border-color);
+        border-radius: 0.75rem;
+        padding: 0.875rem;
     }
 
     &::-webkit-scrollbar {
@@ -54,6 +62,49 @@
 
 .tasks-wrapper {
     max-height: calc(100vh - 418px);
+}
+
+// ── Trello-like: cabeçalho da coluna + cards brancos que se destacam ──────────
+.tasks-board {
+    // Cabeçalho da faixa (título + contagem) destacado no topo da coluna.
+    .tasks-list > .d-flex:first-child {
+        padding-bottom: 0.625rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid var(--#{$prefix}border-color);
+    }
+
+    // Cada card (wrapper .task-list, singular) com respiro entre si.
+    .task-list {
+        padding-bottom: 0 !important;
+        margin-bottom: 0.625rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    // O CARD em si: branco (tom de card do tema), sombra suave, sem borda pesada
+    // — contrasta claramente com a coluna cinza (como no Trello).
+    .task-box {
+        background-color: var(--#{$prefix}card-bg);
+        border: 1px solid transparent;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 2px rgba(var(--#{$prefix}dark-rgb), 0.10), 0 1px 3px rgba(var(--#{$prefix}dark-rgb), 0.06);
+        transition: box-shadow 0.15s ease;
+
+        // Sem transform no hover: mover o card fazia-o "fugir" ao cursor na borda
+        // e o hover oscilava (piscar dos 3 pontinhos). Só reforçamos a sombra.
+        &:hover {
+            box-shadow: 0 4px 10px rgba(var(--#{$prefix}dark-rgb), 0.16);
+        }
+    }
+}
+
+// O menu dos 3 pontinhos é renderizado num PORTAL no <body> (container="body" +
+// strategy="fixed") para escapar ao overflow do scroll da coluna. Aqui só
+// garantimos que fica acima de tudo o resto do conteúdo.
+.kanban-card-menu {
+    z-index: 1060;
 }
 
 

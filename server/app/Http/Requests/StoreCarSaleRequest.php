@@ -31,6 +31,19 @@ class StoreCarSaleRequest extends FormRequest
             'buyer_email' => ['nullable', 'email', 'max:255'],
             'contact_consent' => ['nullable', 'boolean'],
             'notes' => ['nullable', 'string'],
+
+            // Fase 1 — registo de venda enriquecido (tudo opcional).
+            'advertised_price'  => ['nullable', 'numeric', 'min:0'],
+            'discount_amount'   => ['nullable', 'numeric', 'min:0'],
+            'offers'            => ['nullable', 'string'],
+            'has_financing'     => ['nullable', 'boolean'],
+            'financing_entity'  => ['nullable', 'string', 'max:255'],
+            'financed_amount'   => ['nullable', 'numeric', 'min:0'],
+            'has_trade_in'      => ['nullable', 'boolean'],
+            'trade_in_vehicle'  => ['nullable', 'string', 'max:255'],
+            'trade_in_value'    => ['nullable', 'numeric', 'min:0'],
+            'first_motorhome'   => ['nullable', 'boolean'],
+            'previous_vehicle'  => ['nullable', 'string', 'max:255'],
         ]);
     }
 }

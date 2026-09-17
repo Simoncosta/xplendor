@@ -206,7 +206,7 @@ const CompanyTasksKanban = () => {
                                                                                                 <DropdownToggle tag="a" className="text-reset" role="button">
                                                                                                     <i className="ri-more-fill" />
                                                                                                 </DropdownToggle>
-                                                                                                <DropdownMenu className="dropdown-menu-end">
+                                                                                                <DropdownMenu container="body" strategy="fixed" className="dropdown-menu-end kanban-card-menu">
                                                                                                     <DropdownItem onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${t.id}`); }}>
                                                                                                         <i className="ri-eye-line me-2" />Abrir
                                                                                                     </DropdownItem>

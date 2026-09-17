@@ -49,4 +49,42 @@ class CarSaleController extends Controller
 
         return ApiResponse::success($sale, 'Dados do comprador actualizados.');
     }
+
+    /**
+     * Fase 2 — deteção: leads abertas do cliente desta venda (para propor mover
+     * ao funil). Só sugere; nunca move.
+     */
+    public function leadMatch(int $companyId, int $car)
+    {
+        $user = Auth::user();
+        if ($user->company_id !== $companyId) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $candidates = $this->carSaleService->detectOpenLeadsForSale($companyId, $car);
+
+        return ApiResponse::success(['candidates' => $candidates], 'Leads detetadas.');
+    }
+
+    /**
+     * Fase 2 — confirmação (o Simon carrega "Sim, mover"): liga a lead à venda e
+     * move-a para "Venda" no funil.
+     */
+    public function linkLead(\Illuminate\Http\Request $request, int $companyId, int $car)
+    {
+        $user = Auth::user();
+        if ($user->company_id !== $companyId) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate(['lead_id' => ['required', 'integer']]);
+
+        try {
+            $lead = $this->carSaleService->linkLeadAndWin($companyId, $car, (int) $data['lead_id']);
+        } catch (\DomainException $e) {
+            return ApiResponse::error($e->getMessage(), 422);
+        }
+
+        return ApiResponse::success($lead, 'Lead movida para "Venda" no funil.');
+    }
 }

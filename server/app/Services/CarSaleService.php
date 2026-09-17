@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Mail\CarSoldNotificationMail;
 use App\Models\Car;
+use App\Models\CarLead;
 use App\Models\CarPerformanceMetric;
 use App\Models\CarSale;
 use App\Repositories\Contracts\CarRepositoryInterface;
@@ -21,8 +22,101 @@ class CarSaleService extends BaseService
         protected CarService $carService,
         protected SalesLearningService $salesLearningService,
         protected CampaignToSaleAttributionService $campaignToSaleAttributionService,
+        protected LeadMatchService $leadMatchService,
     ) {
         parent::__construct($carSaleRepository);
+    }
+
+    // Fase 2 — CRM. Estados "abertos" do funil (nem Venda/Perdida/Spam).
+    private const OPEN_FUNNEL_STATES = ['new', 'contacted', 'visit', 'qualified', 'negotiation'];
+    // Prioridade de sugestão (mais provável primeiro).
+    private const STATE_PRIORITY = ['negotiation' => 0, 'qualified' => 1, 'visit' => 2, 'contacted' => 3, 'new' => 4];
+
+    /**
+     * Fase 2 — deteção: dado o car vendido, encontra leads ABERTAS no funil do
+     * MESMO cliente da venda (match por lead_id direto, senão por email/telefone
+     * do cliente vs contacto inline da lead). Devolve candidatas ordenadas
+     * (Negociação primeiro). NÃO move nada — só sugere (o Simon confirma).
+     *
+     * Casos: venda sem cliente → []; cliente sem leads abertas → []; leads já em
+     * Venda/Perdida → excluídas (só OPEN_FUNNEL_STATES).
+     */
+    public function detectOpenLeadsForSale(int $companyId, int $carId): array
+    {
+        $sale = CarSale::query()->where('car_id', $carId)->where('company_id', $companyId)->first();
+        if (! $sale) {
+            return [];
+        }
+
+        // 1) Ligação direta (se a venda já aponta a uma lead aberta).
+        if ($sale->lead_id) {
+            $direct = CarLead::query()
+                ->where('company_id', $companyId)
+                ->where('id', $sale->lead_id)
+                ->whereIn('status', self::OPEN_FUNNEL_STATES)
+                ->first();
+            if ($direct) {
+                return [$this->leadCandidate($direct)];
+            }
+        }
+
+        // 2) Match pelo cliente da venda (contacto). Sem cliente → não dá match.
+        $customer = $sale->customer;
+        if (! $customer) {
+            return [];
+        }
+
+        // Fonte única de match (reutilizada pela ficha-hub, Fase 3).
+        $matches = $this->leadMatchService
+            ->byContact($companyId, $customer->email, $customer->phone, onlyOpen: true)
+            ->sortBy(fn (CarLead $l) => [self::STATE_PRIORITY[$l->status] ?? 9, -$l->id])
+            ->values();
+
+        return $matches->map(fn (CarLead $l) => $this->leadCandidate($l))->all();
+    }
+
+    /**
+     * Fase 2 — confirmação: liga a lead à venda (car_sales.lead_id) E move-a para
+     * "Venda" (won) no funil. Só age sobre leads ABERTAS desta empresa (nunca
+     * mexe em Venda/Perdida). Atómico.
+     */
+    public function linkLeadAndWin(int $companyId, int $carId, int $leadId): CarLead
+    {
+        return DB::transaction(function () use ($companyId, $carId, $leadId) {
+            $lead = CarLead::query()
+                ->where('company_id', $companyId)
+                ->where('id', $leadId)
+                ->whereIn('status', self::OPEN_FUNNEL_STATES)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $lead) {
+                throw new \DomainException('Lead não encontrada ou já não está aberta no funil.');
+            }
+
+            $sale = CarSale::query()->where('car_id', $carId)->where('company_id', $companyId)->first();
+            if ($sale) {
+                $sale->update(['lead_id' => $lead->id]); // amarra venda→lead
+            }
+
+            // Move para "Venda" no funil (mesma semântica do CarLeadController@update).
+            $lead->update(['status' => 'won', 'lost_reason' => null, 'closed_at' => now()]);
+
+            return $lead->fresh();
+        });
+    }
+
+    /** Forma compacta de uma lead candidata para a UI. */
+    private function leadCandidate(CarLead $lead): array
+    {
+        return [
+            'id' => $lead->id,
+            'name' => $lead->name,
+            'status' => $lead->status,
+            'phone' => $lead->phone,
+            'email' => $lead->email,
+            'created_at' => optional($lead->created_at)->toIso8601String(),
+        ];
     }
 
     /**
@@ -230,6 +324,18 @@ class CarSaleService extends BaseService
             'contact_consent' => (bool) ($data['contact_consent'] ?? false),
             'notes' => $data['notes'] ?? null,
             'sold_at' => $data['sold_at'] ?? now(),
+            // Fase 1 — registo de venda enriquecido (tudo opcional/nullable).
+            'advertised_price' => $data['advertised_price'] ?? null,
+            'discount_amount' => $data['discount_amount'] ?? null,
+            'offers' => $data['offers'] ?? null,
+            'has_financing' => $data['has_financing'] ?? null,
+            'financing_entity' => $data['financing_entity'] ?? null,
+            'financed_amount' => $data['financed_amount'] ?? null,
+            'has_trade_in' => $data['has_trade_in'] ?? null,
+            'trade_in_vehicle' => $data['trade_in_vehicle'] ?? null,
+            'trade_in_value' => $data['trade_in_value'] ?? null,
+            'first_motorhome' => $data['first_motorhome'] ?? null,
+            'previous_vehicle' => $data['previous_vehicle'] ?? null,
         ]);
     }
 

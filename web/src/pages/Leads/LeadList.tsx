@@ -7,6 +7,8 @@ import { useDispatch, useSelector } from "react-redux";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import LeadStatusBadge from "./components/LeadStatusBadge";
+import LeadsFunnel from "./components/LeadsFunnel";
+import LossReasonModal from "./components/LossReasonModal";
 import {
     Container,
     Row,
@@ -46,6 +48,11 @@ export default function LeadList() {
 
     const { leads, meta, loading, loadingUpdate } = useSelector(selectLeadListViewModel);
 
+    const [view, setView] = useState<"list" | "funnel">("list");
+    // Perder na LISTA também exige motivo (mesmo modal do funil).
+    const [pendingLost, setPendingLost] = useState<{ id: number; name: string } | null>(null);
+    const [savingLost, setSavingLost] = useState(false);
+
     // Paginação controlada no pai (server-side)
     const [pagination, setPagination] = useState({
         pageIndex: 0,
@@ -67,9 +74,23 @@ export default function LeadList() {
         }
     }, [dispatch, pagination.pageIndex, pagination.pageSize]);
 
-    const handleStatusChange = useCallback((leadId: number, status: string) => {
+    const handleStatusChange = useCallback((leadId: number, status: string, leadName = "esta lead") => {
+        // Não perder sem motivo: abre o modal quando o destino é "Perdida".
+        if (status === "lost") {
+            setPendingLost({ id: leadId, name: leadName });
+            return;
+        }
         dispatch(updateLeadStatus({ leadId, status }));
     }, [dispatch]);
+
+    const confirmLost = useCallback((reason: string) => {
+        if (!pendingLost) return;
+        setSavingLost(true);
+        dispatch(updateLeadStatus({ leadId: pendingLost.id, status: "lost", lostReason: reason }))
+            .unwrap()
+            .catch(() => { })
+            .finally(() => { setSavingLost(false); setPendingLost(null); });
+    }, [dispatch, pendingLost]);
 
     const columns = useMemo(() => [
         {
@@ -120,7 +141,7 @@ export default function LeadList() {
                 return (
                     <LeadStatusBadge
                         currentStatus={lead.status}
-                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus)}
+                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus, lead.name)}
                         disabled={loadingUpdate}
                         size="sm"
                     />
@@ -244,7 +265,7 @@ export default function LeadList() {
                     )}
                     <LeadStatusBadge
                         currentStatus={lead.status}
-                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus)}
+                        onChange={(newStatus) => handleStatusChange(lead.id, newStatus, lead.name)}
                         disabled={loadingUpdate}
                         size="md"
                     />
@@ -302,29 +323,49 @@ export default function LeadList() {
                             <Card>
                                 <CardHeader className="border-0">
                                     <div className="d-flex align-items-center">
-                                        <h5 className="card-title mb-0 flex-grow-1">Leads</h5>
+                                        <h5 className="card-title mb-0 flex-grow-1">Leads {view === "funnel" ? "— Funil" : ""}</h5>
+                                        <div className="btn-group" role="group" aria-label="Vista">
+                                            <button type="button" className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("list")}>
+                                                <i className="ri-list-check me-1" />Lista
+                                            </button>
+                                            <button type="button" className={"btn btn-sm " + (view === "funnel" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("funnel")}>
+                                                <i className="ri-layout-grid-line me-1" />Funil
+                                            </button>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <div className="card-body pt-2">
-                                    <XTanStackTable
-                                        columns={columns}
-                                        data={leads || []}
-                                        loading={loading}
-                                        pagination={pagination}
-                                        onPaginationChange={setPagination}
-                                        pageCount={meta?.last_page ?? 0}
-                                        total={meta?.total}
-                                        isBordered={true}
-                                        theadClass="text-muted table-light"
-                                        mobileMode={isMobile}
-                                        renderMobileCard={renderLeadMobileCard}
-                                    />
+                                    {view === "funnel" ? (
+                                        <LeadsFunnel />
+                                    ) : (
+                                        <XTanStackTable
+                                            columns={columns}
+                                            data={leads || []}
+                                            loading={loading}
+                                            pagination={pagination}
+                                            onPaginationChange={setPagination}
+                                            pageCount={meta?.last_page ?? 0}
+                                            total={meta?.total}
+                                            isBordered={true}
+                                            theadClass="text-muted table-light"
+                                            mobileMode={isMobile}
+                                            renderMobileCard={renderLeadMobileCard}
+                                        />
+                                    )}
                                 </div>
                             </Card>
                         </div>
                     </Col>
                 </Row>
             </Container>
+
+            <LossReasonModal
+                isOpen={!!pendingLost}
+                leadName={pendingLost?.name}
+                saving={savingLost}
+                onConfirm={confirmLost}
+                onCancel={() => setPendingLost(null)}
+            />
         </div>
     );
 }

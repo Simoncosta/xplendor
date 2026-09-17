@@ -140,6 +140,9 @@ export const getCustomers = (companyId: number, params?: { perPage?: number; pag
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS, params);
 export const showCustomer = (companyId: number, id: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}`);
+// Fase 3 — ficha-hub do cliente (vendas + leads + docs + histórico).
+export const getCustomerHub = (companyId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS + `/${id}/hub`);
 export const createCustomer = (companyId: number, data: any) =>
     api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CUSTOMERS, data, { headers: { "Content-Type": "application/json" } });
 export const updateCustomer = (companyId: number, id: number, data: any) =>
@@ -229,6 +232,9 @@ export const disconnectGoogleAnalytics = (companyId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/integrations/google`);
 export const getGa4Traffic = (companyId: number, days = 28, fresh = false) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/ga4/traffic`, fresh ? { days, fresh: 1 } : { days });
+// Meta — leitura dos dados que o pipeline já ingere (gasto/cliques/CTR + atribuição).
+export const getMetaOverview = (companyId: number, days = 28) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/meta/overview`, { days });
 
 // XPLENDOR — Stock GLOBAL (transversal, /admin, só root).
 export const getAdminStock = (params?: {
@@ -287,7 +293,9 @@ export const deleteExpense = (companyId: number, id: number) =>
 
 // LEADS
 export const getLeads = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_LEADS_APIS, { params });
-export const updateLead = (companyId: number, leadId: number, data: { status: string }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);
+export const updateLead = (companyId: number, leadId: number, data: { status?: string; lost_reason?: string | null; notes?: string | null }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);
+// CRM/funil — todas as leads da empresa (sem paginação) para montar o Kanban.
+export const getCompanyLeadsAll = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS);
 
 // CARS
 export const getCarsPaginate = (
@@ -331,6 +339,11 @@ export const updateCar = (companyId: number, id: number, data: FormData | any) =
 export const closeCarSale = (companyId: number, carId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + url.GET_CAR_SALES, data, { headers: { "Content-Type": "multipart/form-data" } });
 // PATCH dos dados PII do comprador (sem mexer no car nem disparar notificações).
 export const updateCarSale = (companyId: number, carId: number, data: any) => api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + "/" + carId + url.GET_CAR_SALE, data);
+// Fase 2 — CRM: detetar lead aberta do cliente da venda + mover para "Venda".
+export const getSaleLeadMatch = (companyId: number, carId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale/lead-match`);
+export const linkSaleLead = (companyId: number, carId: number, leadId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}/sale/link-lead`, { lead_id: leadId });
 export const generateCarDescriptionApi = (companyId: number, data: any) =>
     api.create(
         url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + url.POST_CAR_GENERATE_DESCRIPTION,

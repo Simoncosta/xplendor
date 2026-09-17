@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\V1\{
     QuoteController,
     CompanyTaskController,
     GoogleAnalyticsController,
+    MetaInsightsController,
     ExpenseCategoryController,
     ExpenseController,
     ScraperController,
@@ -157,6 +158,10 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/integrations/google', [GoogleAnalyticsController::class, 'disconnect']);
                 Route::get('/analytics/ga4/traffic', [GoogleAnalyticsController::class, 'traffic']);
 
+                // Meta — LEITURA dos dados que o pipeline já ingere (gasto/cliques/
+                // CTR + vendas atribuídas). Zero fetch/escrita aqui. Scoped por company.
+                Route::get('/analytics/meta/overview', [MetaInsightsController::class, 'overview']);
+
                 Route::apiResource('/users', UserController::class);
                 Route::post('/cars/generate-description', [CarController::class, 'generateDescription']);
                 Route::apiResource('/cars', CarController::class);
@@ -175,6 +180,8 @@ Route::prefix('v1')->group(function () {
                 Route::match(['put', 'patch'], '/document-templates/{template}', [DocumentTemplateController::class, 'update']);
                 Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
                 // DMS — Clientes (base para documentos de venda, Fase 3).
+                // Fase 3 — ficha-hub do cliente (vendas + leads + docs + histórico).
+                Route::get('/customers/{customer}/hub', [CustomerController::class, 'hub']);
                 Route::apiResource('/customers', CustomerController::class);
 
                 // DMS — Tickets de suporte (lado STAND). Scoped por empresa.
@@ -213,6 +220,9 @@ Route::prefix('v1')->group(function () {
                 Route::put('cars/{car}/performance/{metric}', [CarPerformanceMetricController::class, 'update']);
                 Route::post('cars/{car}/sales', [CarSaleController::class, 'store']);
                 Route::patch('cars/{car}/sale', [CarSaleController::class, 'updateSale']);
+                // Fase 2 — CRM: detetar lead aberta do cliente + mover para "Venda".
+                Route::get('cars/{car}/sale/lead-match', [CarSaleController::class, 'leadMatch']);
+                Route::post('cars/{car}/sale/link-lead', [CarSaleController::class, 'linkLead']);
 
                 Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
                 Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);

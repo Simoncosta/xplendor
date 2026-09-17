@@ -6,8 +6,10 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerRequest;
 use App\Http\Resources\CustomerResource;
+use App\Models\CarSale;
 use App\Models\Customer;
 use App\Services\CustomerService;
+use App\Services\LeadMatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -100,6 +102,89 @@ class CustomerController extends Controller
             (new CustomerResource($customer))->resolve(),
             'Customer fetched successfully.'
         );
+    }
+
+    /**
+     * Fase 3 — FICHA-HUB: tudo o que se liga ao cliente, agregado e scoped à
+     * empresa. Vendas (por customer_id), Leads (por match de CONTACTO, reutilizando
+     * o LeadMatchService da Fase 2), Documentos (não são guardados → vazio) e um
+     * Histórico DERIVADO das vendas + leads (não há entidade de atividades).
+     */
+    public function hub(int $companyId, int $id, LeadMatchService $leadMatch)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $customer = Customer::where('company_id', $companyId)->find($id);
+        if (! $customer) {
+            return ApiResponse::error('Cliente não encontrado.', 404);
+        }
+
+        // VENDAS — ligação direta por customer_id.
+        $sales = CarSale::with(['car:id,version,car_brand_id,car_model_id', 'car.brand:id,name', 'car.model:id,name'])
+            ->where('company_id', $companyId)
+            ->where('customer_id', $id)
+            ->orderByDesc('sold_at')
+            ->get()
+            ->map(function (CarSale $s) {
+                $car = $s->car;
+                $carName = $car ? trim(($car->brand->name ?? '') . ' ' . ($car->model->name ?? '') . ' ' . ($car->version ?? '')) : null;
+                return [
+                    'id' => $s->id,
+                    'car_id' => $s->car_id,
+                    'car' => $carName ?: '—',
+                    'sold_at' => optional($s->sold_at)->toIso8601String(),
+                    'sale_price' => $s->sale_price !== null ? (float) $s->sale_price : null,
+                    'advertised_price' => $s->advertised_price !== null ? (float) $s->advertised_price : null,
+                    'discount_amount' => $s->discount_amount !== null ? (float) $s->discount_amount : null,
+                    'has_trade_in' => $s->has_trade_in,
+                    'trade_in_value' => $s->trade_in_value !== null ? (float) $s->trade_in_value : null,
+                    'has_financing' => $s->has_financing,
+                    'financed_amount' => $s->financed_amount !== null ? (float) $s->financed_amount : null,
+                    'first_motorhome' => $s->first_motorhome,
+                ];
+            });
+
+        // LEADS — match de CONTACTO (best-effort), TODAS as fases (não só abertas).
+        $leads = $leadMatch->byContact($companyId, $customer->email, $customer->phone, onlyOpen: false)
+            ->sortByDesc('created_at')
+            ->values()
+            ->map(fn ($l) => [
+                'id' => $l->id,
+                'name' => $l->name,
+                'status' => $l->status,
+                'channel' => $l->channel,
+                'utm_source' => $l->utm_source,
+                'utm_campaign' => $l->utm_campaign,
+                'car_id' => $l->car_id,
+                'created_at' => optional($l->created_at)->toIso8601String(),
+            ]);
+
+        // HISTÓRICO — derivado (não há entidade de atividades). Vendas + leads.
+        $history = collect();
+        foreach ($sales as $s) {
+            $history->push(['type' => 'sale', 'date' => $s['sold_at'], 'title' => 'Venda — ' . $s['car'], 'amount' => $s['sale_price']]);
+        }
+        foreach ($leads as $l) {
+            $history->push(['type' => 'lead', 'date' => $l['created_at'], 'title' => 'Lead' . ($l['channel'] ? ' (' . $l['channel'] . ')' : ''), 'status' => $l['status']]);
+        }
+        $history = $history->filter(fn ($h) => $h['date'])->sortByDesc('date')->values();
+
+        return ApiResponse::success([
+            'customer' => [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'nif' => $customer->nif,
+            ],
+            'sales' => $sales,
+            'leads' => $leads,
+            // Documentos não são guardados (gerados ad-hoc do modelo+venda) → vazio.
+            'documents' => [],
+            'history' => $history,
+        ], 'Customer hub fetched successfully.');
     }
 
     public function update(CustomerRequest $request, int $companyId, int $id)

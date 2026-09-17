@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\EncryptedLegacy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -23,6 +24,9 @@ class CompanyIntegration extends Model
     protected $hidden = ['access_token'];
 
     protected $casts = [
+        // Token cifrado em repouso. Cast tolerante: decifra, e devolve cru se
+        // ainda estiver em texto simples (transição sem partir o pipeline).
+        'access_token'     => EncryptedLegacy::class,
         'token_expires_at' => 'datetime',
         'last_synced_at'   => 'datetime',
     ];

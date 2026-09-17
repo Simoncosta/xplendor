@@ -1,5 +1,6 @@
 // React
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Card, CardBody, Col, Container, Row, Table } from "reactstrap";
@@ -131,6 +132,7 @@ const CustomerList = () => {
                                                 <td>{c.email || "—"}</td>
                                                 <td>{locationOf(c)}</td>
                                                 <td className="text-end">
+                                                    <Link to={`/customers/${c.id}`} className="btn btn-sm btn-soft-info me-1" title="Ver ficha"><i className="ri-user-line" /></Link>
                                                     <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(c)} title="Editar"><i className="ri-pencil-line" /></button>
                                                     {c.archived ? (
                                                         <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(c, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>

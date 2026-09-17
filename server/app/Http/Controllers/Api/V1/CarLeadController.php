@@ -52,10 +52,12 @@ class CarLeadController extends Controller
                 'message',
                 'notes',
                 'status',
+                'lost_reason',
                 'created_at',
                 'channel',
                 'utm_medium',
                 'utm_source',
+                'utm_campaign',
                 'car_id'
             ],
             [
@@ -79,12 +81,39 @@ class CarLeadController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        // Tenancy 2 camadas: o lead tem de pertencer MESMO a esta empresa
+        // (antes atualizava por id sem confirmar a empresa — corrigido).
+        $lead = \App\Models\CarLead::where('company_id', $companyId)->find($id);
+        if (! $lead) {
+            return ApiResponse::error('Lead não encontrada.', 404);
+        }
+
         $data = $request->validate([
-            'status' => ['required', 'in:new,contacted,qualified,won,lost,spam'],
+            'status' => ['required', 'in:' . implode(',', \App\Models\CarLead::STATUSES)],
+            // Ao mover para "Perdida", o motivo é OBRIGATÓRIO (não perder sem motivo).
+            'lost_reason' => ['nullable', 'required_if:status,lost', 'in:' . implode(',', \App\Models\CarLead::LOSS_REASONS)],
+            'notes' => ['nullable', 'string'],
         ]);
 
-        $lead = $this->carLeadService->update($id, $data);
+        $update = ['status' => $data['status']];
 
-        return ApiResponse::success($lead, 'Lead updated successfully.');
+        if ($data['status'] === 'lost') {
+            $update['lost_reason'] = $data['lost_reason'];
+            $update['closed_at'] = now();
+        } elseif ($data['status'] === 'won') {
+            $update['lost_reason'] = null; // ganho não tem motivo de perda
+            $update['closed_at'] = now();
+        } else {
+            $update['lost_reason'] = null; // voltou ao funil ativo
+            $update['closed_at'] = null;
+        }
+
+        if (array_key_exists('notes', $data)) {
+            $update['notes'] = $data['notes'];
+        }
+
+        $lead->update($update);
+
+        return ApiResponse::success($lead->fresh(), 'Lead updated successfully.');
     }
 }

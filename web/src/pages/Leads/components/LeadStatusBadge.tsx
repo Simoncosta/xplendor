@@ -11,15 +11,17 @@ interface StatusConfig {
 }
 
 const STATUS_CONFIG: Record<string, StatusConfig> = {
-    new:        { label: "Novo",        variant: "primary"   },
-    contacted:  { label: "Contactado",  variant: "secondary" },
-    qualified:  { label: "Qualificado", variant: "warning"   },
-    won:        { label: "Ganho",       variant: "success"   },
-    lost:       { label: "Perdido",     variant: "danger"    },
-    spam:       { label: "Spam",        variant: "dark"      },
+    new:         { label: "Nova",       variant: "secondary" },
+    contacted:   { label: "Contactada", variant: "info"      },
+    visit:       { label: "Visita",     variant: "primary"   },
+    qualified:   { label: "Proposta",   variant: "warning"   },
+    negotiation: { label: "Negociação", variant: "warning"   },
+    won:         { label: "Venda",      variant: "success"   },
+    lost:        { label: "Perdida",    variant: "danger"    },
+    spam:        { label: "Spam",       variant: "dark"      },
 };
 
-const STATUS_ORDER = ["new", "contacted", "qualified", "won", "lost", "spam"];
+const STATUS_ORDER = ["new", "contacted", "visit", "qualified", "negotiation", "won", "lost", "spam"];
 
 interface LeadStatusBadgeProps {
     currentStatus: string;

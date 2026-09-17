@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Models\CompanyIntegration;
+use Closure;
 use DomainException;
+use GuzzleHttp\Psr7\Response as PsrResponse;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response as ClientResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +17,94 @@ class MetaAdsService
 {
     private const GRAPH_URL = 'https://graph.facebook.com/v25.0';
     private const GRAPH_ACTIONS_URL = 'https://graph.facebook.com/v18.0';
+
+    // Robustez das chamadas à Graph API (a 30min × N clientes × M campanhas).
+    private const HTTP_TIMEOUT   = 15;   // segundos por chamada (não pendurar)
+    private const HTTP_CONNECT_TIMEOUT = 8;
+    private const MAX_ATTEMPTS   = 4;    // 1 tentativa + 3 retries
+    private const BACKOFF_BASE_MS = 400; // backoff exponencial: 400, 800, 1600ms
+    private const BACKOFF_CAP_MS  = 8000;
+
+    /**
+     * GET à Graph API com timeout + retry/backoff + consciência de rate limit.
+     * Mesmo contrato de Http::get (devolve uma Response que os chamadores já
+     * tratam com ->failed()). Nunca lança para o chamador (transição segura).
+     */
+    private function graphGet(string $url, array $query): ClientResponse
+    {
+        return $this->sendWithRetry(fn () => Http::timeout(self::HTTP_TIMEOUT)
+            ->connectTimeout(self::HTTP_CONNECT_TIMEOUT)
+            ->get($url, $query));
+    }
+
+    /** POST (form) à Graph API com a mesma robustez do graphGet. */
+    private function graphPostForm(string $url, array $data): ClientResponse
+    {
+        return $this->sendWithRetry(fn () => Http::timeout(self::HTTP_TIMEOUT)
+            ->connectTimeout(self::HTTP_CONNECT_TIMEOUT)
+            ->asForm()
+            ->post($url, $data));
+    }
+
+    /**
+     * Corre a chamada com retries em erros TRANSITÓRIOS (429 rate limit, 5xx,
+     * falhas de ligação/timeout), com backoff exponencial que respeita Retry-After.
+     * Em falha de ligação final, devolve uma Response 503 sintética — os
+     * chamadores (que já verificam ->failed()) tratam-na sem rebentar o pipeline.
+     */
+    private function sendWithRetry(Closure $send): ClientResponse
+    {
+        $attempt = 0;
+
+        while (true) {
+            $attempt++;
+
+            try {
+                $response = $send();
+            } catch (ConnectionException $e) {
+                if ($attempt >= self::MAX_ATTEMPTS) {
+                    Log::warning('MetaAdsService: falha de ligação após retries', [
+                        'attempts' => $attempt,
+                        'error'    => $e->getMessage(),
+                    ]);
+                    // Response sintética "falhada" → contrato preservado.
+                    return new ClientResponse(new PsrResponse(503, [], 'connection_error'));
+                }
+                usleep($this->backoffMicros($attempt, null));
+                continue;
+            }
+
+            if ($attempt < self::MAX_ATTEMPTS && $this->isTransient($response)) {
+                Log::warning('MetaAdsService: resposta transitória, retry', [
+                    'status'  => $response->status(),
+                    'attempt' => $attempt,
+                ]);
+                usleep($this->backoffMicros($attempt, $response));
+                continue;
+            }
+
+            return $response;
+        }
+    }
+
+    /** Erro transitório que vale a pena repetir: rate limit (429) ou 5xx. */
+    private function isTransient(ClientResponse $response): bool
+    {
+        return $response->status() === 429 || $response->serverError();
+    }
+
+    /** Backoff exponencial (μs), respeitando Retry-After quando presente. */
+    private function backoffMicros(int $attempt, ?ClientResponse $response): int
+    {
+        $retryAfter = $response?->header('Retry-After');
+        if ($retryAfter !== null && $retryAfter !== '' && is_numeric($retryAfter)) {
+            return (int) min((float) $retryAfter * 1_000_000, self::BACKOFF_CAP_MS * 1000);
+        }
+
+        $ms = min(self::BACKOFF_BASE_MS * (2 ** ($attempt - 1)), self::BACKOFF_CAP_MS);
+
+        return (int) ($ms * 1000);
+    }
 
     // ── Métricas de performance por ad/campanha/adset ──────────────────────────
     // Devolve spend, impressions, clicks, cpm, ctr, cpc, reach, frequency
@@ -25,7 +117,7 @@ class MetaAdsService
         string $dateStart,
         string $dateStop
     ): array {
-        $response = Http::get(self::GRAPH_URL . "/{$targetId}/insights", [
+        $response = $this->graphGet(self::GRAPH_URL . "/{$targetId}/insights", [
             'access_token' => $accessToken,
             'fields'       => 'spend,impressions,clicks,cpm,ctr,cpc,reach,frequency',
             'time_range'   => json_encode(['since' => $dateStart, 'until' => $dateStop]),
@@ -55,7 +147,7 @@ class MetaAdsService
         string $dateStart,
         string $dateStop
     ): array {
-        $response = Http::get(self::GRAPH_URL . "/{$adsetId}/insights", [
+        $response = $this->graphGet(self::GRAPH_URL . "/{$adsetId}/insights", [
             'access_token' => $accessToken,
             'fields'       => 'impressions,clicks,spend,reach',
             'breakdowns'   => 'age,gender',
@@ -86,7 +178,7 @@ class MetaAdsService
         string $accessToken,
         string $adsetId
     ): array {
-        $response = Http::get(self::GRAPH_URL . "/{$adsetId}", [
+        $response = $this->graphGet(self::GRAPH_URL . "/{$adsetId}", [
             'access_token' => $accessToken,
             'fields' => 'targeting',
         ]);
@@ -138,7 +230,7 @@ class MetaAdsService
 
     public function getAdsets(string $accessToken, string $accountId): array
     {
-        $response = Http::get(self::GRAPH_URL . "/act_{$accountId}/adsets", [
+        $response = $this->graphGet(self::GRAPH_URL . "/act_{$accountId}/adsets", [
             'access_token' => $accessToken,
             'fields'       => 'id,name,status,campaign_id,campaign{name}',
             'limit'        => 200,
@@ -294,7 +386,7 @@ class MetaAdsService
         string $appSecret,
         string $shortLivedToken
     ): ?string {
-        $response = Http::get(self::GRAPH_URL . '/oauth/access_token', [
+        $response = $this->graphGet(self::GRAPH_URL . '/oauth/access_token', [
             'grant_type'        => 'fb_exchange_token',
             'client_id'         => $appId,
             'client_secret'     => $appSecret,
@@ -315,7 +407,7 @@ class MetaAdsService
     // ── Verificar validade do token ───────────────────────────────────────────
     public function debugToken(string $accessToken, string $appToken): array
     {
-        $response = Http::get(self::GRAPH_URL . '/debug_token', [
+        $response = $this->graphGet(self::GRAPH_URL . '/debug_token', [
             'input_token'  => $accessToken,
             'access_token' => $appToken,
         ]);
@@ -368,7 +460,7 @@ class MetaAdsService
 
     private function getCampaigns(string $accessToken, string $accountId): array
     {
-        $response = Http::get(self::GRAPH_URL . "/act_{$accountId}/campaigns", [
+        $response = $this->graphGet(self::GRAPH_URL . "/act_{$accountId}/campaigns", [
             'access_token' => $accessToken,
             'fields' => 'id,name,status',
             'limit' => 200,
@@ -389,7 +481,7 @@ class MetaAdsService
 
     private function getAds(string $accessToken, string $accountId): array
     {
-        $response = Http::get(self::GRAPH_URL . "/act_{$accountId}/ads", [
+        $response = $this->graphGet(self::GRAPH_URL . "/act_{$accountId}/ads", [
             'access_token' => $accessToken,
             'fields' => 'id,name,status,campaign_id,adset_id',
             'limit' => 500,
@@ -418,7 +510,7 @@ class MetaAdsService
             $targets
         );
 
-        $response = Http::asForm()->post(self::GRAPH_URL, [
+        $response = $this->graphPostForm(self::GRAPH_URL, [
             'access_token' => $accessToken,
             'batch' => json_encode($batch),
         ]);
@@ -479,7 +571,7 @@ class MetaAdsService
             'level' => $level,
         ]);
 
-        $response = Http::asForm()->post(self::GRAPH_ACTIONS_URL . "/{$targetId}", [
+        $response = $this->graphPostForm(self::GRAPH_ACTIONS_URL . "/{$targetId}", [
             'access_token' => $integration->access_token,
             'status' => 'PAUSED',
         ]);

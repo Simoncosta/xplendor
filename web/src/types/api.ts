@@ -39,6 +39,21 @@ export interface CarSpecsSale {
     // DMS — cliente da venda (retro-compat: null nas vendas antigas → usar buyer_*).
     customer_id?: number | null;
     customer?: CarSpecsSaleCustomer | null;
+    // Fase 1 — registo de venda enriquecido (nullable nas vendas antigas).
+    advertised_price?: number | null;
+    discount_amount?: number | null;
+    offers?: string | null;
+    has_financing?: boolean | null;
+    financing_entity?: string | null;
+    financed_amount?: number | null;
+    has_trade_in?: boolean | null;
+    trade_in_vehicle?: string | null;
+    trade_in_value?: number | null;
+    first_motorhome?: boolean | null;
+    previous_vehicle?: string | null;
+    // Origem herdada da lead ligada (Fase 2 popula lead_id; null até lá).
+    lead_id?: number | null;
+    lead_origin?: { channel: string | null; source: string | null; utm_source: string | null; utm_campaign: string | null } | null;
 }
 
 export interface CarSpecs {

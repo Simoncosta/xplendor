@@ -155,6 +155,7 @@ const Navdata = () => {
                 { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial" },
                 // Tráfego do site (GA4 do cliente) — vive no Comercial, junto ao stock/leads.
                 { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "comercial" },
+                { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "comercial" },
                 { id: "blogs", label: "Blogs", link: "/blogs", parentId: "comercial" },
             ],
         },

@@ -68,7 +68,8 @@ class CarLeadRequest extends FormRequest
             ],
             'status' => [
                 'nullable',
-                Rule::in(['new', 'contacted', 'qualified', 'won', 'lost', 'spam']),
+                // Alinhado com as fases reais do funil (CRM) — inclui visit/negotiation.
+                Rule::in(\App\Models\CarLead::STATUSES),
             ],
         ];
     }
