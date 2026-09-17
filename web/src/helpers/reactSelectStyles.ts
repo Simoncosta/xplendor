@@ -23,10 +23,13 @@ export const reactSelectTheme = {
     input: (base: any) => ({ ...base, color: "var(--vz-body-color)" }),
     placeholder: (base: any) => ({ ...base, color: "var(--vz-secondary-color)" }),
     valueContainer: (base: any) => ({ ...base, color: "var(--vz-body-color)" }),
-    // Menu flutuante: fundo de cartão + borda de tema.
+    // Menu flutuante: superfície de cartão/dropdown. Usa --vz-secondary-bg
+    // (branco em claro, escuro em dark) porque é GLOBAL no :root — ao contrário
+    // de --vz-card-bg, que só existe dentro de .card e ficava indefinido (menu
+    // transparente) quando o select vive num modal fora de um cartão.
     menu: (base: any) => ({
         ...base,
-        backgroundColor: "var(--vz-card-bg)",
+        backgroundColor: "var(--vz-secondary-bg)",
         borderColor: "var(--vz-border-color)",
     }),
     menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),

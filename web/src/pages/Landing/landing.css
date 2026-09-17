@@ -89,8 +89,8 @@
 
 .xplndor-landing .lp-nav-login {
     font-size: 0.875rem;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.58);
+    font-weight: 600;
+    color: #fff;
     text-decoration: none;
     letter-spacing: 0.01em;
     transition: color 0.15s;
@@ -98,8 +98,9 @@
 }
 
 .xplndor-landing .lp-nav-login:hover {
-    color: rgba(255, 255, 255, 0.88);
-    text-decoration: none;
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 4px;
 }
 
 .xplndor-landing .lp-menu-toggle {
@@ -1166,3 +1167,321 @@
         transition: none;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REDESIGN "site a sério" (2026) — secções novas. Tudo escopado em
+   .xplndor-landing (não toca no painel Velzon). Mobile-first + tokens da marca.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tipografia de secção partilhada ── */
+.xplndor-landing .lp-kicker {
+    display: inline-block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--lp-accent);
+    margin-bottom: 0.6rem;
+}
+.xplndor-landing .lp-h2 {
+    font-size: clamp(1.7rem, 5vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: var(--lp-navy);
+    margin: 0 0 0.9rem;
+}
+.xplndor-landing .lp-h3 {
+    font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--lp-navy);
+    margin: 0 0 0.7rem;
+}
+.xplndor-landing .lp-lead {
+    font-size: clamp(1rem, 2.4vw, 1.18rem);
+    line-height: 1.6;
+    color: var(--lp-muted);
+    max-width: 46rem;
+    margin: 0;
+}
+.xplndor-landing .lp-section2 { padding: 4.5rem 0; }
+.xplndor-landing .lp-section2-alt { background: var(--lp-bg-alt); }
+.xplndor-landing .lp-section2-head { max-width: 52rem; margin: 0 auto 2.6rem; text-align: center; }
+.xplndor-landing .lp-section2-head .lp-lead { margin-inline: auto; }
+@media (min-width: 992px) { .xplndor-landing .lp-section2 { padding: 6rem 0; } }
+
+/* ── HERÓI ── */
+.xplndor-landing .lp-hero2 {
+    position: relative;
+    overflow: hidden;
+    padding: 6.5rem 0 4rem;
+    background:
+        radial-gradient(120% 120% at 15% 0%, #f3f6ff 0%, #ffffff 45%, #ffffff 100%);
+}
+.xplndor-landing .lp-hero2-glow {
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 55%;
+    height: 120%;
+    background: radial-gradient(circle at center, rgba(74, 111, 220, 0.18), transparent 62%);
+    pointer-events: none;
+    filter: blur(10px);
+}
+.xplndor-landing .lp-hero2-eyebrow {
+    display: inline-block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lp-accent);
+    background: var(--lp-accent-bg);
+    border: 1px solid rgba(74, 111, 220, 0.18);
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    margin-bottom: 1.2rem;
+}
+.xplndor-landing .lp-hero2-title {
+    font-size: clamp(2.1rem, 6.4vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: var(--lp-navy);
+    margin: 0 0 1.1rem;
+}
+.xplndor-landing .lp-hero2-hl {
+    color: var(--lp-accent);
+    background: linear-gradient(180deg, transparent 62%, rgba(74, 111, 220, 0.16) 62%);
+}
+.xplndor-landing .lp-hero2-sub {
+    font-size: clamp(1.05rem, 2.6vw, 1.25rem);
+    line-height: 1.6;
+    color: var(--lp-muted);
+    max-width: 34rem;
+    margin: 0 0 1.8rem;
+}
+.xplndor-landing .lp-hero2-cta { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+@media (min-width: 992px) { .xplndor-landing .lp-hero2 { padding: 8.5rem 0 5.5rem; } }
+
+/* ── Moldura de captura + placeholders ── */
+.xplndor-landing .lp-shot-frame {
+    border-radius: var(--lp-radius);
+    background: #fff;
+    border: 1px solid var(--lp-border);
+    box-shadow: var(--lp-shadow-lg);
+    overflow: hidden;
+}
+.xplndor-landing .lp-shot-bar {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    padding: 0.6rem 0.8rem;
+    background: #f1f3f7;
+    border-bottom: 1px solid var(--lp-border);
+}
+.xplndor-landing .lp-shot-bar span {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #cdd3de;
+}
+.xplndor-landing .lp-shot-bar span:nth-child(1) { background: #ff5f57; }
+.xplndor-landing .lp-shot-bar span:nth-child(2) { background: #febc2e; }
+.xplndor-landing .lp-shot-bar span:nth-child(3) { background: #28c840; }
+.xplndor-landing .lp-shot-img { display: block; width: 100%; height: auto; object-fit: cover; }
+.xplndor-landing .lp-shot-ph {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 1.5rem;
+    text-align: center;
+    background:
+        repeating-linear-gradient(45deg, #f6f8fc, #f6f8fc 14px, #eef2f9 14px, #eef2f9 28px);
+    color: var(--lp-muted);
+}
+.xplndor-landing .lp-shot-ph i { font-size: 2.4rem; color: var(--lp-accent); opacity: 0.8; }
+.xplndor-landing .lp-shot-ph-tag {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--lp-accent);
+    background: #fff; border: 1px dashed rgba(74,111,220,0.5);
+    padding: 0.2rem 0.6rem; border-radius: 999px;
+}
+.xplndor-landing .lp-shot-ph-label { font-size: 0.9rem; max-width: 26rem; }
+
+/* ── O QUE FAZEMOS ── */
+.xplndor-landing .lp-offer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+}
+@media (min-width: 576px) { .xplndor-landing .lp-offer-grid { grid-template-columns: 1fr 1fr; } }
+@media (min-width: 992px) { .xplndor-landing .lp-offer-grid { grid-template-columns: repeat(4, 1fr); } }
+.xplndor-landing .lp-offer-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid var(--lp-border);
+    border-radius: var(--lp-radius);
+    padding: 1.6rem 1.4rem;
+    box-shadow: var(--lp-shadow-sm);
+    transition: transform 0.22s var(--lp-ease), box-shadow 0.22s var(--lp-ease);
+    height: 100%;
+}
+.xplndor-landing .lp-offer-card:hover { transform: translateY(-4px); box-shadow: var(--lp-shadow-md); }
+.xplndor-landing .lp-offer-card.is-platform {
+    border-color: rgba(74, 111, 220, 0.4);
+    background: linear-gradient(180deg, #fff 0%, #f5f8ff 100%);
+}
+.xplndor-landing .lp-offer-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 3rem; height: 3rem; border-radius: 12px;
+    background: var(--lp-accent-bg); color: var(--lp-accent);
+    font-size: 1.5rem; margin-bottom: 1rem;
+}
+.xplndor-landing .lp-offer-tag {
+    position: absolute; top: 1rem; right: 1rem;
+    font-size: 0.66rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.18rem 0.5rem; border-radius: 999px;
+}
+.xplndor-landing .lp-offer-tag-service { color: var(--lp-muted); background: #eef1f5; }
+.xplndor-landing .lp-offer-tag-platform { color: #fff; background: var(--lp-accent); }
+.xplndor-landing .lp-offer-title { font-size: 1.12rem; font-weight: 700; color: var(--lp-navy); margin: 0 0 0.4rem; }
+.xplndor-landing .lp-offer-text { font-size: 0.94rem; line-height: 1.55; color: var(--lp-muted); margin: 0; }
+
+/* ── A PLATAFORMA EM AÇÃO ── */
+.xplndor-landing .lp-feature-rows { display: flex; flex-direction: column; gap: 3rem; }
+@media (min-width: 992px) { .xplndor-landing .lp-feature-rows { gap: 4.5rem; } }
+.xplndor-landing .lp-feature-copy { max-width: 34rem; }
+.xplndor-landing .lp-feature-text { font-size: 1.02rem; line-height: 1.6; color: var(--lp-muted); margin: 0 0 1rem; }
+.xplndor-landing .lp-feature-points { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.55rem; }
+.xplndor-landing .lp-feature-points li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.98rem; color: var(--lp-text); }
+.xplndor-landing .lp-feature-points i { color: var(--lp-green); font-size: 1.15rem; flex-shrink: 0; }
+
+/* ── CASO REAL ── */
+.xplndor-landing .lp-realcase-copy { padding-left: 0; }
+.xplndor-landing .lp-realcase-badge {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-weight: 700; color: var(--lp-navy);
+    background: var(--lp-accent-bg); border-radius: 999px;
+    padding: 0.4rem 0.9rem; margin-bottom: 1rem;
+}
+.xplndor-landing .lp-realcase-text { font-size: 1.08rem; line-height: 1.6; color: var(--lp-text); margin: 0 0 1.1rem; }
+.xplndor-landing .lp-realcase-note {
+    display: flex; gap: 0.55rem; align-items: flex-start;
+    font-size: 0.9rem; line-height: 1.5; color: var(--lp-muted);
+    background: #fff; border: 1px solid var(--lp-border); border-left: 3px solid var(--lp-accent);
+    border-radius: var(--lp-radius-sm); padding: 0.85rem 1rem; margin: 0;
+}
+.xplndor-landing .lp-realcase-note i { color: var(--lp-accent); font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+/* ── PREÇOS ── */
+.xplndor-landing .lp-platform-price {
+    display: grid; grid-template-columns: 1fr; gap: 1.5rem;
+    background: linear-gradient(135deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
+    color: #fff; border-radius: var(--lp-radius); padding: 2rem 1.6rem;
+    box-shadow: var(--lp-shadow-lg); margin-bottom: 3rem;
+}
+@media (min-width: 768px) { .xplndor-landing .lp-platform-price { grid-template-columns: 1.1fr 1fr; align-items: center; padding: 2.6rem; } }
+.xplndor-landing .lp-platform-price .lp-h3 { color: #fff; }
+.xplndor-landing .lp-platform-price .lp-feature-text { color: rgba(255,255,255,0.75); }
+.xplndor-landing .lp-platform-amount { margin: 1rem 0 1.3rem; display: flex; align-items: baseline; gap: 0.3rem; }
+.xplndor-landing .lp-platform-value { font-size: 2.6rem; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+.xplndor-landing .lp-platform-period { color: rgba(255,255,255,0.7); font-weight: 600; }
+.xplndor-landing .lp-platform-consult { font-size: 1.6rem; font-weight: 700; color: #fff; }
+.xplndor-landing .lp-platform-features { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.65rem; }
+.xplndor-landing .lp-platform-features li { display: flex; align-items: center; gap: 0.6rem; color: rgba(255,255,255,0.9); font-size: 0.98rem; }
+.xplndor-landing .lp-platform-features i { color: var(--lp-green); font-size: 1.15rem; flex-shrink: 0; }
+
+.xplndor-landing .lp-services-head { text-align: center; max-width: 44rem; margin: 0 auto 1.8rem; }
+.xplndor-landing .lp-services-head .lp-feature-text { margin: 0; }
+.xplndor-landing .lp-plans-grid { display: grid; grid-template-columns: 1fr; gap: 1.2rem; }
+@media (min-width: 768px) { .xplndor-landing .lp-plans-grid { grid-template-columns: repeat(3, 1fr); align-items: start; } }
+.xplndor-landing .lp-plan-card {
+    position: relative; background: #fff; border: 1px solid var(--lp-border);
+    border-radius: var(--lp-radius); padding: 1.8rem 1.5rem; box-shadow: var(--lp-shadow-sm);
+    display: flex; flex-direction: column; height: 100%;
+}
+.xplndor-landing .lp-plan-card.is-featured {
+    border-color: var(--lp-accent); box-shadow: var(--lp-shadow-md);
+}
+@media (min-width: 768px) { .xplndor-landing .lp-plan-card.is-featured { transform: scale(1.03); } }
+.xplndor-landing .lp-plan-badge {
+    position: absolute; top: -0.7rem; left: 50%; transform: translateX(-50%);
+    background: var(--lp-accent); color: #fff; font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase; padding: 0.28rem 0.85rem; border-radius: 999px;
+    white-space: nowrap;
+}
+.xplndor-landing .lp-plan-name { font-size: 1.25rem; font-weight: 700; color: var(--lp-navy); margin: 0 0 0.3rem; }
+.xplndor-landing .lp-plan-desc { font-size: 0.9rem; color: var(--lp-muted); margin: 0 0 1rem; min-height: 2.4em; }
+.xplndor-landing .lp-plan-price { display: flex; align-items: baseline; gap: 0.35rem; }
+.xplndor-landing .lp-plan-from { font-size: 0.85rem; color: var(--lp-muted); }
+.xplndor-landing .lp-plan-value { font-size: 2rem; font-weight: 800; color: var(--lp-navy); letter-spacing: -0.02em; }
+.xplndor-landing .lp-plan-period { font-size: 0.9rem; color: var(--lp-muted); }
+.xplndor-landing .lp-plan-note { font-size: 0.8rem; color: var(--lp-accent); font-weight: 600; margin-bottom: 1rem; }
+.xplndor-landing .lp-plan-features { list-style: none; padding: 0; margin: 1rem 0 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex-grow: 1; }
+.xplndor-landing .lp-plan-features li { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.92rem; color: var(--lp-text); }
+.xplndor-landing .lp-plan-features i { color: var(--lp-green); font-size: 1.05rem; flex-shrink: 0; margin-top: 2px; }
+.xplndor-landing .lp-price-vat-note { text-align: center; font-size: 0.85rem; color: var(--lp-muted); margin: 1.6rem 0 0; }
+
+/* Botão OUTLINE dentro dos cartões de plano: os cartões têm fundo branco, por
+   isso a variante outline (desenhada para fundos escuros, texto/borda brancos)
+   ficava invisível. Aqui recebe cor de marca sobre branco — nada de botão vazio. */
+/* Botões OUTLINE sobre fundo CLARO (herói + cartões de plano): a variante base
+   é para fundos escuros (texto/borda brancos) e ficava invisível. Aqui recebem
+   cor de marca sobre branco — visíveis e sem o glow verde herdado. */
+.xplndor-landing .lp-hero2 .lp-cta-btn-outline,
+.xplndor-landing .lp-plan-card .lp-cta-btn-outline {
+    color: var(--lp-accent);
+    border-color: var(--lp-accent);
+    background: #fff;
+    box-shadow: none; /* remove o glow verde herdado do .lp-cta-btn base */
+}
+.xplndor-landing .lp-hero2 .lp-cta-btn-outline:hover,
+.xplndor-landing .lp-hero2 .lp-cta-btn-outline:focus-visible {
+    color: var(--lp-accent);
+    background: var(--lp-accent-bg);
+}
+.xplndor-landing .lp-plan-card .lp-cta-btn-outline:hover,
+.xplndor-landing .lp-plan-card .lp-cta-btn-outline:focus-visible {
+    color: var(--lp-accent);
+    background: var(--lp-accent-bg);
+}
+
+/* ── CTA FINAL ── */
+.xplndor-landing .lp-finalcta {
+    position: relative; overflow: hidden;
+    background: linear-gradient(135deg, var(--lp-navy) 0%, var(--lp-navy-mid) 100%);
+    color: #fff; padding: 4.5rem 0;
+}
+.xplndor-landing .lp-finalcta-glow {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 130%; height: 220%;
+    background: radial-gradient(ellipse at 50% 55%, rgba(74,111,220,0.34), transparent 58%);
+    pointer-events: none;
+}
+.xplndor-landing .lp-finalcta-inner { position: relative; text-align: center; max-width: 42rem; margin: 0 auto; }
+.xplndor-landing .lp-finalcta-title { color: #fff; font-size: clamp(1.8rem, 5vw, 2.8rem); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 0.9rem; }
+.xplndor-landing .lp-finalcta-sub { font-size: 1.1rem; line-height: 1.6; color: rgba(255,255,255,0.8); margin: 0 0 1.8rem; }
+.xplndor-landing .lp-finalcta-actions { justify-content: center; }
+.xplndor-landing .lp-cta-btn-ondark { color: #fff; border-color: rgba(255,255,255,0.5); }
+.xplndor-landing .lp-cta-btn-ondark:hover { background: rgba(255,255,255,0.1); border-color: #fff; }
+@media (min-width: 992px) { .xplndor-landing .lp-finalcta { padding: 6rem 0; } }
+
+/* ── RODAPÉ RICO ── */
+.xplndor-landing .lp-footer2 { background: var(--lp-navy); color: rgba(255,255,255,0.75); padding: 3.5rem 0 2rem; }
+.xplndor-landing .lp-footer2-brand { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.02em; color: #fff; margin: 0 0 0.7rem; }
+.xplndor-landing .lp-footer2-blurb { font-size: 0.95rem; line-height: 1.55; max-width: 22rem; margin: 0 0 1.1rem; }
+.xplndor-landing .lp-footer2-cta {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    color: #fff; font-weight: 600; text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.3); border-radius: var(--lp-radius-sm);
+    padding: 0.5rem 1rem; transition: background 0.2s var(--lp-ease);
+}
+.xplndor-landing .lp-footer2-cta:hover { background: rgba(255,255,255,0.1); }
+.xplndor-landing .lp-footer2-heading { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; margin: 0 0 0.9rem; }
+.xplndor-landing .lp-footer2-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.xplndor-landing .lp-footer2-links a { color: rgba(255,255,255,0.75); text-decoration: none; font-size: 0.94rem; transition: color 0.2s var(--lp-ease); }
+.xplndor-landing .lp-footer2-links a:hover { color: #fff; }
+.xplndor-landing .lp-footer2-divider { border-color: rgba(255,255,255,0.12); margin: 2.2rem 0 1.2rem; }
+.xplndor-landing .lp-footer2-copy { font-size: 0.85rem; color: rgba(255,255,255,0.55); margin: 0; text-align: center; }

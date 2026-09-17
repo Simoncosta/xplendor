@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\QuoteRequest;
 use App\Http\Resources\QuoteResource;
+use App\Models\Company;
 use App\Models\Quote;
 use App\Services\QuoteService;
 use Illuminate\Http\Request;
@@ -31,12 +32,25 @@ class QuoteController extends Controller
         abort_unless(Auth::user()?->role === 'root', 403);
     }
 
+    /** Empresas ativas para o campo creatable (selecionar empresa cadastrada). */
+    public function companies()
+    {
+        $this->ensureRoot();
+
+        $companies = Company::query()->active()->orderBy('fiscal_name')
+            ->get(['id', 'fiscal_name', 'trade_name'])
+            ->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->trade_name ?: $c->fiscal_name])
+            ->all();
+
+        return ApiResponse::success($companies, 'Companies fetched successfully.');
+    }
+
     /** Listagem transversal + filtro opcional por estado. Recentes no topo. */
     public function index(Request $request)
     {
         $this->ensureRoot();
 
-        $query = Quote::query();
+        $query = Quote::query()->with('company:id,fiscal_name,trade_name');
 
         if ($status = $request->input('status')) {
             $query->where('status', $status);
@@ -77,7 +91,9 @@ class QuoteController extends Controller
     {
         $this->ensureRoot();
 
-        $quote = $this->service->store($request->validated());
+        // create() resolve o nome a partir da empresa (se ligado) e notifica-a.
+        $quote = $this->service->create($request->validated());
+        $quote->load('company:id,fiscal_name,trade_name');
 
         return ApiResponse::success(
             (new QuoteResource($quote))->resolve(),
@@ -89,7 +105,7 @@ class QuoteController extends Controller
     {
         $this->ensureRoot();
 
-        $quote = Quote::find($quoteId);
+        $quote = Quote::with('company:id,fiscal_name,trade_name')->find($quoteId);
         if (! $quote) {
             return ApiResponse::error('Orçamento não encontrado.', 404);
         }
@@ -117,7 +133,11 @@ class QuoteController extends Controller
         );
     }
 
-    /** Mudar apenas o estado (aprovado/rejeitado quando o cliente responde). */
+    /**
+     * Mudar o estado (para orçamentos de NOME LIVRE — sem painel de empresa, o
+     * Simon marca tudo à mão). Nos orçamentos ligados a uma empresa, aprovar/
+     * rejeitar é decisão DELA (endpoint de stand) — o Simon não aprova por ela.
+     */
     public function updateStatus(Request $request, int $quoteId)
     {
         $this->ensureRoot();
@@ -131,12 +151,48 @@ class QuoteController extends Controller
             'status' => ['required', Rule::in(Quote::STATUSES)],
         ]);
 
+        if ($quote->isLinkedToCompany() && in_array($data['status'], ['approved', 'rejected'], true)) {
+            return ApiResponse::error('Este orçamento está ligado a uma empresa — a aprovação/rejeição é feita por ela no painel dela.', 422);
+        }
+
         $quote = $this->service->update($quote->id, ['status' => $data['status']]);
 
         return ApiResponse::success(
             (new QuoteResource($quote))->resolve(),
             'Quote status updated successfully.'
         );
+    }
+
+    /** ADMIN — marca pago (fora do software). Só a partir de 'approved'. */
+    public function markPaid(int $quoteId)
+    {
+        $this->ensureRoot();
+
+        $quote = Quote::find($quoteId);
+        if (! $quote) {
+            return ApiResponse::error('Orçamento não encontrado.', 404);
+        }
+
+        $quote = $this->service->markPaid($quote);
+        $quote->load('company:id,fiscal_name,trade_name');
+
+        return ApiResponse::success((new QuoteResource($quote))->resolve(), 'Quote marked as paid.');
+    }
+
+    /** ADMIN — marca concluído. Só a partir de 'paid'. */
+    public function markCompleted(int $quoteId)
+    {
+        $this->ensureRoot();
+
+        $quote = Quote::find($quoteId);
+        if (! $quote) {
+            return ApiResponse::error('Orçamento não encontrado.', 404);
+        }
+
+        $quote = $this->service->markCompleted($quote);
+        $quote->load('company:id,fiscal_name,trade_name');
+
+        return ApiResponse::success((new QuoteResource($quote))->resolve(), 'Quote marked as completed.');
     }
 
     public function destroy(int $quoteId)

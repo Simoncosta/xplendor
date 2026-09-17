@@ -61,14 +61,26 @@ import LeadList from "pages/Leads/LeadList";
 // Stock & Promoção (Relatório A — flag manual de prioridade)
 import StockPromotionPage from "pages/StockPromotion";
 
+// Orçamentos (lado stand — a empresa vê/aprova os que a XPLENDOR lhe enviou)
+import CompanyQuotesList from "pages/Quotes/CompanyQuotesList";
+
+// Monitorização de stock (lado stand — junta métricas de stock já existentes)
+import StockMonitoring from "pages/StockMonitoring";
+
 // Internal tools
 // Support tickets (lado stand)
 import SupportTicketsList from "pages/Support/SupportTicketsList";
 import SupportTicketDetail from "pages/Support/SupportTicketDetail";
+// Tarefas internas do cliente (Kanban do stand).
+import CompanyTasksKanban from "pages/Tasks/CompanyTasksKanban";
+import CompanyTaskDetails from "pages/Tasks/CompanyTaskDetails";
+// Tráfego do site do cliente (GA4).
+import WebsiteTraffic from "pages/Analytics/WebsiteTraffic";
 // Admin (super-admin / root) — consola transversal
 import AdminTicketsList from "pages/Admin/AdminTicketsList";
 import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
 import AdminQuotesList from "pages/Admin/AdminQuotesList";
+import AdminStockList from "pages/Admin/AdminStockList";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 
 // OAuth Meta
@@ -119,6 +131,12 @@ const authProtectedRoutes = [
     // Stock & Promoção
     { path: "/stock/promotion", component: <StockPromotionPage /> },
 
+    // Monitorização de stock (métricas do stand)
+    { path: "/stock/monitoring", component: <StockMonitoring /> },
+
+    // Orçamentos (lado stand)
+    { path: "/quotes", component: <CompanyQuotesList /> },
+
     // Users
     { path: "/users", component: <UsersList /> },
     { path: "/users/create", component: <UserCreate /> },
@@ -150,12 +168,22 @@ const authProtectedRoutes = [
     { path: "/support", component: <SupportTicketsList /> },
     { path: "/support/:id", component: <SupportTicketDetail /> },
 
+    // Tarefas — Kanban interno da equipa (partilhado por company_id).
+    { path: "/tasks", component: <CompanyTasksKanban /> },
+    // Detalhe de uma tarefa (visual TaskDetails do template).
+    { path: "/tasks/:id", component: <CompanyTaskDetails /> },
+
+    // Tráfego do site — dados GA4 da propriedade do cliente (scoped por company_id).
+    { path: "/trafego-site", component: <WebsiteTraffic /> },
+
     // Consola de administração — SÓ root (segurança real no backend).
     // Primeira consola: tickets de suporte de todas as empresas.
     { path: "/admin", component: <RequireSuperAdmin><AdminTicketsList /></RequireSuperAdmin> },
     { path: "/admin/tickets/:id", component: <RequireSuperAdmin><AdminTicketDetail /></RequireSuperAdmin> },
     // 2ª consola da área /admin — gestão comercial (orçamentos avulsos).
     { path: "/admin/quotes", component: <RequireSuperAdmin><AdminQuotesList /></RequireSuperAdmin> },
+    // 3ª consola — 1ª vista de DADOS transversais: stock global (todas as empresas ativas).
+    { path: "/admin/stock", component: <RequireSuperAdmin><AdminStockList /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

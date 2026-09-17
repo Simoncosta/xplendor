@@ -55,6 +55,7 @@ use App\Repositories\Contracts\{
     DocumentTemplateRepositoryInterface,
     SupportTicketRepositoryInterface,
     QuoteRepositoryInterface,
+    CompanyTaskRepositoryInterface,
     VehicleAttributeRepositoryInterface,
     UserInviteRepositoryInterface,
     UserRepositoryInterface
@@ -94,6 +95,7 @@ use App\Repositories\{
     DocumentTemplateRepository,
     SupportTicketRepository,
     QuoteRepository,
+    CompanyTaskRepository,
     VehicleAttributeRepository,
     UserInviteRepository,
     UserRepository
@@ -145,6 +147,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DocumentTemplateRepositoryInterface::class, DocumentTemplateRepository::class);
         $this->app->bind(SupportTicketRepositoryInterface::class, SupportTicketRepository::class);
         $this->app->bind(QuoteRepositoryInterface::class, QuoteRepository::class);
+        $this->app->bind(CompanyTaskRepositoryInterface::class, CompanyTaskRepository::class);
+        // GA4 — o cliente REST da Data API por trás do contrato (testável via fake).
+        $this->app->bind(\App\Services\Ga4\Ga4ClientInterface::class, \App\Services\Ga4\Ga4RestClient::class);
         $this->app->bind(CustomerRepositoryInterface::class, CustomerRepository::class);
         $this->app->bind(ExpenseCategoryRepositoryInterface::class, ExpenseCategoryRepository::class);
         $this->app->bind(ExpenseRepositoryInterface::class, ExpenseRepository::class);

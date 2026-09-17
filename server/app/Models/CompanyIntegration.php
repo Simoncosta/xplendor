@@ -13,6 +13,7 @@ class CompanyIntegration extends Model
         'access_token',
         'account_id',
         'page_id',
+        'property_id',
         'token_expires_at',
         'status',
         'error_message',

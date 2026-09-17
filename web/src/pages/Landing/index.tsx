@@ -6,17 +6,14 @@ import { isStandalone } from '../../helpers/pwa';
 import { initMetaPixel } from './lib/metaPixel';
 import LandingNav from './components/LandingNav';
 import LandingFooter from './components/LandingFooter';
-import Hero from './sections/Hero';
-import ProblemSection from './sections/ProblemSection';
-import HowItWorks from './sections/HowItWorks';
-import MarketAnalysis from './sections/MarketAnalysis';
-import Differentiators from './sections/Differentiators';
-import Pricing from './sections/Pricing';
-import CustomPlan from './sections/CustomPlan';
-// SocialProof: reactivar quando tivermos 3+ logos autorizados de clientes reais
-// import SocialProof from './sections/SocialProof';
+// Redesign "site a sério" — ritmo de secções + produto mostrado (Framer Motion).
+import HeroNew from './sections/HeroNew';
+import WhatWeDo from './sections/WhatWeDo';
+import PlatformInAction from './sections/PlatformInAction';
+import RealCase from './sections/RealCase';
+import PricingSection from './sections/PricingSection';
 import FAQSection from './sections/FAQSection';
-import FinalCTA from './sections/FinalCTA';
+import FinalCTANew from './sections/FinalCTANew';
 
 const Landing: React.FC = () => {
     const navigate = useNavigate();
@@ -77,17 +74,13 @@ const Landing: React.FC = () => {
         <div className="xplndor-landing">
             <LandingNav />
             <main>
-                <Hero />
-                <ProblemSection />
-                <HowItWorks />
-                <MarketAnalysis />
-                <Differentiators />
-                <Pricing />
-                <CustomPlan />
-                {/* SocialProof: reactivar quando tivermos 3+ logos autorizados de clientes reais */}
-                {/* <SocialProof /> */}
+                <HeroNew />
+                <WhatWeDo />
+                <PlatformInAction />
+                <RealCase />
+                <PricingSection />
                 <FAQSection />
-                <FinalCTA />
+                <FinalCTANew />
             </main>
             <LandingFooter />
         </div>

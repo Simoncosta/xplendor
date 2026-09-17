@@ -27,7 +27,11 @@ class QuoteRequest extends FormRequest
         $req = $creating ? 'required' : 'sometimes';
 
         return [
-            'client_name'    => [$req, 'string', 'max:255'],
+            // Campo creatable: OU uma empresa cadastrada (company_id), OU nome livre.
+            // No create exige-se pelo menos um dos dois (client_name é obrigatório
+            // sem company_id; com company_id o nome é derivado da empresa).
+            'company_id'     => ['nullable', 'integer', 'exists:companies,id'],
+            'client_name'    => [$creating ? 'required_without:company_id' : 'sometimes', 'nullable', 'string', 'max:255'],
             'client_contact' => ['nullable', 'string', 'max:255'],
             'description'    => [$req, 'string', 'max:5000'],
             'amount'         => [$req, 'numeric', 'min:0', 'max:99999999.99'],

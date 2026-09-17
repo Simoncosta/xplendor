@@ -150,9 +150,53 @@ const Navdata = () => {
             },
             subItems: [
                 { id: "cars", label: "Carros", link: "/cars", parentId: "comercial" },
+                { id: "stock-monitoring", label: "Monitorização de stock", link: "/stock/monitoring", parentId: "comercial" },
                 { id: "leads", label: "Leads", link: "/leads", parentId: "comercial" },
                 { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial" },
+                // Tráfego do site (GA4 do cliente) — vive no Comercial, junto ao stock/leads.
+                { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "comercial" },
                 { id: "blogs", label: "Blogs", link: "/blogs", parentId: "comercial" },
+            ],
+        },
+        // Tarefas — Kanban interno da equipa (partilhado por company_id).
+        {
+            id: "tasks",
+            label: "Tarefas",
+            icon: "ri-list-check-2",
+            link: "/tasks",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Tasks');
+            }
+        },
+        {
+            id: "quotes",
+            label: "Orçamentos",
+            icon: "ri-file-list-3-line",
+            link: "/quotes",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Quotes');
+            }
+        },
+        {
+            id: "finances",
+            label: "Finanças",
+            icon: "ri-wallet-3-line",
+            link: "/#",
+            stateVariables: isFinances,
+            click: function (e: any) {
+                e.preventDefault();
+                setIsFinances(!isFinances);
+                setIscurrentState('Finances');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances" },
+                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances" },
+                { id: "customers", label: "Clientes", link: "/customers", parentId: "finances" },
+                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances" },
+                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances" },
             ],
         },
         // ── Configurações — gestão da conta/organização + utilitários ──
@@ -180,30 +224,6 @@ const Navdata = () => {
                 { id: "install-app", label: "Instalar app", link: "/install", parentId: "settings" },
             ],
         },
-        {
-            label: "Finanças",
-            isHeader: true,
-        },
-        {
-            id: "finances",
-            label: "Finanças",
-            icon: "ri-wallet-3-line",
-            link: "/#",
-            stateVariables: isFinances,
-            click: function (e: any) {
-                e.preventDefault();
-                setIsFinances(!isFinances);
-                setIscurrentState('Finances');
-                updateIconSidebar(e);
-            },
-            subItems: [
-                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances" },
-                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances" },
-                { id: "customers", label: "Clientes", link: "/customers", parentId: "finances" },
-                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances" },
-                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances" },
-            ],
-        },
         // ── Administração — visível apenas a role root. Sub-nav único; a área
         //    /admin cresce aqui dentro (novas consolas entram como sub-itens).
         //    Gating ao nível do array (o `hidden` NÃO é respeitado em subItems).
@@ -227,6 +247,7 @@ const Navdata = () => {
                 subItems: [
                     { id: "admin-tickets", label: "Tickets", link: "/admin", parentId: "admin" },
                     { id: "admin-quotes", label: "Orçamentos", link: "/admin/quotes", parentId: "admin" },
+                    { id: "admin-stock", label: "Stock global", link: "/admin/stock", parentId: "admin" },
                 ],
             },
         ] : []),

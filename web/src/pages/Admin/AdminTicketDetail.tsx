@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Label } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
+import BreadCrumb from "Components/Common/BreadCrumb";
 import {
     showAdminTicket, updateAdminTicketStatus, addAdminTicketMessage,
     setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted,
@@ -14,10 +15,12 @@ import {
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
 const STATUSES: SupportTicketStatus[] = ["open", "in_review", "resolved", "closed"];
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "—");
 
 const AdminTicketDetail = () => {
     document.title = "Administração — Ticket | Xplendor";
     const { id } = useParams();
+    const navigate = useNavigate();
 
     const [ticket, setTicket] = useState<ISupportTicket | null>(null);
     const [loading, setLoading] = useState(true);
@@ -123,7 +126,15 @@ const AdminTicketDetail = () => {
 
     if (loading) return <div className="page-content"><div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div></div>;
     if (error || !ticket || !tm || !sm) {
-        return <div className="page-content"><Container fluid><p className="text-muted py-4">Ticket não encontrado.</p><Link to="/admin">← Voltar</Link></Container></div>;
+        return (
+            <div className="page-content"><Container fluid>
+                <BreadCrumb title="Ticket" pageTitle="Tickets" pageLink="/admin" />
+                <Card><CardBody>
+                    <p className="text-muted mb-2">Ticket não encontrado.</p>
+                    <button className="btn btn-primary" onClick={() => navigate("/admin")}>Voltar aos tickets</button>
+                </CardBody></Card>
+            </Container></div>
+        );
     }
 
     const shot = absUrl(ticket.screenshot_url);
@@ -132,65 +143,41 @@ const AdminTicketDetail = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3"><Col><Link to="/admin" className="text-muted"><i className="ri-arrow-left-line me-1" />Voltar aos tickets</Link></Col></Row>
-
+                <BreadCrumb title="Ticket" pageTitle="Tickets" pageLink="/admin" />
                 <Row>
-                    <Col lg={8}>
-                        <Card>
+                    {/* Barra lateral — visual TaskDetails: detalhes (table-card) + orçamento. */}
+                    <Col xxl={3}>
+                        <Card className="mb-3">
                             <CardBody>
-                                <div className="d-flex align-items-start gap-2 mb-2">
-                                    <span className="avatar-xs flex-shrink-0"><span className="avatar-title bg-light text-primary rounded fs-18"><i className={tm.icon} /></span></span>
-                                    <div className="flex-grow-1">
-                                        <h5 className="mb-1">{ticket.title}</h5>
-                                        <small className="text-muted">
-                                            <span className="fw-semibold">{ticket.company_name ?? `Empresa #${ticket.company_id}`}</span>
-                                            {" · "}{tm.label}{ticket.author_name ? ` · ${ticket.author_name}` : ""}
-                                        </small>
-                                    </div>
-                                    <Badge color={sm.color}>{sm.label}</Badge>
+                                {/* O admin pode mudar o estado aqui (como o "board" do template). */}
+                                <div className="mb-4">
+                                    <Label className="form-label">Estado</Label>
+                                    <select className="form-control" value={ticket.status} disabled={savingStatus} onChange={(e) => changeStatus(e.target.value)}>
+                                        {STATUSES.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
+                                    </select>
+                                    {savingStatus && <small className="text-muted d-block mt-1"><Spinner size="sm" /> A guardar…</small>}
                                 </div>
-                                <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{ticket.description}</p>
-                                {shot && (
-                                    <a href={shot} target="_blank" rel="noopener noreferrer">
-                                        <img src={shot} alt="Print" className="img-fluid rounded border" style={{ maxHeight: 320 }} />
-                                    </a>
-                                )}
-                            </CardBody>
-                        </Card>
-
-                        <Card>
-                            <CardBody>
-                                <h6 className="mb-3">Conversa</h6>
-                                {(!ticket.messages || ticket.messages.length === 0) ? (
-                                    <p className="text-muted fs-13">Ainda não há mensagens.</p>
-                                ) : (
-                                    <div className="d-flex flex-column gap-3 mb-3">
-                                        {ticket.messages.map((m) => (
-                                            <div key={m.id} className={"d-flex " + (m.is_staff ? "justify-content-end" : "justify-content-start")}>
-                                                <div className={"p-2 px-3 rounded " + (m.is_staff ? "bg-primary text-white" : "bg-light")} style={{ maxWidth: "80%" }}>
-                                                    <div className="fw-semibold fs-12 mb-1">{m.is_staff ? "Eu (Equipa XPLENDOR)" : (m.author_name || "Stand")}</div>
-                                                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                <div className="d-flex align-items-end gap-2">
-                                    <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Responder ao stand…" />
-                                    <button type="button" className="btn btn-primary flex-shrink-0" onClick={reply} disabled={sending || !body.trim()}>
-                                        {sending ? <Spinner size="sm" /> : <i className="ri-send-plane-2-line" />}
-                                    </button>
+                                <div className="table-card">
+                                    <table className="table mb-0">
+                                        <tbody>
+                                            <tr><td className="fw-medium">Nº ticket</td><td>#{ticket.id}</td></tr>
+                                            <tr><td className="fw-medium">Tipo</td><td><i className={tm.icon + " me-1"} />{tm.label}</td></tr>
+                                            <tr><td className="fw-medium">Estado</td><td><span className={`badge bg-${sm.color}-subtle text-${sm.color}`}>{sm.label}</span></td></tr>
+                                            <tr><td className="fw-medium">Empresa</td><td>{ticket.company_name ?? `Empresa #${ticket.company_id}`}</td></tr>
+                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "—"}</td></tr>
+                                            <tr><td className="fw-medium">Criado</td><td>{fmtDate(ticket.created_at)}</td></tr>
+                                            {ticket.resolved_at && <tr><td className="fw-medium">Resolvido</td><td>{fmtDate(ticket.resolved_at)}</td></tr>}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </CardBody>
                         </Card>
-                    </Col>
 
-                    <Col lg={4}>
                         {/* Camada de ORÇAMENTO — só nos tickets pagos (site_change). */}
                         {ticket.type === "site_change" && (
-                            <Card>
+                            <Card className="mb-3">
                                 <CardBody>
-                                    <h6 className="mb-3"><i className="ri-money-euro-circle-line text-warning me-1" />Orçamento</h6>
+                                    <h6 className="card-title mb-3"><i className="ri-money-euro-circle-line text-warning me-1" />Orçamento</h6>
 
                                     {ticket.quote_status && (
                                         <Badge color={QUOTE_STATUS_META[ticket.quote_status].color} className="mb-3">
@@ -254,15 +241,58 @@ const AdminTicketDetail = () => {
                                 </CardBody>
                             </Card>
                         )}
+                    </Col>
+
+                    {/* Coluna principal — descrição (Summary) + thread de conversa. */}
+                    <Col xxl={9}>
+                        <Card>
+                            <CardBody>
+                                <div className="d-flex align-items-start gap-2 mb-3">
+                                    <span className="avatar-sm flex-shrink-0"><span className="avatar-title bg-light text-primary rounded fs-20"><i className={tm.icon} /></span></span>
+                                    <div className="flex-grow-1">
+                                        <h5 className="mb-1">{ticket.title}</h5>
+                                        <small className="text-muted">
+                                            <span className="fw-semibold">{ticket.company_name ?? `Empresa #${ticket.company_id}`}</span>
+                                            {" · "}{tm.label}{ticket.author_name ? ` · ${ticket.author_name}` : ""}
+                                        </small>
+                                    </div>
+                                    <Badge color={sm.color}>{sm.label}</Badge>
+                                </div>
+                                <div className="text-muted">
+                                    <h6 className="mb-2 text-uppercase">Descrição</h6>
+                                    <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{ticket.description}</p>
+                                </div>
+                                {shot && (
+                                    <a href={shot} target="_blank" rel="noopener noreferrer">
+                                        <img src={shot} alt="Print" className="img-fluid rounded border" style={{ maxHeight: 320 }} />
+                                    </a>
+                                )}
+                            </CardBody>
+                        </Card>
 
                         <Card>
                             <CardBody>
-                                <h6 className="mb-2">Estado</h6>
-                                <Input type="select" value={ticket.status} disabled={savingStatus} onChange={(e) => changeStatus(e.target.value)}>
-                                    {STATUSES.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
-                                </Input>
-                                {savingStatus && <small className="text-muted d-block mt-1"><Spinner size="sm" /> A guardar…</small>}
-                                {ticket.resolved_at && <small className="text-muted d-block mt-2">Resolvido em {new Date(ticket.resolved_at).toLocaleDateString("pt-PT")}</small>}
+                                <h6 className="mb-3 text-uppercase">Conversa</h6>
+                                {(!ticket.messages || ticket.messages.length === 0) ? (
+                                    <p className="text-muted fs-13">Ainda não há mensagens.</p>
+                                ) : (
+                                    <div className="d-flex flex-column gap-3 mb-3">
+                                        {ticket.messages.map((m) => (
+                                            <div key={m.id} className={"d-flex " + (m.is_staff ? "justify-content-end" : "justify-content-start")}>
+                                                <div className={"p-2 px-3 rounded " + (m.is_staff ? "bg-primary text-white" : "bg-light")} style={{ maxWidth: "80%" }}>
+                                                    <div className="fw-semibold fs-12 mb-1">{m.is_staff ? "Eu (Equipa XPLENDOR)" : (m.author_name || "Stand")}</div>
+                                                    <div style={{ whiteSpace: "pre-wrap" }}>{m.body}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="d-flex align-items-end gap-2">
+                                    <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Responder ao stand…" />
+                                    <button type="button" className="btn btn-primary flex-shrink-0" onClick={reply} disabled={sending || !body.trim()}>
+                                        {sending ? <Spinner size="sm" /> : <i className="ri-send-plane-2-line" />}
+                                    </button>
+                                </div>
                             </CardBody>
                         </Card>
                     </Col>

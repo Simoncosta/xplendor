@@ -16,7 +16,8 @@ class QuoteResource extends JsonResource
         return [
             'id'             => $this->id,
             'company_id'     => $this->company_id,
-            'company_name'   => $this->whenLoaded('company', fn () => $this->company?->fiscal_name),
+            'company_name'   => $this->whenLoaded('company', fn () => $this->company?->trade_name ?: $this->company?->fiscal_name),
+            'is_linked'      => $this->company_id !== null,   // ligado a empresa vs. nome livre
             'client_name'    => $this->client_name,
             'client_contact' => $this->client_contact,
             'description'    => $this->description,

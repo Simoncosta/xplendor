@@ -21,6 +21,7 @@ This version returns a curated, stable payload.
 | `vehicle_attributes` (raw JSON) | Present as nested JSON | **Removed** — flattened into `specs`, `habitation`, `features`, `beds` |
 | `seller` (full User relation) | Exposed | **Replaced by safe `seller` object** (name, avatar, mobile, whatsapp only) |
 | `views_count`, `leads_count` | Appended via analytics | **Removed** (not for public) |
+| `interior_furniture.has_water_infiltrations`, `interior_furniture.infiltrations_notes` | In raw JSON | **Never exposed** — inspeção interna do stand (privado). Também removido do payload da ficha A4. |
 | `status` filter | Not enforced | **Enforced: `active`, `sold`, `available_soon`, `reserved`** (single source: `CarPublicRepository::PUBLIC_STATUSES`) |
 
 ### Additive changes (non-breaking — safe to ignore in existing consumers)
@@ -83,6 +84,7 @@ This version returns a curated, stable payload.
 
   "specs": {
     "seats": 4,
+    "sleeps": 4,
     "length_m": 5.99,
     "width_m": 2.10,
     "height_m": 2.78,
@@ -113,10 +115,22 @@ This version returns a curated, stable payload.
     "has_gpl": false,
     "has_generator": false,
     "has_external_power_socket": true,
+    "has_aircon_220v": false,
+    "has_viesa": false,
+    "has_battery_cutoff": true,
     "water_heater_source": "electric",
     "ambient_heating_source": "diesel",
     "ambient_heating_brand": "Truma",
+    "inverter_type": "pure_sine",
     "battery_count": 1,
+    "solar_panel_count": 2,
+    "solar_panel_watts": 300,
+    "lithium_battery_ah": 200,
+    "lithium_battery_count": 1,
+    "inverter_watts": 2000,
+    "gpl_bottles_count": 2,
+    "cabin_battery_count": 1,
+    "cell_battery_count": 2,
     "has_awning": true,
     "awning_brand": "Fiamma",
     "has_bike_rack": false,
@@ -130,6 +144,14 @@ This version returns a curated, stable payload.
     "has_hubcaps": false,
     "has_national_antenna": false,
     "has_parabolic_antenna": false,
+    "has_external_ladder": false,
+    "has_fix_n_go_kit": false,
+    "garage": {
+      "has_garage": true,
+      "has_double_opening": false,
+      "is_spacious": true,
+      "has_height_adjuster": false
+    },
     "has_remifront": false,
     "has_window_blackouts": true,
     "has_mosquito_nets": true,
@@ -138,10 +160,17 @@ This version returns a curated, stable payload.
     "has_turbovent_skylight": true,
     "has_panoramic_skylight": false,
     "has_40x40_skylight": false,
+    "has_air_suspension": false,
+    "has_air_suspension_compressor": false,
+    "has_dual_rear_wheel": false,
     "chassis_type": "standard",
     "has_alko_chassis": false,
+    "chassis_notes": "Reforço no chassis traseiro",
     "has_foldable_table": true,
     "has_rotating_seats": false,
+    "has_wardrobe": true,
+    "tv_count": 1,
+    "tv_location": "sala",
     "upholstery_state": "good",
     "has_curtains": true,
     "has_led_lighting": true,
@@ -149,6 +178,8 @@ This version returns a curated, stable payload.
     "has_tv_support": true,
     "has_tv": false,
     "has_command_panel": true,
+    "living_room_layout": "face_to_face",
+    "has_extending_table": true,
     "has_alarm": false,
     "has_hatch_lock": false,
     "has_cabin_lock": false,

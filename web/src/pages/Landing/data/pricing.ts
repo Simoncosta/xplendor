@@ -90,7 +90,7 @@ export const PRICING_PLANS: PricingPlan[] = [
             { text: 'Campanhas Google Ads geridas' },
             { text: 'Análise comparativa de mercado por viatura' },
             { text: 'Scoring de potencial de venda por viatura' },
-            { text: 'Acesso à plataforma XPLENDOR' },
+            { text: 'Plataforma XPLENDOR incluída' },
         ],
         adsMinBudget: 1500,
         adsBudgetNote: 'Investimento mínimo de €750/mês em campanhas Meta + Google',

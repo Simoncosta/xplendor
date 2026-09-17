@@ -268,6 +268,7 @@ const buildChassis = (va: VA): Group => {
     if (cs.has_panoramic_skylight)    items.push("Clarabóia panorâmica");
     if (cs.has_40x40_skylight)        items.push("Clarabóia 40×40");
     if (cs.other_skylights_notes)     items.push(String(cs.other_skylights_notes));
+    if (cs.chassis_notes)             items.push(String(cs.chassis_notes));
     // 2026-06-28 — `has_remifront` movido para o grupo "Cabine" (buildCabin
     // abaixo). Chave JSON permanece em `chassis_structure.has_remifront`,
     // só a apresentação vive na Cabine agora. Ver CLAUDE.md sec 6.1.

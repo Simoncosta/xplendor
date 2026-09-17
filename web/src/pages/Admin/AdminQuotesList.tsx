@@ -3,24 +3,27 @@ import {
     Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Label,
     Modal, ModalHeader, ModalBody, ModalFooter,
 } from "reactstrap";
+import CreatableSelect from "react-select/creatable";
 import { ToastContainer, toast } from "react-toastify";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import {
-    getAdminQuotes, getAdminQuotesSummary, createAdminQuote, updateAdminQuote,
-    updateAdminQuoteStatus, deleteAdminQuote,
+    getAdminQuotes, getAdminQuotesSummary, getAdminQuoteCompanies, createAdminQuote, updateAdminQuote,
+    updateAdminQuoteStatus, markAdminQuotePaid, markAdminQuoteCompleted, deleteAdminQuote,
 } from "helpers/laravel_helper";
 import {
-    IQuote, IQuoteSummary, QuoteStatus, QUOTE_STATUS_META, QUOTE_STATUSES, formatQuoteEuro,
+    IQuote, IQuoteSummary, IQuoteCompanyOption, QuoteStatus, QUOTE_STATUS_META, QUOTE_STATUSES, formatQuoteEuro,
 } from "common/models/quote.model";
 
 type FormState = {
-    client_name: string;
+    companyId: number | null;   // preenchido quando escolhe uma empresa cadastrada
+    client_name: string;        // nome livre (ou nome da empresa, para exibição)
     client_contact: string;
     description: string;
     amount: string;
     notes: string;
 };
 
-const EMPTY_FORM: FormState = { client_name: "", client_contact: "", description: "", amount: "", notes: "" };
+const EMPTY_FORM: FormState = { companyId: null, client_name: "", client_contact: "", description: "", amount: "", notes: "" };
 
 const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
@@ -42,6 +45,16 @@ const AdminQuotesList = () => {
     const [form, setForm] = useState<FormState>(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
     const [busyId, setBusyId] = useState<number | null>(null);
+    const [companies, setCompanies] = useState<IQuoteCompanyOption[]>([]);
+
+    useEffect(() => {
+        getAdminQuoteCompanies().then((r: any) => setCompanies(r?.data ?? [])).catch(() => setCompanies([]));
+    }, []);
+
+    const companyOptions = useMemo(
+        () => companies.map((c) => ({ value: c.id, label: c.name })),
+        [companies],
+    );
 
     const loadSummary = useCallback(() => {
         getAdminQuotesSummary().then((r: any) => setSummary(r?.data ?? null)).catch(() => setSummary(null));
@@ -71,6 +84,7 @@ const AdminQuotesList = () => {
     const openEdit = (q: IQuote) => {
         setEditing(q);
         setForm({
+            companyId: q.company_id ?? null,
             client_name: q.client_name,
             client_contact: q.client_contact ?? "",
             description: q.description,
@@ -81,18 +95,25 @@ const AdminQuotesList = () => {
     };
 
     const save = async () => {
-        if (!form.client_name.trim()) { toast.error("Indica o nome do cliente."); return; }
+        // Campo creatable: OU empresa (companyId) OU nome livre (client_name).
+        if (!form.companyId && !form.client_name.trim()) { toast.error("Escolhe uma empresa ou escreve um nome de cliente."); return; }
         if (!form.description.trim()) { toast.error("Descreve o orçamento."); return; }
         const amount = Number(form.amount.replace(",", "."));
         if (!amount || amount < 0) { toast.error("Indica um valor válido."); return; }
 
-        const payload = {
-            client_name: form.client_name.trim(),
+        const payload: any = {
             client_contact: form.client_contact.trim() || null,
             description: form.description.trim(),
             amount,
             notes: form.notes.trim() || null,
         };
+        if (form.companyId) {
+            payload.company_id = form.companyId;   // ligado a empresa (o nome vem dela)
+        } else {
+            payload.company_id = null;
+            payload.client_name = form.client_name.trim();  // nome livre
+        }
+
         setSaving(true);
         try {
             if (editing) {
@@ -100,7 +121,7 @@ const AdminQuotesList = () => {
                 toast.success("Orçamento atualizado.");
             } else {
                 await createAdminQuote(payload);
-                toast.success("Orçamento criado (em validação).");
+                toast.success(form.companyId ? "Orçamento criado e enviado à empresa." : "Orçamento criado (em validação).");
             }
             setModalOpen(false);
             loadQuotes(); loadSummary();
@@ -116,11 +137,24 @@ const AdminQuotesList = () => {
         try {
             await updateAdminQuoteStatus(q.id, status);
             loadQuotes(); loadSummary();
-        } catch {
-            toast.error("Não foi possível mudar o estado.");
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || "Não foi possível mudar o estado.");
         } finally {
             setBusyId(null);
         }
+    };
+
+    const doPaid = async (q: IQuote) => {
+        setBusyId(q.id);
+        try { await markAdminQuotePaid(q.id); loadQuotes(); loadSummary(); }
+        catch (err: any) { toast.error(err?.response?.data?.message || "Não foi possível marcar pago."); }
+        finally { setBusyId(null); }
+    };
+    const doComplete = async (q: IQuote) => {
+        setBusyId(q.id);
+        try { await markAdminQuoteCompleted(q.id); loadQuotes(); loadSummary(); }
+        catch (err: any) { toast.error(err?.response?.data?.message || "Não foi possível concluir."); }
+        finally { setBusyId(null); }
     };
 
     const remove = async (q: IQuote) => {
@@ -196,8 +230,11 @@ const AdminQuotesList = () => {
                                             <div className="d-flex align-items-start gap-3 flex-wrap">
                                                 <div className="flex-grow-1 min-w-0">
                                                     <div className="d-flex align-items-center gap-2 flex-wrap">
-                                                        <span className="fw-semibold">{q.client_name}</span>
+                                                        <span className="fw-semibold">{q.company_name || q.client_name}</span>
                                                         <Badge color={sm.color}>{sm.label}</Badge>
+                                                        {q.is_linked
+                                                            ? <span className="badge bg-info-subtle text-info"><i className="ri-building-line me-1" />Empresa</span>
+                                                            : <span className="badge bg-light text-body"><i className="ri-user-line me-1" />Externo</span>}
                                                     </div>
                                                     <div className="text-muted fs-13 text-truncate">{q.description}</div>
                                                     <small className="text-muted">
@@ -209,22 +246,39 @@ const AdminQuotesList = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="d-flex flex-wrap gap-2 mt-2">
-                                                {q.status !== "approved" && (
-                                                    <button type="button" className="btn btn-soft-success btn-sm" disabled={busy} onClick={() => changeStatus(q, "approved")}>
-                                                        {busy ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar</>}
+                                            <div className="d-flex flex-wrap gap-2 mt-2 align-items-center">
+                                                {/* Aprovar/rejeitar: nos ligados a empresa é ELA que decide (no painel dela). */}
+                                                {q.is_linked ? (
+                                                    q.status === "pending" && (
+                                                        <span className="text-muted fs-12"><i className="ri-time-line me-1" />A aguardar decisão da empresa</span>
+                                                    )
+                                                ) : (
+                                                    <>
+                                                        {q.status === "pending" && (
+                                                            <button type="button" className="btn btn-soft-success btn-sm" disabled={busy} onClick={() => changeStatus(q, "approved")}>
+                                                                {busy ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar</>}
+                                                            </button>
+                                                        )}
+                                                        {(q.status === "pending" || q.status === "approved") && (
+                                                            <button type="button" className="btn btn-soft-danger btn-sm" disabled={busy} onClick={() => changeStatus(q, "rejected")}>
+                                                                <i className="ri-close-line me-1" />Rejeitar
+                                                            </button>
+                                                        )}
+                                                    </>
+                                                )}
+
+                                                {/* Pago/concluído: sempre do Simon (fora do software). */}
+                                                {q.status === "approved" && (
+                                                    <button type="button" className="btn btn-soft-primary btn-sm" disabled={busy} onClick={() => doPaid(q)}>
+                                                        <i className="ri-bank-card-line me-1" />Marcar pago
                                                     </button>
                                                 )}
-                                                {q.status !== "rejected" && (
-                                                    <button type="button" className="btn btn-soft-danger btn-sm" disabled={busy} onClick={() => changeStatus(q, "rejected")}>
-                                                        <i className="ri-close-line me-1" />Rejeitar
+                                                {q.status === "paid" && (
+                                                    <button type="button" className="btn btn-soft-success btn-sm" disabled={busy} onClick={() => doComplete(q)}>
+                                                        <i className="ri-check-double-line me-1" />Concluir
                                                     </button>
                                                 )}
-                                                {q.status !== "pending" && (
-                                                    <button type="button" className="btn btn-soft-warning btn-sm" disabled={busy} onClick={() => changeStatus(q, "pending")}>
-                                                        <i className="ri-arrow-go-back-line me-1" />Repor em validação
-                                                    </button>
-                                                )}
+
                                                 <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => openEdit(q)}>
                                                     <i className="ri-pencil-line me-1" />Editar
                                                 </button>
@@ -249,7 +303,38 @@ const AdminQuotesList = () => {
                 <ModalBody>
                     <div className="mb-3">
                         <Label className="form-label">Cliente</Label>
-                        <Input type="text" value={form.client_name} onChange={(e) => setForm({ ...form, client_name: e.target.value })} placeholder="ex.: Spacedrive" />
+                        <CreatableSelect
+                            styles={reactSelectTheme}
+                            isClearable
+                            placeholder="Escolhe uma empresa ou escreve um nome…"
+                            formatCreateLabel={(input: string) => `Usar nome livre: "${input}"`}
+                            options={companyOptions}
+                            value={
+                                form.companyId
+                                    ? (companyOptions.find((o) => o.value === form.companyId) ?? null)
+                                    : (form.client_name ? { value: -1, label: form.client_name } : null)
+                            }
+                            onChange={(opt: any) => {
+                                if (opt && typeof opt.value === "number" && opt.value > 0) {
+                                    // Empresa cadastrada selecionada → liga por company_id.
+                                    setForm({ ...form, companyId: opt.value, client_name: opt.label });
+                                } else if (opt) {
+                                    // Opção criada (nome livre digitado sem criar) → texto.
+                                    setForm({ ...form, companyId: null, client_name: opt.label });
+                                } else {
+                                    setForm({ ...form, companyId: null, client_name: "" });
+                                }
+                            }}
+                            onCreateOption={(input: string) => {
+                                // Nome livre (cliente fora da plataforma) → só texto, sem criar empresa.
+                                setForm({ ...form, companyId: null, client_name: input });
+                            }}
+                        />
+                        <small className="text-muted">
+                            {form.companyId
+                                ? "Ligado a uma empresa — vai aparecer no painel dela para aprovar."
+                                : "Nome livre — fica só na tua área /admin (sem painel)."}
+                        </small>
                     </div>
                     <div className="mb-3">
                         <Label className="form-label">Contacto</Label>

@@ -9,6 +9,7 @@ import {
     ISupportTicket, SupportTicketType, TICKET_TYPE_META, TICKET_STATUS_META,
     QUOTE_STATUS_META, SITE_CHANGE_HOURLY_RATE, formatEuro,
 } from "common/models/supportTicket.model";
+import TicketsKanban from "Components/Common/TicketsKanban";
 
 const selectVM = createSelector(
     [(state: any) => state.SupportTicket],
@@ -32,6 +33,7 @@ const SupportTicketsList = () => {
     }, []);
 
     const [open, setOpen] = useState(false);
+    const [view, setView] = useState<"list" | "kanban">("list");
     const [type, setType] = useState<SupportTicketType>("idea");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
@@ -67,7 +69,15 @@ const SupportTicketsList = () => {
                         <h4 className="mb-1"><i className="ri-customer-service-2-line text-primary me-2" />Suporte</h4>
                         <p className="text-muted mb-0">Os pedidos da tua empresa — ideias, melhorias, bugs e sugestões.</p>
                     </Col>
-                    <Col xs="auto">
+                    <Col xs="auto" className="d-flex gap-2">
+                        <div className="btn-group" role="group" aria-label="Vista">
+                            <button type="button" className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("list")}>
+                                <i className="ri-list-check me-1" />Lista
+                            </button>
+                            <button type="button" className={"btn btn-sm " + (view === "kanban" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("kanban")}>
+                                <i className="ri-layout-grid-line me-1" />Kanban
+                            </button>
+                        </div>
                         <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
                             <i className="ri-add-line me-1" />Novo pedido
                         </button>
@@ -81,6 +91,15 @@ const SupportTicketsList = () => {
                             <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
                         ) : tickets.length === 0 ? (
                             <p className="text-muted mb-0">Ainda não há pedidos. Abre o primeiro em "Novo pedido".</p>
+                        ) : view === "kanban" ? (
+                            // Vista Kanban SÓ LEITURA: o cliente não arrasta (o estado é gerido
+                            // pelo admin). Sem coluna de empresa (é uma empresa só). Clicar abre o detalhe.
+                            <TicketsKanban
+                                tickets={tickets}
+                                readOnly
+                                showCompany={false}
+                                detailHref={(id) => `/support/${id}`}
+                            />
                         ) : (
                             <div className="d-flex flex-column gap-2">
                                 {tickets.map((t) => {

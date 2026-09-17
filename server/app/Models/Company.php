@@ -74,6 +74,16 @@ class Company extends Model
         ];
     }
 
+    // "is_active" derivado — a ÚNICA definição de empresa ativa, partilhada pelo
+    // rótulo na lista, pela exclusão do stock (scopeActive) e pelo guard de acesso
+    // (CheckCompanySubscription usa hasPlatformAccess). Evita critérios divergentes.
+    protected $appends = ['is_active'];
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->hasPlatformAccess();
+    }
+
     public function cars(): HasMany
     {
         return $this->hasMany(Car::class);
@@ -92,6 +102,24 @@ class Company extends Model
         $this->trial_starts_at = $startsAt;
         $this->trial_ends_at = (clone $startsAt)->addDays($days);
         $this->subscription_ends_at = null;
+    }
+
+    /**
+     * Scope: empresas ATIVAS (com acesso à plataforma). Espelha em SQL a
+     * definição de hasPlatformAccess(): subscription 'active', OU 'trial' ainda
+     * dentro do prazo. Empresas arquivadas (soft-deleted) já saem pelo global
+     * scope do SoftDeletes. Fonte única para as vistas transversais do /admin
+     * (ex.: Stock global) — futuras consolas reutilizam este scope.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where(function ($q) {
+            $q->where('subscription_status', self::SUBSCRIPTION_STATUS_ACTIVE)
+                ->orWhere(function ($t) {
+                    $t->where('subscription_status', self::SUBSCRIPTION_STATUS_TRIAL)
+                        ->where('trial_ends_at', '>=', now());
+                });
+        });
     }
 
     public function isTrialExpired(): bool

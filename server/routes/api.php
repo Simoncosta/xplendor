@@ -4,6 +4,8 @@ use App\Http\Controllers\Api\MarketSnapshotController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
 use App\Http\Controllers\Api\V1\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Api\V1\Admin\QuoteController as AdminQuoteController;
+use App\Http\Controllers\Api\V1\Admin\StockController as AdminStockController;
+use App\Http\Controllers\Api\V1\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Api\Public\{
     BlogController as PublicBlogController,
     CarController as PublicCarController,
@@ -42,6 +44,9 @@ use App\Http\Controllers\Api\V1\{
     SatisfactionReportController,
     DocumentTemplateController,
     SupportTicketController,
+    QuoteController,
+    CompanyTaskController,
+    GoogleAnalyticsController,
     ExpenseCategoryController,
     ExpenseController,
     ScraperController,
@@ -146,6 +151,12 @@ Route::prefix('v1')->group(function () {
                 Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
                 Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
 
+                // GA4 — tráfego do site do cliente (Service Account do servidor;
+                // property_id por empresa). Scoped por company_id.
+                Route::post('/integrations/google/connect', [GoogleAnalyticsController::class, 'connect']);
+                Route::delete('/integrations/google', [GoogleAnalyticsController::class, 'disconnect']);
+                Route::get('/analytics/ga4/traffic', [GoogleAnalyticsController::class, 'traffic']);
+
                 Route::apiResource('/users', UserController::class);
                 Route::post('/cars/generate-description', [CarController::class, 'generateDescription']);
                 Route::apiResource('/cars', CarController::class);
@@ -173,6 +184,18 @@ Route::prefix('v1')->group(function () {
                 Route::post('/support-tickets/{ticket}/messages', [SupportTicketController::class, 'storeMessage']);
                 // Site_change (pago): o stand só aprova/rejeita o orçamento.
                 Route::patch('/support-tickets/{ticket}/quote-decision', [SupportTicketController::class, 'quoteDecision']);
+
+                // Orçamentos avulsos ligados a esta empresa — ela vê e decide.
+                Route::get('/quotes', [QuoteController::class, 'index']);
+                Route::patch('/quotes/{quote}/decision', [QuoteController::class, 'decision']);
+
+                // Tarefas internas do cliente (Kanban do stand). Partilhadas por
+                // company_id; toda a equipa vê/edita. Colunas fixas todo|doing|done.
+                Route::get('/tasks', [CompanyTaskController::class, 'index']);
+                Route::post('/tasks', [CompanyTaskController::class, 'store']);
+                Route::match(['put', 'patch'], '/tasks/{task}', [CompanyTaskController::class, 'update']);
+                Route::patch('/tasks/{task}/move', [CompanyTaskController::class, 'move']);
+                Route::delete('/tasks/{task}', [CompanyTaskController::class, 'destroy']);
                 // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
                 Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
                 Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
@@ -222,6 +245,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/tickets', [AdminSupportTicketController::class, 'index']);
             Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
             Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);
+            Route::patch('/tickets/{ticket}/type', [AdminSupportTicketController::class, 'reclassify']);
             Route::post('/tickets/{ticket}/messages', [AdminSupportTicketController::class, 'storeMessage']);
             // Site_change (pago): orçar, marcar pago (+ fatura PDF), concluir.
             Route::patch('/tickets/{ticket}/quote', [AdminSupportTicketController::class, 'setQuote']);
@@ -230,12 +254,24 @@ Route::prefix('v1')->group(function () {
 
             // Orçamentos avulsos — gestão comercial (2ª consola da área /admin).
             Route::get('/quotes/summary', [AdminQuoteController::class, 'summary']);
+            Route::get('/quotes/companies', [AdminQuoteController::class, 'companies']);
             Route::get('/quotes', [AdminQuoteController::class, 'index']);
             Route::post('/quotes', [AdminQuoteController::class, 'store']);
             Route::get('/quotes/{quote}', [AdminQuoteController::class, 'show']);
             Route::match(['put', 'patch'], '/quotes/{quote}', [AdminQuoteController::class, 'update']);
             Route::patch('/quotes/{quote}/status', [AdminQuoteController::class, 'updateStatus']);
+            Route::patch('/quotes/{quote}/mark-paid', [AdminQuoteController::class, 'markPaid']);
+            Route::patch('/quotes/{quote}/complete', [AdminQuoteController::class, 'markCompleted']);
             Route::delete('/quotes/{quote}', [AdminQuoteController::class, 'destroy']);
+
+            // Stock GLOBAL — 1ª vista de dados transversais (veículos de todas
+            // as empresas ATIVAS). Só leitura; não toca nos endpoints de stand.
+            Route::get('/stock/summary', [AdminStockController::class, 'summary']);
+            Route::get('/stock/companies', [AdminStockController::class, 'companies']);
+            Route::get('/stock', [AdminStockController::class, 'index']);
+
+            // Ativar/inativar empresa (root). Inativar tira acesso + exclui do stock.
+            Route::patch('/companies/{company}/status', [AdminCompanyController::class, 'setStatus']);
         });
     });
 });

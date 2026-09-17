@@ -33,6 +33,14 @@ class CarPrintSheetResource extends JsonResource
     {
         /** @var \App\Models\Car $this */
         $va      = $this->vehicle_attributes ?? [];
+
+        // A A4 pode ser impressa e entregue ao cliente — as notas de INSPEÇÃO
+        // INTERNA do stand (infiltrações) NÃO saem, tal como na API pública.
+        unset(
+            $va['interior_furniture']['has_water_infiltrations'],
+            $va['interior_furniture']['infiltrations_notes'],
+        );
+
         $company = $this->company; // eager loaded no Controller
         $brand   = $this->brand;
         $model   = $this->model;

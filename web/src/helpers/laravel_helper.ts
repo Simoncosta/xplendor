@@ -172,6 +172,8 @@ export const getAdminTicketsSummary = () => api.get(url.GET_ADMIN + `/tickets/su
 export const showAdminTicket = (id: number) => api.get(url.GET_ADMIN + `/tickets/${id}`);
 export const updateAdminTicketStatus = (id: number, status: string) =>
     api.update(url.GET_ADMIN + `/tickets/${id}/status`, { status });
+export const reclassifyAdminTicketType = (id: number, type: string) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/type`, { type });
 export const addAdminTicketMessage = (id: number, body: string) =>
     api.create(url.GET_ADMIN + `/tickets/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
 
@@ -193,6 +195,52 @@ export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_AD
 export const updateAdminQuoteStatus = (id: number, status: string) =>
     api.update(url.GET_ADMIN + `/quotes/${id}/status`, { status });
 export const deleteAdminQuote = (id: number) => api.delete(url.GET_ADMIN + `/quotes/${id}`);
+export const getAdminQuoteCompanies = () => api.get(url.GET_ADMIN + `/quotes/companies`);
+export const markAdminQuotePaid = (id: number) => api.update(url.GET_ADMIN + `/quotes/${id}/mark-paid`, {});
+export const markAdminQuoteCompleted = (id: number) => api.update(url.GET_ADMIN + `/quotes/${id}/complete`, {});
+
+// XPLENDOR — Orçamentos no painel do STAND (empresa vê/aprova os seus).
+export const getCompanyQuotes = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/quotes`);
+export const decideCompanyQuote = (companyId: number, id: number, decision: "approve" | "reject") =>
+    api.update(url.GET_COMPANIES + `/${companyId}/quotes/${id}/decision`, { decision });
+
+// XPLENDOR — Tarefas internas do cliente (Kanban do stand). Partilhadas por
+// company_id; toda a equipa vê/edita. Colunas fixas todo|doing|done.
+export const getCompanyTasks = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/tasks`);
+export const createCompanyTask = (companyId: number, data: { title: string; description?: string; status?: string; assignee_user_id?: number | null }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/tasks`, data);
+export const updateCompanyTask = (companyId: number, id: number, data: { title?: string; description?: string; assignee_user_id?: number | null }) =>
+    api.update(url.GET_COMPANIES + `/${companyId}/tasks/${id}`, data);
+export const moveCompanyTask = (companyId: number, id: number, status: string, orderedIds: number[]) =>
+    api.update(url.GET_COMPANIES + `/${companyId}/tasks/${id}/move`, { status, ordered_ids: orderedIds });
+export const deleteCompanyTask = (companyId: number, id: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/tasks/${id}`);
+// Utilizadores da empresa (fonte do responsável/assignee). Sem perPage → lista toda.
+export const getCompanyUsers = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_USERS_APIS);
+
+// XPLENDOR — GA4 (tráfego do site do cliente). Service Account no servidor;
+// property_id por empresa. Scoped por company_id.
+export const connectGoogleAnalytics = (companyId: number, propertyId: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/google/connect`, { property_id: propertyId });
+export const disconnectGoogleAnalytics = (companyId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/google`);
+export const getGa4Traffic = (companyId: number, days = 28, fresh = false) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/ga4/traffic`, fresh ? { days, fresh: 1 } : { days });
+
+// XPLENDOR — Stock GLOBAL (transversal, /admin, só root).
+export const getAdminStock = (params?: {
+    company_id?: number; status?: string; car_brand_id?: string;
+    vehicle_type?: string; search?: string; page?: number; per_page?: number;
+}) => api.get(url.GET_ADMIN + `/stock`, params);
+export const getAdminStockSummary = () => api.get(url.GET_ADMIN + `/stock/summary`);
+export const getAdminStockCompanies = () => api.get(url.GET_ADMIN + `/stock/companies`);
+
+// XPLENDOR — Ativar/inativar empresa (root). Inativar tira acesso + exclui do stock.
+export const setAdminCompanyStatus = (id: number, active: boolean) =>
+    api.update(url.GET_ADMIN + `/companies/${id}/status`, { active });
 
 // DMS — Tickets de suporte (lado stand). Create pode ser multipart (bug + print).
 export const getSupportTickets = (companyId: number) =>

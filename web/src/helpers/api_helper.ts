@@ -94,7 +94,12 @@ class APIClient {
 
         if (params) {
             Object.keys(params).map(key => {
-                paramKeys.push(key + '=' + params[key]);
+                // Ignora valores null/undefined — senão iam para a query como
+                // literal "undefined"/"null" (ex.: company_id=undefined → (int)0
+                // no backend → lista vazia). Só entram params com valor real.
+                if (params[key] !== undefined && params[key] !== null) {
+                    paramKeys.push(key + '=' + params[key]);
+                }
                 return paramKeys;
             });
 

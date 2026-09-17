@@ -10,9 +10,9 @@ interface NavLink {
 }
 
 const NAV_LINKS: NavLink[] = [
-    { href: '#problema', label: 'O problema' },
-    { href: '#como-funciona', label: 'Como funciona' },
-    { href: '#pacotes', label: 'Pacotes' },
+    { href: '#o-que-fazemos', label: 'O que fazemos' },
+    { href: '#plataforma', label: 'A plataforma' },
+    { href: '#precos', label: 'Preços' },
     { href: '#faq', label: 'FAQ' },
 ];
 

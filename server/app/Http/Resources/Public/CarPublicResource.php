@@ -149,6 +149,13 @@ class CarPublicResource extends JsonResource
     {
         $specs = ['seats' => $this->seats];
 
+        // Lotação-cama (nº de dormidas) — vive em habitation_basics mas é um
+        // dado-chave da ficha, por isso sai em specs (só quando preenchido).
+        $sleeps = $va['habitation_basics']['sleeps'] ?? null;
+        if ($sleeps !== null && $sleeps !== '') {
+            $specs['sleeps'] = (int) $sleeps;
+        }
+
         $dim = $va['dimensions'] ?? [];
         if (isset($dim['length_m']) && $dim['length_m'] !== null) {
             $specs['length_m'] = (float) $dim['length_m'];
@@ -234,29 +241,48 @@ class CarPublicResource extends JsonResource
 
         $result = [];
 
-        $boolEc = ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_generator', 'has_external_power_socket'];
+        $boolEc = ['has_solar_panel', 'has_inverter', 'has_gpl', 'has_generator', 'has_external_power_socket',
+                   'has_aircon_220v', 'has_viesa', 'has_battery_cutoff'];
         foreach ($boolEc as $key) {
             if (isset($ec[$key])) $result[$key] = (bool) $ec[$key];
         }
-        foreach (['water_heater_source', 'ambient_heating_source'] as $key) {
+        foreach (['water_heater_source', 'ambient_heating_source', 'inverter_type'] as $key) {
             if (!empty($ec[$key])) $result[$key] = $ec[$key];
         }
         foreach (['water_heater_brand', 'ambient_heating_brand'] as $key) {
             if (!empty($ec[$key])) $result[$key] = $ec[$key];
         }
-        if (isset($ec['battery_count'])) $result['battery_count'] = (int) $ec['battery_count'];
+        $intEc = ['battery_count', 'solar_panel_count', 'solar_panel_watts', 'lithium_battery_ah',
+                  'lithium_battery_count', 'inverter_watts', 'gpl_bottles_count',
+                  'cabin_battery_count', 'cell_battery_count'];
+        foreach ($intEc as $key) {
+            if (isset($ec[$key]) && $ec[$key] !== null && $ec[$key] !== '') $result[$key] = (int) $ec[$key];
+        }
 
         $boolExt = ['has_awning', 'has_bike_rack', 'has_motorbike_rack', 'has_electric_step',
                     'has_manual_step', 'has_stabilizers', 'has_spare_wheel', 'has_bull_eye',
-                    'has_external_wc', 'has_hubcaps', 'has_national_antenna', 'has_parabolic_antenna'];
+                    'has_external_wc', 'has_hubcaps', 'has_national_antenna', 'has_parabolic_antenna',
+                    'has_external_ladder', 'has_fix_n_go_kit'];
         foreach ($boolExt as $key) {
             if (isset($ext[$key])) $result[$key] = (bool) $ext[$key];
         }
         if (!empty($ext['awning_brand'])) $result['awning_brand'] = $ext['awning_brand'];
 
+        // Garagem: objeto próprio (has_garage + sub-características), só quando existe.
+        $garage = $ext['garage'] ?? [];
+        if (!empty($garage['has_garage'])) {
+            $result['garage'] = [
+                'has_garage'         => true,
+                'has_double_opening' => (bool) ($garage['has_double_opening'] ?? false),
+                'is_spacious'        => (bool) ($garage['is_spacious'] ?? false),
+                'has_height_adjuster' => (bool) ($garage['has_height_adjuster'] ?? false),
+            ];
+        }
+
         $boolCs = ['has_remifront', 'has_window_blackouts', 'has_mosquito_nets',
                    'has_door_mosquito_net', 'has_cabin_blackouts',
-                   'has_turbovent_skylight', 'has_panoramic_skylight', 'has_40x40_skylight'];
+                   'has_turbovent_skylight', 'has_panoramic_skylight', 'has_40x40_skylight',
+                   'has_air_suspension', 'has_air_suspension_compressor', 'has_dual_rear_wheel'];
         foreach ($boolCs as $key) {
             if (isset($cs[$key])) $result[$key] = (bool) $cs[$key];
         }
@@ -264,14 +290,28 @@ class CarPublicResource extends JsonResource
             $result['chassis_type']    = $cs['chassis_type'];
             $result['has_alko_chassis'] = $cs['chassis_type'] === 'alko';
         }
+        if (!empty($cs['chassis_notes'])) {
+            $result['chassis_notes'] = $cs['chassis_notes'];
+        }
 
         $boolInf = ['has_foldable_table', 'has_rotating_seats', 'has_curtains',
                     'has_led_lighting', 'has_halo_lighting', 'has_tv_support',
-                    'has_tv', 'has_command_panel'];
+                    'has_tv', 'has_command_panel', 'has_wardrobe'];
         foreach ($boolInf as $key) {
             if (isset($inf[$key])) $result[$key] = (bool) $inf[$key];
         }
         if (!empty($inf['upholstery_state'])) $result['upholstery_state'] = $inf['upholstery_state'];
+        if (isset($inf['tv_count']) && $inf['tv_count'] !== null && $inf['tv_count'] !== '') {
+            $result['tv_count'] = (int) $inf['tv_count'];
+        }
+        if (!empty($inf['tv_location'])) $result['tv_location'] = $inf['tv_location'];
+        // ⚠️ NÃO expor: has_water_infiltrations / infiltrations_notes — inspeção
+        // interna do stand, privada. A API pública é allow-list: fica de fora.
+
+        // Sala (living_room) — bloco antes ausente da API pública.
+        $lr = $va['living_room'] ?? [];
+        if (!empty($lr['layout'])) $result['living_room_layout'] = $lr['layout'];
+        if (isset($lr['has_extending_table'])) $result['has_extending_table'] = (bool) $lr['has_extending_table'];
 
         $boolSec = ['has_alarm', 'has_hatch_lock', 'has_cabin_lock', 'has_safe_door',
                     'has_gas_lock', 'has_entry_door_lock'];

@@ -33,6 +33,7 @@ class CompanyIntegrationRepository extends BaseRepository implements CompanyInte
                 company_integrations.id,
                 company_integrations.platform,
                 company_integrations.account_id,
+                company_integrations.property_id,
                 company_integrations.status,
                 company_integrations.last_synced_at,
                 company_integrations.token_expires_at,

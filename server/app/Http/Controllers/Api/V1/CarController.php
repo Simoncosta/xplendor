@@ -325,6 +325,12 @@ class CarController extends Controller
             'extras.*.items'      => 'nullable|array',
             'extras.*.items.*'    => 'nullable|string',
             'vehicle_attributes'  => 'nullable|array',
+            // Afinação da geração (opcional). Presets validados por allow-list;
+            // instrução livre limitada a 300 chars (a proteção anti-injeção é no
+            // CarDescriptionService, que a trata como preferência de estilo).
+            'refinements'         => 'nullable|array',
+            'refinements.*'       => 'string|in:shorter,formal,highlight_equipment,family_tone',
+            'custom_instruction'  => 'nullable|string|max:300',
         ]);
 
         try {

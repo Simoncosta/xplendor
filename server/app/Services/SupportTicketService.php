@@ -63,6 +63,59 @@ class SupportTicketService extends BaseService
     }
 
     /**
+     * ADMIN — reclassifica o TIPO de um ticket (o cliente classificou mal).
+     *
+     * Ligação à camada de orçamento:
+     *  · → site_change: ATIVA a camada (quote_status 'awaiting_quote' se ainda
+     *    não tiver), passando o ticket a poder ser orçado.
+     *  · site_change → outro tipo: SÓ é permitido se NÃO houver dados de
+     *    orçamento (option (a) — nunca apagar dados de dinheiro em silêncio).
+     *    Se já há valor/fatura/orçamento em curso, BLOQUEIA (422) e pede para
+     *    resolver o orçamento primeiro. Sem dados (só 'awaiting_quote'), desativa
+     *    a camada limpando quote_status. Nunca deixa dados órfãos.
+     */
+    public function reclassifyType(SupportTicket $ticket, string $newType): SupportTicket
+    {
+        if ($ticket->type === $newType) {
+            return $ticket->fresh();
+        }
+
+        $wasSiteChange  = $ticket->type === 'site_change';
+        $willBeSiteChange = $newType === 'site_change';
+
+        if ($wasSiteChange && ! $willBeSiteChange) {
+            // Há dados de orçamento? (qualquer valor/fatura, ou fluxo já iniciado)
+            $hasQuoteData = $ticket->quoted_amount !== null
+                || $ticket->invoice_path !== null
+                || in_array($ticket->quote_status, ['quoted', 'approved', 'paid', 'completed', 'rejected'], true);
+
+            if ($hasQuoteData) {
+                $this->reject('Este ticket tem um orçamento associado. Rejeita ou conclui o orçamento antes de reclassificar o tipo.');
+            }
+
+            // Só 'awaiting_quote' (ou null) — sem dados a perder. Desativa a camada.
+            $ticket->update(['type' => $newType, 'quote_status' => null]);
+
+            return $ticket->fresh();
+        }
+
+        if (! $wasSiteChange && $willBeSiteChange) {
+            // Ativa a camada de orçamento (a aguardar orçamento) se ainda não a tem.
+            $ticket->update([
+                'type'         => $newType,
+                'quote_status' => $ticket->quote_status ?? 'awaiting_quote',
+            ]);
+
+            return $ticket->fresh();
+        }
+
+        // Entre tipos grátis (ex.: bug ↔ melhoria) — só muda o tipo.
+        $ticket->update(['type' => $newType]);
+
+        return $ticket->fresh();
+    }
+
+    /**
      * ADMIN — regista o orçamento (horas × taxa). Só a partir de awaiting_quote
      * (ou re-orçar enquanto ainda 'quoted'). Muda quote_status→quoted e avisa
      * o stand que há valor para aprovar. Devolve o ticket fresco.

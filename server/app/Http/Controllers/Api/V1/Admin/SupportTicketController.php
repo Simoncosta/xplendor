@@ -116,6 +116,29 @@ class SupportTicketController extends Controller
         );
     }
 
+    /** ADMIN — reclassifica o TIPO (ativa/desativa a camada de orçamento). */
+    public function reclassify(Request $request, int $ticketId)
+    {
+        $this->ensureRoot();
+
+        $ticket = SupportTicket::find($ticketId);
+        if (! $ticket) {
+            return ApiResponse::error('Ticket não encontrado.', 404);
+        }
+
+        $data = $request->validate([
+            'type' => ['required', Rule::in(SupportTicket::TYPES)],
+        ]);
+
+        $ticket = $this->service->reclassifyType($ticket, $data['type']);
+        $ticket->load(['company', 'user', 'messages.user']);
+
+        return ApiResponse::success(
+            (new SupportTicketResource($ticket))->resolve(),
+            'Ticket reclassificado com sucesso.'
+        );
+    }
+
     public function storeMessage(Request $request, int $ticketId)
     {
         $this->ensureRoot();

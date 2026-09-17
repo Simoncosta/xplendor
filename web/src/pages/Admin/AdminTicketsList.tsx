@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
-import { ToastContainer } from "react-toastify";
-import { getAdminTickets, getAdminTicketsSummary } from "helpers/laravel_helper";
+import { ToastContainer, toast } from "react-toastify";
+import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, reclassifyAdminTicketType } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType,
     TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
+import AdminTicketsKanban from "./AdminTicketsKanban";
+
+type ViewMode = "list" | "kanban";
 
 interface Summary { open: number; in_review: number; pending: number; resolved: number; closed: number; total: number; }
 
@@ -29,6 +32,33 @@ const AdminTicketsList = () => {
     const [fStatus, setFStatus] = useState("");
     const [fCompany, setFCompany] = useState("");
     const [fType, setFType] = useState("");
+    const [view, setView] = useState<ViewMode>("kanban"); // Kanban por defeito (Simon pode mudar para Lista)
+
+    // Muda o estado de um ticket (usado pelo drag do Kanban). Persiste + atualiza
+    // a lista local; relança em erro para o Kanban reverter o cartão.
+    const changeTicketStatus = async (id: number, status: SupportTicketStatus) => {
+        try {
+            await updateAdminTicketStatus(id, status);
+            setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+        } catch (e) {
+            toast.error("Não foi possível mudar o estado do ticket.");
+            throw e;
+        }
+    };
+
+    // Reclassifica o tipo. Atualiza a lista com o ticket devolvido (traz o
+    // quote_status já ativado/desativado). Erro (ex.: tirar site_change com
+    // orçamento) → toast com a mensagem do servidor.
+    const changeTicketType = async (id: number, type: SupportTicketType) => {
+        try {
+            const r: any = await reclassifyAdminTicketType(id, type);
+            const updated = r?.data;
+            if (updated) setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, ...updated } : t)));
+            toast.success("Tipo do ticket atualizado.");
+        } catch (e: any) {
+            toast.error(e?.response?.data?.message || "Não foi possível reclassificar o ticket.");
+        }
+    };
 
     // Opções de empresa derivadas dos tickets carregados (sem endpoint extra).
     const [companyOptions, setCompanyOptions] = useState<{ id: number; name: string }[]>([]);
@@ -76,10 +106,29 @@ const AdminTicketsList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3">
+                <Row className="mb-3 align-items-center">
                     <Col>
                         <h4 className="mb-1"><i className="ri-shield-star-line text-primary me-2" />Administração — Suporte</h4>
                         <p className="text-muted mb-0">Tickets de todas as empresas. Por tratar primeiro.</p>
+                    </Col>
+                    <Col xs="auto">
+                        {/* Toggle Lista / Kanban */}
+                        <div className="btn-group" role="group" aria-label="Vista">
+                            <button
+                                type="button"
+                                className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")}
+                                onClick={() => setView("list")}
+                            >
+                                <i className="ri-list-check me-1" />Lista
+                            </button>
+                            <button
+                                type="button"
+                                className={"btn btn-sm " + (view === "kanban" ? "btn-primary" : "btn-outline-primary")}
+                                onClick={() => setView("kanban")}
+                            >
+                                <i className="ri-layout-grid-line me-1" />Kanban
+                            </button>
+                        </div>
                     </Col>
                 </Row>
 
@@ -104,14 +153,17 @@ const AdminTicketsList = () => {
 
                 <Card>
                     <CardBody>
-                        {/* Filtros */}
+                        {/* Filtros. O de ESTADO só faz sentido na Lista — no Kanban
+                            as colunas SÃO os estados, por isso é omitido lá. */}
                         <Row className="g-2 mb-3">
-                            <Col md={4}>
-                                <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-                                    <option value="">Todos os estados</option>
-                                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
-                                </Input>
-                            </Col>
+                            {view === "list" && (
+                                <Col md={4}>
+                                    <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+                                        <option value="">Todos os estados</option>
+                                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
+                                    </Input>
+                                </Col>
+                            )}
                             <Col md={4}>
                                 <Input type="select" value={fCompany} onChange={(e) => setFCompany(e.target.value)}>
                                     <option value="">Todas as empresas</option>
@@ -128,6 +180,13 @@ const AdminTicketsList = () => {
 
                         {loading ? (
                             <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
+                        ) : view === "kanban" ? (
+                            <AdminTicketsKanban
+                                tickets={tickets}
+                                detailHref={(id: number) => `/admin/tickets/${id}`}
+                                onStatusChange={changeTicketStatus}
+                                onTypeChange={changeTicketType}
+                            />
                         ) : tickets.length === 0 ? (
                             <p className="text-muted mb-0">Sem tickets para os filtros escolhidos.</p>
                         ) : (

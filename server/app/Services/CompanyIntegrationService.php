@@ -22,6 +22,7 @@ class CompanyIntegrationService extends BaseService
                     'id' => $integration->id,
                     'platform' => $integration->platform,
                     'account_id' => $integration->account_id,
+                    'property_id' => $integration->property_id, // GA4 (google)
                     'status' => $integration->status,
                     'last_synced_at' => $integration->last_synced_at,
                     'token_expires_at' => $integration->token_expires_at,

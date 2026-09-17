@@ -17,7 +17,9 @@ class Quote extends Model implements AuditableContract
 {
     use Auditable;
 
-    public const STATUSES = ['pending', 'approved', 'rejected'];
+    // Fluxo (alinhado com a "Alteração ao site"): pending (em validação) →
+    // approved/rejected (a empresa decide) → paid → completed (o Simon marca).
+    public const STATUSES = ['pending', 'approved', 'rejected', 'paid', 'completed'];
 
     protected $fillable = [
         'company_id',
@@ -38,9 +40,16 @@ class Quote extends Model implements AuditableContract
         'status' => 'pending',
     ];
 
-    /** Ligação opcional a um stand da plataforma (futuro; null hoje). */
+    /** Ligação opcional a um stand da plataforma. Quando presente, o orçamento
+     *  aparece no painel dessa empresa para ela aprovar/rejeitar. */
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** Ligado a uma empresa cadastrada (vs. nome livre tipo Spacedrive)? */
+    public function isLinkedToCompany(): bool
+    {
+        return $this->company_id !== null;
     }
 }

@@ -11,6 +11,18 @@ import XButton from "Components/Common/XButton";
 import { generateCarDescriptionApi } from "helpers/laravel_helper";
 import type { VehicleType } from "common/models/car.model";
 
+// Máximo de gerações por veículo (proteção de custo de tokens — decisão do Simon).
+const MAX_GENERATIONS = 3;
+
+// Botões fixos de afinação. A CHAVE viaja para o backend; o texto da instrução
+// vive lá (allow-list) — o frontend não manda instruções livres nos presets.
+const REFINEMENT_OPTIONS: { key: string; label: string; icon: string }[] = [
+    { key: "shorter",             label: "Mais curto",            icon: "ri-scissors-2-line" },
+    { key: "formal",              label: "Mais formal",           icon: "ri-briefcase-4-line" },
+    { key: "highlight_equipment", label: "Destacar equipamento",  icon: "ri-tools-line" },
+    { key: "family_tone",         label: "Tom mais familiar",     icon: "ri-heart-3-line" },
+];
+
 const FIELD_LABELS: Record<string, string> = {
     vehicle_type: "Tipo de Veículo",
     car_brand_id: "Marca",
@@ -56,6 +68,34 @@ export default function CarDescriptionDataFields({
 }) {
     const { values, setFieldValue } = useFormikContext<ICarFormValues>();
     const [isGenerating, setIsGenerating] = useState(false);
+    // Sugestão da IA a aguardar validação humana (null = sem sugestão pendente).
+    // O campo SÓ é preenchido quando o utilizador clica "Usar esta descrição".
+    const [suggestion, setSuggestion] = useState<string | null>(null);
+
+    // ── Limite de gerações (proteção de tokens) ─────────────────────────────
+    // Contagem POR VEÍCULO. Em edição persiste em localStorage pela id do carro
+    // (sobrevive a reload — protege melhor); em criação (sem id) fica em memória.
+    // Sem migration nem coluna nova. Qualquer chamada à IA conta (dirigida ou não).
+    const carId = isEdit && (values as { id?: number }).id ? Number((values as { id?: number }).id) : null;
+    const storageKey = carId ? `xplndor_ai_desc_gens_${carId}` : null;
+    const [genCount, setGenCount] = useState<number>(() => {
+        if (!storageKey) return 0;
+        try { return Number(localStorage.getItem(storageKey)) || 0; } catch { return 0; }
+    });
+    const limitReached = genCount >= MAX_GENERATIONS;
+    const bumpCount = () => {
+        // Sem side-effects dentro do updater (evita dupla-escrita em StrictMode).
+        // Uma geração = um clique → genCount está fresco aqui.
+        const next = genCount + 1;
+        setGenCount(next);
+        if (storageKey) { try { localStorage.setItem(storageKey, String(next)); } catch { /* ignore */ } }
+    };
+
+    // ── Afinação da geração ─────────────────────────────────────────────────
+    const [refinements, setRefinements] = useState<string[]>([]);
+    const [customInstruction, setCustomInstruction] = useState("");
+    const toggleRefinement = (key: string) =>
+        setRefinements((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
     const { quill, quillRef } = useQuill({
         theme: "snow",
@@ -98,12 +138,23 @@ export default function CarDescriptionDataFields({
     }, [quill, setFieldValue]);
 
     const missingFields = getMissingFields(values);
-    const canGenerate = missingFields.length === 0 && Boolean(companyId);
+    const canGenerate = missingFields.length === 0 && Boolean(companyId) && !limitReached;
 
-    const handleGenerate = async () => {
+    // Converte o texto da IA (parágrafos separados por linhas em branco) em HTML
+    // para o editor Quill. Fonte única — usada ao "Usar esta descrição".
+    const toHtml = (text: string): string =>
+        text
+            .split(/\n{2,}/)
+            .map((p) => `<p>${p.trim()}</p>`)
+            .join("") || `<p>${text}</p>`;
+
+    // Pede uma sugestão à IA e mostra-a em pré-visualização — NÃO preenche o campo.
+    const requestSuggestion = async () => {
         if (!canGenerate || isGenerating) return;
 
         setIsGenerating(true);
+        // Qualquer chamada à IA consome token → conta já para o limite.
+        bumpCount();
         try {
             const payload = {
                 vehicle_type:        values.vehicle_type,
@@ -125,18 +176,18 @@ export default function CarDescriptionDataFields({
                 hide_price_online:   values.hide_price_online,
                 extras:              values.extras ?? [],
                 vehicle_attributes:  values.vehicle_attributes,
+                // Afinação (opcional) — presets por chave + texto livre.
+                refinements:         refinements,
+                custom_instruction:  customInstruction.trim() || undefined,
             };
 
             const response: any = await generateCarDescriptionApi(companyId!, payload);
             const description: string = response?.data?.description ?? response?.description ?? "";
 
             if (description) {
-                // Wrap paragraphs for Quill
-                const html = description
-                    .split(/\n{2,}/)
-                    .map((p: string) => `<p>${p.trim()}</p>`)
-                    .join("");
-                setFieldValue(fieldName, html || `<p>${description}</p>`);
+                setSuggestion(description.trim());   // fica em pré-visualização, à espera de validação
+            } else {
+                toast.error("A IA não devolveu texto. Tenta novamente.", { position: "top-right", hideProgressBar: true });
             }
         } catch (error: unknown) {
             console.error(error);
@@ -159,17 +210,28 @@ export default function CarDescriptionDataFields({
         }
     };
 
+    // Aprova a sugestão → preenche o campo e fecha a pré-visualização.
+    const applySuggestion = () => {
+        if (!suggestion) return;
+        setFieldValue(fieldName, toHtml(suggestion));
+        setSuggestion(null);
+        toast.success("Descrição aplicada.", { position: "top-right", hideProgressBar: true });
+    };
+
     return (
         <div className="mt-4">
             <div className="mb-2 border-bottom pb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h5 className="card-title mb-0">Descrição</h5>
 
                 <div className="d-flex align-items-center gap-2 flex-wrap">
-                    {!canGenerate && missingFields.length > 0 && (
+                    {missingFields.length > 0 && (
                         <small className="text-muted">
                             Faltam: {missingFields.join(", ")}
                         </small>
                     )}
+                    <span className="badge bg-light text-body" title="Gerações usadas neste veículo">
+                        {genCount}/{MAX_GENERATIONS} gerações
+                    </span>
                     <XButton
                         size="sm"
                         variant="info"
@@ -178,12 +240,99 @@ export default function CarDescriptionDataFields({
                         icon={<i className="ri-magic-line" />}
                         loading={isGenerating}
                         disabled={!canGenerate || isGenerating}
-                        onClick={handleGenerate}
+                        onClick={requestSuggestion}
                     >
                         {isGenerating ? "A gerar..." : "Gerar com IA"}
                     </XButton>
                 </div>
             </div>
+
+            {/* Limite atingido — geração desativada, edição manual sempre livre. */}
+            {limitReached && (
+                <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
+                    <i className="ri-error-warning-line" />
+                    <span>Atingiste o limite de {MAX_GENERATIONS} gerações para este veículo. Usa uma das sugestões ou edita a descrição manualmente.</span>
+                </div>
+            )}
+
+            {/* Afinação da geração — botões fixos + campo livre. Dirige a próxima
+                geração (conta para o limite). Escondido quando o limite foi atingido. */}
+            {!limitReached && (
+                <div className="border rounded p-3 mb-3">
+                    <div className="text-muted fw-semibold fs-12 text-uppercase mb-2" style={{ letterSpacing: "0.04em" }}>
+                        Afinar a geração <span className="fw-normal text-lowercase">(opcional)</span>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2 mb-2">
+                        {REFINEMENT_OPTIONS.map((opt) => {
+                            const active = refinements.includes(opt.key);
+                            return (
+                                <button
+                                    key={opt.key}
+                                    type="button"
+                                    className={"btn btn-sm " + (active ? "btn-info" : "btn-soft-info")}
+                                    onClick={() => toggleRefinement(opt.key)}
+                                >
+                                    <i className={opt.icon + " me-1"} />{opt.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                    <input
+                        type="text"
+                        className="form-control form-control-sm"
+                        maxLength={300}
+                        placeholder='Instrução própria (ex.: "foca na autonomia para viagens longas")'
+                        value={customInstruction}
+                        onChange={(e) => setCustomInstruction(e.target.value)}
+                    />
+                </div>
+            )}
+
+            {/* Pré-visualização da sugestão — validação humana antes de preencher.
+                O campo abaixo só recebe o texto quando o utilizador clica "Usar esta descrição". */}
+            {suggestion !== null && (
+                <div className="border border-info rounded p-3 mb-3" style={{ background: "var(--vz-info-bg-subtle)" }}>
+                    <div className="d-flex align-items-center gap-2 mb-2">
+                        <i className="ri-magic-line text-info" />
+                        <span className="fw-semibold">Sugestão da IA</span>
+                        <span className="badge bg-info-subtle text-info">Pré-visualização — ainda não preenchido</span>
+                    </div>
+                    <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{suggestion}</p>
+                    <div className="d-flex flex-wrap gap-2">
+                        <XButton
+                            size="sm"
+                            variant="success"
+                            icon={<i className="ri-check-line" />}
+                            disabled={isGenerating}
+                            onClick={applySuggestion}
+                        >
+                            Usar esta descrição
+                        </XButton>
+                        <XButton
+                            size="sm"
+                            variant="info"
+                            soft
+                            icon={<i className="ri-refresh-line" />}
+                            loading={isGenerating}
+                            disabled={isGenerating || limitReached}
+                            onClick={requestSuggestion}
+                        >
+                            {isGenerating ? "A gerar..." : "Gerar outra"}
+                        </XButton>
+                        {limitReached && (
+                            <small className="text-muted align-self-center">Limite de gerações atingido — usa esta ou edita à mão.</small>
+                        )}
+                        <XButton
+                            size="sm"
+                            variant="light"
+                            disabled={isGenerating}
+                            onClick={() => setSuggestion(null)}
+                        >
+                            Descartar
+                        </XButton>
+                    </div>
+                </div>
+            )}
 
             <Row>
                 <Col lg={12}>
