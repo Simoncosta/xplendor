@@ -7,6 +7,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import SupportFab from '../Components/Common/SupportFab';
+import { ModulesProvider } from '../contexts/ModulesContext';
 
 //import actions
 import {
@@ -136,7 +137,7 @@ const Layout = (props: any) => {
     }, [sidebarVisibilitytype, layoutType]);
 
     return (
-        <React.Fragment>
+        <ModulesProvider>
             <div id="layout-wrapper">
                 <Header
                     headerClass={headerClass}
@@ -152,7 +153,7 @@ const Layout = (props: any) => {
             </div>
             <SupportFab />
             {/* <RightSidebar /> */}
-        </React.Fragment>
+        </ModulesProvider>
 
     );
 };

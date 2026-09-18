@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\V1\{
     SupportTicketController,
     QuoteController,
     CompanyTaskController,
+    CompanyModuleController,
     GoogleAnalyticsController,
     MetaInsightsController,
     ExpenseCategoryController,
@@ -96,16 +97,15 @@ Route::prefix('v1')->group(function () {
                 Route::get('/cars/{carId}/margin', [CarController::class, 'margin']);
                 // DMS Fase 3 — dados para os documentos de venda (empresa + viatura + cliente).
                 Route::get('/cars/{carId}/sale-document-data', [SaleDocumentController::class, 'data']);
-                // DMS Pós-venda — cria (ou reaproveita) o relatório de satisfação de uma venda.
-                Route::post('/cars/{carId}/satisfaction-report', [SatisfactionReportController::class, 'store']);
-                // Fotos que o cliente carregou no relatório (o stand vê na Ficha).
-                Route::get('/cars/{carId}/satisfaction-report/photos', [SatisfactionReportController::class, 'photos']);
-                Route::get('/cars/{carId}/satisfaction-report/review', [SatisfactionReportController::class, 'review']);
-                // DMS Caminho B — gerar documento preenchido (modelo + venda) → download .docx.
-                Route::post('/cars/{carId}/document-templates/{templateId}/generate', [DocumentTemplateController::class, 'generate']);
+                // DMS Pós-venda — relatório de satisfação (módulo AFTERSALES).
+                Route::post('/cars/{carId}/satisfaction-report', [SatisfactionReportController::class, 'store'])->middleware('ensure_module:aftersales');
+                Route::get('/cars/{carId}/satisfaction-report/photos', [SatisfactionReportController::class, 'photos'])->middleware('ensure_module:aftersales');
+                Route::get('/cars/{carId}/satisfaction-report/review', [SatisfactionReportController::class, 'review'])->middleware('ensure_module:aftersales');
+                // DMS Caminho B — gerar documento preenchido (módulo DOCUMENTOS).
+                Route::post('/cars/{carId}/document-templates/{templateId}/generate', [DocumentTemplateController::class, 'generate'])->middleware('ensure_module:documents');
                 // Envio do link ao cliente (email via queue) + registo de envio (WhatsApp).
-                Route::post('/cars/{carId}/satisfaction-report/send-email', [SatisfactionReportController::class, 'sendEmail']);
-                Route::post('/cars/{carId}/satisfaction-report/mark-sent', [SatisfactionReportController::class, 'markSent']);
+                Route::post('/cars/{carId}/satisfaction-report/send-email', [SatisfactionReportController::class, 'sendEmail'])->middleware('ensure_module:aftersales');
+                Route::post('/cars/{carId}/satisfaction-report/mark-sent', [SatisfactionReportController::class, 'markSent'])->middleware('ensure_module:aftersales');
                 // Ficha de impressão A4 (2026-06-27) — payload dedicado.
                 Route::get('/cars/{carId}/print-sheet', [CarController::class, 'printSheet']);
                 Route::get('/cars/{carId}/decision', [CarDecisionController::class, 'show']);
@@ -136,12 +136,13 @@ Route::prefix('v1')->group(function () {
                 Route::post('/cars/{carId}/market-aggregate/refresh', [CarController::class, 'refreshMarketAggregate']);
                 Route::get('/cars/{carId}/market-aggregate/check-link', [CarController::class, 'checkMarketLink']);
 
-                // Relatório A — candidatas a promoção (Camada 1: flag manual).
-                // Camada 2 (orçamento + Meta) entra depois.
-                Route::get('/stock/promotion-candidates', [StockPromotionController::class, 'index']);
-                Route::get('/stock/promotion-candidates/summary', [StockPromotionController::class, 'summary']);
-                Route::post('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'store']);
-                Route::delete('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'destroy']);
+                // Relatório A — candidatas a promoção (módulo COMERCIAL/CRM).
+                Route::middleware('ensure_module:commercial_crm')->group(function () {
+                    Route::get('/stock/promotion-candidates', [StockPromotionController::class, 'index']);
+                    Route::get('/stock/promotion-candidates/summary', [StockPromotionController::class, 'summary']);
+                    Route::post('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'store']);
+                    Route::delete('/stock/promotion-candidates/{carId}', [StockPromotionController::class, 'destroy']);
+                });
 
                 Route::post('/scraper/run', [ScraperController::class, 'run']);
                 Route::get('/scraper/executions', [ScraperController::class, 'executions']);
@@ -162,27 +163,35 @@ Route::prefix('v1')->group(function () {
                 // CTR + vendas atribuídas). Zero fetch/escrita aqui. Scoped por company.
                 Route::get('/analytics/meta/overview', [MetaInsightsController::class, 'overview']);
 
-                Route::apiResource('/users', UserController::class);
-                Route::post('/cars/generate-description', [CarController::class, 'generateDescription']);
-                Route::apiResource('/cars', CarController::class);
-                Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update']);
-                Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index');
-                Route::apiResource('/blogs', BlogController::class);
-                // DMS sub-fase 1c.1 — Fornecedores (base para despesas).
-                Route::apiResource('/suppliers', SupplierController::class);
+                // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
+                Route::get('/my-modules', [CompanyModuleController::class, 'active']);
 
-                // DMS Caminho B — modelos de documento .docx (gestão na empresa).
-                Route::get('/document-templates/variables', [DocumentTemplateController::class, 'variables']);
-                Route::get('/document-templates/example', [DocumentTemplateController::class, 'example']);
-                Route::get('/document-templates', [DocumentTemplateController::class, 'index']);
-                Route::post('/document-templates', [DocumentTemplateController::class, 'store']);
-                Route::post('/document-templates/{template}/replace', [DocumentTemplateController::class, 'replaceFile']);
-                Route::match(['put', 'patch'], '/document-templates/{template}', [DocumentTemplateController::class, 'update']);
-                Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
-                // DMS — Clientes (base para documentos de venda, Fase 3).
-                // Fase 3 — ficha-hub do cliente (vendas + leads + docs + histórico).
-                Route::get('/customers/{customer}/hub', [CustomerController::class, 'hub']);
-                Route::apiResource('/customers', CustomerController::class);
+                Route::apiResource('/users', UserController::class);
+                // ── Módulo STOCK (Fase 3: recusa 403 se não ativo) ──
+                Route::post('/cars/generate-description', [CarController::class, 'generateDescription'])->middleware('ensure_module:stock');
+                Route::apiResource('/cars', CarController::class)->middleware('ensure_module:stock');
+                // ── Módulo COMERCIAL/CRM ──
+                Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update'])->middleware('ensure_module:commercial_crm');
+                Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware('ensure_module:stock');
+                Route::apiResource('/blogs', BlogController::class);
+                // ── Módulo FINANÇAS ──
+                Route::apiResource('/suppliers', SupplierController::class)->middleware('ensure_module:finance');
+
+                // ── Módulo DOCUMENTOS — modelos .docx ──
+                Route::middleware('ensure_module:documents')->group(function () {
+                    Route::get('/document-templates/variables', [DocumentTemplateController::class, 'variables']);
+                    Route::get('/document-templates/example', [DocumentTemplateController::class, 'example']);
+                    Route::get('/document-templates', [DocumentTemplateController::class, 'index']);
+                    Route::post('/document-templates', [DocumentTemplateController::class, 'store']);
+                    Route::post('/document-templates/{template}/replace', [DocumentTemplateController::class, 'replaceFile']);
+                    Route::match(['put', 'patch'], '/document-templates/{template}', [DocumentTemplateController::class, 'update']);
+                    Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
+                });
+                // ── Módulo FINANÇAS — Clientes (+ ficha-hub) ──
+                Route::middleware('ensure_module:finance')->group(function () {
+                    Route::get('/customers/{customer}/hub', [CustomerController::class, 'hub']);
+                    Route::apiResource('/customers', CustomerController::class);
+                });
 
                 // DMS — Tickets de suporte (lado STAND). Scoped por empresa.
                 Route::get('/support-tickets', [SupportTicketController::class, 'index']);
@@ -203,13 +212,14 @@ Route::prefix('v1')->group(function () {
                 Route::match(['put', 'patch'], '/tasks/{task}', [CompanyTaskController::class, 'update']);
                 Route::patch('/tasks/{task}/move', [CompanyTaskController::class, 'move']);
                 Route::delete('/tasks/{task}', [CompanyTaskController::class, 'destroy']);
-                // DMS sub-fase 1c.2a — Categorias de despesa (pré-requisito das despesas).
-                Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
-                Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
-                Route::apiResource('/expense-categories', ExpenseCategoryController::class);
-                // DMS sub-fase 1c.2b — Despesas.
-                Route::get('/expenses/summary', [ExpenseController::class, 'summary']);
-                Route::apiResource('/expenses', ExpenseController::class);
+                // DMS sub-fase 1c.2 — Categorias + Despesas (módulo FINANÇAS).
+                Route::middleware('ensure_module:finance')->group(function () {
+                    Route::get('/expense-categories/suggested', [ExpenseCategoryController::class, 'suggested']);
+                    Route::post('/expense-categories/import-suggested', [ExpenseCategoryController::class, 'importSuggested']);
+                    Route::apiResource('/expense-categories', ExpenseCategoryController::class);
+                    Route::get('/expenses/summary', [ExpenseController::class, 'summary']);
+                    Route::apiResource('/expenses', ExpenseController::class);
+                });
                 Route::apiResource('/subscribers', NewsletterController::class)->only(['index']);
 
                 Route::post('/car-ai-analyses/{carId}', [CarController::class, 'generateAiAnalyses']);
@@ -282,6 +292,11 @@ Route::prefix('v1')->group(function () {
 
             // Ativar/inativar empresa (root). Inativar tira acesso + exclui do stock.
             Route::patch('/companies/{company}/status', [AdminCompanyController::class, 'setStatus']);
+
+            // Módulos por empresa (Incremento 1) — só super-admin.
+            Route::get('/companies/{company}/modules', [AdminCompanyController::class, 'modules']);
+            Route::patch('/companies/{company}/modules', [AdminCompanyController::class, 'setModule']);
+            Route::post('/companies/{company}/modules/preset', [AdminCompanyController::class, 'applyModulePreset']);
         });
     });
 });

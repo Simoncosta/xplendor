@@ -12,6 +12,7 @@ import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockBreakdownCard from './components/StockBreakdownCard';
 import SalesRevenueCard from './components/SalesRevenueCard';
+import { useModules } from "contexts/ModulesContext";
 import type { SalesRevenueGranularity } from "../../types/api";
 
 const selectDashboardState = (state: any) => state.Dashboard;
@@ -37,8 +38,18 @@ const Dashboard = () => {
         salesRevenue, salesRevenueLoading,
     } = useSelector(selectDashboardViewModel);
 
-    // Effects
+    // O dashboard atual é de CARROS. Só o mostramos a empresas com módulos de
+    // carros (stock/commercial_crm). Sem eles (ex.: restauração) → dashboard
+    // vazio, sem crash (o dashboard do ramo é tarefa futura). `has` já trata
+    // root/desconhecido como "vê tudo".
+    const { has, isRoot, loading: modulesLoading } = useModules();
+    const showCars = isRoot || has('stock') || has('commercial_crm');
+
+    // Effects — só busca os dados de carros quando faz sentido (evita chamadas
+    // desnecessárias na restauração; espera saber os módulos primeiro).
     useEffect(() => {
+        if (modulesLoading || !showCars) return;
+
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
 
@@ -50,7 +61,7 @@ const Dashboard = () => {
         dispatch(getStockBreakdown({ companyId: obj.company_id }));
         // V3 dispara o seu próprio fetch via callback no SalesRevenueCard
         // (preset default "Este ano" no primeiro mount).
-    }, [dispatch]);
+    }, [dispatch, modulesLoading, showCars]);
 
     const handleSalesRangeChange = (range: { from: string; to: string; granularity: SalesRevenueGranularity }) => {
         const authUser = sessionStorage.getItem("authUser");
@@ -64,6 +75,22 @@ const Dashboard = () => {
             granularity: range.granularity,
         }));
     };
+
+    // Empresa sem módulos de carros → dashboard vazio (só o essencial), sem crash.
+    if (!showCars) {
+        return (
+            <React.Fragment>
+                <div className="page-content">
+                    <Container fluid>
+                        <Row className="g-3 mb-3">
+                            <SubscriptionTrialBanner />
+                        </Row>
+                        {/* Dashboard específico do ramo — tarefa futura. Vazio por agora. */}
+                    </Container>
+                </div>
+            </React.Fragment>
+        );
+    }
 
     if (loading) return null;
     if (!analytics) return null;

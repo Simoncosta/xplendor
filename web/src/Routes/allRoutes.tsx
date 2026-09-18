@@ -85,6 +85,7 @@ import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
 import AdminQuotesList from "pages/Admin/AdminQuotesList";
 import AdminStockList from "pages/Admin/AdminStockList";
 import RequireSuperAdmin from "./RequireSuperAdmin";
+import RequireModule from "./RequireModule";
 
 // OAuth Meta
 import MetaOAuthCallback from "pages/OAuthCallback/MetaOAuthCallback";
@@ -110,32 +111,32 @@ const authProtectedRoutes = [
     { path: "/companies/:id", component: <CompanyProfileUpdate /> },
     { path: "/companies/create", component: <CompanyProfileCreate /> },
 
-    // Cars
-    { path: "/cars", component: <CarList /> },
-    { path: "/actions", component: <ActionCenterPage /> },
-    { path: "/cars/create", component: <CarCreate /> },
-    { path: "/cars/:id", component: <CarUpdate /> },
-    { path: "/cars/:id/analytics", component: <CarAnalytics /> },
-    { path: "/cars/:id/intelligence", component: <CarIntelligencePage /> },
-    { path: "/cars/:id/ads", component: <CarAdsRedirect /> },
-    { path: "/cars/:id/ficha", component: <CarFichaPage /> },
+    // Cars — módulo STOCK (guard de rota; o backend recusa 403 na mesma)
+    { path: "/cars", component: <RequireModule module="stock"><CarList /></RequireModule> },
+    { path: "/actions", component: <RequireModule module="stock"><ActionCenterPage /></RequireModule> },
+    { path: "/cars/create", component: <RequireModule module="stock"><CarCreate /></RequireModule> },
+    { path: "/cars/:id", component: <RequireModule module="stock"><CarUpdate /></RequireModule> },
+    { path: "/cars/:id/analytics", component: <RequireModule module="stock"><CarAnalytics /></RequireModule> },
+    { path: "/cars/:id/intelligence", component: <RequireModule module="stock"><CarIntelligencePage /></RequireModule> },
+    { path: "/cars/:id/ads", component: <RequireModule module="stock"><CarAdsRedirect /></RequireModule> },
+    { path: "/cars/:id/ficha", component: <RequireModule module="stock"><CarFichaPage /></RequireModule> },
     // DMS Fase 3 — tab Documentos (ficha A4 + documentos de venda).
-    { path: "/cars/:id/documents", component: <CarDocumentsPage /> },
+    { path: "/cars/:id/documents", component: <RequireModule module="stock"><CarDocumentsPage /></RequireModule> },
     // Ficha de impressão A4 (2026-06-27) — rota própria com companyId no path
     // para simetria com os endpoints internos que scope por company (sec 11).
-    { path: "/companies/:companyId/cars/:id/print-sheet", component: <CarPrintSheet /> },
+    { path: "/companies/:companyId/cars/:id/print-sheet", component: <RequireModule module="stock"><CarPrintSheet /></RequireModule> },
     // DMS Fase 3 — documentos de venda (mesma aba, motor de impressão partilhado).
-    { path: "/companies/:companyId/cars/:id/documents/:docId", component: <SaleDocumentPrint /> },
-    { path: "/cars/:id/marketing", component: <CarMarketingRedirect /> },
+    { path: "/companies/:companyId/cars/:id/documents/:docId", component: <RequireModule module="stock"><SaleDocumentPrint /></RequireModule> },
+    { path: "/cars/:id/marketing", component: <RequireModule module="stock"><CarMarketingRedirect /></RequireModule> },
 
-    // Leads
-    { path: "/leads", component: <LeadList /> },
+    // Leads — módulo COMERCIAL/CRM
+    { path: "/leads", component: <RequireModule module="commercial_crm"><LeadList /></RequireModule> },
 
-    // Stock & Promoção
-    { path: "/stock/promotion", component: <StockPromotionPage /> },
+    // Stock & Promoção — módulo COMERCIAL/CRM
+    { path: "/stock/promotion", component: <RequireModule module="commercial_crm"><StockPromotionPage /></RequireModule> },
 
-    // Monitorização de stock (métricas do stand)
-    { path: "/stock/monitoring", component: <StockMonitoring /> },
+    // Monitorização de stock — módulo STOCK
+    { path: "/stock/monitoring", component: <RequireModule module="stock"><StockMonitoring /></RequireModule> },
 
     // Orçamentos (lado stand)
     { path: "/quotes", component: <CompanyQuotesList /> },
@@ -151,21 +152,21 @@ const authProtectedRoutes = [
     { path: "/blogs/:id", component: <BlogUpdate /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
 
-    // Suppliers (DMS 1c.1)
-    { path: "/suppliers", component: <SupplierList /> },
+    // Suppliers — módulo FINANÇAS
+    { path: "/suppliers", component: <RequireModule module="finance"><SupplierList /></RequireModule> },
 
-    // Customers (DMS)
-    { path: "/customers", component: <CustomerList /> },
-    { path: "/customers/:id", component: <CustomerHub /> },
+    // Customers — módulo FINANÇAS
+    { path: "/customers", component: <RequireModule module="finance"><CustomerList /></RequireModule> },
+    { path: "/customers/:id", component: <RequireModule module="finance"><CustomerHub /></RequireModule> },
 
-    // Document templates (DMS Caminho B)
-    { path: "/document-templates", component: <DocumentTemplatesList /> },
+    // Document templates — módulo DOCUMENTOS
+    { path: "/document-templates", component: <RequireModule module="documents"><DocumentTemplatesList /></RequireModule> },
 
-    // Expense categories (DMS 1c.2a)
-    { path: "/expense-categories", component: <ExpenseCategoryList /> },
+    // Expense categories — módulo FINANÇAS
+    { path: "/expense-categories", component: <RequireModule module="finance"><ExpenseCategoryList /></RequireModule> },
 
-    // Expenses (DMS 1c.2b)
-    { path: "/expenses", component: <ExpenseList /> },
+    // Expenses — módulo FINANÇAS
+    { path: "/expenses", component: <RequireModule module="finance"><ExpenseList /></RequireModule> },
 
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.

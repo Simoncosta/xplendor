@@ -194,5 +194,6 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('check_scraper_api_token', CheckScraperApiToken::class);
         Route::aliasMiddleware('resolve_report_token', ResolveReportToken::class);
         Route::aliasMiddleware('ensure_super_admin', EnsureSuperAdmin::class);
+        Route::aliasMiddleware('ensure_module', \App\Http\Middleware\EnsureModuleActive::class);
     }
 }

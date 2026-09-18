@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Modules\ModuleRegistry;
+use App\Services\CompanyModuleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -56,5 +58,68 @@ class CompanyController extends Controller
             $company->fresh(),
             $data['active'] ? 'Empresa ativada.' : 'Empresa inativada.'
         );
+    }
+
+    // ── Módulos por empresa (Incremento 1) ────────────────────────────────────
+
+    /** Estado de todos os módulos desta empresa (para a UI de gestão). */
+    public function modules(int $companyId, CompanyModuleService $service)
+    {
+        $this->ensureRoot();
+
+        if (! Company::whereKey($companyId)->exists()) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'modules' => $service->overview($companyId),
+            'presets' => array_keys(ModuleRegistry::PRESETS),
+        ], 'Módulos carregados.');
+    }
+
+    /** Liga/desliga um módulo (respeitando a teia de dependências). */
+    public function setModule(Request $request, int $companyId, CompanyModuleService $service)
+    {
+        $this->ensureRoot();
+
+        if (! Company::whereKey($companyId)->exists()) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        $data = $request->validate([
+            'module_key' => ['required', 'string'],
+            'enabled' => ['required', 'boolean'],
+        ]);
+
+        // ValidationException (422) sobe automaticamente se o desligar for bloqueado.
+        if ($data['enabled']) {
+            $service->enable($companyId, $data['module_key']);
+        } else {
+            $service->disable($companyId, $data['module_key']);
+        }
+
+        return ApiResponse::success([
+            'modules' => $service->overview($companyId),
+        ], 'Módulo atualizado.');
+    }
+
+    /** Aplica um preset de ramo (atalho; ajustável depois). */
+    public function applyModulePreset(Request $request, int $companyId, CompanyModuleService $service)
+    {
+        $this->ensureRoot();
+
+        if (! Company::whereKey($companyId)->exists()) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        $data = $request->validate([
+            'preset' => ['required', 'string'],
+        ]);
+
+        $service->applyPreset($companyId, $data['preset']);
+
+        return ApiResponse::success([
+            'modules' => $service->overview($companyId),
+        ], 'Preset aplicado.');
     }
 }

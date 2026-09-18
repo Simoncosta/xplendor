@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Badge, Card, CardBody, CardHeader, Col, Container, Row, Spinner } from 'reactstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
+import CompanyModulesModal from './components/CompanyModulesModal';
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
@@ -37,6 +38,7 @@ const CompanyList = () => {
     });
 
     const [busyId, setBusyId] = useState<number | null>(null);
+    const [modulesFor, setModulesFor] = useState<{ id: number; name: string } | null>(null);
 
     const refetch = useCallback(() => {
         dispatch(
@@ -135,6 +137,14 @@ const CompanyList = () => {
                             </Link>
                             <button
                                 type="button"
+                                className="btn btn-sm btn-soft-primary"
+                                onClick={() => setModulesFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
+                                title="Gerir módulos"
+                            >
+                                <i className="ri-apps-2-line align-bottom me-1" />Módulos
+                            </button>
+                            <button
+                                type="button"
                                 className={"btn btn-sm " + (active ? "btn-soft-danger" : "btn-soft-success")}
                                 disabled={busy}
                                 onClick={() => toggleStatus(c)}
@@ -193,6 +203,13 @@ const CompanyList = () => {
                     </Row>
                 </Container>
             </div>
+
+            <CompanyModulesModal
+                isOpen={modulesFor !== null}
+                companyId={modulesFor?.id ?? null}
+                companyName={modulesFor?.name}
+                onClose={() => setModulesFor(null)}
+            />
         </React.Fragment >
     )
 };

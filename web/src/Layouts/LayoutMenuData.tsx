@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useModules } from "contexts/ModulesContext";
 
 const Navdata = () => {
     const history = useNavigate();
@@ -21,8 +22,13 @@ const Navdata = () => {
     const [isRoot, setIsRoot] = useState(false);
     const [isFinances, setIsFinances] = useState(false);
     const [isComercial, setIsComercial] = useState(false);
+    const [isAnalytics, setIsAnalytics] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isSettings, setIsSettings] = useState(false);
+
+    // Fase 2/3 — módulos ATIVOS da empresa vêm da fonte única (ModulesContext),
+    // partilhada com o guard de rotas. `has(module)` = ativo OU root/desconhecido.
+    const { has: hasModule } = useModules();
 
     // Helper do Velzon para o modo two-column (icon sidebar). Guardado para não
     // rebentar no layout vertical (onde #two-column-menu pode não existir).
@@ -56,6 +62,9 @@ const Navdata = () => {
         }
         if (iscurrentState !== 'Comercial') {
             setIsComercial(false);
+        }
+        if (iscurrentState !== 'Analytics') {
+            setIsAnalytics(false);
         }
         if (iscurrentState !== 'Administracao') {
             setIsAdmin(false);
@@ -148,23 +157,51 @@ const Navdata = () => {
                 setIscurrentState('Comercial');
                 updateIconSidebar(e);
             },
+            // Comercial = operação de carros (stock + CRM). Módulos por sub-item.
             subItems: [
-                { id: "cars", label: "Carros", link: "/cars", parentId: "comercial" },
-                { id: "stock-monitoring", label: "Monitorização de stock", link: "/stock/monitoring", parentId: "comercial" },
-                { id: "leads", label: "Leads", link: "/leads", parentId: "comercial" },
-                { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial" },
-                // Tráfego do site (GA4 do cliente) — vive no Comercial, junto ao stock/leads.
-                { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "comercial" },
-                { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "comercial" },
-                { id: "blogs", label: "Blogs", link: "/blogs", parentId: "comercial" },
+                { id: "cars", label: "Carros", link: "/cars", parentId: "comercial", module: "stock" },
+                { id: "stock-monitoring", label: "Monitorização de stock", link: "/stock/monitoring", parentId: "comercial", module: "stock" },
+                { id: "leads", label: "Leads", link: "/leads", parentId: "comercial", module: "commercial_crm" },
+                { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial", module: "commercial_crm" },
             ],
         },
-        // Tarefas — Kanban interno da equipa (partilhado por company_id).
+        // ── Análise — marketing TRANSVERSAL (GA4 + Meta + conteúdo). Serve
+        //    qualquer ramo; por isso saiu do "Comercial" (que é dos carros).
+        {
+            id: "analytics",
+            label: "Análise",
+            icon: "ri-line-chart-line",
+            link: "/#",
+            stateVariables: isAnalytics,
+            click: function (e: any) {
+                e.preventDefault();
+                setIsAnalytics(!isAnalytics);
+                setIscurrentState('Analytics');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "analytics", module: "marketing_analytics" },
+                { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "analytics", module: "marketing_analytics" },
+            ],
+        },
+        // Blogs — item solto (não pertence a "Análise"). Sem módulo por agora.
+        {
+            id: "blogs",
+            label: "Blogs",
+            icon: "ri-article-line",
+            link: "/blogs",
+            click: function (e: any) {
+                e.preventDefault();
+                setIscurrentState('Blogs');
+            }
+        },
+        // Tarefas — Kanban interno da equipa (transversal).
         {
             id: "tasks",
             label: "Tarefas",
             icon: "ri-list-check-2",
             link: "/tasks",
+            module: "support_tasks",
             click: function (e: any) {
                 e.preventDefault();
                 setIscurrentState('Tasks');
@@ -193,11 +230,11 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances" },
-                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances" },
-                { id: "customers", label: "Clientes", link: "/customers", parentId: "finances" },
-                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances" },
-                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances" },
+                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance" },
+                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance" },
+                { id: "customers", label: "Clientes", link: "/customers", parentId: "finances", module: "finance" },
+                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances", module: "documents" },
+                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance" },
             ],
         },
         // ── Configurações — gestão da conta/organização + utilitários ──
@@ -221,7 +258,7 @@ const Navdata = () => {
                     { id: "company", label: "Empresas", link: "/companies", parentId: "settings" },
                 ] : []),
                 { id: "user", label: "Colaboradores", link: "/users", parentId: "settings" },
-                { id: "support", label: "Suporte", link: "/support", parentId: "settings" },
+                { id: "support", label: "Suporte", link: "/support", parentId: "settings", module: "support_tasks" },
                 { id: "install-app", label: "Instalar app", link: "/install", parentId: "settings" },
             ],
         },
@@ -1188,6 +1225,26 @@ const Navdata = () => {
         //     ],
         // },
     ];
-    return <React.Fragment>{menuItems}</React.Fragment>;
+
+    // ── Mecanismo CENTRAL de esconder por módulo (Fase 2) ─────────────────────
+    // Cada item/sub-item declara `module`; itens sem `module` são BASE (sempre
+    // visíveis). Um grupo esconde-se se ficar sem sub-itens visíveis. activeModules
+    // null (root/loading/falha) → mostra tudo.
+    const moduleVisible = (mod?: string): boolean => hasModule(mod);
+
+    const filterMenu = (items: any[]): any[] =>
+        items.reduce((acc: any[], it: any) => {
+            if (it.isHeader) { acc.push(it); return acc; }
+            if (Array.isArray(it.subItems)) {
+                if (!moduleVisible(it.module)) return acc;
+                const subs = it.subItems.filter((s: any) => moduleVisible(s.module));
+                if (subs.length === 0) return acc; // grupo vazio → esconde
+                acc.push({ ...it, subItems: subs });
+                return acc;
+            }
+            return moduleVisible(it.module) ? [...acc, it] : acc;
+        }, []);
+
+    return <React.Fragment>{filterMenu(menuItems)}</React.Fragment>;
 };
 export default Navdata;

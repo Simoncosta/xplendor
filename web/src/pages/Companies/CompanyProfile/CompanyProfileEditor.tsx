@@ -17,6 +17,7 @@ import classnames from "classnames";
 import { ICompanyUpdatePayload } from 'common/models/company.model';
 import XInput from 'Components/Common/XInput';
 import { ICarmineApi } from 'common/models/carmine-api.model';
+import { useModules } from 'contexts/ModulesContext';
 
 type CompanyProfileEditorProps = {
     data: ICompanyUpdatePayload;
@@ -35,6 +36,10 @@ export default function CompanyProfileEditor({
     onCancel
 }: CompanyProfileEditorProps) {
     const isEdit = Boolean((data as any)?.id);
+    // API Carmine é do módulo 'stock' — esconder a aba a quem não o tem (coerência
+    // menu↔rota; o backend já recusa na Fase 3). Root/desconhecido → mostra.
+    const { has: hasModule } = useModules();
+    const showCarmine = hasModule('stock');
     const [tokenCarmineShow, setTokenCarmineShow] = useState<boolean>(true);
 
     const [logoPreview, setLogoPreview] = useState<string | null>(
@@ -245,18 +250,20 @@ export default function CompanyProfileEditor({
                                                 Dados Gerais
                                             </NavLink>
                                         </NavItem>
-                                        <NavItem>
-                                            <NavLink
-                                                className={classnames("text-body", { active: activeTab === "2" })}
-                                                onClick={() => {
-                                                    tabChange("2");
-                                                }}
-                                                disabled={!isEdit}
-                                            >
-                                                <i className="fas fa-home"></i>
-                                                API Carmine
-                                            </NavLink>
-                                        </NavItem>
+                                        {showCarmine && (
+                                            <NavItem>
+                                                <NavLink
+                                                    className={classnames("text-body", { active: activeTab === "2" })}
+                                                    onClick={() => {
+                                                        tabChange("2");
+                                                    }}
+                                                    disabled={!isEdit}
+                                                >
+                                                    <i className="fas fa-home"></i>
+                                                    API Carmine
+                                                </NavLink>
+                                            </NavItem>
+                                        )}
                                         <NavItem>
                                             <NavLink
                                                 className={classnames("text-body", { active: activeTab === "3" })}
@@ -305,6 +312,7 @@ export default function CompanyProfileEditor({
                                                 </form>
                                             </FormikProvider>
                                         </TabPane>
+                                        {showCarmine && (
                                         <TabPane tabId="2">
                                             <FormikProvider value={formikCarmine}>
                                                 <form onSubmit={formikCarmine.handleSubmit}>
@@ -365,6 +373,7 @@ export default function CompanyProfileEditor({
                                                 </form>
                                             </FormikProvider>
                                         </TabPane>
+                                        )}
                                         <TabPane tabId="3">
                                             <IntegrationsSettings />
                                         </TabPane>

@@ -235,6 +235,9 @@ export const getGa4Traffic = (companyId: number, days = 28, fresh = false) =>
 // Meta — leitura dos dados que o pipeline já ingere (gasto/cliques/CTR + atribuição).
 export const getMetaOverview = (companyId: number, days = 28) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/meta/overview`, { days });
+// Módulos ATIVOS da empresa do utilizador (Fase 2 — esconder secções no menu).
+export const getMyModules = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 
 // XPLENDOR — Stock GLOBAL (transversal, /admin, só root).
 export const getAdminStock = (params?: {
@@ -247,6 +250,14 @@ export const getAdminStockCompanies = () => api.get(url.GET_ADMIN + `/stock/comp
 // XPLENDOR — Ativar/inativar empresa (root). Inativar tira acesso + exclui do stock.
 export const setAdminCompanyStatus = (id: number, active: boolean) =>
     api.update(url.GET_ADMIN + `/companies/${id}/status`, { active });
+
+// XPLENDOR — Módulos por empresa (super-admin). Ligar/desligar + presets de ramo.
+export const getCompanyModules = (companyId: number) =>
+    api.get(url.GET_ADMIN + `/companies/${companyId}/modules`);
+export const setCompanyModule = (companyId: number, moduleKey: string, enabled: boolean) =>
+    api.update(url.GET_ADMIN + `/companies/${companyId}/modules`, { module_key: moduleKey, enabled });
+export const applyCompanyModulePreset = (companyId: number, preset: string) =>
+    api.create(url.GET_ADMIN + `/companies/${companyId}/modules/preset`, { preset });
 
 // DMS — Tickets de suporte (lado stand). Create pode ser multipart (bug + print).
 export const getSupportTickets = (companyId: number) =>
