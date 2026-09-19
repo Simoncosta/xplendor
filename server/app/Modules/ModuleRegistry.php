@@ -58,12 +58,19 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => [],
         ],
+        // Restauração — PingWin (POS GrupoPIE). Específico do ramo restauração
+        // (não é dos carros). Gate para cadastrar/sincronizar o PingWin.
+        'pingwin' => [
+            'label' => 'PingWin (POS)',
+            'car_specific' => false,
+            'depends_on' => [],
+        ],
     ];
 
     /** Presets por ramo: um atalho que liga um conjunto (ajustável depois). */
     public const PRESETS = [
         'automotive' => ['stock', 'commercial_crm', 'finance', 'documents', 'aftersales', 'marketing_analytics', 'support_tasks'],
-        'restaurant' => ['marketing_analytics', 'support_tasks'],
+        'restaurant' => ['marketing_analytics', 'support_tasks', 'pingwin'],
     ];
 
     /** @return string[] */

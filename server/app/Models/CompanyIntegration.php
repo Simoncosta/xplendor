@@ -15,6 +15,7 @@ class CompanyIntegration extends Model
         'account_id',
         'page_id',
         'property_id',
+        'config',
         'token_expires_at',
         'status',
         'error_message',
@@ -27,6 +28,7 @@ class CompanyIntegration extends Model
         // Token cifrado em repouso. Cast tolerante: decifra, e devolve cru se
         // ainda estiver em texto simples (transição sem partir o pipeline).
         'access_token'     => EncryptedLegacy::class,
+        'config'           => 'array',
         'token_expires_at' => 'datetime',
         'last_synced_at'   => 'datetime',
     ];

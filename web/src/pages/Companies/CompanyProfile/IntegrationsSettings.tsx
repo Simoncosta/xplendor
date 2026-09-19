@@ -7,7 +7,12 @@ import { toast, ToastContainer } from "react-toastify";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
-import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic } from "helpers/laravel_helper";
+import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings } from "helpers/laravel_helper";
+import { useModules } from "contexts/ModulesContext";
+import { ICarmineApi } from "common/models/carmine-api.model";
+import { PingwinStatus } from "common/models/pingwin.model";
+import PingwinConnectModal from "./PingwinConnectModal";
+import CarmineConnectModal from "./CarmineConnectModal";
 
 interface Integration {
     id: number;
@@ -20,14 +25,20 @@ interface Integration {
     active_campaigns_count: number;
 }
 
-const statusBadge = (status: Integration["status"]) => {
-    const map = {
+type IntegrationsSettingsProps = {
+    dataCarmine?: ICarmineApi;
+    onSubmitCarmine?: (data: ICarmineApi) => void;
+};
+
+const statusBadge = (status: string | null | undefined) => {
+    const map: Record<string, { label: string; class: string; helper: string }> = {
         active: { label: "OK", class: "badge-soft-success", helper: "Sincronização operacional" },
+        validating: { label: "A validar", class: "badge-soft-info", helper: "A validar a ligação…" },
         expired: { label: "Token expirado", class: "badge-soft-warning", helper: "Reconexão necessária" },
         revoked: { label: "Desconectado", class: "badge-soft-secondary", helper: "Integração desligada" },
-        error: { label: "Erro", class: "badge-soft-danger", helper: "Verificar integração" },
+        error: { label: "Falha", class: "badge-soft-danger", helper: "Verificar credenciais" },
     };
-    return map[status] ?? { label: "Erro", class: "badge-soft-danger", helper: "Verificar integração" };
+    return map[status ?? ""] ?? { label: "Erro", class: "badge-soft-danger", helper: "Verificar integração" };
 };
 
 const formatMetaAccountId = (accountId: string | null | undefined) => {
@@ -37,6 +48,45 @@ const formatMetaAccountId = (accountId: string | null | undefined) => {
 
 const fmtDate = (d: string | null) =>
     d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+
+const infoRow = (label: string, value: React.ReactNode) => (
+    <div
+        className="d-flex align-items-center justify-content-between p-2 rounded"
+        style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
+    >
+        <span className="text-muted">{label}</span>
+        <span className="fw-medium">{value}</span>
+    </div>
+);
+
+/** Cartão de integração mostrado mas BLOQUEADO (o módulo respetivo está inativo). */
+const BlockedCard = ({ icon, iconColor, title, subtitle, note }: {
+    icon: string; iconColor: string; title: string; subtitle: string; note: string;
+}) => (
+    <Col md={6} xl={4}>
+        <Card className="h-100 mb-0" style={{ opacity: 0.65 }}>
+            <CardBody>
+                <div className="d-flex align-items-start justify-content-between mb-3">
+                    <div className="d-flex align-items-center gap-3">
+                        <div className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                            style={{ width: 44, height: 44, background: iconColor }}>
+                            <i className={`${icon} text-white fs-20`} />
+                        </div>
+                        <div>
+                            <h6 className="fw-semibold mb-0">{title}</h6>
+                            <p className="text-muted fs-12 mb-0">{subtitle}</p>
+                        </div>
+                    </div>
+                    <span className="badge badge-soft-secondary fs-11"><i className="ri-lock-2-line me-1" />Bloqueado</span>
+                </div>
+                <p className="text-muted fs-13 mb-3">{note}</p>
+                <button className="btn btn-outline-secondary w-100" disabled>
+                    <i className="ri-lock-2-line me-2" /> Indisponível
+                </button>
+            </CardBody>
+        </Card>
+    </Col>
+);
 
 const selectMetaAdsState = (state: any) => state.MetaAds;
 
@@ -59,8 +109,9 @@ const selectGoogleIntegration = createSelector(
     ({ integrations }) => integrations.find((integration) => integration.platform === "google")
 );
 
-export default function IntegrationsSettings() {
+export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: IntegrationsSettingsProps) {
     const dispatch: any = useDispatch();
+    const { has } = useModules();
     const [companyId, setCompanyId] = useState<number>(0);
     const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
     const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
@@ -68,11 +119,85 @@ export default function IntegrationsSettings() {
     const metaIntegration = useSelector(selectMetaIntegration);
     const googleIntegration = useSelector(selectGoogleIntegration);
 
+    // Que módulos decidem o que é usável vs bloqueado (fail-open: root/loading → usável).
+    const canUsePingwin = has("pingwin");
+    const canUseCarmine = has("stock");
+
     // GA4 — estado local do cartão (input do property_id + email da Service Account).
     const [gaProperty, setGaProperty] = useState("");
     const [gaSaving, setGaSaving] = useState(false);
     const [saEmail, setSaEmail] = useState<string | null>(null);
     const gaConnected = !!googleIntegration && googleIntegration.status !== "revoked" && !!googleIntegration.property_id;
+
+    // PingWin — estado local (via endpoints próprios, gated no backend).
+    const [pingwin, setPingwin] = useState<PingwinStatus | null>(null);
+    const [pingwinModalOpen, setPingwinModalOpen] = useState(false);
+    const [pingwinSyncing, setPingwinSyncing] = useState(false);
+    const pingwinConnected = !!pingwin && pingwin.status === "active";
+    const pingwinValidating = pingwin?.status === "validating";
+    const pingwinError = pingwin?.status === "error";
+    const pingwinConfigured = pingwinConnected || pingwinValidating || pingwinError;
+
+    // CoverManager — token AO NÍVEL DA EMPRESA (fallback das lojas).
+    const [coverConnected, setCoverConnected] = useState(false);
+    const [coverToken, setCoverToken] = useState("");
+    const [coverSaving, setCoverSaving] = useState(false);
+    // Flag do ticket médio (companies.cm_avg_ticket_enabled) — vive aqui (Integrações).
+    const [avgTicketEnabled, setAvgTicketEnabled] = useState(true);
+
+    const fetchCover = useCallback(async (cId: number) => {
+        if (!cId || !canUsePingwin) return;
+        try {
+            const r: any = await getCoverManager(cId);
+            setCoverConnected(!!r?.data?.connected);
+        } catch {
+            setCoverConnected(false);
+        }
+        try {
+            const s: any = await getCoverManagerSettings(cId);
+            setAvgTicketEnabled(s?.data?.avg_ticket_enabled ?? true);
+        } catch { /* mantém default */ }
+    }, [canUsePingwin]);
+
+    const toggleAvgTicket = async (enabled: boolean) => {
+        setAvgTicketEnabled(enabled);
+        try {
+            await updateCoverManagerSettings(companyId, enabled);
+            toast.success(enabled ? "Ticket médio com CoverManager ligado." : "Ticket médio com CoverManager desligado.");
+        } catch (e: any) {
+            setAvgTicketEnabled(!enabled);
+            toast.error(e?.message ?? "Não foi possível atualizar a definição.");
+        }
+    };
+
+    const connectCover = async () => {
+        if (!coverToken.trim()) { toast.error("Cola o token do CoverManager."); return; }
+        setCoverSaving(true);
+        try {
+            await connectCoverManager(companyId, coverToken.trim());
+            toast.success("CoverManager ligado à empresa.");
+            setCoverToken("");
+            await fetchCover(companyId);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível ligar o CoverManager.");
+        } finally {
+            setCoverSaving(false);
+        }
+    };
+
+    const disconnectCover = async () => {
+        try {
+            await disconnectCoverManager(companyId);
+            toast.success("CoverManager desligado.");
+            await fetchCover(companyId);
+        } catch {
+            toast.error("Erro ao desligar o CoverManager.");
+        }
+    };
+
+    // Carmine — dados vêm por props (fluxo Redux existente no editor/pai).
+    const [carmineModalOpen, setCarmineModalOpen] = useState(false);
+    const carmineConnected = !!dataCarmine?.id;
 
     const fetchIntegrations = useCallback(async (cId: number) => {
         try {
@@ -82,13 +207,26 @@ export default function IntegrationsSettings() {
         }
     }, [dispatch]);
 
+    const fetchPingwin = useCallback(async (cId: number) => {
+        // Só chama o endpoint (gated) se o módulo estiver ativo — senão dá 403.
+        if (!cId || !canUsePingwin) return;
+        try {
+            const r: any = await getPingwin(cId);
+            setPingwin(r?.data ?? null);
+        } catch {
+            setPingwin(null);
+        }
+    }, [canUsePingwin]);
+
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
         const { company_id } = JSON.parse(authUser);
         setCompanyId(Number(company_id));
         fetchIntegrations(Number(company_id));
-    }, [fetchIntegrations]);
+        fetchPingwin(Number(company_id));
+        fetchCover(Number(company_id));
+    }, [fetchIntegrations, fetchPingwin, fetchCover]);
 
     const handleDisconnect = async (platform: string) => {
         setPendingPlatform(platform);
@@ -145,6 +283,19 @@ export default function IntegrationsSettings() {
         }
     };
 
+    const runPingwinSync = async () => {
+        setPingwinSyncing(true);
+        try {
+            await syncPingwin(companyId);
+            toast.success("PingWin sincronizado.");
+            await fetchPingwin(companyId);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Falha ao sincronizar o PingWin.");
+        } finally {
+            setPingwinSyncing(false);
+        }
+    };
+
     const { connect: connectMeta } = useMetaOAuth({
         companyId,
         onSuccess: () => {
@@ -175,12 +326,31 @@ export default function IntegrationsSettings() {
                     void confirmDisconnect();
                 }}
             />
+
+            <PingwinConnectModal
+                isOpen={pingwinModalOpen}
+                companyId={companyId}
+                initialConfig={pingwin?.config ?? null}
+                isReconfigure={pingwinConfigured}
+                onClose={() => setPingwinModalOpen(false)}
+                onSaved={() => fetchPingwin(companyId)}
+            />
+
+            {dataCarmine && onSubmitCarmine && (
+                <CarmineConnectModal
+                    isOpen={carmineModalOpen}
+                    data={dataCarmine}
+                    onClose={() => setCarmineModalOpen(false)}
+                    onSubmit={onSubmitCarmine}
+                />
+            )}
+
             <Container fluid>
                 <Row className="mb-3">
                     <Col>
                         <h4 className="fw-semibold mb-1">Integrações</h4>
                         <p className="text-muted fs-13 mb-0">
-                            Conecta as tuas plataformas de anúncios para que os dados cheguem automaticamente todas as noites.
+                            Liga as tuas plataformas externas para que os dados cheguem automaticamente à XPLENDOR.
                         </p>
                     </Col>
                 </Row>
@@ -222,34 +392,10 @@ export default function IntegrationsSettings() {
 
                                 {metaIntegration ? (
                                     <div className="vstack gap-2">
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Conta</span>
-                                            <span className="fw-medium">{formatMetaAccountId(metaIntegration.account_id)}</span>
-                                        </div>
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Campanhas ativas</span>
-                                            <span className="fw-medium">{metaIntegration.active_campaigns_count ?? 0}</span>
-                                        </div>
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Último sync</span>
-                                            <span className="fw-medium">{fmtDate(metaIntegration.last_synced_at)}</span>
-                                        </div>
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Token expira</span>
-                                            <span className="fw-medium">{fmtDate(metaIntegration.token_expires_at)}</span>
-                                        </div>
+                                        {infoRow("Conta", formatMetaAccountId(metaIntegration.account_id))}
+                                        {infoRow("Campanhas ativas", metaIntegration.active_campaigns_count ?? 0)}
+                                        {infoRow("Último sync", fmtDate(metaIntegration.last_synced_at))}
+                                        {infoRow("Token expira", fmtDate(metaIntegration.token_expires_at))}
                                         {metaIntegration.status === "active" ? (
                                             <button
                                                 className="btn btn-soft-danger btn-sm mt-1"
@@ -314,20 +460,8 @@ export default function IntegrationsSettings() {
 
                                 {gaConnected ? (
                                     <div className="vstack gap-2">
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Propriedade</span>
-                                            <span className="fw-medium">{googleIntegration?.property_id}</span>
-                                        </div>
-                                        <div
-                                            className="d-flex align-items-center justify-content-between p-2 rounded"
-                                            style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)", fontSize: 12 }}
-                                        >
-                                            <span className="text-muted">Último sync</span>
-                                            <span className="fw-medium">{fmtDate(googleIntegration?.last_synced_at ?? null)}</span>
-                                        </div>
+                                        {infoRow("Propriedade", googleIntegration?.property_id)}
+                                        {infoRow("Último sync", fmtDate(googleIntegration?.last_synced_at ?? null))}
                                         <Link to="/trafego-site" className="btn btn-primary btn-sm mt-1" style={{ background: "#E37400", borderColor: "#E37400" }}>
                                             <i className="ri-line-chart-line me-1" /> Ver tráfego do site
                                         </Link>
@@ -358,6 +492,205 @@ export default function IntegrationsSettings() {
                             </CardBody>
                         </Card>
                     </Col>
+
+                    {/* ── Carmine (stock automóvel) ────────────────────────── */}
+                    {canUseCarmine ? (
+                        <Col md={6} xl={4}>
+                            <Card className="h-100 mb-0">
+                                <CardBody>
+                                    <div className="d-flex align-items-start justify-content-between mb-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            <div className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 44, height: 44, background: "#DF3E23" }}>
+                                                <i className="ri-car-line text-white fs-20" />
+                                            </div>
+                                            <div>
+                                                <h6 className="fw-semibold mb-0">Carmine</h6>
+                                                <p className="text-muted fs-12 mb-0">Stock de veículos</p>
+                                            </div>
+                                        </div>
+                                        {carmineConnected && (
+                                            <span className="badge badge-soft-success fs-11">Ligado</span>
+                                        )}
+                                    </div>
+                                    <p className="text-muted fs-13 mb-3">
+                                        Sincroniza o stock de veículos a partir da tua conta Carmine.
+                                    </p>
+                                    {carmineConnected ? (
+                                        <div className="vstack gap-2">
+                                            {infoRow("Dealer", dataCarmine?.dealer_id || "—")}
+                                            <button className="btn btn-soft-primary btn-sm mt-1" onClick={() => setCarmineModalOpen(true)}>
+                                                <i className="ri-settings-3-line me-1" /> Reconfigurar
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button className="btn btn-primary w-100" onClick={() => setCarmineModalOpen(true)}
+                                            style={{ background: "#DF3E23", borderColor: "#DF3E23" }}>
+                                            <i className="ri-links-line me-2" /> Ligar Carmine
+                                        </button>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    ) : (
+                        <BlockedCard
+                            icon="ri-car-line"
+                            iconColor="#DF3E23"
+                            title="Carmine"
+                            subtitle="Stock de veículos"
+                            note="Disponível para o ramo automotivo (requer o módulo Stock)."
+                        />
+                    )}
+
+                    {/* ── PingWin (POS restauração) ────────────────────────── */}
+                    {canUsePingwin ? (
+                        <Col md={6} xl={4}>
+                            <Card className="h-100 mb-0">
+                                <CardBody>
+                                    <div className="d-flex align-items-start justify-content-between mb-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            <div className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 44, height: 44, background: "#0AB39C" }}>
+                                                <i className="ri-restaurant-2-line text-white fs-20" />
+                                            </div>
+                                            <div>
+                                                <h6 className="fw-semibold mb-0">PingWin</h6>
+                                                <p className="text-muted fs-12 mb-0">POS restauração (GrupoPIE)</p>
+                                            </div>
+                                        </div>
+                                        {pingwinConfigured && (
+                                            <span className={`badge ${statusBadge(pingwin!.status).class} fs-11`}>
+                                                {statusBadge(pingwin!.status).label}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-muted fs-13 mb-3">
+                                        Descobre as lojas e traz o resumo de vendas por loja do teu POS PingWin.
+                                    </p>
+
+                                    {pingwinValidating ? (
+                                        <div className="vstack gap-2">
+                                            <div className="p-2 rounded fs-12 d-flex align-items-center gap-2" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
+                                                <Spinner size="sm" /> A validar a ligação… serás notificado no sino quando terminar.
+                                            </div>
+                                            <button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                                <i className="ri-settings-3-line me-1" /> Reconfigurar
+                                            </button>
+                                        </div>
+                                    ) : pingwinError ? (
+                                        <div className="vstack gap-2">
+                                            <div className="alert alert-danger py-2 px-3 fs-12 mb-0" role="alert">
+                                                <i className="ri-error-warning-line me-1" />
+                                                {pingwin?.error_message || "Não foi possível validar a ligação."}
+                                            </div>
+                                            <button className="btn btn-primary btn-sm" onClick={() => setPingwinModalOpen(true)}
+                                                style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                                <i className="ri-settings-3-line me-1" /> Corrigir credenciais
+                                            </button>
+                                        </div>
+                                    ) : pingwinConnected ? (
+                                        <div className="vstack gap-2">
+                                            {infoRow("Lojas", pingwin?.stores?.length ?? 0)}
+                                            {infoRow("Último sync", fmtDate(pingwin?.last_synced_at ?? null))}
+                                            {(pingwin?.stores?.length ?? 0) > 0 && (
+                                                <div className="p-2 rounded fs-12" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
+                                                    {pingwin!.stores.slice(0, 4).map((s) => (
+                                                        <div key={s.id} className="d-flex justify-content-between">
+                                                            <span className="text-truncate me-2">{s.description || s.code || s.external_id}</span>
+                                                            {s.last_summary?.total != null && (
+                                                                <span className="fw-medium">{s.last_summary.total}</span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                    {pingwin!.stores.length > 4 && (
+                                                        <div className="text-muted mt-1">+{pingwin!.stores.length - 4} lojas</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <button className="btn btn-primary btn-sm mt-1" onClick={runPingwinSync} disabled={pingwinSyncing}
+                                                style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                                {pingwinSyncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar agora</>}
+                                            </button>
+                                            <div className="text-muted fs-11">As lojas gerem-se em <strong>Restauração › Lojas</strong> (menu lateral).</div>
+                                            <button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                                <i className="ri-settings-3-line me-1" /> Reconfigurar
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button className="btn btn-primary w-100" onClick={() => setPingwinModalOpen(true)}
+                                            style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                            <i className="ri-links-line me-2" /> Ligar PingWin
+                                        </button>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    ) : (
+                        <BlockedCard
+                            icon="ri-restaurant-2-line"
+                            iconColor="#0AB39C"
+                            title="PingWin"
+                            subtitle="POS restauração (GrupoPIE)"
+                            note="Disponível para o ramo restauração (requer o módulo PingWin)."
+                        />
+                    )}
+
+                    {/* ── CoverManager (reservas) — token AO NÍVEL DA EMPRESA ─── */}
+                    {canUsePingwin ? (
+                        <Col md={6} xl={4}>
+                            <Card className="h-100 mb-0">
+                                <CardBody>
+                                    <div className="d-flex align-items-start justify-content-between mb-3">
+                                        <div className="d-flex align-items-center gap-3">
+                                            <div className="rounded d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 44, height: 44, background: "#6259CA" }}>
+                                                <i className="ri-calendar-check-line text-white fs-20" />
+                                            </div>
+                                            <div>
+                                                <h6 className="fw-semibold mb-0">CoverManager</h6>
+                                                <p className="text-muted fs-12 mb-0">Reservas (por empresa)</p>
+                                            </div>
+                                        </div>
+                                        {coverConnected && <span className="badge badge-soft-success fs-11">Ligado</span>}
+                                    </div>
+                                    <p className="text-muted fs-13 mb-3">
+                                        Token da empresa (fallback de todas as lojas). O slug de cada loja gere-se em <strong>Restauração › Lojas</strong>.
+                                    </p>
+                                    {coverConnected ? (
+                                        <div className="vstack gap-2">
+                                            {infoRow("Token", "•••••••• (guardado)")}
+                                            {/* Flag do ticket médio (movida das Lojas para aqui). */}
+                                            <div className="form-check form-switch mt-1">
+                                                <input className="form-check-input" type="checkbox" role="switch" id="cm-avg-ticket"
+                                                    checked={avgTicketEnabled} onChange={(e) => toggleAvgTicket(e.target.checked)} />
+                                                <label className="form-check-label fs-13" htmlFor="cm-avg-ticket">Ticket médio com CoverManager</label>
+                                            </div>
+                                            <button className="btn btn-soft-danger btn-sm mt-1" onClick={disconnectCover}>
+                                                <i className="ri-unlink me-1" /> Desligar
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="vstack gap-2">
+                                            <input type="password" className="form-control" placeholder="token CoverManager (apikey)"
+                                                value={coverToken} onChange={(e) => setCoverToken(e.target.value)} autoComplete="new-password" disabled={coverSaving} />
+                                            <button className="btn btn-primary w-100" onClick={connectCover} disabled={coverSaving}
+                                                style={{ background: "#6259CA", borderColor: "#6259CA" }}>
+                                                {coverSaving ? <><Spinner size="sm" className="me-1" /> A ligar…</> : <><i className="ri-links-line me-2" /> Ligar CoverManager</>}
+                                            </button>
+                                        </div>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    ) : (
+                        <BlockedCard
+                            icon="ri-calendar-check-line"
+                            iconColor="#6259CA"
+                            title="CoverManager"
+                            subtitle="Reservas"
+                            note="Disponível para o ramo restauração (requer o módulo PingWin)."
+                        />
+                    )}
 
                     {/* ── Google Ads (placeholder XPLDR-31) ────────────────── */}
                     <Col md={6} xl={4}>

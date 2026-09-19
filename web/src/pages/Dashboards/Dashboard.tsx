@@ -13,6 +13,7 @@ import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockBreakdownCard from './components/StockBreakdownCard';
 import SalesRevenueCard from './components/SalesRevenueCard';
 import { useModules } from "contexts/ModulesContext";
+import { PingwinDashboardContent } from "./PingwinDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 
 const selectDashboardState = (state: any) => state.Dashboard;
@@ -76,8 +77,11 @@ const Dashboard = () => {
         }));
     };
 
-    // Empresa sem módulos de carros → dashboard vazio (só o essencial), sem crash.
+    // O painel principal adapta-se ao RAMO. Empresa de restauração (módulo
+    // pingwin, sem os de carros) vê o dashboard de restauração — já não fica em
+    // branco. Sem nenhum ramo reconhecido → só o essencial.
     if (!showCars) {
+        const showPingwin = isRoot || has('pingwin');
         return (
             <React.Fragment>
                 <div className="page-content">
@@ -85,7 +89,7 @@ const Dashboard = () => {
                         <Row className="g-3 mb-3">
                             <SubscriptionTrialBanner />
                         </Row>
-                        {/* Dashboard específico do ramo — tarefa futura. Vazio por agora. */}
+                        {showPingwin && <PingwinDashboardContent />}
                     </Container>
                 </div>
             </React.Fragment>

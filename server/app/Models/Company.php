@@ -62,6 +62,7 @@ class Company extends Model
         'trial_starts_at',
         'trial_ends_at',
         'subscription_ends_at',
+        'cm_avg_ticket_enabled',
     ];
 
     protected function casts(): array
@@ -71,6 +72,7 @@ class Company extends Model
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'uses_vat' => 'boolean',
+            'cm_avg_ticket_enabled' => 'boolean',
         ];
     }
 

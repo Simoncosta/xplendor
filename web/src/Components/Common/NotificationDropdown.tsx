@@ -20,8 +20,10 @@ interface AlertsListResponse {
     data?: AlertItem[];
 }
 
+// ApiResponse envelopa em { success, message, data }. O contador vem em data.count.
 interface UnreadCountResponse {
-    count?: number;
+    data?: { count?: number };
+    count?: number; // fallback defensivo
 }
 
 // Outros sítios (ex.: Action Center) re-sincronizam ao ouvir este evento;
@@ -64,10 +66,23 @@ const NotificationDropdown = () => {
 
         try {
             const res = (await getCompanyAlertsUnreadCountApi(companyId)) as unknown as UnreadCountResponse;
-            setUnreadTotal(Number(res?.count ?? 0));
+            // Correção: o contador está em res.data.count (envelope ApiResponse), não res.count.
+            setUnreadTotal(Number(res?.data?.count ?? res?.count ?? 0));
         } catch {
             // Fallback: se o endpoint de contagem falhar, deriva da lista carregada.
             setUnreadTotal(list.filter((alert) => !alert.is_read).length);
+        }
+    }, [companyId]);
+
+    // Polling LEVE: só o contador de não-lidas (não recarrega a lista). Sem
+    // WebSockets — um intervalo simples de 30s chega para o badge atualizar sozinho.
+    const fetchUnreadCount = useCallback(async () => {
+        if (!companyId) return;
+        try {
+            const res = (await getCompanyAlertsUnreadCountApi(companyId)) as unknown as UnreadCountResponse;
+            setUnreadTotal(Number(res?.data?.count ?? res?.count ?? 0));
+        } catch {
+            /* rede intermitente — tenta de novo no próximo tick */
         }
     }, [companyId]);
 
@@ -75,13 +90,16 @@ const NotificationDropdown = () => {
         fetchAll();
 
         const handleAlertsUpdated = () => fetchAll();
-
         window.addEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
+
+        // Atualiza o contador a cada 30s; limpa ao desmontar (não martela o servidor).
+        const pollId = window.setInterval(fetchUnreadCount, 30000);
 
         return () => {
             window.removeEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
+            window.clearInterval(pollId);
         };
-    }, [fetchAll, location.pathname]);
+    }, [fetchAll, fetchUnreadCount, location.pathname]);
 
     const toggle = () => {
         const next = !isOpen;

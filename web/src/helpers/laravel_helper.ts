@@ -239,6 +239,46 @@ export const getMetaOverview = (companyId: number, days = 28) =>
 export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 
+// XPLENDOR — PingWin (POS restauração). A senha é cifrada no backend e NUNCA
+// devolvida; o connect valida a ligação (login+logout) antes de gravar. Gated
+// por ensure_module:pingwin (403 se a empresa não tem o módulo). Scoped por company.
+export const getPingwin = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin`);
+export const connectPingwin = (companyId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/connect`, data);
+export const syncPingwin = (companyId: number, date?: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync`, date ? { date } : {});
+// Gatilho do dashboard: mete a sincronização na FILA (não trava; notifica no sino).
+export const queuePingwinSync = (companyId: number, date?: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/sync-queue`, date ? { date } : {});
+// Dashboard de restauração (cards anual/mensal/diário + lojas).
+export const getPingwinDashboard = (companyId: number, date?: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/dashboard`, date ? { date } : undefined);
+// CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno de uma data.
+export const syncCoverManager = (companyId: number, date: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/sync`, { date });
+// CoverManager — token AO NÍVEL DA EMPRESA (Integrações). O token nunca é devolvido.
+export const getCoverManager = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/covermanager`);
+export const connectCoverManager = (companyId: number, token: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/connect`, { token });
+export const disconnectCoverManager = (companyId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/covermanager`);
+// CoverManager — Etapa 2: flag do ticket médio (por empresa).
+export const getCoverManagerSettings = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/settings`);
+export const updateCoverManagerSettings = (companyId: number, avgTicketEnabled: boolean) =>
+    api.update(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/settings`, { avg_ticket_enabled: avgTicketEnabled ? 1 : 0 });
+// Cadastro manual de lojas PingWin (winrest_store_id → "Stores" do relatório).
+export const getPingwinLocations = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations`);
+export const createPingwinLocation = (companyId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations`, data);
+export const updatePingwinLocation = (companyId: number, locationId: number, data: Record<string, any>) =>
+    api.update(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations/${locationId}`, data);
+export const deletePingwinLocation = (companyId: number, locationId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/locations/${locationId}`);
+
 // XPLENDOR — Stock GLOBAL (transversal, /admin, só root).
 export const getAdminStock = (params?: {
     company_id?: number; status?: string; car_brand_id?: string;

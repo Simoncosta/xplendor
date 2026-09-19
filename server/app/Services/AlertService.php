@@ -100,6 +100,31 @@ class AlertService
             ->map(fn (Alert $alert) => $this->transformAlert($alert));
     }
 
+    /**
+     * Alerta de SISTEMA (sem viatura) para o sino — ex.: "Dados de vendas
+     * atualizados" do PingWin. O `type` tem de ser um dos que o sino sabe pintar
+     * (urgent/warning/opportunity); `detailPath` é para onde o item aponta.
+     */
+    public function createSystemAlert(
+        int $companyId,
+        string $type,
+        string $title,
+        string $message,
+        string $severity = 'medium',
+        ?string $detailPath = null,
+    ): Alert {
+        return Alert::create([
+            'company_id' => $companyId,
+            'car_id' => null,
+            'type' => in_array($type, ['urgent', 'warning', 'opportunity'], true) ? $type : 'warning',
+            'title' => $title,
+            'message' => $message,
+            'detail_path' => $detailPath,
+            'severity' => in_array($severity, ['low', 'medium', 'high'], true) ? $severity : 'medium',
+            'is_read' => false,
+        ]);
+    }
+
     private function createFromGuardrail(Company $company, Car $car, array $guardrail): ?Alert
     {
         $type = $this->mapAlertType($guardrail['type'] ?? null);
@@ -162,7 +187,8 @@ class AlertService
             'severity' => $alert->severity,
             'is_read' => $alert->is_read,
             'created_at' => optional($alert->created_at)?->toISOString(),
-            'detail_path' => "/cars/{$alert->car_id}/ficha",
+            // Alerta de sistema traz o seu próprio destino; o de viatura vai à ficha.
+            'detail_path' => $alert->detail_path ?? ($alert->car_id ? "/cars/{$alert->car_id}/ficha" : null),
         ];
     }
 }

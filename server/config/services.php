@@ -61,4 +61,29 @@ return [
     'scraper' => [
         'token' => env('SCRAPER_API_TOKEN'),
     ],
+
+    // XPLENDOR — PingWin (POS GrupoPIE cloud). Valores GLOBAIS, iguais a TODOS os
+    // restaurantes na cloud partilhada GrupoPIE — vivem no .env, NÃO por empresa.
+    // Por empresa (company_integrations) guardam-se só 3: username, database e a
+    // senha (cifrada). O PingwinService compõe estes globais + os 3 da empresa.
+    'pingwin' => [
+        'auth_url'          => env('PINGWIN_AUTH_URL'),        // SOA partilhado GrupoPIE
+        'api_url'           => env('PINGWIN_API_URL'),         // mesmo host partilhado
+        // frontend_url VARIA por restaurante (deriva de https://{database}.mycloudpie.com
+        // no PingwinService). Aqui fica só como OVERRIDE opcional (raro; vazio = derivar).
+        'frontend_url'      => env('PINGWIN_FRONTEND_URL'),
+        'app_version'       => env('PINGWIN_APP_VERSION'),     // segue a versão do servidor GrupoPIE
+        'application'       => env('PINGWIN_APPLICATION', 'pbo_soa_2026.0'),  // constante do protocolo
+        'app_grupopie'      => env('PINGWIN_APP_GRUPOPIE', 'PBOWEB'),          // constante do protocolo
+        'report_id'         => env('PINGWIN_REPORT_ID_SALES'),  // relatório "Resumo de Vendas" (ver aviso no .env)
+        'stores'            => env('PINGWIN_STORES', ''),       // filtro opcional; vazio = descoberta trata
+        'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset de descoberta de lojas
+        'allowed_hosts'     => env('PINGWIN_ALLOWED_HOSTS', ''), // allowlist de hosts (segurança SSL fraco)
+    ],
+
+    // XPLENDOR — CoverManager (reservas). HTTP normal. As credenciais (slug+token)
+    // são POR LOJA; aqui só o base_url global (com default).
+    'covermanager' => [
+        'base_url' => env('COVERMANAGER_BASE_URL', 'https://www.covermanager.com'),
+    ],
 ];

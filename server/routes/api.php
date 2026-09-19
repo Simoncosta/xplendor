@@ -47,6 +47,7 @@ use App\Http\Controllers\Api\V1\{
     QuoteController,
     CompanyTaskController,
     CompanyModuleController,
+    CompanyPingwinController,
     GoogleAnalyticsController,
     MetaInsightsController,
     ExpenseCategoryController,
@@ -165,6 +166,32 @@ Route::prefix('v1')->group(function () {
 
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
+
+                // PingWin (POS restauração) — gate pelo módulo 'pingwin'. A senha
+                // é cifrada; o cliente Python garante o logout.
+                Route::middleware('ensure_module:pingwin')->group(function () {
+                    Route::get('/integrations/pingwin', [CompanyPingwinController::class, 'index']);
+                    Route::post('/integrations/pingwin/connect', [CompanyPingwinController::class, 'connect']);
+                    Route::post('/integrations/pingwin/sync', [CompanyPingwinController::class, 'sync']);
+                    // Gatilho do dashboard: sincronização em FILA (não trava; notifica no sino).
+                    Route::post('/integrations/pingwin/sync-queue', [CompanyPingwinController::class, 'queueSync']);
+                    // Dashboard de restauração (cards anual/mensal/diário + lojas).
+                    Route::get('/analytics/pingwin/dashboard', [CompanyPingwinController::class, 'dashboard']);
+                    // Cadastro manual de lojas (desbloqueia o "Stores" do relatório).
+                    Route::get('/integrations/pingwin/locations', [CompanyPingwinController::class, 'listLocations']);
+                    Route::post('/integrations/pingwin/locations', [CompanyPingwinController::class, 'storeLocation']);
+                    Route::patch('/integrations/pingwin/locations/{locationId}', [CompanyPingwinController::class, 'updateLocation']);
+                    Route::delete('/integrations/pingwin/locations/{locationId}', [CompanyPingwinController::class, 'deleteLocation']);
+                    // CoverManager — token AO NÍVEL DA EMPRESA (Integrações).
+                    Route::get('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerIndex']);
+                    Route::post('/integrations/covermanager/connect', [CompanyPingwinController::class, 'coverManagerConnect']);
+                    Route::delete('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerDisconnect']);
+                    // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno.
+                    Route::post('/integrations/covermanager/sync', [CompanyPingwinController::class, 'coverManagerSync']);
+                    // CoverManager — Etapa 2: flag do ticket médio (por empresa).
+                    Route::get('/integrations/covermanager/settings', [CompanyPingwinController::class, 'coverManagerSettings']);
+                    Route::patch('/integrations/covermanager/settings', [CompanyPingwinController::class, 'updateCoverManagerSettings']);
+                });
 
                 Route::apiResource('/users', UserController::class);
                 // ── Módulo STOCK (Fase 3: recusa 403 se não ativo) ──

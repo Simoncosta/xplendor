@@ -58,7 +58,7 @@ class CompanyModulesTest extends TestCase
     public function test_root_sees_modules_overview(): void
     {
         $res = $this->actingAs($this->root, 'sanctum')->getJson($this->modulesUrl())->assertStatus(200);
-        $this->assertCount(7, $res->json('data.modules'));
+        $this->assertCount(count(ModuleRegistry::keys()), $res->json('data.modules'));
         // stock está ligado mas NÃO pode desligar (comercial + pós-venda dependem).
         $stock = collect($res->json('data.modules'))->firstWhere('key', 'stock');
         $this->assertTrue($stock['enabled']);
@@ -94,7 +94,7 @@ class CompanyModulesTest extends TestCase
     {
         // Parte do preset restauração (só transversais).
         $this->actingAs($this->root, 'sanctum')->postJson($this->modulesUrl() . '/preset', ['preset' => 'restaurant'])->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks'], $this->keys($this->company->id));
+        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $this->keys($this->company->id));
 
         // Ligar 'aftersales' → liga em cascata commercial_crm + stock.
         $this->actingAs($this->root, 'sanctum')->patchJson($this->modulesUrl(), ['module_key' => 'aftersales', 'enabled' => true])->assertStatus(200);
@@ -107,7 +107,7 @@ class CompanyModulesTest extends TestCase
     public function test_restaurant_preset_enables_only_transversal(): void
     {
         $this->actingAs($this->root, 'sanctum')->postJson($this->modulesUrl() . '/preset', ['preset' => 'restaurant'])->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks'], $this->keys($this->company->id));
+        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $this->keys($this->company->id));
     }
 
     public function test_preset_is_a_shortcut_not_a_prison(): void
@@ -144,7 +144,7 @@ class CompanyModulesTest extends TestCase
         app(\App\Services\CompanyModuleService::class)->applyPreset($this->company->id, 'restaurant');
 
         $res = $this->actingAs($this->standAdmin, 'sanctum')->getJson($this->myModulesUrl())->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks'], $res->json('data.modules'));
+        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $res->json('data.modules'));
         // NÃO tem os módulos de carros → o menu esconde essas secções.
         $this->assertNotContains('stock', $res->json('data.modules'));
         $this->assertNotContains('commercial_crm', $res->json('data.modules'));

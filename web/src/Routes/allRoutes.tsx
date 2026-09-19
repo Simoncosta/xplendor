@@ -3,6 +3,8 @@ import { Navigate, useParams } from "react-router-dom";
 
 // Dashboard
 import Dashboard from "pages/Dashboards/Dashboard";
+import PingwinDashboard from "pages/Dashboards/PingwinDashboard";
+import LojasPage from "pages/Restauracao/LojasPage";
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -105,6 +107,9 @@ const CarAdsRedirect = () => {
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
+    // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
+    { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
+    { path: "/restauracao/lojas", component: <RequireModule module="pingwin"><LojasPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },

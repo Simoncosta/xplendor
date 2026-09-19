@@ -13,6 +13,7 @@ class Alert extends Model
         'type',
         'title',
         'message',
+        'detail_path',
         'severity',
         'is_read',
     ];

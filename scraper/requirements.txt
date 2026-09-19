@@ -2,3 +2,8 @@ requests==2.31.0
 beautifulsoup4==4.12.3
 lxml==5.1.0
 python-dotenv==1.0.1
+# PingWin (MyCloudPie) — leitura de .xls via xlrd 1.x (⚠️ NÃO atualizar: última
+# versão com suporte .xls). pandas p/ o DataFrame; openpyxl p/ .xlsx futuros.
+pandas==2.2.2
+xlrd==1.2.0
+openpyxl==3.1.5

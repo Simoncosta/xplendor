@@ -1,0 +1,353 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Services;
+
+use App\Models\CompanyIntegration;
+use App\Models\PingwinDailySale;
+use App\Models\PingwinLocation;
+use App\Models\PingwinSyncRun;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Process\Process;
+
+/**
+ * XPLENDOR — PingWin (Incremento 1). Orquestra o cliente Python (mycloudpie):
+ *  · valida a ligação (login+logout de teste) ANTES de gravar credenciais;
+ *  · guarda a SENHA cifrada (access_token, cast EncryptedLegacy) + os IDs em config;
+ *  · sincroniza (lojas + resumo de vendas) invocando o Python.
+ *
+ * ⚠️ A senha é decifrada pelo Laravel (cast/APP_KEY) e passada ao Python por
+ * STDIN — NUNCA por argv (argv aparece no `ps`). Sem cripto duplicada no Python.
+ * O LOGOUT é garantido do lado do Python (context manager).
+ */
+class PingwinService
+{
+    private const PLATFORM = 'pingwin';
+    private const ENTRYPOINT = '/scraper/sources/pingwin/run.py';
+
+    // Só isto VARIA por restaurante → guarda-se em company_integrations.config.
+    // (A senha vai à parte, cifrada em access_token.) Tudo o resto é GLOBAL e
+    // vem do .env (config('services.pingwin')) — igual a todos os restaurantes.
+    private const CONFIG_KEYS = ['username', 'database'];
+
+    /** Invoca o entrypoint Python, passando a config+senha por STDIN. */
+    protected function invoke(array $payload): array
+    {
+        $command = [
+            'docker', 'exec', '-i',
+            env('SCRAPER_CONTAINER', 'xplendor-scraper'),
+            'python', self::ENTRYPOINT,
+        ];
+
+        $process = new Process($command);
+        $process->setTimeout(180);
+        $process->setInput(json_encode($payload)); // credenciais por STDIN (nunca argv)
+        $process->run();
+
+        $stdout = trim($process->getOutput());
+        $stderr = trim($process->getErrorOutput());
+        $exit = $process->getExitCode();
+
+        if ($stdout === '') {
+            // NÃO esconder a causa: expõe o erro REAL (stderr + exit code) — pode
+            // ser docker/socket (invocação), ImportError (deps) ou rede/SSL.
+            Log::error('[PingWin] sem output do Python', ['exit' => $exit, 'stderr' => mb_substr($stderr, 0, 2000)]);
+            $detail = $stderr !== '' ? mb_substr($stderr, 0, 500) : 'sem stderr';
+            throw new \RuntimeException("Sem resposta do cliente PingWin (exit={$exit}): {$detail}");
+        }
+
+        // O que decide sucesso/falha é o "ok" do JSON — NÃO o stderr. O stderr pode
+        // trazer avisos INOFENSIVOS (ex.: o do xlrd "file size ... sector size") com
+        // o resultado na mesma correto. Extraímos só o objeto JSON do stdout (1.º
+        // "{" até ao último "}"), tolerando qualquer ruído que lá tenha caído.
+        $data = json_decode($stdout, true);
+        if (! is_array($data)) {
+            $data = $this->extractJson($stdout);
+        }
+        if (! is_array($data)) {
+            Log::error('[PingWin] resposta inválida', ['stdout' => mb_substr($stdout, 0, 1000), 'stderr' => mb_substr($stderr, 0, 1000)]);
+            throw new \RuntimeException('Resposta do cliente PingWin inválida: ' . mb_substr($stdout, 0, 300));
+        }
+
+        // Falha "de negócio" (ok:false, ex.: relatório): guarda o stderr do Python
+        // (tem o corpo da resposta do servidor) no log para diagnóstico completo.
+        if (! ($data['ok'] ?? false)) {
+            Log::warning('[PingWin] cliente devolveu ok:false', [
+                'error' => mb_substr((string) ($data['error'] ?? ''), 0, 500),
+                'stderr' => mb_substr($stderr, 0, 2000),
+            ]);
+        }
+
+        return $data;
+    }
+
+    /** Testa a ligação (login+logout). Devolve true/false. Não grava nada. */
+    public function validateConnection(array $config, string $password): bool
+    {
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'validate']));
+
+        return (bool) ($result['ok'] ?? false);
+    }
+
+    /**
+     * GRAVA as credenciais (senha cifrada + config) com estado "a validar". NÃO
+     * valida aqui — a validação síncrona corre no php-fpm, que NÃO tem o socket
+     * do Docker, logo o `docker exec` para o Python rebenta ("Sem resposta").
+     * A validação real vai por FILA (ValidatePingwinConnectionJob → worker, que
+     * tem o socket) e atualiza o estado + notifica no sino.
+     */
+    public function saveCredentials(int $companyId, array $config, string $password): CompanyIntegration
+    {
+        return CompanyIntegration::updateOrCreate(
+            ['company_id' => $companyId, 'platform' => self::PLATFORM],
+            [
+                'access_token' => $password,           // cifrado pelo cast EncryptedLegacy
+                'config' => $this->pickConfig($config),
+                'status' => 'validating',
+                'error_message' => null,
+            ]
+        );
+    }
+
+    /**
+     * Valida a ligação das credenciais JÁ guardadas (login → logout garantido no
+     * Python) e ATUALIZA o estado. Corre no worker (fila), que tem o socket.
+     * Devolve o resultado bruto (['ok'=>bool, 'error'=>?string]) para a
+     * notificação levar o MOTIVO REAL da falha (ex.: 401 credenciais inválidas).
+     */
+    public function validateStored(int $companyId): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || empty($integration->config)) {
+            return ['ok' => false, 'error' => 'PingWin não está configurado para esta empresa.'];
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        try {
+            $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'validate']));
+        } catch (\Throwable $e) {
+            // Erro de infraestrutura (docker/rede) → tratamos como falha de validação
+            // com o motivo real (já não esconde nada — ver invoke()).
+            $result = ['ok' => false, 'error' => $e->getMessage()];
+        }
+
+        if ($result['ok'] ?? false) {
+            $integration->update(['status' => 'active', 'error_message' => null]);
+        } else {
+            $integration->update([
+                'status' => 'error',
+                'error_message' => mb_substr((string) ($result['error'] ?? 'erro desconhecido'), 0, 500),
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Sincroniza: descobre lojas + resumo de vendas por loja (LOGOUT garantido no
+     * Python) e persiste. Tenancy assegurada pelo controller (company da rota).
+     */
+    public function sync(int $companyId, ?string $date = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        // ⚠️ O relatório precisa das lojas a pedir. Compõe o "Stores" (CSV) a
+        // partir dos winrest_store_id das lojas ATIVAS cadastradas. Sem lojas →
+        // mensagem clara (o relatório iria com "Stores": "" e falharia).
+        $storeIds = PingwinLocation::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->pluck('winrest_store_id')
+            ->filter(fn ($id) => trim((string) $id) !== '')
+            ->values();
+
+        if ($storeIds->isEmpty()) {
+            throw ValidationException::withMessages([
+                'pingwin' => ['Cadastra pelo menos uma loja (ID PingWin) para sincronizar vendas.'],
+            ]);
+        }
+
+        // O cast decifra a senha (APP_KEY); passamos ao Python por STDIN.
+        $password = (string) $integration->access_token;
+        $config = $integration->config;
+
+        $extra = [
+            'mode' => 'sync',
+            // Override do "Stores" global (vazio) com as lojas cadastradas (CSV).
+            'stores' => $storeIds->implode(','),
+        ];
+        if ($date) {
+            $extra['date'] = $date;
+        }
+
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
+
+        if (! ($result['ok'] ?? false)) {
+            $integration->update(['status' => 'error', 'error_message' => mb_substr((string) ($result['error'] ?? 'erro'), 0, 500)]);
+            throw new \RuntimeException('Sincronização PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        // O Python devolve a data efetiva + lojas (fetch_stores) + vendas por loja.
+        $businessDate = (string) ($result['date'] ?? now()->subDay()->toDateString());
+        $count = $this->persistSyncResult($companyId, $businessDate, $result['sales'] ?? []);
+
+        $integration->update(['status' => 'active', 'error_message' => null, 'last_synced_at' => now()]);
+        $result['locations_count'] = $count;
+
+        return $result;
+    }
+
+    /** Extrai o objeto JSON do stdout (1.º "{" até ao último "}"), ignorando ruído. */
+    private function extractJson(string $output): ?array
+    {
+        $start = strpos($output, '{');
+        $end = strrpos($output, '}');
+        if ($start === false || $end === false || $end < $start) {
+            return null;
+        }
+        $decoded = json_decode(substr($output, $start, $end - $start + 1), true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /** € (float) → cêntimos inteiros. NUNCA guardar float. */
+    private function toCents($value): int
+    {
+        return (int) round(((float) $value) * 100);
+    }
+
+    /**
+     * Persiste um dia sincronizado: liga cada linha do relatório à loja CADASTRADA
+     * (match por nome — winrest_name/display_name), guarda as vendas em CÊNTIMOS
+     * (pingwin_daily_sales, idempotente por (location_id, business_date)) e regista
+     * o dia (pingwin_sync_runs → portão de honestidade). Devolve o nº de lojas
+     * com vendas guardadas.
+     *
+     * NOTA (fase futura): NÃO cria lojas automaticamente. Uma linha do relatório
+     * sem loja cadastrada correspondente é registada no log e ignorada (a
+     * descoberta/reconciliação automática fica para depois).
+     */
+    private function persistSyncResult(int $companyId, string $businessDate, array $sales): int
+    {
+        // Mapa nome(lower) → location_id a partir das lojas CADASTRADAS da empresa
+        // (winrest_name e display_name, para maximizar o match).
+        $locationByName = [];
+        foreach (PingwinLocation::where('company_id', $companyId)->get() as $loc) {
+            foreach ([$loc->winrest_name, $loc->display_name] as $n) {
+                $n = mb_strtolower(trim((string) $n));
+                if ($n !== '') {
+                    $locationByName[$n] = $loc->id;
+                }
+            }
+        }
+
+        $now = now();
+        $saved = 0;
+        $unmatched = [];
+        foreach ($sales as $row) {
+            $name = trim((string) ($row['loja'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            $locationId = $locationByName[mb_strtolower($name)] ?? null;
+            if (! $locationId) {
+                // Sem correspondência → avisa (não cria; fase futura). Não parte o sync.
+                $unmatched[] = $name;
+                continue;
+            }
+
+            PingwinDailySale::updateOrCreate(
+                ['location_id' => $locationId, 'business_date' => $businessDate],
+                [
+                    'company_id'         => $companyId,
+                    'gross_cents'        => $this->toCents($row['vendas_brutas'] ?? 0),
+                    'credit_notes_cents' => $this->toCents($row['notas_credito'] ?? 0),
+                    'discounts_cents'    => $this->toCents($row['descontos'] ?? 0),
+                    'net_cents'          => $this->toCents($row['vendas_liquidas'] ?? 0),
+                    'tax_cents'          => $this->toCents($row['impostos'] ?? 0),
+                    'invoiced_cents'     => $this->toCents($row['valor_faturado'] ?? 0),
+                    'tickets_count'      => (int) ($row['num_tickets'] ?? 0),
+                    'covers_count'       => (int) ($row['pos_num_pessoas'] ?? 0),
+                    'synced_at'          => $now,
+                ]
+            );
+            $saved++;
+        }
+
+        // Lojas do relatório sem cadastro → avisa (reconciliação é fase futura).
+        if (! empty($unmatched)) {
+            Log::warning('[PingWin] linhas do relatório sem loja cadastrada (ignoradas)', [
+                'company_id' => $companyId, 'business_date' => $businessDate, 'lojas' => array_values(array_unique($unmatched)),
+            ]);
+        }
+
+        // 3) Regista o dia sincronizado (idempotente) → base do portão de honestidade.
+        PingwinSyncRun::updateOrCreate(
+            ['company_id' => $companyId, 'business_date' => $businessDate],
+            ['status' => 'success', 'locations_count' => $saved, 'synced_at' => $now]
+        );
+
+        return $saved;
+    }
+
+    private function pickConfig(array $config): array
+    {
+        return array_intersect_key($config, array_flip(self::CONFIG_KEYS));
+    }
+
+    /** Parâmetros GLOBAIS do PingWin (iguais a todos) — do .env via config. */
+    private function globalConfig(): array
+    {
+        return array_filter(
+            (array) config('services.pingwin', []),
+            static fn ($v) => $v !== null
+        );
+    }
+
+    /**
+     * O frontend_url (Origin/Referer do SPA) VARIA por restaurante: segue o
+     * padrão https://{database}.mycloudpie.com (ex.: database "yuko" →
+     * https://yuko.mycloudpie.com). Deriva do X-Database da empresa. Aceita um
+     * override manual (config.frontend_url ou PINGWIN_FRONTEND_URL) para o caso
+     * raro de um restaurante fugir ao padrão.
+     */
+    private function resolveFrontendUrl(array $config): ?string
+    {
+        $override = $config['frontend_url'] ?? config('services.pingwin.frontend_url');
+        if (! empty($override)) {
+            return $override;
+        }
+        $database = trim((string) ($config['database'] ?? ''));
+
+        return $database !== '' ? "https://{$database}.mycloudpie.com" : null;
+    }
+
+    /**
+     * Compõe o que o mycloudpie.py recebe: os GLOBAIS do .env + os POR-EMPRESA
+     * (username, database) + o frontend_url DERIVADO do database + a senha
+     * (decifrada) + o modo/data.
+     */
+    private function buildPayload(array $config, string $password, array $extra): array
+    {
+        return array_merge(
+            $this->globalConfig(),
+            $this->pickConfig($config),
+            array_filter(['frontend_url' => $this->resolveFrontendUrl($config)], static fn ($v) => $v !== null),
+            ['password' => $password],
+            $extra
+        );
+    }
+}

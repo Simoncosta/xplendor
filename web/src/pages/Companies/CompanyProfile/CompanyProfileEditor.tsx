@@ -15,9 +15,7 @@ import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem,
 import classnames from "classnames";
 // Models
 import { ICompanyUpdatePayload } from 'common/models/company.model';
-import XInput from 'Components/Common/XInput';
 import { ICarmineApi } from 'common/models/carmine-api.model';
-import { useModules } from 'contexts/ModulesContext';
 
 type CompanyProfileEditorProps = {
     data: ICompanyUpdatePayload;
@@ -36,11 +34,9 @@ export default function CompanyProfileEditor({
     onCancel
 }: CompanyProfileEditorProps) {
     const isEdit = Boolean((data as any)?.id);
-    // API Carmine é do módulo 'stock' — esconder a aba a quem não o tem (coerência
-    // menu↔rota; o backend já recusa na Fase 3). Root/desconhecido → mostra.
-    const { has: hasModule } = useModules();
-    const showCarmine = hasModule('stock');
-    const [tokenCarmineShow, setTokenCarmineShow] = useState<boolean>(true);
+    // Carmine e PingWin passaram a viver como cartões na aba "Integrações"
+    // (IntegrationsSettings), cada um gated pelo seu módulo — mostrado mas
+    // BLOQUEADO a quem não o tem. O backend recusa na mesma (Fase 3).
 
     const [logoPreview, setLogoPreview] = useState<string | null>(
         `${data?.logo_path ? String(process.env.REACT_APP_PUBLIC_URL) + data?.logo_path : avatar1}` || null
@@ -64,12 +60,6 @@ export default function CompanyProfileEditor({
         initialValues: data,
         validationSchema,
         onSubmit: (values) => onSubmit?.(values),
-    });
-
-    const formikCarmine = useFormik({
-        enableReinitialize: true,
-        initialValues: dataCarmine,
-        onSubmit: (values) => onSubmitCarmine?.(values),
     });
 
     const progress = useMemo(() => {
@@ -250,20 +240,6 @@ export default function CompanyProfileEditor({
                                                 Dados Gerais
                                             </NavLink>
                                         </NavItem>
-                                        {showCarmine && (
-                                            <NavItem>
-                                                <NavLink
-                                                    className={classnames("text-body", { active: activeTab === "2" })}
-                                                    onClick={() => {
-                                                        tabChange("2");
-                                                    }}
-                                                    disabled={!isEdit}
-                                                >
-                                                    <i className="fas fa-home"></i>
-                                                    API Carmine
-                                                </NavLink>
-                                            </NavItem>
-                                        )}
                                         <NavItem>
                                             <NavLink
                                                 className={classnames("text-body", { active: activeTab === "3" })}
@@ -273,7 +249,7 @@ export default function CompanyProfileEditor({
                                                 disabled={!isEdit}
                                             >
                                                 <i className="fas fa-home"></i>
-                                                Integração Ads
+                                                Integrações
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
@@ -312,70 +288,11 @@ export default function CompanyProfileEditor({
                                                 </form>
                                             </FormikProvider>
                                         </TabPane>
-                                        {showCarmine && (
-                                        <TabPane tabId="2">
-                                            <FormikProvider value={formikCarmine}>
-                                                <form onSubmit={formikCarmine.handleSubmit}>
-                                                    <Row className="mb-3">
-                                                        <Col>
-                                                            <h4 className="fw-semibold mb-1">Carmine</h4>
-                                                            <p className="text-muted fs-13 mb-0">
-                                                                Conecte a sua conta Carmine para sincronizar os dados do seu stock.
-                                                            </p>
-                                                        </Col>
-                                                    </Row>
-
-                                                    <Row>
-                                                        <Col lg={6}>
-                                                            <XInput
-                                                                className='mb-2'
-                                                                name="dealer_id"
-                                                                label="ID do Dealer"
-                                                                placeholder="ID do Dealer"
-                                                                required
-                                                            />
-                                                        </Col>
-                                                        <Col lg={6}>
-                                                            <div className="position-relative auth-pass-inputgroup mb-3">
-                                                                <XInput
-                                                                    type={tokenCarmineShow ? "text" : "password"}
-                                                                    className='mb-2 '
-                                                                    name="token"
-                                                                    label={"Token"}
-                                                                    placeholder="Token"
-                                                                    required
-                                                                />
-                                                            </div>
-                                                        </Col>
-                                                    </Row>
-                                                    <Col lg={12}>
-                                                        <div className="hstack gap-2 justify-content-end">
-                                                            <XButton
-                                                                variant="success"
-                                                                type='submit'
-                                                                outline
-                                                                rounded
-                                                                icon={<i className="ri-check-double-line" />}
-                                                            >
-                                                                Salvar
-                                                            </XButton>
-                                                            <XButton
-                                                                variant="danger"
-                                                                outline
-                                                                rounded
-                                                                icon={<i className="ri-close-line" />}
-                                                                onClick={() => onCancel()}
-                                                            >
-                                                                Cancelar
-                                                            </XButton>
-                                                        </div>
-                                                    </Col>
-                                                </form>
-                                            </FormikProvider>
-                                        </TabPane>
-                                        )}
                                         <TabPane tabId="3">
-                                            <IntegrationsSettings />
+                                            <IntegrationsSettings
+                                                dataCarmine={dataCarmine}
+                                                onSubmitCarmine={onSubmitCarmine}
+                                            />
                                         </TabPane>
                                     </TabContent>
                                 </CardBody>
