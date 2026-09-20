@@ -113,6 +113,33 @@ export interface PingwinOccupancy {
     daily: PingwinOccupancyPeriod;
 }
 
+/** Faturação mensal por loja: uma série por loja (12 valores em EUROS; null = mês sem sync). */
+export interface PingwinMonthlySeries {
+    location_id: number;
+    name: string;
+    data: (number | null)[];
+}
+export interface PingwinMonthlyBilling {
+    year: number;
+    series: PingwinMonthlySeries[];
+}
+
+/** Um dia no calendário de faturação (cêntimos; guests/ticket null = sem dados). */
+export interface PingwinCalendarDay {
+    date: string; // YYYY-MM-DD
+    invoiced_cents: number;
+    net_cents: number;
+    guests: number | null;
+    avg_ticket_cents: number | null;
+}
+
+export interface PingwinCalendarResponse {
+    month: string; // YYYY-MM
+    location_id: number | null;
+    days: PingwinCalendarDay[];
+    locations: { id: number; display_name: string | null; winrest_name: string | null; winrest_store_id: string }[];
+}
+
 export interface PingwinDashboard {
     date: string;
     currency: string;

@@ -51,6 +51,122 @@ class PingwinDashboardService
         ];
     }
 
+    /**
+     * CALENDÁRIO de faturação: por DIA do mês, faturação (PingWin) + pessoas
+     * (CoverManager) + ticket médio. $locationId → só essa loja; senão TODAS
+     * somadas. Portão de honestidade: só devolve dias COM dados (vendas OU
+     * reservas); ticket só quando há faturação E pessoas. Respeita opened_on.
+     */
+    public function calendar(int $companyId, int $year, int $month, ?int $locationId = null): array
+    {
+        $from = Carbon::create($year, $month, 1)->startOfMonth();
+        $to = $from->copy()->endOfMonth();
+
+        // Faturação por dia (respeita opened_on).
+        $sales = DB::table('pingwin_daily_sales as s')
+            ->join('pingwin_locations as l', 'l.id', '=', 's.location_id')
+            ->where('s.company_id', $companyId)
+            ->when($locationId !== null, fn ($q) => $q->where('s.location_id', $locationId))
+            ->whereRaw('DATE(s.business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+            ->whereRaw('(l.opened_on IS NULL OR DATE(s.business_date) >= DATE(l.opened_on))')
+            ->groupByRaw('DATE(s.business_date)')
+            ->selectRaw('DATE(s.business_date) as d, SUM(s.invoiced_cents) as invoiced, SUM(s.net_cents) as net')
+            ->get()->keyBy('d');
+
+        // Pessoas por dia (respeita opened_on).
+        $guests = DB::table('cm_reservation_shift_summary as c')
+            ->join('pingwin_locations as l', 'l.id', '=', 'c.location_id')
+            ->where('c.company_id', $companyId)
+            ->when($locationId !== null, fn ($q) => $q->where('c.location_id', $locationId))
+            ->whereRaw('DATE(c.business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+            ->whereRaw('(l.opened_on IS NULL OR DATE(c.business_date) >= DATE(l.opened_on))')
+            ->groupByRaw('DATE(c.business_date)')
+            ->selectRaw('DATE(c.business_date) as d, SUM(c.guests_total) as guests')
+            ->get()->keyBy('d');
+
+        $days = collect($sales->keys())->merge($guests->keys())->unique()->sort()->values();
+
+        return $days->map(function ($d) use ($sales, $guests) {
+            $day = substr((string) $d, 0, 10); // normaliza (pode vir 'Y-m-d' ou datetime)
+            $invoiced = (int) ($sales[$d]->invoiced ?? 0);
+            $net = (int) ($sales[$d]->net ?? 0);
+            $g = isset($guests[$d]) ? (int) $guests[$d]->guests : null;
+            // Ticket médio do dia: só se há faturação E pessoas (> 0).
+            $ticket = ($g && $g > 0 && $invoiced > 0) ? (int) round($invoiced / $g) : null;
+
+            return [
+                'date' => $day,
+                'invoiced_cents' => $invoiced,
+                'net_cents' => $net,
+                'guests' => $g,
+                'avg_ticket_cents' => $ticket,
+            ];
+        })->all();
+    }
+
+    /**
+     * Faturação MENSAL por loja para um ano — UMA série por loja (12 pontos,
+     * Jan-Dez, em EUROS). ⚠️ Portão de honestidade: mês SEM sincronização (nenhum
+     * pingwin_sync_run nesse mês) → null (não afunda a linha a 0); mês sincronizado
+     * → valor real (0 se a loja não faturou). Respeita opened_on (mês inteiro antes
+     * da abertura → null). Reutiliza pingwin_daily_sales + pingwin_sync_runs.
+     */
+    public function monthlyByLocation(int $companyId, int $year): array
+    {
+        $from = Carbon::create($year, 1, 1)->startOfDay();
+        $to = Carbon::create($year, 12, 31)->endOfDay();
+
+        // Meses COM sincronização (distingue "0€ real" de "não sincronizado").
+        $syncedMonths = PingwinSyncRun::where('company_id', $companyId)
+            ->whereRaw('DATE(business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+            ->get()->map(fn ($r) => substr((string) $r->business_date, 0, 7))->unique()->flip();
+
+        // Faturação por loja/mês (substr 'Y-m' funciona em MySQL e SQLite; opened_on gate).
+        $rows = DB::table('pingwin_daily_sales as s')
+            ->join('pingwin_locations as l', 'l.id', '=', 's.location_id')
+            ->where('s.company_id', $companyId)
+            ->whereRaw('DATE(s.business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+            ->whereRaw('(l.opened_on IS NULL OR DATE(s.business_date) >= DATE(l.opened_on))')
+            ->groupByRaw('s.location_id, substr(DATE(s.business_date), 1, 7)')
+            ->selectRaw('s.location_id as loc, substr(DATE(s.business_date), 1, 7) as ym, SUM(s.invoiced_cents) as inv')
+            ->get();
+
+        $byLocMonth = [];
+        foreach ($rows as $r) {
+            $byLocMonth[(int) $r->loc][$r->ym] = (int) $r->inv;
+        }
+
+        $locations = PingwinLocation::where('company_id', $companyId)->where('is_active', true)
+            ->orderBy('display_name')->get();
+
+        $series = $locations->map(function (PingwinLocation $loc) use ($year, $syncedMonths, $byLocMonth) {
+            $data = [];
+            for ($m = 1; $m <= 12; $m++) {
+                $ym = sprintf('%04d-%02d', $year, $m);
+                // Mês não sincronizado → null (não desce a zero).
+                if (! $syncedMonths->has($ym)) {
+                    $data[] = null;
+                    continue;
+                }
+                // Mês inteiro antes da abertura da loja → null.
+                if ($loc->opened_on && $loc->opened_on->gt(Carbon::create($year, $m, 1)->endOfMonth())) {
+                    $data[] = null;
+                    continue;
+                }
+                $cents = $byLocMonth[$loc->id][$ym] ?? 0; // sincronizado → real (0 se sem vendas)
+                $data[] = round($cents / 100, 2);          // euros
+            }
+
+            return [
+                'location_id' => $loc->id,
+                'name' => $loc->display_name ?: $loc->winrest_name ?: $loc->winrest_store_id,
+                'data' => $data,
+            ];
+        })->values()->all();
+
+        return ['year' => $year, 'series' => $series];
+    }
+
     /** Data de referência: a selecionada, ou o último dia sincronizado, ou ontem. */
     private function resolveReferenceDate(int $companyId, ?string $date): Carbon
     {

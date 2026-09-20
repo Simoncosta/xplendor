@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Services\AlertService;
 use App\Services\CoverManagerService;
 use App\Services\PingwinService;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,25 +23,37 @@ use Illuminate\Support\Facades\Log;
  */
 class SyncRestaurantJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
     public int $timeout = 420; // PingWin (180s) + CoverManager + margem.
 
+    /**
+     * $notify: dia-a-dia (dashboard) → true (notifica no fim de cada dia).
+     * Em PERÍODO (batch) → false: não notifica por dia (o batch notifica UMA vez no
+     * fim) e LANÇA se o dia teve problemas (o batch conta-o como falhado).
+     */
     public function __construct(
         public int $companyId,
         public ?string $date = null,
+        public bool $notify = true,
     ) {}
 
     public function middleware(): array
     {
-        return [(new WithoutOverlapping("pingwin-sync:{$this->companyId}"))->expireAfter(900)];
+        // Serializa por empresa; se o lock estiver ocupado, tenta de novo em 15s
+        // (importante no período: os dias correm um de cada vez por empresa).
+        return [(new WithoutOverlapping("pingwin-sync:{$this->companyId}"))->releaseAfter(15)->expireAfter(900)];
     }
 
     public function handle(PingwinService $pingwin, CoverManagerService $cover, AlertService $alerts): void
     {
+        if ($this->batch()?->cancelled()) {
+            return;
+        }
+
         $date = $this->date ?: now()->subDay()->toDateString();
-        Log::info('[Restaurant Sync] Job iniciado', ['company_id' => $this->companyId, 'date' => $date]);
+        Log::info('[Restaurant Sync] Job iniciado', ['company_id' => $this->companyId, 'date' => $date, 'notify' => $this->notify]);
 
         $problems = [];
 
@@ -67,7 +80,17 @@ class SyncRestaurantJob implements ShouldQueue
             }
         }
 
-        // 3) UMA notificação no fim de tudo.
+        // Modo PERÍODO (batch): não notifica por dia — lança se houve problemas
+        // (o batch conta o dia como falhado e notifica UMA vez no fim).
+        if (! $this->notify) {
+            if (! empty($problems)) {
+                throw new \RuntimeException("Dia {$date}: " . implode(' | ', $problems));
+            }
+            Log::info('[Restaurant Sync] Dia OK (período)', ['company_id' => $this->companyId, 'date' => $date]);
+            return;
+        }
+
+        // Modo DIA-A-DIA (dashboard): UMA notificação no fim de tudo.
         if (empty($problems)) {
             $alerts->createSystemAlert(
                 companyId: $this->companyId,
@@ -94,6 +117,12 @@ class SyncRestaurantJob implements ShouldQueue
     public function failed(\Throwable $e): void
     {
         Log::error('[Restaurant Sync] Job falhou', ['company_id' => $this->companyId, 'error' => $e->getMessage()]);
+
+        // Em PERÍODO (batch) não notifica por dia — o callback final do batch trata.
+        if ($this->batchId) {
+            return;
+        }
+
         app(AlertService::class)->createSystemAlert(
             companyId: $this->companyId,
             type: 'warning',

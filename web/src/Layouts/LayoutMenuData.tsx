@@ -213,6 +213,7 @@ const Navdata = () => {
             },
             subItems: [
                 { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "pingwin" },
             ],
         },
         {

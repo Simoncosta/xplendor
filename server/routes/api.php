@@ -177,6 +177,10 @@ Route::prefix('v1')->group(function () {
                     Route::post('/integrations/pingwin/sync-queue', [CompanyPingwinController::class, 'queueSync']);
                     // Dashboard de restauração (cards anual/mensal/diário + lojas).
                     Route::get('/analytics/pingwin/dashboard', [CompanyPingwinController::class, 'dashboard']);
+                    // Calendário de faturação (números por dia do mês + filtro por loja).
+                    Route::get('/analytics/pingwin/calendar', [CompanyPingwinController::class, 'calendar']);
+                    // Faturação mensal por loja (uma linha por loja, filtro de ano).
+                    Route::get('/analytics/pingwin/monthly-billing', [CompanyPingwinController::class, 'monthlyBilling']);
                     // Cadastro manual de lojas (desbloqueia o "Stores" do relatório).
                     Route::get('/integrations/pingwin/locations', [CompanyPingwinController::class, 'listLocations']);
                     Route::post('/integrations/pingwin/locations', [CompanyPingwinController::class, 'storeLocation']);
@@ -188,6 +192,8 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerDisconnect']);
                     // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno.
                     Route::post('/integrations/covermanager/sync', [CompanyPingwinController::class, 'coverManagerSync']);
+                    // Sincronização por PERÍODO (um job por dia; 1 notificação no fim).
+                    Route::post('/integrations/restaurant/sync-period', [CompanyPingwinController::class, 'syncPeriod']);
                     // CoverManager — Etapa 2: flag do ticket médio (por empresa).
                     Route::get('/integrations/covermanager/settings', [CompanyPingwinController::class, 'coverManagerSettings']);
                     Route::patch('/integrations/covermanager/settings', [CompanyPingwinController::class, 'updateCoverManagerSettings']);

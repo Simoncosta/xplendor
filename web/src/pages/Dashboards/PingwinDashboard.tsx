@@ -4,6 +4,7 @@ import { toast, ToastContainer } from "react-toastify";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { getPingwinDashboard, queuePingwinSync } from "helpers/laravel_helper";
 import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod } from "common/models/pingwin.model";
+import MonthlyBillingChart from "./components/MonthlyBillingChart";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -294,6 +295,11 @@ export function PingwinDashboardContent() {
             <Row className="g-3 mb-3">
                 <AvgTicketCard avg={data?.avg_ticket} enabled={data?.avg_ticket_enabled ?? true} />
                 <OccupancyCard occ={data?.occupancy} />
+            </Row>
+
+            {/* Gráfico de faturação mensal por restaurante (acima da tabela). */}
+            <Row className="g-3 mb-3">
+                <MonthlyBillingChart />
             </Row>
 
             {/* Tabela de lojas — Card + CardHeader + tabela no estilo do sistema. */}

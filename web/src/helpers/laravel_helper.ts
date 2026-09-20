@@ -254,9 +254,18 @@ export const queuePingwinSync = (companyId: number, date?: string) =>
 // Dashboard de restauração (cards anual/mensal/diário + lojas).
 export const getPingwinDashboard = (companyId: number, date?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/dashboard`, date ? { date } : undefined);
+// Calendário de faturação: números por dia de um mês (YYYY-MM) + filtro por loja.
+export const getPingwinCalendar = (companyId: number, month: string, locationId?: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/calendar`, locationId ? { month, location_id: locationId } : { month });
+// Faturação mensal por loja (uma série por loja) de um ano — gráfico de linha.
+export const getPingwinMonthlyBilling = (companyId: number, year: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/monthly-billing`, { year });
 // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno de uma data.
 export const syncCoverManager = (companyId: number, date: string) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/sync`, { date });
+// Sincronização por PERÍODO (um job por dia; notificação única no fim).
+export const syncRestaurantPeriod = (companyId: number, from: string, to: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/restaurant/sync-period`, { from, to });
 // CoverManager — token AO NÍVEL DA EMPRESA (Integrações). O token nunca é devolvido.
 export const getCoverManager = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/covermanager`);

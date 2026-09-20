@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import {
-    getPingwinLocations, createPingwinLocation, updatePingwinLocation, deletePingwinLocation, syncCoverManager, getCoverManager,
+    getPingwinLocations, createPingwinLocation, updatePingwinLocation, deletePingwinLocation, syncCoverManager, syncRestaurantPeriod, getCoverManager,
 } from "helpers/laravel_helper";
 import { PingwinLocationEntity } from "common/models/pingwin.model";
 
@@ -41,6 +41,10 @@ export default function LojasPage() {
     const [form, setForm] = useState(emptyForm());
     const [reservDate, setReservDate] = useState<string>(yesterdayIso());
     const [syncingReservs, setSyncingReservs] = useState(false);
+    // Sincronização por PERÍODO (de/até) — um job por dia, 1 notificação no fim.
+    const [periodFrom, setPeriodFrom] = useState<string>(yesterdayIso());
+    const [periodTo, setPeriodTo] = useState<string>(yesterdayIso());
+    const [syncingPeriod, setSyncingPeriod] = useState(false);
     // A empresa tem integração CoverManager (token de empresa)? Gate do slug no modal.
     const [cmIntegrationConnected, setCmIntegrationConnected] = useState(false);
 
@@ -131,6 +135,21 @@ export default function LojasPage() {
         }
     };
 
+    const runPeriodSync = async () => {
+        if (!companyId || !periodFrom || !periodTo) return;
+        if (periodTo < periodFrom) { toast.error("A data final não pode ser anterior à inicial."); return; }
+        setSyncingPeriod(true);
+        try {
+            const res: any = await syncRestaurantPeriod(companyId, periodFrom, periodTo);
+            const d = res?.data;
+            toast.info(`A importar ${d?.days ?? ""} dia(s) (${periodFrom} a ${periodTo})… serás notificado no sino quando terminar.`);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível iniciar a sincronização do período.");
+        } finally {
+            setSyncingPeriod(false);
+        }
+    };
+
     const remove = async (loc: PingwinLocationEntity) => {
         if (!window.confirm(`Remover a loja "${loc.display_name || loc.winrest_store_id}"?`)) return;
         try {
@@ -162,13 +181,25 @@ export default function LojasPage() {
                 <Row className="g-3 pb-5 mb-5">
                     <Col xs={12}>
                         <Card className="mb-0">
-                            <div className="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                {/* Sincronizar reservas (CoverManager) — TODAS as lojas, para uma data. */}
-                                <div className="d-flex align-items-center gap-2">
-                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={reservDate} max={yesterdayIso()} onChange={(e) => setReservDate(e.target.value)} disabled={syncingReservs} />
-                                    <button className="btn btn-sm btn-soft-primary" onClick={runReservSync} disabled={syncingReservs || !reservDate}>
-                                        {syncingReservs ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-event-line me-1" /> Sincronizar reservas (todas)</>}
+                            <div className="card-header">
+                                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                    <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
+                                    {/* Sincronizar reservas (CoverManager) — TODAS as lojas, para UMA data. */}
+                                    <div className="d-flex align-items-center gap-2">
+                                        <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={reservDate} max={yesterdayIso()} onChange={(e) => setReservDate(e.target.value)} disabled={syncingReservs} />
+                                        <button className="btn btn-sm btn-soft-primary" onClick={runReservSync} disabled={syncingReservs || !reservDate}>
+                                            {syncingReservs ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-event-line me-1" /> Sincronizar (1 dia)</>}
+                                        </button>
+                                    </div>
+                                </div>
+                                {/* Sincronizar um PERÍODO: um dia de cada vez, notificação única no fim. */}
+                                <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
+                                    <span className="text-muted fs-12">Período:</span>
+                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodFrom} max={yesterdayIso()} onChange={(e) => setPeriodFrom(e.target.value)} disabled={syncingPeriod} />
+                                    <span className="text-muted fs-12">até</span>
+                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodTo} max={yesterdayIso()} onChange={(e) => setPeriodTo(e.target.value)} disabled={syncingPeriod} />
+                                    <button className="btn btn-sm btn-primary" onClick={runPeriodSync} disabled={syncingPeriod || !periodFrom || !periodTo}>
+                                        {syncingPeriod ? <><Spinner size="sm" className="me-1" /> A enviar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar período</>}
                                     </button>
                                 </div>
                             </div>

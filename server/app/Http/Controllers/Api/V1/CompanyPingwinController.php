@@ -6,16 +6,19 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Jobs\SyncPingwinJob;
 use App\Jobs\SyncRestaurantJob;
 use App\Jobs\ValidatePingwinConnectionJob;
 use App\Models\CompanyIntegration;
 use App\Models\PingwinLocation;
+use App\Services\AlertService;
 use App\Services\CoverManagerService;
 use App\Services\PingwinDashboardService;
 use App\Services\PingwinService;
+use Carbon\Carbon;
+use Illuminate\Bus\Batch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 
 /**
  * XPLENDOR — PingWin (POS), lado STAND. Cadastrar credenciais (senha cifrada),
@@ -83,6 +86,48 @@ class CompanyPingwinController extends Controller
         ], 'Sincronização concluída.');
     }
 
+    /** Faturação mensal por loja (uma série por loja) de um ano — gráfico de linha. */
+    public function monthlyBilling(Request $request, int $companyId, PingwinDashboardService $dashboard)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate(['year' => ['nullable', 'integer', 'min:2000', 'max:2100']]);
+        $year = (int) ($data['year'] ?? now()->year);
+
+        return ApiResponse::success($dashboard->monthlyByLocation($companyId, $year), 'Faturação mensal carregada.');
+    }
+
+    /** Calendário de faturação: números por dia do mês (+ filtro por loja). */
+    public function calendar(Request $request, int $companyId, PingwinDashboardService $dashboard)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'month' => ['required', 'date_format:Y-m'],           // ex.: 2026-09
+            'location_id' => ['nullable', 'integer'],             // filtro por loja (default: todas)
+        ]);
+        [$year, $month] = array_map('intval', explode('-', $data['month']));
+
+        // Tenancy da loja: só lojas da própria empresa.
+        $locationId = null;
+        if (! empty($data['location_id'])) {
+            $loc = PingwinLocation::where('company_id', $companyId)->where('id', $data['location_id'])->first();
+            $locationId = $loc?->id;
+        }
+
+        return ApiResponse::success([
+            'month' => $data['month'],
+            'location_id' => $locationId,
+            'days' => $dashboard->calendar($companyId, $year, $month, $locationId),
+            'locations' => PingwinLocation::where('company_id', $companyId)->where('is_active', true)
+                ->orderBy('display_name')->get(['id', 'display_name', 'winrest_name', 'winrest_store_id']),
+        ], 'Calendário carregado.');
+    }
+
     /** Cards (anual/mensal/diário) + tabela de lojas do dashboard de restauração. */
     public function dashboard(Request $request, int $companyId, PingwinDashboardService $dashboard)
     {
@@ -123,6 +168,69 @@ class CompanyPingwinController extends Controller
             'queued' => true,
             'date' => $data['date'] ?? null,
         ], 'A atualizar… vais ser notificado quando os dados estiverem prontos.');
+    }
+
+    /** Teto de dias por período (evita despachar milhares de jobs de uma vez). */
+    private const MAX_PERIOD_DAYS = 92;
+
+    /**
+     * Sincroniza um PERÍODO [de, até]: UM job por dia (SyncRestaurantJob, PingWin +
+     * CoverManager de todas as lojas), num Bus batch. Um dia a falhar não aborta os
+     * outros (allowFailures). UMA notificação no FIM (callback finally do batch).
+     */
+    public function syncPeriod(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        $from = Carbon::parse($data['from'])->startOfDay();
+        $to = Carbon::parse($data['to'])->startOfDay();
+        if ($to->lt($from)) {
+            return ApiResponse::error('A data final não pode ser anterior à inicial.', 422);
+        }
+        $days = $from->diffInDays($to) + 1;
+        if ($days > self::MAX_PERIOD_DAYS) {
+            return ApiResponse::error('Período demasiado longo (máx. ' . self::MAX_PERIOD_DAYS . ' dias).', 422);
+        }
+
+        if (! PingwinLocation::where('company_id', $companyId)->where('is_active', true)->exists()) {
+            return ApiResponse::error('Cadastra pelo menos uma loja (ID PingWin) para sincronizar.', 422);
+        }
+
+        // Um job por dia (notify:false → não notifica por dia; o batch notifica no fim).
+        $jobs = [];
+        for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
+            $jobs[] = new SyncRestaurantJob($companyId, $d->toDateString(), notify: false);
+        }
+        $fromStr = $from->toDateString();
+        $toStr = $to->toDateString();
+
+        Bus::batch($jobs)
+            ->name("restaurant-sync:{$companyId}:{$fromStr}:{$toStr}")
+            ->allowFailures() // um dia a falhar não aborta os outros; o finally corre na mesma
+            ->finally(function (Batch $batch) use ($companyId, $fromStr, $toStr) {
+                // UMA notificação quando TODOS os dias terminam.
+                $alerts = app(AlertService::class);
+                if ($batch->failedJobs === 0) {
+                    $alerts->createSystemAlert($companyId, 'opportunity', 'Período importado',
+                        "Período de {$fromStr} a {$toStr} importado com sucesso.", 'low', '/restauracao');
+                } else {
+                    $alerts->createSystemAlert($companyId, 'warning', 'Período importado com erros',
+                        "Período de {$fromStr} a {$toStr} importado; {$batch->failedJobs} dia(s) com erro.", 'high', '/restauracao');
+                }
+            })
+            ->dispatch();
+
+        return ApiResponse::success(
+            ['queued' => true, 'days' => $days, 'from' => $fromStr, 'to' => $toStr],
+            "A importar {$days} dia(s)… serás notificado no fim."
+        );
     }
 
     // ── Gestão manual de lojas (o match automático fica para fase futura) ──────

@@ -5,6 +5,7 @@ import { Navigate, useParams } from "react-router-dom";
 import Dashboard from "pages/Dashboards/Dashboard";
 import PingwinDashboard from "pages/Dashboards/PingwinDashboard";
 import LojasPage from "pages/Restauracao/LojasPage";
+import CalendarioPage from "pages/Restauracao/CalendarioPage";
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -110,6 +111,7 @@ const authProtectedRoutes = [
     // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
     { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
     { path: "/restauracao/lojas", component: <RequireModule module="pingwin"><LojasPage /></RequireModule> },
+    { path: "/restauracao/calendario", component: <RequireModule module="pingwin"><CalendarioPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },
