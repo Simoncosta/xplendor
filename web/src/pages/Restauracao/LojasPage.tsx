@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
+import { useIsMobile } from "../../hooks/useIsMobile";
 import {
     getPingwinLocations, createPingwinLocation, updatePingwinLocation, deletePingwinLocation, syncCoverManager, syncRestaurantPeriod, getCoverManager,
 } from "helpers/laravel_helper";
@@ -11,6 +12,9 @@ const yesterdayIso = () => {
     d.setDate(d.getDate() - 1);
     return d.toISOString().slice(0, 10);
 };
+
+// Hoje (limite máximo dos seletores): permite escolher ATÉ hoje (inclusive), nunca o futuro.
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 const fmtDateTime = (d?: string | null) =>
     d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
@@ -26,6 +30,7 @@ const emptyForm = () => ({ winrest_store_id: "", winrest_name: "", display_name:
 
 export default function LojasPage() {
     document.title = "Lojas | Restauração | Xplendor";
+    const isMobile = useIsMobile();
 
     const companyId = useMemo(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -185,8 +190,8 @@ export default function LojasPage() {
                                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
                                     <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
                                     {/* Sincronizar reservas (CoverManager) — TODAS as lojas, para UMA data. */}
-                                    <div className="d-flex align-items-center gap-2">
-                                        <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={reservDate} max={yesterdayIso()} onChange={(e) => setReservDate(e.target.value)} disabled={syncingReservs} />
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
+                                        <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={reservDate} max={todayIso()} onChange={(e) => setReservDate(e.target.value)} disabled={syncingReservs} />
                                         <button className="btn btn-sm btn-soft-primary" onClick={runReservSync} disabled={syncingReservs || !reservDate}>
                                             {syncingReservs ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-event-line me-1" /> Sincronizar (1 dia)</>}
                                         </button>
@@ -195,54 +200,82 @@ export default function LojasPage() {
                                 {/* Sincronizar um PERÍODO: um dia de cada vez, notificação única no fim. */}
                                 <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
                                     <span className="text-muted fs-12">Período:</span>
-                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodFrom} max={yesterdayIso()} onChange={(e) => setPeriodFrom(e.target.value)} disabled={syncingPeriod} />
+                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodFrom} max={todayIso()} onChange={(e) => setPeriodFrom(e.target.value)} disabled={syncingPeriod} />
                                     <span className="text-muted fs-12">até</span>
-                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodTo} max={yesterdayIso()} onChange={(e) => setPeriodTo(e.target.value)} disabled={syncingPeriod} />
+                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodTo} max={todayIso()} onChange={(e) => setPeriodTo(e.target.value)} disabled={syncingPeriod} />
                                     <button className="btn btn-sm btn-primary" onClick={runPeriodSync} disabled={syncingPeriod || !periodFrom || !periodTo}>
                                         {syncingPeriod ? <><Spinner size="sm" className="me-1" /> A enviar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar período</>}
                                     </button>
                                 </div>
                             </div>
-                            <div className="table-responsive">
-                                {/* Mesmo mecanismo das tabelas que funcionam (Carros/Leads):
-                                    table-bordered + thead "text-muted table-light" → header visível
-                                    (claro e escuro). Sem table-light o thead fica transparente. */}
-                                <table className="table table-bordered table-hover align-middle mb-0">
-                                    <thead className="text-muted table-light">
-                                        <tr>
-                                            <th>ID PingWin</th>
-                                            <th>Nome PingWin</th>
-                                            <th>Nome amigável</th>
-                                            <th>Abertura</th>
-                                            <th>Estado</th>
-                                            <th>Reservas</th>
-                                            <th>Última sincronização</th>
-                                            <th className="text-end">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {!loading && rows.length === 0 ? (
-                                            <tr><td colSpan={8} className="text-center text-muted py-4">Sem lojas. Usa <strong>“Adicionar loja”</strong>.</td></tr>
-                                        ) : rows.map((loc) => (
-                                            <tr key={loc.id}>
-                                                <td className="fw-medium text-break" style={{ maxWidth: 180 }}>{loc.winrest_store_id}</td>
-                                                <td>{loc.winrest_name || "—"}</td>
-                                                <td>{loc.display_name || "—"}</td>
-                                                <td>{loc.opened_on ? loc.opened_on.slice(0, 10) : "—"}</td>
-                                                {/* Badges no padrão que já funciona (LeadStatusBadge): bg-{cor}-subtle + text-{cor}
-                                                    — legível em claro e escuro. O 'badge-soft-*' não pintava fundo → texto branco invisível. */}
-                                                <td>{loc.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>}</td>
-                                                <td>{loc.cm_connected ? <span className="badge bg-success-subtle text-success">CoverManager</span> : <span className="badge bg-secondary-subtle text-secondary">—</span>}</td>
-                                                <td className="text-muted fs-12">{fmtDateTime(loc.cm_last_synced_at)}</td>
-                                                <td className="text-end">
-                                                    <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(loc)}><i className="ri-pencil-line" /></button>
+                            {/* MOBILE: cards empilhados (sem overflow horizontal). */}
+                            {isMobile ? (
+                                <div className="p-3 d-flex flex-column gap-2">
+                                    {!loading && rows.length === 0 ? (
+                                        <div className="text-center text-muted py-4">Sem lojas. Usa <strong>“Adicionar loja”</strong>.</div>
+                                    ) : rows.map((loc) => (
+                                        <div key={loc.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }}>
+                                            <div className="d-flex align-items-start justify-content-between gap-2">
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div className="fw-semibold text-body text-truncate">{loc.display_name || loc.winrest_name || "—"}</div>
+                                                    <div className="text-muted fs-12 text-break">ID: {loc.winrest_store_id}</div>
+                                                </div>
+                                                <div className="d-flex gap-1 flex-shrink-0">
+                                                    <button className="btn btn-sm btn-soft-primary" onClick={() => openEdit(loc)}><i className="ri-pencil-line" /></button>
                                                     <button className="btn btn-sm btn-soft-danger" onClick={() => remove(loc)}><i className="ri-delete-bin-line" /></button>
-                                                </td>
+                                                </div>
+                                            </div>
+                                            <div className="d-flex flex-wrap align-items-center gap-1 mt-2">
+                                                {loc.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>}
+                                                {loc.cm_connected && <span className="badge bg-success-subtle text-success">CoverManager</span>}
+                                                {loc.opened_on && <span className="badge bg-light text-muted">Abertura {loc.opened_on.slice(0, 10)}</span>}
+                                            </div>
+                                            <div className="text-muted fs-12 mt-2">Última sincronização: {fmtDateTime(loc.cm_last_synced_at)}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="table-responsive">
+                                    {/* Mesmo mecanismo das tabelas que funcionam (Carros/Leads):
+                                        table-bordered + thead "text-muted table-light" → header visível
+                                        (claro e escuro). Sem table-light o thead fica transparente. */}
+                                    <table className="table table-bordered table-hover align-middle mb-0">
+                                        <thead className="text-muted table-light">
+                                            <tr>
+                                                <th>ID PingWin</th>
+                                                <th>Nome PingWin</th>
+                                                <th>Nome amigável</th>
+                                                <th>Abertura</th>
+                                                <th>Estado</th>
+                                                <th>Reservas</th>
+                                                <th>Última sincronização</th>
+                                                <th className="text-end">Ações</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                        </thead>
+                                        <tbody>
+                                            {!loading && rows.length === 0 ? (
+                                                <tr><td colSpan={8} className="text-center text-muted py-4">Sem lojas. Usa <strong>“Adicionar loja”</strong>.</td></tr>
+                                            ) : rows.map((loc) => (
+                                                <tr key={loc.id}>
+                                                    <td className="fw-medium text-break" style={{ maxWidth: 180 }}>{loc.winrest_store_id}</td>
+                                                    <td>{loc.winrest_name || "—"}</td>
+                                                    <td>{loc.display_name || "—"}</td>
+                                                    <td>{loc.opened_on ? loc.opened_on.slice(0, 10) : "—"}</td>
+                                                    {/* Badges no padrão que já funciona (LeadStatusBadge): bg-{cor}-subtle + text-{cor}
+                                                        — legível em claro e escuro. O 'badge-soft-*' não pintava fundo → texto branco invisível. */}
+                                                    <td>{loc.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>}</td>
+                                                    <td>{loc.cm_connected ? <span className="badge bg-success-subtle text-success">CoverManager</span> : <span className="badge bg-secondary-subtle text-secondary">—</span>}</td>
+                                                    <td className="text-muted fs-12">{fmtDateTime(loc.cm_last_synced_at)}</td>
+                                                    <td className="text-end">
+                                                        <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(loc)}><i className="ri-pencil-line" /></button>
+                                                        <button className="btn btn-sm btn-soft-danger" onClick={() => remove(loc)}><i className="ri-delete-bin-line" /></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </Card>
                     </Col>
                 </Row>

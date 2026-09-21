@@ -113,6 +113,96 @@ export interface PingwinOccupancy {
     daily: PingwinOccupancyPeriod;
 }
 
+/** Tipo de documento PingWin (Definições→Documentos), só leitura. */
+export interface PingwinDocumentConfig {
+    id: number;
+    external_id: string;
+    code: string | null;
+    description: string | null;
+    entitytype: string | null;
+    fiscaltype: string | null;
+    fiscaltype_description: string | null;
+    deleted: boolean;
+    synced_at: string | null;
+}
+
+/** Artigo (produto) do catálogo PingWin, só leitura. Preços em CÊNTIMOS inteiros. */
+export interface PingwinCatalogItem {
+    id: number;
+    pingwin_id: string;
+    code: string | null;
+    description: string | null;
+    family: string | null;
+    family_pingwin_id: string | null;
+    forsale: boolean;
+    forpurchase: boolean;
+    has_bom: boolean;
+    product_type: string | null;
+    product_status: string | null;
+    taxgroup: string | null;
+    printzone: string | null;
+    saleprice_cents: number | null;
+    purchaseprice_cents: number | null;
+    saleunit: string | null;
+    purchaseunit: string | null;
+    order_code: string | null;
+    supplier_code: string | null; // preparado; matching é fase futura
+    is_active: boolean;
+    synced_at: string | null;
+}
+
+/** Fornecedor do PingWin, só leitura. */
+export interface PingwinSupplier {
+    id: number;
+    pingwin_id: string;
+    code: string | null;
+    name: string | null;
+    fiscal_name: string | null;  // nome fiscal (fiscalname)
+    tax_number: string | null;   // NIF
+    address: string | null;
+    city: string | null;
+    postal_code: string | null;
+    phone: string | null;
+    email: string | null;
+    is_active: boolean;
+    synced_at: string | null;
+}
+
+/** Unidade PingWin (base de conversão), só leitura. A conversão vem pronta a ler. */
+export interface PingwinUnitRow {
+    id: number;
+    description: string | null;
+    shortname: string | null;
+    is_global: boolean;               // true = unidade global; false = específica de um artigo
+    parent_description: string | null; // unidade-base (se houver conversão)
+    unit_value: number | null;         // fator de conversão
+    conversion_label: string | null;   // "1 Barril 50lt = 50 Litros" (pronto a mostrar)
+    purchase: boolean;
+    sale: boolean;
+    stock: boolean;
+    is_active: boolean;                 // = NOT deleted
+}
+
+/** Nó da árvore de famílias PingWin (montada no backend, flat→nested). */
+export interface PingwinFamilyNode {
+    id: number;
+    pingwin_id: string;
+    description: string | null;
+    item_count: number;          // artigos ligados a ESTA família (só o próprio nó)
+    children: PingwinFamilyNode[];
+}
+
+/** Paginador do Laravel (paginate()) — página de EXIBIÇÃO (aos poucos). */
+export interface LaravelPaginator<T> {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+}
+
 /** Faturação mensal por loja: uma série por loja (12 valores em EUROS; null = mês sem sync). */
 export interface PingwinMonthlySeries {
     location_id: number;

@@ -4,6 +4,8 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import ptLocale from "@fullcalendar/core/locales/pt";
 import { toast, ToastContainer } from "react-toastify";
+import Select from "react-select";
+import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import { getPingwinCalendar } from "helpers/laravel_helper";
 import { PingwinCalendarDay, PingwinCalendarResponse } from "common/models/pingwin.model";
 
@@ -53,6 +55,18 @@ export default function CalendarioPage() {
 
     useEffect(() => { fetchCalendar(month, locationId); }, [fetchCalendar, month, locationId]);
 
+    // Opções do react-select do filtro de loja (default "Todas as lojas").
+    const locationOptions = useMemo(
+        () => [
+            { value: "" as number | "", label: "Todas as lojas" },
+            ...(data?.locations ?? []).map((l) => ({
+                value: l.id as number | "",
+                label: l.display_name || l.winrest_name || l.winrest_store_id,
+            })),
+        ],
+        [data]
+    );
+
     // Um "evento" (só leitura) por dia com dados — SEM bloco sólido: fundo/borda
     // transparentes, para os números aparecerem como texto leve na célula.
     const events = (data?.days ?? []).map((d: PingwinCalendarDay) => ({
@@ -75,18 +89,18 @@ export default function CalendarioPage() {
                             <h4 className="mb-sm-0">Calendário de faturação</h4>
                             <div className="d-flex align-items-center gap-2">
                                 {loading && <Spinner size="sm" />}
-                                {/* Filtro por loja — default "Todas as lojas" (somadas). */}
-                                <select
-                                    className="form-select form-select-sm"
-                                    style={{ minWidth: 200 }}
-                                    value={locationId}
-                                    onChange={(e) => setLocationId(e.target.value ? Number(e.target.value) : "")}
-                                >
-                                    <option value="">Todas as lojas</option>
-                                    {(data?.locations ?? []).map((l) => (
-                                        <option key={l.id} value={l.id}>{l.display_name || l.winrest_name || l.winrest_store_id}</option>
-                                    ))}
-                                </select>
+                                {/* Filtro por loja — default "Todas as lojas" (somadas). react-select (padrão do sistema). */}
+                                <div style={{ minWidth: 220 }}>
+                                    <Select
+                                        styles={reactSelectTheme}
+                                        menuPortalTarget={document.body}
+                                        options={locationOptions}
+                                        value={locationOptions.find((o) => o.value === locationId) ?? locationOptions[0]}
+                                        onChange={(o: any) => setLocationId(o?.value ?? "")}
+                                        isSearchable
+                                        placeholder="Todas as lojas"
+                                    />
+                                </div>
                             </div>
                         </div>
                     </Col>

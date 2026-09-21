@@ -47,7 +47,7 @@ CLIENT_KEYS = ["auth_url", "api_url", "frontend_url", "database", "app_version",
                "username", "password", "report_id", "stores"]
 
 # Chaves opcionais que o construtor aceita (defaults no cliente).
-OPTIONAL_CLIENT = ["application", "app_grupopie"]
+OPTIONAL_CLIENT = ["application", "app_grupopie", "units_url", "units_port"]
 
 _SESSIONID_RE = re.compile(r"(sessionid=)[^&\s\"']+", re.IGNORECASE)
 
@@ -102,6 +102,44 @@ def run(cfg: dict) -> dict:
         if mode == "validate":
             # Só provar credenciais: o with já fez login; o with fará logout.
             return {"ok": True, "mode": "validate"}
+
+        if mode == "documents":
+            # READ-ONLY: lista de tipos de documento (Definições→Documentos).
+            docs = client.fetch_document_configs()
+            return {"ok": True, "mode": "documents", "documents": docs}
+
+        if mode == "catalog":
+            # READ-ONLY: catálogo de ARTIGOS (produtos) via browserdataset paginado.
+            # O dataset_id do catálogo é por-instalação (capturado) → vem da config
+            # (PINGWIN_CATALOG_DATASET_ID), como o stores_dataset_id.
+            dataset_id = cfg.get("catalog_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "catalog_dataset_id em falta (definir PINGWIN_CATALOG_DATASET_ID)."}
+            articles = client.fetch_catalog(dataset_id)
+            return {"ok": True, "mode": "catalog", "articles": articles}
+
+        if mode == "families":
+            # READ-ONLY: árvore de FAMÍLIAS (GET /family → family.maindataset). Um só
+            # pedido traz todas (flat, com parent_id). A árvore monta-se na exibição.
+            families = client.fetch_families()
+            return {"ok": True, "mode": "families", "families": families}
+
+        if mode == "suppliers":
+            # READ-ONLY: FORNECEDORES via browserdataset paginado. O dataset_id é
+            # por-instalação (capturado no HAR) → vem da config
+            # (PINGWIN_SUPPLIERS_DATASET_ID), como o catalog_dataset_id.
+            dataset_id = cfg.get("suppliers_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "suppliers_dataset_id em falta (definir PINGWIN_SUPPLIERS_DATASET_ID)."}
+            suppliers = client.fetch_suppliers(dataset_id)
+            return {"ok": True, "mode": "suppliers", "suppliers": suppliers}
+
+        if mode == "units":
+            # READ-ONLY: UNIDADES (base de conversão) na PORTA 8138. Usa só o
+            # maindataset (ignora o baseunit "radio conv." = lixo). A sessão do
+            # login é aceite na 8138 (mesmo Sessionid).
+            units = client.fetch_units()
+            return {"ok": True, "mode": "units", "units": units}
 
         # sync — descoberta de lojas + resumo de vendas por loja.
         stores = []

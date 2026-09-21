@@ -48,6 +48,7 @@ use App\Http\Controllers\Api\V1\{
     CompanyTaskController,
     CompanyModuleController,
     CompanyPingwinController,
+    CompanyInvoiceOcrController,
     GoogleAnalyticsController,
     MetaInsightsController,
     ExpenseCategoryController,
@@ -181,6 +182,27 @@ Route::prefix('v1')->group(function () {
                     Route::get('/analytics/pingwin/calendar', [CompanyPingwinController::class, 'calendar']);
                     // Faturação mensal por loja (uma linha por loja, filtro de ano).
                     Route::get('/analytics/pingwin/monthly-billing', [CompanyPingwinController::class, 'monthlyBilling']);
+                    // Documentos PingWin (Fase 1, só leitura): lista + sincronizar.
+                    Route::get('/integrations/pingwin/documents', [CompanyPingwinController::class, 'documents']);
+                    Route::post('/integrations/pingwin/documents/sync', [CompanyPingwinController::class, 'syncDocuments']);
+                    // Artigos PingWin (Fase 1, só leitura): lista paginada + sincronizar.
+                    Route::get('/integrations/pingwin/catalog', [CompanyPingwinController::class, 'catalog']);
+                    Route::post('/integrations/pingwin/catalog/sync', [CompanyPingwinController::class, 'syncCatalog']);
+                    // Famílias PingWin (Fase 1, só leitura): árvore + sincronizar (+ religa artigos).
+                    Route::get('/integrations/pingwin/families', [CompanyPingwinController::class, 'families']);
+                    Route::post('/integrations/pingwin/families/sync', [CompanyPingwinController::class, 'syncFamilies']);
+                    // Fornecedores PingWin (Fase 1, só leitura): lista paginada + sincronizar.
+                    Route::get('/integrations/pingwin/suppliers', [CompanyPingwinController::class, 'suppliers']);
+                    Route::post('/integrations/pingwin/suppliers/sync', [CompanyPingwinController::class, 'syncSuppliers']);
+                    // Unidades PingWin (Fase 1, só leitura): lista paginada + sincronizar (porta 8138).
+                    Route::get('/integrations/pingwin/units', [CompanyPingwinController::class, 'units']);
+                    Route::post('/integrations/pingwin/units/sync', [CompanyPingwinController::class, 'syncUnits']);
+                    // OCR de faturas de fornecedor (Fase A): carregar → IA lê → validar → guardar (SEM PingWin).
+                    Route::get('/ocr/invoices', [CompanyInvoiceOcrController::class, 'index']);
+                    Route::post('/ocr/invoices', [CompanyInvoiceOcrController::class, 'upload']);
+                    Route::get('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'show']);
+                    Route::get('/ocr/invoices/{invoiceId}/image', [CompanyInvoiceOcrController::class, 'image']);
+                    Route::put('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'update']);
                     // Cadastro manual de lojas (desbloqueia o "Stores" do relatório).
                     Route::get('/integrations/pingwin/locations', [CompanyPingwinController::class, 'listLocations']);
                     Route::post('/integrations/pingwin/locations', [CompanyPingwinController::class, 'storeLocation']);

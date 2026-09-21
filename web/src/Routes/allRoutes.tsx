@@ -6,6 +6,13 @@ import Dashboard from "pages/Dashboards/Dashboard";
 import PingwinDashboard from "pages/Dashboards/PingwinDashboard";
 import LojasPage from "pages/Restauracao/LojasPage";
 import CalendarioPage from "pages/Restauracao/CalendarioPage";
+import DocumentosPage from "pages/Restauracao/DocumentosPage";
+import ArtigosPage from "pages/Restauracao/ArtigosPage";
+import FamiliasPage from "pages/Restauracao/FamiliasPage";
+import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
+import FaturasPage from "pages/Restauracao/FaturasPage";
+import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
+import UnidadesPage from "pages/Restauracao/UnidadesPage";
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -112,6 +119,13 @@ const authProtectedRoutes = [
     { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
     { path: "/restauracao/lojas", component: <RequireModule module="pingwin"><LojasPage /></RequireModule> },
     { path: "/restauracao/calendario", component: <RequireModule module="pingwin"><CalendarioPage /></RequireModule> },
+    { path: "/restauracao/documentos", component: <RequireModule module="pingwin"><DocumentosPage /></RequireModule> },
+    { path: "/restauracao/artigos", component: <RequireModule module="pingwin"><ArtigosPage /></RequireModule> },
+    { path: "/restauracao/familias", component: <RequireModule module="pingwin"><FamiliasPage /></RequireModule> },
+    { path: "/restauracao/fornecedores", component: <RequireModule module="pingwin"><FornecedoresPage /></RequireModule> },
+    { path: "/restauracao/faturas", component: <RequireModule module="pingwin"><FaturasPage /></RequireModule> },
+    { path: "/restauracao/faturas/:id", component: <RequireModule module="pingwin"><FaturaValidacaoPage /></RequireModule> },
+    { path: "/restauracao/unidades", component: <RequireModule module="pingwin"><UnidadesPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },

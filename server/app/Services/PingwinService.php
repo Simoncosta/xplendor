@@ -151,6 +151,419 @@ class PingwinService
     }
 
     /**
+     * DOCUMENTOS (Fase 1, só leitura): busca os tipos de documento (LOGOUT
+     * garantido no Python) e faz UPSERT em pingwin_document_configs. Reutiliza as
+     * credenciais da empresa. Devolve o nº de tipos guardados.
+     */
+    public function syncDocuments(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'documents']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de documentos PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $saved = 0;
+        foreach ($result['documents'] ?? [] as $doc) {
+            $externalId = (string) ($doc['id'] ?? $doc['code'] ?? '');
+            if ($externalId === '') {
+                continue;
+            }
+            \App\Models\PingwinDocumentConfig::updateOrCreate(
+                ['company_id' => $companyId, 'external_id' => $externalId],
+                [
+                    'code' => $doc['code'] ?? null,
+                    'description' => $doc['description'] ?? null,
+                    'entitytype' => $doc['entitytype'] ?? null,
+                    'fiscaltype' => $doc['fiscaltype'] ?? null,
+                    'fiscaltype_description' => $doc['fiscaltype_description'] ?? null,
+                    'deleted' => (bool) ($doc['deleted'] ?? false),
+                    'synced_at' => $now,
+                ]
+            );
+            $saved++;
+        }
+
+        return $saved;
+    }
+
+    /**
+     * ARTIGOS (Fase 1, só leitura): busca o catálogo COMPLETO (browserdataset
+     * paginado por Range, LOGOUT garantido no Python) e faz UPSERT idempotente em
+     * pingwin_catalog_items por (company_id, pingwin_id). Preços em CÊNTIMOS.
+     * São muitos → grava em lotes. Devolve o nº de artigos guardados.
+     */
+    public function syncCatalog(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'catalog']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de artigos PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $rows = [];
+        foreach ($result['articles'] ?? [] as $art) {
+            $pingwinId = (string) ($this->pick($art, ['id', 'product_id', 'code']) ?? '');
+            if ($pingwinId === '') {
+                continue;
+            }
+            $deleted = (bool) ($this->pick($art, ['deleted']) ?? false);
+            $rows[] = [
+                'company_id'          => $companyId,
+                'pingwin_id'          => $pingwinId,
+                'code'                => $this->str($this->pick($art, ['code'])),
+                'description'         => $this->str($this->pick($art, ['description', 'descr'])),
+                'family'              => $this->str($this->pick($art, ['family', 'family_descr', 'family_id_descr'])),
+                'family_pingwin_id'   => $this->str($this->pick($art, ['family_id', 'family_pingwin_id'])),
+                'forsale'             => (bool) ($this->pick($art, ['forsale', 'for_sale', 'issale']) ?? false),
+                'forpurchase'         => (bool) ($this->pick($art, ['forpurchase', 'for_purchase', 'ispurchase']) ?? false),
+                'has_bom'             => (bool) ($this->pick($art, ['isbom', 'has_bom', 'bom']) ?? false),
+                'product_type'        => $this->str($this->pick($art, ['product_type', 'producttype', 'type'])),
+                'product_status'      => $this->str($this->pick($art, ['product_status', 'status', 'state'])),
+                'taxgroup'            => $this->str($this->pick($art, ['taxgroup', 'taxgroup_descr', 'tax_group'])),
+                'printzone'           => $this->str($this->pick($art, ['printzone', 'printzone_descr', 'print_zone'])),
+                'saleprice_cents'     => $this->toCentsNullable($this->pick($art, ['saleprice', 'sale_price', 'price'])),
+                'purchaseprice_cents' => $this->toCentsNullable($this->pick($art, ['purchaseprice', 'purchase_price', 'cost'])),
+                'saleunit'            => $this->str($this->pick($art, ['saleunit', 'sale_unit', 'unit'])),
+                'purchaseunit'        => $this->str($this->pick($art, ['purchaseunit', 'purchase_unit'])),
+                'order_code'          => $this->str($this->pick($art, ['order_code', 'ordercode'])),
+                // supplier_code fica NULL (matching é fase futura; o browserdataset não o traz).
+                'supplier_code'       => null,
+                'is_active'           => ! $deleted, // is_active = NOT deleted
+                'synced_at'           => $now,
+                'created_at'          => $now,
+                'updated_at'          => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        // UPSERT em lotes por (company_id, pingwin_id) — idempotente. Não toca em
+        // created_at ao atualizar (só nas colunas de dados + updated_at/synced_at).
+        $updateCols = [
+            'code', 'description', 'family', 'family_pingwin_id', 'forsale', 'forpurchase',
+            'has_bom', 'product_type', 'product_status', 'taxgroup', 'printzone',
+            'saleprice_cents', 'purchaseprice_cents', 'saleunit', 'purchaseunit',
+            'order_code', 'is_active', 'synced_at', 'updated_at',
+        ];
+        foreach (array_chunk($rows, 500) as $chunk) {
+            \App\Models\PingwinCatalogItem::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+        }
+
+        return count($rows);
+    }
+
+    /**
+     * FORNECEDORES (Fase 1, só leitura): busca os fornecedores (browserdataset
+     * paginado, LOGOUT garantido no Python) e faz UPSERT idempotente em
+     * pingwin_suppliers por (company_id, pingwin_id). Mapeamento tolerante a
+     * aliases (o HAR confirma os nomes exatos). Devolve o nº de fornecedores.
+     */
+    public function syncSuppliers(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'suppliers']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de fornecedores PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $rows = [];
+        foreach ($result['suppliers'] ?? [] as $sup) {
+            $pingwinId = (string) ($this->pick($sup, ['id', 'entity_id', 'code']) ?? '');
+            if ($pingwinId === '') {
+                continue;
+            }
+            $deleted = (bool) ($this->pick($sup, ['deleted']) ?? false);
+            // Nomes de campo confirmados no HAR (fornecedores.har, dataset 1099511639252):
+            // name, fiscalname, tax_number, base_address, postalcode, postalcode_description
+            // (= localidade), phone, email, deleted. Aliases extra por robustez.
+            $rows[] = [
+                'company_id'  => $companyId,
+                'pingwin_id'  => $pingwinId,
+                'code'        => $this->str($this->pick($sup, ['code'])),
+                'name'        => $this->str($this->pick($sup, ['name', 'description', 'descr', 'company_name'])),
+                'fiscal_name' => $this->str($this->pick($sup, ['fiscalname', 'fiscal_name', 'legalname', 'legal_name'])),
+                'tax_number'  => $this->str($this->pick($sup, ['tax_number', 'taxnumber', 'nif', 'vat', 'fiscal_number'])),
+                'address'     => $this->str($this->pick($sup, ['base_address', 'address', 'addr', 'address1'])),
+                'city'        => $this->str($this->pick($sup, ['postalcode_description', 'city', 'town', 'location'])),
+                'postal_code' => $this->str($this->pick($sup, ['postalcode', 'postal_code', 'zip', 'zipcode'])),
+                'phone'       => $this->str($this->pick($sup, ['phone', 'telephone', 'tel', 'mobile'])),
+                'email'       => $this->str($this->pick($sup, ['email', 'mail'])),
+                'is_active'   => ! $deleted,
+                'synced_at'   => $now,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $updateCols = [
+            'code', 'name', 'fiscal_name', 'tax_number', 'address', 'city', 'postal_code',
+            'phone', 'email', 'is_active', 'synced_at', 'updated_at',
+        ];
+        foreach (array_chunk($rows, 500) as $chunk) {
+            \App\Models\PingwinSupplier::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+        }
+
+        return count($rows);
+    }
+
+    /**
+     * UNIDADES (Fase 1, só leitura): busca as unidades (PORTA 8138, LOGOUT garantido
+     * no Python) e faz UPSERT idempotente em pingwin_units por (company_id,
+     * pingwin_id). O Python já devolve SÓ o maindataset (o baseunit "radio conv." é
+     * ignorado na origem). Guarda duplicados/apagados; is_active = NOT deleted.
+     * Devolve o nº de unidades guardadas.
+     */
+    public function syncUnits(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'units']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de unidades PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $rows = [];
+        foreach ($result['units'] ?? [] as $u) {
+            $pingwinId = (string) ($this->pick($u, ['id']) ?? '');
+            if ($pingwinId === '') {
+                continue;
+            }
+            $deleted = (bool) ($this->pick($u, ['deleted']) ?? false);
+            $rows[] = [
+                'company_id'         => $companyId,
+                'pingwin_id'         => $pingwinId,
+                'description'        => $this->str($this->pick($u, ['description', 'descr'])),
+                'shortname'          => $this->str($this->pick($u, ['shortname', 'short_name'])),
+                'product_pingwin_id' => $this->str($this->pick($u, ['product_id'])),   // ''/null = global
+                'parent_pingwin_id'  => $this->str($this->pick($u, ['parent_id'])),     // unidade-base
+                'unit_value'         => $this->numOrNull($this->pick($u, ['unit_value', 'parent_qnt'])),
+                'purchase'           => (bool) ($this->pick($u, ['purchase']) ?? false),
+                'sale'               => (bool) ($this->pick($u, ['sale']) ?? false),
+                'stock'              => (bool) ($this->pick($u, ['stock']) ?? false),
+                'net_weight'         => $this->numOrNull($this->pick($u, ['net_weight'])),
+                'external_measure'   => $this->str($this->pick($u, ['external_measure'])),
+                'is_active'          => ! $deleted,
+                'synced_at'          => $now,
+                'created_at'         => $now,
+                'updated_at'         => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $updateCols = [
+            'description', 'shortname', 'product_pingwin_id', 'parent_pingwin_id', 'unit_value',
+            'purchase', 'sale', 'stock', 'net_weight', 'external_measure', 'is_active', 'synced_at', 'updated_at',
+        ];
+        foreach (array_chunk($rows, 500) as $chunk) {
+            \App\Models\PingwinUnit::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+        }
+
+        return count($rows);
+    }
+
+    /**
+     * FAMÍLIAS (Fase 1, só leitura): busca a árvore de famílias (GET /family,
+     * LOGOUT garantido no Python), guarda FLAT (com parent_pingwin_id) via UPSERT
+     * idempotente e RELIGA os artigos existentes às famílias (por family_pingwin_id).
+     * Devolve o nº de famílias guardadas.
+     */
+    public function syncFamilies(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'families']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de famílias PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $rows = [];
+        foreach ($result['families'] ?? [] as $fam) {
+            $pingwinId = (string) ($this->pick($fam, ['id']) ?? '');
+            if ($pingwinId === '') {
+                continue;
+            }
+            // parent vazio/0/null → raiz (guardamos null).
+            $parent = $this->str($this->pick($fam, ['parent_id']));
+            if ($parent === '0') {
+                $parent = null;
+            }
+            $deleted = (bool) ($this->pick($fam, ['deleted']) ?? false);
+            $rows[] = [
+                'company_id'        => $companyId,
+                'pingwin_id'        => $pingwinId,
+                'description'       => $this->str($this->pick($fam, ['description', 'descr'])),
+                'parent_pingwin_id' => $parent,
+                'is_active'         => ! $deleted,
+                'synced_at'         => $now,
+                'created_at'        => $now,
+                'updated_at'        => $now,
+            ];
+        }
+
+        if (! empty($rows)) {
+            $updateCols = ['description', 'parent_pingwin_id', 'is_active', 'synced_at', 'updated_at'];
+            foreach (array_chunk($rows, 500) as $chunk) {
+                \App\Models\PingwinFamily::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+            }
+        }
+
+        // Religar os artigos já importados às famílias (por family_pingwin_id).
+        $this->relinkArticlesToFamilies($companyId);
+
+        return count($rows);
+    }
+
+    /**
+     * Liga cada artigo (pingwin_catalog_items) à sua família por family_pingwin_id
+     * → pingwin_families.id. Artigo cuja família não existe (órfão) fica com
+     * family_id = null (não rebenta). Idempotente. Devolve o nº de artigos ligados.
+     */
+    public function relinkArticlesToFamilies(int $companyId): int
+    {
+        // Mapa family_pingwin_id → pingwin_families.id (só desta empresa — tenancy).
+        $famByPingwinId = \App\Models\PingwinFamily::where('company_id', $companyId)
+            ->pluck('id', 'pingwin_id'); // ['<pingwin_id>' => <id>]
+
+        $linked = 0;
+        \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+            ->select('id', 'family_pingwin_id', 'family_id')
+            ->chunkById(500, function ($items) use ($famByPingwinId, &$linked) {
+                foreach ($items as $item) {
+                    $key = (string) ($item->family_pingwin_id ?? '');
+                    $newFamilyId = ($key !== '' && isset($famByPingwinId[$key])) ? $famByPingwinId[$key] : null;
+                    if ($item->family_id !== $newFamilyId) {
+                        $item->update(['family_id' => $newFamilyId]);
+                    }
+                    if ($newFamilyId !== null) {
+                        $linked++;
+                    }
+                }
+            });
+
+        return $linked;
+    }
+
+    /**
+     * Monta a árvore de famílias (flat→nested por parent) para exibição. Nós sem
+     * parent OU com parent inexistente (órfão) são RAÍZES; children ordenados por
+     * description; famílias inativas (deleted) ignoradas. Opcionalmente inclui a
+     * contagem de artigos por família (item_count, só os próprios do nó).
+     * Devolve um array de nós {id, pingwin_id, description, item_count, children[]}.
+     */
+    public function familyTree(int $companyId, bool $withCounts = true): array
+    {
+        $families = \App\Models\PingwinFamily::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('description')
+            ->get(['id', 'pingwin_id', 'description', 'parent_pingwin_id']);
+
+        // Contagem de artigos por family_id (uma query agregada).
+        $counts = [];
+        if ($withCounts) {
+            $counts = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+                ->whereNotNull('family_id')
+                ->selectRaw('family_id, COUNT(*) as c')
+                ->groupBy('family_id')
+                ->pluck('c', 'family_id')
+                ->toArray();
+        }
+
+        // 1) Nós indexados por pingwin_id, cada um com children[].
+        $byPingwinId = [];
+        foreach ($families as $fam) {
+            $byPingwinId[$fam->pingwin_id] = [
+                'id'          => $fam->id,
+                'pingwin_id'  => $fam->pingwin_id,
+                'description' => $fam->description,
+                'item_count'  => (int) ($counts[$fam->id] ?? 0),
+                'children'    => [],
+            ];
+        }
+
+        // 2) Ligar cada nó à mãe; sem parent OU parent inexistente → raiz.
+        $roots = [];
+        foreach ($families as $fam) {
+            $parent = $fam->parent_pingwin_id;
+            if ($parent !== null && $parent !== '' && $parent !== '0' && isset($byPingwinId[$parent])) {
+                $byPingwinId[$parent]['children'][] = &$byPingwinId[$fam->pingwin_id];
+            } else {
+                $roots[] = &$byPingwinId[$fam->pingwin_id];
+            }
+        }
+        unset($fam);
+
+        return $roots;
+    }
+
+    /**
      * Sincroniza: descobre lojas + resumo de vendas por loja (LOGOUT garantido no
      * Python) e persiste. Tenancy assegurada pelo controller (company da rota).
      */
@@ -227,6 +640,52 @@ class PingwinService
     private function toCents($value): int
     {
         return (int) round(((float) $value) * 100);
+    }
+
+    /** € → cêntimos inteiros, ou NULL se o valor não veio (coluna nullable). */
+    private function toCentsNullable($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (int) round(((float) $value) * 100);
+    }
+
+    /**
+     * Primeiro valor não-vazio de uma lista de chaves candidatas (o browserdataset
+     * do catálogo varia por instalação; tolera nomes alternativos). NULL se nenhuma.
+     */
+    private function pick(array $row, array $keys)
+    {
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $row) && $row[$key] !== null && $row[$key] !== '') {
+                return $row[$key];
+            }
+        }
+
+        return null;
+    }
+
+    /** Número (float) ou NULL se não numérico. */
+    private function numOrNull($value): ?float
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    /** Normaliza para string (ou NULL) — evita guardar arrays/objetos por engano. */
+    private function str($value): ?string
+    {
+        if ($value === null || is_array($value)) {
+            return null;
+        }
+        $s = trim((string) $value);
+
+        return $s === '' ? null : $s;
     }
 
     /**

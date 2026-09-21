@@ -25,7 +25,7 @@ import sys
 import time
 from datetime import datetime
 from typing import Any, Dict, List
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 import pandas as pd
 import requests
@@ -130,10 +130,17 @@ class MyCloudPieClient:
         app_version: str,
         application: str = "pbo_soa_2026.0",
         app_grupopie: str = "PBOWEB",
+        units_url: str = "",
+        units_port: str = "8138",
     ):
         self.auth_url = auth_url.rstrip("/")
         self.api_url = api_url.rstrip("/")
         self.frontend_url = frontend_url.rstrip("/")
+        # ⚠️ As UNIDADES vivem numa PORTA DIFERENTE do SOA GrupoPIE (8138, não a
+        # 8136 do browser/relatórios). O SOA reparte áreas por porta. Aceita um
+        # override explícito (units_url); senão deriva do api_url trocando a porta.
+        self.units_url = units_url.rstrip("/") if units_url else ""
+        self.units_port = str(units_port or "8138")
         self.username = username
         self.password = password
         self.report_id = report_id
@@ -444,6 +451,47 @@ class MyCloudPieClient:
         log.info(f"Excel descarregado: {len(r.content)} bytes (Content-Type: {content_type})")
         return r.content
 
+    # ------------------------------------------ BROWSER: HELPER PAGINADO
+    def fetch_browserdataset(
+        self,
+        dataset_id: str,
+        body: Dict[str, Any],
+        page_size: int = 1000,
+        max_pages: int = 30,
+    ) -> List[Dict[str, Any]]:
+        """
+        Helper ÚNICO de leitura paginada de um browserdataset (mesmo endpoint do
+        fetch_stores/fetch_document_configs/fetch_catalog). ITERA o header Range
+        (items=0-999, 1000-1999, …), ACUMULA os itens e PARA quando a página vem
+        curta (len < page_size). `max_pages` é a trava §8.2 (nunca paginar sem fim).
+        Aceita HTTP 200 E 206 (Partial Content). Lê resposta["browser"]["browserdataset"].
+        READ-ONLY (Action OPEN,GET,INFO,CLOSE — não escreve). Requer login feito.
+
+        `body` é o corpo COMPLETO do POST (muda só entre datasets: os documentos
+        levam {"filter":{},"params":{…}}, o catálogo {"orderby":"code","params":{…}}).
+        """
+        url = f"{self.api_url}/service/browser/{dataset_id}/browserdataset"
+        out: List[Dict[str, Any]] = []
+        pages = 0
+        for page in range(max_pages):
+            pages = page + 1
+            start = page * page_size
+            headers = {
+                "Action": "OPEN,GET,INFO,CLOSE",
+                "Content-Type": "application/json;charset=UTF-8",
+                "Range": f"items={start}-{start + page_size - 1}",
+            }
+            r = self.session.post(url, json=body, headers=headers)
+            if r.status_code not in (200, 206):
+                log.error(f"fetch_browserdataset({dataset_id}) falhou: HTTP {r.status_code} body={r.text[:1000]}")
+                r.raise_for_status()
+            items = r.json().get("browser", {}).get("browserdataset", [])
+            out.extend(items)
+            if len(items) < page_size:  # página curta → última página; para
+                break
+        log.info(f"browserdataset {dataset_id}: {len(out)} item(s) em {pages} página(s)")
+        return out
+
     # ----------------------------------------------------- BROWSER: LOJAS
     def fetch_stores(self, dataset_id: str) -> List[Dict[str, Any]]:
         """
@@ -470,14 +518,29 @@ class MyCloudPieClient:
         log.info(f"Lojas no browserdataset: {len(stores)}")
         return stores
 
+    # ------------------------------------------- BROWSER: TIPOS DE DOCUMENTO
+    def fetch_document_configs(self, dataset_id: str = "1099511639239") -> List[Dict[str, Any]]:
+        """
+        Lista de TIPOS DE DOCUMENTO (Definições→Documentos) via browserdataset.
+        USA o helper paginado fetch_browserdataset — MESMO padrão do catálogo, só
+        muda o dataset_id (1099511639239) e os params. Os documentos hoje cabem
+        numa página, mas paginam por consistência (e caso cresçam). READ-ONLY.
+
+        Cada item traz: id, code, description, entitytype, fiscaltype,
+        fiscaltype_description, deleted, ...
+        """
+        body = {"filter": {}, "params": {"CODE": "", "DESCRIPTION": "", "ENTITYTYPE_ID": "", "STATE": "0"}}
+        docs = self.fetch_browserdataset(dataset_id, body)
+        log.info(f"Tipos de documento: {len(docs)}")
+        return docs
+
     # -------------------------------------------------- BROWSER: CATÁLOGO
     def fetch_catalog(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
         """
         Catálogo COMPLETO de artigos via browserdataset (porta 8136, como fetch_stores).
-        São centenas → ITERA o header Range (items=0-999, 1000-1999, …) até a página
-        vir curta. `max_pages` é a trava §8.2 (nunca paginar sem fim). Requer login.
+        São centenas/milhares → USA o helper paginado fetch_browserdataset (itera o
+        Range até a página vir curta, com a trava max_pages). Requer login.
         """
-        url = f"{self.api_url}/service/browser/{dataset_id}/browserdataset"
         body = {
             "orderby": "code",  # ordem estável p/ paginação consistente
             "params": {
@@ -485,26 +548,30 @@ class MyCloudPieClient:
                 "PART_PRODUCT_ID": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": "0",
             },
         }
-        out: List[Dict[str, Any]] = []
-        pages = 0
-        for page in range(max_pages):
-            pages = page + 1
-            start = page * page_size
-            headers = {
-                "Action": "OPEN,GET,INFO,CLOSE",
-                "Content-Type": "application/json;charset=UTF-8",
-                "Range": f"items={start}-{start + page_size - 1}",
-            }
-            r = self.session.post(url, json=body, headers=headers)
-            if r.status_code not in (200, 206):
-                log.error(f"fetch_catalog falhou: HTTP {r.status_code} body={r.text[:1000]}")
-                r.raise_for_status()
-            items = r.json().get("browser", {}).get("browserdataset", [])
-            out.extend(items)
-            if len(items) < page_size:
-                break
-        log.info(f"Catálogo: {len(out)} artigos em {pages} página(s)")
-        return out
+        items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
+        log.info(f"Catálogo: {len(items)} artigos")
+        return items
+
+    # ------------------------------------------------- BROWSER: FORNECEDORES
+    def fetch_suppliers(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
+        """
+        Lista de FORNECEDORES via browserdataset — MESMO helper paginado do catálogo,
+        só muda o dataset_id (por-instalação, do HAR → PINGWIN_SUPPLIERS_DATASET_ID) e
+        os params. READ-ONLY (Action OPEN,GET,INFO,CLOSE). Requer login.
+
+        Params com filtros vazios → devolve todos. Se a captura (HAR) mostrar nomes de
+        campo diferentes, ajustar só este body — o mapeamento a montante (PHP) já é
+        tolerante a aliases. Cada item traz tipicamente: id, code, name/description,
+        taxnumber (NIF), address, phone, email, deleted, ...
+        """
+        # Params confirmados no HAR (fornecedores.har, dataset 1099511639252).
+        body = {
+            "orderby": "code",  # ordem estável p/ paginação consistente
+            "params": {"CODE": "", "DESCRIPTION": "", "TAX_NUMBER": "", "CONTACT": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": "0"},
+        }
+        items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
+        log.info(f"Fornecedores: {len(items)}")
+        return items
 
     # --------------------------------------------------- BROWSER: FAMÍLIAS
     def fetch_families(self) -> List[Dict[str, Any]]:
@@ -521,6 +588,43 @@ class MyCloudPieClient:
         fams = r.json().get("family", {}).get("maindataset", [])
         log.info(f"Famílias: {len(fams)}")
         return fams
+
+    # ------------------------------------------------------- UNIDADES (porta 8138)
+    def _units_base(self) -> str:
+        """Base URL das unidades. Usa units_url se dado; senão deriva do api_url
+        trocando a porta para units_port (8138). O SOA GrupoPIE reparte áreas por
+        porta (8136 browser/relatórios, 8138 unidades)."""
+        if self.units_url:
+            return self.units_url
+        parsed = urlparse(self.api_url)
+        host = parsed.hostname or ""
+        netloc = f"{host}:{self.units_port}" if host else parsed.netloc
+        return f"{parsed.scheme}://{netloc}"
+
+    def fetch_units(self) -> List[Dict[str, Any]]:
+        """
+        Lista de UNIDADES (base de conversão) na PORTA 8138. READ-ONLY
+        (Action OPEN,GET,INFO). A sessão obtida no login (8136) é aceite na 8138
+        (mesmo Sessionid — confirmado no HAR). Requer login feito.
+
+        ⚠️ A resposta traz units.maindataset (as ~48 unidades REAIS) e units.baseunit
+        (centenas de "radio conv." = LIXO interno). USA-SE SÓ o maindataset.
+
+        Cada item (maindataset): id, product_id (''=global; preenchido=específica de
+        artigo), description, shortname, purchase/sale/stock, net_weight, frac_unit,
+        external_measure, parent_id (unidade-base p/ conversão), parent_qnt/unit_value
+        (fator de conversão, ex: Barril 50lt → parent_id=Litro, unit_value=50), deleted.
+        """
+        url = f"{self._units_base()}/service/units/*/maindataset,baseunit,additionalfields.fieldsinfo,additionalfields.maindataset"
+        headers = {"Action": "OPEN,GET,INFO", "Content-Type": "application/json;charset=UTF-8"}
+        r = self.session.post(url, data=b"", headers=headers)
+        if r.status_code not in (200, 206):
+            log.error(f"fetch_units falhou: HTTP {r.status_code} body={r.text[:1000]}")
+            r.raise_for_status()
+        # SÓ o maindataset (as reais). O baseunit ("radio conv.") é ignorado.
+        units = r.json().get("units", {}).get("maindataset", [])
+        log.info(f"Unidades (maindataset): {len(units)}")
+        return units
 
     # ════════════════════════════════ FICHA TÉCNICA (BOM / productbom) ════════════
     # SÓ LEITURA. Sequência descoberta ao vivo (read-only — nunca grava no PingWin):

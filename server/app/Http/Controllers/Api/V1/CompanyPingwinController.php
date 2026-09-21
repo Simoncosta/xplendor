@@ -86,6 +86,279 @@ class CompanyPingwinController extends Controller
         ], 'Sincronização concluída.');
     }
 
+    /**
+     * Documentos PingWin (Fase 1): lista da BD com paginação Laravel (EXIBIÇÃO —
+     * aos poucos, page/perPage) + pesquisa (código/descrição) + filtro por tipo de
+     * entidade. Devolve também a última sincronização (max de TODAS as linhas, não
+     * só da página) e as entidades distintas (para o filtro).
+     */
+    public function documents(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'page'       => ['nullable', 'integer', 'min:1'],
+            'perPage'    => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'     => ['nullable', 'string', 'max:120'],
+            'entitytype' => ['nullable', 'string', 'max:120'],
+        ]);
+        $perPage = (int) ($data['perPage'] ?? 20);
+
+        $base = \App\Models\PingwinDocumentConfig::where('company_id', $companyId);
+
+        $query = (clone $base)
+            ->when($data['search'] ?? null, function ($q, $s) {
+                $q->where(fn ($w) => $w->where('description', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"));
+            })
+            ->when($data['entitytype'] ?? null, fn ($q, $e) => $q->where('entitytype', $e))
+            ->orderBy('description');
+
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'documents'      => $query->paginate($perPage)->appends($request->query()),
+            'last_synced_at' => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+            // Tipos de entidade distintos (para o dropdown de filtro), de TODAS as linhas.
+            'entitytypes'    => (clone $base)->whereNotNull('entitytype')->where('entitytype', '!=', '')
+                ->distinct()->orderBy('entitytype')->pluck('entitytype')->values(),
+        ], 'Documentos carregados.');
+    }
+
+    /** Gatilho: sincroniza os tipos de documento PingWin (fila; notifica no fim). */
+    public function syncDocuments(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinDocumentsJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar documentos… serás notificado quando terminar.');
+    }
+
+    /**
+     * Artigos PingWin (Fase 1): lista da BD com paginação Laravel (EXIBIÇÃO —
+     * aos poucos, page/perPage) + pesquisa (código/descrição) + filtros (família,
+     * forsale/forpurchase). Devolve última sincronização + famílias distintas.
+     */
+    public function catalog(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'page'        => ['nullable', 'integer', 'min:1'],
+            'perPage'     => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'      => ['nullable', 'string', 'max:120'],
+            'family'      => ['nullable', 'string', 'max:255'],
+            'forsale'     => ['nullable', 'boolean'],
+            'forpurchase' => ['nullable', 'boolean'],
+        ]);
+        $perPage = (int) ($data['perPage'] ?? 20);
+
+        $base = \App\Models\PingwinCatalogItem::where('company_id', $companyId);
+
+        $query = (clone $base)
+            ->when($data['search'] ?? null, function ($q, $s) {
+                $q->where(fn ($w) => $w->where('description', 'like', "%{$s}%")->orWhere('code', 'like', "%{$s}%"));
+            })
+            ->when($data['family'] ?? null, fn ($q, $f) => $q->where('family', $f))
+            ->when(array_key_exists('forsale', $data) && $data['forsale'] !== null,
+                fn ($q) => $q->where('forsale', (bool) $data['forsale']))
+            ->when(array_key_exists('forpurchase', $data) && $data['forpurchase'] !== null,
+                fn ($q) => $q->where('forpurchase', (bool) $data['forpurchase']))
+            ->orderBy('code')->orderBy('description');
+
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'articles'       => $query->paginate($perPage)->appends($request->query()),
+            'last_synced_at' => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+            // Famílias distintas (para o dropdown de filtro), de TODAS as linhas.
+            'families'       => (clone $base)->whereNotNull('family')->where('family', '!=', '')
+                ->distinct()->orderBy('family')->pluck('family')->values(),
+        ], 'Artigos carregados.');
+    }
+
+    /** Gatilho: sincroniza o catálogo de artigos PingWin (fila; notifica no fim). */
+    public function syncCatalog(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinCatalogJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar artigos… serás notificado quando terminar.');
+    }
+
+    /**
+     * Famílias PingWin (Fase 1): a ÁRVORE (flat→nested por parent, montada no
+     * backend) + última sincronização + total de famílias. Só leitura.
+     */
+    public function families(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $base = \App\Models\PingwinFamily::where('company_id', $companyId);
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'tree'           => $this->service->familyTree($companyId),
+            'total'          => (clone $base)->where('is_active', true)->count(),
+            'last_synced_at' => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+        ], 'Famílias carregadas.');
+    }
+
+    /** Gatilho: sincroniza as famílias PingWin + religa artigos (fila; notifica no fim). */
+    public function syncFamilies(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinFamiliesJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar famílias… serás notificado quando terminar.');
+    }
+
+    /**
+     * Fornecedores PingWin (Fase 1): lista da BD com paginação Laravel (EXIBIÇÃO,
+     * page/perPage) + pesquisa (nome/código/NIF) + filtro (estado ativo/inativo).
+     * Devolve última sincronização. Só leitura.
+     */
+    public function suppliers(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'page'    => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'  => ['nullable', 'string', 'max:120'],
+            'active'  => ['nullable', 'boolean'],
+        ]);
+        $perPage = (int) ($data['perPage'] ?? 20);
+
+        $base = \App\Models\PingwinSupplier::where('company_id', $companyId);
+
+        $query = (clone $base)
+            ->when($data['search'] ?? null, function ($q, $s) {
+                $q->where(fn ($w) => $w->where('name', 'like', "%{$s}%")
+                    ->orWhere('code', 'like', "%{$s}%")
+                    ->orWhere('tax_number', 'like', "%{$s}%"));
+            })
+            ->when(array_key_exists('active', $data) && $data['active'] !== null,
+                fn ($q) => $q->where('is_active', (bool) $data['active']))
+            ->orderBy('name')->orderBy('code');
+
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'suppliers'      => $query->paginate($perPage)->appends($request->query()),
+            'last_synced_at' => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+        ], 'Fornecedores carregados.');
+    }
+
+    /** Gatilho: sincroniza os fornecedores PingWin (fila; notifica no fim). */
+    public function syncSuppliers(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinSuppliersJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar fornecedores… serás notificado quando terminar.');
+    }
+
+    /**
+     * Unidades PingWin (Fase 1): lista da BD com paginação Laravel + pesquisa
+     * (descrição/abreviatura) + filtro de estado (ativas/anuladas). Resolve a
+     * CONVERSÃO de forma legível: para unidades com parent, devolve parent_description
+     * e conversion_label ("1 Barril 50lt = 50 Litros"). Só leitura.
+     */
+    public function units(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'page'    => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'  => ['nullable', 'string', 'max:120'],
+            'active'  => ['nullable', 'boolean'],
+        ]);
+        $perPage = (int) ($data['perPage'] ?? 20);
+
+        $base = \App\Models\PingwinUnit::where('company_id', $companyId);
+
+        // Mapa pingwin_id → descrição (para resolver a unidade-base da conversão).
+        $nameById = (clone $base)->pluck('description', 'pingwin_id');
+
+        $query = (clone $base)
+            ->when($data['search'] ?? null, function ($q, $s) {
+                $q->where(fn ($w) => $w->where('description', 'like', "%{$s}%")->orWhere('shortname', 'like', "%{$s}%"));
+            })
+            // Por defeito mostra ATIVAS; active=0 → só anuladas; sem filtro → todas só se pedido.
+            ->when(array_key_exists('active', $data) && $data['active'] !== null,
+                fn ($q) => $q->where('is_active', (bool) $data['active']))
+            ->orderByDesc('is_active')->orderBy('description');
+
+        $page = $query->paginate($perPage)->appends($request->query());
+
+        $page->getCollection()->transform(function (\App\Models\PingwinUnit $u) use ($nameById) {
+            $parentDesc = $u->parent_pingwin_id ? ($nameById[$u->parent_pingwin_id] ?? null) : null;
+            $factor = $u->unit_value;
+            // "1 [unidade] = [fator] [unidade-base]" — só quando há parent.
+            $label = null;
+            if ($parentDesc) {
+                $qty = ($factor !== null && (float) $factor != 1.0) ? rtrim(rtrim(number_format((float) $factor, 5, ',', ''), '0'), ',') : '1';
+                $label = "1 {$u->description} = {$qty} {$parentDesc}";
+            }
+
+            return [
+                'id'                 => $u->id,
+                'description'        => $u->description,
+                'shortname'          => $u->shortname,
+                'is_global'          => empty($u->product_pingwin_id),
+                'parent_description' => $parentDesc,
+                'unit_value'         => $factor !== null ? (float) $factor : null,
+                'conversion_label'   => $label,
+                'purchase'           => (bool) $u->purchase,
+                'sale'               => (bool) $u->sale,
+                'stock'              => (bool) $u->stock,
+                'is_active'          => (bool) $u->is_active,
+            ];
+        });
+
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'units'          => $page,
+            'last_synced_at' => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+        ], 'Unidades carregadas.');
+    }
+
+    /** Gatilho: sincroniza as unidades PingWin (fila; notifica no fim). */
+    public function syncUnits(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinUnitsJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar unidades… serás notificado quando terminar.');
+    }
+
     /** Faturação mensal por loja (uma série por loja) de um ano — gráfico de linha. */
     public function monthlyBilling(Request $request, int $companyId, PingwinDashboardService $dashboard)
     {

@@ -21,6 +21,9 @@ const yesterdayIso = () => {
     return d.toISOString().slice(0, 10);
 };
 
+// Hoje (limite máximo do seletor): permite escolher ATÉ hoje (inclusive), nunca o futuro.
+const todayIso = () => new Date().toISOString().slice(0, 10);
+
 // Valores guardados em CÊNTIMOS → dividir por 100 e mostrar 2 casas (pt-PT: €1.694,02).
 const euro = (cents: number) =>
     (Number(cents || 0) / 100).toLocaleString("pt-PT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -247,7 +250,7 @@ export function PingwinDashboardContent() {
                                     type="date"
                                     className="form-control"
                                     value={date}
-                                    max={yesterdayIso()}
+                                    max={todayIso()}
                                     onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
                                     style={{ minWidth: 160 }}
                                 />

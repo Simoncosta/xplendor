@@ -7,3 +7,7 @@ python-dotenv==1.0.1
 pandas==2.2.2
 xlrd==1.2.0
 openpyxl==3.1.5
+# OCR de faturas (Fase A): rasterizar PDF-scan → imagem para a IA. Requer
+# poppler-utils no sistema (ver docker/scraper/Dockerfile). A chamada à IA é em PHP.
+pdf2image==1.17.0
+Pillow==10.4.0

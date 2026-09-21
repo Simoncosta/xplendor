@@ -260,6 +260,57 @@ export const getPingwinCalendar = (companyId: number, month: string, locationId?
 // Faturação mensal por loja (uma série por loja) de um ano — gráfico de linha.
 export const getPingwinMonthlyBilling = (companyId: number, year: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/monthly-billing`, { year });
+// Documentos PingWin (Fase 1, só leitura): lista guardada + sincronizar.
+export const getPingwinDocuments = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; entitytype?: string }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, params);
+export const syncPingwinDocuments = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync`, {});
+
+export const getPingwinCatalog = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; family?: string; forsale?: number; forpurchase?: number }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog`, params);
+export const syncPingwinCatalog = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/sync`, {});
+
+export const getPingwinFamilies = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);
+export const syncPingwinFamilies = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families/sync`, {});
+
+export const getPingwinUnits = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; active?: number }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units`, params);
+export const syncPingwinUnits = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/sync`, {});
+
+export const getPingwinSuppliers = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; active?: number }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, params);
+export const syncPingwinSuppliers = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {});
+
+// ── OCR de faturas de fornecedor (Fase A) ─────────────────────────────────────
+export const getOcrInvoices = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; status?: string }
+) => api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, params);
+export const uploadOcrInvoice = (companyId: number, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+};
+export const getOcrInvoice = (companyId: number, invoiceId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
+export const updateOcrInvoice = (companyId: number, invoiceId: number, data: Record<string, any>) =>
+    api.update(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`, data);
+// A imagem está num disco privado (atrás de auth) → buscar como blob (o axios põe o token).
+export const getOcrInvoiceImageBlob = (companyId: number, invoiceId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/image`, { responseType: "blob" } as any);
 // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno de uma data.
 export const syncCoverManager = (companyId: number, date: string) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/covermanager/sync`, { date });

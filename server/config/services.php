@@ -43,6 +43,9 @@ return [
 
     'openai' => [
         'key' => env('OPENAI_KEY'),
+        // OCR de faturas de fornecedor (Fase A).
+        'ocr_disk' => env('OCR_INVOICE_DISK', 'local'),        // disco onde a imagem original é guardada
+        'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
     ],
 
     // XPLENDOR — GA4 (Data API). Credencial única do SERVIDOR: uma Service
@@ -76,8 +79,14 @@ return [
         'application'       => env('PINGWIN_APPLICATION', 'pbo_soa_2026.0'),  // constante do protocolo
         'app_grupopie'      => env('PINGWIN_APP_GRUPOPIE', 'PBOWEB'),          // constante do protocolo
         'report_id'         => env('PINGWIN_REPORT_ID_SALES'),  // relatório "Resumo de Vendas" (ver aviso no .env)
-        'stores'            => env('PINGWIN_STORES', ''),       // filtro opcional; vazio = descoberta trata
-        'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset de descoberta de lojas
+        // ⚠️ As 3 chaves seguintes são DIFERENTES (não confundir — ver .env.example):
+        'stores'            => env('PINGWIN_STORES', ''),       // CSV de winrest_store_id (filtro do relatório); o sync sobrepõe-no com as lojas cadastradas. NÃO é um dataset.
+        'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores (Yuko: 1099511639262)
+        'catalog_dataset_id' => env('PINGWIN_CATALOG_DATASET_ID', ''), // dataset (browserdataset) do catálogo de artigos — fetch_catalog (Yuko: 1099511639254)
+        'suppliers_dataset_id' => env('PINGWIN_SUPPLIERS_DATASET_ID', ''), // dataset (browserdataset) de fornecedores — fetch_suppliers (Yuko: 1099511639252)
+        // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
+        // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
+        'units_url' => env('PINGWIN_UNITS_URL', ''),
         'allowed_hosts'     => env('PINGWIN_ALLOWED_HOSTS', ''), // allowlist de hosts (segurança SSL fraco)
     ],
 

@@ -214,6 +214,12 @@ const Navdata = () => {
             subItems: [
                 { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "pingwin" },
                 { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "restauracao", module: "pingwin" },
             ],
         },
         {
