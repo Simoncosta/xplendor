@@ -79,6 +79,22 @@ class SupportTicketController extends Controller
         ], 'Admin ticket summary fetched successfully.');
     }
 
+    /**
+     * ADMIN — PIPELINE de orçamentos-em-tickets (site_change): "quanto tenho em cima
+     * da mesa" por quote_status (contagem + valor + horas). Filtro company_id opcional
+     * (ver por cliente). Reaproveita o SupportTicketService::quotePipeline.
+     */
+    public function quotePipeline(Request $request)
+    {
+        $this->ensureRoot();
+        $companyId = $request->input('company_id');
+
+        return ApiResponse::success(
+            $this->service->quotePipeline($companyId ? (int) $companyId : null),
+            'Ticket quote pipeline fetched successfully.'
+        );
+    }
+
     public function show(int $ticketId)
     {
         $this->ensureRoot();

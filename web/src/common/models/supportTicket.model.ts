@@ -77,3 +77,10 @@ export const SITE_CHANGE_HOURLY_RATE = 25;
 /** Formata euros pt-PT (ex.: 50 → "50,00 €"). */
 export const formatEuro = (v: number): string =>
     new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
+
+/** Pipeline de orçamentos-em-tickets (site_change): por estado + total (valores SEM IVA). */
+export interface IQuoteBucket { count: number; amount: number; hours: number; }
+export interface ITicketQuotePipeline {
+    by_status: Record<QuoteStatus, IQuoteBucket>;
+    total: IQuoteBucket;
+}

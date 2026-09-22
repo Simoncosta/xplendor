@@ -257,6 +257,10 @@ Route::prefix('v1')->group(function () {
                 // DMS — Tickets de suporte (lado STAND). Scoped por empresa.
                 Route::get('/support-tickets', [SupportTicketController::class, 'index']);
                 Route::post('/support-tickets', [SupportTicketController::class, 'store']);
+                // Orçamentos-em-tickets do stand (site_change): lista+pipeline e aprovar pacote.
+                // ⚠️ ANTES de /{ticket} para "quotes" não ser capturado como {ticket}.
+                Route::get('/support-tickets/quotes', [SupportTicketController::class, 'quotes']);
+                Route::post('/support-tickets/quotes/approve', [SupportTicketController::class, 'approveQuotePackage']);
                 Route::get('/support-tickets/{ticket}', [SupportTicketController::class, 'show']);
                 Route::post('/support-tickets/{ticket}/messages', [SupportTicketController::class, 'storeMessage']);
                 // Site_change (pago): o stand só aprova/rejeita o orçamento.
@@ -323,6 +327,8 @@ Route::prefix('v1')->group(function () {
 
             // Tickets de suporte — TRANSVERSAL (todas as empresas).
             Route::get('/tickets/summary', [AdminSupportTicketController::class, 'summary']);
+            // Pipeline de orçamentos-em-tickets (site_change) — "em cima da mesa" por estado.
+            Route::get('/tickets/quote-pipeline', [AdminSupportTicketController::class, 'quotePipeline']);
             Route::get('/tickets', [AdminSupportTicketController::class, 'index']);
             Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
             Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);

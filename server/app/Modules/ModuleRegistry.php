@@ -59,18 +59,76 @@ class ModuleRegistry
             'depends_on' => [],
         ],
         // Restauração — PingWin (POS GrupoPIE). Específico do ramo restauração
-        // (não é dos carros). Gate para cadastrar/sincronizar o PingWin.
+        // (não é dos carros). É o "umbrella" da integração: todas as secções de
+        // restauração DEPENDEM dele (a fronteira de segurança no backend continua
+        // a ser ensure_module:pingwin).
         'pingwin' => [
             'label' => 'PingWin (POS)',
             'car_specific' => false,
             'depends_on' => [],
         ],
+
+        // ── Restauração › OPERAÇÃO (dia-a-dia). Cada secção é o seu módulo (o root
+        //    liga/desliga à vontade); todas dependem de 'pingwin'. ──────────────
+        'restauracao_lojas' => [
+            'label' => 'Restauração: Lojas',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_calendario' => [
+            'label' => 'Restauração: Calendário de Faturação',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_artigos' => [
+            'label' => 'Restauração: Artigos',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_faturas' => [
+            'label' => 'Restauração: Faturas',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+
+        // ── Restauração › CADASTROS (base/registos). ──────────────────────────
+        'restauracao_documentos' => [
+            'label' => 'Cadastros: Documentos',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_familias' => [
+            'label' => 'Cadastros: Famílias',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_fornecedores' => [
+            'label' => 'Cadastros: Fornecedores',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+        'restauracao_unidades' => [
+            'label' => 'Cadastros: Unidades',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
+    ];
+
+    /** As 8 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
+    public const RESTAURANT_SECTIONS = [
+        'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
+        'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
     ];
 
     /** Presets por ramo: um atalho que liga um conjunto (ajustável depois). */
     public const PRESETS = [
         'automotive' => ['stock', 'commercial_crm', 'finance', 'documents', 'aftersales', 'marketing_analytics', 'support_tasks'],
-        'restaurant' => ['marketing_analytics', 'support_tasks', 'pingwin'],
+        // Restauração liberta o PingWin + TODAS as secções (operação + cadastros).
+        'restaurant' => [
+            'marketing_analytics', 'support_tasks', 'pingwin',
+            'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
+            'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
+        ],
     ];
 
     /** @return string[] */

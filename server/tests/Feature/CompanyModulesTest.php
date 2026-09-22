@@ -92,9 +92,9 @@ class CompanyModulesTest extends TestCase
 
     public function test_enabling_a_module_cascades_dependencies(): void
     {
-        // Parte do preset restauração (só transversais).
+        // Parte do preset restauração (transversais + pingwin + as 8 secções).
         $this->actingAs($this->root, 'sanctum')->postJson($this->modulesUrl() . '/preset', ['preset' => 'restaurant'])->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $this->keys($this->company->id));
+        $this->assertEqualsCanonicalizing(ModuleRegistry::presetKeys('restaurant'), $this->keys($this->company->id));
 
         // Ligar 'aftersales' → liga em cascata commercial_crm + stock.
         $this->actingAs($this->root, 'sanctum')->patchJson($this->modulesUrl(), ['module_key' => 'aftersales', 'enabled' => true])->assertStatus(200);
@@ -104,10 +104,40 @@ class CompanyModulesTest extends TestCase
         $this->assertContains('stock', $keys);
     }
 
-    public function test_restaurant_preset_enables_only_transversal(): void
+    public function test_restaurant_preset_enables_transversal_pingwin_and_sections(): void
     {
         $this->actingAs($this->root, 'sanctum')->postJson($this->modulesUrl() . '/preset', ['preset' => 'restaurant'])->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $this->keys($this->company->id));
+        $keys = $this->keys($this->company->id);
+        $this->assertEqualsCanonicalizing(ModuleRegistry::presetKeys('restaurant'), $keys);
+        // Liberta o umbrella + as 8 secções (operação + cadastros).
+        $this->assertContains('pingwin', $keys);
+        foreach (ModuleRegistry::RESTAURANT_SECTIONS as $section) {
+            $this->assertContains($section, $keys);
+        }
+    }
+
+    public function test_restaurant_sections_registered_and_depend_on_pingwin(): void
+    {
+        foreach (ModuleRegistry::RESTAURANT_SECTIONS as $section) {
+            $this->assertTrue(ModuleRegistry::exists($section), "módulo em falta: {$section}");
+            $this->assertContains('pingwin', ModuleRegistry::dependencies($section));
+        }
+        // Enable de uma secção liga o pingwin em cascata; e não se desliga pingwin com secções ativas.
+        app(\App\Services\CompanyModuleService::class)->applyPreset($this->company->id, 'restaurant');
+        $this->actingAs($this->root, 'sanctum')
+            ->patchJson($this->modulesUrl(), ['module_key' => 'pingwin', 'enabled' => false])
+            ->assertStatus(422); // secções dependem → bloqueado
+    }
+
+    public function test_restaurant_company_has_sections_activatable_in_root_overview(): void
+    {
+        app(\App\Services\CompanyModuleService::class)->applyPreset($this->company->id, 'restaurant');
+        $res = $this->actingAs($this->root, 'sanctum')->getJson($this->modulesUrl())->assertStatus(200);
+        $mods = collect($res->json('data.modules'))->keyBy('key');
+        foreach (ModuleRegistry::RESTAURANT_SECTIONS as $section) {
+            $this->assertTrue($mods->has($section), "overview sem {$section}");
+            $this->assertTrue($mods[$section]['enabled'], "{$section} devia estar ativo (preset)");
+        }
     }
 
     public function test_preset_is_a_shortcut_not_a_prison(): void
@@ -144,7 +174,8 @@ class CompanyModulesTest extends TestCase
         app(\App\Services\CompanyModuleService::class)->applyPreset($this->company->id, 'restaurant');
 
         $res = $this->actingAs($this->standAdmin, 'sanctum')->getJson($this->myModulesUrl())->assertStatus(200);
-        $this->assertEqualsCanonicalizing(['marketing_analytics', 'support_tasks', 'pingwin'], $res->json('data.modules'));
+        $this->assertEqualsCanonicalizing(ModuleRegistry::presetKeys('restaurant'), $res->json('data.modules'));
+        $this->assertContains('restauracao_lojas', $res->json('data.modules')); // secções libertadas
         // NÃO tem os módulos de carros → o menu esconde essas secções.
         $this->assertNotContains('stock', $res->json('data.modules'));
         $this->assertNotContains('commercial_crm', $res->json('data.modules'));

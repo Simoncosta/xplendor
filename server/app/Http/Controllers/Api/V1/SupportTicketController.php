@@ -127,6 +127,84 @@ class SupportTicketController extends Controller
     }
 
     /**
+     * STAND — ORÇAMENTOS do próprio stand: os tickets 'site_change' com camada de
+     * orçamento (quote_status != null) + um resumo/pipeline por estado (contagem,
+     * valor Σ quoted_amount, horas Σ estimated_hours — SEM IVA). Tenancy: só os da
+     * empresa da rota. É a tela de autonomia do cliente (selecionar+somar+aprovar).
+     */
+    public function quotes(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $base = SupportTicket::where('company_id', $companyId)
+            ->where('type', 'site_change')
+            ->whereNotNull('quote_status');
+
+        $tickets = (clone $base)->with('user')->orderByDesc('id')->get();
+
+        return ApiResponse::success([
+            'tickets' => SupportTicketResource::collection($tickets)->resolve(),
+            'summary' => $this->service->quotePipeline($companyId),
+        ], 'Company ticket quotes fetched successfully.');
+    }
+
+    /**
+     * STAND — APROVA um PACOTE de orçamentos selecionados de uma vez. Só afeta os
+     * elegíveis (quote_status = 'quoted') da própria empresa; os não-elegíveis são
+     * IGNORADOS e reportados (não re-aprova 'approved'/'paid'/…). Reutiliza a lógica
+     * de aprovação por ticket (approveQuote → 'approved' + notifica). Tenancy garantida.
+     */
+    public function approveQuotePackage(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'ids'   => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        // SÓ tickets da empresa (tenancy), site_change. IDs de fora ficam de fora.
+        $tickets = SupportTicket::where('company_id', $companyId)
+            ->where('type', 'site_change')
+            ->whereIn('id', $data['ids'])
+            ->get();
+
+        $approved = [];
+        $skipped = [];
+        foreach ($tickets as $ticket) {
+            if ($ticket->quote_status !== 'quoted') {
+                // Não re-aprova o que já não está "orçado" (approved/paid/completed/rejected/awaiting).
+                $skipped[] = ['id' => $ticket->id, 'reason' => 'Não está por aprovar (estado: ' . ($ticket->quote_status ?? '—') . ').'];
+                continue;
+            }
+            try {
+                $this->service->approveQuote($ticket); // reutiliza o fluxo existente (valida + notifica)
+                $approved[] = $ticket->id;
+            } catch (\Throwable $e) {
+                $skipped[] = ['id' => $ticket->id, 'reason' => $e->getMessage()];
+            }
+        }
+
+        // IDs pedidos que não pertencem à empresa/tipo (segurança) → reportar.
+        $found = $tickets->pluck('id')->all();
+        foreach ($data['ids'] as $id) {
+            if (! in_array($id, $found, true)) {
+                $skipped[] = ['id' => $id, 'reason' => 'Orçamento não encontrado.'];
+            }
+        }
+
+        return ApiResponse::success([
+            'approved' => $approved,
+            'skipped'  => $skipped,
+            'summary'  => $this->service->quotePipeline($companyId), // pipeline atualizado
+        ], count($approved) . ' orçamento(s) aprovado(s).');
+    }
+
+    /**
      * STAND — decide o orçamento de um ticket "site_change": aprovar ou rejeitar.
      * É a ÚNICA transição de estado que o stand faz (nunca orça/paga/conclui —
      * isso é exclusivo do super-admin). O service valida a pré-condição

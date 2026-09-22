@@ -24,6 +24,7 @@ const Navdata = () => {
     const [isComercial, setIsComercial] = useState(false);
     const [isAnalytics, setIsAnalytics] = useState(false);
     const [isRestauracao, setIsRestauracao] = useState(false);
+    const [isCadastros, setIsCadastros] = useState(false);
     const [isEquipa, setIsEquipa] = useState(false);
     const [isAdmin, setIsAdmin] = useState(false);
     const [isSettings, setIsSettings] = useState(false);
@@ -195,9 +196,8 @@ const Navdata = () => {
                 { id: "blogs", label: "Blogs", link: "/blogs", parentId: "analytics" },
             ],
         },
-        // ── Restauração — a operação do restaurante (só o ramo, módulo pingwin).
-        //    Grupo pensado para CRESCER: futuras secções entram como irmãs de "Lojas".
-        //    (O dashboard de vendas vive no PAINEL PRINCIPAL quando é o ramo.)
+        // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem
+        //    'pingwin' (umbrella); cada item gated pelo SEU módulo (o root liga/desliga).
         {
             id: "restauracao",
             label: "Restauração",
@@ -212,14 +212,31 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "pingwin" },
-                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "restauracao", module: "pingwin" },
+                { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "restauracao_lojas" },
+                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario" },
+                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos" },
+                { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas" },
+            ],
+        },
+        // ── Cadastros — base/registos da restauração. (Nome distinto de "Configurações".)
+        {
+            id: "cadastros",
+            label: "Cadastros",
+            icon: "ri-archive-2-line",
+            link: "/#",
+            module: "pingwin",
+            stateVariables: isCadastros,
+            click: function (e: any) {
+                e.preventDefault();
+                setIsCadastros(!isCadastros);
+                setIscurrentState('Cadastros');
+                updateIconSidebar(e);
+            },
+            subItems: [
+                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "cadastros", module: "restauracao_documentos" },
+                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias" },
+                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores" },
+                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades" },
             ],
         },
         {
@@ -256,8 +273,11 @@ const Navdata = () => {
             },
             subItems: [
                 { id: "tasks", label: "Tarefas", link: "/tasks", parentId: "equipa", module: "support_tasks" },
-                // Orçamentos fica BASE — visível a todos (o Simon envia orçamentos a qualquer cliente).
-                { id: "quotes", label: "Orçamentos", link: "/quotes", parentId: "equipa" },
+                // ⚠️ "Orçamentos" agora aponta para os orçamentos-em-tickets DO STAND
+                // (site_change: ver, somar, aprovar). A antiga tela de quotes avulsos
+                // (/quotes) foi ESCONDIDA do menu do cliente — serve o caso off-platform
+                // que é do ADMIN (/admin/quotes continua). A rota /quotes NÃO foi apagada.
+                { id: "orcamentos", label: "Orçamentos", link: "/orcamentos", parentId: "equipa", module: "support_tasks" },
                 { id: "support", label: "Suporte", link: "/support", parentId: "equipa", module: "support_tasks" },
             ],
         },

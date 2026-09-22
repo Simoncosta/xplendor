@@ -385,6 +385,15 @@ export const addSupportTicketMessage = (companyId: number, id: number, body: str
 export const decideSupportTicketQuote = (companyId: number, id: number, decision: "approve" | "reject") =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/${id}/quote-decision`, { decision });
 
+// Orçamentos-em-tickets do STAND (site_change): lista+pipeline e aprovar pacote.
+export const getCompanyTicketQuotes = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/quotes`);
+export const approveCompanyTicketQuotes = (companyId: number, ids: number[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_SUPPORT_TICKETS + `/quotes/approve`, { ids }, { headers: { "Content-Type": "application/json" } });
+// ADMIN: pipeline de orçamentos-em-tickets (site_change), filtro company_id opcional.
+export const getAdminTicketsQuotePipeline = (params?: { company_id?: number }) =>
+    api.get(url.GET_ADMIN + `/tickets/quote-pipeline`, params);
+
 // EXPENSE CATEGORIES (DMS 1c.2a)
 export const getExpenseCategories = (companyId: number, params?: { only_active?: number }) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSE_CATEGORIES, params);

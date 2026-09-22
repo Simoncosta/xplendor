@@ -1,13 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
+import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, reclassifyAdminTicketType } from "helpers/laravel_helper";
+import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, reclassifyAdminTicketType, getAdminTicketsQuotePipeline } from "helpers/laravel_helper";
 import {
-    ISupportTicket, SupportTicketStatus, SupportTicketType,
-    TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
+    ISupportTicket, SupportTicketStatus, SupportTicketType, QuoteStatus,
+    TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro, ITicketQuotePipeline,
 } from "common/models/supportTicket.model";
 import AdminTicketsKanban from "./AdminTicketsKanban";
+
+// Estados de pipeline mostrados como cards (valor "em cima da mesa" por estado).
+const PIPELINE_CARDS: { key: QuoteStatus; color: string; icon: string }[] = [
+    { key: "awaiting_quote", color: "secondary", icon: "ri-hourglass-line" },
+    { key: "quoted", color: "warning", icon: "ri-price-tag-3-line" },
+    { key: "approved", color: "info", icon: "ri-checkbox-circle-line" },
+    { key: "paid", color: "primary", icon: "ri-money-euro-circle-line" },
+    { key: "completed", color: "success", icon: "ri-flag-line" },
+];
 
 type ViewMode = "list" | "kanban";
 
@@ -63,9 +72,37 @@ const AdminTicketsList = () => {
     // Opções de empresa derivadas dos tickets carregados (sem endpoint extra).
     const [companyOptions, setCompanyOptions] = useState<{ id: number; name: string }[]>([]);
 
+    // Pipeline de orçamentos (site_change) + seleção para somar/resumir.
+    const [pipeline, setPipeline] = useState<ITicketQuotePipeline | null>(null);
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [resumoOpen, setResumoOpen] = useState(false);
+
     useEffect(() => {
         getAdminTicketsSummary().then((r: any) => setSummary(r?.data ?? null)).catch(() => setSummary(null));
     }, []);
+
+    // Pipeline segue o filtro de empresa (ver "em cima da mesa" por cliente).
+    useEffect(() => {
+        const params: any = {};
+        if (fCompany) params.company_id = Number(fCompany);
+        getAdminTicketsQuotePipeline(params).then((r: any) => setPipeline(r?.data ?? null)).catch(() => setPipeline(null));
+    }, [fCompany]);
+
+    // Ao mudar filtros, limpa a seleção (evita somar linhas que já não se veem).
+    useEffect(() => { setSelected(new Set()); }, [fStatus, fCompany, fType, view]);
+
+    const toggleSel = (id: number) => setSelected((prev) => {
+        const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next;
+    });
+
+    // Tickets site_change com orçamento visíveis (selecionáveis).
+    const selectableTickets = useMemo(
+        () => tickets.filter((t) => t.type === "site_change" && t.quoted_amount != null),
+        [tickets]
+    );
+    const selectedTickets = selectableTickets.filter((t) => selected.has(t.id));
+    const selTotalAmount = selectedTickets.reduce((a, t) => a + Number(t.quoted_amount ?? 0), 0);
+    const selTotalHours = selectedTickets.reduce((a, t) => a + Number(t.estimated_hours ?? 0), 0);
 
     useEffect(() => {
         let alive = true;
@@ -151,6 +188,28 @@ const AdminTicketsList = () => {
                     ))}
                 </Row>
 
+                {/* Pipeline de ORÇAMENTOS (site_change) — "quanto tenho em cima da mesa"
+                    por estado. Segue o filtro de empresa. Valor SEM IVA. */}
+                {pipeline && pipeline.total.count > 0 && (
+                    <Row className="g-2 mb-3">
+                        {PIPELINE_CARDS.map((c) => {
+                            const b = pipeline.by_status[c.key];
+                            return (
+                                <Col key={c.key} xs={6} md>
+                                    <Card className="mb-0"><CardBody className="py-2 px-3">
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                            <i className={`${c.icon} text-${c.color}`} />
+                                            <small className="text-muted text-truncate">{QUOTE_STATUS_META[c.key].label}</small>
+                                        </div>
+                                        <div className="fs-18 fw-semibold">{formatEuro(b.amount)}</div>
+                                        <small className="text-muted">{b.count} · {b.hours}h</small>
+                                    </CardBody></Card>
+                                </Col>
+                            );
+                        })}
+                    </Row>
+                )}
+
                 <Card>
                     <CardBody>
                         {/* Filtros. O de ESTADO só faz sentido na Lista — no Kanban
@@ -194,10 +253,17 @@ const AdminTicketsList = () => {
                                 {tickets.map((t) => {
                                     const tm = TICKET_TYPE_META[t.type];
                                     const isPaid = t.type === "site_change";
+                                    const selectable = isPaid && t.quoted_amount != null;
                                     const qm = isPaid && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
                                     const sm = TICKET_STATUS_META[t.status];
                                     return (
-                                        <Link key={t.id} to={`/admin/tickets/${t.id}`} className="d-flex align-items-center gap-3 border rounded p-3 text-reset text-decoration-none">
+                                        <div key={t.id} className="d-flex align-items-center gap-2">
+                                        {/* Checkbox só para orçamentos (site_change com valor). */}
+                                        <input type="checkbox" className="form-check-input flex-shrink-0 mt-0"
+                                            style={{ visibility: selectable ? "visible" : "hidden" }}
+                                            checked={selected.has(t.id)} onChange={() => toggleSel(t.id)}
+                                            aria-label="Selecionar orçamento" />
+                                        <Link to={`/admin/tickets/${t.id}`} className="flex-grow-1 d-flex align-items-center gap-3 border rounded p-3 text-reset text-decoration-none" style={{ minWidth: 0 }}>
                                             <span className="avatar-xs flex-shrink-0"><span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span></span>
                                             <div className="flex-grow-1 min-w-0">
                                                 <div className="fw-medium text-truncate">
@@ -215,12 +281,62 @@ const AdminTicketsList = () => {
                                                 : <Badge color={sm.color} className="flex-shrink-0">{sm.label}</Badge>}
                                             <i className="ri-arrow-right-s-line fs-18 text-muted flex-shrink-0" />
                                         </Link>
+                                        </div>
                                     );
                                 })}
                             </div>
                         )}
                     </CardBody>
                 </Card>
+
+                {/* Barra de total dos selecionados (aparece na Lista quando há seleção). */}
+                {view === "list" && selectedTickets.length > 0 && (
+                    <div className="position-fixed bottom-0 start-0 end-0 p-3" style={{ zIndex: 1030, pointerEvents: "none" }}>
+                        <Card className="mb-0 shadow mx-auto" style={{ maxWidth: 780, pointerEvents: "auto", border: "1px solid var(--vz-border-color)" }}>
+                            <CardBody className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                <div>
+                                    <span className="fw-semibold">Selecionados: {selectedTickets.length}</span>
+                                    <span className="text-muted"> · Total: <strong className="text-body">{formatEuro(selTotalAmount)}</strong> · {selTotalHours}h (sem IVA)</span>
+                                </div>
+                                <div className="d-flex gap-2">
+                                    <button className="btn btn-soft-secondary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
+                                    <button className="btn btn-primary btn-sm" onClick={() => setResumoOpen(true)}><i className="ri-file-list-3-line me-1" />Gerar resumo</button>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    </div>
+                )}
+
+                {/* Resumo dos selecionados — para o Simon comunicar à Matilde. */}
+                <Modal isOpen={resumoOpen} toggle={() => setResumoOpen(false)} centered size="lg">
+                    <ModalHeader toggle={() => setResumoOpen(false)}>Resumo dos orçamentos selecionados</ModalHeader>
+                    <ModalBody>
+                        <div className="table-responsive">
+                            <table className="table table-sm align-middle mb-2">
+                                <thead className="text-muted table-light"><tr><th>Orçamento</th><th>Empresa</th><th className="text-end">Horas</th><th className="text-end">Valor</th></tr></thead>
+                                <tbody>
+                                    {selectedTickets.map((t) => (
+                                        <tr key={t.id}>
+                                            <td>{t.title}</td>
+                                            <td>{t.company_name ?? `#${t.company_id}`}</td>
+                                            <td className="text-end">{t.estimated_hours ?? "—"}</td>
+                                            <td className="text-end">{t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot><tr className="fw-semibold"><td colSpan={2}>Total ({selectedTickets.length}) — sem IVA</td><td className="text-end">{selTotalHours}h</td><td className="text-end">{formatEuro(selTotalAmount)}</td></tr></tfoot>
+                            </table>
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <button className="btn btn-light" onClick={() => setResumoOpen(false)}>Fechar</button>
+                        <button className="btn btn-soft-primary" onClick={() => {
+                            const lines = selectedTickets.map((t) => `• ${t.title} (${t.company_name ?? "#" + t.company_id}) — ${t.estimated_hours ?? "?"}h — ${t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}`);
+                            const text = `Orçamentos selecionados (${selectedTickets.length}):\n${lines.join("\n")}\n\nTotal: ${formatEuro(selTotalAmount)} · ${selTotalHours}h (sem IVA)`;
+                            navigator.clipboard?.writeText(text).then(() => toast.success("Resumo copiado."), () => toast.info("Copia manualmente o resumo."));
+                        }}><i className="ri-clipboard-line me-1" />Copiar</button>
+                    </ModalFooter>
+                </Modal>
             </Container>
         </div>
     );

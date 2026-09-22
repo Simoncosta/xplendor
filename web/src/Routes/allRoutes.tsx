@@ -81,6 +81,7 @@ import StockMonitoring from "pages/StockMonitoring";
 // Internal tools
 // Support tickets (lado stand)
 import SupportTicketsList from "pages/Support/SupportTicketsList";
+import OrcamentosStand from "pages/Support/OrcamentosStand";
 import SupportTicketDetail from "pages/Support/SupportTicketDetail";
 // Tarefas internas do cliente (Kanban do stand).
 import CompanyTasksKanban from "pages/Tasks/CompanyTasksKanban";
@@ -117,15 +118,15 @@ const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
     // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
     { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
-    { path: "/restauracao/lojas", component: <RequireModule module="pingwin"><LojasPage /></RequireModule> },
-    { path: "/restauracao/calendario", component: <RequireModule module="pingwin"><CalendarioPage /></RequireModule> },
-    { path: "/restauracao/documentos", component: <RequireModule module="pingwin"><DocumentosPage /></RequireModule> },
-    { path: "/restauracao/artigos", component: <RequireModule module="pingwin"><ArtigosPage /></RequireModule> },
-    { path: "/restauracao/familias", component: <RequireModule module="pingwin"><FamiliasPage /></RequireModule> },
-    { path: "/restauracao/fornecedores", component: <RequireModule module="pingwin"><FornecedoresPage /></RequireModule> },
-    { path: "/restauracao/faturas", component: <RequireModule module="pingwin"><FaturasPage /></RequireModule> },
-    { path: "/restauracao/faturas/:id", component: <RequireModule module="pingwin"><FaturaValidacaoPage /></RequireModule> },
-    { path: "/restauracao/unidades", component: <RequireModule module="pingwin"><UnidadesPage /></RequireModule> },
+    { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas"><LojasPage /></RequireModule> },
+    { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario"><CalendarioPage /></RequireModule> },
+    { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos"><DocumentosPage /></RequireModule> },
+    { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos"><ArtigosPage /></RequireModule> },
+    { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
+    { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
+    { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },
+    { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },
+    { path: "/restauracao/unidades", component: <RequireModule module="restauracao_unidades"><UnidadesPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },
@@ -192,6 +193,8 @@ const authProtectedRoutes = [
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.
     { path: "/support", component: <SupportTicketsList /> },
+    // Orçamentos-em-tickets do STAND (site_change): ver, somar, aprovar pacote.
+    { path: "/orcamentos", component: <OrcamentosStand /> },
     { path: "/support/:id", component: <SupportTicketDetail /> },
 
     // Tarefas — Kanban interno da equipa (partilhado por company_id).

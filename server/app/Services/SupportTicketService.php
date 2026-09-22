@@ -143,6 +143,46 @@ class SupportTicketService extends BaseService
     }
 
     /**
+     * PIPELINE de orçamentos-em-tickets (só 'site_change'): por quote_status →
+     * {count, amount (Σ quoted_amount), hours (Σ estimated_hours)} + total. Valores
+     * SEM IVA (somados tal como inseridos). `companyId` opcional (null = todas, p/ o
+     * admin; um id = só desse stand, para o cliente/tenancy). Reaproveita o padrão
+     * cards+SUM do AdminQuoteController::summary.
+     */
+    public function quotePipeline(?int $companyId = null): array
+    {
+        $base = SupportTicket::where('type', 'site_change');
+        if ($companyId !== null) {
+            $base->where('company_id', $companyId);
+        }
+
+        $rows = (clone $base)
+            ->selectRaw('quote_status, COUNT(*) as c, COALESCE(SUM(quoted_amount),0) as amount, COALESCE(SUM(estimated_hours),0) as hours')
+            ->whereNotNull('quote_status')
+            ->groupBy('quote_status')
+            ->get()->keyBy('quote_status');
+
+        $byStatus = [];
+        foreach (SupportTicket::QUOTE_STATUSES as $s) {
+            $r = $rows[$s] ?? null;
+            $byStatus[$s] = [
+                'count'  => (int) ($r->c ?? 0),
+                'amount' => (float) ($r->amount ?? 0),
+                'hours'  => (float) ($r->hours ?? 0),
+            ];
+        }
+
+        return [
+            'by_status' => $byStatus,
+            'total'     => [
+                'count'  => array_sum(array_column($byStatus, 'count')),
+                'amount' => array_sum(array_column($byStatus, 'amount')),
+                'hours'  => array_sum(array_column($byStatus, 'hours')),
+            ],
+        ];
+    }
+
+    /**
      * STAND — a Matilde APROVA o orçamento (só a partir de 'quoted').
      * Fica a aguardar pagamento; avisa o Simon para faturar.
      */
