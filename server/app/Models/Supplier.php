@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,13 @@ use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
 use OwenIt\Auditing\Auditable;
 
 /**
- * DMS sub-fase 1c.1 — Fornecedor (scoped por company).
+ * DMS sub-fase 1c.1 — Fornecedor NATIVO (automotivo), scoped por company.
+ *
+ * ⚠️ Tabela UNIFICADA `suppliers` com flag `source`. Este model é a janela dos
+ * MANUAIS: um global scope fixa source='manual' e força-o na criação. Os do
+ * PingWin vivem na MESMA tabela mas veem-se pelo model PingwinSupplier
+ * (source='pingwin'). Assim o automotivo e o desacoplamento (sem PingWin) usam
+ * só os manuais, e o sync do PingWin nunca lhes toca.
  */
 class Supplier extends Model implements AuditableContract
 {
@@ -17,6 +24,7 @@ class Supplier extends Model implements AuditableContract
 
     protected $fillable = [
         'company_id',
+        'source',
         'name',
         'nif',
         'phone',
@@ -34,6 +42,17 @@ class Supplier extends Model implements AuditableContract
     protected $casts = [
         'archived' => 'boolean',
     ];
+
+    /** Só os manuais; e todo o Supplier criado por aqui nasce source='manual'. */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('manual', fn (Builder $q) => $q->where($q->getModel()->getTable() . '.source', 'manual'));
+        static::creating(function (Supplier $s) {
+            if (empty($s->source)) {
+                $s->source = 'manual';
+            }
+        });
+    }
 
     public function company(): BelongsTo
     {

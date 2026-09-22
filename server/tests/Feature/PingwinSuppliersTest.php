@@ -83,7 +83,8 @@ class PingwinSuppliersTest extends TestCase
 
         $this->assertSame(3, $count);
         $this->assertSame('suppliers', $fake->seen['mode']);
-        $this->assertDatabaseCount('pingwin_suppliers', 3);
+        // Tabela unificada: os fornecedores PingWin vivem em `suppliers` (source='pingwin').
+        $this->assertSame(3, PingwinSupplier::count());
 
         // Campos do HAR — incluindo os que tinham ficado por mapear.
         $makro = PingwinSupplier::where('company_id', $this->resto->id)->where('pingwin_id', '10')->first();
@@ -113,7 +114,8 @@ class PingwinSuppliersTest extends TestCase
         $changed[0]['name'] = 'Makro PT';
         $this->fakeService($changed)->syncSuppliers($this->resto->id);
 
-        $this->assertDatabaseCount('pingwin_suppliers', 3);
+        // Tabela unificada: os fornecedores PingWin vivem em `suppliers` (source='pingwin').
+        $this->assertSame(3, PingwinSupplier::count());
         $this->assertSame('Makro PT', PingwinSupplier::where('pingwin_id', '10')->first()->name);
     }
 
@@ -129,7 +131,8 @@ class PingwinSuppliersTest extends TestCase
 
         SyncPingwinSuppliersJob::dispatchSync($this->resto->id);
 
-        $this->assertDatabaseCount('pingwin_suppliers', 3);
+        // Tabela unificada: os fornecedores PingWin vivem em `suppliers` (source='pingwin').
+        $this->assertSame(3, PingwinSupplier::count());
         $this->assertDatabaseHas('alerts', ['company_id' => $this->resto->id, 'title' => 'Fornecedores atualizados']);
     }
 

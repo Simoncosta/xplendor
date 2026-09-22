@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   XPLENDOR — Login premium (estilo Resend). SÓ VISUAL: a mecânica de auth
+   (Formik, Redux, submit, sessões, redirect) fica 100% intacta.
+
+   Tudo escopado sob .xlogin — não altera o resto da app. Dark premium, coerente
+   com a linguagem da landing. Overrides das classes Bootstrap só dentro de .xlogin.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.xlogin {
+    --xl-bg:      #000;
+    --xl-panel:   #0c0d0f;
+    --xl-field:   #141517;
+    --xl-field-2: #191b1e;
+    --xl-border:  #212629;
+    --xl-border-2:#333b3e;
+    --xl-text:    #f0f0f0;
+    --xl-dim:     #a1a4a5;
+    --xl-mut:     #6e7679;
+    --xl-ease:    cubic-bezier(0.22, 1, 0.36, 1);
+
+    position: fixed; inset: 0; z-index: 1;
+    color: var(--xl-text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow-y: auto;
+
+    /* Imagem a cobrir o ecrã inteiro + overlay para legibilidade do form. */
+    background-image:
+        linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.72)),
+        var(--xl-bgimg);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: var(--xl-bg);
+}
+
+/* ── Botão "voltar ao início" (canto superior) ── */
+.xlogin .xlogin-back {
+    position: absolute; top: 22px; left: 24px; z-index: 5;
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 15px; border-radius: 999px;
+    font-size: 0.875rem; font-weight: 500; color: var(--xl-dim);
+    background: rgba(255, 255, 255, 0.05); border: 1px solid var(--xl-border);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    text-decoration: none; transition: all 0.2s var(--xl-ease);
+}
+.xlogin .xlogin-back:hover { color: var(--xl-text); background: rgba(255, 255, 255, 0.09); transform: translateX(-2px); }
+
+/* ── Form centrado no ecrã, por cima da imagem de fundo ── */
+.xlogin .xlogin-panel {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 80px 24px 40px;
+}
+.xlogin .xlogin-form {
+    width: 100%; max-width: 420px;
+    background: rgba(10, 11, 13, 0.72);
+    border: 1px solid var(--xl-border); border-radius: 20px;
+    padding: 40px 36px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6);
+    text-align: center;
+}
+/* O conteúdo interno alinha à esquerda; só o logo/títulos ficam centrados. */
+.xlogin .xlogin-form form,
+.xlogin .xlogin-form .form-label,
+.xlogin .xlogin-form .form-check { text-align: left; }
+
+.xlogin .xlogin-logo { height: 34px; width: auto; margin-bottom: 34px; }
+.xlogin .xlogin-title { font-size: 1.7rem; font-weight: 600; letter-spacing: -0.02em; color: var(--xl-text); margin: 0 0 8px; }
+.xlogin .xlogin-subtitle { color: var(--xl-dim); font-size: 0.95rem; margin: 0 0 30px; }
+
+/* Labels / inputs escuros — overrides Bootstrap SÓ dentro de .xlogin */
+.xlogin .form-label { color: var(--xl-dim); font-size: 0.85rem; font-weight: 500; margin-bottom: 7px; }
+.xlogin .input-group { border-radius: 11px; }
+.xlogin .input-group-text {
+    background: var(--xl-field) !important; border: 1px solid var(--xl-border);
+    border-right: 0; color: var(--xl-mut); border-radius: 11px 0 0 11px;
+}
+.xlogin .input-group-text i { color: var(--xl-mut) !important; }
+.xlogin .form-control {
+    background: var(--xl-field); border: 1px solid var(--xl-border); color: var(--xl-text);
+    padding: 11px 14px; font-size: 0.95rem; box-shadow: none;
+}
+.xlogin .input-group > .form-control { border-left: 0; border-radius: 0 11px 11px 0; }
+.xlogin .input-group > .form-control.password-input { border-radius: 0; }
+.xlogin .form-control::placeholder { color: var(--xl-mut); }
+.xlogin .form-control:focus {
+    background: var(--xl-field-2); border-color: var(--xl-border-2); color: var(--xl-text);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+.xlogin .input-group:focus-within .input-group-text { border-color: var(--xl-border-2); }
+
+/* Botão do olho (mostrar/ocultar password) */
+.xlogin #password-addon {
+    background: var(--xl-field); border: 1px solid var(--xl-border); border-left: 0;
+    border-radius: 0 11px 11px 0; color: var(--xl-mut);
+}
+.xlogin #password-addon:hover { color: var(--xl-text); }
+
+/* Link "esqueceu password" */
+.xlogin .xlogin-forgot { font-size: 0.83rem; color: var(--xl-dim); text-decoration: none; }
+.xlogin .xlogin-forgot:hover { color: var(--xl-text); }
+
+/* Checkbox "manter sessão" */
+.xlogin .form-check-input { background-color: var(--xl-field); border-color: var(--xl-border-2); }
+.xlogin .form-check-input:checked { background-color: var(--xl-text); border-color: var(--xl-text); }
+.xlogin .form-check-label { color: var(--xl-dim); font-size: 0.88rem; }
+
+/* Botão de entrar (premium) */
+.xlogin .xlogin-submit {
+    width: 100%; padding: 12px; border-radius: 11px; border: 0; cursor: pointer;
+    background: var(--xl-text); color: #000; font-weight: 600; font-size: 0.95rem;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.2s var(--xl-ease);
+}
+.xlogin .xlogin-submit:hover:not(:disabled) { background: #fff; transform: translateY(-1px); }
+.xlogin .xlogin-submit:disabled { opacity: 0.7; cursor: default; }
+
+/* Alerta de erro — mantém o mesmo texto/lógica, só o estilo escuro */
+.xlogin .alert-danger {
+    background: rgba(220, 53, 69, 0.12); border: 1px solid rgba(220, 53, 69, 0.35);
+    color: #f1a7ae; border-radius: 11px; font-size: 0.9rem;
+}
+
+/* FormFeedback (validação) legível no escuro */
+.xlogin .invalid-feedback { color: #f1a7ae; }
+
+/* Rodapé pequeno (termos/privacidade) */
+.xlogin .xlogin-foot { margin-top: 32px; font-size: 0.8rem; color: var(--xl-mut); }
+.xlogin .xlogin-foot a { color: var(--xl-dim); text-decoration: none; }
+.xlogin .xlogin-foot a:hover { color: var(--xl-text); }
+
+/* ── Responsivo: a imagem continua de fundo, o form centrado ajusta ── */
+@media (max-width: 480px) {
+    .xlogin .xlogin-back { top: 14px; left: 14px; }
+    .xlogin .xlogin-panel { padding: 74px 16px 32px; }
+    .xlogin .xlogin-form { padding: 32px 24px; }
+}

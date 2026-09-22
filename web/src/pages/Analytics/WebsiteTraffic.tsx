@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
+import ReactApexChart from "react-apexcharts";
 import BreadCrumb from "Components/Common/BreadCrumb";
+import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getGa4Traffic } from "helpers/laravel_helper";
 import {
     Ga4Traffic, CHANNEL_LABELS, DEVICE_LABELS, GENDER_LABELS, fmtDuration, fmtPct,
@@ -267,28 +269,48 @@ const WebsiteTraffic = () => {
     );
 };
 
-// Tendência — linha simples desenhada em SVG (sem dependência de biblioteca).
+// Tendência — gráfico de linha/área ApexCharts (padrão Velzon): eixo X com os
+// dias por baixo + tooltip no hover (visitantes e sessões desse dia), como o GA4.
+// Datas em PT (dd/MM no eixo, dd/MM/aaaa no tooltip). Dados reais do GA4.
 const TrendChart: React.FC<{ trend: { date: string; active_users: number; sessions: number }[] }> = ({ trend }) => {
     if (!trend.length) return <p className="text-muted fs-13 mb-0">Sem dados no período.</p>;
-    const w = 640, h = 160, pad = 8;
-    const max = Math.max(...trend.map((t) => Math.max(t.active_users, t.sessions)), 1);
-    const x = (i: number) => pad + (i * (w - 2 * pad)) / Math.max(trend.length - 1, 1);
-    const y = (v: number) => h - pad - (v * (h - 2 * pad)) / max;
-    const line = (key: "active_users" | "sessions") =>
-        trend.map((t, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(t[key]).toFixed(1)}`).join(" ");
-    return (
-        <>
-            <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} preserveAspectRatio="none">
-                <path d={line("active_users")} fill="none" stroke="var(--vz-primary)" strokeWidth={2} />
-                <path d={line("sessions")} fill="none" stroke="var(--vz-info)" strokeWidth={2} strokeDasharray="4 3" />
-            </svg>
-            <div className="d-flex gap-3 fs-12 text-muted mt-2">
-                <span><i className="ri-checkbox-blank-circle-fill me-1" style={{ color: "var(--vz-primary)" }} />Visitantes</span>
-                <span><i className="ri-checkbox-blank-circle-fill me-1" style={{ color: "var(--vz-info)" }} />Sessões</span>
-                <span className="ms-auto">{trend[0].date} — {trend[trend.length - 1].date}</span>
-            </div>
-        </>
-    );
+
+    const colors = getChartColorsArray('["--vz-primary","--vz-info"]');
+
+    const series = [
+        { name: "Visitantes", data: trend.map((t) => ({ x: new Date(t.date).getTime(), y: t.active_users })) },
+        { name: "Sessões", data: trend.map((t) => ({ x: new Date(t.date).getTime(), y: t.sessions })) },
+    ];
+
+    const options: ApexCharts.ApexOptions = {
+        chart: { type: "area", height: 320, toolbar: { show: false }, zoom: { enabled: false }, parentHeightOffset: 0 },
+        colors,
+        dataLabels: { enabled: false },
+        stroke: { curve: "smooth", width: 2, dashArray: [0, 4] },
+        fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.25, opacityTo: 0.03, stops: [0, 90] } },
+        markers: { size: 0, hover: { size: 5 } },
+        xaxis: {
+            type: "datetime",
+            labels: { format: "dd/MM", style: { fontSize: "11px", colors: "#878a99" } },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+        },
+        yaxis: {
+            labels: {
+                style: { fontSize: "11px", colors: "#878a99" },
+                formatter: (val) => Math.round(Number(val)).toLocaleString("pt-PT"),
+            },
+        },
+        grid: { borderColor: "var(--vz-border-color)", strokeDashArray: 3, padding: { top: 0, right: 8 } },
+        tooltip: {
+            shared: true,
+            x: { format: "dd/MM/yyyy" },
+            y: { formatter: (val) => (val === null ? "—" : Number(val).toLocaleString("pt-PT")) },
+        },
+        legend: { show: true, position: "top", horizontalAlign: "right", fontSize: "12px" },
+    };
+
+    return <ReactApexChart options={options} series={series} type="area" height={320} />;
 };
 
 export default WebsiteTraffic;

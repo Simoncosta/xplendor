@@ -317,6 +317,10 @@ class PingwinService
             // (= localidade), phone, email, deleted. Aliases extra por robustez.
             $rows[] = [
                 'company_id'  => $companyId,
+                // ⚠️ Tabela unificada: marcar SEMPRE 'pingwin'. O upsert é por
+                // (company_id, pingwin_id) → nunca casa com um manual (pingwin_id
+                // NULL) e nunca apaga nada. Os fornecedores manuais ficam intactos.
+                'source'      => 'pingwin',
                 'pingwin_id'  => $pingwinId,
                 'code'        => $this->str($this->pick($sup, ['code'])),
                 'name'        => $this->str($this->pick($sup, ['name', 'description', 'descr', 'company_name'])),

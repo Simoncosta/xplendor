@@ -1,0 +1,432 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   XPLENDOR — Landing PREMIUM (/plataforma). Direção Resend: PRETO PURO, paleta
+   cinza-neutra, acentos MUITO subtis, tipografia sóbria (serif branca).
+
+   ⚠️ ISOLAMENTO: TODO o CSS vive sob #xland. Preto SEMPRE (independente do
+   data-bs-theme). Resets defensivos no root impedem o Velzon de vazar; o prefixo
+   #xland impede o nosso de vazar para fora. SEM Tailwind.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
+
+/* Ângulo animável do botão "rainbow border" (registo global — inofensivo). */
+@property --x-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
+
+/* ─── Tokens (preto puro + cinzas neutros + acentos subtis) ────────────────── */
+#xland {
+    --x-bg:       #000;      /* PRETO PURO */
+    --x-gray-1:   #141517;
+    --x-gray-2:   #191b1e;
+    --x-gray-3:   #212629;
+    --x-gray-4:   #293034;
+    --x-gray-5:   #333b3e;
+    --x-gray-6:   #3b4345;
+    --x-gray-7:   #434a4d;
+    --x-gray-8:   #52595b;
+    --x-gray-9:   #6e7679;
+    --x-gray-10:  #878d8f;
+    --x-gray-11:  #a1a4a5;   /* corpo */
+    --x-gray-12:  #f0f0f0;   /* títulos / destaque */
+
+    /* Acentos SÓ subtis (~44% alpha) — usar com muita parcimónia. */
+    --x-cyan:     #00d1c670;
+    --x-amber:    #e9ac4870;
+    --x-purple:   #611c9870;
+
+    --x-radius:   18px;
+    --x-radius-sm:12px;
+    --x-maxw:     1120px;
+    --x-ease:     cubic-bezier(0.22, 1, 0.36, 1);
+
+    --x-font-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --x-font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+
+    /* ── Resets defensivos (o Velzon não manda aqui dentro) ── */
+    box-sizing: border-box;
+    background: var(--x-bg);
+    color: var(--x-gray-11);
+    font-family: var(--x-font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
+#xland *,
+#xland *::before,
+#xland *::after { box-sizing: border-box; }
+
+#xland h1, #xland h2, #xland h3, #xland h4, #xland h5, #xland h6 {
+    margin: 0; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; color: var(--x-gray-12);
+}
+#xland p { margin: 0; }
+#xland a { color: inherit; text-decoration: none; }
+#xland ul { list-style: none; margin: 0; padding: 0; }
+#xland button { font-family: inherit; }
+#xland img { max-width: 100%; display: block; }
+
+#xland .x-container { width: 100%; max-width: var(--x-maxw); margin: 0 auto; padding: 0 24px; }
+
+/* Scrollbars finas e discretas (acabamento premium) — dentro de #xland. */
+#xland { scrollbar-width: thin; scrollbar-color: var(--x-gray-6) transparent; }
+#xland ::-webkit-scrollbar { width: 10px; height: 10px; }
+#xland ::-webkit-scrollbar-track { background: transparent; }
+#xland ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12); border-radius: 8px;
+    border: 2px solid transparent; background-clip: padding-box;
+}
+#xland ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.22); background-clip: padding-box; }
+
+/* ⚠️ Fundo PRETO LISO — nada de gradiente ambiente. A luz vem só de pontos
+   localizados (ver .x-hero::before). */
+#xland .x-page { position: relative; background: var(--x-bg); }
+
+/* ─── Serif de destaque — BRANCA/cinza-claro, sóbria (sem gradiente roxo) ──── */
+#xland .x-serif {
+    font-family: var(--x-font-serif);
+    font-weight: 400;
+    font-style: italic;
+    letter-spacing: -0.005em;
+    color: var(--x-gray-12);
+}
+
+/* ─── Navbar ───────────────────────────────────────────────────────────────── */
+#xland .x-nav {
+    position: sticky; top: 0; z-index: 100; padding: 16px 0;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: saturate(150%) blur(10px);
+    -webkit-backdrop-filter: saturate(150%) blur(10px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s var(--x-ease), background 0.3s var(--x-ease), backdrop-filter 0.3s var(--x-ease);
+}
+#xland .x-nav.scrolled {
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: saturate(160%) blur(18px);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    border-bottom-color: var(--x-gray-3);
+}
+#xland .x-nav-row { display: flex; align-items: center; justify-content: space-between; }
+#xland .x-brand { display: flex; align-items: center; gap: 10px; }
+#xland .x-brand img { height: 26px; width: auto; opacity: 0.95; }
+#xland .x-nav-links { display: flex; gap: 30px; align-items: center; }
+#xland .x-nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--x-gray-10); transition: color 0.15s; }
+#xland .x-nav-links a:hover { color: var(--x-gray-12); }
+#xland .x-nav-cta { display: flex; align-items: center; gap: 12px; }
+#xland .x-nav-login { font-size: 0.9rem; font-weight: 500; color: var(--x-gray-10); transition: color 0.15s; }
+#xland .x-nav-login:hover { color: var(--x-gray-12); }
+#xland .x-menu-toggle {
+    display: none; background: transparent; border: 1px solid var(--x-gray-4);
+    color: var(--x-gray-12); width: 40px; height: 40px; border-radius: 10px; font-size: 1.2rem; cursor: pointer;
+}
+#xland .x-mobile-menu { display: none; }
+
+/* ─── Botão "rainbow border" (referência Resend) ──────────────────────────── */
+#xland .x-rainbow {
+    display: inline-flex; padding: 1px; border-radius: 999px; position: relative;
+    background: linear-gradient(var(--x-angle), #02fcef70 0%, #ffb52b70 50%, #a02bfe70 100%);
+    animation: x-rotate 30s linear infinite;
+}
+#xland .x-rainbow > span {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 15px; border-radius: 999px; background: var(--x-bg);
+    font-size: 0.8rem; font-weight: 500; color: var(--x-gray-11); letter-spacing: 0.01em; white-space: nowrap;
+}
+#xland .x-rainbow .x-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--x-gray-11); }
+@keyframes x-rotate { to { --x-angle: 360deg; } }
+@media (prefers-reduced-motion: reduce) { #xland .x-rainbow { animation: none; } }
+
+/* ─── Botões ───────────────────────────────────────────────────────────────── */
+#xland .x-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+    padding: 12px 22px; border-radius: 999px; font-weight: 600; font-size: 0.95rem;
+    border: 1px solid transparent; cursor: pointer; transition: all 0.2s var(--x-ease); white-space: nowrap;
+}
+#xland .x-btn-sm { padding: 9px 18px; font-size: 0.875rem; }
+#xland .x-btn-primary { background: var(--x-gray-12); color: #000; }
+#xland .x-btn-primary:hover { transform: translateY(-2px); background: #fff; }
+#xland .x-btn-ghost { background: transparent; color: var(--x-gray-12); border-color: var(--x-gray-5); }
+#xland .x-btn-ghost:hover { background: var(--x-gray-2); border-color: var(--x-gray-7); }
+
+/* ─── Hero ─────────────────────────────────────────────────────────────────── */
+#xland .x-hero { position: relative; padding: 92px 0 104px; }
+/* Luz LOCALIZADA (não ambiente) — um brilho subtil e discreto atrás do hero. */
+#xland .x-hero::before {
+    content: ''; position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 620px; height: 420px; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(255,255,255,0.05), transparent 70%);
+    z-index: 0;
+}
+#xland .x-hero .x-container { position: relative; z-index: 1; }
+#xland .x-hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+
+#xland .x-hero-title {
+    font-family: var(--x-font-serif); font-weight: 400; font-style: italic;
+    color: var(--x-gray-12);
+    font-size: clamp(2.4rem, 4.6vw, 3.9rem); line-height: 1.02; letter-spacing: -0.015em; margin-bottom: 18px;
+}
+/* Subtítulo do hero (sans, contido) — com respiração face à frase serif. */
+#xland .x-hero-title-sub {
+    font-family: var(--x-font-sans); font-weight: 600; letter-spacing: -0.02em;
+    color: var(--x-gray-10); font-size: clamp(1.15rem, 1.9vw, 1.5rem); margin-bottom: 28px;
+}
+#xland .x-eyebrow { margin-bottom: 28px; }
+#xland .x-hero-sub {
+    font-size: clamp(1.02rem, 1.6vw, 1.22rem); color: var(--x-gray-11); max-width: 520px; margin-bottom: 34px; line-height: 1.55;
+}
+#xland .x-hero-sub strong { color: var(--x-gray-12); font-weight: 600; }
+#xland .x-hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 32px; }
+#xland .x-hero-ramos { display: flex; gap: 22px; flex-wrap: wrap; }
+#xland .x-hero-ramo { display: flex; align-items: center; gap: 9px; font-size: 0.9rem; color: var(--x-gray-10); }
+#xland .x-hero-ramo .x-chip { width: 8px; height: 8px; border-radius: 3px; }
+#xland .x-chip-auto { background: var(--x-cyan); }
+#xland .x-chip-rest { background: var(--x-amber); }
+
+/* ─── Mockup da screenshot da app (enquadramento premium tipo Resend) ──────── */
+#xland .x-mockup {
+    position: relative; width: 100%; border-radius: 16px; overflow: hidden;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-4);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.65), 0 2px 0 rgba(255,255,255,0.04) inset;
+}
+/* Glow subtil por baixo do mockup. */
+#xland .x-mockup::after {
+    content: ''; position: absolute; left: 50%; bottom: -22%; transform: translateX(-50%);
+    width: 72%; height: 46%; border-radius: 50%; z-index: -1;
+    background: radial-gradient(closest-side, rgba(255,255,255,0.10), transparent 70%); filter: blur(10px);
+}
+#xland .x-mockup-bar {
+    display: flex; align-items: center; gap: 7px; padding: 12px 16px;
+    background: var(--x-gray-2); border-bottom: 1px solid var(--x-gray-3);
+}
+#xland .x-mockup-bar span { width: 11px; height: 11px; border-radius: 50%; background: var(--x-gray-5); }
+#xland .x-mockup-screen {
+    position: relative; aspect-ratio: 16 / 10; width: 100%;
+    background: linear-gradient(180deg, var(--x-gray-1), #000 95%);
+}
+#xland .x-mockup-screen img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
+/* Estado neutro elegante enquanto não há screenshot em /public. */
+#xland .x-mockup-empty {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    color: var(--x-gray-8);
+}
+#xland .x-mockup-empty i { font-size: 2.4rem; }
+#xland .x-mockup-empty span { font-size: 0.85rem; letter-spacing: 0.04em; }
+#xland .x-mockup-empty::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(80% 80% at 50% 50%, #000 30%, transparent 80%);
+    -webkit-mask-image: radial-gradient(80% 80% at 50% 50%, #000 30%, transparent 80%);
+}
+
+/* ─── Secções ──────────────────────────────────────────────────────────────── */
+#xland .x-section { padding: 96px 0; }
+#xland .x-section-head { max-width: 680px; margin: 0 auto 64px; text-align: center; }
+#xland .x-kicker { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: var(--x-gray-9); margin-bottom: 18px; }
+#xland .x-section-title { font-size: clamp(2rem, 3.8vw, 3rem); margin-bottom: 18px; letter-spacing: -0.02em; font-weight: 500; }
+#xland .x-section-sub { font-size: 1.06rem; color: var(--x-gray-11); }
+
+/* ─── Os 2 ramos (cartões que se FUNDEM no preto) ─────────────────────────── */
+#xland .x-ramos { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+#xland .x-ramo {
+    position: relative; border-radius: var(--x-radius); padding: 46px 42px; overflow: hidden;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-3);
+    transition: transform 0.35s var(--x-ease), border-color 0.35s var(--x-ease), background 0.35s var(--x-ease);
+}
+#xland .x-ramo:hover { transform: translateY(-3px); background: var(--x-gray-2); border-color: var(--x-gray-4); }
+/* Glow MUITO subtil, só no hover, no canto. */
+#xland .x-ramo::before {
+    content: ''; position: absolute; top: -30%; right: -15%; width: 380px; height: 380px; border-radius: 50%;
+    filter: blur(70px); opacity: 0; transition: opacity 0.4s var(--x-ease); z-index: 0;
+}
+#xland .x-ramo:hover::before { opacity: 0.5; }
+#xland .x-ramo-auto::before { background: var(--x-cyan); }
+#xland .x-ramo-rest::before { background: var(--x-amber); }
+#xland .x-ramo > * { position: relative; z-index: 1; }
+
+#xland .x-ramo-badge {
+    display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px; border-radius: 999px;
+    font-size: 0.82rem; font-weight: 500; margin-bottom: 24px; color: var(--x-gray-11);
+    background: var(--x-gray-3); border: 1px solid var(--x-gray-4);
+}
+#xland .x-ramo-auto .x-ramo-badge i { color: #4fd6cd; }
+#xland .x-ramo-rest .x-ramo-badge i { color: #e6b968; }
+#xland .x-ramo-badge i { font-size: 1rem; }
+
+#xland .x-ramo h3 { font-size: 1.7rem; margin-bottom: 12px; font-weight: 500; }
+#xland .x-ramo-lead { color: var(--x-gray-11); margin-bottom: 30px; font-size: 1rem; }
+
+#xland .x-ramo-list { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 24px; }
+#xland .x-feat { display: flex; gap: 12px; align-items: flex-start; }
+#xland .x-feat i {
+    flex: 0 0 auto; margin-top: 1px; font-size: 1.05rem; width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center; border-radius: 9px;
+    color: var(--x-gray-12); background: var(--x-gray-3); border: 1px solid var(--x-gray-4);
+}
+#xland .x-feat-txt strong { display: block; font-size: 0.94rem; font-weight: 600; color: var(--x-gray-12); }
+#xland .x-feat-txt span { font-size: 0.83rem; color: var(--x-gray-10); line-height: 1.4; }
+
+/* ─── Vertentes clicáveis (abas + linha animada + detalhe) ─────────────────── */
+#xland .x-vtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-bottom: 26px; }
+#xland .x-vtab {
+    position: relative; display: flex; align-items: center; gap: 14px; text-align: left;
+    padding: 20px 22px; border-radius: var(--x-radius); cursor: pointer;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-3); color: var(--x-gray-11);
+    transition: background 0.3s var(--x-ease), border-color 0.3s var(--x-ease), transform 0.3s var(--x-ease);
+}
+#xland .x-vtab:hover { background: var(--x-gray-2); transform: translateY(-2px); }
+#xland .x-vtab.active { background: var(--x-gray-2); }
+/* Linha animada a rodar SÓ na aba selecionada (técnica @property --x-angle + máscara). */
+#xland .x-vtab.active::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+    background: conic-gradient(from var(--x-angle),
+        transparent 0deg, var(--v-accent, rgba(255,255,255,0.6)) 55deg, transparent 130deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: x-rotate 4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    #xland .x-vtab.active::after { animation: none; background: var(--v-accent, rgba(255,255,255,0.4)); }
+}
+#xland .x-vtab-ico {
+    flex: 0 0 auto; width: 44px; height: 44px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; color: var(--x-gray-12); background: var(--x-gray-3); border: 1px solid var(--x-gray-4);
+}
+#xland .x-vtab.active .x-vtab-ico { border-color: var(--v-accent); color: #fff; }
+#xland .x-vtab-txt strong { display: block; font-size: 1.02rem; font-weight: 600; color: var(--x-gray-12); }
+#xland .x-vtab-txt span { font-size: 0.83rem; color: var(--x-gray-10); line-height: 1.35; }
+
+#xland .x-vdetail-wrap { position: relative; }
+#xland .x-vdetail {
+    position: relative; border-radius: var(--x-radius); overflow: hidden;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-3); padding: 40px 38px;
+}
+/* Glow subtil do acento da vertente, no canto. */
+#xland .x-vdetail::before {
+    content: ''; position: absolute; top: -30%; right: -12%; width: 420px; height: 420px; border-radius: 50%;
+    background: var(--v-accent); filter: blur(90px); opacity: 0.14; pointer-events: none;
+}
+#xland .x-vdetail > * { position: relative; z-index: 1; }
+#xland .x-vdetail-head { max-width: 780px; margin-bottom: 30px; }
+#xland .x-vdor {
+    font-family: var(--x-font-serif); font-style: italic; font-size: clamp(1.25rem, 2.2vw, 1.7rem);
+    line-height: 1.3; color: var(--x-gray-12); margin-bottom: 12px;
+}
+#xland .x-vlead { color: var(--x-gray-11); font-size: 1.02rem; }
+#xland .x-vfeats { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 30px; margin-bottom: 28px; }
+#xland .x-vdetail .x-feat i { border-color: var(--v-accent); }
+#xland .x-vnote {
+    display: flex; align-items: center; gap: 10px; padding-top: 22px; border-top: 1px solid var(--x-gray-3);
+    color: var(--x-gray-10); font-size: 0.92rem;
+}
+#xland .x-vnote i { color: var(--x-gray-12); font-size: 1.05rem; }
+
+/* ─── Capacidades (cards que se fundem) ────────────────────────────────────── */
+#xland .x-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+#xland .x-cards-4 { grid-template-columns: repeat(4, 1fr); }
+#xland .x-card {
+    position: relative; padding: 34px 30px; border-radius: var(--x-radius); overflow: hidden;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-3);
+    transition: transform 0.35s var(--x-ease), border-color 0.35s var(--x-ease), background 0.35s var(--x-ease);
+}
+#xland .x-card::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 80% at 50% -10%, rgba(255,255,255,0.05), transparent 60%);
+    opacity: 0; transition: opacity 0.35s var(--x-ease);
+}
+#xland .x-card:hover { transform: translateY(-3px); background: var(--x-gray-2); border-color: var(--x-gray-4); }
+#xland .x-card:hover::after { opacity: 1; }
+#xland .x-card-ico {
+    width: 46px; height: 46px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; color: var(--x-gray-12); background: var(--x-gray-3); border: 1px solid var(--x-gray-4); margin-bottom: 20px;
+}
+#xland .x-card h4 { font-size: 1.1rem; margin-bottom: 10px; font-weight: 600; }
+#xland .x-card p { font-size: 0.92rem; color: var(--x-gray-10); line-height: 1.5; }
+
+/* ─── CTA final ────────────────────────────────────────────────────────────── */
+#xland .x-final {
+    position: relative; text-align: center; padding: 82px 34px; border-radius: 28px; overflow: hidden;
+    background: var(--x-gray-1); border: 1px solid var(--x-gray-3);
+}
+#xland .x-final::before {
+    content: ''; position: absolute; left: 50%; top: -40%; transform: translateX(-50%);
+    width: 60%; height: 100%;
+    background: radial-gradient(closest-side, rgba(255,255,255,0.06), transparent 70%); pointer-events: none;
+}
+#xland .x-final > * { position: relative; z-index: 1; }
+#xland .x-final h2 { font-size: clamp(2.1rem, 4.2vw, 3.1rem); margin-bottom: 18px; font-weight: 500; }
+#xland .x-final p { font-size: 1.08rem; color: var(--x-gray-11); max-width: 500px; margin: 0 auto 30px; }
+#xland .x-final-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+/* ─── WhatsApp flutuante ───────────────────────────────────────────────────── */
+#xland .x-whatsapp {
+    position: fixed; right: 24px; bottom: 24px; z-index: 200;
+    width: 56px; height: 56px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #1faf54; color: #fff; font-size: 1.7rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06), 0 0 24px rgba(37, 211, 102, 0.35);
+    transition: transform 0.2s var(--x-ease), box-shadow 0.2s var(--x-ease);
+}
+#xland .x-whatsapp:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 28px rgba(0,0,0,0.55), 0 0 32px rgba(37, 211, 102, 0.55); }
+
+/* ─── Footer ───────────────────────────────────────────────────────────────── */
+#xland .x-footer { border-top: 1px solid var(--x-gray-3); padding: 60px 0 40px; margin-top: 48px; }
+#xland .x-footer-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 32px; margin-bottom: 44px; }
+#xland .x-footer-brand img { height: 30px; margin-bottom: 16px; opacity: 0.95; }
+#xland .x-footer-brand p { color: var(--x-gray-9); font-size: 0.9rem; max-width: 280px; }
+#xland .x-footer-col h5 { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--x-gray-9); margin-bottom: 16px; font-weight: 600; }
+#xland .x-footer-col a { display: block; color: var(--x-gray-10); font-size: 0.92rem; margin-bottom: 11px; transition: color 0.15s; }
+#xland .x-footer-col a:hover { color: var(--x-gray-12); }
+#xland .x-footer-bottom { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding-top: 24px; border-top: 1px solid var(--x-gray-3); }
+#xland .x-footer-bottom p { color: var(--x-gray-9); font-size: 0.85rem; }
+
+/* Marca de água gigante — quase-invisível no preto; ganha contorno branco no hover. */
+#xland .x-footer-word {
+    font-family: var(--x-font-sans); font-weight: 700; text-align: center;
+    font-size: clamp(3.4rem, 19vw, 17rem); line-height: 0.78; letter-spacing: -0.04em;
+    margin-top: 40px; padding: 0 12px; user-select: none; white-space: nowrap; overflow: hidden;
+    color: var(--x-gray-1);
+    -webkit-text-stroke: 1px transparent;
+    transition: color 0.5s var(--x-ease), -webkit-text-stroke-color 0.5s var(--x-ease);
+}
+#xland .x-footer-word:hover {
+    color: transparent;
+    -webkit-text-stroke: 1px var(--x-gray-11);
+}
+
+/* ─── Responsivo ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+    #xland .x-hero-grid { grid-template-columns: 1fr; gap: 44px; }
+    #xland .x-mockup { max-width: 520px; margin: 0 auto; }
+    #xland .x-ramos { grid-template-columns: 1fr; }
+    #xland .x-vtabs { grid-template-columns: 1fr; }
+    #xland .x-cards { grid-template-columns: 1fr 1fr; }
+    #xland .x-footer-grid { grid-template-columns: 1fr 1fr; }
+    #xland .x-nav-links { display: none; }
+    #xland .x-menu-toggle { display: inline-flex; }
+    #xland .x-nav-cta .x-nav-login,
+    #xland .x-nav-cta .x-btn { display: none; }
+    #xland .x-mobile-menu.open { display: block; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--x-gray-3); }
+    #xland .x-mobile-menu.open a { display: block; padding: 11px 0; color: var(--x-gray-10); font-weight: 500; }
+    #xland .x-mobile-menu.open .x-btn { display: inline-flex; width: 100%; margin-top: 10px; }
+}
+@media (max-width: 560px) {
+    #xland .x-container { padding: 0 18px; }
+    #xland .x-hero { padding: 60px 0 72px; }
+    #xland .x-section { padding: 68px 0; }
+    #xland .x-ramo-list { grid-template-columns: 1fr; }
+    #xland .x-vfeats { grid-template-columns: 1fr; }
+    #xland .x-vdetail { padding: 30px 24px; }
+    #xland .x-cards { grid-template-columns: 1fr; }
+    #xland .x-footer-grid { grid-template-columns: 1fr; }
+    #xland .x-ramo { padding: 34px 26px; }
+    #xland .x-hero-ctas .x-btn { flex: 1 1 auto; }
+    #xland .x-whatsapp { right: 16px; bottom: 16px; width: 52px; height: 52px; font-size: 1.55rem; }
+}

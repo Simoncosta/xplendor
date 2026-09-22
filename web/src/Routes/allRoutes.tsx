@@ -41,8 +41,9 @@ import ActionCenterPage from "pages/Actions/ActionCenterPage";
 import UsersList from "pages/Users/UsersList";
 
 // Landing
-import Landing from "pages/Landing";
 import LandingMotorhomes from "pages/LandingMotorhomes";
+// Landing PREMIUM (nova, dark) — agora é a raiz "/". Substituiu a landing antiga.
+import LandingX from "pages/LandingX";
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import SatisfactionReport from "pages/SatisfactionReport";
@@ -235,8 +236,10 @@ const publicRoutes = [
 
     { path: "/oauth/meta/callback", component: <MetaOAuthCallback /> },
 
-    // Landing Page
-    { path: "/", component: <Landing /> },
+    // Landing Page — a nova landing premium (LandingX) é agora a raiz.
+    { path: "/", component: <LandingX /> },
+    // Alias antigo mantido a apontar para a mesma landing (evita links partidos).
+    { path: "/plataforma", component: <LandingX /> },
 
     // Landing dedicada — stands de autocaravanas
     { path: "/autocaravanas", component: <LandingMotorhomes /> },

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-    Card, Col, Container, Input, Label, Row, Button,
+    Input, Label, Button,
     FormFeedback, Form, Alert, InputGroup, InputGroupText, Spinner
 } from 'reactstrap';
-import AuthSlider from '../AuthenticationInner/authCarousel';
+import './login.css';
+import logoLight from '../../assets/images/logo-light.png';
 
 import { useDispatch, useSelector } from 'react-redux';
 import withRouter from "../../Components/Common/withRouter";
@@ -57,139 +58,122 @@ const Login = (props: any) => {
 
     document.title = "Entrar | Xplendor";
 
+    // Imagem premium servida de web/public (evita a resolução de url() do webpack).
+    const bgImageVar = {
+        ['--xl-bgimg' as any]: `url(${process.env.PUBLIC_URL}/background-auth.webp)`,
+    } as React.CSSProperties;
+
     return (
-        <React.Fragment>
-            <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">
-                <div className="bg-overlay"></div>
-                <div className="auth-page-content overflow-hidden pt-lg-5">
-                    <Container>
-                        <Row>
-                            <Col lg={12}>
-                                <Card className="overflow-hidden">
-                                    <Row className="g-0">
-                                        <AuthSlider />
+        <div className="xlogin" style={bgImageVar}>
+            {/* Voltar ao início (landing pública "/") */}
+            <Link to="/" className="xlogin-back">
+                <i className="ri-arrow-left-line" aria-hidden="true" />
+                Voltar ao início
+            </Link>
 
-                                        <Col lg={6}>
-                                            <div className="p-lg-5 p-4">
-                                                <div>
-                                                    <h5 className="text-body">Entrar na XPLENDOR</h5>
-                                                    <p className="text-muted">Introduza as suas credenciais para continuar.</p>
-                                                </div>
+            {/* Imagem full-screen de fundo + form centrado por cima (estilo Resend) */}
+            <div className="xlogin-panel">
+                <div className="xlogin-form">
+                        <img src={logoLight} alt="XPLENDOR" className="xlogin-logo" />
+                        <h1 className="xlogin-title">Entrar na XPLENDOR</h1>
+                        <p className="xlogin-subtitle">Introduza as suas credenciais para continuar.</p>
 
-                                                <div className="mt-4">
-                                                    <Form
-                                                        onSubmit={(e) => {
-                                                            e.preventDefault();
-                                                            validation.handleSubmit();
-                                                            return false;
-                                                        }}
-                                                        action="#">
+                        <Form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                validation.handleSubmit();
+                                return false;
+                            }}
+                            action="#">
 
-                                                        {loginError && (
-                                                            <Alert color="danger" className="mb-3">
-                                                                <i className="ri-error-warning-line align-middle me-2"></i>
-                                                                {loginError}
-                                                            </Alert>
-                                                        )}
+                            {loginError && (
+                                <Alert color="danger" className="mb-3">
+                                    <i className="ri-error-warning-line align-middle me-2"></i>
+                                    {loginError}
+                                </Alert>
+                            )}
 
-                                                        <div className="mb-3">
-                                                            <Label htmlFor="email" className="form-label">E-mail</Label>
-                                                            <InputGroup className={validation.touched.email && validation.errors.email ? 'has-validation' : ''}>
-                                                                <InputGroupText className="bg-transparent">
-                                                                    <i className="ri-mail-line text-muted"></i>
-                                                                </InputGroupText>
-                                                                <Input
-                                                                    type="text"
-                                                                    className="form-control"
-                                                                    id="email"
-                                                                    placeholder="O seu email"
-                                                                    name="email"
-                                                                    onChange={(e) => { clearError(); validation.handleChange(e); }}
-                                                                    onBlur={validation.handleBlur}
-                                                                    value={validation.values.email || ""}
-                                                                    invalid={validation.touched.email && !!validation.errors.email}
-                                                                />
-                                                                {validation.touched.email && validation.errors.email && (
-                                                                    <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
-                                                                )}
-                                                            </InputGroup>
-                                                        </div>
+                            <div className="mb-3">
+                                <Label htmlFor="email" className="form-label">E-mail</Label>
+                                <InputGroup className={validation.touched.email && validation.errors.email ? 'has-validation' : ''}>
+                                    <InputGroupText className="bg-transparent">
+                                        <i className="ri-mail-line text-muted"></i>
+                                    </InputGroupText>
+                                    <Input
+                                        type="text"
+                                        className="form-control"
+                                        id="email"
+                                        placeholder="O seu email"
+                                        name="email"
+                                        onChange={(e) => { clearError(); validation.handleChange(e); }}
+                                        onBlur={validation.handleBlur}
+                                        value={validation.values.email || ""}
+                                        invalid={validation.touched.email && !!validation.errors.email}
+                                    />
+                                    {validation.touched.email && validation.errors.email && (
+                                        <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
+                                    )}
+                                </InputGroup>
+                            </div>
 
-                                                        <div className="mb-3">
-                                                            <div className="float-end">
-                                                                <Link to="/auth-pass-reset-cover" className="text-muted">Esqueceu-se da palavra-passe?</Link>
-                                                            </div>
-                                                            <Label className="form-label" htmlFor="password-input">Palavra-passe</Label>
-                                                            <InputGroup className={validation.touched.password && validation.errors.password ? 'has-validation' : ''}>
-                                                                <InputGroupText className="bg-transparent">
-                                                                    <i className="ri-lock-2-line text-muted"></i>
-                                                                </InputGroupText>
-                                                                <Input
-                                                                    type={passwordShow ? "text" : "password"}
-                                                                    className="form-control password-input"
-                                                                    placeholder="A sua palavra-passe"
-                                                                    id="password-input"
-                                                                    name="password"
-                                                                    value={validation.values.password || ""}
-                                                                    onChange={(e) => { clearError(); validation.handleChange(e); }}
-                                                                    onBlur={validation.handleBlur}
-                                                                    invalid={validation.touched.password && !!validation.errors.password}
-                                                                />
-                                                                <button
-                                                                    className="btn btn-link text-decoration-none text-muted border border-start-0"
-                                                                    type="button"
-                                                                    id="password-addon"
-                                                                    onClick={() => setPasswordShow(!passwordShow)}
-                                                                >
-                                                                    <i className={passwordShow ? "ri-eye-off-fill align-middle" : "ri-eye-fill align-middle"}></i>
-                                                                </button>
-                                                                {validation.touched.password && validation.errors.password && (
-                                                                    <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
-                                                                )}
-                                                            </InputGroup>
-                                                        </div>
-
-                                                        <div className="form-check">
-                                                            <Input className="form-check-input" type="checkbox" value="" id="auth-remember-check" />
-                                                            <Label className="form-check-label" htmlFor="auth-remember-check">Manter sessão iniciada</Label>
-                                                        </div>
-
-                                                        <div className="mt-4">
-                                                            <Button color="dark" className="w-100" type="submit" disabled={isSubmitting}>
-                                                                {isSubmitting ? (
-                                                                    <>
-                                                                        <Spinner size="sm" className="me-2" />
-                                                                        A entrar...
-                                                                    </>
-                                                                ) : 'Entrar'}
-                                                            </Button>
-                                                        </div>
-
-                                                    </Form>
-                                                </div>
-                                            </div>
-                                        </Col>
-                                    </Row>
-                                </Card>
-                            </Col>
-                        </Row>
-                    </Container>
-                </div>
-
-                <footer className="footer">
-                    <Container>
-                        <Row>
-                            <Col lg={12}>
-                                <div className="text-center">
-                                    <p className="mb-0">&copy; {new Date().getFullYear()} Xplendor. Criado com <i className="mdi mdi-heart text-danger"></i> por XPLENDOR</p>
+                            <div className="mb-3">
+                                <div className="float-end">
+                                    <Link to="/auth-pass-reset-cover" className="xlogin-forgot">Esqueceu-se da palavra-passe?</Link>
                                 </div>
-                            </Col>
-                        </Row>
-                    </Container>
-                </footer>
+                                <Label className="form-label" htmlFor="password-input">Palavra-passe</Label>
+                                <InputGroup className={validation.touched.password && validation.errors.password ? 'has-validation' : ''}>
+                                    <InputGroupText className="bg-transparent">
+                                        <i className="ri-lock-2-line text-muted"></i>
+                                    </InputGroupText>
+                                    <Input
+                                        type={passwordShow ? "text" : "password"}
+                                        className="form-control password-input"
+                                        placeholder="A sua palavra-passe"
+                                        id="password-input"
+                                        name="password"
+                                        value={validation.values.password || ""}
+                                        onChange={(e) => { clearError(); validation.handleChange(e); }}
+                                        onBlur={validation.handleBlur}
+                                        invalid={validation.touched.password && !!validation.errors.password}
+                                    />
+                                    <button
+                                        className="btn"
+                                        type="button"
+                                        id="password-addon"
+                                        onClick={() => setPasswordShow(!passwordShow)}
+                                    >
+                                        <i className={passwordShow ? "ri-eye-off-fill align-middle" : "ri-eye-fill align-middle"}></i>
+                                    </button>
+                                    {validation.touched.password && validation.errors.password && (
+                                        <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
+                                    )}
+                                </InputGroup>
+                            </div>
 
-            </div>
-        </React.Fragment>
+                            <div className="form-check">
+                                <Input className="form-check-input" type="checkbox" value="" id="auth-remember-check" />
+                                <Label className="form-check-label" htmlFor="auth-remember-check">Manter sessão iniciada</Label>
+                            </div>
+
+                            <div className="mt-4">
+                                <Button className="xlogin-submit" type="submit" disabled={isSubmitting}>
+                                    {isSubmitting ? (
+                                        <>
+                                            <Spinner size="sm" className="me-2" />
+                                            A entrar...
+                                        </>
+                                    ) : 'Entrar'}
+                                </Button>
+                            </div>
+
+                        </Form>
+
+                        <div className="xlogin-foot">
+                            © {new Date().getFullYear()} XPLENDOR · <Link to="/privacy">Privacidade</Link>
+                        </div>
+                    </div>
+                </div>
+        </div>
     );
 };
 

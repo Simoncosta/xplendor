@@ -14,6 +14,17 @@ import { PingwinMonthlyBilling } from "common/models/pingwin.model";
 
 const MONTHS_PT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
+// Botões de período (padrão Velzon "1M 6M 1Y ALL", em PT). `months` = nº de meses
+// finais do ano visíveis. 1A por defeito. Puramente de apresentação (fatia local,
+// não mexe nos dados nem no fetch).
+const RANGES = [
+    { key: "ALL", label: "Tudo", months: 12 },
+    { key: "1M", label: "1M", months: 1 },
+    { key: "6M", label: "6M", months: 6 },
+    { key: "1A", label: "1A", months: 12 },
+] as const;
+type RangeKey = (typeof RANGES)[number]["key"];
+
 // Paleta de cores do TEMA (theme-aware via getChartColorsArray). Cicla por loja.
 const PALETTE = ["--vz-primary", "--vz-success", "--vz-warning", "--vz-danger", "--vz-info", "--vz-secondary", "--vz-dark"];
 
@@ -29,6 +40,7 @@ export default function MonthlyBillingChart() {
 
     const thisYear = new Date().getFullYear();
     const [year, setYear] = useState<number>(thisYear);
+    const [range, setRange] = useState<RangeKey>("1A"); // ⚠️ 1 ano por defeito
     const [data, setData] = useState<PingwinMonthlyBilling | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -47,19 +59,24 @@ export default function MonthlyBillingChart() {
 
     useEffect(() => { fetchData(year); }, [fetchData, year]);
 
-    const series = (data?.series ?? []).map((s) => ({ name: s.name, data: s.data }));
+    // Fatia os últimos N meses conforme o botão de período (1A/Tudo = 12 meses).
+    const visibleMonths = RANGES.find((r) => r.key === range)?.months ?? 12;
+    const startIdx = Math.max(0, 12 - visibleMonths);
+    const categories = MONTHS_PT.slice(startIdx);
+    const series = (data?.series ?? []).map((s) => ({ name: s.name, data: s.data.slice(startIdx) }));
     const hasSeries = series.length > 0;
     // Uma cor por loja (cicla a paleta se houver mais lojas que cores).
     const colorVars = series.map((_, i) => PALETTE[i % PALETTE.length]);
     const colors = getChartColorsArray(JSON.stringify(colorVars.length ? colorVars : ["--vz-primary"]));
 
     const options: ApexCharts.ApexOptions = {
-        chart: { type: "line", height: 340, toolbar: { show: false }, parentHeightOffset: 0 },
+        // ⚠️ zoom desligado → o gráfico fica ESTÁTICO (não amplia ao fazer scroll).
+        chart: { type: "line", height: 340, toolbar: { show: false }, zoom: { enabled: false }, parentHeightOffset: 0 },
         colors,
         stroke: { curve: "smooth", width: 2 },
         markers: { size: 4, hover: { size: 6 } },
         xaxis: {
-            categories: MONTHS_PT,
+            categories,
             labels: { style: { fontSize: "11px", colors: "#878a99" } },
             axisBorder: { show: false },
             axisTicks: { show: false },
@@ -89,9 +106,23 @@ export default function MonthlyBillingChart() {
                             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Faturação mensal</p>
                             <h5 className="mb-0 fw-semibold">Evolução por restaurante</h5>
                         </div>
-                        <select className="form-select form-select-sm" style={{ width: 120 }} value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={loading}>
-                            {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                        <div className="d-flex align-items-center gap-2">
+                            <div className="btn-group btn-group-sm" role="group" aria-label="Período">
+                                {RANGES.map((r) => (
+                                    <button
+                                        key={r.key}
+                                        type="button"
+                                        className={"btn " + (range === r.key ? "btn-primary" : "btn-outline-primary")}
+                                        onClick={() => setRange(r.key)}
+                                    >
+                                        {r.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <select className="form-select form-select-sm" style={{ width: 120 }} value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={loading}>
+                                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
                     </div>
 
                     {!hasSeries ? (
