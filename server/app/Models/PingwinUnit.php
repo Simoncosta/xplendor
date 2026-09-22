@@ -17,7 +17,7 @@ class PingwinUnit extends Model
     protected $fillable = [
         'company_id', 'pingwin_id', 'description', 'shortname', 'product_pingwin_id',
         'parent_pingwin_id', 'unit_value', 'purchase', 'sale', 'stock',
-        'net_weight', 'external_measure', 'is_active', 'synced_at',
+        'net_weight', 'external_measure', 'raw', 'is_active', 'synced_at',
     ];
 
     protected $casts = [
@@ -26,6 +26,7 @@ class PingwinUnit extends Model
         'purchase'    => 'boolean',
         'sale'        => 'boolean',
         'stock'       => 'boolean',
+        'raw'         => 'array',
         'is_active'   => 'boolean',
         'synced_at'   => 'datetime',
     ];

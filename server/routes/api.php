@@ -194,9 +194,15 @@ Route::prefix('v1')->group(function () {
                     // Fornecedores PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/suppliers', [CompanyPingwinController::class, 'suppliers']);
                     Route::post('/integrations/pingwin/suppliers/sync', [CompanyPingwinController::class, 'syncSuppliers']);
-                    // Unidades PingWin (Fase 1, só leitura): lista paginada + sincronizar (porta 8138).
+                    // Unidades PingWin: lista paginada + sincronizar (porta 8138).
                     Route::get('/integrations/pingwin/units', [CompanyPingwinController::class, 'units']);
                     Route::post('/integrations/pingwin/units/sync', [CompanyPingwinController::class, 'syncUnits']);
+                    // ⚠️ ESCRITA: criar/editar/anular unidade (Action NEW / EDIT,SAVE, porta 8136) — confirm obrigatório.
+                    Route::post('/integrations/pingwin/units/create', [CompanyPingwinController::class, 'createUnit']);
+                    Route::get('/integrations/pingwin/units/creations/{creationId}', [CompanyPingwinController::class, 'unitCreation']);
+                    Route::get('/integrations/pingwin/units/{unitId}/usage', [CompanyPingwinController::class, 'unitUsage']);
+                    Route::post('/integrations/pingwin/units/{unitId}/edit', [CompanyPingwinController::class, 'editUnit']);
+                    Route::post('/integrations/pingwin/units/{unitId}/anular', [CompanyPingwinController::class, 'anularUnit']);
                     // OCR de faturas de fornecedor (Fase A): carregar → IA lê → validar → guardar (SEM PingWin).
                     Route::get('/ocr/invoices', [CompanyInvoiceOcrController::class, 'index']);
                     Route::post('/ocr/invoices', [CompanyInvoiceOcrController::class, 'upload']);

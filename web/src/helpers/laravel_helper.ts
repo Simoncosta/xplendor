@@ -286,6 +286,18 @@ export const getPingwinUnits = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units`, params);
 export const syncPingwinUnits = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/sync`, {});
+// ⚠️ ESCRITA no PingWin: criar unidade (exige confirm:true). Ação deliberada.
+export const createPingwinUnit = (companyId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/create`, data);
+export const getPingwinUnitCreation = (companyId: number, creationId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/creations/${creationId}`);
+// ⚠️ ESCRITA: editar/anular unidade (exige confirm:true). Ação deliberada.
+export const editPingwinUnit = (companyId: number, unitId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/edit`, data);
+export const anularPingwinUnit = (companyId: number, unitId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/anular`, { confirm: true });
+export const getPingwinUnitUsage = (companyId: number, unitId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/units/${unitId}/usage`);
 
 export const getPingwinSuppliers = (
     companyId: number,

@@ -136,10 +136,24 @@ def run(cfg: dict) -> dict:
 
         if mode == "units":
             # READ-ONLY: UNIDADES (base de conversão) na PORTA 8138. Usa só o
-            # maindataset (ignora o baseunit "radio conv." = lixo). A sessão do
-            # login é aceite na 8138 (mesmo Sessionid).
+            # maindataset (ignora o baseunit "radio conv." = lixo). Login PRÓPRIO
+            # na 8138 (a sessão da 8136 não é aceite lá).
             units = client.fetch_units()
             return {"ok": True, "mode": "units", "units": units}
+
+        if mode == "create_unit":
+            # ⚠️ ESCRITA: CRIAR uma unidade (Action NEW) na PORTA 8136 (sessão principal).
+            # Ação deliberada do utilizador (já confirmada a montante no Laravel/UI).
+            unit = cfg.get("unit") or {}
+            created = client.create_unit(unit)
+            return {"ok": True, "mode": "create_unit", "unit": created}
+
+        if mode == "save_unit":
+            # ⚠️ ESCRITA: GRAVAR uma unidade existente (Action EDIT,SAVE) na PORTA 8136.
+            # Editar (deleted=0) ou anular (deleted=1) — a flag no objeto decide.
+            unit = cfg.get("unit") or {}
+            saved = client.save_unit(unit)
+            return {"ok": True, "mode": "save_unit", "unit": saved}
 
         # sync — descoberta de lojas + resumo de vendas por loja.
         stores = []

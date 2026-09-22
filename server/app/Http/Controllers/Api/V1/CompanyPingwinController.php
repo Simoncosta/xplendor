@@ -317,6 +317,8 @@ class CompanyPingwinController extends Controller
         $page->getCollection()->transform(function (\App\Models\PingwinUnit $u) use ($nameById) {
             $parentDesc = $u->parent_pingwin_id ? ($nameById[$u->parent_pingwin_id] ?? null) : null;
             $factor = $u->unit_value;
+            // Flags do objeto completo (raw) — p/ pré-preencher o editar sem perder valores.
+            $raw = is_array($u->raw) ? $u->raw : [];
             // "1 [unidade] = [fator] [unidade-base]" — só quando há parent.
             $label = null;
             if ($parentDesc) {
@@ -326,11 +328,17 @@ class CompanyPingwinController extends Controller
 
             return [
                 'id'                 => $u->id,
+                'pingwin_id'         => $u->pingwin_id,
                 'description'        => $u->description,
                 'shortname'          => $u->shortname,
                 'is_global'          => empty($u->product_pingwin_id),
+                'parent_pingwin_id'  => $u->parent_pingwin_id,   // para pré-preencher o editar
                 'parent_description' => $parentDesc,
                 'unit_value'         => $factor !== null ? (float) $factor : null,
+                'net_weight'         => $u->net_weight !== null ? (float) $u->net_weight : null,
+                'external_measure'   => (bool) ($raw['external_measure'] ?? false),   // checkbox
+                'frac_unit'          => (bool) ($raw['frac_unit'] ?? false),          // checkbox
+                'warn_maxsale_qnt'   => isset($raw['warn_maxsale_qnt']) && is_numeric($raw['warn_maxsale_qnt']) ? (float) $raw['warn_maxsale_qnt'] : null,
                 'conversion_label'   => $label,
                 'purchase'           => (bool) $u->purchase,
                 'sale'               => (bool) $u->sale,
@@ -357,6 +365,189 @@ class CompanyPingwinController extends Controller
         \App\Jobs\SyncPingwinUnitsJob::dispatch($companyId);
 
         return ApiResponse::success(['queued' => true], 'A sincronizar unidades… serás notificado quando terminar.');
+    }
+
+    /** Regras de validação partilhadas por CRIAR e EDITAR unidade (mesmos campos). */
+    private function unitWriteRules(): array
+    {
+        return [
+            'confirm'          => ['required', 'accepted'], // trava de segurança: sem confirmação não escreve
+            'description'      => ['required', 'string', 'max:120'],
+            'shortname'        => ['required', 'string', 'max:60'],
+            'parent_id'        => ['required', 'string', 'max:60'], // pingwin_id de uma unidade-base
+            'parent_qnt'       => ['nullable', 'numeric', 'min:0'], // Conv. factor / fator
+            'net_weight'       => ['nullable', 'numeric', 'min:0'], // Peso líquido
+            'warn_maxsale_qnt' => ['nullable', 'numeric', 'min:0'], // Qnt. máx. venda
+            'frac_unit'        => ['nullable', 'boolean'],          // Unidade fracionária (checkbox)
+            'external_measure' => ['nullable', 'boolean'],          // Medição externa (checkbox)
+            // 'deleted' NÃO existe no criar/editar — anular é a ação separada.
+        ];
+    }
+
+    /** Snapshot dos campos do form para o registo de auditoria (create/edit). */
+    private function unitWriteSnapshot(array $data): array
+    {
+        return [
+            'description'       => $data['description'],
+            'shortname'         => $data['shortname'],
+            'parent_pingwin_id' => $data['parent_id'],
+            'parent_qnt'        => $data['parent_qnt'] ?? 1,
+            'net_weight'        => $data['net_weight'] ?? null,
+            'warn_maxsale_qnt'  => $data['warn_maxsale_qnt'] ?? null,
+            'frac_unit'         => array_key_exists('frac_unit', $data) ? (bool) $data['frac_unit'] : null,
+            'external_measure'  => array_key_exists('external_measure', $data) ? ((bool) $data['external_measure'] ? '1' : '0') : null,
+        ];
+    }
+
+    /**
+     * ⚠️ 1ª ESCRITA no PingWin: CRIAR uma unidade (Action NEW). Ação DELIBERADA:
+     * exige `confirm=true` (a UI pergunta explicitamente antes). Valida do lado da
+     * XPLENDOR (obrigatórios + parent válido/da empresa), regista a auditoria e
+     * despacha o job (worker, que tem o docker socket). Devolve o id do registo para
+     * a UI fazer POLLING do resultado. NÃO escreve em fila silenciosa.
+     */
+    public function createUnit(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate($this->unitWriteRules());
+
+        // A unidade-base tem de existir e ser da própria empresa (tenancy + validade).
+        $parentOk = \App\Models\PingwinUnit::where('company_id', $companyId)
+            ->where('pingwin_id', $data['parent_id'])->where('is_active', true)->exists();
+        if (! $parentOk) {
+            return ApiResponse::error('A unidade-base escolhida não existe (sincroniza as unidades primeiro).', 422);
+        }
+
+        $creation = \App\Models\PingwinUnitCreation::create(array_merge(
+            ['company_id' => $companyId, 'user_id' => Auth::id(), 'status' => 'a_criar'],
+            $this->unitWriteSnapshot($data)
+        ));
+
+        \App\Jobs\CreatePingwinUnitJob::dispatch($companyId, $creation->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $creation->id, 'status' => $creation->status],
+            'A criar a unidade no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /**
+     * ⚠️ ESCRITA: EDITAR uma unidade (Action EDIT,SAVE, deleted=0). Ação DELIBERADA:
+     * exige confirm. Grava o objeto completo (raw + campos novos). Regista auditoria
+     * (action=edit) e despacha o job (worker). UI faz polling do resultado.
+     */
+    public function editUnit(Request $request, int $companyId, int $unitId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $unit = \App\Models\PingwinUnit::where('company_id', $companyId)->where('id', $unitId)->first();
+        if (! $unit) {
+            return ApiResponse::error('Unidade não encontrada.', 404);
+        }
+
+        $data = $request->validate($this->unitWriteRules());
+
+        $parentOk = \App\Models\PingwinUnit::where('company_id', $companyId)
+            ->where('pingwin_id', $data['parent_id'])->where('is_active', true)->exists();
+        if (! $parentOk) {
+            return ApiResponse::error('A unidade-base escolhida não existe.', 422);
+        }
+
+        $write = \App\Models\PingwinUnitCreation::create(array_merge(
+            ['company_id' => $companyId, 'user_id' => Auth::id(), 'action' => 'edit', 'unit_id' => $unit->id, 'status' => 'a_criar'],
+            $this->unitWriteSnapshot($data)
+        ));
+        \App\Jobs\SavePingwinUnitJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(['creation_id' => $write->id, 'status' => 'a_criar'], 'A alterar a unidade no PingWin… aguarda o resultado.');
+    }
+
+    /**
+     * ⚠️ ESCRITA (mais destrutiva): ANULAR uma unidade (Action EDIT,SAVE, deleted=1).
+     * Exige confirm. É a mesma gravação do editar, só com a flag. Auditoria
+     * (action=anular) + job + polling.
+     */
+    public function anularUnit(Request $request, int $companyId, int $unitId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $unit = \App\Models\PingwinUnit::where('company_id', $companyId)->where('id', $unitId)->first();
+        if (! $unit) {
+            return ApiResponse::error('Unidade não encontrada.', 404);
+        }
+
+        $request->validate(['confirm' => ['required', 'accepted']]);
+
+        $write = \App\Models\PingwinUnitCreation::create([
+            'company_id' => $companyId, 'user_id' => Auth::id(), 'action' => 'anular', 'unit_id' => $unit->id,
+            'description' => $unit->description ?? $unit->shortname ?? ('#' . $unit->id),
+            'shortname' => $unit->shortname ?? '', 'status' => 'a_criar',
+        ]);
+        \App\Jobs\SavePingwinUnitJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(['creation_id' => $write->id, 'status' => 'a_criar'], 'A anular a unidade no PingWin… aguarda o resultado.');
+    }
+
+    /**
+     * Uso de uma unidade nos artigos (para AVISAR antes de anular): conta os artigos
+     * cuja unidade de venda/compra bate com a abreviatura/descrição desta unidade.
+     * Aproximado (o catálogo guarda a unidade como texto) — mas alerta o utilizador.
+     */
+    public function unitUsage(int $companyId, int $unitId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $unit = \App\Models\PingwinUnit::where('company_id', $companyId)->where('id', $unitId)->first();
+        if (! $unit) {
+            return ApiResponse::error('Unidade não encontrada.', 404);
+        }
+
+        $needles = array_values(array_unique(array_filter([$unit->shortname, $unit->description])));
+        $count = 0;
+        if (! empty($needles)) {
+            $count = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+                ->where(function ($q) use ($needles) {
+                    foreach ($needles as $n) {
+                        $q->orWhere('saleunit', $n)->orWhere('purchaseunit', $n);
+                    }
+                })->count();
+        }
+
+        return ApiResponse::success([
+            'unit_id'     => $unit->id,
+            'description' => $unit->description,
+            'usage_count' => $count, // nº de artigos que (aparentemente) usam esta unidade
+        ], 'Uso da unidade.');
+    }
+
+    /** Estado de uma criação de unidade (polling da UI): a_criar|criada|erro. */
+    public function unitCreation(int $companyId, int $creationId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $creation = \App\Models\PingwinUnitCreation::where('company_id', $companyId)->find($creationId);
+        if (! $creation) {
+            return ApiResponse::error('Criação não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'creation_id'   => $creation->id,
+            'status'        => $creation->status,
+            'pingwin_id'    => $creation->pingwin_id,
+            'error_message' => $creation->error_message,
+            'description'   => $creation->description,
+        ], 'Estado da criação.');
     }
 
     /** Faturação mensal por loja (uma série por loja) de um ano — gráfico de linha. */

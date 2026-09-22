@@ -20,9 +20,11 @@ LOGOUT GARANTIDO ao sair do `with`, mesmo com erro a meio).
 import base64
 import hashlib
 import logging
+import os
 import ssl
 import sys
 import time
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any, Dict, List
 from urllib.parse import quote, urlparse
@@ -176,68 +178,29 @@ class MyCloudPieClient:
         self.logout()   # best-effort, nunca levanta
         return False    # NÃO engole a exceção original da consulta
 
-    # ---------------------------------------------------------------- LOGOUT
-    def logout(self) -> None:
+    # ------------------------------------------------ AUTENTICAÇÃO (por-porta)
+    # ⚠️ LIÇÃO (401 na 8138): a sessão do login numa porta NÃO é válida noutra
+    # porta/área do SOA GrupoPIE — CADA porta exige o SEU login challenge-response.
+    # A autenticação é agora genérica (session + base_url) para servir qualquer
+    # porta (8136 relatórios/browser, 8138 unidades, futuras áreas).
+    def _authenticate(self, session: requests.Session, base_url: str) -> tuple[str, str, str]:
         """
-        ACRESCENTO XPLENDOR (capturado do PingWin real). Encerra a sessão:
-        POST {api_url}/service/logout, corpo vazio (Content-Length 0), com os
-        headers da sessão. Resposta 200 "Session terminated" = sucesso.
-
-        BEST-EFFORT (como close_bom): apanha qualquer exceção e só faz
-        log.warning — NUNCA levanta (não pode mascarar o erro real da consulta),
-        mas é SEMPRE tentado (sem logout a sessão do PingWin trava e estraga o
-        restaurante).
+        Executa o challenge-response (§3.3) contra `base_url`, numa `session`
+        qualquer. NÃO mexe no estado do cliente — devolve (session_id, signature,
+        request_id) para quem chama gerir. Reutiliza o custom_pbkdf2.
         """
-        if not self.session_id:
-            return
-        try:
-            r = self.session.post(
-                f"{self.api_url}/service/logout",
-                data=b"",
-                headers={
-                    "Sessionid":     self.session_id,
-                    "Signature":     self.signature or "",
-                    "X-AppGrupoPie": self.app_grupopie,
-                    "X-Database":    self.database,
-                    "RequestID":     self.request_id or "",
-                    "Content-Length": "0",
-                },
-            )
-            if r.status_code == 200:
-                log.info("Logout OK — %s", (r.text or "").strip()[:60])
-            else:
-                log.warning("Logout devolveu HTTP %s (ignorado)", r.status_code)
-        except Exception as exc:  # noqa: BLE001 — best-effort; não mascara o erro real
-            log.warning("logout falhou (ignorado): %s", type(exc).__name__)
-        finally:
-            self.session_id = None  # marca encerrada localmente (evita reuso)
-
-    # ---------------------------------------------------------------- LOGIN
-    def login(self) -> None:
-        """
-        Autenticação challenge-response do PingWin BO (GrupoPIE Portugal). (§3.3)
-
-        Passo 1 — POST /service/login (corpo vazio): servidor responde com header
-          "Challenge" no formato "1:NONCE:SALT" (NONCE 32 hex, SALT 16 hex).
-        Passo 2 — POST /service/authenticate (corpo vazio): envia Authentication e
-          signature calculados do challenge. Servidor responde com header "Sessionid".
-        """
-        log.info("A autenticar no MyCloudPie...")
-
-        import os
-        self.request_id = base64.b64encode(os.urandom(16)).decode()
-
+        request_id = base64.b64encode(os.urandom(16)).decode()
         common_headers = {
             "Origin":        self.frontend_url,
             "Referer":       self.frontend_url + "/",
-            "RequestID":     self.request_id,
+            "RequestID":     request_id,
             "X-Database":    self.database,
             "X-AppGrupoPie": self.app_grupopie,
         }
 
         # --- Passo 1: obter challenge ---
-        r1 = self.session.post(
-            f"{self.auth_url}/service/login",
+        r1 = session.post(
+            f"{base_url}/service/login",
             data=b"",
             headers={
                 **common_headers,
@@ -249,33 +212,25 @@ class MyCloudPieClient:
             },
         )
         if r1.status_code != 200:
-            raise RuntimeError(
-                f"Passo 1 (/service/login) falhou: HTTP {r1.status_code} — {r1.text}"
-            )
+            raise RuntimeError(f"Passo 1 (/service/login @ {base_url}) falhou: HTTP {r1.status_code} — {r1.text}")
         challenge = r1.headers.get("Challenge")
         if not challenge:
-            raise RuntimeError(
-                f"Header 'Challenge' ausente na resposta de /service/login. "
-                f"Headers recebidos: {dict(r1.headers)}"
-            )
+            raise RuntimeError(f"Header 'Challenge' ausente (/service/login @ {base_url}). Headers: {dict(r1.headers)}")
 
-        # Atenção: nomenclatura invertida em relação ao habitual no JS original
         parts = challenge.split(":")
         nonce = parts[1]   # 32 hex chars
         salt  = parts[2]   # 16 hex chars
 
-        # --- Cálculo do authHash (PBKDF2 customizado) e derivados ---
         auth_hash = custom_pbkdf2(self.password, salt)
         md51           = hashlib.md5(f"{nonce}:{auth_hash}".encode()).hexdigest()
         md52           = hashlib.md5(f"{md51}:{nonce}".encode()).hexdigest()
         authentication = f"1:{quote(self.username, safe='')}:{nonce}:{md52}"
         timestamp_ms   = int(time.time() * 1000)
         signature      = hashlib.md5(f"{auth_hash}{timestamp_ms}".encode()).hexdigest()
-        self.signature = signature
 
         # --- Passo 2: autenticar e obter session ---
-        r2 = self.session.post(
-            f"{self.auth_url}/service/authenticate",
+        r2 = session.post(
+            f"{base_url}/service/authenticate",
             data=b"",
             headers={
                 **common_headers,
@@ -286,24 +241,88 @@ class MyCloudPieClient:
             },
         )
         if r2.status_code != 200:
-            raise RuntimeError(
-                f"Passo 2 (/service/authenticate) falhou: HTTP {r2.status_code} — {r2.text}"
-            )
+            raise RuntimeError(f"Passo 2 (/service/authenticate @ {base_url}) falhou: HTTP {r2.status_code} — {r2.text}")
         session_id = r2.headers.get("Sessionid")
         if not session_id:
-            raise RuntimeError(
-                f"Header 'Sessionid' ausente na resposta de /service/authenticate. "
-                f"Headers recebidos: {dict(r2.headers)}"
+            raise RuntimeError(f"Header 'Sessionid' ausente (/service/authenticate @ {base_url}). Headers: {dict(r2.headers)}")
+
+        return session_id, signature, request_id
+
+    def _logout_session(self, session: requests.Session, base_url: str, session_id: str, signature: str, request_id: str) -> None:
+        """Logout genérico (best-effort, nunca levanta) de UMA sessão numa porta.
+        Usado tanto para a sessão principal (8136) como para as por-porta (8138…).
+        Crítico: sem logout a sessão trava no PingWin — agora em qualquer porta."""
+        if not session_id:
+            return
+        try:
+            r = session.post(
+                f"{base_url}/service/logout",
+                data=b"",
+                headers={
+                    "Sessionid":     session_id,
+                    "Signature":     signature or "",
+                    "X-AppGrupoPie": self.app_grupopie,
+                    "X-Database":    self.database,
+                    "RequestID":     request_id or "",
+                    "Content-Length": "0",
+                },
             )
+            if r.status_code == 200:
+                log.info("Logout OK @ %s — %s", base_url, (r.text or "").strip()[:60])
+            else:
+                log.warning("Logout @ %s devolveu HTTP %s (ignorado)", base_url, r.status_code)
+        except Exception as exc:  # noqa: BLE001 — best-effort; não mascara o erro real
+            log.warning("logout @ %s falhou (ignorado): %s", base_url, type(exc).__name__)
 
-        self.session_id = session_id
+    @contextmanager
+    def _port_session(self, base_url: str):
+        """
+        Context manager para uma ÁREA NOUTRA PORTA (ex.: unidades @ 8138). Faz um
+        login PRÓPRIO nessa porta (a sessão da 8136 não é aceite lá — HTTP 401
+        "Session not found"), numa session SEPARADA (não mexe na principal), e
+        GARANTE o logout dessa porta à saída (mesmo com erro). READ-ONLY.
+        """
+        session = _TimeoutSession()
+        session.mount("https://", LegacySSLAdapter())
+        session.headers.update({
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (cron-job)",
+        })
+        log.info("A autenticar em %s (login por-porta)…", base_url)
+        session_id, signature, request_id = self._authenticate(session, base_url)
+        session.headers.update({
+            "Sessionid":     session_id,
+            "Signature":     signature,
+            "X-AppGrupoPie": self.app_grupopie,
+        })
+        log.info("Login OK @ %s — session=%s…", base_url, session_id[:8])
+        try:
+            yield session
+        finally:
+            self._logout_session(session, base_url, session_id, signature, request_id)
 
+    # ---------------------------------------------------------------- LOGOUT
+    def logout(self) -> None:
+        """Encerra a sessão PRINCIPAL (8136). Best-effort, sempre tentado."""
+        if not self.session_id:
+            return
+        self._logout_session(self.session, self.api_url, self.session_id, self.signature or "", self.request_id or "")
+        self.session_id = None  # marca encerrada localmente (evita reuso)
+
+    # ---------------------------------------------------------------- LOGIN
+    def login(self) -> None:
+        """
+        Autenticação challenge-response do PingWin BO (GrupoPIE Portugal) na porta
+        PRINCIPAL (auth_url/8136). (§3.3) Delega no _authenticate genérico.
+        """
+        log.info("A autenticar no MyCloudPie...")
+        self.session_id, self.signature, self.request_id = self._authenticate(self.session, self.auth_url)
         self.session.headers.update({
             "Sessionid":     self.session_id,
             "Signature":     self.signature,
             "X-AppGrupoPie": self.app_grupopie,
         })
-
         log.info(f"Login OK — session={self.session_id[:8]}…")
 
     # ----------------------------------------------------- GERAR RELATÓRIO
@@ -604,10 +623,14 @@ class MyCloudPieClient:
     def fetch_units(self) -> List[Dict[str, Any]]:
         """
         Lista de UNIDADES (base de conversão) na PORTA 8138. READ-ONLY
-        (Action OPEN,GET,INFO). A sessão obtida no login (8136) é aceite na 8138
-        (mesmo Sessionid — confirmado no HAR). Requer login feito.
+        (Action OPEN,GET,INFO).
 
-        ⚠️ A resposta traz units.maindataset (as ~48 unidades REAIS) e units.baseunit
+        ⚠️ A sessão da 8136 NÃO é válida na 8138 (HTTP 401 "Session not found") —
+        a 8138 exige o SEU PRÓPRIO login. Por isso usamos _port_session(8138), que
+        faz login próprio nessa porta e GARANTE o logout dela à saída (mesmo com
+        erro). A sessão principal (8136) fica intacta.
+
+        A resposta traz units.maindataset (as ~48 unidades REAIS) e units.baseunit
         (centenas de "radio conv." = LIXO interno). USA-SE SÓ o maindataset.
 
         Cada item (maindataset): id, product_id (''=global; preenchido=específica de
@@ -615,16 +638,181 @@ class MyCloudPieClient:
         external_measure, parent_id (unidade-base p/ conversão), parent_qnt/unit_value
         (fator de conversão, ex: Barril 50lt → parent_id=Litro, unit_value=50), deleted.
         """
-        url = f"{self._units_base()}/service/units/*/maindataset,baseunit,additionalfields.fieldsinfo,additionalfields.maindataset"
+        base = self._units_base()
+        url = f"{base}/service/units/*/maindataset,baseunit,additionalfields.fieldsinfo,additionalfields.maindataset"
         headers = {"Action": "OPEN,GET,INFO", "Content-Type": "application/json;charset=UTF-8"}
-        r = self.session.post(url, data=b"", headers=headers)
-        if r.status_code not in (200, 206):
-            log.error(f"fetch_units falhou: HTTP {r.status_code} body={r.text[:1000]}")
-            r.raise_for_status()
-        # SÓ o maindataset (as reais). O baseunit ("radio conv.") é ignorado.
-        units = r.json().get("units", {}).get("maindataset", [])
+        # Login PRÓPRIO na 8138 → usa a sessão dela → LOGOUT garantido na 8138.
+        with self._port_session(base) as session:
+            r = session.post(url, data=b"", headers=headers)
+            if r.status_code not in (200, 206):
+                log.error(f"fetch_units falhou: HTTP {r.status_code} body={r.text[:1000]}")
+                r.raise_for_status()
+            # SÓ o maindataset (as reais). O baseunit ("radio conv.") é ignorado.
+            units = r.json().get("units", {}).get("maindataset", [])
         log.info(f"Unidades (maindataset): {len(units)}")
         return units
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — CRIAR / EDITAR / ANULAR UNIDADE ⚠️⚠️
+    # CADEIA REAL E COMPLETA (do HAR do criar-que-funciona). TUDO na MESMA sessão
+    # (8136) e os pedidos partilham o MESMO ObjectID (o handle da grelha, obtido no
+    # OPEN e reenviado em todos — no HAR é sempre o mesmo, ex.: afe643c7…):
+    #   1. OPEN : POST .../units/*/maindataset,baseunit,…  Action:OPEN,GET,INFO
+    #             → abre a grelha; o ObjectID vem no HEADER da resposta.
+    #   2. NEW  : POST .../units/maindataset  Action:NEW  corpo [{só a unidade nova}]
+    #             → adiciona a nova à grelha (staging, NÃO persiste).
+    #   3. GET,INFO : Action:GET,INFO → LISTA COMPLETA já com a nova incluída.
+    #   4. ⚠️ EDIT,SAVE (O COMMIT): Action:EDIT,SAVE corpo = A LISTA COMPLETA do
+    #             passo 3, TAL E QUAL (sem reconstruir/reordenar/alterar). ISTO PERSISTE.
+    #   5. GET,INFO : confirma.
+    # ⚠️ RISCO ALTO: o EDIT,SAVE reenvia a TABELA TODA — se a lista vier incompleta e
+    # a enviássemos, apagava unidades. Salvaguardas: usar a lista EXATA do servidor
+    # (nunca a nossa BD), e ABORTAR o SAVE se a lista vier com menos do que o esperado
+    # ou sem a nova. Sem o commit, o NEW "cria em memória" e não persiste ("criar mentiu").
+    _UNITS_URL_PATH = "/service/units/maindataset"
+    _UNITS_OPEN_PATH = "/service/units/*/maindataset,baseunit,additionalfields.fieldsinfo,additionalfields.maindataset"
+
+    def _units_headers(self, action: str, object_id: str | None = None) -> Dict[str, str]:
+        h = {
+            "Action":        action,
+            "X-Database":    self.database,
+            "X-AppGrupoPie": self.app_grupopie,
+            "Content-Type":  "application/json;charset=UTF-8",
+        }
+        if object_id:
+            h["ObjectID"] = object_id  # o MESMO handle da grelha em todos os passos
+        return h
+
+    def _units_open(self) -> str | None:
+        """Passo 1: abre a grelha (Action OPEN,GET,INFO, o mesmo pedido do fetch_units),
+        na sessão da escrita (8136). Devolve o ObjectID do HEADER (reutilizado nos
+        passos seguintes); None se o servidor não o der (aí segue-se só pela sessão)."""
+        url = f"{self.api_url}{self._UNITS_OPEN_PATH}"
+        r = self.session.post(url, data=b"", headers=self._units_headers("OPEN,GET,INFO"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"open_units (OPEN,GET,INFO) falhou: HTTP {r.status_code} — {r.text[:800]}")
+        return r.headers.get("ObjectID") or r.headers.get("Objectid")
+
+    def _units_getinfo(self, object_id: str | None) -> List[Dict[str, Any]]:
+        """Action:GET,INFO → a LISTA COMPLETA das unidades (maindataset), tal e qual
+        o servidor a devolve (é esta que se reenvia no EDIT,SAVE)."""
+        url = f"{self.api_url}{self._UNITS_URL_PATH}"
+        r = self.session.post(url, data=b"", headers=self._units_headers("GET,INFO", object_id))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"units GET,INFO falhou: HTTP {r.status_code} — {r.text[:800]}")
+        return r.json().get("units", {}).get("maindataset", [])
+
+    def create_unit(self, unit: Dict[str, Any]) -> Dict[str, Any]:
+        """Cria uma unidade: OPEN → (baseline) GET,INFO → NEW → GET,INFO(lista c/ nova)
+        → ⚠️ EDIT,SAVE dessa lista EXATA (commit) → GET,INFO(confirma). Tudo na mesma
+        sessão/ObjectID. Salvaguardas contra apagar a tabela. Erro REAL exposto."""
+        url = f"{self.api_url}{self._UNITS_URL_PATH}"
+        allowed = ["description", "shortname", "parent_qnt", "parent_id", "net_weight",
+                   "external_measure", "frac_unit", "warn_maxsale_qnt"]
+        row = {k: unit[k] for k in allowed if k in unit and unit[k] not in (None, "")}
+        if "parent_qnt" in row:
+            row["parent_qnt"] = str(row["parent_qnt"])  # HAR envia como string
+
+        object_id = self._units_open()                       # 1. abrir grelha (ObjectID)
+        baseline = self._units_getinfo(object_id)            # baseline (mesmo endpoint do check)
+        n0 = len(baseline)
+
+        # 2. NEW — adiciona a nova à grelha (staging).
+        r = self.session.post(url, json=[row], headers=self._units_headers("NEW", object_id))
+        if r.status_code != 200:
+            raise RuntimeError(f"create_unit NEW falhou: HTTP {r.status_code} — {r.text[:800]}")
+        created = r.json().get("units", {}).get("maindataset", [])
+        if not created:
+            raise RuntimeError(f"create_unit: resposta NEW sem unidade — {r.text[:800]}")
+        new_unit = created[0]
+        new_id = str(new_unit.get("id") or "")
+        if not new_id:
+            raise RuntimeError(f"create_unit: unidade criada sem id — {r.text[:800]}")
+        # o NEW pode devolver um ObjectID no header — se vier, passa a ser o handle.
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid") or object_id
+        log.info("Unidade NEW (staging): id=%s desc=%s", new_id, new_unit.get("description"))
+
+        # 3. GET,INFO → LISTA COMPLETA já com a nova.
+        full = self._units_getinfo(object_id)
+
+        # ⚠️⚠️ SALVAGUARDAS antes do commit (o EDIT,SAVE reenvia a tabela toda) ⚠️⚠️
+        present = any(str(u.get("id")) == new_id for u in full)
+        if not present:
+            raise RuntimeError("create_unit ABORTADO: a nova unidade não aparece na lista do GET,INFO (algo falhou no NEW). NÃO gravei.")
+        if len(full) < n0 + 1:
+            raise RuntimeError(
+                f"create_unit ABORTADO: lista incompleta (antes={n0}, agora={len(full)}); "
+                "gravar apagaria unidades. NÃO gravei."
+            )
+
+        # 4. EDIT,SAVE — commit da lista EXATA do passo 3 (tal e qual, sem alterar).
+        rs = self.session.post(url, json=full, headers=self._units_headers("EDIT,SAVE", object_id))
+        if rs.status_code != 200:
+            raise RuntimeError(f"create_unit EDIT,SAVE (commit) falhou: HTTP {rs.status_code} — {rs.text[:800]}")
+
+        # 5. GET,INFO — confirma que a nova persiste.
+        committed = False
+        final_n = len(full)
+        try:
+            final = self._units_getinfo(object_id)
+            final_n = len(final)
+            committed = any(str(u.get("id")) == new_id for u in final)
+        except Exception as exc:  # noqa: BLE001 — confirmação secundária
+            log.warning("create_unit: GET,INFO final falhou (ignorado): %s", type(exc).__name__)
+
+        # Reportar humildemente (o _confirmed já mentiu 2x). O Simon verifica no PingWin.
+        new_unit["_committed_in_getinfo"] = committed
+        new_unit["_units_before"] = n0
+        new_unit["_units_after"] = final_n
+        return new_unit
+
+    def save_unit(self, unit: Dict[str, Any]) -> Dict[str, Any]:
+        """⚠️ ESCRITA (editar/anular): OPEN → GET,INFO(lista completa do servidor) →
+        sobrepõe SÓ a linha alvo (por id) com os campos de `unit` → ⚠️ EDIT,SAVE dessa
+        lista COMPLETA (as outras linhas ficam TAL E QUAL as do servidor) → GET,INFO.
+        Editar=deleted:0, anular=deleted:1. Tudo na mesma sessão/ObjectID. Erro REAL
+        exposto. Salvaguarda: a lista vem do SERVIDOR (nunca da nossa BD) e o alvo tem
+        de existir nela."""
+        uid = str(unit.get("id") or "")
+        if not uid:
+            raise RuntimeError("save_unit: falta o id da unidade a gravar.")
+        url = f"{self.api_url}{self._UNITS_URL_PATH}"
+
+        object_id = self._units_open()                 # 1. abrir grelha (ObjectID)
+        full = self._units_getinfo(object_id)          # 2. LISTA COMPLETA do servidor
+        n0 = len(full)
+        if n0 == 0:
+            raise RuntimeError("save_unit ABORTADO: GET,INFO devolveu lista vazia. NÃO gravei.")
+
+        # 3. Sobrepor SÓ a linha alvo (na lista do servidor, in-place). As outras
+        #    ficam intactas — nunca reconstruímos a partir da nossa BD.
+        target = next((u for u in full if str(u.get("id")) == uid), None)
+        if target is None:
+            raise RuntimeError(f"save_unit ABORTADO: a unidade {uid} não está na lista do servidor. NÃO gravei.")
+        for k, v in unit.items():
+            if k == "id":
+                continue
+            target[k] = v  # description/shortname/parent_id/parent_qnt/unit_value/deleted/…
+
+        # ⚠️ Salvaguarda: não encolher a tabela.
+        if len(full) < n0:
+            raise RuntimeError("save_unit ABORTADO: lista encolheu inesperadamente. NÃO gravei.")
+
+        # 4. EDIT,SAVE — commit da lista completa (com o alvo alterado).
+        rs = self.session.post(url, json=full, headers=self._units_headers("EDIT,SAVE", object_id))
+        if rs.status_code != 200:
+            raise RuntimeError(f"save_unit EDIT,SAVE falhou: HTTP {rs.status_code} — {rs.text[:800]}")
+        log.info("Unidade EDIT,SAVE (commit): id=%s deleted=%s", uid, unit.get("deleted"))
+
+        # 5. GET,INFO — estado real confirmado.
+        saved = target
+        try:
+            final = self._units_getinfo(object_id)
+            match = next((u for u in final if str(u.get("id")) == uid), None)
+            if match:
+                saved = match
+        except Exception as exc:  # noqa: BLE001 — confirmação secundária
+            log.warning("save_unit: GET,INFO final falhou (ignorado): %s", type(exc).__name__)
+        return saved
 
     # ════════════════════════════════ FICHA TÉCNICA (BOM / productbom) ════════════
     # SÓ LEITURA. Sequência descoberta ao vivo (read-only — nunca grava no PingWin):

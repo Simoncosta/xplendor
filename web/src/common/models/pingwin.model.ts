@@ -171,11 +171,17 @@ export interface PingwinSupplier {
 /** Unidade PingWin (base de conversão), só leitura. A conversão vem pronta a ler. */
 export interface PingwinUnitRow {
     id: number;
+    pingwin_id: string;
     description: string | null;
     shortname: string | null;
     is_global: boolean;               // true = unidade global; false = específica de um artigo
+    parent_pingwin_id: string | null;  // unidade-base (id) — para pré-preencher o editar
     parent_description: string | null; // unidade-base (se houver conversão)
     unit_value: number | null;         // fator de conversão
+    net_weight: number | null;
+    external_measure: boolean;         // medição externa (checkbox)
+    frac_unit: boolean;                // unidade fracionária (checkbox)
+    warn_maxsale_qnt: number | null;   // qnt. máx. venda
     conversion_label: string | null;   // "1 Barril 50lt = 50 Litros" (pronto a mostrar)
     purchase: boolean;
     sale: boolean;

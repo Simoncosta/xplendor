@@ -396,6 +396,7 @@ class PingwinService
                 'stock'              => (bool) ($this->pick($u, ['stock']) ?? false),
                 'net_weight'         => $this->numOrNull($this->pick($u, ['net_weight'])),
                 'external_measure'   => $this->str($this->pick($u, ['external_measure'])),
+                'raw'                => json_encode($u), // objeto completo (p/ editar/anular sem perder campos)
                 'is_active'          => ! $deleted,
                 'synced_at'          => $now,
                 'created_at'         => $now,
@@ -409,13 +410,161 @@ class PingwinService
 
         $updateCols = [
             'description', 'shortname', 'product_pingwin_id', 'parent_pingwin_id', 'unit_value',
-            'purchase', 'sale', 'stock', 'net_weight', 'external_measure', 'is_active', 'synced_at', 'updated_at',
+            'purchase', 'sale', 'stock', 'net_weight', 'external_measure', 'raw', 'is_active', 'synced_at', 'updated_at',
         ];
         foreach (array_chunk($rows, 500) as $chunk) {
             \App\Models\PingwinUnit::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
         }
 
         return count($rows);
+    }
+
+    /**
+     * ⚠️ ESCRITA: CRIA uma unidade no PingWin (Action NEW, porta 8136, LOGOUT
+     * garantido no Python). A confirmação do utilizador é feita a montante
+     * (controller exige confirm + a UI pergunta). Em sucesso, faz UPSERT da unidade
+     * nova em pingwin_units (para a tela refletir) e devolve a unidade criada. Em
+     * falha, LEVANTA com o motivo REAL do PingWin (nunca engolido no genérico).
+     */
+    public function createUnit(int $companyId, array $payload): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'create_unit', 'unit' => $payload]));
+
+        if (! ($result['ok'] ?? false)) {
+            // Motivo REAL do PingWin exposto (não genérico).
+            throw new \RuntimeException('Criação de unidade no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $u = $result['unit'] ?? [];
+        $pingwinId = (string) ($this->pick($u, ['id']) ?? '');
+        if ($pingwinId === '') {
+            throw new \RuntimeException('O PingWin não devolveu o id da unidade criada.');
+        }
+
+        // UPSERT da unidade nova (a tela reflete imediatamente, sem re-sync completo).
+        $deleted = (bool) ($this->pick($u, ['deleted']) ?? false);
+        \App\Models\PingwinUnit::updateOrCreate(
+            ['company_id' => $companyId, 'pingwin_id' => $pingwinId],
+            [
+                'description'        => $this->str($this->pick($u, ['description'])),
+                'shortname'          => $this->str($this->pick($u, ['shortname'])),
+                'product_pingwin_id' => $this->str($this->pick($u, ['product_id'])),
+                'parent_pingwin_id'  => $this->str($this->pick($u, ['parent_id'])),
+                'unit_value'         => $this->numOrNull($this->pick($u, ['unit_value', 'parent_qnt'])),
+                'purchase'           => (bool) ($this->pick($u, ['purchase']) ?? false),
+                'sale'               => (bool) ($this->pick($u, ['sale']) ?? false),
+                'stock'              => (bool) ($this->pick($u, ['stock']) ?? false),
+                'net_weight'         => $this->numOrNull($this->pick($u, ['net_weight'])),
+                'external_measure'   => $this->str($this->pick($u, ['external_measure'])),
+                'raw'                => $u, // objeto completo (p/ editar/anular)
+                'is_active'          => ! $deleted,
+                'synced_at'          => now(),
+            ]
+        );
+
+        return $u;
+    }
+
+    /**
+     * ⚠️ ESCRITA: GRAVA uma unidade existente (Action EDIT,SAVE). É a MESMA operação
+     * para EDITAR (deleted=false) e ANULAR (deleted=true) — a flag decide. Envia o
+     * OBJETO COMPLETO (parte do raw guardado, sobrepõe os campos alterados) para não
+     * perder nenhum campo. Em sucesso, atualiza a unidade local. Em falha, LEVANTA
+     * com o motivo REAL do PingWin (nunca engolido).
+     */
+    public function saveUnit(int $companyId, int $unitId, array $changes, bool $deleted): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $unit = \App\Models\PingwinUnit::where('company_id', $companyId)->where('id', $unitId)->first();
+        if (! $unit) {
+            throw new \RuntimeException('Unidade não encontrada.');
+        }
+
+        // Base = objeto COMPLETO guardado (raw); fallback a partir das colunas se faltar.
+        $object = is_array($unit->raw) ? $unit->raw : $this->rawFromColumns($unit);
+        $object['id'] = $unit->pingwin_id; // garante o id certo (identifica a linha a gravar)
+
+        // Sobrepõe só os campos que o utilizador alterou (editar). Anular ignora changes.
+        $map = [
+            'description' => 'description', 'shortname' => 'shortname', 'parent_id' => 'parent_id',
+            'parent_qnt' => 'parent_qnt', 'unit_value' => 'unit_value',
+            'net_weight' => 'net_weight', 'external_measure' => 'external_measure',
+            'frac_unit' => 'frac_unit', 'warn_maxsale_qnt' => 'warn_maxsale_qnt',
+        ];
+        foreach ($map as $in => $field) {
+            if (array_key_exists($in, $changes) && $changes[$in] !== null) {
+                $object[$field] = $changes[$in];
+            }
+        }
+        // O fator de conversão vive em parent_qnt E unit_value (iguais) — mantém-nos coerentes.
+        if (array_key_exists('parent_qnt', $changes) && $changes['parent_qnt'] !== null) {
+            $object['unit_value'] = $changes['parent_qnt'];
+        }
+        $object['deleted'] = $deleted ? 1 : 0; // ⚠️ 0=editar (mantém ativa), 1=anular
+
+        $password = (string) $integration->access_token;
+        $config = $integration->config;
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'save_unit', 'unit' => $object]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Gravação de unidade no PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $saved = $result['unit'] ?? $object;
+
+        // Atualiza a unidade local (reflete na tela): editada → valores novos;
+        // anulada → is_active=false (o filtro ativas/anuladas já trata).
+        $unit->update([
+            'description'       => $this->str($this->pick($saved, ['description'])) ?? $unit->description,
+            'shortname'         => $this->str($this->pick($saved, ['shortname'])) ?? $unit->shortname,
+            'parent_pingwin_id' => $this->str($this->pick($saved, ['parent_id'])),
+            'unit_value'        => $this->numOrNull($this->pick($saved, ['unit_value', 'parent_qnt'])),
+            'net_weight'        => $this->numOrNull($this->pick($saved, ['net_weight'])),
+            'external_measure'  => $this->str($this->pick($saved, ['external_measure'])),
+            'raw'               => is_array($saved) ? $saved : $object,
+            'is_active'         => ! $deleted,
+            'synced_at'         => now(),
+        ]);
+
+        return $saved;
+    }
+
+    /** Objeto completo mínimo a partir das colunas (fallback quando não há raw). */
+    private function rawFromColumns(\App\Models\PingwinUnit $u): array
+    {
+        return [
+            'id'               => $u->pingwin_id,
+            'product_id'       => $u->product_pingwin_id ?? '',
+            'description'      => $u->description,
+            'shortname'        => $u->shortname,
+            'purchase'         => $u->purchase ? 1 : 0,
+            'sale'             => $u->sale ? 1 : 0,
+            'stock'            => $u->stock ? 1 : 0,
+            'parent_id'        => $u->parent_pingwin_id ?? '',
+            'parent_qnt'       => $u->unit_value ?? 1,
+            'unit_value'       => $u->unit_value ?? 1,
+            'net_weight'       => $u->net_weight ?? 0,
+            'external_measure' => $u->external_measure ?? '',
+            'deleted'          => $u->is_active ? 0 : 1,
+        ];
     }
 
     /**
