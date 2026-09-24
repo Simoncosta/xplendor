@@ -260,23 +260,282 @@ class PingwinService
             ];
         }
 
-        if (empty($rows)) {
-            return 0;
-        }
-
         // UPSERT em lotes por (company_id, pingwin_id) — idempotente. Não toca em
         // created_at ao atualizar (só nas colunas de dados + updated_at/synced_at).
-        $updateCols = [
-            'code', 'description', 'family', 'family_pingwin_id', 'forsale', 'forpurchase',
-            'has_bom', 'product_type', 'product_status', 'taxgroup', 'printzone',
-            'saleprice_cents', 'purchaseprice_cents', 'saleunit', 'purchaseunit',
-            'order_code', 'is_active', 'synced_at', 'updated_at',
-        ];
-        foreach (array_chunk($rows, 500) as $chunk) {
-            \App\Models\PingwinCatalogItem::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+        if (! empty($rows)) {
+            $updateCols = [
+                'code', 'description', 'family', 'family_pingwin_id', 'forsale', 'forpurchase',
+                'has_bom', 'product_type', 'product_status', 'taxgroup', 'printzone',
+                'saleprice_cents', 'purchaseprice_cents', 'saleunit', 'purchaseunit',
+                'order_code', 'is_active', 'synced_at', 'updated_at',
+            ];
+            foreach (array_chunk($rows, 500) as $chunk) {
+                \App\Models\PingwinCatalogItem::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+            }
+        }
+
+        // ⚠️ RECONCILIAÇÃO DE ANULADOS (bug de integridade): o "anular" no PingWin é
+        // soft-delete → o artigo sai dos ATIVOS (STATE:0) mas o registo antigo ficaria
+        // is_active=true no espelho a mentir. O Python devolve os ids anulados (STATE:1,
+        // deleted:1); marcamos is_active=false SÓ nos que (a) existem, (b) estão ativos,
+        // (c) constam da lista de anulados. NÃO importamos anulados novos. Cruzamento por
+        // pingwin_id (não code — há anulados sem code). Se a leitura do STATE:1 falhasse,
+        // o run devolvia ok:false e nem cá chegávamos (nada é aplicado — via segura).
+        $deletedIds = array_values(array_filter(array_map(
+            static fn ($v) => (string) $v,
+            $result['deleted_ids'] ?? []
+        ), static fn ($s) => $s !== ''));
+
+        $markedInactive = 0;
+        if (! empty($deletedIds)) {
+            foreach (array_chunk($deletedIds, 500) as $chunk) {
+                $markedInactive += \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+                    ->where('is_active', true)
+                    ->whereIn('pingwin_id', $chunk)
+                    ->update(['is_active' => false, 'synced_at' => now()]);
+            }
+        }
+        if ($markedInactive > 0) {
+            \Illuminate\Support\Facades\Log::info('[PingWin Artigos] reconciliação de anulados', [
+                'company_id' => $companyId, 'marcados_inativos' => $markedInactive,
+            ]);
         }
 
         return count($rows);
+    }
+
+    /**
+     * PREÇO — conversão na FRONTEIRA (crítico). A BD guarda CÊNTIMOS (int); o PingWin
+     * quer decimal STRING com PONTO e 2 casas, SEM separador de milhares.
+     *   1000 → "10.00" · 5 → "0.05" · 100000 → "1000.00" · 1025 → "10.25"
+     */
+    /** Chave de cache (Redis) para o resultado de uma LEITURA assíncrona. Scoped por
+     *  empresa (o token é aleatório; a empresa no path do poll fecha a tenancy). */
+    public static function readKey(int $companyId, string $token): string
+    {
+        return "pingwin_read:{$companyId}:{$token}";
+    }
+
+    /** Traduz erros crus de infra/conexão numa mensagem HUMANA para a UI (o stderr real
+     *  fica no log). Erros de "negócio" do PingWin passam à frente (podem ser úteis). */
+    public static function humanError(string $raw): string
+    {
+        $r = mb_strtolower($raw);
+        foreach (['docker daemon', 'docker.sock', 'permission denied', 'cannot connect',
+                  'sem resposta do cliente pingwin', 'connection refused', 'timed out', 'timeout'] as $needle) {
+            if (str_contains($r, $needle)) {
+                return 'Não foi possível ligar ao PingWin neste momento. Tenta novamente daqui a instantes.';
+            }
+        }
+
+        return trim($raw) !== '' ? $raw : 'Ocorreu um erro ao contactar o PingWin.';
+    }
+
+    public static function centsToDecimalString(int $cents): string
+    {
+        return number_format($cents / 100, 2, '.', ''); // '.' decimal, '' milhares
+    }
+
+    /** Inverso: decimal (string/float) → CÊNTIMOS com ROUND (não truncar).
+     *  "10.25" → 1025 · "10.999" → 1100 (round, não 1099). */
+    public static function decimalToCents(string|float $value): int
+    {
+        return (int) round(((float) $value) * 100);
+    }
+
+    /**
+     * ARTIGOS — CRIAR (Etapa 1b, ESCRITA REAL). Invoca o Python (create_product) que
+     * faz NEW→carregar-lojas→(prices)→MERGE→SAVE→CLOSE→confirmação, tudo numa só
+     * sessão/porta. Preços chegam JÁ como decimal string (convertidos no job pela
+     * fronteira). Devolve {ok, persisted, code, pingwin_id, stores_count, raw}.
+     *
+     * ⚠️ NÃO toca no espelho — isso é o job, e SÓ após persisted=true.
+     */
+    public function createProduct(int $companyId, array $product, ?string $saleprice = null, ?string $purchaseprice = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $extra = array_filter([
+            'mode'          => 'create_product',
+            'product'       => $product,
+            'saleprice'     => $saleprice,
+            'purchaseprice' => $purchaseprice,
+        ], static fn ($v) => $v !== null);
+        // 'product' pode ser [] legítimo (herda o branco do servidor) — repor se filtrado.
+        $extra['product'] = $product;
+
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
+
+        // Erro de execução do Python (exceção): sem 'result' → falha dura.
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Criar artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'persisted' => false];
+    }
+
+    /**
+     * ARTIGOS — EDITAR (Etapa 3, ESCRITA REAL): edita um artigo existente (incl. mudar o
+     * Estado). Invoca o Python (update_product): OPEN→(EDIT prices se mudou)→MERGE curto
+     * (maindataset SEM chaves de preço)→SAVE→CLOSE→confirmação in-session. `changes` =
+     * campos do maindataset a sobrepor (nomes PingWin). Preço já em decimal string.
+     * Devolve {ok, product_id, code, confirm:{status, saleprice, ...}} (leitura autoritativa).
+     */
+    public function updateProduct(int $companyId, string $productId, array $changes, ?string $saleprice = null, ?string $purchaseprice = null): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $extra = ['mode' => 'update_product', 'product_id' => $productId, 'changes' => $changes];
+        if ($saleprice !== null) {
+            $extra['saleprice'] = $saleprice;
+        }
+        if ($purchaseprice !== null) {
+            $extra['purchaseprice'] = $purchaseprice;
+        }
+
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Editar artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false];
+    }
+
+    /**
+     * ARTIGOS — LER/ABRIR (Etapa 2, SÓ LEITURA): lê um artigo completo pelo id
+     * (OPEN,GET,INFO com os 19 datasets → CLOSE) para mostrar/editar na tela. Mapeia os
+     * preços para CÊNTIMOS (consistência com o espelho). Leitura autoritativa (NÃO
+     * browserdataset). Síncrono (sem job), como o form-lookups.
+     */
+    public function readProduct(int $companyId, string $productId): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'read_product', 'product_id' => $productId,
+        ]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura do artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $product = $result['product'] ?? [];
+
+        // Preços do servidor (decimal) → CÊNTIMOS, para o frontend/espelho.
+        $prices = $product['prices'] ?? [];
+        $product['saleprice_cents'] = isset($prices['saleprice']) ? self::decimalToCents($prices['saleprice']) : null;
+        $product['purchaseprice_cents'] = isset($prices['purchaseprice']) ? self::decimalToCents($prices['purchaseprice']) : null;
+
+        // ⚠️ Fallback do catalog_item_id (id do espelho local): a tela precisa dele para
+        // EDITAR/ANULAR e o state da navegação perde-se num F5. Resolve-se aqui pelo
+        // pingwin_id → sobrevive a recarregar a página / link direto.
+        $product['catalog_item_id'] = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+            ->where('pingwin_id', $productId)->value('id');
+
+        return $product;
+    }
+
+    /**
+     * ARTIGOS — ANULAR (Etapa 4, ESCRITA REAL): apaga DEFINITIVAMENTE um artigo no
+     * PingWin. Invoca o Python (delete_product) que faz OPEN→CANCEL,CLOSE→DELETE→
+     * confirmação por releitura (tem de vir VAZIA). Devolve {ok, deleted_confirmed,
+     * code, product_id, still_present}. ⚠️ NÃO toca no espelho — isso é o job, e SÓ
+     * após deleted_confirmed=true (soft-delete de histórico; nunca reactiva no PingWin).
+     */
+    public function deleteProduct(int $companyId, string $productId, string $code = ''): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'delete_product', 'product_id' => $productId, 'code' => $code,
+        ]));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Apagar artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'deleted_confirmed' => false];
+    }
+
+    /**
+     * ARTIGOS — FORM (Etapa 1a, SÓ LEITURA / Caminho 1/3): lê o form de criação do
+     * artigo no PingWin. O Python faz NEW,GET,INFO na porta 8134 (o form não abre
+     * com OPEN puro), CLOSE logo, e uma SALVAGUARDA por browserdataset a provar que
+     * NADA persistiu. NUNCA MERGE/SAVE; não toca no espelho nem em pingwin_catalog_writes.
+     *
+     * Devolve o shape limpo do form (próximo code + lookups vivos do servidor).
+     * ⚠️ Se a salvaguarda detetar que a contagem subiu (o NEW terá persistido),
+     * ABORTA com erro em destaque — mudaria toda a estratégia da escrita (1b).
+     */
+    public function productFormLookups(int $companyId): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'product_form_lookups']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura do form de artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $form = $result['form'] ?? [];
+
+        // ⚠️ SALVAGUARDA: se o NEW+CLOSE tiver persistido (contagem subiu), NÃO seguir.
+        $guard = $form['_guard'] ?? [];
+        if (($guard['persisted'] ?? false) === true) {
+            throw new \RuntimeException(
+                'ABORTADO: a contagem de artigos subiu após NEW+CLOSE (antes=' .
+                ($guard['count_before'] ?? '?') . ', depois=' . ($guard['count_after'] ?? '?') .
+                ') — o NEW terá PERSISTIDO. Não prosseguir com a escrita.'
+            );
+        }
+
+        return $form;
     }
 
     /**

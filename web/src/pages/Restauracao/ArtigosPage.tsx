@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, Container, Row, Col, Spinner, Label } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
@@ -40,6 +41,12 @@ const YesNo = ({ v, color }: { v: boolean; color: string }) =>
 export default function ArtigosPage() {
     document.title = "Artigos | Restauração | Xplendor";
     const isMobile = useIsMobile();
+    const navigate = useNavigate();
+
+    // ⚠️ Abrir um artigo: navega com o pingwin_id no URL (para LER) + o id local no
+    // state (catalogItemId, para EDITAR/ANULAR). São ids diferentes (ver ArtigoFormPage).
+    const openArticle = (a: PingwinCatalogItem) =>
+        navigate(`/restauracao/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.id } });
 
     const companyId = useMemo(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -162,9 +169,14 @@ export default function ArtigosPage() {
                                 <h4 className="mb-sm-0">Artigos</h4>
                                 <small className="text-muted">Catálogo de artigos do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
                             </div>
-                            <button className="btn btn-primary" onClick={runSync} disabled={syncing}>
-                                {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                            </button>
+                            <div className="d-flex gap-2">
+                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
+                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                                </button>
+                                <button className="btn btn-primary" onClick={() => navigate("/restauracao/artigos/novo")}>
+                                    <i className="ri-add-line me-1" /> Novo artigo
+                                </button>
+                            </div>
                         </div>
                     </Col>
                 </Row>
@@ -191,7 +203,7 @@ export default function ArtigosPage() {
                             {isMobile ? (
                                 <div className="p-3 d-flex flex-column gap-2">
                                     {!loading && rows.length === 0 ? emptyRow : rows.map((a) => (
-                                        <div key={a.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }} className={a.is_active ? "" : "opacity-75"}>
+                                        <div key={a.id} onClick={() => openArticle(a)} role="button" style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)", cursor: "pointer" }} className={a.is_active ? "" : "opacity-75"}>
                                             <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
                                                 <div style={{ minWidth: 0 }}>
                                                     <div className="fw-semibold text-body text-truncate">{a.description || "—"}</div>
@@ -227,11 +239,12 @@ export default function ArtigosPage() {
                                                 <th className="text-center">Venda</th>
                                                 <th className="text-center">Compra</th>
                                                 <th className="text-center">Ficha</th>
+                                                <th className="text-end">Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={8}>{emptyRow}</td></tr>
+                                                <tr><td colSpan={9}>{emptyRow}</td></tr>
                                             ) : rows.map((a) => (
                                                 <tr key={a.id} className={a.is_active ? "" : "text-muted"}>
                                                     <td className="fw-medium">{a.code || "—"}</td>
@@ -245,6 +258,11 @@ export default function ArtigosPage() {
                                                     <td className="text-center"><YesNo v={a.forsale} color="success" /></td>
                                                     <td className="text-center"><YesNo v={a.forpurchase} color="primary" /></td>
                                                     <td className="text-center"><YesNo v={a.has_bom} color="warning" /></td>
+                                                    <td className="text-end">
+                                                        <button className="btn btn-sm btn-soft-primary" onClick={() => openArticle(a)}>
+                                                            <i className="ri-pencil-line me-1" /> Abrir
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>

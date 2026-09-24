@@ -188,6 +188,22 @@ Route::prefix('v1')->group(function () {
                     // Artigos PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/catalog', [CompanyPingwinController::class, 'catalog']);
                     Route::post('/integrations/pingwin/catalog/sync', [CompanyPingwinController::class, 'syncCatalog']);
+                    // Artigos — form de criação (SÓ LEITURA: next code + lookups do servidor).
+                    Route::get('/integrations/pingwin/articles/form-lookups', [CompanyPingwinController::class, 'articleFormLookups']);
+                    // Artigos — LER/abrir pelo id do PingWin (leitura autoritativa; numérico
+                    // p/ não colidir com articles/form-lookups nem creation/deletion).
+                    Route::get('/integrations/pingwin/articles/{productId}', [CompanyPingwinController::class, 'showArticle'])->whereNumber('productId');
+                    // Artigos — poll do resultado de uma leitura assíncrona (form-lookups/artigo).
+                    Route::get('/integrations/pingwin/articles/read/{token}', [CompanyPingwinController::class, 'articleRead']);
+                    // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
+                    Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
+                    Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);
+                    // Artigos — EDITAR (escrita; exige confirm) + poll do resultado.
+                    Route::match(['put', 'patch'], '/integrations/pingwin/articles/{catalogItemId}', [CompanyPingwinController::class, 'updateArticle'])->whereNumber('catalogItemId');
+                    Route::get('/integrations/pingwin/articles/edition/{creationId}', [CompanyPingwinController::class, 'articleUpdate']);
+                    // Artigos — ANULAR (DELETE definitivo; exige confirm) + poll do resultado.
+                    Route::delete('/integrations/pingwin/articles/{catalogItemId}', [CompanyPingwinController::class, 'deleteArticle']);
+                    Route::get('/integrations/pingwin/articles/deletion/{creationId}', [CompanyPingwinController::class, 'articleDeletion']);
                     // Famílias PingWin (Fase 1, só leitura): árvore + sincronizar (+ religa artigos).
                     Route::get('/integrations/pingwin/families', [CompanyPingwinController::class, 'families']);
                     Route::post('/integrations/pingwin/families/sync', [CompanyPingwinController::class, 'syncFamilies']);

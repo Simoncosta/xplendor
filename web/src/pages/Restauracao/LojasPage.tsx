@@ -44,12 +44,13 @@ export default function LojasPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [form, setForm] = useState(emptyForm());
-    const [reservDate, setReservDate] = useState<string>(yesterdayIso());
+    // Sincronizar por data (modal único): 1 dia (só a inicial) ou período (de→a).
+    const [syncOpen, setSyncOpen] = useState(false);
     const [syncingReservs, setSyncingReservs] = useState(false);
-    // Sincronização por PERÍODO (de/até) — um job por dia, 1 notificação no fim.
     const [periodFrom, setPeriodFrom] = useState<string>(yesterdayIso());
-    const [periodTo, setPeriodTo] = useState<string>(yesterdayIso());
+    const [periodTo, setPeriodTo] = useState<string>("");
     const [syncingPeriod, setSyncingPeriod] = useState(false);
+    const syncBusy = syncingReservs || syncingPeriod;
     // A empresa tem integração CoverManager (token de empresa)? Gate do slug no modal.
     const [cmIntegrationConnected, setCmIntegrationConnected] = useState(false);
 
@@ -124,33 +125,32 @@ export default function LojasPage() {
         }
     };
 
-    const runReservSync = async () => {
-        if (!companyId || !reservDate) return;
-        setSyncingReservs(true);
+    // Abre o modal de sincronizar por data (1 dia = só a inicial; período = de→a).
+    const openSync = () => { setPeriodFrom(yesterdayIso()); setPeriodTo(""); setSyncOpen(true); };
+
+    // ⚠️ FUSÃO SÓ VISUAL: um botão/modal, mas por baixo continuam as DUAS funções de
+    // backend. Uma data (até vazio) → syncCoverManager (1 dia). Duas datas → syncRestaurantPeriod.
+    const runSync = async () => {
+        if (!companyId || !periodFrom) { toast.error("Escolhe pelo menos uma data."); return; }
+        if (periodTo && periodTo < periodFrom) { toast.error("A data final não pode ser anterior à inicial."); return; }
         try {
-            // Sincroniza TODAS as lojas com CoverManager (o serviço percorre todas).
-            const res: any = await syncCoverManager(companyId, reservDate);
-            const d = res?.data;
-            toast.success(`Reservas sincronizadas (${d?.synced ?? 0} loja(s))${d?.failed?.length ? ` — falhou: ${d.failed.join(", ")}` : ""}.`);
-            await fetchRows();
+            if (!periodTo) {
+                setSyncingReservs(true);
+                const res: any = await syncCoverManager(companyId, periodFrom); // 1 dia (todas as lojas)
+                const d = res?.data;
+                toast.success(`Reservas sincronizadas (${d?.synced ?? 0} loja(s))${d?.failed?.length ? ` — falhou: ${d.failed.join(", ")}` : ""}.`);
+                await fetchRows();
+            } else {
+                setSyncingPeriod(true);
+                const res: any = await syncRestaurantPeriod(companyId, periodFrom, periodTo); // período (1 job/dia)
+                const d = res?.data;
+                toast.info(`A importar ${d?.days ?? ""} dia(s) (${periodFrom} a ${periodTo})… serás notificado no sino quando terminar.`);
+            }
+            setSyncOpen(false);
         } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível sincronizar as reservas.");
+            toast.error(e?.message ?? "Não foi possível sincronizar.");
         } finally {
             setSyncingReservs(false);
-        }
-    };
-
-    const runPeriodSync = async () => {
-        if (!companyId || !periodFrom || !periodTo) return;
-        if (periodTo < periodFrom) { toast.error("A data final não pode ser anterior à inicial."); return; }
-        setSyncingPeriod(true);
-        try {
-            const res: any = await syncRestaurantPeriod(companyId, periodFrom, periodTo);
-            const d = res?.data;
-            toast.info(`A importar ${d?.days ?? ""} dia(s) (${periodFrom} a ${periodTo})… serás notificado no sino quando terminar.`);
-        } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível iniciar a sincronização do período.");
-        } finally {
             setSyncingPeriod(false);
         }
     };
@@ -175,9 +175,14 @@ export default function LojasPage() {
                     <Col xs={12}>
                         <div className="page-title-box d-sm-flex align-items-center justify-content-between">
                             <h4 className="mb-sm-0">Lojas</h4>
-                            <button className="btn btn-primary" onClick={openAdd}>
-                                <i className="ri-add-line me-1" /> Adicionar loja
-                            </button>
+                            <div className="d-flex gap-2">
+                                <button className="btn btn-soft-primary" onClick={openSync} disabled={syncBusy}>
+                                    {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
+                                </button>
+                                <button className="btn btn-primary" onClick={openAdd}>
+                                    <i className="ri-add-line me-1" /> Adicionar loja
+                                </button>
+                            </div>
                         </div>
                     </Col>
                 </Row>
@@ -187,26 +192,7 @@ export default function LojasPage() {
                     <Col xs={12}>
                         <Card className="mb-0">
                             <div className="card-header">
-                                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                    <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                    {/* Sincronizar reservas (CoverManager) — TODAS as lojas, para UMA data. */}
-                                    <div className="d-flex flex-wrap align-items-center gap-2">
-                                        <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={reservDate} max={todayIso()} onChange={(e) => setReservDate(e.target.value)} disabled={syncingReservs} />
-                                        <button className="btn btn-sm btn-soft-primary" onClick={runReservSync} disabled={syncingReservs || !reservDate}>
-                                            {syncingReservs ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-event-line me-1" /> Sincronizar (1 dia)</>}
-                                        </button>
-                                    </div>
-                                </div>
-                                {/* Sincronizar um PERÍODO: um dia de cada vez, notificação única no fim. */}
-                                <div className="d-flex flex-wrap align-items-center gap-2 mt-2">
-                                    <span className="text-muted fs-12">Período:</span>
-                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodFrom} max={todayIso()} onChange={(e) => setPeriodFrom(e.target.value)} disabled={syncingPeriod} />
-                                    <span className="text-muted fs-12">até</span>
-                                    <input type="date" className="form-control form-control-sm" style={{ width: 150 }} value={periodTo} max={todayIso()} onChange={(e) => setPeriodTo(e.target.value)} disabled={syncingPeriod} />
-                                    <button className="btn btn-sm btn-primary" onClick={runPeriodSync} disabled={syncingPeriod || !periodFrom || !periodTo}>
-                                        {syncingPeriod ? <><Spinner size="sm" className="me-1" /> A enviar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar período</>}
-                                    </button>
-                                </div>
+                                <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
                             </div>
                             {/* MOBILE: cards empilhados (sem overflow horizontal). */}
                             {isMobile ? (
@@ -334,6 +320,34 @@ export default function LojasPage() {
                         <button className="btn btn-light" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</button>
                         <button className="btn btn-primary" onClick={submit} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : (editingId ? <><i className="ri-save-line me-1" /> Guardar loja</> : <><i className="ri-add-line me-1" /> Adicionar loja</>)}
+                        </button>
+                    </ModalFooter>
+                </Modal>
+
+                {/* Modal sincronizar por data: 1 dia (só a inicial) ou período (de→a). */}
+                <Modal isOpen={syncOpen} toggle={() => !syncBusy && setSyncOpen(false)} centered>
+                    <ModalHeader toggle={() => !syncBusy && setSyncOpen(false)}>Sincronizar reservas</ModalHeader>
+                    <ModalBody>
+                        <p className="text-muted fs-13 mb-3">
+                            Escolhe <strong>uma data</strong> para sincronizar esse dia, ou <strong>um intervalo</strong> (de → até)
+                            para sincronizar vários dias. Aplica-se a todas as lojas.
+                        </p>
+                        <Row className="g-2">
+                            <Col md={6}>
+                                <label className="form-label fs-12 mb-1">Data</label>
+                                <input type="date" className="form-control" value={periodFrom} max={todayIso()} onChange={(e) => setPeriodFrom(e.target.value)} disabled={syncBusy} />
+                            </Col>
+                            <Col md={6}>
+                                <label className="form-label fs-12 mb-1">Até (opcional)</label>
+                                <input type="date" className="form-control" value={periodTo} max={todayIso()} min={periodFrom || undefined} onChange={(e) => setPeriodTo(e.target.value)} disabled={syncBusy} />
+                                <div className="form-text fs-11">Vazio = só o dia da “Data”.</div>
+                            </Col>
+                        </Row>
+                    </ModalBody>
+                    <ModalFooter>
+                        <button className="btn btn-light" onClick={() => setSyncOpen(false)} disabled={syncBusy}>Cancelar</button>
+                        <button className="btn btn-primary" onClick={runSync} disabled={syncBusy || !periodFrom}>
+                            {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
                         </button>
                     </ModalFooter>
                 </Modal>

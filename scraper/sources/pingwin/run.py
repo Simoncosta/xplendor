@@ -47,7 +47,7 @@ CLIENT_KEYS = ["auth_url", "api_url", "frontend_url", "database", "app_version",
                "username", "password", "report_id", "stores"]
 
 # Chaves opcionais que o construtor aceita (defaults no cliente).
-OPTIONAL_CLIENT = ["application", "app_grupopie", "units_url", "units_port"]
+OPTIONAL_CLIENT = ["application", "app_grupopie", "units_url", "units_port", "product_url", "product_port"]
 
 _SESSIONID_RE = re.compile(r"(sessionid=)[^&\s\"']+", re.IGNORECASE)
 
@@ -116,7 +116,11 @@ def run(cfg: dict) -> dict:
             if not dataset_id:
                 return {"ok": False, "error": "catalog_dataset_id em falta (definir PINGWIN_CATALOG_DATASET_ID)."}
             articles = client.fetch_catalog(dataset_id)
-            return {"ok": True, "mode": "catalog", "articles": articles}
+            # Também os ANULADOS (STATE:1) → para marcar is_active=false no espelho.
+            # Se ESTA leitura falhar, o raise propaga e o run devolve ok:false → o PHP
+            # NÃO aplica nada (nem os ativos): melhor não corrigir do que meio-corrigir.
+            deleted_ids = client.fetch_catalog_deleted_ids(dataset_id)
+            return {"ok": True, "mode": "catalog", "articles": articles, "deleted_ids": deleted_ids}
 
         if mode == "families":
             # READ-ONLY: árvore de FAMÍLIAS (GET /family → family.maindataset). Um só
@@ -140,6 +144,61 @@ def run(cfg: dict) -> dict:
             # na 8138 (a sessão da 8136 não é aceite lá).
             units = client.fetch_units()
             return {"ok": True, "mode": "units", "units": units}
+
+        if mode == "product_form_lookups":
+            # READ-ONLY (Caminho 1/3): NEW,GET,INFO na 8134 para LER o form do artigo
+            # (code novo + lookups), CLOSE logo, e salvaguarda por browserdataset
+            # (a contagem de artigos NÃO pode subir). NUNCA MERGE/SAVE — isso é a 1b.
+            dataset_id = cfg.get("catalog_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "catalog_dataset_id em falta (salvaguarda de não-persistência)."}
+            form = client.product_form_lookups(dataset_id)
+            return {"ok": True, "mode": "product_form_lookups", "form": form}
+
+        if mode == "create_product":
+            # ⚠️ ESCRITA: CRIAR um artigo (porta 8134). Sequência NEW→(prices)→MERGE→
+            # SAVE→CLOSE→confirmar por browserdataset. Ação deliberada (confirmada a
+            # montante no Laravel/UI). Preço já chega como decimal string ("10.25").
+            product = cfg.get("product") or {}
+            saleprice = cfg.get("saleprice")
+            purchaseprice = cfg.get("purchaseprice")
+            dataset_id = cfg.get("catalog_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "catalog_dataset_id em falta (confirmação por releitura)."}
+            result = client.create_product(product, saleprice, purchaseprice, dataset_id)
+            return {"ok": bool(result.get("persisted")), "mode": "create_product", "result": result}
+
+        if mode == "read_product":
+            # SÓ LEITURA (etapa 2): lê o artigo completo pelo id (OPEN,GET,INFO → CLOSE).
+            product_id = str(cfg.get("product_id") or "")
+            if not product_id:
+                return {"ok": False, "error": "product_id em falta (id do artigo a ler)."}
+            product = client.read_product(product_id)
+            return {"ok": True, "mode": "read_product", "product": product}
+
+        if mode == "update_product":
+            # ⚠️ ESCRITA: EDITAR um artigo (OPEN→(prices)→MERGE curto→SAVE→CLOSE→confirmar).
+            product_id = str(cfg.get("product_id") or "")
+            changes = cfg.get("changes") or {}
+            saleprice = cfg.get("saleprice")
+            purchaseprice = cfg.get("purchaseprice")
+            if not product_id:
+                return {"ok": False, "error": "product_id em falta (id do artigo a editar)."}
+            result = client.update_product(product_id, changes, saleprice, purchaseprice)
+            return {"ok": bool(result.get("ok")), "mode": "update_product", "result": result}
+
+        if mode == "delete_product":
+            # ⚠️ ESCRITA: APAGAR um artigo (DELETE definitivo). Ação deliberada (confirmada
+            # a montante). CANCEL,CLOSE → DELETE → releitura pelo code (tem de vir VAZIA).
+            product_id = str(cfg.get("product_id") or "")
+            code = str(cfg.get("code") or "")
+            dataset_id = cfg.get("catalog_dataset_id")
+            if not product_id:
+                return {"ok": False, "error": "product_id em falta (id do artigo a apagar)."}
+            if not dataset_id:
+                return {"ok": False, "error": "catalog_dataset_id em falta (confirmação por releitura)."}
+            result = client.delete_product(product_id, code, dataset_id)
+            return {"ok": bool(result.get("deleted_confirmed")), "mode": "delete_product", "result": result}
 
         if mode == "create_unit":
             # ⚠️ ESCRITA: CRIAR uma unidade (Action NEW) na PORTA 8136 (sessão principal).

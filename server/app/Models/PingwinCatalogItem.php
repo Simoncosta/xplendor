@@ -19,15 +19,26 @@ class PingwinCatalogItem extends Model
         'forsale', 'forpurchase', 'has_bom', 'product_type', 'product_status',
         'taxgroup', 'printzone', 'saleprice_cents', 'purchaseprice_cents',
         'saleunit', 'purchaseunit', 'order_code', 'supplier_code', 'is_active', 'synced_at',
+        // Campos de escrita (maindataset) + raw do servidor. Preparados; a escrita é a Etapa 1b.
+        'raw', 'forproduction',
+        'base_unit_id', 'default_sale_unit_id', 'default_purchase_unit_id',
+        'default_stock_unit_id', 'label_unit_id', 'volume_unit_id',
+        'taxgroup_id', 'stockconfig_id', 'printzone_id', 'product_type_id', 'status_id',
+        'setexpireday', 'weight', 'default_supplier_id', 'fixedsupplier', 'obs',
     ];
 
     protected $casts = [
         'forsale'             => 'boolean',
         'forpurchase'         => 'boolean',
+        'forproduction'       => 'boolean',
+        'fixedsupplier'       => 'boolean',
         'has_bom'             => 'boolean',
         'is_active'           => 'boolean',
         'saleprice_cents'     => 'integer',
         'purchaseprice_cents' => 'integer',
+        'setexpireday'        => 'integer',
+        'weight'              => 'float',
+        'raw'                 => 'array',
         'synced_at'           => 'datetime',
     ];
 

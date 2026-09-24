@@ -282,11 +282,11 @@ export default function UnidadesPage() {
                                 <small className="text-muted">Unidades e conversões do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
                             </div>
                             <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={openCreate}>
-                                    <i className="ri-add-line me-1" /> Criar unidade
-                                </button>
-                                <button className="btn btn-primary" onClick={runSync} disabled={syncing}>
+                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                                </button>
+                                <button className="btn btn-primary" onClick={openCreate}>
+                                    <i className="ri-add-line me-1" /> Criar unidade
                                 </button>
                             </div>
                         </div>

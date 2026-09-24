@@ -275,6 +275,37 @@ export const getPingwinCatalog = (
 export const syncPingwinCatalog = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/sync`, {});
 
+// ── Artigos: CRUD no PingWin ──────────────────────────────────────────────────
+// ⚠️ IDs: LER usa o pingwin_id (id do PingWin); EDITAR/ANULAR usam o catalog_item_id
+// (id do espelho local). São diferentes — não trocar (ver ArtigoForm).
+const A = (companyId: number) => url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles`;
+// ⚠️ LEITURAS são ASSÍNCRONAS (Opção 1): o docker exec corre no worker/root, não no
+// www-data. Estas devolvem { read_id } → fazer polling em getArticleRead(token).
+// Form de criação: próximo code + lookups vivos do servidor.
+export const getArticleFormLookups = (companyId: number) =>
+    api.get(A(companyId) + `/form-lookups`);
+// Ler/abrir um artigo pelo PINGWIN_ID (leitura autoritativa OPEN,GET,INFO).
+export const getArticle = (companyId: number, pingwinId: string) =>
+    api.get(A(companyId) + `/${pingwinId}`);
+// Poll do resultado de uma leitura assíncrona (form-lookups ou artigo), pelo token.
+export const getArticleRead = (companyId: number, token: string) =>
+    api.get(A(companyId) + `/read/${token}`);
+// ⚠️ ESCRITA: criar (exige confirm:true). Poll em articles/creation/{id}.
+export const createArticle = (companyId: number, data: Record<string, any>) =>
+    api.create(A(companyId), data);
+export const getArticleCreation = (companyId: number, creationId: number) =>
+    api.get(A(companyId) + `/creation/${creationId}`);
+// ⚠️ ESCRITA: editar pelo CATALOG_ITEM_ID (exige confirm:true). Poll em articles/edition/{id}.
+export const updateArticle = (companyId: number, catalogItemId: number, data: Record<string, any>) =>
+    api.update(A(companyId) + `/${catalogItemId}`, data);
+export const getArticleEdition = (companyId: number, creationId: number) =>
+    api.get(A(companyId) + `/edition/${creationId}`);
+// ⚠️ ESCRITA (destrutiva): anular pelo CATALOG_ITEM_ID (exige confirm:true). Poll em articles/deletion/{id}.
+export const deleteArticle = (companyId: number, catalogItemId: number) =>
+    api.delete(A(companyId) + `/${catalogItemId}`, { data: { confirm: true } });
+export const getArticleDeletion = (companyId: number, creationId: number) =>
+    api.get(A(companyId) + `/deletion/${creationId}`);
+
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);
 export const syncPingwinFamilies = (companyId: number) =>

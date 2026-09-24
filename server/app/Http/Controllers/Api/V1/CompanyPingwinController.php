@@ -18,6 +18,8 @@ use Carbon\Carbon;
 use Illuminate\Bus\Batch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Bus;
 
 /**
@@ -193,6 +195,362 @@ class CompanyPingwinController extends Controller
         \App\Jobs\SyncPingwinCatalogJob::dispatch($companyId);
 
         return ApiResponse::success(['queued' => true], 'A sincronizar artigos… serás notificado quando terminar.');
+    }
+
+    /**
+     * ARTIGOS — FORM (Etapa 1a, SÓ LEITURA): lê no PingWin o form de criação do
+     * artigo (próximo code + lookups vivos), via NEW,GET,INFO→CLOSE na porta 8134,
+     * com salvaguarda de não-persistência. Síncrono (não é job): a UI da 1c abre o
+     * form com estes dados frescos do servidor. Sem escrita, sem confirm.
+     */
+    public function articleFormLookups(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        // ⚠️ Opção 1: a leitura (docker exec) corre no WORKER (root); o php-fpm (www-data)
+        // nunca toca no socket. Despacha e devolve um token; a UI faz polling em /read/{token}.
+        $token = (string) Str::uuid();
+        \App\Jobs\ReadPingwinFormLookupsJob::dispatch($companyId, $token);
+
+        return ApiResponse::success(['read_id' => $token, 'status' => 'pending'], 'A carregar o formulário do PingWin…');
+    }
+
+    /**
+     * ARTIGOS — LER/ABRIR (Etapa 2, SÓ LEITURA): lê um artigo completo pelo id do PingWin
+     * (leitura autoritativa OPEN,GET,INFO) para a tela mostrar/editar. Síncrono, sem job.
+     */
+    public function showArticle(int $companyId, string $productId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        // ⚠️ Opção 1: leitura no WORKER (root). Despacha e devolve token; UI faz polling.
+        $token = (string) Str::uuid();
+        \App\Jobs\ReadPingwinProductJob::dispatch($companyId, $productId, $token);
+
+        return ApiResponse::success(['read_id' => $token, 'status' => 'pending'], 'A carregar o artigo do PingWin…');
+    }
+
+    /**
+     * Poll do resultado de uma LEITURA assíncrona (form-lookups ou artigo). Lê do Redis
+     * pelo token e CONSOME (apaga) ao entregar. `pending` enquanto o worker não terminou.
+     */
+    public function articleRead(int $companyId, string $token)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $key = PingwinService::readKey($companyId, $token);
+        $val = Cache::get($key);
+        if ($val === null) {
+            return ApiResponse::success(['status' => 'pending'], 'A carregar…');
+        }
+        Cache::forget($key); // consome ao entregar (o TTL é só rede de segurança)
+
+        if (($val['status'] ?? '') === 'ready') {
+            return ApiResponse::success(array_merge(['status' => 'ready'], $val['result'] ?? []), 'Pronto.');
+        }
+
+        return ApiResponse::success(['status' => 'error', 'error_message' => $val['error_message'] ?? 'Falha na leitura.'], 'Falha na leitura.');
+    }
+
+    /** Regras de validação do CRIAR artigo (nomes já no formato do corpo PingWin). */
+    private function articleWriteRules(): array
+    {
+        return [
+            'confirm'                  => ['required', 'accepted'], // trava: sem confirmação não escreve
+            'description'              => ['required', 'string', 'max:120'],
+            'shortname'                => ['nullable', 'string', 'max:60'],
+            'button_name'              => ['nullable', 'string', 'max:60'],
+            'family_id'                => ['nullable', 'string', 'max:60'],
+            'product_type'             => ['nullable', 'string', 'max:20'],  // id (corpo: SEM _id)
+            'status'                   => ['nullable', 'string', 'max:20'],  // id (corpo: SEM _id)
+            'taxgroup_id'              => ['nullable', 'string', 'max:20'],  // COM _id
+            'stockconfig_id'           => ['nullable', 'string', 'max:20'],
+            'printzone_id'             => ['nullable', 'string', 'max:20'],
+            'base_unit_id'             => ['nullable', 'string', 'max:60'],
+            'default_sale_unit_id'     => ['nullable', 'string', 'max:60'],
+            'default_purchase_unit_id' => ['nullable', 'string', 'max:60'],
+            'default_stock_unit_id'    => ['nullable', 'string', 'max:60'],
+            'label_unit_id'            => ['nullable', 'string', 'max:60'],
+            'volume_unit_id'           => ['nullable', 'string', 'max:60'],
+            'forsale'                  => ['nullable', 'boolean'],
+            'forpurchase'              => ['nullable', 'boolean'],
+            'forproduction'            => ['nullable', 'boolean'],
+            'change_sale_price'        => ['nullable', 'boolean'], // "Preço de venda variável"
+            'setexpireday'             => ['nullable', 'integer', 'min:0'],
+            'weight'                   => ['nullable', 'numeric', 'min:0'],
+            'obs'                      => ['nullable', 'string', 'max:1000'],
+            'saleprice_cents'          => ['nullable', 'integer', 'min:0'],
+            'purchaseprice_cents'      => ['nullable', 'integer', 'min:0'],
+        ];
+    }
+
+    /** Constrói o payload do maindataset (nomes PingWin) + os preços em cêntimos. */
+    private function buildArticlePayload(array $data): array
+    {
+        $bool = static fn (string $k) => array_key_exists($k, $data) ? ((bool) $data[$k] ? 1 : 0) : null;
+
+        // product_type/status SEM _id; taxgroup_id/stockconfig_id/printzone_id COM _id.
+        $product = array_filter([
+            'description'    => $data['description'],
+            'shortname'      => $data['shortname'] ?? $data['description'],
+            'button_name'    => $data['button_name'] ?? ($data['shortname'] ?? $data['description']),
+            'family_id'      => $data['family_id'] ?? null,
+            'product_type'   => $data['product_type'] ?? null,
+            'status'         => $data['status'] ?? null,
+            'taxgroup_id'    => $data['taxgroup_id'] ?? null,
+            'stockconfig_id' => $data['stockconfig_id'] ?? null,
+            'printzone_id'   => $data['printzone_id'] ?? null,
+            'setexpireday'   => $data['setexpireday'] ?? null,
+            'weight'         => $data['weight'] ?? null,
+            'obs'            => $data['obs'] ?? null,
+        ], static fn ($v) => $v !== null && $v !== '');
+
+        // base_unit_id propaga para os defaults quando não especificados.
+        $base = $data['base_unit_id'] ?? null;
+        if ($base) {
+            $product['base_unit_id']             = $base;
+            $product['default_sale_unit_id']     = $data['default_sale_unit_id'] ?? $base;
+            $product['default_purchase_unit_id'] = $data['default_purchase_unit_id'] ?? $base;
+            $product['default_stock_unit_id']    = $data['default_stock_unit_id'] ?? $base;
+            $product['label_unit_id']            = $data['label_unit_id'] ?? $base;
+        }
+        if (! empty($data['volume_unit_id'])) {
+            $product['volume_unit_id'] = $data['volume_unit_id'];
+        }
+
+        // Checkboxes: 0 é válido → adicionar explicitamente (não filtrar).
+        foreach (['forsale', 'forpurchase', 'forproduction', 'change_sale_price'] as $k) {
+            $v = $bool($k);
+            if ($v !== null) {
+                $product[$k] = $v;
+            }
+        }
+
+        return [$product, $data['saleprice_cents'] ?? null, $data['purchaseprice_cents'] ?? null];
+    }
+
+    /**
+     * ⚠️ ESCRITA: CRIAR um artigo no PingWin. Ação DELIBERADA (exige confirm=accepted).
+     * Tenancy PRIMEIRO (o ensure_module:pingwin já correu na rota); só depois o payload.
+     * Regista a auditoria (pingwin_catalog_writes, status=a_criar) ANTES de despachar o
+     * job (worker, docker socket). UI faz polling. O espelho só muda após persisted=true.
+     */
+    public function createArticle(Request $request, int $companyId)
+    {
+        // 1) Tenancy antes de olhar para confirm/payload (o confirm não dá falsa segurança).
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        // 2) Só agora o payload + a trava de confirmação.
+        $data = $request->validate($this->articleWriteRules());
+
+        // Regra de negócio (imposta no backend, não só no form): Compra e Produção exclusivos.
+        if (($data['forpurchase'] ?? false) && ($data['forproduction'] ?? false)) {
+            return ApiResponse::error('Um artigo não pode ser de Compra e de Produção ao mesmo tempo.', 422);
+        }
+
+        [$product, $saleCents, $purchaseCents] = $this->buildArticlePayload($data);
+
+        $write = \App\Models\PingwinCatalogWrite::create([
+            'company_id'          => $companyId,
+            'user_id'             => Auth::id(),
+            'action'              => 'criar',
+            'description'         => $data['description'],
+            'payload'             => $product,
+            'saleprice_cents'     => $saleCents,
+            'purchaseprice_cents' => $purchaseCents,
+            'status'              => 'a_criar',
+        ]);
+
+        \App\Jobs\CreatePingwinCatalogJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $write->id, 'status' => 'a_criar'],
+            'A criar o artigo no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /** Poll do estado da criação de artigo (à imagem de unitCreation). */
+    public function articleCreation(int $companyId, int $creationId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $write = \App\Models\PingwinCatalogWrite::where('company_id', $companyId)->find($creationId);
+        if (! $write) {
+            return ApiResponse::error('Criação não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'creation_id'   => $write->id,
+            'status'        => $write->status,
+            'code'          => $write->code,
+            'pingwin_id'    => $write->pingwin_id,
+            'error_message' => $write->error_message,
+            'description'   => $write->description,
+        ], 'Estado da criação.');
+    }
+
+    /**
+     * ⚠️ ESCRITA (mais destrutiva): APAGAR um artigo no PingWin (DELETE definitivo).
+     * Apagar acidental é pior que criar → exige confirm=accepted. Tenancy PRIMEIRO
+     * (antes do confirm/payload). Regista auditoria (action=anular, a_anular) ANTES de
+     * despachar o job. O espelho só é soft-deleted após deleted_confirmed=true (no job).
+     */
+    public function deleteArticle(Request $request, int $companyId, int $catalogItemId)
+    {
+        // 1) Tenancy antes de tudo (o ensure_module:pingwin já correu na rota).
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $item = \App\Models\PingwinCatalogItem::where('company_id', $companyId)->where('id', $catalogItemId)->first();
+        if (! $item) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
+        // 2) Só agora a trava de confirmação.
+        $request->validate(['confirm' => ['required', 'accepted']]);
+
+        $write = \App\Models\PingwinCatalogWrite::create([
+            'company_id'      => $companyId,
+            'user_id'         => Auth::id(),
+            'action'          => 'anular',
+            'catalog_item_id' => $item->id,
+            'code'            => $item->code,
+            'description'     => $item->description ?? ('#' . $item->id),
+            'status'          => 'a_anular',
+        ]);
+
+        \App\Jobs\DeletePingwinCatalogJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $write->id, 'status' => 'a_anular'],
+            'A apagar o artigo no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /** Regras do EDITAR: tudo nullable (edição parcial); confirm obrigatório. */
+    private function articleUpdateRules(): array
+    {
+        return array_merge($this->articleWriteRules(), [
+            'description' => ['nullable', 'string', 'max:120'],
+            'status'      => ['nullable', 'string', 'in:1,2,3'], // 1=Ativo 2=Inativo 3=Descontinuado
+        ]);
+    }
+
+    /** Constrói o `changes` (só campos PRESENTES, nomes PingWin) + preços em cêntimos. */
+    private function buildArticleChanges(array $data): array
+    {
+        $changes = [];
+        // Escalares/ids do maindataset (só os que vieram).
+        foreach (['description', 'shortname', 'button_name', 'family_id', 'product_type', 'status',
+                  'taxgroup_id', 'stockconfig_id', 'printzone_id', 'setexpireday', 'weight', 'obs'] as $k) {
+            if (array_key_exists($k, $data) && $data[$k] !== null && $data[$k] !== '') {
+                $changes[$k] = ($k === 'status') ? (int) $data[$k] : $data[$k];
+            }
+        }
+        // base_unit_id propaga para os defaults quando não especificados.
+        if (! empty($data['base_unit_id'])) {
+            $base = $data['base_unit_id'];
+            $changes['base_unit_id'] = $base;
+            $changes['default_sale_unit_id'] = $data['default_sale_unit_id'] ?? $base;
+            $changes['default_purchase_unit_id'] = $data['default_purchase_unit_id'] ?? $base;
+            $changes['default_stock_unit_id'] = $data['default_stock_unit_id'] ?? $base;
+            $changes['label_unit_id'] = $data['label_unit_id'] ?? $base;
+        }
+        if (! empty($data['volume_unit_id'])) {
+            $changes['volume_unit_id'] = $data['volume_unit_id'];
+        }
+        // Checkboxes: 0 é válido → incluir só se a chave veio.
+        foreach (['forsale', 'forpurchase', 'forproduction', 'change_sale_price'] as $k) {
+            if (array_key_exists($k, $data)) {
+                $changes[$k] = ((bool) $data[$k]) ? 1 : 0;
+            }
+        }
+
+        return [$changes, $data['saleprice_cents'] ?? null, $data['purchaseprice_cents'] ?? null];
+    }
+
+    /**
+     * ⚠️ ESCRITA: EDITAR um artigo (inclui mudar o Estado: 1/2/3). Tenancy PRIMEIRO,
+     * depois confirm=accepted. Regista auditoria (action=editar, a_editar) antes de
+     * despachar o job. O espelho só muda após a confirmação autoritativa (no job).
+     */
+    public function updateArticle(Request $request, int $companyId, int $catalogItemId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $item = \App\Models\PingwinCatalogItem::where('company_id', $companyId)->where('id', $catalogItemId)->first();
+        if (! $item) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
+        $data = $request->validate($this->articleUpdateRules());
+
+        if (($data['forpurchase'] ?? false) && ($data['forproduction'] ?? false)) {
+            return ApiResponse::error('Um artigo não pode ser de Compra e de Produção ao mesmo tempo.', 422);
+        }
+
+        [$changes, $saleCents, $purchaseCents] = $this->buildArticleChanges($data);
+        if (empty($changes) && $saleCents === null && $purchaseCents === null) {
+            return ApiResponse::error('Nada para editar.', 422);
+        }
+
+        $write = \App\Models\PingwinCatalogWrite::create([
+            'company_id'          => $companyId,
+            'user_id'             => Auth::id(),
+            'action'              => 'editar',
+            'catalog_item_id'     => $item->id,
+            'code'                => $item->code,
+            'description'         => $changes['description'] ?? ($item->description ?? ('#' . $item->id)),
+            'payload'             => $changes,
+            'saleprice_cents'     => $saleCents,
+            'purchaseprice_cents' => $purchaseCents,
+            'status'              => 'a_editar',
+        ]);
+
+        \App\Jobs\UpdatePingwinCatalogJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(['creation_id' => $write->id, 'status' => 'a_editar'], 'A editar o artigo no PingWin… aguarda o resultado.');
+    }
+
+    /** Poll do estado do editar de artigo (mesma tabela de auditoria). */
+    public function articleUpdate(int $companyId, int $creationId)
+    {
+        return $this->articleDeletion($companyId, $creationId);
+    }
+
+    /** Poll do estado do apagar de artigo (mesma tabela de auditoria da criação). */
+    public function articleDeletion(int $companyId, int $creationId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $write = \App\Models\PingwinCatalogWrite::where('company_id', $companyId)->find($creationId);
+        if (! $write) {
+            return ApiResponse::error('Operação não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'creation_id'   => $write->id,
+            'status'        => $write->status,
+            'code'          => $write->code,
+            'pingwin_id'    => $write->pingwin_id,
+            'error_message' => $write->error_message,
+            'description'   => $write->description,
+        ], 'Estado do apagar.');
     }
 
     /**

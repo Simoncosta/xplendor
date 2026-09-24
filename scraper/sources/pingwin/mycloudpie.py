@@ -134,6 +134,8 @@ class MyCloudPieClient:
         app_grupopie: str = "PBOWEB",
         units_url: str = "",
         units_port: str = "8138",
+        product_url: str = "",
+        product_port: str = "8134",
     ):
         self.auth_url = auth_url.rstrip("/")
         self.api_url = api_url.rstrip("/")
@@ -143,6 +145,12 @@ class MyCloudPieClient:
         # override explícito (units_url); senão deriva do api_url trocando a porta.
         self.units_url = units_url.rstrip("/") if units_url else ""
         self.units_port = str(units_port or "8138")
+        # ⚠️ A porta do FORM/ESCRITA do artigo NÃO é universal (vimos 8134 e 8136 em
+        # sessões diferentes). Default 8134 (confirmado no Yuko), overridable por config
+        # (product_url/product_port). O invariante crítico: TODO o fluxo de criar corre
+        # numa ÚNICA sessão/porta (o mesmo mecanismo por-porta das Unidades).
+        self.product_url = product_url.rstrip("/") if product_url else ""
+        self.product_port = str(product_port or "8134")
         self.username = username
         self.password = password
         self.report_id = report_id
@@ -571,6 +579,32 @@ class MyCloudPieClient:
         log.info(f"Catálogo: {len(items)} artigos")
         return items
 
+    def fetch_catalog_deleted_ids(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[str]:
+        """
+        IDs dos artigos ANULADOS (STATE:1) — mesmo browserdataset/paginação do catálogo,
+        só muda STATE:"1". O "anular" no PingWin é SOFT-DELETE: o artigo continua a existir
+        mas move-se para os Anulados (deleted:1). Devolve os pingwin_id (precedência
+        id→product_id→code, IGUAL à do sync dos ativos) dos que têm deleted:1. READ-ONLY.
+        ⚠️ deleted (anulado) ≠ status (Ativo/Inativo/Descontinuado): usa-se o deleted:1.
+        """
+        body = {
+            "orderby": "code",
+            "params": {
+                "CODE": "", "DESCRIPTION": "", "BARCODE": "", "FAMILY_ID": "",
+                "PART_PRODUCT_ID": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": "1",
+            },
+        }
+        items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
+        ids: List[str] = []
+        for it in items:
+            if int(it.get("deleted") or 0) != 1:
+                continue
+            pid = it.get("id") or it.get("product_id") or it.get("code")
+            if pid not in (None, ""):
+                ids.append(str(pid))
+        log.info(f"Catálogo anulados (STATE:1, deleted:1): {len(ids)} id(s)")
+        return ids
+
     # ------------------------------------------------- BROWSER: FORNECEDORES
     def fetch_suppliers(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
         """
@@ -900,6 +934,454 @@ class MyCloudPieClient:
             self.session.post(url, json={"params": {}}, headers=self._bom_headers("CLOSE", object_id))
         except Exception as exc:  # noqa: BLE001 — fechar é best-effort; não rebenta o sync
             log.warning("close_bom %s falhou (ignorado): %s", product_id, type(exc).__name__)
+
+    # ═══════════════════════ FORM DO ARTIGO (form-lookups) — porta 8134 ═══════════
+    # ⚠️ SÓ LEITURA (Caminho 1/3). O form do artigo NÃO abre com OPEN puro: abre com
+    # Action NEW,GET,INFO (Content-Length:0) na PORTA 8134 (nem 8136 nem 8138). A
+    # resposta traz o ObjectID no HEADER e, no corpo (chave "product"), o registo em
+    # branco com o CODE novo já calculado + TODOS os lookups. Exercemos o NEW UMA vez
+    # para LER, fechamos logo (CLOSE) e PROVAMOS POR LEITURA (browserdataset) que nada
+    # persistiu. NUNCA MERGE nem EDIT,SAVE aqui — isso é a escrita (Etapa 1b).
+    # 19 datasets, EXATAMENTE nesta ordem (confirmado por HAR).
+    _PRODUCT_FORM_DATASETS = (
+        "maindataset,movementtype,lkfamily_id,lkmodelgridtype,product_type,lkstatus,"
+        "productunits.baseunit,productunits.lkunitsale,productunits.lkunitpurchase,"
+        "lktaxgroup,tbtaxtable,lk_stockconfig,productgroup,lkproductdiscount,prices,"
+        "productbom.maindataset,additionalfields.lk_service_tax_type,"
+        "additionalfields.fieldsinfo,additionalfields.maindataset"
+    )
+    # OPEN MÍNIMO (só o suficiente para o ObjectID vir no header) — usado no ANULAR,
+    # onde não precisamos dos 136 KB de lookups. A etapa 2 (ler/editar) reutiliza o
+    # helper _product_open_by_id com a string COMPLETA (_PRODUCT_FORM_DATASETS).
+    _PRODUCT_MIN_DATASETS = "maindataset"
+
+    def _product_base(self) -> str:
+        """Base URL do form/escrita de artigo. Usa product_url se dado; senão deriva do
+        api_url trocando a porta para product_port (default 8134, overridable). Todo o
+        fluxo de criar corre nesta base, numa só sessão (o mesmo SessionID em todos os passos)."""
+        if self.product_url:
+            return self.product_url
+        parsed = urlparse(self.api_url)
+        host = parsed.hostname or ""
+        netloc = f"{host}:{self.product_port}" if host else parsed.netloc
+        return f"{parsed.scheme}://{netloc}"
+
+    def _product_headers(self, action: str, object_id: str | None = None) -> Dict[str, str]:
+        h = {
+            "Action":        action,
+            "X-Database":    self.database,
+            "X-AppGrupoPie": self.app_grupopie,
+            "Content-Type":  "application/json;charset=UTF-8",
+        }
+        if object_id:
+            h["ObjectID"] = object_id  # o MESMO handle do form em todos os passos
+        return h
+
+    def _product_open(self, session: requests.Session) -> tuple[str, Dict[str, Any]]:
+        """Passo 1: NEW,GET,INFO (Content-Length:0) na 8134 → abre o form em STAGING.
+        Devolve (object_id do HEADER, corpo 'product'). Staging de LEITURA: gera o
+        registo em branco (code novo) + lookups; NÃO persiste sem EDIT,SAVE."""
+        url = f"{self._product_base()}/service/product/*/{self._PRODUCT_FORM_DATASETS}"
+        r = session.post(url, data=b"", headers=self._product_headers("NEW,GET,INFO"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"product NEW,GET,INFO falhou: HTTP {r.status_code} — {r.text[:800]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError(f"product form: header 'ObjectID' ausente. Headers: {dict(r.headers)}")
+        return object_id, r.json().get("product", {})
+
+    def _product_open_by_id(self, session: requests.Session, product_id: str, datasets: str) -> tuple[str | None, Dict[str, Any]]:
+        """OPEN,GET,INFO de um artigo EXISTENTE pelo id. `datasets` parametriza o que vem:
+        - ANULAR: _PRODUCT_MIN_DATASETS (só o ObjectID importa);
+        - LER/EDITAR (etapa 2): _PRODUCT_FORM_DATASETS (artigo completo + lookups do form).
+        Devolve (object_id do header, corpo 'product'). Read-only (não persiste)."""
+        url = f"{self._product_base()}/service/product/{product_id}/{datasets}"
+        r = session.post(url, data=b"", headers=self._product_headers("OPEN,GET,INFO"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"product OPEN by id falhou: HTTP {r.status_code} — {r.text[:600]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        return object_id, r.json().get("product", {})
+
+    def _product_close(self, session: requests.Session, object_id: str) -> None:
+        """Passo 2: CLOSE (Content-Length:0, mesmo ObjectID) → descarta o staging de
+        forma limpa. Sem SAVE → nada é gravado. Best-effort (não mascara o erro real)."""
+        url = f"{self._product_base()}/service/product"
+        try:
+            session.post(url, data=b"", headers=self._product_headers("CLOSE", object_id))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("product CLOSE falhou (ignorado): %s", type(exc).__name__)
+
+    @staticmethod
+    def _filter_radio_conv(units: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filtra o lixo interno "radio conv." (aparece às centenas no baseunit)."""
+        out = []
+        for u in units or []:
+            label = f"{u.get('description', '')} {u.get('shortname', '')}".lower()
+            if "radio conv" in label:
+                continue
+            out.append(u)
+        return out
+
+    def product_form_lookups(self, catalog_dataset_id: str = "") -> Dict[str, Any]:
+        """
+        SÓ LEITURA do form de artigo (Caminho 1/3): NEW,GET,INFO na 8134 → CLOSE →
+        salvaguarda por browserdataset (a contagem de artigos NÃO pode subir).
+        Devolve um shape limpo para o frontend (code novo + lookups). NUNCA grava.
+        """
+        base = self._product_base()
+
+        # Baseline ANTES (browserdataset, 8136 — a mesma leitura do sync de catálogo).
+        count_before = len(self.fetch_catalog(catalog_dataset_id)) if catalog_dataset_id else None
+
+        # Login PRÓPRIO na 8134 (a sessão da 8136 não vale lá) → logout garantido.
+        with self._port_session(base) as session:
+            object_id, product = self._product_open(session)   # NEW,GET,INFO (staging leitura)
+            try:
+                main = product.get("maindataset") or []
+                form: Dict[str, Any] = {
+                    "next_code":      str(main[0].get("code")) if main and main[0].get("code") is not None else None,
+                    "product_type":   product.get("product_type") or [],
+                    "lkstatus":       product.get("lkstatus") or [],
+                    "lktaxgroup":     product.get("lktaxgroup") or [],
+                    "lk_stockconfig": product.get("lk_stockconfig") or [],
+                    "families":       product.get("lkfamily_id") or [],   # árvore (parent_id/node_level)
+                    "units": {
+                        "base":     self._filter_radio_conv(product.get("productunits.baseunit") or []),
+                        "sale":     product.get("productunits.lkunitsale") or [],
+                        "purchase": product.get("productunits.lkunitpurchase") or [],
+                    },
+                    "prices": ((product.get("prices") or [{}])[0]) if product.get("prices") else {},
+                    "additional_fields": {
+                        "fieldsinfo":       product.get("additionalfields.fieldsinfo") or [],
+                        "service_tax_type": product.get("additionalfields.lk_service_tax_type") or [],
+                    },
+                }
+            finally:
+                self._product_close(session, object_id)         # descarta staging (CLOSE), sem SAVE
+
+        # Salvaguarda DEPOIS: reler e confirmar que NADA persistiu.
+        count_after = len(self.fetch_catalog(catalog_dataset_id)) if catalog_dataset_id else None
+        persisted = (count_before is not None and count_after is not None and count_after > count_before)
+        form["_guard"] = {"count_before": count_before, "count_after": count_after, "persisted": persisted}
+        if persisted:
+            log.error("product_form_lookups: CONTAGEM SUBIU (antes=%s, depois=%s) — o NEW persistiu!",
+                      count_before, count_after)
+        return form
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — CRIAR ARTIGO ⚠️⚠️
+    # Toda a sequência corre numa ÚNICA sessão/porta (mecanismo por-porta das Unidades);
+    # MESMO ObjectID (do header do NEW) + MESMO SessionID em todos os passos:
+    #   1. NEW,GET,INFO → ObjectID (header) + registo em branco (code) + lookups/listas.
+    #   2. CARREGAR LOJAS (GET,INFO) → storerelation.storedata/storegroup. ⚠️ Salvaguarda A:
+    #      abortar se 0 lojas (MERGE sem lojas criaria o artigo sem lojas).
+    #   3. (opcional) EDIT /prices → [{saleprice/purchaseprice}] (decimal string, ponto).
+    #   4. MERGE maindataset(1) + as LOJAS do passo 2 + productgroup+tbtaxtable+tbstock+
+    #      additionalfields.* — reenviando as listas tal como o servidor as deu (não inventar).
+    #   5. SAVE (Content-Length:0)  ·  6. CLOSE (Content-Length:0)
+    #   7. ⚠️ Salvaguarda B: CONFIRMAR por browserdataset filtrado pelo code (o SAVE responde
+    #      {"product":{}} vazio → NÃO prova nada). Só persisted=True se o code aparecer.
+    # NOTA: o aggregate é SÓ deste ObjectID (o MERGE leva só ESTE produto), logo NÃO há
+    # risco de apagar outros artigos; a salvaguarda "abortar se a grelha encolher" (unidades)
+    # não se aplica — aqui as salvaguardas são A (lojas) e B (releitura).
+    def _product_load_stores(self, session: requests.Session, object_id: str) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Passo 2: carrega as LOJAS da empresa (Action GET,INFO, mesmo ObjectID) —
+        POST /service/product/storerelation.storedata,storerelation.storegroup. É
+        LEITURA (não escreve). Devolve (storedata, storegroup) para reenviar no MERGE."""
+        url = f"{self._product_base()}/service/product/storerelation.storedata,storerelation.storegroup"
+        r = session.post(url, data=b"", headers=self._product_headers("GET,INFO", object_id))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"create_product carregar-lojas falhou: HTTP {r.status_code} — {r.text[:600]}")
+        prod = r.json().get("product", {})
+        storedata = prod.get("storerelation.storedata") or []
+        storegroup = prod.get("storerelation.storegroup") or []
+        return storedata, storegroup
+
+    def _product_browser_by_code(self, session: requests.Session, dataset_id: str, code: str) -> Dict[str, Any] | None:
+        """Passo 6: relê o browserdataset (na 8134) filtrado pelo code e devolve a
+        linha EXATA (code igual) ou None. É a prova de que o artigo persistiu."""
+        url = f"{self._product_base()}/service/browser/{dataset_id}/browserdataset"
+        body = {
+            "filter": {"code": {"op": "like", "value": f"%{code}%"}},
+            "params": {"CODE": "", "DESCRIPTION": "", "BARCODE": "", "FAMILY_ID": "",
+                       "PART_PRODUCT_ID": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": "0"},
+        }
+        headers = self._product_headers("OPEN,GET,INFO,CLOSE")
+        headers["Range"] = "items=0-50"
+        r = session.post(url, json=body, headers=headers)
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"create_product confirmação (browserdataset) falhou: HTTP {r.status_code} — {r.text[:600]}")
+        rows = r.json().get("browser", {}).get("browserdataset", [])
+        for it in rows:
+            if str(it.get("code")) == str(code):
+                return it
+        return None
+
+    def create_product(self, product: Dict[str, Any],
+                       saleprice: str | None = None,
+                       purchaseprice: str | None = None,
+                       catalog_dataset_id: str = "") -> Dict[str, Any]:
+        """
+        ⚠️ ESCRITA: cria UM artigo no PingWin (porta 8134). Devolve
+        {ok, persisted, code, pingwin_id, raw}. Só persisted=True se o passo 6
+        (releitura) encontrar o code. Erros estruturados (aborta) se: NEW sem
+        ObjectID/code; SAVE falhar; ou o code não confirmar.
+        """
+        base = self._product_base()
+        with self._port_session(base) as session:
+            # 1. NEW,GET,INFO — abre o form (ObjectID + registo em branco com code + listas).
+            object_id, body = self._product_open(session)
+            main = body.get("maindataset") or []
+            if not main:
+                raise RuntimeError("create_product: NEW sem maindataset (sem registo em branco).")
+            code = str(main[0].get("code") or "")
+            if not code:
+                raise RuntimeError("create_product: NEW não devolveu code novo.")
+
+            # Registo: parte do BRANCO do servidor e sobrepõe os nossos campos; code do servidor.
+            row = dict(main[0])
+            row.update(product)
+            row["code"] = code
+            # ⚠️ PONTO 1 (bug do preço): o maindataset do MERGE vai SEM chaves de preço.
+            # A UI não manda saleprice no maindataset (AUSENTE, não vazio). O registo-branco
+            # traz saleprice:"" — se o reenviássemos, o servidor via a chave e punha o preço
+            # a vazio, sobrepondo o EDIT /prices. REMOVER as CHAVES (não esvaziar) → o servidor
+            # NÃO toca no preço posto pelo EDIT /prices. O preço vive só no ciclo /prices.
+            for _pk in ("saleprice", "purchaseprice", "markup"):
+                row.pop(_pk, None)
+
+            # 2. CARREGAR LOJAS (GET,INFO, mesmo ObjectID) → reenviar no MERGE.
+            # Estas são as lojas que EXISTEM na empresa (infra) — nº variável entre
+            # empresas e não fixo (Yuko tem 3, outra terá outras ids). NÃO hard-codar.
+            storedata, storegroup = self._product_load_stores(session, object_id)
+            stores_count = len(storedata)
+            # ⚠️ SALVAGUARDA A: exigir > 0 (0 = sessão partida / servidor sem resposta);
+            # nunca fazer MERGE com lojas vazias → criaria o artigo sem lojas.
+            if stores_count == 0:
+                raise RuntimeError("create_product ABORTADO: passo 2 devolveu 0 lojas — não gravei (MERGE sem lojas criaria o artigo sem lojas).")
+            # CRIAR básico: reenviar TODAS as lojas que vieram, tal e qual. A ESCOLHA de
+            # quais marcar (0..N) é da futura tab "Loja" — aí o MERGE levará só as marcadas.
+
+            # 3. PREÇOS (opcional, ANTES do MERGE) — decimal string com ponto; o servidor calcula margem/IVA.
+            price_row: Dict[str, str] = {}
+            if saleprice not in (None, ""):
+                price_row["saleprice"] = str(saleprice)
+            if purchaseprice not in (None, ""):
+                price_row["purchaseprice"] = str(purchaseprice)
+            price_url = f"{base}/service/product/prices"
+
+            # 4. MERGE — maindataset(1) + as LOJAS do passo 2 (tal como vieram) + listas do NEW.
+            merge_url = (f"{base}/service/product/"
+                         "maindataset,storerelation.storedata,productgroup,tbtaxtable,"
+                         "tbstock,additionalfields.maindataset,additionalfields.storedataset")
+            merge_body = {
+                "maindataset": [row],
+                "storerelation.storedata": storedata,   # ⚠️ do passo 2 (nunca vazio — Salvaguarda A)
+                "productgroup": body.get("productgroup") or [],
+                "tbtaxtable": body.get("tbtaxtable") or [],
+                "tbstock": body.get("tbstock") or [],
+                "additionalfields.maindataset": body.get("additionalfields.maindataset") or [],
+                "additionalfields.storedataset": body.get("additionalfields.storedataset") or [],
+            }
+
+            if price_row:
+                rp = session.post(price_url, json=[price_row], headers=self._product_headers("EDIT", object_id))
+                if rp.status_code not in (200, 206):
+                    raise RuntimeError(f"create_product EDIT prices falhou: HTTP {rp.status_code} — {rp.text[:600]}")
+
+            rm = session.post(merge_url, json=merge_body, headers=self._product_headers("MERGE", object_id))
+            if rm.status_code not in (200, 206):
+                raise RuntimeError(f"create_product MERGE falhou: HTTP {rm.status_code} — {rm.text[:600]}")
+
+            # 5. SAVE (corpo vazio; a resposta {"product":{}} NÃO prova nada — daí o passo 7).
+            rs = session.post(f"{base}/service/product", data=b"", headers=self._product_headers("SAVE", object_id))
+            if rs.status_code not in (200, 206):
+                raise RuntimeError(f"create_product SAVE falhou: HTTP {rs.status_code} — {rs.text[:600]}")
+
+            # 6. CLOSE (best-effort).
+            self._product_close(session, object_id)
+
+            # 7. ⚠️ SALVAGUARDA B: confirmação por releitura (browserdataset pelo code), MESMA sessão/porta.
+            found = self._product_browser_by_code(session, catalog_dataset_id, code) if catalog_dataset_id else None
+
+        persisted = bool(found)
+        if not persisted:
+            log.error("create_product: code=%s NÃO confirmado no browserdataset — NÃO persistiu.", code)
+        return {
+            "ok": persisted,
+            "persisted": persisted,
+            "code": code,
+            "pingwin_id": str(found.get("id")) if found and found.get("id") is not None else None,
+            "stores_count": stores_count,
+            "raw": found or {},
+        }
+
+    def read_product(self, product_id: str) -> Dict[str, Any]:
+        """SÓ LEITURA (etapa 2): abre o artigo pelo id (OPEN,GET,INFO com os 19 datasets),
+        lê o registo + prices[0] + lojas ligadas + lookups, e CLOSE limpo. NÃO faz
+        NEW/EDIT/MERGE/SAVE/DELETE. Logout garantido (_port_session try/finally)."""
+        base = self._product_base()
+        with self._port_session(base) as session:
+            object_id, product = self._product_open_by_id(session, product_id, self._PRODUCT_FORM_DATASETS)
+            try:
+                main = product.get("maindataset") or []
+                prices = product.get("prices") or []
+                stores: List[Dict[str, Any]] = []
+                if object_id:
+                    try:
+                        stores, _ = self._product_load_stores(session, object_id)
+                    except Exception as exc:  # noqa: BLE001 — lojas são secundárias à leitura
+                        log.warning("read_product: storerelation falhou (ignorado): %s", type(exc).__name__)
+                out = {
+                    "found": bool(main),
+                    "maindataset": main[0] if main else {},
+                    "prices": prices[0] if prices else {},
+                    "stores": stores,
+                    "lookups": {
+                        "product_type":   product.get("product_type") or [],
+                        "lkstatus":       product.get("lkstatus") or [],
+                        "lktaxgroup":     product.get("lktaxgroup") or [],
+                        "lk_stockconfig": product.get("lk_stockconfig") or [],
+                        "families":       product.get("lkfamily_id") or [],
+                        "units": {
+                            "base":     self._filter_radio_conv(product.get("productunits.baseunit") or []),
+                            "sale":     product.get("productunits.lkunitsale") or [],
+                            "purchase": product.get("productunits.lkunitpurchase") or [],
+                        },
+                    },
+                    "additional_fields": {
+                        "fieldsinfo":       product.get("additionalfields.fieldsinfo") or [],
+                        "maindataset":      product.get("additionalfields.maindataset") or [],
+                        "service_tax_type": product.get("additionalfields.lk_service_tax_type") or [],
+                    },
+                }
+            finally:
+                if object_id:
+                    self._product_close(session, object_id)
+        return out
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — EDITAR ARTIGO ⚠️⚠️
+    # Sequência (HAR save-edit), na porta da sessão, MESMO ObjectID; logout try/finally:
+    #   1. OPEN,GET,INFO pelo id (19 datasets) → ObjectID + registo EXISTENTE.
+    #   2. (se o preço mudou) EDIT /service/product/prices [{"saleprice":"X"}] ANTES do MERGE.
+    #   3. MERGE em maindataset,productgroup,tbtaxtable,additionalfields.maindataset (path
+    #      CURTO — as relações/lojas já existem). O maindataset = registo do OPEN + campos
+    #      alterados, com as CHAVES DE PREÇO REMOVIDAS (saleprice/purchaseprice/markup) —
+    #      senão sobrepõe o preço (o bug do 101246, agora também evitado no editar).
+    #   4. SAVE → CLOSE.
+    #   5. CONFIRMAÇÃO in-session: re-OPEN pelo id → lê status + prices reais (autoritativo).
+    def update_product(self, product_id: str, changes: Dict[str, Any],
+                       saleprice: str | None = None,
+                       purchaseprice: str | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA: edita um artigo existente. `changes` = campos do maindataset a
+        sobrepor (ex.: {"status": 3}). Devolve {ok, product_id, code, confirm:{status,
+        saleprice, description}} com a leitura AUTORITATIVA pós-gravação."""
+        base = self._product_base()
+        with self._port_session(base) as session:
+            # 1. OPEN,GET,INFO pelo id → ObjectID + registo existente.
+            object_id, product = self._product_open_by_id(session, product_id, self._PRODUCT_FORM_DATASETS)
+            if not object_id:
+                raise RuntimeError("update_product: OPEN não devolveu ObjectID.")
+            main = product.get("maindataset") or []
+            if not main:
+                raise RuntimeError(f"update_product: artigo {product_id} não encontrado (maindataset vazio).")
+            row = dict(main[0])
+            row.update(changes)   # sobrepõe os campos alterados (ex.: status)
+
+            # 2. PREÇOS (só se mudou) — EDIT /prices ANTES do MERGE.
+            price_row: Dict[str, str] = {}
+            if saleprice not in (None, ""):
+                price_row["saleprice"] = str(saleprice)
+            if purchaseprice not in (None, ""):
+                price_row["purchaseprice"] = str(purchaseprice)
+            if price_row:
+                rp = session.post(f"{base}/service/product/prices",
+                                  json=[price_row], headers=self._product_headers("EDIT", object_id))
+                if rp.status_code not in (200, 206):
+                    raise RuntimeError(f"update_product EDIT prices falhou: HTTP {rp.status_code} — {rp.text[:600]}")
+
+            # 3. MERGE (path CURTO) — maindataset SEM chaves de preço (não sobrepor o preço).
+            for _pk in ("saleprice", "purchaseprice", "markup"):
+                row.pop(_pk, None)
+            merge_url = (f"{base}/service/product/"
+                         "maindataset,productgroup,tbtaxtable,additionalfields.maindataset")
+            merge_body = {
+                "maindataset": [row],
+                "productgroup": product.get("productgroup") or [],
+                "tbtaxtable": product.get("tbtaxtable") or [],
+                "additionalfields.maindataset": product.get("additionalfields.maindataset") or [],
+            }
+            rm = session.post(merge_url, json=merge_body, headers=self._product_headers("MERGE", object_id))
+            if rm.status_code not in (200, 206):
+                raise RuntimeError(f"update_product MERGE falhou: HTTP {rm.status_code} — {rm.text[:600]}")
+
+            # 4. SAVE → CLOSE.
+            rs = session.post(f"{base}/service/product", data=b"", headers=self._product_headers("SAVE", object_id))
+            if rs.status_code not in (200, 206):
+                raise RuntimeError(f"update_product SAVE falhou: HTTP {rs.status_code} — {rs.text[:600]}")
+            self._product_close(session, object_id)
+
+            # 5. CONFIRMAÇÃO in-session — re-OPEN pelo id (leitura autoritativa).
+            oid2, prod2 = self._product_open_by_id(session, product_id, self._PRODUCT_FORM_DATASETS)
+            m2 = (prod2.get("maindataset") or [{}])[0]
+            p2 = (prod2.get("prices") or [{}])[0]
+            confirm = {
+                "code":        m2.get("code"),
+                "description": m2.get("description"),
+                "status":      m2.get("status"),
+                "saleprice":   p2.get("saleprice"),
+                "purchaseprice": p2.get("purchaseprice"),
+            }
+            if oid2:
+                self._product_close(session, oid2)
+
+        return {"ok": True, "product_id": str(product_id), "code": str(row.get("code") or ""), "confirm": confirm}
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — APAGAR ARTIGO (DELETE definitivo) ⚠️⚠️
+    # DELETE = apagar A SÉRIO (não é "descontinuar"/mudar Estado — isso é EDITAR o status).
+    # Após o DELETE, o browserdataset filtrado pelo code vem VAZIO; NÃO é reactivável.
+    # Sequência FIEL à UI (HAR), na porta da sessão, MESMO SessionID; logout garantido
+    # (try/finally do _port_session, corre mesmo que rebente a meio):
+    #   1. OPEN,GET,INFO do artigo pelo id → devolve o ObjectID no header (abre a edição).
+    #   2. CANCEL,CLOSE em /service/product/<id> COM esse ObjectID → fecha a sessão de edição.
+    #   3. DELETE em /service/product/<id> SEM ObjectID (só SessionID) → apaga. {"product":{}} (NÃO prova).
+    #   4. ⚠️ SALVAGUARDA (inverte a do criar): reler browserdataset pelo code → tem de vir
+    #      VAZIO. Se o artigo AINDA aparecer → o DELETE falhou; deleted_confirmed=False.
+    def delete_product(self, product_id: str, code: str = "", catalog_dataset_id: str = "") -> Dict[str, Any]:
+        """⚠️ ESCRITA: apaga DEFINITIVAMENTE um artigo. Devolve {ok, deleted_confirmed,
+        code, product_id, still_present}. Só deleted_confirmed=True se a releitura pelo
+        code vier VAZIA. Logout garantido pelo _port_session (try/finally)."""
+        base = self._product_base()
+        url = f"{base}/service/product/{product_id}"
+        with self._port_session(base) as session:
+            # 1. OPEN,GET,INFO do artigo pelo id → ObjectID (header). OPEN MÍNIMO (só o
+            #    ObjectID importa para apagar). Abre a sessão de edição.
+            object_id, _ = self._product_open_by_id(session, product_id, self._PRODUCT_MIN_DATASETS)
+            if not object_id:
+                raise RuntimeError("delete_product: OPEN não devolveu ObjectID (necessário para o CANCEL,CLOSE).")
+
+            # 2. CANCEL,CLOSE COM ObjectID — fecha a sessão de edição aberta pelo OPEN.
+            rc = session.post(url, data=b"", headers=self._product_headers("CANCEL,CLOSE", object_id))
+            if rc.status_code not in (200, 206):
+                raise RuntimeError(f"delete_product CANCEL,CLOSE falhou: HTTP {rc.status_code} — {rc.text[:600]}")
+
+            # 3. DELETE SEM ObjectID (só SessionID; id no path). {"product":{}} vazio NÃO prova.
+            rd = session.post(url, data=b"", headers=self._product_headers("DELETE"))
+            if rd.status_code not in (200, 206):
+                raise RuntimeError(f"delete_product DELETE falhou: HTTP {rd.status_code} — {rd.text[:600]}")
+
+            # 4. ⚠️ SALVAGUARDA: releitura pelo code TEM de vir VAZIA (o artigo desapareceu).
+            still = self._product_browser_by_code(session, catalog_dataset_id, code) if (catalog_dataset_id and code) else None
+
+        deleted_confirmed = (still is None)
+        if not deleted_confirmed:
+            log.error("delete_product: code=%s AINDA aparece no browserdataset — DELETE NÃO confirmado.", code)
+        return {
+            "ok": deleted_confirmed,
+            "deleted_confirmed": deleted_confirmed,
+            "code": code,
+            "product_id": str(product_id),
+            "still_present": (still is not None),
+        }
 
     # ------------------------------------------------------------- PARSE
     def fetch_sales_report(self, target_date: datetime) -> pd.DataFrame:

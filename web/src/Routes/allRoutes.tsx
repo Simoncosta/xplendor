@@ -8,6 +8,7 @@ import LojasPage from "pages/Restauracao/LojasPage";
 import CalendarioPage from "pages/Restauracao/CalendarioPage";
 import DocumentosPage from "pages/Restauracao/DocumentosPage";
 import ArtigosPage from "pages/Restauracao/ArtigosPage";
+import ArtigoFormPage from "pages/Restauracao/ArtigoFormPage";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
@@ -123,6 +124,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario"><CalendarioPage /></RequireModule> },
     { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos"><DocumentosPage /></RequireModule> },
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos"><ArtigosPage /></RequireModule> },
+    { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
+    { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
     { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },

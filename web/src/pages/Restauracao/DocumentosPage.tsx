@@ -129,7 +129,7 @@ export default function DocumentosPage() {
                                 <h4 className="mb-sm-0">Documentos</h4>
                                 <small className="text-muted">Tipos de documento do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
                             </div>
-                            <button className="btn btn-primary" onClick={runSync} disabled={syncing}>
+                            <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
                                 {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                             </button>
                         </div>

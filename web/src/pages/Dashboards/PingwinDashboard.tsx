@@ -255,7 +255,7 @@ export function PingwinDashboardContent() {
                                     style={{ minWidth: 160 }}
                                 />
                             </div>
-                            <button className="btn btn-primary" onClick={() => setConfirmOpen(true)} disabled={!date || queuing || !companyId}>
+                            <button className="btn btn-soft-primary" onClick={() => setConfirmOpen(true)} disabled={!date || queuing || !companyId}>
                                 {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" /> Buscar dados atualizados</>}
                             </button>
                         </div>
