@@ -58,6 +58,7 @@ class Company extends Model
         'carmine_logo_path',
         'public_api_token',
         'plan_id',
+        'content_sector_id', // Linha Editorial: o RAMO (setor-folha) da empresa
         'subscription_status',
         'trial_starts_at',
         'trial_ends_at',
@@ -89,6 +90,12 @@ class Company extends Model
     public function cars(): HasMany
     {
         return $this->hasMany(Car::class);
+    }
+
+    /** Linha Editorial: o RAMO (setor-folha) escolhido pela empresa (null = por escolher). */
+    public function contentSector(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ContentSector::class, 'content_sector_id');
     }
 
     public function carExternalImages(): HasMany

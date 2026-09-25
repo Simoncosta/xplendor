@@ -251,6 +251,27 @@ Route::prefix('v1')->group(function () {
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update'])->middleware('ensure_module:commercial_crm');
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware('ensure_module:stock');
                 Route::apiResource('/blogs', BlogController::class);
+                // ── Módulo LINHA EDITORIAL (transversal) — escolha de ramo + calendário herdado ──
+                Route::middleware('ensure_module:linha_editorial')->group(function () {
+                    Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);
+                    Route::post('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'setSector']);
+                    Route::get('/editorial/calendar', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'calendar']);
+                    // B2 — máquina de estados dos meses (abrir/fechar em sequência, com cascata).
+                    Route::post('/editorial/months/{year}/{month}/open', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'openMonth'])
+                        ->whereNumber('year')->whereNumber('month');
+                    Route::post('/editorial/months/{year}/{month}/close', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'closeMonth'])
+                        ->whereNumber('year')->whereNumber('month');
+                    // B3a — esconder/mostrar HERDADAS (id de content_anchors) por ocorrência.
+                    Route::post('/editorial/anchors/{anchorId}/hide', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'hideAnchor'])
+                        ->whereNumber('anchorId');
+                    Route::post('/editorial/anchors/{anchorId}/show', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'showAnchor'])
+                        ->whereNumber('anchorId');
+                    // B3a — criar/apagar PRÓPRIAS (id de editorial_own_anchors — espaço distinto).
+                    Route::post('/editorial/anchors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createOwnAnchor']);
+                    Route::delete('/editorial/own-anchors/{ownAnchorId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'deleteOwnAnchor'])
+                        ->whereNumber('ownAnchorId');
+                });
+
                 // ── Módulo FINANÇAS ──
                 Route::apiResource('/suppliers', SupplierController::class)->middleware('ensure_module:finance');
 

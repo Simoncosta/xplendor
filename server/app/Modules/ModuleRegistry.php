@@ -58,6 +58,13 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => [],
         ],
+        // Linha Editorial — calendário de âncoras de conteúdo. TRANSVERSAL (serve
+        // qualquer ramo, não é dos carros nem do PingWin) e sem dependências.
+        'linha_editorial' => [
+            'label' => 'Linha Editorial',
+            'car_specific' => false,
+            'depends_on' => [],
+        ],
         // Restauração — PingWin (POS GrupoPIE). Específico do ramo restauração
         // (não é dos carros). É o "umbrella" da integração: todas as secções de
         // restauração DEPENDEM dele (a fronteira de segurança no backend continua

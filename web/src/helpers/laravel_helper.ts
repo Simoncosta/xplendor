@@ -306,6 +306,31 @@ export const deleteArticle = (companyId: number, catalogItemId: number) =>
 export const getArticleDeletion = (companyId: number, creationId: number) =>
     api.get(A(companyId) + `/deletion/${creationId}`);
 
+// ── Linha Editorial ──────────────────────────────────────────────────────────
+const ED = (companyId: number) => url.GET_COMPANIES + `/${companyId}/editorial`;
+// Folhas selecionáveis (ecrã de escolha de ramo).
+export const getEditorialSectors = (companyId: number) => api.get(ED(companyId) + `/sectors`);
+// 1.ª escolha do ramo (o backend recusa a 2.ª — troca é fase futura).
+export const setEditorialSector = (companyId: number, sectorId: number) =>
+    api.create(ED(companyId) + `/sector`, { sector_id: sectorId });
+// Calendário herdado dos próximos 12 meses (has_sector:false = ainda por escolher).
+export const getEditorialCalendar = (companyId: number) => api.get(ED(companyId) + `/calendar`);
+// B2 — máquina de estados dos meses (devolvem o array 'months' atualizado).
+export const openEditorialMonth = (companyId: number, year: number, month: number) =>
+    api.create(ED(companyId) + `/months/${year}/${month}/open`, {});
+export const closeEditorialMonth = (companyId: number, year: number, month: number) =>
+    api.create(ED(companyId) + `/months/${year}/${month}/close`, {});
+// B3a — esconder/mostrar HERDADAS (id de content_anchors) por ocorrência; devolvem o calendar.
+export const hideEditorialAnchor = (companyId: number, anchorId: number, year: number) =>
+    api.create(ED(companyId) + `/anchors/${anchorId}/hide`, { year });
+export const showEditorialAnchor = (companyId: number, anchorId: number, year: number) =>
+    api.create(ED(companyId) + `/anchors/${anchorId}/show`, { year });
+// B3a — criar/apagar PRÓPRIAS (id de editorial_own_anchors — espaço distinto).
+export const createEditorialOwnAnchor = (companyId: number, payload: any) =>
+    api.create(ED(companyId) + `/anchors`, payload);
+export const deleteEditorialOwnAnchor = (companyId: number, ownAnchorId: number) =>
+    api.delete(ED(companyId) + `/own-anchors/${ownAnchorId}`);
+
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);
 export const syncPingwinFamilies = (companyId: number) =>

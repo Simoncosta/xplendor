@@ -194,6 +194,8 @@ const Navdata = () => {
                 { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "analytics", module: "marketing_analytics" },
                 // Blogs — conteúdo/marketing. Sem módulo (BASE) — deixou de ser item solto.
                 { id: "blogs", label: "Blogs", link: "/blogs", parentId: "analytics" },
+                // Linha Editorial — transversal (qualquer ramo). Gated pelo SEU módulo.
+                { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem
