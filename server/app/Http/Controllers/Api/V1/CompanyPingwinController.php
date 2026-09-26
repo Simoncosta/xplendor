@@ -258,6 +258,22 @@ class CompanyPingwinController extends Controller
         return ApiResponse::success(['status' => 'error', 'error_message' => $val['error_message'] ?? 'Falha na leitura.'], 'Falha na leitura.');
     }
 
+    /**
+     * ARTIGOS — tab Compras (C1, SÓ LEITURA): linhas de fornecedor de um artigo, lidas do
+     * ESPELHO local (sem chamar o scraper). O espelho é populado ao ler o artigo (showArticle).
+     */
+    public function supplierPrices(int $companyId, int $catalogItemId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        return ApiResponse::success(
+            ['supplier_prices' => $this->service->supplierPricesForCatalogItem($companyId, $catalogItemId)],
+            'Preços de fornecedor.'
+        );
+    }
+
     /** Regras de validação do CRIAR artigo (nomes já no formato do corpo PingWin). */
     private function articleWriteRules(): array
     {

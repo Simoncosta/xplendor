@@ -98,6 +98,19 @@ class EditorialB3aTest extends TestCase
         ]);
     }
 
+    public function test_propria_carrega_o_gancho_suggestion(): void
+    {
+        $this->service->openMonth($this->company, 2026, 12);
+        $cal = $this->service->createOwnAnchor($this->company, [
+            'title' => 'Aniversário', 'rule_type' => 'fixa', 'month' => 12, 'day' => 20,
+            'suggestion' => 'Bastidores da equipa; retrospetiva do ano',
+        ]);
+        $it = null;
+        foreach ($cal['items'] as $x) { if ($x['title'] === 'Aniversário') $it = $x; }
+        $this->assertNotNull($it);
+        $this->assertSame('Bastidores da equipa; retrospetiva do ano', $it['suggestion']);
+    }
+
     public function test_esconder_em_mes_bloqueado_falha(): void
     {
         $this->service->openMonth($this->company, 2026, 12); // Janeiro/2027 fica FECHADO

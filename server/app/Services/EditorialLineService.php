@@ -10,6 +10,7 @@ use App\Models\ContentSector;
 use App\Models\EditorialHiddenAnchor;
 use App\Models\EditorialMonth;
 use App\Models\EditorialOwnAnchor;
+use App\Models\EditorialPost;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -66,6 +67,43 @@ class EditorialLineService
     }
 
     /**
+     * TROCA de ramo (B3b) — método DISTINTO de setSector. EXIGE já haver ramo (é troca, não
+     * primeira escolha). É destrutiva: em transação, reseta o planeamento do ramo velho
+     * (apaga editorial_months + editorial_hidden_anchors desta empresa) e muda a herança
+     * (content_sector_id). PRESERVA SEMPRE editorial_own_anchors (são da empresa, não do
+     * ramo). Devolve o calendar() novo. O aviso consciente é do frontend; aqui é a rede
+     * de segurança (folha selecionável + diferente do atual + tenancy no controller).
+     */
+    public function changeSector(Company $company, int $newSectorId): array
+    {
+        if (! $company->content_sector_id) {
+            throw ValidationException::withMessages([
+                'sector' => ['Esta empresa ainda não tem ramo. Usa a primeira escolha.'],
+            ]);
+        }
+
+        $new = ContentSector::find($newSectorId);
+        if (! $new || ! $new->is_selectable) {
+            throw ValidationException::withMessages(['sector' => ['Ramo inválido (só folhas são selecionáveis).']]);
+        }
+
+        if ((int) $company->content_sector_id === $new->id) {
+            throw ValidationException::withMessages(['sector' => ['Já estás nesse ramo.']]);
+        }
+
+        DB::transaction(function () use ($company, $new) {
+            EditorialMonth::where('company_id', $company->id)->delete();        // meses → resetam (fechados)
+            EditorialHiddenAnchor::where('company_id', $company->id)->delete(); // escondidas do ramo velho → fora
+            $company->update(['content_sector_id' => $new->id]);               // herança passa ao ramo novo
+            // editorial_own_anchors → NÃO se toca (são da empresa).
+        });
+
+        $company->refresh();
+
+        return $this->calendar($company);
+    }
+
+    /**
      * Calendário herdado dos próximos 12 meses (a partir do mês atual, atravessa a
      * viragem do ano). Devolve o estado (has_sector) + as ocorrências com datas concretas.
      */
@@ -112,14 +150,15 @@ class EditorialLineService
                     continue;
                 }
                 $items[] = array_merge([
-                    'anchor_id' => $anchor->id,
-                    'title'     => $anchor->title,
-                    'origin'    => $anchor->origin,
-                    'rule_type' => $anchor->rule_type,
-                    'sector_id' => $anchor->sector_id,
-                    'owned'     => false,
-                    'occ_year'  => $year,
-                    'hidden'    => isset($hidden["{$anchor->id}-{$year}"]),
+                    'anchor_id'  => $anchor->id,
+                    'title'      => $anchor->title,
+                    'origin'     => $anchor->origin,
+                    'rule_type'  => $anchor->rule_type,
+                    'sector_id'  => $anchor->sector_id,
+                    'suggestion' => $anchor->suggestion,
+                    'owned'      => false,
+                    'occ_year'   => $year,
+                    'hidden'     => isset($hidden["{$anchor->id}-{$year}"]),
                 ], $occ);
             }
         }
@@ -133,14 +172,15 @@ class EditorialLineService
                     continue;
                 }
                 $items[] = array_merge([
-                    'anchor_id' => $anchor->id,   // id do ESPAÇO das próprias (editorial_own_anchors)
-                    'title'     => $anchor->title,
-                    'origin'    => 'variavel',
-                    'rule_type' => $anchor->rule_type,
-                    'sector_id' => null,
-                    'owned'     => true,
-                    'occ_year'  => $year,
-                    'hidden'    => false,
+                    'anchor_id'  => $anchor->id,   // id do ESPAÇO das próprias (editorial_own_anchors)
+                    'title'      => $anchor->title,
+                    'origin'     => 'variavel',
+                    'rule_type'  => $anchor->rule_type,
+                    'sector_id'  => null,
+                    'suggestion' => $anchor->suggestion,
+                    'owned'      => true,
+                    'occ_year'   => $year,
+                    'hidden'     => false,
                 ], $occ);
             }
         }
@@ -155,7 +195,32 @@ class EditorialLineService
             'to'         => $end->toDateString(),
             'items'      => $items,
             'months'     => $this->monthsState($company),
+            'posts'      => $this->postsInWindow($company, $start, $end),
         ];
+    }
+
+    /** Publicações (P1) da empresa dentro da janela — a par das âncoras (items). */
+    private function postsInWindow(Company $company, CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        return EditorialPost::where('company_id', $company->id)
+            ->whereBetween('publish_date', [$start->toDateString(), $end->toDateString()])
+            ->with(['anchor:id,title', 'ownAnchor:id,title'])
+            ->orderBy('publish_date')
+            ->get()
+            ->map(static fn (EditorialPost $p) => [
+                'id'            => $p->id,
+                'publish_date'  => $p->publish_date->toDateString(),
+                'month_key'     => $p->publish_date->format('Y-m'),
+                'title'         => $p->title,
+                'format'        => $p->format,
+                'status'        => $p->status,
+                'channel'       => $p->channel,
+                'keyword'       => $p->keyword,
+                'anchor_id'     => $p->anchor_id,
+                'own_anchor_id' => $p->own_anchor_id,
+                'linked_title'  => $p->anchor?->title ?? $p->ownAnchor?->title,
+            ])
+            ->all();
     }
 
     // ─────────────────────────── B2: máquina de estados dos meses ───────────────────────────
@@ -351,7 +416,7 @@ class EditorialLineService
     // ── helpers da B3a ──
 
     /** Carrega uma âncora de content_anchors e garante que é HERDADA por esta empresa. */
-    private function inheritedAnchorOrFail(Company $company, int $anchorId): ContentAnchor
+    public function inheritedAnchorOrFail(Company $company, int $anchorId): ContentAnchor
     {
         $company->loadMissing('contentSector');
         $sector = $company->contentSector;
@@ -410,8 +475,9 @@ class EditorialLineService
         $type = $data['rule_type'] ?? null;
 
         $rules = [
-            'title'     => ['required', 'string', 'max:255'],
-            'rule_type' => ['required', 'in:fixa,nth_weekday,periodo,relativa_pascoa'],
+            'title'      => ['required', 'string', 'max:255'],
+            'rule_type'  => ['required', 'in:fixa,nth_weekday,periodo,relativa_pascoa'],
+            'suggestion' => ['nullable', 'string', 'max:2000'],
         ];
 
         switch ($type) {
@@ -444,7 +510,7 @@ class EditorialLineService
         $validated = Validator::make($data, $rules)->validate();
 
         // Mantém só as chaves relevantes ao tipo (evita lixo de outros tipos).
-        $keep = ['title', 'rule_type'];
+        $keep = ['title', 'rule_type', 'suggestion'];
         $keep = array_merge($keep, match ($type) {
             'fixa'            => ['month', 'day'],
             'nth_weekday'     => ['month', 'ordinal', 'weekday'],
@@ -454,6 +520,28 @@ class EditorialLineService
         });
 
         return array_intersect_key($validated, array_flip($keep));
+    }
+
+    /**
+     * FONTE ÚNICA da regra "esta data é editável": cai na janela dos 12 meses E o mês está
+     * aberto. Usada pelas publicações (P1) e reutilizável por qualquer trabalho datado.
+     * 422 se fora da janela ou mês fechado (mesmas mensagens da restante linha editorial).
+     */
+    public function assertDateEditable(Company $company, string $date): void
+    {
+        [$start, $end] = $this->windowBounds();
+        $d = CarbonImmutable::parse($date);
+
+        if ($d->lt($start) || $d->gt($end)) {
+            throw ValidationException::withMessages(['publish_date' => ['A data está fora da janela de 12 meses.']]);
+        }
+
+        $isOpen = EditorialMonth::where('company_id', $company->id)
+            ->where('year', (int) $d->year)->where('month', (int) $d->month)
+            ->where('state', EditorialMonth::OPEN)->exists();
+        if (! $isOpen) {
+            throw ValidationException::withMessages(['publish_date' => ['Só podes editar num mês aberto.']]);
+        }
     }
 
     // ─────────────────────────── janela deslizante (Europe/Lisbon) ───────────────────────────

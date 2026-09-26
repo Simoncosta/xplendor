@@ -17,7 +17,7 @@ class EditorialOwnAnchor extends Model
         'company_id', 'title', 'rule_type',
         'month', 'day', 'ordinal', 'weekday',
         'start_month', 'start_day', 'end_month', 'end_day',
-        'easter_offset', 'notes',
+        'easter_offset', 'notes', 'suggestion',
     ];
 
     protected $casts = [

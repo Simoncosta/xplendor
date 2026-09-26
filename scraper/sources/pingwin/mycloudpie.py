@@ -1096,6 +1096,17 @@ class MyCloudPieClient:
         storegroup = prod.get("storerelation.storegroup") or []
         return storedata, storegroup
 
+    def _product_load_supplier_prices(self, session: requests.Session, object_id: str) -> List[Dict[str, Any]]:
+        """SÓ LEITURA (tab Compras): carrega as linhas de fornecedor do artigo aberto —
+        POST /service/product/tbsupprice com Action GET,INFO + o MESMO ObjectID do OPEN
+        (não é pedido isolado). Mesmo padrão das lojas (_product_load_stores). NÃO escreve.
+        Devolve a lista de linhas tbsupprice (row-dicts crus) ou [] se falhar."""
+        url = f"{self._product_base()}/service/product/tbsupprice"
+        r = session.post(url, data=b"", headers=self._product_headers("GET,INFO", object_id))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"read_product carregar-tbsupprice falhou: HTTP {r.status_code} — {r.text[:600]}")
+        return r.json().get("product", {}).get("tbsupprice") or []
+
     def _product_browser_by_code(self, session: requests.Session, dataset_id: str, code: str) -> Dict[str, Any] | None:
         """Passo 6: relê o browserdataset (na 8134) filtrado pelo code e devolve a
         linha EXATA (code igual) ou None. É a prova de que o artigo persistiu."""
@@ -1226,16 +1237,22 @@ class MyCloudPieClient:
                 main = product.get("maindataset") or []
                 prices = product.get("prices") or []
                 stores: List[Dict[str, Any]] = []
+                supplier_prices: List[Dict[str, Any]] = []
                 if object_id:
                     try:
                         stores, _ = self._product_load_stores(session, object_id)
                     except Exception as exc:  # noqa: BLE001 — lojas são secundárias à leitura
                         log.warning("read_product: storerelation falhou (ignorado): %s", type(exc).__name__)
+                    try:
+                        supplier_prices = self._product_load_supplier_prices(session, object_id)
+                    except Exception as exc:  # noqa: BLE001 — linhas de fornecedor secundárias à leitura
+                        log.warning("read_product: tbsupprice falhou (ignorado): %s", type(exc).__name__)
                 out = {
                     "found": bool(main),
                     "maindataset": main[0] if main else {},
                     "prices": prices[0] if prices else {},
                     "stores": stores,
+                    "supplier_prices": supplier_prices,
                     "lookups": {
                         "product_type":   product.get("product_type") or [],
                         "lkstatus":       product.get("lkstatus") or [],

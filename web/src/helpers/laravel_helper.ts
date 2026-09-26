@@ -310,9 +310,12 @@ export const getArticleDeletion = (companyId: number, creationId: number) =>
 const ED = (companyId: number) => url.GET_COMPANIES + `/${companyId}/editorial`;
 // Folhas selecionáveis (ecrã de escolha de ramo).
 export const getEditorialSectors = (companyId: number) => api.get(ED(companyId) + `/sectors`);
-// 1.ª escolha do ramo (o backend recusa a 2.ª — troca é fase futura).
+// 1.ª escolha do ramo (POST). O backend recusa se já houver ramo → isso é a troca (PUT).
 export const setEditorialSector = (companyId: number, sectorId: number) =>
     api.create(ED(companyId) + `/sector`, { sector_id: sectorId });
+// B3b — TROCA de ramo (PUT, destrutiva). Distinta da 1.ª escolha; devolve o calendar novo.
+export const changeEditorialSector = (companyId: number, sectorId: number) =>
+    api.put(ED(companyId) + `/sector`, { sector_id: sectorId });
 // Calendário herdado dos próximos 12 meses (has_sector:false = ainda por escolher).
 export const getEditorialCalendar = (companyId: number) => api.get(ED(companyId) + `/calendar`);
 // B2 — máquina de estados dos meses (devolvem o array 'months' atualizado).
@@ -330,6 +333,13 @@ export const createEditorialOwnAnchor = (companyId: number, payload: any) =>
     api.create(ED(companyId) + `/anchors`, payload);
 export const deleteEditorialOwnAnchor = (companyId: number, ownAnchorId: number) =>
     api.delete(ED(companyId) + `/own-anchors/${ownAnchorId}`);
+// P1 — PUBLICAÇÕES (espaço de id distinto das âncoras); devolvem o calendar atualizado.
+export const createEditorialPost = (companyId: number, payload: any) =>
+    api.create(ED(companyId) + `/posts`, payload);
+export const updateEditorialPost = (companyId: number, postId: number, payload: any) =>
+    api.put(ED(companyId) + `/posts/${postId}`, payload);
+export const deleteEditorialPost = (companyId: number, postId: number) =>
+    api.delete(ED(companyId) + `/posts/${postId}`);
 
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);

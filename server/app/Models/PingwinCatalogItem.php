@@ -52,4 +52,10 @@ class PingwinCatalogItem extends Model
     {
         return $this->belongsTo(PingwinFamily::class, 'family_id');
     }
+
+    /** Linhas de preço de fornecedor (tab Compras, espelho de tbsupprice). */
+    public function supplierPrices(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PingwinSupplierPrice::class, 'catalog_item_id');
+    }
 }

@@ -457,10 +457,163 @@ class PingwinService
         // ⚠️ Fallback do catalog_item_id (id do espelho local): a tela precisa dele para
         // EDITAR/ANULAR e o state da navegação perde-se num F5. Resolve-se aqui pelo
         // pingwin_id → sobrevive a recarregar a página / link direto.
-        $product['catalog_item_id'] = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+        $catalogItemId = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
             ->where('pingwin_id', $productId)->value('id');
+        $product['catalog_item_id'] = $catalogItemId;
+
+        // Tab Compras (C1): espelha as linhas de fornecedor e devolve o shape limpo (ride-along).
+        $rawSupplierLines = $product['supplier_prices'] ?? [];
+        $product['supplier_prices'] = $this->syncSupplierPricesFromRead(
+            $companyId,
+            $catalogItemId ? (int) $catalogItemId : null,
+            $productId,
+            is_array($rawSupplierLines) ? $rawSupplierLines : [],
+        );
 
         return $product;
+    }
+
+    /**
+     * Tab Compras (C1) — espelha as linhas de tbsupprice de um artigo: upsert por
+     * (company_id, line_pingwin_id) + reconciliação (linhas que já não vêm → is_active=false).
+     * Liga ao supplier UNIFICADO (source=pingwin) e ao catalog item. Preços em cêntimos; `raw`
+     * guarda a linha original. NÃO escreve no PingWin — só reflete o que a leitura devolveu.
+     * Devolve o shape limpo para o frontend.
+     */
+    public function syncSupplierPricesFromRead(int $companyId, ?int $catalogItemId, string $productPingwinId, array $lines): array
+    {
+        // Mapa: supplier_id do PingWin → suppliers.id local (source=pingwin, mesma empresa).
+        $supplierPwIds = collect($lines)
+            ->map(fn ($l) => $this->strOrNull($this->pick($l, ['supplier_id'])))
+            ->filter()->unique()->values()->all();
+        $supplierMap = $supplierPwIds
+            ? \App\Models\PingwinSupplier::where('company_id', $companyId)
+                ->whereIn('pingwin_id', $supplierPwIds)->pluck('id', 'pingwin_id')
+            : collect();
+
+        $now = now();
+        $rows = [];
+        $seen = [];
+        foreach ($lines as $l) {
+            $lineId = $this->strOrNull($this->pick($l, ['id']));
+            if ($lineId === null) {
+                continue; // sem id de linha não há chave idempotente
+            }
+            $seen[] = $lineId;
+            $supPw = $this->strOrNull($this->pick($l, ['supplier_id']));
+            $price = $this->pick($l, ['price']);
+            $cp = $this->pick($l, ['currprecision']);
+
+            $rows[] = [
+                'company_id'              => $companyId,
+                'catalog_item_id'         => $catalogItemId,
+                'product_pingwin_id'      => $this->strOrNull($this->pick($l, ['product_id'])) ?? $productPingwinId,
+                'supplier_id'             => $supPw !== null ? ($supplierMap[$supPw] ?? null) : null,
+                'supplier_pingwin_id'     => $supPw,
+                'supplier_name'           => $this->strOrNull($this->pick($l, ['supplier_name'])),
+                'line_pingwin_id'         => $lineId,
+                'supprice_header_id'      => $this->strOrNull($this->pick($l, ['supprice_header_id'])),
+                'table_name'              => $this->strOrNull($this->pick($l, ['table_name'])),
+                'start_date'              => $this->parseDateOrNull($this->pick($l, ['start_date'])),
+                'end_date'                => $this->parseDateOrNull($this->pick($l, ['end_date'])),
+                'currency'                => $this->strOrNull($this->pick($l, ['currency'])),
+                'unit_id'                 => $this->strOrNull($this->pick($l, ['unit_id'])),
+                'unit_name'               => $this->strOrNull($this->pick($l, ['unit_name'])),
+                'sup_product_description' => $this->strOrNull($this->pick($l, ['sup_product_description'])),
+                'sup_product_code'        => $this->strOrNull($this->pick($l, ['sup_product_code'])),
+                'sup_product_barcode'     => $this->strOrNull($this->pick($l, ['sup_product_barcode'])),
+                'price_cents'             => $price !== null && $price !== '' ? self::decimalToCents($price) : null,
+                'currprecision'           => $cp !== null && $cp !== '' ? (int) $cp : null,
+                'discount1'               => $this->pick($l, ['discount1']),
+                'discount2_mul'           => $this->pick($l, ['discount2_mul']),
+                'raw'                     => json_encode($l, JSON_UNESCAPED_UNICODE),
+                'is_active'               => ! $this->isDeleted($this->pick($l, ['deleted'])),
+                'synced_at'               => $now,
+                'created_at'              => $now,
+                'updated_at'              => $now,
+            ];
+        }
+
+        if ($rows) {
+            $updateCols = array_values(array_diff(array_keys($rows[0]), ['company_id', 'line_pingwin_id', 'created_at']));
+            \App\Models\PingwinSupplierPrice::upsert($rows, ['company_id', 'line_pingwin_id'], $updateCols);
+        }
+
+        // Reconciliação por artigo: linhas ativas que já não vieram nesta leitura → is_active=false.
+        $q = \App\Models\PingwinSupplierPrice::where('company_id', $companyId)
+            ->where('product_pingwin_id', $productPingwinId)
+            ->where('is_active', true);
+        if ($seen) {
+            $q->whereNotIn('line_pingwin_id', $seen);
+        }
+        $q->update(['is_active' => false, 'synced_at' => $now]);
+
+        return $this->supplierPricesShaped($companyId, $productPingwinId);
+    }
+
+    /** Shape limpo das linhas de fornecedor ATIVAS de um artigo (lê o espelho). */
+    public function supplierPricesShaped(int $companyId, string $productPingwinId): array
+    {
+        return \App\Models\PingwinSupplierPrice::where('company_id', $companyId)
+            ->where('product_pingwin_id', $productPingwinId)
+            ->where('is_active', true)
+            ->orderBy('supplier_name')->orderBy('id')
+            ->get()
+            ->map(static fn (\App\Models\PingwinSupplierPrice $p) => [
+                'id'                      => $p->id,
+                'line_pingwin_id'         => $p->line_pingwin_id,
+                'supplier'                => ['id' => $p->supplier_id, 'pingwin_id' => $p->supplier_pingwin_id, 'name' => $p->supplier_name],
+                'table'                   => ['header_id' => $p->supprice_header_id, 'name' => $p->table_name],
+                'start_date'              => optional($p->start_date)->toDateString(),
+                'end_date'                => optional($p->end_date)->toDateString(),
+                'currency'                => $p->currency,
+                'unit'                    => ['id' => $p->unit_id, 'name' => $p->unit_name],
+                'sup_product_description' => $p->sup_product_description,
+                'sup_product_code'        => $p->sup_product_code,
+                'sup_product_barcode'     => $p->sup_product_barcode,
+                'price_cents'             => $p->price_cents,
+                'currprecision'           => $p->currprecision,
+                'discount1'               => $p->discount1,
+                'discount2_mul'           => $p->discount2_mul,
+                'is_active'               => $p->is_active,
+            ])->all();
+    }
+
+    /** Endpoint dedicado (C1): linhas de fornecedor de um artigo pelo id do espelho local. */
+    public function supplierPricesForCatalogItem(int $companyId, int $catalogItemId): array
+    {
+        $productPingwinId = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+            ->whereKey($catalogItemId)->value('pingwin_id');
+        if (! $productPingwinId) {
+            return [];
+        }
+
+        return $this->supplierPricesShaped($companyId, (string) $productPingwinId);
+    }
+
+    /** String não-vazia ou null (para colunas nullable). */
+    private function strOrNull($value): ?string
+    {
+        return ($value === null || $value === '') ? null : (string) $value;
+    }
+
+    /** deleted (1/'1'/true) → true. Tudo o resto → false. */
+    private function isDeleted($value): bool
+    {
+        return $value === true || $value === 1 || $value === '1';
+    }
+
+    /** Data válida (Y-m-d) ou null — tolera formatos vários; nunca rebenta a leitura. */
+    private function parseDateOrNull($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        try {
+            return \Carbon\CarbonImmutable::parse((string) $value)->toDateString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

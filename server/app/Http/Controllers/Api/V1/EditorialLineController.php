@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Services\EditorialLineService;
+use App\Services\EditorialPostService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -18,7 +19,10 @@ use Illuminate\Support\Facades\Auth;
  */
 class EditorialLineController extends Controller
 {
-    public function __construct(private readonly EditorialLineService $service) {}
+    public function __construct(
+        private readonly EditorialLineService $service,
+        private readonly EditorialPostService $posts,
+    ) {}
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
@@ -59,6 +63,28 @@ class EditorialLineController extends Controller
             ['sector' => ['id' => $sector->id, 'name' => $sector->name, 'slug' => $sector->slug]],
             'Ramo definido.'
         );
+    }
+
+    /** TROCA de ramo (B3b) — destrutiva, distinta da primeira escolha (setSector). */
+    public function changeSector(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate(['sector_id' => ['required', 'integer']]);
+        $company = Company::find($companyId);
+        if (! $company) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        try {
+            $result = $this->service->changeSector($company, (int) $data['sector_id']);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ApiResponse::error($e->validator->errors()->first(), 422);
+        }
+
+        return ApiResponse::success($result, 'Ramo trocado.');
     }
 
     /** Calendário herdado dos próximos 12 meses (ou has_sector=false se ainda não escolheu). */
@@ -171,6 +197,47 @@ class EditorialLineController extends Controller
         }
 
         return ApiResponse::success($result, 'Âncora própria apagada.');
+    }
+
+    // ─────────────────────────── P1: publicações (CRUD) ───────────────────────────
+
+    /** Cria uma publicação (Modelo C). */
+    public function createPost(Request $request, int $companyId)
+    {
+        return $this->postAction($companyId, fn ($company) => $this->posts->createPost($company, $request->all()), 'Publicação criada.');
+    }
+
+    /** Edita uma publicação (id do espaço editorial_posts). */
+    public function updatePost(Request $request, int $companyId, int $postId)
+    {
+        return $this->postAction($companyId, fn ($company) => $this->posts->updatePost($company, $postId, $request->all()), 'Publicação atualizada.');
+    }
+
+    /** Apaga uma publicação (id do espaço editorial_posts). */
+    public function deletePost(int $companyId, int $postId)
+    {
+        return $this->postAction($companyId, fn ($company) => $this->posts->deletePost($company, $postId), 'Publicação apagada.');
+    }
+
+    /** Tronco comum das publicações: tenancy + empresa + delega no service + 422. */
+    private function postAction(int $companyId, \Closure $run, string $ok)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $company = Company::find($companyId);
+        if (! $company) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        try {
+            $result = $run($company);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ApiResponse::error($e->validator->errors()->first(), 422);
+        }
+
+        return ApiResponse::success($result, $ok);
     }
 
     /** Tronco comum de hide/show: tenancy + valida {year} + delega no service. */

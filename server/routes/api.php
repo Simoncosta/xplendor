@@ -195,6 +195,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/articles/{productId}', [CompanyPingwinController::class, 'showArticle'])->whereNumber('productId');
                     // Artigos — poll do resultado de uma leitura assíncrona (form-lookups/artigo).
                     Route::get('/integrations/pingwin/articles/read/{token}', [CompanyPingwinController::class, 'articleRead']);
+                    // Artigos — tab Compras (C1, só leitura): linhas de fornecedor do espelho.
+                    Route::get('/integrations/pingwin/articles/{catalogItemId}/supplier-prices', [CompanyPingwinController::class, 'supplierPrices'])->whereNumber('catalogItemId');
                     // Artigos — CRIAR (escrita; exige confirm) + poll do resultado.
                     Route::post('/integrations/pingwin/articles', [CompanyPingwinController::class, 'createArticle']);
                     Route::get('/integrations/pingwin/articles/creation/{creationId}', [CompanyPingwinController::class, 'articleCreation']);
@@ -255,6 +257,8 @@ Route::prefix('v1')->group(function () {
                 Route::middleware('ensure_module:linha_editorial')->group(function () {
                     Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);
                     Route::post('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'setSector']);
+                    // B3b — TROCA de ramo (destrutiva). PUT distingue-a da primeira escolha (POST).
+                    Route::put('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'changeSector']);
                     Route::get('/editorial/calendar', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'calendar']);
                     // B2 — máquina de estados dos meses (abrir/fechar em sequência, com cascata).
                     Route::post('/editorial/months/{year}/{month}/open', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'openMonth'])
@@ -270,6 +274,12 @@ Route::prefix('v1')->group(function () {
                     Route::post('/editorial/anchors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createOwnAnchor']);
                     Route::delete('/editorial/own-anchors/{ownAnchorId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'deleteOwnAnchor'])
                         ->whereNumber('ownAnchorId');
+                    // P1 — PUBLICAÇÕES (espaço de id distinto das âncoras).
+                    Route::post('/editorial/posts', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createPost']);
+                    Route::put('/editorial/posts/{postId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'updatePost'])
+                        ->whereNumber('postId');
+                    Route::delete('/editorial/posts/{postId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'deletePost'])
+                        ->whereNumber('postId');
                 });
 
                 // ── Módulo FINANÇAS ──

@@ -17,7 +17,7 @@ class ContentAnchor extends Model
         'title', 'sector_id', 'country', 'origin', 'rule_type',
         'month', 'day', 'ordinal', 'weekday',
         'start_month', 'start_day', 'end_month', 'end_day',
-        'easter_offset', 'notes',
+        'easter_offset', 'notes', 'suggestion',
     ];
 
     protected $casts = [

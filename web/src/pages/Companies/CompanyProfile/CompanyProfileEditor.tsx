@@ -10,6 +10,8 @@ import * as Yup from "yup";
 import XButton from 'Components/Common/XButton';
 import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
 import IntegrationsSettings from './IntegrationsSettings';
+import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
+import { useModules } from 'contexts/ModulesContext';
 import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
@@ -34,6 +36,9 @@ export default function CompanyProfileEditor({
     onCancel
 }: CompanyProfileEditorProps) {
     const isEdit = Boolean((data as any)?.id);
+    const companyId = Number((data as any)?.id) || 0;
+    const { has } = useModules();
+    const showEditorial = has('linha_editorial'); // aba só para quem tem o módulo
     // Carmine e PingWin passaram a viver como cartões na aba "Integrações"
     // (IntegrationsSettings), cada um gated pelo seu módulo — mostrado mas
     // BLOQUEADO a quem não o tem. O backend recusa na mesma (Fase 3).
@@ -240,6 +245,17 @@ export default function CompanyProfileEditor({
                                                 Dados Gerais
                                             </NavLink>
                                         </NavItem>
+                                        {showEditorial && (
+                                            <NavItem>
+                                                <NavLink
+                                                    className={classnames("text-body", { active: activeTab === "4" })}
+                                                    onClick={() => { tabChange("4"); }}
+                                                    disabled={!isEdit}
+                                                >
+                                                    Linha Editorial
+                                                </NavLink>
+                                            </NavItem>
+                                        )}
                                         <NavItem>
                                             <NavLink
                                                 className={classnames("text-body", { active: activeTab === "3" })}
@@ -294,6 +310,11 @@ export default function CompanyProfileEditor({
                                                 onSubmitCarmine={onSubmitCarmine}
                                             />
                                         </TabPane>
+                                        {showEditorial && (
+                                            <TabPane tabId="4">
+                                                <EditorialSectorSettings companyId={companyId} />
+                                            </TabPane>
+                                        )}
                                     </TabContent>
                                 </CardBody>
                             </Card>
