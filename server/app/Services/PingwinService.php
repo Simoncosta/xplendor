@@ -390,7 +390,7 @@ class PingwinService
      * campos do maindataset a sobrepor (nomes PingWin). Preço já em decimal string.
      * Devolve {ok, product_id, code, confirm:{status, saleprice, ...}} (leitura autoritativa).
      */
-    public function updateProduct(int $companyId, string $productId, array $changes, ?string $saleprice = null, ?string $purchaseprice = null): array
+    public function updateProduct(int $companyId, string $productId, array $changes, ?string $saleprice = null, ?string $purchaseprice = null, ?array $supplierPricesChanges = null): array
     {
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
@@ -411,13 +411,107 @@ class PingwinService
             $extra['purchaseprice'] = $purchaseprice;
         }
 
+        // C2 — só acrescenta o bloco de fornecedores se HOUVER mudanças (senão, editar idêntico).
+        $hasSupplierChanges = $this->hasSupplierChanges($supplierPricesChanges);
+        if ($hasSupplierChanges) {
+            $extra['supplier_prices_changes'] = $this->buildSupplierChangesPayload($companyId, $supplierPricesChanges);
+        }
+
         $result = $this->invoke($this->buildPayload($config, $password, $extra));
 
         if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
             throw new \RuntimeException('Editar artigo PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
         }
 
-        return $result['result'] ?? ['ok' => false];
+        $res = $result['result'] ?? ['ok' => false];
+
+        // Espelho pós-gravação: reflete as linhas CONFIRMADAS pelo servidor (não o enviado).
+        if ($hasSupplierChanges && ($res['ok'] ?? false)) {
+            $catalogItemId = \App\Models\PingwinCatalogItem::where('company_id', $companyId)
+                ->where('pingwin_id', $productId)->value('id');
+            $this->syncSupplierPricesFromRead(
+                $companyId,
+                $catalogItemId ? (int) $catalogItemId : null,
+                $productId,
+                is_array($res['supplier_prices'] ?? null) ? $res['supplier_prices'] : [],
+            );
+        }
+
+        return $res;
+    }
+
+    /** Há mesmo mudanças de fornecedor a aplicar? (blocos vazios → não). */
+    private function hasSupplierChanges(?array $c): bool
+    {
+        if (! $c) {
+            return false;
+        }
+
+        return ! empty($c['create'] ?? []) || ! empty($c['update'] ?? []) || ! empty($c['delete'] ?? []);
+    }
+
+    /**
+     * Traduz as mudanças de fornecedor (formato frontend/cêntimos/supplier LOCAL) para o
+     * formato PingWin (decimal string, supplier_id do PingWin) que o Python envia tal e qual.
+     * Valida: supplier existe (empresa, source=pingwin), supprice_header_id no create.
+     */
+    private function buildSupplierChangesPayload(int $companyId, array $changes): array
+    {
+        $out = ['create' => [], 'update' => [], 'delete' => []];
+
+        $resolveSupplier = function ($localId) use ($companyId): string {
+            $sup = \App\Models\PingwinSupplier::where('company_id', $companyId)->whereKey($localId)->first();
+            if (! $sup) {
+                throw ValidationException::withMessages(['supplier_id' => ['Fornecedor inválido para esta empresa.']]);
+            }
+            if (! $sup->pingwin_id) {
+                throw ValidationException::withMessages(['supplier_id' => ['Fornecedor sem id PingWin.']]);
+            }
+
+            return (string) $sup->pingwin_id;
+        };
+
+        // Campos de uma linha (comuns a create/update): cêntimos→decimal, supplier local→pingwin.
+        $lineFields = function (array $c) use ($resolveSupplier): array {
+            $f = [];
+            if (array_key_exists('supplier_id', $c) && $c['supplier_id'] !== null && $c['supplier_id'] !== '') {
+                $f['supplier_id'] = $resolveSupplier((int) $c['supplier_id']);
+            }
+            if (array_key_exists('price_cents', $c) && $c['price_cents'] !== null && $c['price_cents'] !== '') {
+                $f['price'] = self::centsToDecimalString((int) $c['price_cents']);
+            }
+            foreach (['unit_id', 'sup_product_description', 'sup_product_code', 'sup_product_barcode', 'discount1', 'discount2_mul'] as $k) {
+                if (array_key_exists($k, $c) && $c[$k] !== null) {
+                    $f[$k] = (string) $c[$k];
+                }
+            }
+
+            return $f;
+        };
+
+        foreach ($changes['create'] ?? [] as $c) {
+            $header = $c['supprice_header_id'] ?? null;
+            if ($header === null || $header === '') {
+                throw ValidationException::withMessages(['supprice_header_id' => ['Tabela do fornecedor em falta (supprice_header_id).']]);
+            }
+            $out['create'][] = ['supprice_header_id' => (string) $header, 'line' => $lineFields($c)];
+        }
+
+        foreach ($changes['update'] ?? [] as $c) {
+            $id = $c['line_pingwin_id'] ?? null;
+            if ($id === null || $id === '') {
+                throw ValidationException::withMessages(['line_pingwin_id' => ['Linha a editar em falta (line_pingwin_id).']]);
+            }
+            $out['update'][] = ['id' => (string) $id, 'fields' => $lineFields($c)];
+        }
+
+        foreach ($changes['delete'] ?? [] as $id) {
+            if ($id !== null && $id !== '') {
+                $out['delete'][] = (string) $id;
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -470,7 +564,30 @@ class PingwinService
             is_array($rawSupplierLines) ? $rawSupplierLines : [],
         );
 
+        // Tab Compras (C3): tabelas-por-fornecedor (lksuppliertable) — LOOKUP para a cascata
+        // do modal (fornecedor→tabela→datas/moeda). Não vai a espelho; segue no payload do read.
+        $product['supplier_tables'] = $this->shapeSupplierTables($product['supplier_tables'] ?? []);
+
         return $product;
+    }
+
+    /** Shape das tabelas-por-fornecedor (lksuppliertable) para a cascata do frontend (C3). */
+    private function shapeSupplierTables(array $rows): array
+    {
+        return collect($rows)->map(function ($r) {
+            $supplierPw = $this->strOrNull($this->pick($r, ['supplier_id']));
+
+            return [
+                'supplier_id'   => $supplierPw,               // id do PingWin (o frontend cruza por este)
+                'supplier_name' => $this->strOrNull($this->pick($r, ['supplier_name'])),
+                'supplier_code' => $this->strOrNull($this->pick($r, ['supplier_code'])),
+                'table_id'      => $this->strOrNull($this->pick($r, ['table_id', 'supprice_header_id', 'id'])),
+                'table_name'    => $this->strOrNull($this->pick($r, ['table_name'])),
+                'start_date'    => $this->parseDateOrNull($this->pick($r, ['start_date'])),
+                'end_date'      => $this->parseDateOrNull($this->pick($r, ['end_date'])),
+                'currency'      => $this->strOrNull($this->pick($r, ['currency'])) ?? 'Euro', // defeito se não vier
+            ];
+        })->all();
     }
 
     /**

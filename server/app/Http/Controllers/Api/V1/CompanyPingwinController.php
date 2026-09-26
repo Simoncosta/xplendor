@@ -460,6 +460,11 @@ class CompanyPingwinController extends Controller
         return array_merge($this->articleWriteRules(), [
             'description' => ['nullable', 'string', 'max:120'],
             'status'      => ['nullable', 'string', 'in:1,2,3'], // 1=Ativo 2=Inativo 3=Descontinuado
+            // C2 — mudanças de linhas de fornecedor (tab Compras). Opcional; validação fina no service.
+            'supplier_prices_changes'          => ['nullable', 'array'],
+            'supplier_prices_changes.create'   => ['sometimes', 'array'],
+            'supplier_prices_changes.update'   => ['sometimes', 'array'],
+            'supplier_prices_changes.delete'   => ['sometimes', 'array'],
         ]);
     }
 
@@ -519,21 +524,27 @@ class CompanyPingwinController extends Controller
         }
 
         [$changes, $saleCents, $purchaseCents] = $this->buildArticleChanges($data);
-        if (empty($changes) && $saleCents === null && $purchaseCents === null) {
+
+        // C2 — mudanças de fornecedor (opcional). Permite editar SÓ fornecedores (sem tocar no artigo).
+        $supplierChanges = $data['supplier_prices_changes'] ?? null;
+        $hasSupplier = ! empty($supplierChanges['create'] ?? []) || ! empty($supplierChanges['update'] ?? []) || ! empty($supplierChanges['delete'] ?? []);
+
+        if (empty($changes) && $saleCents === null && $purchaseCents === null && ! $hasSupplier) {
             return ApiResponse::error('Nada para editar.', 422);
         }
 
         $write = \App\Models\PingwinCatalogWrite::create([
-            'company_id'          => $companyId,
-            'user_id'             => Auth::id(),
-            'action'              => 'editar',
-            'catalog_item_id'     => $item->id,
-            'code'                => $item->code,
-            'description'         => $changes['description'] ?? ($item->description ?? ('#' . $item->id)),
-            'payload'             => $changes,
-            'saleprice_cents'     => $saleCents,
-            'purchaseprice_cents' => $purchaseCents,
-            'status'              => 'a_editar',
+            'company_id'              => $companyId,
+            'user_id'                 => Auth::id(),
+            'action'                  => 'editar',
+            'catalog_item_id'         => $item->id,
+            'code'                    => $item->code,
+            'description'             => $changes['description'] ?? ($item->description ?? ('#' . $item->id)),
+            'payload'                 => $changes,
+            'saleprice_cents'         => $saleCents,
+            'purchaseprice_cents'     => $purchaseCents,
+            'supplier_prices_changes' => $hasSupplier ? $supplierChanges : null,
+            'status'                  => 'a_editar',
         ]);
 
         \App\Jobs\UpdatePingwinCatalogJob::dispatch($companyId, $write->id);

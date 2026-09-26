@@ -53,9 +53,10 @@ class UpdatePingwinCatalogJob implements ShouldQueue
         $changes = (array) ($write->payload ?? []);
         $saleprice = $write->saleprice_cents !== null ? PingwinService::centsToDecimalString($write->saleprice_cents) : null;
         $purchaseprice = $write->purchaseprice_cents !== null ? PingwinService::centsToDecimalString($write->purchaseprice_cents) : null;
+        $supplierChanges = $write->supplier_prices_changes ?: null; // C2: null/vazio → editar idêntico
 
         try {
-            $result = $pingwin->updateProduct($this->companyId, (string) $item->pingwin_id, $changes, $saleprice, $purchaseprice);
+            $result = $pingwin->updateProduct($this->companyId, (string) $item->pingwin_id, $changes, $saleprice, $purchaseprice, $supplierChanges);
         } catch (\Throwable $e) {
             $this->markError($write, $e->getMessage(), $alerts);
             Log::warning('[PingWin Editar Artigo] Falhou', ['write_id' => $this->writeId, 'error' => $e->getMessage()]);

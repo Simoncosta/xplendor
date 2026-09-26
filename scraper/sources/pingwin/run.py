@@ -182,9 +182,10 @@ def run(cfg: dict) -> dict:
             changes = cfg.get("changes") or {}
             saleprice = cfg.get("saleprice")
             purchaseprice = cfg.get("purchaseprice")
+            supplier_prices_changes = cfg.get("supplier_prices_changes") or None
             if not product_id:
                 return {"ok": False, "error": "product_id em falta (id do artigo a editar)."}
-            result = client.update_product(product_id, changes, saleprice, purchaseprice)
+            result = client.update_product(product_id, changes, saleprice, purchaseprice, supplier_prices_changes)
             return {"ok": bool(result.get("ok")), "mode": "update_product", "result": result}
 
         if mode == "delete_product":

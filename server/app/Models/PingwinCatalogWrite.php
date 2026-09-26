@@ -18,15 +18,16 @@ class PingwinCatalogWrite extends Model
 {
     protected $fillable = [
         'company_id', 'user_id', 'action', 'catalog_item_id', 'code', 'description',
-        'payload', 'saleprice_cents', 'purchaseprice_cents',
+        'payload', 'saleprice_cents', 'purchaseprice_cents', 'supplier_prices_changes',
         'status', 'pingwin_id', 'error_message', 'finished_at',
     ];
 
     protected $casts = [
-        'payload'             => 'array',
-        'saleprice_cents'     => 'integer',
-        'purchaseprice_cents' => 'integer',
-        'finished_at'         => 'datetime',
+        'payload'                 => 'array',
+        'saleprice_cents'         => 'integer',
+        'purchaseprice_cents'     => 'integer',
+        'supplier_prices_changes' => 'array',
+        'finished_at'             => 'datetime',
     ];
 
     public function company(): BelongsTo

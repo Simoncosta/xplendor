@@ -12,10 +12,12 @@ import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import {
     getArticleFormLookups, getArticle, getArticleRead,
     createArticle, getArticleCreation, updateArticle, getArticleEdition,
-    deleteArticle, getArticleDeletion,
+    deleteArticle, getArticleDeletion, getPingwinArticleSupplierPrices,
 } from "helpers/laravel_helper";
 import { useArticleWritePolling } from "./useArticleWritePolling";
 import { useArticleReadPolling } from "./useArticleReadPolling";
+import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
+import ArtigoComprasTab from "./ArtigoComprasTab";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -72,7 +74,9 @@ export default function ArtigoFormPage() {
 
     const [loading, setLoading] = useState(true);
     const [lookups, setLookups] = useState<any | null>(null);
-    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades">("geral");
+    const [tab, setTab] = useState<"geral" | "frontoffice" | "unidades" | "compras">("geral");
+    const compras = useSupplierPricesStaging();
+    const [supplierTables, setSupplierTables] = useState<any[]>([]);
     const [created, setCreated] = useState<{ code?: string } | null>(null);
     const [anularOpen, setAnularOpen] = useState(false);
     // id do espelho local (state da navegação; ou fallback do readProduct).
@@ -173,6 +177,9 @@ export default function ArtigoFormPage() {
                 });
                 setLoaded({ saleprice: saleStr, purchaseprice: purchStr });
                 setCatId((location.state as any)?.catalogItemId ?? art.catalog_item_id ?? null);
+                // Tab Compras (C3): linhas de fornecedor (staging) + tabelas p/ a cascata.
+                compras.setClean(art.supplier_prices ?? []);
+                setSupplierTables(art.supplier_tables ?? []);
                 // Não auto-preencher por cima dos valores carregados.
                 setTouched({ shortname: true, button_name: true, stock_unit_id: true, label_unit_id: true, volume_unit_id: true });
             } else {
@@ -182,6 +189,19 @@ export default function ArtigoFormPage() {
         })();
         return () => { alive = false; };
     }, [isCreate, companyId, pingwinId, read]);
+
+    // Aviso do browser ao fechar/recarregar com alterações de fornecedores por gravar.
+    useEffect(() => {
+        const h = (e: BeforeUnloadEvent) => { if (compras.hasPending) { e.preventDefault(); e.returnValue = ""; } };
+        window.addEventListener("beforeunload", h);
+        return () => window.removeEventListener("beforeunload", h);
+    }, [compras.hasPending]);
+
+    // Voltar à lista — confirma se houver alterações de fornecedores por gravar (perdem-se).
+    const goBack = useCallback(() => {
+        if (compras.hasPending && !window.confirm("Tens alterações de fornecedores por gravar. Sair mesmo assim?")) return;
+        navigate("/restauracao/artigos");
+    }, [compras.hasPending, navigate]);
 
     // ── Opções dos selects ──
     const familyOptions = useMemo<Opt[]>(() => {
@@ -259,10 +279,17 @@ export default function ArtigoFormPage() {
         // ⚠️ preço só se mudou (senão não se toca no preço).
         if (f.saleprice !== loaded.saleprice) { const c = eurToCents(f.saleprice); if (c !== null) payload.saleprice_cents = c; }
         if (f.purchaseprice !== loaded.purchaseprice) { const c = eurToCents(f.purchaseprice); if (c !== null) payload.purchaseprice_cents = c; }
+        // C3 — mudanças de fornecedor pendentes (só se houver; senão o editar é igual).
+        if (compras.hasPending) { payload.supplier_prices_changes = compras.buildPackage(); }
 
         const r = await submit(() => updateArticle(companyId, catId, payload), (id) => getArticleEdition(companyId, id));
         if (r.status === "ok") {
             setLoaded({ saleprice: f.saleprice, purchaseprice: f.purchaseprice });
+            // Recarrega as linhas do ESPELHO → tudo volta a clean (cores somem).
+            try {
+                const sp: any = await getPingwinArticleSupplierPrices(companyId, catId);
+                compras.setClean(sp?.data?.supplier_prices ?? []);
+            } catch { /* o banner desaparece na próxima abertura */ }
             toast.success("Artigo atualizado no PingWin.");
         } else {
             toast.error(r.row?.error_message ?? "Não foi possível editar o artigo.");
@@ -290,16 +317,6 @@ export default function ArtigoFormPage() {
                     <div>
                         <h4 className="mb-sm-0">{isCreate ? "Novo artigo" : "Editar artigo"}</h4>
                         <small className="text-muted">{isCreate ? "Criar um artigo no PingWin." : "Alterar o artigo no PingWin (inclui o Estado)."}</small>
-                    </div>
-                    <div className="d-flex gap-2">
-                        {!isCreate && (
-                            <button type="button" className="btn btn-outline-danger" onClick={() => setAnularOpen(true)} disabled={busy || loading}>
-                                <i className="ri-delete-bin-line me-1" /> Anular
-                            </button>
-                        )}
-                        <button className="btn btn-outline-secondary" onClick={() => navigate("/restauracao/artigos")}>
-                            <i className="ri-arrow-left-line me-1" /> Voltar à lista
-                        </button>
                     </div>
                 </div>
 
@@ -332,13 +349,14 @@ export default function ArtigoFormPage() {
                                             value={sel(statusOptions, f.status)} onChange={(o: any) => set("status", o?.value ?? "")} isSearchable={false} />
                                     </Col>
 
-                                    <Col md={6}>
+                                    <Col md={4}>
                                         <Label className="form-label">Família</Label>
                                         <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={familyOptions}
                                             value={sel(familyOptions, f.family_id)} onChange={(o: any) => set("family_id", o?.value ?? "")} isSearchable placeholder="Escolher família…" />
                                     </Col>
-                                    <Col md={6} className="d-flex align-items-end">
-                                        <div className="d-flex gap-4 flex-wrap">
+                                    <Col md={8}>
+                                        <Label className="form-label d-block">Tipo de artigo</Label>
+                                        <div className="d-flex gap-4 flex-wrap align-items-center" style={{ minHeight: 38 }}>
                                             <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-venda" checked={f.forsale} onChange={(e) => set("forsale", e.target.checked)} /><Label className="form-check-label" for="c-venda">Artigo de Venda</Label></div>
                                             <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-compra" checked={f.forpurchase} onChange={(e) => toggleCompra(e.target.checked)} /><Label className="form-check-label" for="c-compra">Artigo de Compra</Label></div>
                                             <div className="form-check"><Input type="checkbox" className="form-check-input" id="c-prod" checked={f.forproduction} onChange={(e) => toggleProducao(e.target.checked)} /><Label className="form-check-label" for="c-prod">Artigo de Produção</Label></div>
@@ -369,12 +387,12 @@ export default function ArtigoFormPage() {
                                         <Label className="form-label">Preço de venda (€)</Label>
                                         <Input value={f.saleprice} onChange={(e) => set("saleprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
                                     </Col>
-                                    <Col md={4} className="d-flex align-items-end">
-                                        <div className="form-check mb-2"><Input type="checkbox" className="form-check-input" id="c-varprice" checked={f.change_sale_price} onChange={(e) => set("change_sale_price", e.target.checked)} /><Label className="form-check-label" for="c-varprice">Preço de venda variável</Label></div>
-                                    </Col>
                                     <Col md={4}>
                                         <Label className="form-label">Preço de compra (€)</Label>
                                         <Input value={f.purchaseprice} onChange={(e) => set("purchaseprice", e.target.value)} inputMode="decimal" placeholder="0,00" />
+                                    </Col>
+                                    <Col md={4} className="d-flex align-items-end">
+                                        <div className="form-check mb-2"><Input type="checkbox" className="form-check-input" id="c-varprice" checked={f.change_sale_price} onChange={(e) => set("change_sale_price", e.target.checked)} /><Label className="form-check-label" for="c-varprice">Preço de venda variável</Label></div>
                                     </Col>
                                 </Row>
                             </CardBody>
@@ -387,7 +405,10 @@ export default function ArtigoFormPage() {
                                     <NavItem><NavLink className={classnames({ active: tab === "geral" })} onClick={() => setTab("geral")} style={{ cursor: "pointer" }}>Geral</NavLink></NavItem>
                                     <NavItem><NavLink className={classnames({ active: tab === "frontoffice" })} onClick={() => setTab("frontoffice")} style={{ cursor: "pointer" }}>FrontOffice</NavLink></NavItem>
                                     <NavItem><NavLink className={classnames({ active: tab === "unidades" })} onClick={() => setTab("unidades")} style={{ cursor: "pointer" }}>Unidades por defeito</NavLink></NavItem>
-                                    {["Compras", "Ficha técnica", "Stocks", "Atributos"].map((t) => (
+                                    <NavItem><NavLink className={classnames({ active: tab === "compras" })} onClick={() => setTab("compras")} style={{ cursor: "pointer" }}>
+                                        Compras{compras.hasPending && <span className="badge bg-warning-subtle text-warning ms-1">•</span>}
+                                    </NavLink></NavItem>
+                                    {["Ficha técnica", "Stocks", "Atributos"].map((t) => (
                                         <NavItem key={t}><NavLink disabled className="text-muted" style={{ cursor: "not-allowed" }} title="Em breve">{t}</NavLink></NavItem>
                                     ))}
                                 </Nav>
@@ -431,17 +452,44 @@ export default function ArtigoFormPage() {
                                                 <Input value={f.weight} onChange={(e) => set("weight", e.target.value)} inputMode="decimal" placeholder="0,000" /></Col>
                                         </Row>
                                     </TabPane>
+
+                                    <TabPane tabId="compras">
+                                        <ArtigoComprasTab
+                                            companyId={companyId}
+                                            isCreate={isCreate}
+                                            staging={compras}
+                                            supplierTables={supplierTables}
+                                            unitOptions={baseUnitOptions}
+                                        />
+                                    </TabPane>
                                 </TabContent>
                             </CardBody>
                         </Card>
 
-                        <div className="d-flex justify-content-end gap-2 mt-3 mb-5">
-                            <Button type="button" color="light" onClick={() => navigate("/restauracao/artigos")}>Cancelar</Button>
-                            <Button type="submit" color="primary" disabled={busy}>
-                                {busy
-                                    ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
-                                    : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar alterações"}</>}
-                            </Button>
+                        {compras.hasPending && (
+                            <div className="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
+                                <i className="ri-error-warning-line fs-5" />
+                                <span>Tens alterações de fornecedores por gravar — clica em <strong>Salvar</strong> para as aplicar.</span>
+                            </div>
+                        )}
+                        <div className="d-flex justify-content-between gap-2 mt-3 mb-5">
+                            <div>
+                                {!isCreate && (
+                                    <Button type="button" color="outline-danger" onClick={() => setAnularOpen(true)} disabled={busy || loading}>
+                                        <i className="ri-delete-bin-line me-1" /> Anular
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="d-flex gap-2">
+                                <Button type="submit" color="primary" disabled={busy}>
+                                    {busy
+                                        ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
+                                        : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Salvar"}</>}
+                                </Button>
+                                <Button type="button" color="light" onClick={goBack}>
+                                    <i className="ri-arrow-left-line me-1" /> Voltar
+                                </Button>
+                            </div>
                         </div>
                     </Form>
                 )}

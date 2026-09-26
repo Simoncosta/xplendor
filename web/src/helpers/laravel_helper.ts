@@ -371,6 +371,9 @@ export const getPingwinSuppliers = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, params);
 export const syncPingwinSuppliers = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {});
+// Tab Compras (C1/C3): linhas de fornecedor de um artigo, do ESPELHO (recarregar após salvar).
+export const getPingwinArticleSupplierPrices = (companyId: number, catalogItemId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/supplier-prices`);
 
 // ── OCR de faturas de fornecedor (Fase A) ─────────────────────────────────────
 export const getOcrInvoices = (

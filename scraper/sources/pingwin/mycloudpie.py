@@ -1107,6 +1107,16 @@ class MyCloudPieClient:
             raise RuntimeError(f"read_product carregar-tbsupprice falhou: HTTP {r.status_code} — {r.text[:600]}")
         return r.json().get("product", {}).get("tbsupprice") or []
 
+    def _product_load_supplier_tables(self, session: requests.Session, object_id: str) -> List[Dict[str, Any]]:
+        """SÓ LEITURA (cascata da tab Compras): tabelas-por-fornecedor (lksuppliertable) —
+        POST /service/product/lksuppliertable com Action GET,INFO + o MESMO ObjectID.
+        Igual ao tbsupprice/lojas. NÃO escreve. Lookup (fornecedor→tabela→datas/moeda)."""
+        url = f"{self._product_base()}/service/product/lksuppliertable"
+        r = session.post(url, data=b"", headers=self._product_headers("GET,INFO", object_id))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"read_product carregar-lksuppliertable falhou: HTTP {r.status_code} — {r.text[:600]}")
+        return r.json().get("product", {}).get("lksuppliertable") or []
+
     def _product_browser_by_code(self, session: requests.Session, dataset_id: str, code: str) -> Dict[str, Any] | None:
         """Passo 6: relê o browserdataset (na 8134) filtrado pelo code e devolve a
         linha EXATA (code igual) ou None. É a prova de que o artigo persistiu."""
@@ -1238,6 +1248,7 @@ class MyCloudPieClient:
                 prices = product.get("prices") or []
                 stores: List[Dict[str, Any]] = []
                 supplier_prices: List[Dict[str, Any]] = []
+                supplier_tables: List[Dict[str, Any]] = []
                 if object_id:
                     try:
                         stores, _ = self._product_load_stores(session, object_id)
@@ -1247,12 +1258,17 @@ class MyCloudPieClient:
                         supplier_prices = self._product_load_supplier_prices(session, object_id)
                     except Exception as exc:  # noqa: BLE001 — linhas de fornecedor secundárias à leitura
                         log.warning("read_product: tbsupprice falhou (ignorado): %s", type(exc).__name__)
+                    try:
+                        supplier_tables = self._product_load_supplier_tables(session, object_id)
+                    except Exception as exc:  # noqa: BLE001 — cascata secundária à leitura
+                        log.warning("read_product: lksuppliertable falhou (ignorado): %s", type(exc).__name__)
                 out = {
                     "found": bool(main),
                     "maindataset": main[0] if main else {},
                     "prices": prices[0] if prices else {},
                     "stores": stores,
                     "supplier_prices": supplier_prices,
+                    "supplier_tables": supplier_tables,
                     "lookups": {
                         "product_type":   product.get("product_type") or [],
                         "lkstatus":       product.get("lkstatus") or [],
@@ -1288,10 +1304,13 @@ class MyCloudPieClient:
     #   5. CONFIRMAÇÃO in-session: re-OPEN pelo id → lê status + prices reais (autoritativo).
     def update_product(self, product_id: str, changes: Dict[str, Any],
                        saleprice: str | None = None,
-                       purchaseprice: str | None = None) -> Dict[str, Any]:
+                       purchaseprice: str | None = None,
+                       supplier_prices_changes: Dict[str, Any] | None = None) -> Dict[str, Any]:
         """⚠️ ESCRITA: edita um artigo existente. `changes` = campos do maindataset a
-        sobrepor (ex.: {"status": 3}). Devolve {ok, product_id, code, confirm:{status,
-        saleprice, description}} com a leitura AUTORITATIVA pós-gravação."""
+        sobrepor (ex.: {"status": 3}). `supplier_prices_changes` (opcional) = linhas de
+        fornecedor a criar/editar/apagar (tab Compras, C2) — se vazio/None, o editar é
+        IDÊNTICO a antes. Devolve {ok, product_id, code, confirm{...}, supplier_prices[...]}
+        com a leitura AUTORITATIVA pós-gravação."""
         base = self._product_base()
         with self._port_session(base) as session:
             # 1. OPEN,GET,INFO pelo id → ObjectID + registo existente.
@@ -1315,6 +1334,11 @@ class MyCloudPieClient:
                                   json=[price_row], headers=self._product_headers("EDIT", object_id))
                 if rp.status_code not in (200, 206):
                     raise RuntimeError(f"update_product EDIT prices falhou: HTTP {rp.status_code} — {rp.text[:600]}")
+
+            # 2b. LINHAS DE FORNECEDOR (C2) — staging na MESMA sessão, ANTES do MERGE. Só se
+            #     vieram mudanças; senão NÃO toca em nada (o editar normal fica idêntico).
+            if supplier_prices_changes:
+                self._apply_supplier_price_changes(session, object_id, supplier_prices_changes)
 
             # 3. MERGE (path CURTO) — maindataset SEM chaves de preço (não sobrepor o preço).
             for _pk in ("saleprice", "purchaseprice", "markup"):
@@ -1348,10 +1372,64 @@ class MyCloudPieClient:
                 "saleprice":   p2.get("saleprice"),
                 "purchaseprice": p2.get("purchaseprice"),
             }
+            # Confirmação das linhas de fornecedor (autoritativo; sucesso ≠ enviado).
+            supplier_prices: List[Dict[str, Any]] = []
             if oid2:
+                try:
+                    supplier_prices = self._product_load_supplier_prices(session, oid2)
+                except Exception as exc:  # noqa: BLE001 — secundário à confirmação
+                    log.warning("update_product: reler tbsupprice falhou (ignorado): %s", type(exc).__name__)
                 self._product_close(session, oid2)
 
-        return {"ok": True, "product_id": str(product_id), "code": str(row.get("code") or ""), "confirm": confirm}
+        return {"ok": True, "product_id": str(product_id), "code": str(row.get("code") or ""),
+                "confirm": confirm, "supplier_prices": supplier_prices}
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — LINHAS DE FORNECEDOR (tab Compras, C2) ⚠️⚠️
+    # Staging na sessão do artigo (MESMO ObjectID), efetivado no SAVE do artigo. HAR:
+    #   DELETE linha → DELETE tbsupprice [linha inteira atual].
+    #   EDITAR linha → LOCATE tbsupprice [linha inteira] → EDIT tbsupprice [linha + alterações].
+    #   INSERIR linha → NEW tbsupprice [{"supprice_header_id"}] → EDIT tbsupprice [linha nova].
+    # Falha em qualquer passo → raise ANTES do SAVE → o logout (finally) descarta o staging
+    # → o artigo NÃO fica meio-gravado. Python é "burro": recebe já no formato PingWin.
+    def _apply_supplier_price_changes(self, session: requests.Session, object_id: str, changes: Dict[str, Any]) -> None:
+        url = f"{self._product_base()}/service/product/tbsupprice"
+
+        # Linhas atuais → mapa por id (reenviar a linha TAL COMO o servidor a deu).
+        current: Dict[str, Dict[str, Any]] = {}
+        for r in self._product_load_supplier_prices(session, object_id):
+            rid = str(r.get("id") or "")
+            if rid:
+                current[rid] = r
+
+        def _post(action: str, body: List[Dict[str, Any]]) -> None:
+            resp = session.post(url, json=body, headers=self._product_headers(action, object_id))
+            if resp.status_code not in (200, 206):
+                raise RuntimeError(f"tbsupprice {action} falhou: HTTP {resp.status_code} — {resp.text[:400]}")
+
+        # 1. DELETE (linha inteira atual). Se já não existe, ignora.
+        for line_id in (changes.get("delete") or []):
+            row = current.get(str(line_id))
+            if row:
+                _post("DELETE", [row])
+
+        # 2. UPDATE (LOCATE linha inteira → EDIT linha + alterações).
+        for upd in (changes.get("update") or []):
+            line_id = str(upd.get("id") or "")
+            row = current.get(line_id)
+            if not row:
+                raise RuntimeError(f"tbsupprice UPDATE: linha {line_id} não existe no artigo.")
+            _post("LOCATE", [row])                      # HAR: LOCATE envia a linha inteira
+            merged = dict(row)
+            merged.update(upd.get("fields") or {})
+            _post("EDIT", [merged])
+
+        # 3. CREATE (NEW {supprice_header_id} → EDIT linha nova completa).
+        for cre in (changes.get("create") or []):
+            header_id = cre.get("supprice_header_id")
+            if header_id in (None, ""):
+                raise RuntimeError("tbsupprice CREATE: supprice_header_id em falta.")
+            _post("NEW", [{"supprice_header_id": header_id}])
+            _post("EDIT", [cre.get("line") or {}])
 
     # ⚠️⚠️ ESCRITA NO PINGWIN — APAGAR ARTIGO (DELETE definitivo) ⚠️⚠️
     # DELETE = apagar A SÉRIO (não é "descontinuar"/mudar Estado — isso é EDITAR o status).
