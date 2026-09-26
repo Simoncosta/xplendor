@@ -1,13 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
 import {
     Row, Col, Label, Input, Button, Modal, ModalHeader, ModalBody, ModalFooter, Table, Alert,
-    UncontrolledDropdown, DropdownToggle, DropdownMenu,
 } from "reactstrap";
 import Select from "react-select";
 import { toast } from "react-toastify";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import { getPingwinSuppliers } from "helpers/laravel_helper";
+import ColumnSelector from "Components/Common/ColumnSelector";
 import { SupplierPricesStaging, LineDraft, SupplierLine } from "./useSupplierPricesStaging";
+
+// Todas as colunas da tabela de fornecedores + as visíveis por default.
+const SUPPLIER_COLUMNS: { id: string; label: string }[] = [
+    { id: "supplier", label: "Fornecedor" },
+    { id: "table", label: "Tabela" },
+    { id: "start", label: "Data início" },
+    { id: "end", label: "Data fim" },
+    { id: "currency", label: "Moeda" },
+    { id: "unit", label: "Unidade" },
+    { id: "description", label: "Descrição no fornecedor" },
+    { id: "price", label: "Preço" },
+    { id: "discount1", label: "Desconto 1 (%)" },
+    { id: "discount2", label: "Desc. mult. (%)" },
+    { id: "code", label: "Código do fornecedor" },
+    { id: "barcode", label: "Código de barras" },
+];
+const DEFAULT_VISIBLE = ["supplier", "table", "unit", "description", "price", "code"];
 
 /**
  * XPLENDOR — Tab Compras (C3): tabela das linhas de fornecedor + modal com CASCATA
@@ -58,15 +75,15 @@ export default function ArtigoComprasTab({
     const [form, setForm] = useState<FormState>(EMPTY);
     const setF = (patch: Partial<FormState>) => setForm((p) => ({ ...p, ...patch }));
 
-    // Colunas escondíveis (default off). Não persiste — só memória; refresh volta ao default.
-    const [cols, setCols] = useState({ start: false, end: false, currency: false, discount1: false, discount2: false });
-    const toggleCol = (k: keyof typeof cols) => setCols((p) => ({ ...p, [k]: !p[k] }));
-    const COL_LABELS: { k: keyof typeof cols; label: string }[] = [
-        { k: "start", label: "Data início" }, { k: "end", label: "Data fim" }, { k: "currency", label: "Moeda" },
-        { k: "discount1", label: "Desconto 1 (%)" }, { k: "discount2", label: "Desc. mult. (%)" },
-    ];
-    // 7 default + as escondidas ligadas + 1 (ações) → colspan do estado vazio.
-    const visibleCount = 7 + Object.values(cols).filter(Boolean).length + 1;
+    // Visibilidade das colunas (memória; refresh volta ao default). Toda a coluna é toggleável.
+    const [vis, setVis] = useState<Record<string, boolean>>(
+        () => Object.fromEntries(SUPPLIER_COLUMNS.map((c) => [c.id, DEFAULT_VISIBLE.includes(c.id)]))
+    );
+    const setColVisible = (id: string, visible: boolean) => setVis((p) => ({ ...p, [id]: visible }));
+    const columnsForSelector = SUPPLIER_COLUMNS.map((c) => ({ ...c, visible: !!vis[c.id] }));
+    const show = (id: string) => !!vis[id];
+    // colunas visíveis + 1 (ações) → colspan do estado vazio.
+    const visibleCount = SUPPLIER_COLUMNS.filter((c) => vis[c.id]).length + 1;
 
     // Fornecedores unificados (para o dropdown). Cruzam-se com supplierTables pelo pingwin_id.
     useEffect(() => {
@@ -154,18 +171,7 @@ export default function ArtigoComprasTab({
             <div className="d-flex justify-content-between align-items-center mb-2">
                 <h6 className="mb-0">Fornecedores</h6>
                 <div className="d-flex gap-2">
-                    <UncontrolledDropdown>
-                        <DropdownToggle color="light" size="sm" caret><i className="ri-layout-column-line me-1" />Colunas</DropdownToggle>
-                        <DropdownMenu end className="p-2" style={{ minWidth: 200 }}>
-                            <div className="text-muted fs-11 text-uppercase mb-1 px-1">Colunas opcionais</div>
-                            {COL_LABELS.map(({ k, label }) => (
-                                <div key={k} className="form-check px-1">
-                                    <Input type="checkbox" className="form-check-input" id={`col-${k}`} checked={cols[k]} onChange={() => toggleCol(k)} />
-                                    <Label className="form-check-label" for={`col-${k}`}>{label}</Label>
-                                </div>
-                            ))}
-                        </DropdownMenu>
-                    </UncontrolledDropdown>
+                    <ColumnSelector columns={columnsForSelector} onChange={setColVisible} defaults={DEFAULT_VISIBLE} />
                     <Button color="soft-primary" size="sm" onClick={openAdd}><i className="ri-add-line me-1" />Adicionar linha</Button>
                 </div>
             </div>
@@ -174,14 +180,19 @@ export default function ArtigoComprasTab({
                 <Table className="align-middle table-sm mb-0">
                     <thead>
                         <tr className="text-muted fs-12 text-uppercase">
-                            <th>Fornecedor</th><th>Tabela</th>
-                            {cols.start && <th>Início</th>}
-                            {cols.end && <th>Fim</th>}
-                            {cols.currency && <th>Moeda</th>}
-                            <th>Unidade</th><th>Descrição</th><th className="text-end">Preço</th>
-                            {cols.discount1 && <th className="text-end">Desc.1</th>}
-                            {cols.discount2 && <th className="text-end">Desc.mult.</th>}
-                            <th>Código</th><th>Cód. barras</th><th></th>
+                            {show("supplier") && <th>Fornecedor</th>}
+                            {show("table") && <th>Tabela</th>}
+                            {show("start") && <th>Início</th>}
+                            {show("end") && <th>Fim</th>}
+                            {show("currency") && <th>Moeda</th>}
+                            {show("unit") && <th>Unidade</th>}
+                            {show("description") && <th>Descrição</th>}
+                            {show("price") && <th className="text-end">Preço</th>}
+                            {show("discount1") && <th className="text-end">Desc.1</th>}
+                            {show("discount2") && <th className="text-end">Desc.mult.</th>}
+                            {show("code") && <th>Código</th>}
+                            {show("barcode") && <th>Cód. barras</th>}
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -192,18 +203,18 @@ export default function ArtigoComprasTab({
                             const deleted = r._state === "deleted";
                             return (
                                 <tr key={r._key} className={rowBg(r._state)}>
-                                    <td className={deleted ? "text-decoration-line-through" : ""}>{r.supplier.name ?? "—"}</td>
-                                    <td>{r.table.name ?? "—"}</td>
-                                    {cols.start && <td>{r.start_date ?? "—"}</td>}
-                                    {cols.end && <td>{r.end_date ?? "—"}</td>}
-                                    {cols.currency && <td>{r.currency ?? "—"}</td>}
-                                    <td>{r.unit.name ?? "—"}</td>
-                                    <td>{r.sup_product_description ?? "—"}</td>
-                                    <td className="text-end">{r.price_cents != null ? `${centsToEur(r.price_cents)} €` : "—"}</td>
-                                    {cols.discount1 && <td className="text-end">{r.discount1 ?? "—"}</td>}
-                                    {cols.discount2 && <td className="text-end">{r.discount2_mul ?? "—"}</td>}
-                                    <td>{r.sup_product_code ?? "—"}</td>
-                                    <td>{r.sup_product_barcode ?? "—"}</td>
+                                    {show("supplier") && <td className={deleted ? "text-decoration-line-through" : ""}>{r.supplier.name ?? "—"}</td>}
+                                    {show("table") && <td>{r.table.name ?? "—"}</td>}
+                                    {show("start") && <td>{r.start_date ?? "—"}</td>}
+                                    {show("end") && <td>{r.end_date ?? "—"}</td>}
+                                    {show("currency") && <td>{r.currency ?? "—"}</td>}
+                                    {show("unit") && <td>{r.unit.name ?? "—"}</td>}
+                                    {show("description") && <td>{r.sup_product_description ?? "—"}</td>}
+                                    {show("price") && <td className="text-end">{r.price_cents != null ? `${centsToEur(r.price_cents)} €` : "—"}</td>}
+                                    {show("discount1") && <td className="text-end">{r.discount1 ?? "—"}</td>}
+                                    {show("discount2") && <td className="text-end">{r.discount2_mul ?? "—"}</td>}
+                                    {show("code") && <td>{r.sup_product_code ?? "—"}</td>}
+                                    {show("barcode") && <td>{r.sup_product_barcode ?? "—"}</td>}
                                     <td className="text-end text-nowrap">
                                         {deleted ? (
                                             <Button color="link" size="sm" className="text-success p-0" onClick={() => staging.restoreRow(r._key)}>

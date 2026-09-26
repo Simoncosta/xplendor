@@ -1424,12 +1424,25 @@ class MyCloudPieClient:
             _post("EDIT", [merged])
 
         # 3. CREATE (NEW {supprice_header_id} → EDIT linha nova completa).
+        #    ⚠️ O NEW DEVOLVE a linha nova COM o id atribuído pelo servidor. O EDIT tem de
+        #    reenviar ESSA linha (com o id) + os campos — senão, havendo outras linhas, o
+        #    servidor não sabe qual editar e dá 404 ("Record not found").
         for cre in (changes.get("create") or []):
             header_id = cre.get("supprice_header_id")
             if header_id in (None, ""):
                 raise RuntimeError("tbsupprice CREATE: supprice_header_id em falta.")
-            _post("NEW", [{"supprice_header_id": header_id}])
-            _post("EDIT", [cre.get("line") or {}])
+            new_resp = session.post(url, json=[{"supprice_header_id": header_id}], headers=self._product_headers("NEW", object_id))
+            if new_resp.status_code not in (200, 206):
+                raise RuntimeError(f"tbsupprice NEW falhou: HTTP {new_resp.status_code} — {new_resp.text[:400]}")
+            new_rows = new_resp.json().get("product", {}).get("tbsupprice") or []
+            # A linha nova é a que ainda não estava em 'current' (id novo); fallback: a última.
+            newrow = next((r for r in new_rows if str(r.get("id") or "") not in current), None) or (new_rows[-1] if new_rows else None)
+            if not newrow:
+                raise RuntimeError("tbsupprice NEW não devolveu a linha nova.")
+            merged = dict(newrow)
+            merged.update(cre.get("line") or {})
+            _post("EDIT", [merged])
+            current[str(newrow.get("id") or "")] = merged  # p/ creates múltiplos na mesma sessão
 
     # ⚠️⚠️ ESCRITA NO PINGWIN — APAGAR ARTIGO (DELETE definitivo) ⚠️⚠️
     # DELETE = apagar A SÉRIO (não é "descontinuar"/mudar Estado — isso é EDITAR o status).
