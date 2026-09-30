@@ -42,6 +42,10 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
                 'power_hp',
                 'color',
                 'doors',
+                'beds',
+                'layout',
+                'displacement',
+                'length',
                 'scraped_at',
                 'dedup_hash',
                 'updated_at',
@@ -225,6 +229,64 @@ class CarMarketSnapshotRepository extends BaseRepository implements CarMarketSna
             ->whereRaw("LOWER(REPLACE(REPLACE(brand, '-', ''), ' ', '')) = ?", [$brand])
             ->orderBy('price')
             ->get();
+    }
+
+    /**
+     * FASE 1 — pool de elegibilidade do motor de similaridade de autocaravanas.
+     *
+     * Elegível sse: vehicle_type=motorhome ∧ layout igual ∧ |Δano| ≤ 2 ∧
+     * preço plausível (3.000–300.000€ — mata os anúncios-placeholder de
+     * 1€/123€ dos classificados) ∧ visto há ≤ 60 dias (os pools por
+     * tipologia cruzam veículos; sem recência, anúncios vendidos há meses
+     * entravam na mediana).
+     *
+     * Devolve também o FUNIL de contagens para a UI explicar um resultado
+     * vazio ("vimos X desta tipologia; Y na janela de ano; …").
+     *
+     * @return array{pool: Collection, funnel: array<string, int>}
+     */
+    public function getMotorhomeSimilarityPool(string $layout, int $targetYear): array
+    {
+        $base = fn (): Builder => $this->model->newQuery()
+            ->where('vehicle_type', 'motorhome')
+            ->where('layout', $layout);
+
+        $yearFrom = $targetYear - \App\Services\MotorhomeMarketEngine::YEAR_WINDOW;
+        $yearTo   = $targetYear + \App\Services\MotorhomeMarketEngine::YEAR_WINDOW;
+        $freshCut = now()->subDays(\App\Services\MotorhomeMarketEngine::FRESHNESS_DAYS);
+
+        $layoutTotal = (clone $base())->count();
+
+        $inWindow = $base()->whereBetween('year', [$yearFrom, $yearTo]);
+        $inWindowCount = (clone $inWindow)->count();
+
+        $fresh = (clone $inWindow)->where('scraped_at', '>=', $freshCut);
+        $freshCount = (clone $fresh)->count();
+
+        $pool = (clone $fresh)
+            ->whereBetween('price', [
+                \App\Services\MotorhomeMarketEngine::PRICE_FLOOR,
+                \App\Services\MotorhomeMarketEngine::PRICE_CEILING,
+            ])
+            ->select([
+                'id', 'external_id', 'source', 'title', 'url', 'brand', 'model',
+                'year', 'price', 'region', 'beds', 'layout', 'displacement',
+                'length', 'dedup_hash', 'scraped_at',
+            ])
+            ->get();
+
+        return [
+            'pool'   => $pool,
+            'funnel' => [
+                'layout'        => $layout,
+                'year_from'     => $yearFrom,
+                'year_to'       => $yearTo,
+                'layout_total'  => $layoutTotal,
+                'in_year_window' => $inWindowCount,
+                'fresh'         => $freshCount,
+                'eligible'      => $pool->count(),
+            ],
+        ];
     }
 
     public function getSegmentSnapshotStats(array $filters): array

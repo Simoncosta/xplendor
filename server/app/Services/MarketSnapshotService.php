@@ -30,6 +30,9 @@ class MarketSnapshotService
      *  primeiro um URL real no browser antes de alterar. */
     public const MOTORHOME_CATEGORY_BODY_TYPE_MAP = [
         'capucino'  => 'capucine',
+        // FASE 1: o slug interno REAL em produção é 'capucine' (4 viaturas
+        // ficavam sem tipologia mapeável porque o mapa só cobria 'capucino').
+        'capucine'  => 'capucine',
         'integral'  => 'integral',
         'perfilada' => 'perfiladas',
         'campervan' => 'furgao',
@@ -56,7 +59,7 @@ class MarketSnapshotService
      */
     public function snapshotForCar(Car $car): ?CarMarketAggregate
     {
-        $car->loadMissing(['brand:id,name', 'model:id,name']);
+        $car->loadMissing(['brand:id,name', 'model:id,name', 'category:id,slug']);
 
         if (!\in_array($car->vehicle_type, self::SCRAPER_SUPPORTED_TYPES, true)) {
             return null;
@@ -69,8 +72,15 @@ class MarketSnapshotService
 
         $searchUrl = $this->buildSearchUrl($car);
 
+        // FASE 1 — o motor de similaridade de autocaravanas exige tipologia
+        // (é o bilhete de entrada da elegibilidade). Sem categoria mapeável,
+        // regista failed SEM invocar o scraper — ação do utilizador: atribuir
+        // a categoria na ficha da viatura.
+        $motorhomeWithoutLayout = $car->vehicle_type === 'motorhome'
+            && self::bodyTypeFor($car->category?->slug) === null;
+
         // Insufficient data — record failure without invoking the scraper
-        if (!$car->brand?->name || !$car->model?->name || !$car->registration_year) {
+        if (!$car->brand?->name || !$car->model?->name || !$car->registration_year || $motorhomeWithoutLayout) {
             return CarMarketAggregate::create([
                 'car_id'            => $car->id,
                 'vehicle_type'      => $car->vehicle_type ?? 'car',
@@ -327,6 +337,111 @@ class MarketSnapshotService
         CarMarketAggregate::where('id', $aggregateId)->update($data);
     }
 
+    // -------------------------------------------------------------------------
+    // FASE 1 — motor de similaridade de autocaravanas (tipologia + ano ± 2)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Ramo motorhome do cálculo, chamado pelo Job DEPOIS do scrape. Substitui
+     * a cascata de degraus para autocaravanas (os degraus 4-5 de
+     * getComparables morrem neste ramo; CARROS continuam em getComparables,
+     * intocados). Pipeline: pool de elegibilidade (repo) → MotorhomeMarketEngine
+     * (dedupe → score → outliers → mediana/banda → confiança) → persistência
+     * com method='motorhome_similarity_v1' + funil.
+     */
+    public function computeAndPersistMotorhomeAggregate(Car $car, int $aggregateId): void
+    {
+        $car->loadMissing(['category:id,slug']);
+
+        $layout = self::bodyTypeFor($car->category?->slug);
+        $year   = $car->registration_year ? (int) $car->registration_year : null;
+
+        if ($layout === null || $year === null) {
+            // O guard do snapshotForCar já evita chegar aqui; defesa em
+            // profundidade para aggregates antigos re-executados.
+            CarMarketAggregate::where('id', $aggregateId)->update([
+                'status'       => 'failed',
+                'confidence'   => 'none',
+                'method'       => MotorhomeMarketEngine::METHOD,
+                // Reafirma o tipo: um aggregate re-executado depois de o carro
+                // mudar de vehicle_type ficaria dessincronizado (refutador de
+                // contrato) — o ramo escolhe-se pelo tipo ATUAL do carro.
+                'vehicle_type' => 'motorhome',
+                'updated_at'   => now(),
+            ]);
+
+            return;
+        }
+
+        $result = $this->snapshotRepo->getMotorhomeSimilarityPool($layout, $year);
+
+        $engine = new MotorhomeMarketEngine();
+        $data   = $engine->compute([
+            'year' => $year,
+            'cc'   => $car->engine_capacity_cc !== null ? (int) $car->engine_capacity_cc : null,
+            'beds' => $this->targetBedsFor($car),
+        ], $result['pool']);
+
+        // Degrau pós-dedupe no funil (refutador de contrato): sem ele,
+        // eligible − outliers_removed ≠ comparables_count quando há
+        // cross-postings SV+CJ e a UI não consegue explicar a diferença.
+        $funnel                 = $result['funnel'];
+        $funnel['after_dedupe'] = $data['pool_after_dedupe'] ?? $funnel['eligible'];
+        unset($data['pool_after_dedupe']);
+
+        $data['funnel']       = json_encode($funnel);
+        $data['vehicle_type'] = 'motorhome';
+
+        if (isset($data['top_comparables']) && \is_array($data['top_comparables'])) {
+            $data['top_comparables'] = json_encode($data['top_comparables']);
+        }
+        if (isset($data['sources_breakdown']) && \is_array($data['sources_breakdown'])) {
+            $data['sources_breakdown'] = json_encode($data['sources_breakdown']);
+        }
+
+        $data['updated_at'] = now();
+
+        CarMarketAggregate::where('id', $aggregateId)->update($data);
+    }
+
+    /**
+     * Dormidas do veículo-alvo, derivadas de vehicle_attributes.beds[].capacity.
+     *
+     * Rigor (refutador de integração): registos legacy têm camas SEM capacity
+     * (ex.: [{type: cama_convertivel}, {type: cama_transversal}]) — somar
+     * contagens subconta (cama de casal = 1). Só devolvemos um número quando
+     * TODAS as camas declaram capacity numérica > 0; caso contrário
+     * "desconhecido" (null) → s_beds fica neutro (0.5) e não distorce a
+     * ordenação da montra.
+     */
+    public function targetBedsFor(Car $car): ?int
+    {
+        if ($car->vehicle_type !== 'motorhome') {
+            return null;
+        }
+
+        // JSON CRU (pré-normalizeShape): o accessor vehicle_attributes aplica
+        // capacity=1 por defeito às camas legacy, apagando a diferença entre
+        // "1 pessoa declarada" e "não sei". A distinção só existe no raw.
+        $car->loadMissing('vehicleAttribute');
+        $raw  = $car->vehicleAttribute?->getAttribute('attributes');
+        $beds = \is_array($raw) ? ($raw['beds'] ?? null) : null;
+        if (!\is_array($beds) || $beds === []) {
+            return null;
+        }
+
+        $total = 0;
+        foreach ($beds as $bed) {
+            $capacity = \is_array($bed) ? ($bed['capacity'] ?? null) : null;
+            if (!\is_numeric($capacity) || (int) $capacity <= 0) {
+                return null;
+            }
+            $total += (int) $capacity;
+        }
+
+        return $total > 0 ? $total : null;
+    }
+
     /** Updates only the status column (used by job on error/block). */
     public function persistAggregateStatus(int $aggregateId, string $status): void
     {
@@ -409,6 +524,27 @@ class MarketSnapshotService
         ];
         $vehicleType = $car->vehicle_type ?? 'car';
         $path        = $paths[$vehicleType] ?? '/carros';
+
+        // FASE 1 — autocaravanas com tipologia: o link espelha o MOTOR
+        // (tipologia + ano ±2, sem marca). Formato validado ao live em
+        // 2026-09-30: /autocaravanas sem filtro = 410 anúncios;
+        // + body_type=perfiladas = 173; + ano 2018..2022 = 32.
+        if ($vehicleType === 'motorhome') {
+            $car->loadMissing('category:id,slug');
+            $bodyType = self::bodyTypeFor($car->category?->slug);
+
+            if ($bodyType !== null) {
+                $query = ['search[filter_enum_body_type]' => $bodyType];
+                if ($car->registration_year) {
+                    $query['search[filter_float_first_registration_year:from]'] =
+                        $car->registration_year - MotorhomeMarketEngine::YEAR_WINDOW;
+                    $query['search[filter_float_first_registration_year:to]'] =
+                        $car->registration_year + MotorhomeMarketEngine::YEAR_WINDOW;
+                }
+
+                return 'https://www.standvirtual.com' . $path . '?' . http_build_query($query);
+            }
+        }
 
         $url = 'https://www.standvirtual.com' . $path;
 

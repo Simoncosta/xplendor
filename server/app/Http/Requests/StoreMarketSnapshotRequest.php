@@ -46,6 +46,13 @@ class StoreMarketSnapshotRequest extends FormRequest
             'snapshots.*.power_hp' => ['nullable', 'integer', 'min:0'],
             'snapshots.*.color' => ['nullable', 'string', 'max:100'],
             'snapshots.*.doors' => ['nullable', 'integer', 'min:0', 'max:10'],
+            // FASE 0 — specs de autocaravana (todas opcionais; ver migração
+            // 2026_09_30 add_motorhome_specs). layout é enum fechado: vocabulário
+            // canónico partilhado com o scraper (motorhome_specs.CANONICAL_LAYOUTS).
+            'snapshots.*.beds' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'snapshots.*.layout' => ['nullable', Rule::in(['perfiladas', 'integral', 'capucine', 'furgao', 'caravana'])],
+            'snapshots.*.displacement' => ['nullable', 'integer', 'min:500', 'max:8000'],
+            'snapshots.*.length' => ['nullable', 'numeric', 'min:3', 'max:12'],
             'snapshots.*.scraped_at' => ['nullable', 'date'],
         ];
     }

@@ -12,10 +12,14 @@ class CarMarketAggregate extends Model
     protected $fillable = [
         'car_id',
         'vehicle_type',
+        'method',
         'status',
         'confidence',
         'comparables_count',
+        'outliers_removed',
         'median_price',
+        'p25_price',
+        'p75_price',
         'min_price',
         'max_price',
         'avg_price',
@@ -24,12 +28,15 @@ class CarMarketAggregate extends Model
         'promo_price_gross',
         'search_url',
         'sources_breakdown',
+        'funnel',
         'top_comparables',
         'fallback_used',
     ];
 
     protected $casts = [
         'median_price'      => 'decimal:2',
+        'p25_price'         => 'decimal:2',
+        'p75_price'         => 'decimal:2',
         'min_price'         => 'decimal:2',
         'max_price'         => 'decimal:2',
         'avg_price'         => 'decimal:2',
@@ -38,8 +45,10 @@ class CarMarketAggregate extends Model
         'promo_price_gross' => 'decimal:2',
         'top_comparables'   => 'array',
         'sources_breakdown' => 'array',
+        'funnel'            => 'array',
         'fallback_used'     => 'boolean',
         'comparables_count' => 'integer',
+        'outliers_removed'  => 'integer',
     ];
 
     public function car(): BelongsTo

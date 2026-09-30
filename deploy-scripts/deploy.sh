@@ -31,7 +31,7 @@ docker exec -it xplendor-php php artisan route:cache
 docker exec -it xplendor-php php artisan view:clear
 
 echo "⚛️ Frontend (app CRA) build — basename /app vem do homepage:/app do package.json"
-cd "$APP_DIR/web"
+cd web/
 yarn install
 echo "⚛️ Delete old build"
 rm -rf build/
@@ -39,12 +39,15 @@ echo "⚛️ Build new build"
 yarn build
 
 echo "🌐 Landing (Rayo / Next.js) build — export estático para site/out"
-cd "$APP_DIR/site"
+cd ../site
 npm install
 echo "🌐 Delete old out"
 rm -rf out/
 echo "🌐 Build new out"
 npm run build
+
+echo "cd .."
+cd ..
 
 echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx

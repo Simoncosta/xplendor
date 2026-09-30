@@ -12,6 +12,9 @@ import CarMarginCard from "./components/CarMarginCard";
 import CarAnalyticsHeader from "./components/CarAnalyticsHeader";
 import CarPageNav from "./components/CarPageNav";
 
+import Lightbox from "yet-another-react-lightbox";
+import "yet-another-react-lightbox/styles.css";
+
 import { fetchCarSpecs } from "helpers/carSpecs_helper";
 import { fmtDate, ipsClassBadge } from "./helpers/CarAnalyticsData";
 import {
@@ -32,6 +35,11 @@ export default function CarFichaPage() {
     const [specs, setSpecs] = useState<CarSpecs | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+
+    // Lightbox das imagens: -1 = fechado; >=0 = índice da foto aberta. A lib
+    // (yet-another-react-lightbox) trata teclado (setas/Esc), clique fora e
+    // deslize no telemóvel nativamente.
+    const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
 
     const companyId = useMemo(() => {
         const authUser = sessionStorage.getItem("authUser");
@@ -226,11 +234,20 @@ export default function CarFichaPage() {
                                         Imagens ({specs.images.length})
                                     </h6>
                                     <div className="d-flex flex-wrap gap-2">
-                                        {specs.images.map((img) => (
+                                        {specs.images.map((img, idx) => (
                                             <img
                                                 key={img.id}
                                                 src={`${process.env.REACT_APP_PUBLIC_URL ?? ""}${img.url}`}
-                                                alt=""
+                                                alt={`Imagem ${idx + 1}`}
+                                                onClick={() => setLightboxIndex(idx)}
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter" || e.key === " ") {
+                                                        e.preventDefault();
+                                                        setLightboxIndex(idx);
+                                                    }
+                                                }}
                                                 style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 6, border: img.is_primary ? "2px solid var(--vz-primary)" : "1px solid var(--vz-border-color)", cursor: "pointer" }}
                                             />
                                         ))}
@@ -275,6 +292,19 @@ export default function CarFichaPage() {
                 )}
 
             </Container>
+
+            {/* Lightbox das imagens: abre grande, percorre com setas/deslize,
+                fecha no X, Esc ou clique fora. Só monta quando há fotos. */}
+            {specs.images.length > 0 && (
+                <Lightbox
+                    open={lightboxIndex >= 0}
+                    close={() => setLightboxIndex(-1)}
+                    index={lightboxIndex < 0 ? 0 : lightboxIndex}
+                    slides={specs.images.map((img) => ({
+                        src: `${process.env.REACT_APP_PUBLIC_URL ?? ""}${img.url}`,
+                    }))}
+                />
+            )}
         </div>
     );
 }

@@ -87,39 +87,52 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
             '--vehicle-type', $vehicleType,
             '--max-results',  $maxResults,
             '--sources',      $sources,
-            '--brand',        $car->brand->name,
-            '--model',        $car->model->name,
         ];
 
-        if ($car->registration_year) {
-            $command[] = '--year-from';
-            $command[] = (string) ($car->registration_year - 1);
-            $command[] = '--year-to';
-            $command[] = (string) ($car->registration_year + 1);
-        }
-
-        if ($car->fuel_type) {
-            $command[] = '--fuel';
-            $command[] = $car->fuel_type;
-        }
-
-        // Autocaravanas com categoria conhecida: filtrar por body_type no
-        // Standvirtual (validado 2026-05-30). Garante que todos os anúncios
-        // devolvidos pertencem à categoria correcta e o scraper grava o slug
-        // em car_market_snapshots.category (override no normalizer).
         if ($vehicleType === 'motorhome') {
+            // FASE 1 — a recolha espelha o MOTOR de similaridade: tipologia
+            // + ano ±2, SEM marca/modelo (o motor compara cross-marca; o
+            // scrape por marca deixava o degrau Δ2 sem dados frescos e as
+            // marcas raras sem pool). O guard do snapshotForCar garante que
+            // só chegam cá autocaravanas com categoria mapeável.
             $bodyType = MarketSnapshotService::bodyTypeFor($car->category?->slug);
             if ($bodyType !== null) {
                 $command[] = '--body-type';
                 $command[] = $bodyType;
+            }
+
+            if ($car->registration_year) {
+                $command[] = '--year-from';
+                $command[] = (string) ($car->registration_year - 2);
+                $command[] = '--year-to';
+                $command[] = (string) ($car->registration_year + 2);
+            }
+        } else {
+            // CARROS — caminho pré-existente INTOCADO: marca+modelo, ano ±1,
+            // combustível.
+            $command[] = '--brand';
+            $command[] = $car->brand->name;
+            $command[] = '--model';
+            $command[] = $car->model->name;
+
+            if ($car->registration_year) {
+                $command[] = '--year-from';
+                $command[] = (string) ($car->registration_year - 1);
+                $command[] = '--year-to';
+                $command[] = (string) ($car->registration_year + 1);
+            }
+
+            if ($car->fuel_type) {
+                $command[] = '--fuel';
+                $command[] = $car->fuel_type;
             }
         }
 
         Log::info('ScrapeMarketSnapshotJob: starting scrape', [
             'car_id'       => $this->carId,
             'vehicle_type' => $vehicleType,
-            'brand'        => $car->brand->name,
-            'model'        => $car->model->name,
+            'brand'        => $car->brand?->name,
+            'model'        => $car->model?->name,
         ]);
 
         $process = new Process($command);
@@ -155,14 +168,21 @@ class ScrapeMarketSnapshotJob implements ShouldQueue
 
         // Scraper sent fresh snapshots to DB via LaravelSender.
         // Now read comparables and compute the aggregate.
-        $result = $marketSnapshotService->getComparables($car);
+        if ($vehicleType === 'motorhome') {
+            // FASE 1 — motor de similaridade (tipologia+ano±2). A cascata
+            // getComparables (degraus 4-5) morre neste ramo.
+            $marketSnapshotService->computeAndPersistMotorhomeAggregate($car, $this->aggregateId);
+        } else {
+            // CARROS — cascata clássica INTOCADA (degraus 1-3).
+            $result = $marketSnapshotService->getComparables($car);
 
-        $marketSnapshotService->computeAndPersistAggregate(
-            $car,
-            $this->aggregateId,
-            $result['snapshots'],
-            $result['fallback_used'],
-        );
+            $marketSnapshotService->computeAndPersistAggregate(
+                $car,
+                $this->aggregateId,
+                $result['snapshots'],
+                $result['fallback_used'],
+            );
+        }
 
         Log::info('ScrapeMarketSnapshotJob: aggregate persisted', [
             'car_id'       => $this->carId,

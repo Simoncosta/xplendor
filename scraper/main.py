@@ -171,6 +171,14 @@ def run(
             buffered_by_source[source_name].append(snapshot)
         total_normalized += 1
 
+    # FASE 0 — fetch de detalhe: flag global OU automático para motorhome
+    # (dormidas/comprimento/tipologia vivem no detalhe; cap 15 contém o custo).
+    fetch_details_enabled = config.fetch_details or (
+        vehicle_type == "motorhome" and config.fetch_details_motorhome
+    )
+    if fetch_details_enabled:
+        logger.info(f"fetch_details ativo (vehicle_type={vehicle_type})")
+
     # Iteração determinística por fonte. Cada adapter é isolado num try/except —
     # falha duma fonte (HTTP / parse / bloqueio) não derruba as outras nem o
     # aggregate (critério de aceitação MS2.e). Limite global de max_results
@@ -185,16 +193,19 @@ def run(
 
                 for raw_listing in page_batch:
 
-                    if config.fetch_details and raw_listing.url:
-                        time.sleep(config.delay_between_details)
+                    if fetch_details_enabled and raw_listing.url:
                         # fetch_detail é específico do Standvirtual hoje; outros
                         # adapters podem não o ter. Chamada defensiva.
                         if hasattr(adapter, "fetch_detail"):
+                            time.sleep(config.delay_between_details)
                             detail = adapter.fetch_detail(raw_listing.url)
-                            if detail.get("color"):
-                                raw_listing.params["color"] = detail["color"]
-                            if detail.get("doors"):
-                                raw_listing.params["doors"] = str(detail["doors"])
+                            # FASE 0 — merge genérico: description, body_type,
+                            # engine_capacity, nr_seats, color, doors… O detalhe
+                            # (mais rico) tem prioridade sobre o que a listagem
+                            # já tivesse posto (ex.: shortDescription).
+                            for key, value in detail.items():
+                                if value not in (None, ""):
+                                    raw_listing.params[key] = str(value)
 
                     snapshot = normalizer.normalize(
                         raw_listing,

@@ -131,6 +131,15 @@ export interface MarketComparable {
      *  via selectTop5 → top_comparables[i].source). Slug ∈ {standvirtual,
      *  custojusto, …}; traduzido para apresentação via MARKET_SOURCE_LABELS. */
     source: string;
+    /** FASE 1b — campos extra dos comparáveis de AUTOCARAVANA (motor de
+     *  similaridade). Só presentes quando method='motorhome_similarity_v1'.
+     *  similarity_score ∈ [0,1] ordena a montra (não escolhe a mediana).
+     *  length em metros; visível para o humano comparar, não é critério. */
+    similarity_score?: number | null;
+    beds?: number | null;
+    displacement?: number | null;
+    length?: number | null;
+    scraped_at?: string | null;
 }
 
 export interface MarketAggregatePrices {
@@ -138,6 +147,25 @@ export interface MarketAggregatePrices {
     min: number | null;
     max: number | null;
     avg: number | null;
+    /** FASE 1b — banda central (quantis R-7). Só preenchidos com n>=4; NUNCA
+     *  são min/max disfarçados. Presentes sobretudo em autocaravanas. */
+    p25?: number | null;
+    p75?: number | null;
+}
+
+/** FASE 1b — funil de elegibilidade do motor de autocaravanas. Explica um
+ *  resultado vazio/escasso: quantas viaturas desta tipologia vimos e quantas
+ *  sobreviveram a cada degrau (janela de ano, recência, preço, dedupe). */
+export interface MarketFunnel {
+    layout: string;
+    year_from: number;
+    year_to: number;
+    layout_total: number;
+    in_year_window: number;
+    fresh: number;
+    eligible: number;
+    /** Degrau pós-dedupe cross-fonte. after_dedupe − outliers = comparables_count. */
+    after_dedupe?: number;
 }
 
 export interface MarketAggregateComparison {
@@ -158,6 +186,19 @@ export interface MarketAggregate {
     top_comparables: MarketComparable[];
     fallback_used: boolean;
     search_url: string | null;
+    /** FASE 1b — tipo da viatura. Segundo sinal de deteção da vista de
+     *  autocaravana (o primeiro é `method`), necessário no caso guard-failed
+     *  (motorhome sem tipologia, cujo aggregate nasce failed com method null). */
+    vehicle_type?: 'car' | 'motorcycle' | 'motorhome' | 'caravan' | null;
+    /** FASE 1b — identifica o motor que produziu o aggregate.
+     *  'motorhome_similarity_v1' = comparação por tipologia+ano (cross-marca);
+     *  null/ausente = cascata clássica dos carros (por marca+modelo). A UI
+     *  usa-o para escolher a vista e mostrar o selo "por tipologia". */
+    method?: string | null;
+    /** FASE 1b — nº de preços removidos (guarda grosseira + fence IQR). */
+    outliers_removed?: number;
+    /** FASE 1b — funil de elegibilidade (autocaravanas); explica vazios. */
+    funnel?: MarketFunnel | null;
     /** MS1.c — derivado do car, permite ao UI escolher a mensagem accionável
      *  quando o aggregate está vazio (preço 0 vs 'Sob consulta'). Optional para
      *  tolerar payloads de versões antigas ou outras fontes que não o emitam. */

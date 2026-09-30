@@ -25,6 +25,13 @@ const sectionStyle = {
     border: "1px solid var(--vz-border-color)",
     borderRadius: "16px",
     background: "var(--vz-card-bg)",
+    // Dois mecanismos de separação do fundo, um por tema:
+    //   · CLARO: a sombra levanta o card (--vz-box-shadow é o token GLOBAL do
+    //     :root; --vz-card-box-shadow só existe dentro do seletor .card, por
+    //     isso numa <section> ficava vazio e não renderizava).
+    //   · ESCURO: a sombra quase não se vê → a borda (--vz-border-color) é o
+    //     que separa. Por isso mantemos os dois.
+    boxShadow: "var(--vz-box-shadow)",
 };
 
 const selectCarState = (state: any) => state.Car;
@@ -283,8 +290,18 @@ export default function CarAnalytics() {
 }
 
 function Metric({ label, value }: { label: string; value: string | number }) {
+    // Antes usava bg-light-subtle (#f9fbfc sobre body #f3f6f9 → contraste ~0).
+    // Agora é uma superfície de card real: fundo próprio + sombra (claro) +
+    // borda (escuro), tudo por token → levanta do fundo nos dois temas.
     return (
-        <div className="rounded-3 bg-light-subtle px-3 py-3">
+        <div
+            className="rounded-3 px-3 py-3"
+            style={{
+                background: "var(--vz-card-bg)",
+                border: "1px solid var(--vz-border-color)",
+                boxShadow: "var(--vz-box-shadow)",
+            }}
+        >
             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>{label}</p>
             <span className="fs-20 fw-bold">{value}</span>
         </div>

@@ -4,6 +4,10 @@ from typing import Optional
 from dataclasses import dataclass
 
 from scraper import RawListing
+from motorhome_specs import (
+    normalize_structured_layout,
+    parse_motorhome_specs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +43,15 @@ class NormalizedSnapshot:
     price_currency: str = "EUR"
     vehicle_type: Optional[str] = None
 
+    # FASE 0 (motor de autocaravanas) — specs novas, todas opcionais.
+    # beds/layout/length só são preenchidas para motorhome; displacement
+    # aproveita o parameter estruturado `engine_capacity` (presente também
+    # na listagem de carros — vem de graça para a Fase 1).
+    beds: Optional[int] = None
+    layout: Optional[str] = None
+    displacement: Optional[int] = None
+    length: Optional[float] = None
+
     def to_dict(self) -> dict:
         return {
             "external_id": self.external_id,
@@ -60,6 +73,10 @@ class NormalizedSnapshot:
             "power_hp": self.power_hp,
             "color": self.color,
             "doors": self.doors,
+            "beds": self.beds,
+            "layout": self.layout,
+            "displacement": self.displacement,
+            "length": self.length,
         }
 
 
@@ -119,6 +136,28 @@ class ListingNormalizer:
             # `category` (override seguro do código numérico que o site devolve).
             category = body_type_override if body_type_override else raw.category
 
+            # FASE 0 — specs de autocaravana.
+            # displacement: o parameter estruturado (engine_capacity) tem
+            # prioridade; texto livre é fallback. Extraído para TODOS os tipos
+            # (a listagem de carros também traz engine_capacity).
+            description = str(raw.params.get("description") or "")
+            displacement = self._parse_displacement(raw.params, raw.title, description)
+
+            beds = layout = length = None
+            if vehicle_type == "motorhome":
+                specs = parse_motorhome_specs(raw.title, description)
+                beds = specs["beds"]
+                length = specs["length"]
+                # Tipologia — prioridade: estruturada por-anúncio (detalhe SV)
+                # > filtro da pesquisa > categoria canónica CustoJusto > texto.
+                layout = (
+                    normalize_structured_layout(raw.params.get("body_type"))
+                    or normalize_structured_layout(body_type_override)
+                    or (normalize_structured_layout(raw.category)
+                        if raw.source == "custojusto" else None)
+                    or specs["layout"]
+                )
+
             return NormalizedSnapshot(
                 external_id=raw.external_id,
                 source=raw.source,
@@ -138,6 +177,10 @@ class ListingNormalizer:
                 color=color,
                 doors=doors,
                 vehicle_type=vehicle_type,
+                beds=beds,
+                layout=layout,
+                displacement=displacement,
+                length=length,
             )
         except Exception as e:
             logger.debug(f"Erro ao normalizar anúncio {raw.external_id}: {e}")
@@ -234,6 +277,18 @@ class ListingNormalizer:
         except ValueError:
             pass
         return None
+
+    def _parse_displacement(self, params: dict, title: str, description: str) -> Optional[int]:
+        """Cilindrada em cm³. Prioridade: parameter estruturado do Standvirtual
+        (`engine_capacity`, presente logo na LISTAGEM) > regex no texto livre.
+        Gama de sanidade 500–8000 cm³."""
+        raw = self._parse_field(params, ["engine_capacity", "displacement", "cilindrada"])
+        if raw:
+            cc = self._extract_int(str(raw))
+            if cc and 500 <= cc <= 8000:
+                return cc
+        from motorhome_specs import parse_displacement_cc
+        return parse_displacement_cc(f"{title or ''}\n{description or ''}")
 
     def _parse_doors(self, params: dict) -> Optional[int]:
         raw = self._parse_field(params, ["doors", "portas"])

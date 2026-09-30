@@ -1,0 +1,1003 @@
+[
+ {
+  "id": "c1/d1.html",
+  "title": "CI International Magis Selekt 67 XT N20",
+  "text": "Carateristicas:\nMarca - CI \nModelo - Magis 67 XT\nMotorização -Fiat 2200cc 140 CV \nCaixa automática\nSuspensão compósito\nPeso bruto - 3500 Kgs\nTara - 2970 Kgs\nPeso rebocável -2000 Kgs\nComprimento -  7450 mm\nLargura - 2350 mm\nAltura - 2850 mm\nLug dormida - 5\nLugares livrete - 4\nCabine:\nAir bag passageiro / condutor\nABS\nTração +\nHill desc control\nRetrovisores elect, ajustáveis e aquecidos\nVidros elétricos\nFaróis ajustáveis em altura\nCruise control\nTravão elétrico\nFecho centralizado portas\nEstores cabine\nRadio, câmara recuo e BT\nSkyroof\nHabitáculo:\nLayout - Cama central + rebatível c/ duche e wc independente\nFrigorifico compressor 158 lts\nFogão 3 bicos Domertic\nAquecimento água e ambiente a gás Truma Combi 6\nIluminação led\n2 baterias lítio 100amp\nExterior:\n2 painéis solares 200W c/regulador\nDepósito água limpa 120 lts\nDepósito aguas residuais 90 lts\nJantes alumínio negro 16\"\nToldo Fiamma preto",
+  "expected": {
+   "beds": 5,
+   "length": 7.45,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d10.html",
+  "title": "ABI Supreme Atrelado PB 750kg ideal para motas pesadas",
+  "text": "Atrelado Novo, apenas trouxe uma mota de França, excelente para motas grandes e pesadas, fácil carregar a mota, uma vez que o estrado vem ao chão.",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d2.html",
+  "title": "Andrade Pristol 598 U47",
+  "text": "Marca – Andrade Pristol 598\nAno 11/2009\nKms 143430\nMotorização – Mercedes 2987cc 180cv\nLugares dormida 3\nLugares livrete 4\nLayout – Cama transversal + mesa\nCom. 6,25 Larg. 2,10 Alt. 2,65 mt\nPeso bruto 3500 Kgs\nTara 2975 Kgs\nPeso rebocável – 2000 Kgs\nPneus - 235/65 R 16 C\nGarantia – 18 meses\nEletrônica e Segurança:\nABS\nESP/ASR\nAir bag condutor\nCruise control\nEspelhos e vidros elétricos\nFecho centralizado portas\nRadio pioneer com BT\nSensores m trás e frente\nCâmara de recuo\nConforto:\nAr condicionado cabine\nJanelas de vidro duplo com estores e redes\nBancos rotativos c/apoio braços\nEstores cabine plissados\nInterior:\nFogão 2 saídas\nFrigorifico trivalente dometic 96 Lts\nExaustor\nClaraboia t vent\nAquecimento água e ambiente gás Truma Combi\nSuporte para TV\nPorta rede anti mosquitos\nConversor 1500w\nClaraboia com ventilação WC\nWC completo com duche e sanita\nExterior:\nPainel solar\nPorta acesso exterior (2) 0,86x0,75-0,72x0,48\nPorta célula Hartal\nGás GPL\nDegrau elétrico\nLuz exterior\nJantes especiais\nAntena omnidirecional\nToldo Omnistor\nBola reboque\nPneu suplente\nSuspensão pneumática",
+  "expected": {
+   "beds": 3,
+   "length": 6.25,
+   "displacement": 2987,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d3.html",
+  "title": "Adria Altea 462 PS U55",
+  "text": "Lugares dormida 4\nLayout – Cama central / sala-cama\nCom. 5,10/6,20 Larg 2,25 Alt 2,65\nPeso bruto 1300 Kgs\nTara 920 Kgs\nPneus - 195/70 R14\nGarantia – 18 meses\nEquipamento exterior\n4 macacos estabilizadores\nEstabilizador\nJanelas de vidro duplo com estores e redes\nLuz exterior\nPneu suplente\nDeposito águas residuais\nAntena TV com mastro\nToldo Fiamma F45 S\nInterior:\nFogão Smeve 2 saídas\nFrigorifico trivalente Dometic 70 Lts\nAquecimento ambiente gás\nDeposito água enchimento exterior 70 lts\nAgua quente 220v\nSanita cassete\nBase duche\nDivisório quarto casal de fole",
+  "expected": {
+   "beds": 4,
+   "length": 6.2,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d4.html",
+  "title": "Moncayo Eco Eco 35 U53",
+  "text": "PREÇO 38.900,00€\nRegime Iva bens 2ª.mão\nMarca – Moncayo Eco 35 U53\nKms 105148\nAno 9/2008\nMotorização – Fiat 2287cc 130Cv\nLugares dormida 4\nLugares livrete 4\nLayout – Cama francesa + sala/cama\nCom. 6,70 Larg 2,36 Alt 2,80\nPeso bruto 3500 Kgs\nTara 3030 Kgs\nGarantia – 18 meses\nElectronica e Segurança:\nABS\nAir bag condutor e passageiro\nCruise control\nFecho centralizado portas\nVidros elétricos\nEspelhos retrovisores c/angulo morto\nRadio\nConforto:\nAr condicionado cabine\nJanelas de vidro duplo com estores e redes\nBancos rotativos c/apoio braços\nInterior:\nFogão 2 saídas Smev\nFrigorifico trivalente Dometic 122 Lts\nAquecimento água e ambiente gás\nConversor 800w\nClaraboia 40x40 (2)\nSuporte TV\nExterior:\nPainel solar\nPorta acesso exterior 1,10x0,43mt\nToldo\nCompartimento para 2 garrafas gás\nSuporte Bicicletas (2)\nPneu suplente",
+  "expected": {
+   "beds": 4,
+   "length": 6.7,
+   "displacement": 2287,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d5.html",
+  "title": "Sunlight C S-Light U51",
+  "text": "PREÇO 16.900,00€\nRegime Iva bens 2ª.mão\nMarca/Modelo – Sunlight S-Light U51\nAno – 10/2013\nLugares dormida 4\nLayout – Cama francesa / salão\nCom. 5,20/6,55 Larg 2,27 Alt 2,60\nPeso bruto 1350 Kgs\nTara 1070 Kgs\nPneus - 185 R14\nGarantia – 18 meses\nEquipamento exterior\n4 macacos estabilizadores\nAmortecedores\nEstabilizador\nJanelas de vidro duplo com estores e redes\nLuz exterior\nPneu suplente\nEspaço para 2 g gás\nPainel solar\nPorta acesso exterior c/ 0,76 compx0,32 alt\nInterior:\nFogão 3 saídas Thetford\nExaustor\nFrigorifico trivalente Thetford 113 Lts\nVentoinhas frigorifico\nAquecimento ambiente Trumatic gás\nAquecimento água boiler 220v\nDepósito água c/enchimento exterior 50 lts\nSanita cassete\nBase duche\nDivisório quarto casal\nSuporte TV\nBateria\nConversor 1500W",
+  "expected": {
+   "beds": 4,
+   "length": 6.55,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d6.html",
+  "title": "Challenger Eden 614 *Nacional*",
+  "text": "O preço inclui 18 MESES DE GARANTIA (sem garantia - DESCONTO DE EUR 1.000) + REGISTO DE PROPRIEDADE + REVISÃO COMPLETA PRÉ-ENTREGA.\nPossibilidade de CRÉDITO sem entrada inicial - contacte-nos para uma simulação GRÁTIS e sem compromisso!\nAutocaravana Nacional 4 lugares de livrete e dormida, tem cama transversal elétrica regulável + possibilidade de cama na sala, 7,00 mts de comprimento, 2,90 mts de altura, 2,35 mts de largura, motor 2.3 MJET, 130 cv.\nEquipamento:\n• Ar condicionado / cortinas plissadas na cabine\n• Auto rádio multimédia com kit mãos livres\n• Camera de recuo / sensores de parqueamento\n• Janela de tejadilho panorâmica / claraboia panorâmica\n• Bancos rotativos\n• Iluminação LED / tomadas USB\n• Conversor 12V / 220V 2000W onda pura\n• TV LED / antena TDT\n• Fogão 3 bicos / exaustor / forno\n• Frigorífico 150 Lts automático ventilado\n• WC e duche\n• Cama elétrica regulável com cabeceira reclinável\n• Claraboia Turbo-Vent\n• Porta anti-insectos / luz de avançado\n• Toldo lateral\n• 2 Painéis solares\n• Suporte para bicicletas\n• Fechos de segurança\n• Garagem grande / vários arrumos / etc…\nExclusivo CampiLider:\n10% Desconto VITALÍCIO na aquisição de equipamentos e produtos;\nInstalação gratuita de todos os equipamentos adicionais selecionados na aquisição;\nVenha visitar-nos. Também estamos abertos aos sábados com acessórios para a sua autocaravana.",
+  "expected": {
+   "beds": 4,
+   "length": 7.0,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d7.html",
+  "title": "Chausson Welcome 79 2.3M-Jet 130cv - Fiat Ducato",
+  "text": "Chausson Welcome 79 - Fiat Ducato \n44.990€ ou Financiamento Sob Consulta (SEM ENTRADA)\n05/2012\n38.800 kms \n2.3M-Jet / 130cv / Diesel\nCx. Manual \n- Cama Central, Quarto Privativo, Cama Basculante, 4 Dormidas, Cozinha em L, Fogão c/ 3 bocas, Frigorífico c/ Congelador XXL, Garagem Espaçosa \n+ DE 30 FOTOS DISPONÍVEIS NO NOSSO SITE!\n- https://www.bercoautomovel.pt\nExcelente estado geral,  com revisão completa efetuada e todo o historial de manutenção! \nGARANTIA TOTAL DE ATÉ 3 ANOS!\nFinanciamento sem entrada, Sob Consulta ou 44.990€! \nFazemos Entregas no Pais Inteiro e Ilhas!! \nLavagem, Higienização e Desinfeção completa antes da Entrega!\nPara +info, contacte-nos por:\nMsg privada\n (Tiago Santos) / \n (André Alves) / \n (César Fernandes)\nSIGAM-NOS TAMBÉM NAS REDES SOCIAIS :\nINSTAGRAM - https://www.instagram.com/bercoautomovel/ \nFACEBOOK- https://www.facebook.com/bercoautomovel/\n*Campanha de Financiamentos deste mês! Mais info contactar a entidade vendedora.\n**Anúncio não vinculativo e inserido por rotina informática, todos os dados anunciados e condições relativos a equipamento de série/opcional, mês, ano, quilômetros e preço de venda anunciado, carecem de confirmação por parte do vendedor.\nAviso Legal:\n Anúncio introduzido por rotina informática by \nAuto21\n (todos os dados necessitam ser confirmados junto do vendedor)\nViatura com a referência: 943",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d8.html",
+  "title": "Hymer ML-T MLT 580 4x4, 4100Kg",
+  "text": "\"Equipamento especial\"\n20 \"Mercedes-Benz Sprinter 3,5 t - 419 CDI - 140 KW/190 CV - Euro VI-E\"\n30 \"Variante de peso (PBT) 4.100 kg (para Mercedes-Benz Sprinter 414/416/419 CDI)\"\n40 \"Cor exterior da cabina: cinzento-preto\"\n50 \"Tração integral 4matic apenas em combinação com 190 CV e 9G-Tronic\"\n60 \"Faróis LED de alto desempenho\"\n70 \"Faróis de nevoeiro com luz de curva\"\n80 \"Sistema Wet Wiper (limpa para-brisas com bicos integrados)\"\n90 \"Ar condicionado totalmente automático THERMOTRONIC, incl. sensor de chuva, ar condicionado semiautomático\"\n100 \"Pacote de carregamento no painel de instrumentos com 2x tomadas USB-C 5V / 1x tomada 12V\"\n110 \"Aquecimento dos bancos do condutor e do passageiro, reguláveis separadamente\"\n120 \"Toldo com adaptador, caixa branca, 400 x 250 cm\"\n130 \"Engate de reboque com cabeça esférica amovível (incl. pré-instalação)\"\n140 \"Revestimento do tejadilho em GFP (fibra de vidro)\"\n150 \"Fechadura de segurança para a porta de entrada da zona de habitação\"\n160 \"Piso em chapa estriada e revestimento em feltro na garagem traseira\"\n170 \"Duche exterior na garagem\"\n180 \"Decoração de mobiliário Chiavenna Nogueira\"\n190 \"Combinação de tecidos Janeiro\"\n200 \"Grupo de assentos em L Comfort com estofos tipo lounge, longitudinais/transversais e 2 cintos de 3 pontos integrados\"\n210 \"Estrutura de cama para o grupo de assentos em L Comfort, incl. estofo adicional e mesa rebaixável, incluindo o banco do condutor\"\n220 \"Sistema de descanso com estrado de molas para a(s) cama(s) traseira(s)\"\n230 \"Estofo adicional entre as camas individuais longitudinais, com escada de acesso\"\n240 \"Frigorífico de compressor de 152 l\"\n250 \"Aquecimento a ar quente a gasóleo de 6 kW, com esquentador de água e resistência elétrica\"\n260 \"Kit de altitude para aquecimento a gasóleo\"\n270 \"Sistema solar 2 x 90 W com regulador MPPT e indicador\"\n280 \"Ar condicionado de tejadilho 2400 W\"\n290 \"Suporte para ecrã plano de 22 ou 32 polegadas\"\n300 \"Ecrã plano LED de 32 polegadas com colunas integradas, leitor de DVD, sistema HYMER Smart-Multimedia com Bluetooth (DVB-T/C, DVB-S2), incl. recetor\"\n310 \"Segunda TV LED na zona de dormir, 22 polegadas TFT com colunas integradas, leitor de DVD, DVB-T/C, DVB-S2, cablagem e suporte de parede\"\n320 \"Antena satélite plana digital, sem recetor\"\n330 \"Pacote de Conforto de Condução 1 Mercedes-Benz — Ar condicionado semiautomático Tempmatik; Piloto automático Mercedes-Benz incl. botões multifunção no volante; Travão de estacionamento elétrico; Eixo dianteiro reforçado\"\n340 \"Pacote Comfort Plus 7 — Estore mosquiteiro na porta de entrada; Teto panorâmico sobre a cabina, com abertura manual; Cortina de escurecimento dobrável para a cabina\"\n350 \"Pacote de Assistência à Condução Plus — Sistema multimédia Mercedes-Benz MBUX de 10,25\"\" incl. navegação com botões multifunção no volante, DAB+, ecrã tátil e câmara de marcha-atrás; Assistente de distância ativo DISTRONIC PLUS incl. botões multifunção no volante (suplemento em relação ao piloto automático); Volante em pele (com caixa automática); Caixa automática\n9G-TRONIC incl. função Hold\"\n360 \"Pacote de Conforto de Habitação 4 — Grelha de ripas de madeira no duche; lençol ajustável à medida para as camas traseiras, adaptado individualmente aos contornos dos colchões; 4 almofadas com capa; iluminação ambiente; 4x tomadas 230 V / 3x tomadas 12 V / 2x USB duplo adicionais (incl. revestimento da parede da cozinha)\"\n370 \"Pacote de Autonomia Lítio — Sistema HYMER-Smart-Battery (150 Ah lítio) incl. carregador adicional de 18 A e computador de bateria; terceira bateria auxiliar HYMER-Smart-Battery (150 Ah lítio); inversor 12 V para 230 V, 1800 W, com comutação prioritária de rede\"\n380 \"Inspeção técnica (TÜV) / documentos do veículo\"\n390 \"Transporte / inspeção de receção\"\n400 \"Suporte de roda sobresselente traseiro com pneu Bead Lock 265/60 R18 BF Goodrich\"\n410 \"Jantes Bead Lock pretas, pneu 265/60 R18 BF Goodrich\"\n420 \"Inspeção técnica (TÜV) de acessórios\"\n430 \"Router LTE montado no tejadilho\"\n440 \"Proteção inferior Delta\"",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c1/d9.html",
+  "title": "Challenger Genesis 36 Cama Francesa e Cama Basculante",
+  "text": "Fiat Perfilada DEZEMBRO 2009\nChallenger genesis 36 C/APENAS 132000km\nCama Francesa + Cama basculante\n**EQUIPAMENTO CABINE**\n- Motor 2.3 Multijet 130cv\n- Caixa de 6 velocidades\n- Ar condicionado\n- Vidros eléctricos\n- Fecho central c/ comando\n- Retrovisores eléctricos\n- Direcção assistida\n- Rádio\n- Cortinas plissadas\n- Facturas de manutenções anteriores\n**EQUIPAMENTO CÉLULA**\n**EXTERIOR**\n- Painel solar\n- Suporte de bicicleta\n- Toldo\n- Antena \n- Tranca segurança porta da célula\n**INTERIOR**\n- 4 Lugares de livrete\n- 6 Dormidas\n- Cama Francesa\n- Cama basculante, fica com espaço para entrar e sair da autocaravana\n- Frigorífico grande 12v/220v/gáz\n- Televisão\n- 1 Baterias célula\n- Casa-de-banho grande com duche separado\n- 2 Beliches\n- Fogão 3 bicos\n- Roupeiro grande\n- Cozinha de canto\n- Bancos rotativos\n- Aquecimento Truma\n- Cortinas mosquiteiras em todas as janelas\n**Garantia 18 meses**\n** Fazemos entregas em qualquer parte do país **",
+  "expected": {
+   "beds": 6,
+   "length": null,
+   "displacement": 2300,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "c2/d1.html",
+  "title": "Sunlight T 68 Adventure REF.N50",
+  "text": "ELECTRÓNICA/SEGURANÇA\nAC Cabine\nAirbags\nRetrovisores Ajustáveis\nTraction +\nHill Descent Control\nCruise Control\nSuporte Tablet /Smartphone\nPré-instalação rádio c/ colunas\nPorta USB\nPré-instalação de câmara de recuo\nCONFORTO\nClarabóia Midi-heki na sala\nPorta Hartal com rede mosquiteira\nGrelhas de Ventilação com Aros Cromados\nGrelha Frontal Negro Brilhante e Cromado\nVolante e Manete Mudanças em Pele\nLuzes diurnas LED\nAutocolantes Adventure\nSkyroof\nBancos giratórios\nTransformação de cama casal em individuais\nCama suspensa\nJanelas Integradas\n2ª porta exterior 800x850\nTecidos Adventure\nEXTERIOR\nParachoques pintado á côr\nPré-instalação painel solar\nJantes especiais 16\"\nINTERIOR\nDepósito de Água Limpa variável 100l / 120l\nDepósito de Águas Residuais\nAquecimento Truma Combi 6\nEstrado Madeira na Cabine Duche\nIluminação LED\nFrigorifico 156 lts\nCama suspensa\nPré-instalação TV",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d2.html",
+  "title": "Sunlight T 690L REF.N29",
+  "text": "CABINE\nAC Cabine\nAirbags\nRetrovisores Ajustáveis\nComandos ao volante\nTraction +\nHill Descent Control\nBancos giratórios\nCruise Control\nSuporte Tablet /Smartphone\nSkyroof\nHABITÁCULO\nDepósito de Água Limpa variável 100l / 120l\nDepósito de Águas Residuais\nAquecimento Truma Combi 6\nIluminação LED\nFrigorifico 156 lts\nCama suspensa\nPré-instalação TV\nPré-instalação de painel solar\nJanelas integradas\nSala convertível em cama\n5º lugar\nEXTERIOR\nJantes Especiais 16``\nPintura de cabine preta",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d3.html",
+  "title": "Rapido Serie C 55 Night Edition",
+  "text": "ELECTRÓNICA/SEGURANÇA\nABS\nAirbag de condutor e passageiro\nTPMS\nCruise Control\nAC de cabine\nTravão elétrico\nComandos ao volante\nSistema Multimédia Pionner 6,8“ Apple Carplay/Android Auto e camara de recuo\nRetrovisores elétricos\nCONFORTO\nLayout: Camas gémeas/transversal + sala\nCaixa Automática\nBancos de condutor e passageiro rotativos\nEstores Plissados de cabine\nPorta Hartal\nRede mosquiteira porta da célula\nEXTERIOR\nPré- instalação Painel Solar\nJantes Especiais 16“\nPneus 4 Estações\nPintura Preta na Cabine\nINTERIOR\nDepósito água limpa 100l/120l\nDepósito água suja 90l\nAquecimento Truma Combi\nFrigorífico a Compressor 140lt\nFogão 2 saídas\nSuporte TV\n2ª Bateria na célula\nMedidas da autocaravana\n: Comprimento 6,72 mt + Largura 2,17 mt + Altura 2,75 mt\nLotação\n: Lugares de Livrete ( transporte ) 4 + Lugares de dormida 3",
+  "expected": {
+   "beds": 3,
+   "length": 6.72,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d4.html",
+  "title": "CI International Carioca 595 REF.U64",
+  "text": "ELECTRÓNICA/SEGURANÇA\nABS (Anti-lock Braking System)\nAir Bag Condutor\nAir Bag Passageiro\nEspelhos Retrovisores (Manuais)\nEspelhos Ângulo Morto\nAntena TV (Pré-Instalação)\nPaineis Solares (1)\nCâmara de Recuo\nAquecimento Ambiente (Gás (Trumatic C))\nAquecimento Água (Integrado ar + água (Truma Combi))\nPainel de Comandos com Leitura do Nível: Água Limpa; Águas cinzentas; Baterias\nCONFORTO\nVidros Eléctricos (Condutor/Passageiro)\nAr Condicionado Cabine (Manual)\nBanco Giratório Condutor\nBanco Giratório Passageiro\nEstores Cabine (Cortina)\nJanelas Vidro Duplo\nBlackouts e Redes Mosquiteiras nas Janelas\nEXTERIOR\nPorta Bicicletas (2)\nToldo (Manual)\nPorão\nPortas de Porão (1)\nDegrau (Eléctrico)\nINTERIOR\nLayout Traseiro (Cama Francesa)\nIluminação (Halógenas)\nCamas Frente (outras) (Sala/Mesa Convertível em Cama)\nCortinas ou divisórias para privacidade (Frente/Trás)\nNº Bicos Fogão (3)\nFrigorifico (Trivalente)\nFrigorifico Tipo (Compacto 40 a 80 litros)\nFrigorifico Marca (Thetford )\nLCD Sala (Pré-Instalação)\nSuporte TV\nClaraboia Panorâmica\nWC (WC Completo com Duche Separado)\nAquecimento Água (Integrado ar + água (Truma Combi))\nPainel de Comandos com Leitura do Nível: Água Limpa; Águas cinzentas; Baterias\nNº Depósitos Águas Limpas (1)\nMedidas da autocaravana\n: Comprimento 6,10 mt + Largura 2,30 mt + Altura 2,90 mt\nLotação\n: Lugares de livrete ( transporte ) 3 + lugares de dormida 3",
+  "expected": {
+   "beds": 3,
+   "length": 6.1,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d5.html",
+  "title": "Benimar Tessoro T495 UP REF.U125",
+  "text": "ELECTRÓNICA/SEGURANÇA\nFecho Centralizado\nABS (Anti-lock Braking System)\nAir Bag Condutor\nAir Bag Passageiro\nEspelhos Retrovisores (Electricos)\nEspelhos Ângulo Morto\nAntena TV (Omnidirecional )\nPaineis Solares (1)\nCruise Control\nBluetooth\nCâmara de Recuo\nPortas USB (1)\nAquecimento Ambiente (Gasóleo (Webasto))\nAquecimento Água (Boiler a Gás (autónomo))\nPainel de Comandos com Leitura do Nível: Água Limpa; Águas cinzentas; Baterias\nCONFORTO\nVidros Eléctricos (Condutor/Passageiro)\nAr Condicionado Cabine (Automatico)\nBanco Giratório Condutor\nBanco Giratório Passageiro\nEstores Cabine (Cortina)\nJanelas Vidro Duplo\nBlackouts e Redes Mosquiteiras nas Janelas\nEXTERIOR\nPorta Bicicletas (4)\nToldo (Manual)\nPorão\nPortas de Porão (2)\nDegrau (Embutido)\nINTERIOR\nLayout Traseiro (Cama Central Traseira)\nIluminação (Led)\nCamas Frente (Cama Basculante Electrica)\nCamas Frente (outras) (Sala/Mesa Convertivel em Cama)\nCortinas ou divisórias para privacidade (Frente/Trás)\nNº Bicos Fogão (3)\nFrigorifico (Trivalente)\nFrigorifico Tipo (Grande 141 litros)\nFrigorifico Marca (Thetford )\nLCD Sala\nSuporte TV\nClaraboia Panorâmica\nWC (WC e Duche Separados)\nAquecimento Água (Boiler a Gás (autónomo))\nPainel de Comandos com Leitura do Nível: Água Limpa; Águas cinzentas; Baterias\nNº Depósitos Águas Limpas (1)\nLitros Águas Limpas (120)\nLitros Águas Cinzentas (100)\nMedidas da autocaravana\n: Comprimento 7,00 mt + Largura 2,30 mt + Altura 2,80 mt \nLotação\n: Lugares de livrete ( transporte ) 5 + lugares de dormida 5",
+  "expected": {
+   "beds": 5,
+   "length": 7.0,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d6.html",
+  "title": "Fiat Ducato Moncayo Silver",
+  "text": "MONCAYO SILVER 422 | 2.3 JTD | 2006 | 130.000 KM\nApresentamos esta fantástica Moncayo Silver 422, uma autocaravana reconhecida pela sua excelente qualidade de construção, conforto e fiabilidade.\nEncontra-se em excelente estado de conservação, muito estimada e pronta para desfrutar de férias ou escapadinhas de fim de semana.\nCaracterísticas:\n✅ Ano: 2006\n✅ Motor Fiat 2.3 JTD Diesel\n✅ Apenas 130.000 km\n✅ 4 lugares de viagem e dormir\n✅ Cozinha equipada com fogão de 2 bicos, lava-loiça e frigorífico Dometic\n✅ Casa de banho completa com duche separado e WC químico\n✅ Aquecimento Truma\n✅ Toldo lateral\n✅ Suporte para bicicletas\n✅ Bancos dianteiros rotativos\n✅ Muitos espaços de arrumação\nUma autocaravana espaçosa, confortável e ideal para quem procura liberdade para viajar com toda a família.\n✔ Possibilidade de financiamento.\n✔ Aceitamos retoma.\n✔ Entregue revista e preparada.\n📍 SF Motors – Almada\n📞 Contacte-nos para mais informações ou para agendar a sua visita.",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d7.html",
+  "title": "Chausson Flash Flash 22",
+  "text": "Autocaravana CHAUSSON FLASH 22, de 2013, 79.000 kms, motor 140cv caixa de 6 velocidades. 5 lugares de livrete e 6 dormidas. Autocaravana excelente famílias com todas as comodidades e excelente estado.",
+  "expected": {
+   "beds": 6,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "c2/d8.html",
+  "title": "Benimar Tessoro 494",
+  "text": "Transporta e acomoda 4 pessoas, distribuídas por uma cama central de casal (190cm x 140cm) sempre feita na traseira do carro e uma cama dupla que durante o dia faz de mesa de refeição, com dimensões de 190cm x 110cm.\nTem: wc privado com chuveiro com água quente, separado do lavatório e sanita portátil; cozinha com fogão e lavatório; aquecimento central por boiler; frigorífico com congelador em separado; painel solar; televisão e muita arrumação. Garagem ampla, nas traseiras.\nA viatura é uma Ford Transit de 2014 com 140cv, com um consumo de cerca de 10l/100km, sendo muito fácil de conduzir e parquear (tem câmara traseira), com rádio e leitor cd, aquecimento e ac na cabine do condutor (só funciona em andamento).",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45025407",
+  "title": "Fiat ducato integral laika 2500TDI 116CV potencia",
+  "text": "Aceito retoma Valor negociavel faço financiamento  Troco por carro 100% eletrico Para venda autocaravana laika integral Motor 2500TDI 116CV potência  Direção assistida  Vidros eléctricos  Correia...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2500,
+   "layout": "integral"
+  }
+ },
+ {
+  "id": "cj/45025397",
+  "title": "Fiat ducato laika integral 2500TDI 116CV potencia",
+  "text": "Aceito retoma Valor negociavel faço financiamento  Troco por carro 100% eletrico Para venda autocaravana laika integral Motor 2500TDI 116CV potência  Direção assistida  Vidros eléctricos  Correia...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2500,
+   "layout": "integral"
+  }
+ },
+ {
+  "id": "cj/44783572",
+  "title": "Autocaravana Ford Challenger Genesis 52",
+  "text": "Autocaravana perfilada. Ano 2013 Motorização: Ford Transit 140 cv Caixa manual Comprimento 6.8m 5 lugares de viagem e de dormida  Acessórios: Cruise Control Ar condicionada da cabine Autorádio com...",
+  "expected": {
+   "beds": 5,
+   "length": 6.8,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/38847644",
+  "title": "Atrelado Reboque Rolote Especial Ambulante Street Food Restaurante Snack Bar Móvel Food Truck Comidas E Bebidas Novo",
+  "text": "Não respondemos a e-mails nem a sms\nfabricamos e importamos todo o tipo de atrelados ou reboques á medida e ao gosto dos clientes\natrelado rolote bar ambulante comidas e bebidas novos ( só por enco...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/38283418",
+  "title": "Atrelado Reboque De Transporte De Animais Vivos 4000x2000x2000 3500 Kg Para Tractor Carrinha 4x4 Ou Jipe Novo",
+  "text": "Não respondemos a e-mails nem a sms\nfabricamos e importamos reboques de todo o tipo , á medida e ao gosto dos clientes\nnota : ( só fazemos este reboque de transporte de animais vivos por encomenda ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/22142070",
+  "title": "Atrelado Reboque Moto 4 Plataforma Estrado Motas Novo",
+  "text": "Não respondo a E-mails nem a sms\nFabricamos e importamos todo o tipo de reboques\nAtrelado / Reboque Para Moto 4 / Motos novo . \nCircula com a matricula da viatura , jantes 135 / 80 / 13 .\nEstá equip...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/31410831",
+  "title": "Atrelado Reboque Carga Geral Jipe Jeep Carrinha 4x4 moto 4 Mercadorias Novo",
+  "text": "Não respondo a e-mails nem a sms\nFabricamos e importamos atrelados para quase todos os fins .\nAtrelado / reboque para carga geral mercadorias , outras cargas\nCircula com a matricula da viatura , jant...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/30697522",
+  "title": "Atrelado Reboque Caixa Fechada Aerodinâmico Tampa Basculante Motos Moto 4 Carga Geral Mercadorias Novo",
+  "text": "Não respondemos a e-mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medida e ao gosto do cliente\nReboque atrelado fechado , com tampa basculante ifor com porta traseira a servir de...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/43101901",
+  "title": "Porta moto sawiko 120kg",
+  "text": "Vendo porta moto sawiko 120kg com iluminação, ficha e rampa em ótimo estado para autocaravana com 200cm de comprimento. Novo custa cerca de 1500euros.",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44947079",
+  "title": "Elnagh Clipper 90 2.3 Ducato",
+  "text": "Disponível até dia 21 de Junho de 2026, não deixe escapar esta oportunidade, reserve já!\nPreço sem retoma, em caso de retoma acresce valor.\nTemos mais de 1000 viaturas disponíveis por encomenda,...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44896644",
+  "title": "Ford Transit mk2 Especial Dormitorio",
+  "text": "Para venda esta linda ford transit mk2 que nao deixa ninguém indiferente por onde passa. Comprada ao dono original com 90milkm, agora marca 130milkm para quem duvidar, poder confirmar no IMT. Tenho a...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44896668",
+  "title": "Transporter T5 Camper legalizada ate 9 lugares",
+  "text": "Para venda esta Transporter versão Shuttle, ate 9 lugares de momento de 6 lugares e modo camper, nao tenho o banco central. Colchao novo e grandes dimensões Películas vidros homologadas Inspecao fe...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "furgao"
+  }
+ },
+ {
+  "id": "cj/44251800",
+  "title": "Atrelado Reboque Roulote Street Food Truck Negócio Ambulante Comidas Bebidas Outros Negócios 3500x2200x2200 2700 kg Nova ",
+  "text": "Não respondemos a e-mails nem a sms\nfazemos e importamos todo o tipo de reboques atrelados á medida e ao gosto dos clientes\nAtrelado Reboque Roulote Street Food Truck Negócio Ambulante Comidas Bebi...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024777",
+  "title": "Particular",
+  "text": "classico paga apenas 60 euros de selo,de oito lugares ligeiro",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44891159",
+  "title": "Autocaravana Adria Adriatik 2005 Estimada ótimo estado",
+  "text": "Autocaravana Perfilada Fiat Ducato 2.8 Turbo 127 cv Inspeção feita em Maio de 2026 Totalmente revisada e com troca de correia de distribuição recente. 4 Pneus Michelin Ágilis Crossclimate novos h...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44375931",
+  "title": "Atrelado Reboque Basculante Manual Taipais Desmontaveis Rodas Por Baixo Carga Geral Mercadorias Mini Maquinas Novo",
+  "text": "Não respondemos a e-mails nem a sms\nFabricamos eimportamos reboques por medida ao gosto dos clientes\nReboque Basculante Hidraúlico , Novo , rodas por baixo .\nEste Reboque atrelado tem uma medida út...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44375930",
+  "title": "Atrelado Reboque Porta Maquinas Polivalente Mercadorias Carga Geral Trator Bobcat Mini Giratória Gerador Carros , Novo",
+  "text": "Não respondemos a e-mails nem sms\nreboque muito forte , aguenta com 4000 kg liquidos , apesar de não ser legal....\nfabricamos e Importamos todo o tipo de reboques atrelados á medida e ao gosto do c...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024620",
+  "title": "4 Lugares Dormida 5 Lugares livrete",
+  "text": "Autocaravana Fiat Ducato (Mobilvetta) Motor - 2.800Cm. Com 128 Cv. Ano - 2004 Será entregue com revisão total efetuada inclui distribuição. Vidros eléctricos Espelhos eléctricos Radio Android Su...",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024617",
+  "title": "Com Gpl",
+  "text": "4 lugares de livrete 4 Dormidas Autocaravana Fiat Ducato Ano 2005 4 pneus praticamente novos Revisão total efectuada Duplicado de chaves Na célula: Dethleffs 1 cama sempre feita Mais uma cama como o...",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024610",
+  "title": "6 Dormidas",
+  "text": "Autocaravana Dethleffs Advantage  Motor - 2.800 Cm  Com 128 Cv.  Conta com 97 mil km.  Ano 2007  Tem ar condicionado na cabine  4 pneus novos  Jantes de alumínio  Entregue com revisão total efectuad...",
+  "expected": {
+   "beds": 6,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024506",
+  "title": "Auto caravana Peugeot j5 motor 2.5 S/documentos",
+  "text": "Auto caravana ideal para colocar em terreno pois pode ser movida facilmente . Não tem documentos nem dá para legalizar  Está instalado um painel solar com bateria  Dispõe de wc com cassete e duche...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2500,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44949293",
+  "title": "Semi reboques 2012 invepe galera estrado",
+  "text": "2 semi reboques marca invepe travão de disco ano 2012 eixo y teto de levantar pneus /55 com 70/95% de piso 2 apoia de pneus suplentes caixas de ferramenta vidão de água, precisan levar lonas latera...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44893875",
+  "title": "Reboque / Atrelado Martz BAU-3 350/2 S 3,5T NOVO",
+  "text": "Atrelado / Reboque NOVO MARTZ BAU-3 350/2 S 3,5T  Especificações: -Peso Bruto: 3500 kg -Tara: 664 kg -Dimensões interiores úteis: 3,50 m (C) x 1,82 m (L)  Características: -Estrutura robusta em c...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44320322",
+  "title": "Autocaravana mercedes piloto",
+  "text": "autocaravana mercedes piloto com todos os extras muito bem estimada como nova assim como se pode ver pelas fotos",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024283",
+  "title": "Autocaravana 7 lugares",
+  "text": "Autocaravana de 2016 /7 CI grupo trigano Magis 74XT  Motor 2300 130cv motor Iveco os  melhores  Tem 62mil klm  Pneus bons  Tem revisão feita e distribuição mudada  Tem 7lugares de livrete e cintos ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/22217810",
+  "title": "Atrelado Reboque Plataforma Estrado Carga Geral Mercadorias Nova",
+  "text": "Não respondo a E-mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medid e ao gosto dos clientes\nAtrelado  reboque plataforma de carga ou para moto 4 novo\nCircula com a matricula da ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/30239177",
+  "title": "Atrelado Reboque Rolote Food Truck Street Food Comidas E Bebidas De Rua Restaurante Ambulante",
+  "text": "Não respondemos a e-mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medida e ao gosto dos clientes\nAtrelado reboque Rolote lancimarmores Snack Bar Restaurante tenda food truck stre...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/21318565",
+  "title": "Atrelado Reboque Com Taipais Para Carga Geral Mercadorias Carga Geral De 1500 Kg Novo",
+  "text": "Não respondemos a e-mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medida e ao gosto dos clientes\nReboque atrelado de carga geral e diversa , com dois eixos de 750 kg cada um , tr...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/27689004",
+  "title": "Atrelado Reboque Basculante Eléctrico Com Comando Bateria Taipais Desmontaveis 2 Eixos Com Travão Plataforma Estrado Novo",
+  "text": "Não respondemos a e - mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medida e ao gosto dos clientes\nreboque lancimarmores basculante de 2000 kg medidas dcom 3000x1600x500 com malh...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/32460947",
+  "title": "Atrelado Reboque Tribasculante Electrico Com Bateria Própria Comando Novo",
+  "text": "Não respondemos a e - mails nem a sms\nFabricamos e importamos todo o tipo de reboques á medida e ao gosto dos clientes\nReboque lancimarmores tri basculante de 2700 kg com 3000x1800x500 com monta car...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/26229844",
+  "title": "Atrelado Reboque Animais Vivos Ovinos Caprinos Bovinos Equideos E Outras Cargas Novo IVA",
+  "text": "Não respondemos a e-mails nem a sms\nFabricamos e Importamos todo o tipo de reboques á medida e ao gosto dos clientes\natrelado reboque , para transporte de animais vivos gama média\nTem dois eixos de...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/28657344",
+  "title": "Atrelado Reboque Plataforma Estrado Moto 4 Motas Carga Geral",
+  "text": "Não respondo a E-mails nem a sms\nAtrelado reboque lancimarmores para moto 4 Novo\nCircula com a matricula da viatura , Pneus 155 / 70 / 13 .\nEstá equipado ifor com luzes de presença , de travagem wi...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/24855637",
+  "title": "Atrelado Reboque Carga Geral Mercadorias Plataforma Estrado Novo",
+  "text": "Não respondo a e-mails nem a sms\nFabricamos e importamos atrelados para quase todos os fins .\nAtrelado / reboque para carga geral mercadorias , outras cargas\nCircula com a matricula da viatura , jant...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/24319761",
+  "title": "Atrelado Reboque Carga Geral Mercadorias Plataforma Estrado Novo",
+  "text": "Não respondo a e-mails nem a SMS\nAtrelado / Reboque de carga diversa / Geral Novo !!\nCircula com a matricula da viatura , jantes 155/70/13\nTem pneu suplente ,Está equipado com luzes de presença , d...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/30238656",
+  "title": "Atrelado Reboque Porta Carros Automóveis Veiculos Plataforma Estrado Máquinas Tractores Carga Geral Mercadorias Novo",
+  "text": "Não respondemos a e-mails nem sms\nTemos Varios para entrega imediata ( Já Matriculados )\nFabricamos e importamos todo o tipo de reboques atrelados á medida e ao gosto dos clientes\nReboque Atrelado ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/29071558",
+  "title": "Atrelado Reboque Porta Carros Plataforma Estrado Mercadorias Carga Geral Novo",
+  "text": "Não respondemos a e-mails nem sms .\nFabricamos e importamos todo o tipo de reboques atrelados á medida e ao gosto dos clientes\nReboque Atrelado , de transporte de carros , automóveis , competição...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024028",
+  "title": "Autocaravana Citroen Jumper2.8 JTD",
+  "text": "Autocaravana Citroen Jumper2.8 JTD, de junho 2004, com livro de manutenções, 76000km, suspensão pneumática, vidros elétricos, fecho central , bancos rotativos com apoio de braço, 4 lugares de vi...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44625157",
+  "title": "Atrelado 750Kgs",
+  "text": "Atrelado 750Kgs - Estado Novo Circula com documentos da viatura",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45023818",
+  "title": "Atrelado",
+  "text": "Alguma duvida mp.",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44947480",
+  "title": "Roller Team Sirio 592P",
+  "text": "Roller Team Sirio 592P \nDe 2008 com 115,973 kms \nMotor 2198 c.c. a Diesel com 110 cv\nEquipamento:\n\nAnúncio publicado por rotina informática by Auto21\n(os dados do anúncio devem ser confirmados junt...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2198,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/40670691",
+  "title": "Chausson 718 Eb- Flash ( Cama Central )",
+  "text": "Viatura de Particular\nAutocaravana Chausson\nModelo 718 EB Flash\nMotor 2.200c.c 155 cv\nViatura com 44 373kms\n4 Lugares\nDireção assistida\nAr condicionado\nVidros elétricos\nEspelhos elétricos\nCâmara ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44770665",
+  "title": "Perfilada PILOTE AR Condicionado",
+  "text": "Totalmente Autónoma e Equipada e revisionada.   7000 EUR Equipamento NOVO      Nada nada a fazer é só ROLAR !  Filtros , óleos, pastilhas .  Frigorífico Grande Novo   Pneus Novos   Boiler NOVO   ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44901061",
+  "title": "Autocaravana perfilada com 4 lugares",
+  "text": "Autocaravana perfilada, em ótimo estado de conservação com poucos kms, aparcada em garagem. Detalhes: Marca: Moncayo Modelo: Eco Motor: Fiat Ducato Combustível: Diesel Mês de Registo: Setembro An...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44770163",
+  "title": "Perfilada AR Condicionado",
+  "text": "Autocaravana totalmente equipada e revisionada.    Pneus Novos   Frigorifico Grande Novo   Boiler NOVO   Toldo Novo Thule   Baterias novas   Distribuição corrente   Ar Condicionado   Sistema Gás GP...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44421523",
+  "title": "Autocaravana Passeios",
+  "text": "Autocaravana totalmente Autónoma equipada para passeios.  5 Viajantes + 4 Dormidas   Valores DIÁRIOS depende da Época .  Lençois , Toalhas , Gas , Cadeiras , mesa , TUDO GRÁTIS ! Pacote média di...",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44893128",
+  "title": "McLouis Tandy 672 Cama central",
+  "text": "Fiat Perfilada 2009\nMclouis 672 C/APENAS 97000km\n**EQUIPAMENTO CABINE**\n- Motor 2.3 Multijet 130cv\n- Caixa de 6 velocidades\n- Ar condicionado\n- Vidros eléctricos\n- Fecho central c/ comando\n- Retrovis...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2300,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44893078",
+  "title": "McLouis Glen 264 Cama francesa",
+  "text": "Fiat Perfilada 2005\nMc Louis Glen C/APENAS 144000km\nAno 2005\n**EQUIPAMENTO CABINE**\n- Motor 2.8 JTD 127cv\n- Caixa de 5 velocidades\n- Vidros eléctricos\n- Fecho central\n- Retrovisores eléctricos\n- Dir...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44901056",
+  "title": "Autocaravana Challenger",
+  "text": "Autocaravana Challenger perfilada em bom estado geral tudo funciona Motor 1.9TD fiável e muito económico  Para mais informações agradeço contato telefónico  Valor negociável",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 1900,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44901348",
+  "title": "Autocaravana Citroen Jumper 2.8 HDI Pilote, 2004",
+  "text": "Autocaravana Citroen Jumper 2.8 HDI Pilote, 2004. Autocaravana perfilada Citroen Jumper 2.8 HDI Pilote, 2004 5 lugares de livrete 4 dormidas Autocaravana barata para a qualidade apresentada e estado g...",
+  "expected": {
+   "beds": 4,
+   "length": null,
+   "displacement": 2800,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44331236",
+  "title": "Bürstner Ixeo Time it 700 - 2.3 Multijet 130cv - 2016",
+  "text": "62737 km - Fiat Ducato 2.3 Multijet 130cv 08/2016\nABS, GPS, Tolde, Fogão, Airbags, 2ª Cama, Frigorifico , Bluetooth, Cama Fixa, Ecrã Touch, Congelador, Painel Solar, Entrada USB, 2 Televisões, And...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45021095",
+  "title": "Carado T344",
+  "text": "Carado T344 de 05/2012 A Carado pertence ao grupo Hymer, de excelente qualidade de fabrico.  Chassi Ford Transit, motor 2.2TD 110cv. 4 lugares de viagem no documento.  44.500.km's originais. Ar condic...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44943301",
+  "title": "Roller Team Granduca Xlp Cama Central + Legalização",
+  "text": "Podemos tratar da legalização da autocaravana\nFIAT DUCATO CAMA CENTRAL MOTOR 3.0 160CV\nROLLER TEAM GRANDUCA C/APENAS 117000km\n**EQUIPAMENTO CABINE**\n- Motor 3.0160cv\n- Caixa de 6 velocidades\n- Ar co...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 3000,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45019139",
+  "title": "Autocaravana Chausson Citroën Jumper 2.8 HDI - 2002",
+  "text": "Autocaravana Chausson Citroën Jumper 2.8 HDI Muito Bem Equipada e Pronta a Viajar  Autocaravana robusta, confortável e muito fiável, ideal para quem procura qualidade, espaço e autonomia nas suas ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45018906",
+  "title": "Auto Caravana",
+  "text": "Vendo auto caravana challenger genesis 36 2010  fiat ducato multijet 130 160000 Km em muito bom estado geral para mais informaçao comunicar por email matricula françesa",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45016495",
+  "title": "Perfilada Sprinter PILOTE",
+  "text": "Totalmente Autónoma e Equipada, toda Revisionada .  Painel , solar , Ar Condicionado   4 Viajantes + Dormidas   Autocaravana estimada da Família",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/45007572",
+  "title": "Autocaravana Hymer Tramp",
+  "text": "NOVA ENTRADA  AUTOCARAVANA HYMER Tramp                                    27.900  2003        Motor 2.8cc 129cv Caixa Manual 5 velocidades Gasóleo  Cor Branco 130.000km  4 Lugares de livrete  aquecim...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44946416",
+  "title": "Autocaravana perfilada Fiat Ducato",
+  "text": "Autocaravana nacional 100% autónoma   muito económica com motor 2 .0 JTD  com alarme  Compacta com apenas 5,90 comprimento   Ano final de 2007 com 150 mil km  . características : .Frigorífico triv...",
+  "expected": {
+   "beds": null,
+   "length": 5.9,
+   "displacement": 2000,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/45006880",
+  "title": "Autocaravana Burstner T600",
+  "text": "Burstner T600 Ano: 2000 Cilindrada: 2.8 idtd 127cv Quilómetros: 148.000km Lotação: 4lugares Caixa: manual de 5 velocidades Sala ampla  Mesa rebativel em cama de casal Claraboia grande panoramica Co...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44996890",
+  "title": "Challenger Mageo 116 em preparação/ limpeza",
+  "text": "Esta Autocaravana está em preparação/ limpeza, já se encontra no nosso parque para visitas\nCITROEN PERFILADA 2008\nCHALLENGER MAGEO 116 C/APENAS 134000km\n**EQUIPAMENTO CABINE**\n- Motor 2.2 HDI 130c...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44996866",
+  "title": "Challenger Genesis 58 CAMA CENTRAL(em preparação)",
+  "text": "Esta Autocaravana está em preparação/ limpeza, já se encontra no nosso parque para visitas\nFORD PERFILADA 2011\nCHALLENGER GENESIS 58 CAMA CENTRAL C/APENAS 63000km\n**EQUIPAMENTO CABINE**\n- Motor 2....",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44996366",
+  "title": "Autocaravana cama central",
+  "text": "NOVA ENTRADA  AUTOCARAVANA CHALLENGER Genesis 42 37.900  2009        Motor 2.2cc 140cv DuraTorq (motor muito fiável) Caixa Manual 6 velocidades Gasóleo  Cor Branco 49.000km  4 Lugares de livrete  aq...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44996356",
+  "title": "Autocaravana cama central + cama basculante",
+  "text": "NOVA ENTRADA  AUTOCARAVANA McLouis Yearling 72 43.900  2010        Motor 2.3cc 130cv Caixa Manual 6 velocidades Gasóleo  Cor Champanhe 107.000km  4 Lugares de livrete   Ar condicionado  aquecimento c...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44996331",
+  "title": "Autocaravana apenas 5,90mt Garagem grande",
+  "text": "NOVA ENTRADA  AUTOCARAVANA CHAUSSON Flash  Apenas 5,90mt de comprimento                                   34.900  2008        Motor 2.3cc 130cv Caixa Manual 6 velocidades Gasóleo  Cor Branco 110.000k...",
+  "expected": {
+   "beds": null,
+   "length": 5.9,
+   "displacement": 2300,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44858857",
+  "title": "Autocaravana Burstner Renault 3.0 140cv",
+  "text": "NOVA ENTRADA  Autocaravana BURSTNER DELFIN t686    RENAULT MASTER 3.0cc 140cv    34.900  2006/09        Motor 3.0cc 140cv Caixa manual 6 velocidades Gasóleo  Cor Cinza/Azul 75.000km  4 Lugares de liv...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 3000,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44858751",
+  "title": "Autocaravana McLouis Glen 363",
+  "text": "NOVA ENTRADA  Autocaravana McLouis Glen 363  26.950  2003        Motor 2.8cc 128cv Fiat Caixa manual 5 velocidades Gasóleo  Cor Branco 130.000 km  4 Lugares de livrete   aquecimento central Cama à F...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2800,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44994051",
+  "title": "Ford Transit Challenger Genesis 58",
+  "text": "Motor 2.2  140cv    -4 lugares de livrete -Toldo -Suporte bicicletas  -Painel solar -Cozinha em L -Fogao de 2  bicos -Frigorifico grande  -Televisão  -Cama central  -Casa de banho com duche separado ...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44720726",
+  "title": "Autocaravana muito estimada e em bom estado",
+  "text": "-Motor 2.2 com 130 cv -79000 km -Próxima inspecção 6/5/2027 -Revisão feita -Injectores novos de última geração -Consumos muito bons  -Só este motor consegue fazer média de  8,2 litros aos 100...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": 2200,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44993521",
+  "title": "Autocaravana AdriaTik",
+  "text": "Autocaravana em muito bom estado a nível mecânica e de interiores.  * Com inspeção em dia * Revisão feita * LCD * Tem painéis solares  * Pneus em bom estado",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44993369",
+  "title": "Adria Matrix 670DC - Cama central regulável + Cama na sala - Viesa - Susp.Pneumática - GPL",
+  "text": "Cama central regulável em altura (eléctrica) + Cama de casal basculante na sala, Cabine de duche separada do W.C, Porta p/ isolar o quarto do W.C, Sala face a face muito espaçosa, Cozinha c/ fogão...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44931721",
+  "title": "Autocaravana Perfilada Weinsberg Fiat Ducato 2021",
+  "text": "Autocaravana Weinsberg construção Alemã\nConta 5 lugares de viagem\n2 camas\nPainéis solares\nMuitos extras\nExcelente estado\nValor Negociável\n- Aceitamos retomas mediante avaliação e interesse\n- Po...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": "perfiladas"
+  }
+ },
+ {
+  "id": "cj/44991497",
+  "title": "Burstner Lyseo T590",
+  "text": "Autocaravana em excelente estado da prestigiada marca alemã Burstner.  Compacta, muito fácil de conduzir e estacionar. Tem um layout interior muito espaçoso, apesar de medir apenas 5.9m de comprime...",
+  "expected": {
+   "beds": null,
+   "length": 5.9,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/44186557",
+  "title": "Autocaravana Fiat MClouis",
+  "text": "Autocaravana McLouis 2007   É para 3 pessoas  Cama sempre feita atrás  Frigorífico  Televisão  Ventilador teto  Painéis solares",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ },
+ {
+  "id": "cj/45024625",
+  "title": "6 Lugares de viagem",
+  "text": "Autocaravana 6 lugares de livrete Fiat Ducato (Pilote) Ano -1999 Será entregue com revisão total efectuada inclui distribuição Célula Pilote 9 1 0 0 1 9 8 6 5 Composta com: Cama transversal, Outr...",
+  "expected": {
+   "beds": null,
+   "length": null,
+   "displacement": null,
+   "layout": null
+  }
+ }
+]

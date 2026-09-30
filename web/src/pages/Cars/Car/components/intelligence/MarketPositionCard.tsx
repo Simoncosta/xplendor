@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Spinner } from "reactstrap";
+import { Progress, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import type {
     MarketAggregate,
@@ -10,6 +10,11 @@ import { fetchMarketAggregate, refreshMarketAggregate } from "../../../../../hel
 import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
 import { extractApiError } from "../../../../../helpers/error_helper";
 import ComparablesList from "./ComparablesList";
+import { MotorhomeSuccessBody, MotorhomeEmptyState, MotorhomeErrorState } from "./MotorhomeMarketBody";
+
+// FASE 1b — o motor de autocaravanas marca os seus aggregates com este method.
+// A vista dos carros é escolhida quando method é null/ausente (cascata clássica).
+const MOTORHOME_METHOD = "motorhome_similarity_v1";
 
 const POLL_INTERVAL_MS  = 10_000;
 const MAX_POLL_ATTEMPTS = 18; // 3 minutes
@@ -323,6 +328,47 @@ function Body({
         return <BlockedState />;
     }
 
+    // FASE 1b — ramo das AUTOCARAVANAS. Só desvia os estados com/sem dados
+    // (success e vazio); pending/blocked/error genéricos ficam partilhados.
+    // Deteção por `method` (aggregates calculados) OU `vehicle_type` (caso
+    // guard-failed: motorhome sem tipologia, method ainda null). Os carros
+    // (vehicle_type 'car', method null) nunca entram aqui → vista deles intacta.
+    const isMotorhome =
+        aggregate.method === MOTORHOME_METHOD || aggregate.vehicle_type === "motorhome";
+    if (isMotorhome) {
+        if (aggregate.status === "success" && aggregate.comparables_count > 0) {
+            return (
+                <MotorhomeSuccessBody
+                    aggregate={aggregate}
+                    showComparables={showComparables}
+                    onToggleComparables={onToggleComparables}
+                />
+            );
+        }
+        // Distinção honesta da causa (o utilizador não deve confirmar uma
+        // categoria que já lá está por causa de uma falha técnica):
+        //   · 'error'  → falha TÉCNICA no cálculo → mensagem de erro + retry,
+        //                nunca "confirma a categoria".
+        //   · 'failed' → faltam DADOS de entrada (tipologia/ano) → ação do user.
+        //   · 'none'   → correu e não há comparáveis → funil + link StandVirtual.
+        if (aggregate.status === "error") {
+            return <MotorhomeErrorState onRefresh={onRefresh} refreshing={refreshing} userRole={userRole} />;
+        }
+        if (
+            aggregate.status === "none" ||
+            aggregate.status === "failed" ||
+            aggregate.comparables_count === 0
+        ) {
+            return (
+                <MotorhomeEmptyState
+                    aggregate={aggregate}
+                    onRefresh={onRefresh}
+                    refreshing={refreshing}
+                />
+            );
+        }
+    }
+
     if (aggregate.status === "error" || aggregate.status === "failed") {
         return <ErrorState userRole={userRole} />;
     }
@@ -469,15 +515,41 @@ function NeverRunState({ onRefresh, refreshing }: { onRefresh: () => void; refre
     );
 }
 
+// A busca de mercado corre um scrape (StandVirtual/CustoJusto) e pode demorar
+// até uns minutos. Em vez de um spinner nu, damos: (1) uma etapa legível que
+// avança com o tempo, (2) uma barra de progresso indeterminada, (3) o tempo
+// decorrido e (4) a garantia de que pode sair — o resultado fica guardado
+// (o poll persiste via sessionStorage). Copy genérico: serve carros e
+// autocaravanas.
+const PENDING_STEPS = [
+    { until: 20, text: "A procurar anúncios semelhantes no mercado..." },
+    { until: 60, text: "A comparar preços e a filtrar valores atípicos..." },
+    { until: Infinity, text: "Quase lá — a consolidar os resultados..." },
+];
+
 function PendingState({ pollAttempts }: { pollAttempts: number }) {
     const elapsed = pollAttempts * (POLL_INTERVAL_MS / 1000);
+    const step = PENDING_STEPS.find((s) => elapsed < s.until) ?? PENDING_STEPS[PENDING_STEPS.length - 1];
+
     return (
-        <div className="d-flex align-items-center gap-2 text-muted fs-13 py-2">
-            <Spinner size="sm" />
-            <span>
-                A analisar mercado...
-                {elapsed > 0 && ` (${elapsed}s)`}
-            </span>
+        <div className="py-2">
+            <div className="d-flex align-items-center gap-2 text-body fs-13 mb-2">
+                <Spinner size="sm" className="text-primary" />
+                <span className="fw-medium">{step.text}</span>
+                {elapsed > 0 && <span className="text-muted">({elapsed}s)</span>}
+            </div>
+            <Progress
+                animated
+                striped
+                value={100}
+                color="primary"
+                style={{ height: 6 }}
+                className="mb-2"
+            />
+            <p className="text-muted fs-12 mb-0">
+                <i className="ri-information-line me-1" />
+                Podes sair desta página — a análise continua e os resultados ficam guardados.
+            </p>
         </div>
     );
 }
@@ -657,4 +729,7 @@ const sectionStyle: React.CSSProperties = {
     border: "1px solid var(--vz-border-color)",
     borderRadius: "16px",
     background: "var(--vz-card-bg)",
+    // Levanta o card do fundo cinzento da página, igual aos cards reactstrap
+    // (mesmo token de sombra do tema → seguro em claro E escuro, nunca branco).
+    boxShadow: "var(--vz-card-box-shadow)",
 };

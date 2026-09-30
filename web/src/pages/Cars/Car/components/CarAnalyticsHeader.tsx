@@ -23,6 +23,10 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                 border: "1px solid var(--vz-border-color)",
                 borderRadius: "18px",
                 background: "var(--vz-card-bg)",
+                // Sticky: o conteúdo passa por baixo. Sem separação cola-se ao
+                // fundo. Sombra separa no tema claro; a borda (acima) separa no
+                // escuro, onde a sombra não se vê. Token GLOBAL (--vz-box-shadow).
+                boxShadow: "var(--vz-box-shadow)",
             }}
         >
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ padding: "16px 18px" }}>

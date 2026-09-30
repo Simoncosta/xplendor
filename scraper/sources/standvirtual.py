@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import re
 import time
 from typing import Generator, Optional
 
@@ -199,6 +200,13 @@ class StandvirtualAdapter(SourceAdapter):
                 if key:
                     params[key] = value
 
+            # FASE 0 — shortDescription da listagem (quando o anúncio a tem).
+            # Alimenta o parsing de dormidas/comprimento sem custo extra; a
+            # descrição completa vem do fetch_detail (que a substitui).
+            short_description = (ad.get("shortDescription") or "").strip()
+            if short_description:
+                params["description"] = short_description
+
             category = str(self._deep_get(ad, "category", "id") or "")
 
             region = self._extract_region(ad)
@@ -241,16 +249,47 @@ class StandvirtualAdapter(SourceAdapter):
     # Fetch de página de detalhe (cor + portas)
     # ------------------------------------------------------------------
 
+    # Keys do parametersDict do DETALHE que interessam à Fase 0 (validadas
+    # ao live em 2026-09-30: body_type/nr_seats/engine_capacity presentes em
+    # 10/10, 9/10 e 6/10 anúncios de autocaravanas, respectivamente).
+    _DETAIL_PARAM_KEYS = ("body_type", "engine_capacity", "nr_seats")
+
     def fetch_detail(self, url: str) -> dict:
         """
-        Faz fetch da página individual do anúncio e extrai cor e portas.
-        É mais lento — usar apenas quando FETCH_DETAILS=True no config.
+        Faz fetch da página individual do anúncio e extrai:
+          - description (texto plano da descrição — onde vivem dormidas e
+            comprimento das autocaravanas; FASE 0)
+          - body_type / engine_capacity / nr_seats (estruturados do
+            parametersDict do detalhe; FASE 0)
+          - color e doors (comportamento pré-existente, via testids HTML)
+        É mais lento — 1 request por anúncio; gates no main.py.
         """
         html = self._fetch_page(url)
         if not html:
             return {}
 
         result = {}
+
+        # FASE 0 — __NEXT_DATA__ do detalhe: advert.description + parametersDict.
+        try:
+            next_data = self._extract_next_data(html)
+            advert = self._deep_get(next_data or {}, "props", "pageProps", "advert") or {}
+
+            description_html = advert.get("description") or ""
+            if description_html:
+                text = re.sub(r"<[^>]+>", "\n", description_html)
+                text = re.sub(r"\n{2,}", "\n", text).strip()
+                if text:
+                    result["description"] = text
+
+            parameters_dict = advert.get("parametersDict") or {}
+            for key in self._DETAIL_PARAM_KEYS:
+                values = (parameters_dict.get(key) or {}).get("values") or []
+                if values and values[0].get("value") not in (None, ""):
+                    result[key] = str(values[0]["value"])
+        except Exception as e:
+            logger.debug(f"Erro ao parsear __NEXT_DATA__ do detalhe {url}: {e}")
+
         try:
             soup = self._make_soup(html)
 

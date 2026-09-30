@@ -164,6 +164,11 @@ class CarMarketSnapshotService extends BaseService
             'power_hp' => $this->nullableInt($snapshot['power_hp'] ?? null),
             'color' => $this->nullableString($snapshot['color'] ?? null),
             'doors' => $this->nullableInt($snapshot['doors'] ?? null),
+            // FASE 0 — specs de autocaravana (nullable; migração 2026_09_30).
+            'beds' => $this->nullableInt($snapshot['beds'] ?? null),
+            'layout' => $this->nullableString($snapshot['layout'] ?? null),
+            'displacement' => $this->nullableInt($snapshot['displacement'] ?? null),
+            'length' => $this->nullableFloat($snapshot['length'] ?? null),
             'scraped_at' => $scrapedAt,
             // MS2.a — placeholder. dedup_hash será calculado na ingestão (MS2.d)
             // a partir do título normalizado + ano + bucket de preço. Por agora

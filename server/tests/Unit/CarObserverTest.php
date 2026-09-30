@@ -90,7 +90,17 @@ class CarObserverTest extends TestCase
     {
         Queue::fake();
 
-        $car = $this->createCar(['vehicle_type' => 'motorhome']);
+        // FASE 1: o motor de autocaravanas compara por tipologia, por isso o
+        // dispatch exige categoria mapeável (sem ela → failed, coberto em
+        // MotorhomeSimilarityAggregateTest::test_guard_motorhome_sem_categoria).
+        $category = \App\Models\CarCategory::create([
+            'name' => 'Perfilada', 'slug' => 'perfilada', 'vehicle_type' => 'motorhome',
+        ]);
+
+        $car = $this->createCar([
+            'vehicle_type'    => 'motorhome',
+            'car_category_id' => $category->id,
+        ]);
 
         $this->makeService()->snapshotForCar($car);
 

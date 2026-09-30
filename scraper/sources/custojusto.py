@@ -289,6 +289,12 @@ class CustojustoAdapter(SourceAdapter):
         # Extrai do body (formato: "Ano: 2000 Quilómetros: 199.460 km Modelo: X
         # Combustível: Diesel Tipo de Caixa: Caixa manual").
         body_txt = item.get("body") or ""
+
+        # FASE 0 — reter o body (antes era lido e DESCARTADO). Na listagem o
+        # CustoJusto trunca-o a ~200 chars, mas dormidas/comprimento aparecem
+        # muitas vezes nesse início. Alimenta o parsing no normalizer.
+        if body_txt.strip():
+            params["description"] = body_txt.strip()
         km_m = re.search(r"Quil[oó]metros?:\s*([\d\.\,]+)", body_txt)
         if km_m:
             params["km"] = km_m.group(1).replace(".", "").replace(",", "")

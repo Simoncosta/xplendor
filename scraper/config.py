@@ -196,6 +196,15 @@ class ScraperConfig:
     fetch_details: bool = os.getenv("SCRAPER_FETCH_DETAILS", "false").lower() == "true"
     delay_between_details: float = float(os.getenv("SCRAPER_DETAIL_DELAY", 1.5))
 
+    # FASE 0 (motor de autocaravanas) — detalhe LIGADO por defeito só para
+    # motorhome: dormidas/comprimento vivem na DESCRIÇÃO do anúncio (que só o
+    # detalhe traz) e a tipologia estruturada (body_type) idem. Custo contido:
+    # max_results de motorhome é 15 → no máx. 15 requests extra com delay.
+    # Carros mantêm o default off (50 anúncios/scrape; specs já vêm na listagem).
+    fetch_details_motorhome: bool = os.getenv(
+        "SCRAPER_FETCH_DETAILS_MOTORHOME", "true"
+    ).lower() == "true"
+
     # --- Laravel API ---
     laravel_api_url: str = os.getenv("LARAVEL_API_URL", "http://localhost:8001")
     laravel_api_token: str = os.getenv("LARAVEL_API_TOKEN", "")

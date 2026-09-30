@@ -1,23 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Row, Col, CardBody, Card, Container, Button, Spinner } from "reactstrap";
+import { Button, Spinner } from "reactstrap";
 
 // Formik Validation
 import * as Yup from "yup";
 import { FormikProvider, useFormik } from "formik";
 
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-
-// Action
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "./login.css";
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
 
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-//import images 
+//import images
 import logoLight from "../../assets/images/logo-light.png";
-import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
 import { createSelector } from "reselect";
 import { getUserByInvite, registerByInvite } from "slices/thunks";
 import XInput from "Components/Common/XInput";
@@ -40,7 +38,7 @@ const Register = () => {
 
     const token = searchParams.get("token");
 
-    const [loader, setLoader] = useState<boolean>(false);
+    const [loader] = useState<boolean>(false);
 
     const { data } = useSelector(selectRegisterInviteViewModel);
 
@@ -51,12 +49,12 @@ const Register = () => {
 
     const validationSchema = Yup.object({
         password: Yup.string()
-            .required("Password é obrigatória")
-            .min(8, "Password deve ter no mínimo 8 caracteres"),
+            .required("A palavra-passe é obrigatória")
+            .min(8, "A palavra-passe deve ter no mínimo 8 caracteres"),
 
         password_confirmation: Yup.string()
-            .required("Confirmação de password é obrigatória")
-            .oneOf([Yup.ref("password")], "As passwords não coincidem"),
+            .required("Confirme a palavra-passe")
+            .oneOf([Yup.ref("password")], "As palavras-passe não coincidem"),
     });
 
     const formik = useFormik({
@@ -64,102 +62,118 @@ const Register = () => {
         initialValues: data,
         validationSchema,
         onSubmit: (values) => {
-            dispatch(registerByInvite({
-                token: String(token),
-                password: values.password,
-                password_confirmation: values.password_confirmation
-            }, navigate));
-            toast("Convite aceito com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+            dispatch(
+                registerByInvite(
+                    {
+                        token: String(token),
+                        password: values.password,
+                        password_confirmation: values.password_confirmation,
+                    },
+                    navigate
+                )
+            );
+            toast("Convite aceite com sucesso!", {
+                position: "top-right",
+                hideProgressBar: false,
+                className: "bg-success text-white",
+            });
         },
     });
 
-    document.title = "Registro | Xplendor";
+    document.title = "Criar conta | Xplendor";
+
+    // Imagem premium servida de web/public (evita a resolução de url() do webpack).
+    const bgImageVar = {
+        ["--xl-bgimg" as any]: `url(${process.env.PUBLIC_URL}/background-auth.webp)`,
+    } as React.CSSProperties;
 
     return (
-        <React.Fragment>
-            <ParticlesAuth>
-                <div className="auth-page-content mt-lg-5">
-                    <ToastContainer />
-                    <Container>
-                        <Row>
-                            <Col lg={12}>
-                                <div className="text-center mt-sm-5 mb-4 text-white-50">
-                                    <div>
-                                        <Link to="/" className="d-inline-block auth-logo">
-                                            <img src={logoLight} alt="" height="20" />
-                                        </Link>
-                                    </div>
-                                    <p className="mt-3 fs-15 fw-medium">Xplendor - Smart Ads para Stands</p>
-                                </div>
-                            </Col>
-                        </Row>
+        <div className="xlogin" style={bgImageVar}>
+            {/* Voltar ao início (landing pública "/"). Âncora normal (não Link do
+                react-router): a app corre com basename "/app", por isso um Link "/"
+                iria para "/app/". A landing vive fora da SPA, em "/". */}
+            <a href="/" className="xlogin-back">
+                <i className="ri-arrow-left-line" aria-hidden="true" />
+                Voltar ao início
+            </a>
 
-                        <Row className="justify-content-center">
-                            <Col md={8} lg={6} xl={5}>
-                                <Card className="mt-4">
+            <ToastContainer />
 
-                                    <CardBody className="p-4">
-                                        <div className="text-center mt-2">
-                                            <h5 className="text-primary">Registrar conta</h5>
-                                            {/* <p className="text-muted">Crie</p> */}
-                                        </div>
-                                        <div className="p-2 mt-4">
-                                            <FormikProvider value={formik}>
-                                                <form onSubmit={formik.handleSubmit} className="needs-validation">
+            {/* Imagem full-screen de fundo + form centrado por cima (estilo Resend) */}
+            <div className="xlogin-panel">
+                <div className="xlogin-form">
+                    <img src={logoLight} alt="XPLENDOR" className="xlogin-logo" />
+                    <h1 className="xlogin-title">Criar a sua conta</h1>
+                    <p className="xlogin-subtitle">
+                        Defina a sua palavra-passe para concluir o registo.
+                    </p>
 
-                                                    <XInput
-                                                        className="mb-3"
-                                                        type="email"
-                                                        placeholder="Email"
-                                                        name="email"
-                                                        label="Email"
-                                                        disabled={true}
-                                                    />
-                                                    <XInput
-                                                        className="mb-3"
-                                                        placeholder="Nome"
-                                                        name="name"
-                                                        label="Nome"
-                                                        disabled={true}
-                                                    />
-                                                    <XInput
-                                                        className="mb-3"
-                                                        placeholder="Password"
-                                                        type="password"
-                                                        name="password"
-                                                        label="Password"
-                                                        required
-                                                    />
-                                                    <XInput
-                                                        className="mb-3"
-                                                        placeholder="Confirmar Password"
-                                                        type="password"
-                                                        name="password_confirmation"
-                                                        label="Confirmar Password"
-                                                        required
-                                                    />
+                    <FormikProvider value={formik}>
+                        <form onSubmit={formik.handleSubmit} className="needs-validation">
+                            <XInput
+                                className="mb-3"
+                                type="email"
+                                placeholder="Email"
+                                name="email"
+                                label="E-mail"
+                                disabled={true}
+                            />
+                            <XInput
+                                className="mb-3"
+                                placeholder="Nome"
+                                name="name"
+                                label="Nome"
+                                disabled={true}
+                            />
+                            <XInput
+                                className="mb-3"
+                                placeholder="A sua palavra-passe"
+                                type="password"
+                                name="password"
+                                label="Palavra-passe"
+                                required
+                            />
+                            <XInput
+                                className="mb-3"
+                                placeholder="Confirmar a palavra-passe"
+                                type="password"
+                                name="password_confirmation"
+                                label="Confirmar palavra-passe"
+                                required
+                            />
 
-                                                    <div className="mt-4">
-                                                        <Button color="success" className="w-100" type="submit" disabled={loader && true}>
-                                                            {loader && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
-                                                            Registrar
-                                                        </Button>
-                                                    </div>
+                            <div className="mt-4">
+                                <Button
+                                    className="xlogin-submit"
+                                    type="submit"
+                                    disabled={loader}
+                                >
+                                    {loader ? (
+                                        <>
+                                            <Spinner size="sm" className="me-2" />
+                                            A registar...
+                                        </>
+                                    ) : (
+                                        "Criar conta"
+                                    )}
+                                </Button>
+                            </div>
+                        </form>
+                    </FormikProvider>
 
-                                                </form>
-                                            </FormikProvider>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                                <div className="mt-4 text-center">
-                                    <p className="mb-0">Você já tem uma conta? <Link to="/login" className="fw-semibold text-primary text-decoration-underline"> Login </Link> </p>
-                                </div>
-                            </Col>
-                        </Row>
-                    </Container>
+                    <div className="xlogin-foot">
+                        Já tem conta?{" "}
+                        <Link to="/login" className="xlogin-forgot">
+                            Entrar
+                        </Link>
+                    </div>
+                    <div className="xlogin-foot">
+                        © {new Date().getFullYear()} XPLENDOR ·{" "}
+                        <Link to="/privacy">Privacidade</Link>
+                    </div>
                 </div>
-            </ParticlesAuth>
-        </React.Fragment >
+            </div>
+        </div>
     );
 };
 

@@ -16,8 +16,25 @@ class CarMarketAggregateResource extends JsonResource
             'status'             => $this->status,
             'confidence'         => $this->confidence,
             'comparables_count'  => $this->comparables_count,
+            // FASE 1b — a UI escolhe a vista (autocaravana vs carro) por
+            // `method`; `vehicle_type` é o segundo sinal para o caso
+            // guard-failed (motorhome sem tipologia mapeável, em que o
+            // aggregate nasce failed com method ainda null).
+            'vehicle_type'       => $this->vehicle_type,
+            // FASE 1 — motor de similaridade de autocaravanas. `method` diz à
+            // UI QUE motor produziu o aggregate ('motorhome_similarity_v1' =
+            // comparação por tipologia+ano, cross-marca; null = cascata
+            // clássica dos carros). p25/p75 só vêm preenchidos com n>=4 —
+            // NUNCA são min/max disfarçados. `funnel` explica um resultado
+            // vazio; `outliers_removed` alimenta o copy "(M excluídos por
+            // preço atípico)".
+            'method'             => $this->method,
+            'outliers_removed'   => (int) ($this->outliers_removed ?? 0),
+            'funnel'             => $this->funnel,
             'prices'             => [
                 'median' => $this->median_price !== null ? (float) $this->median_price : null,
+                'p25'    => $this->p25_price    !== null ? (float) $this->p25_price    : null,
+                'p75'    => $this->p75_price    !== null ? (float) $this->p75_price    : null,
                 'min'    => $this->min_price    !== null ? (float) $this->min_price    : null,
                 'max'    => $this->max_price    !== null ? (float) $this->max_price    : null,
                 'avg'    => $this->avg_price    !== null ? (float) $this->avg_price    : null,

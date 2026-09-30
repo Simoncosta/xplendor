@@ -26,6 +26,10 @@ class CarMarketSnapshot extends Model
         'power_hp',
         'color',
         'doors',
+        'beds',
+        'layout',
+        'displacement',
+        'length',
         'scraped_at',
         'dedup_hash',
     ];
@@ -36,6 +40,9 @@ class CarMarketSnapshot extends Model
         'km' => 'integer',
         'power_hp' => 'integer',
         'doors' => 'integer',
+        'beds' => 'integer',
+        'displacement' => 'integer',
+        'length' => 'decimal:2',
         'scraped_at' => 'datetime',
     ];
 }
