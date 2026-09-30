@@ -92,6 +92,16 @@ class Company extends Model
         return $this->hasMany(Car::class);
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    public function plan(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
     /** Linha Editorial: o RAMO (setor-folha) escolhido pela empresa (null = por escolher). */
     public function contentSector(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {

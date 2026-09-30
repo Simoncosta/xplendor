@@ -24,6 +24,8 @@ import Login from "../pages/Authentication/Login"
 
 // Company
 import CompanyList from "pages/Companies/CompanyList";
+import AdminCompaniesPage from "pages/Admin/AdminCompaniesPage";
+import AdminCompanyUsersPage from "pages/Admin/AdminCompanyUsersPage";
 import CompanyProfileUpdate from "pages/Companies/CompanyProfile/CompanyProfileUpdate";
 import CompanyProfileCreate from "pages/Companies/CompanyProfile/CompanyProfileCreate";
 
@@ -43,9 +45,8 @@ import ActionCenterPage from "pages/Actions/ActionCenterPage";
 import UsersList from "pages/Users/UsersList";
 
 // Landing
-import LandingMotorhomes from "pages/LandingMotorhomes";
-// Landing PREMIUM (nova, dark) — agora é a raiz "/". Substituiu a landing antiga.
-import LandingX from "pages/LandingX";
+// Landings antigas do CRA (LandingX/LandingMotorhomes) foram substituídas pelo Rayo na
+// raiz; ficheiros mantidos (órfãos), imports removidos por já não serem roteados.
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import SatisfactionReport from "pages/SatisfactionReport";
@@ -119,6 +120,10 @@ const CarAdsRedirect = () => {
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
+    // ROOT — empresas → utilizadores → "entrar como" (impersonation). Root-only na UI; a
+    // segurança real é o backend (/admin gated). As páginas recusam não-root na mesma.
+    { path: "/root/companies", component: <AdminCompaniesPage /> },
+    { path: "/root/companies/:companyId/users", component: <AdminCompanyUsersPage /> },
     // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
     { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
     { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas"><LojasPage /></RequireModule> },
@@ -242,13 +247,9 @@ const publicRoutes = [
 
     { path: "/oauth/meta/callback", component: <MetaOAuthCallback /> },
 
-    // Landing Page — a nova landing premium (LandingX) é agora a raiz.
-    { path: "/", component: <LandingX /> },
-    // Alias antigo mantido a apontar para a mesma landing (evita links partidos).
-    { path: "/plataforma", component: <LandingX /> },
-
-    // Landing dedicada — stands de autocaravanas
-    { path: "/autocaravanas", component: <LandingMotorhomes /> },
+    // ⚠️ A landing passou para o Rayo (Next.js) servido na RAIZ pelo nginx; a app CRA vive
+    //    em /app. As landings antigas do CRA (LandingX/LandingMotorhomes) ficam ÓRFÃS
+    //    (código mantido, fora do acesso) — o Rayo substitui-as na raiz.
 
     // Privacy Policy
     { path: "/privacy", component: <PrivacyPolicy /> },

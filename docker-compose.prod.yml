@@ -10,6 +10,8 @@ services:
       - ./docker/nginx/prod/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./server:/var/www/html:ro
       - ./web/build:/var/www/web/build:ro
+      # Landing Rayo (Next.js exportado estático) — servida na raiz. Read-only.
+      - ./site/out:/var/www/site/out:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - php

@@ -1,0 +1,23 @@
+[
+  {
+    "title": "Drawing Concentration",
+    "institution": "New York Academy of Art",
+    "institutionUrl": "#",
+    "desc": "Intensive drawing courses that present the fundamental principles of drawing.",
+    "year": "2015 - 2016"
+  },
+  {
+    "title": "UI/UX Design Specialization",
+    "institution": "California Institute of Arts",
+    "institutionUrl": "#",
+    "desc": "Research, design, and prototype effective, visually-driven websites and apps.",
+    "year": "2019 - 2021"
+  },
+  {
+    "title": "UI/UX Designer",
+    "institution": "Coursera",
+    "institutionUrl": "#",
+    "desc": "This course is about how to complete the design process from beginning to end.",
+    "year": "2022"
+  }
+]

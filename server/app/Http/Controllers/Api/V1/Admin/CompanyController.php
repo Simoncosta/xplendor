@@ -29,6 +29,56 @@ class CompanyController extends Controller
         abort_unless(Auth::user()?->role === 'root', 403);
     }
 
+    /**
+     * TODAS as empresas (transversal, root-only): nome, plano, estado, nº de utilizadores.
+     * Base da página root → escolher empresa → utilizadores → "entrar como" (impersonation).
+     */
+    public function index()
+    {
+        $this->ensureRoot();
+
+        $companies = Company::query()
+            ->withCount('users')
+            ->with('plan:id,name')
+            ->orderBy('fiscal_name')
+            ->get()
+            ->map(fn (Company $c) => [
+                'id'                  => $c->id,
+                'name'                => $c->fiscal_name ?: $c->trade_name,
+                'plan'                => $c->plan?->name,
+                'subscription_status' => $c->subscription_status,
+                'has_access'          => $c->hasPlatformAccess(),
+                'trial_ends_at'       => optional($c->trial_ends_at)->toDateString(),
+                'users_count'         => $c->users_count,
+            ]);
+
+        return ApiResponse::success(['companies' => $companies], 'Empresas carregadas.');
+    }
+
+    /**
+     * Utilizadores de UMA empresa (transversal, root-only). ⚠️ TEM de ser por aqui: o
+     * UserController normal recusa (403) o root a ver users de outra empresa. Este grupo
+     * /admin (ensure_super_admin) é o ponto único de acesso transversal.
+     */
+    public function users(int $companyId)
+    {
+        $this->ensureRoot();
+
+        $company = Company::find($companyId);
+        if (! $company) {
+            return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+
+        $users = \App\Models\User::where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email', 'role', 'company_id', 'avatar']);
+
+        return ApiResponse::success([
+            'company' => ['id' => $company->id, 'name' => $company->fiscal_name ?: $company->trade_name],
+            'users'   => $users,
+        ], 'Utilizadores carregados.');
+    }
+
     public function setStatus(Request $request, int $companyId)
     {
         $this->ensureRoot();

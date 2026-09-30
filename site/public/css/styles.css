@@ -1,0 +1,561 @@
+/*! ------------------------------------------------
+ * Project Name: Rayo - Digital Agency & Personal Portfolio Next.Js Template
+ * Project Description: Elevate your digital presence with Rayo - dynamic and stylish Next.Js template designed for creative agencies and personal brands. With modern layouts, smooth interactions and a polished aesthetic, Rayo template helps showcase projects, services and expertise with clarity and impact.
+ * Tags: ib-themes, resume, portfolio, personal page, cv, template, one page, responsive, Next.js, css3, creative, clean, agency, studio 
+ * Version: 1.0.0
+ * Build Date: October 2025
+ * Last Update: November 06 2025
+ * This product is available exclusively on Themeforest
+ * Author: ib-themes
+ * Author URI: https://themeforest.net/user/ib-themes  /*! File name: plugins.css
+ * ------------------------------------------------
+ *
+ * ------------------------------------------------
+ * Table of Contents
+ * ------------------------------------------------
+ *  01. custom css for Nextjs
+ * ------------------------------------------------
+ * Table of Contents End
+ * ------------------------------------------------ */
+
+@import url("./plugins.min.css");
+@import url("./main.min.css");
+html {
+  scroll-behavior: smooth;
+}
+.mxd-nav__wrap {
+  display: block;
+  pointer-events: none;
+}
+.mxd-nav__wrap.active_menu {
+  pointer-events: all;
+}
+.mxd-menu__wrapper {
+  display: block;
+  pointer-events: none;
+}
+.mxd-menu__wrapper.active_menu {
+  pointer-events: all;
+}
+
+.mxd-menu__wrapper .fade-in-elm {
+  transition: all 0.6s ease;
+  visibility: hidden;
+  opacity: 0;
+}
+.mxd-menu__wrapper.active_menu .fade-in-elm {
+  visibility: visible;
+  opacity: 1;
+}
+.mxd-menu__wrapper .fade-in-up-elm {
+  transition: all 0.6s ease;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(25px);
+}
+.mxd-menu__wrapper.active_menu .fade-in-up-elm {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0px);
+}
+.submenu {
+  display: block;
+  height: 0px;
+  overflow: hidden;
+  padding-top: 0px;
+}
+
+/* Locks page scroll while modal is open */
+.videoModal__bodyOpen {
+  overflow: hidden;
+}
+
+/* Fullscreen overlay, centered content, no overlay scrolling */
+.videoModal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: grid;
+  place-items: center;
+  overflow: hidden; /* prevent overlay scrollbar */
+  z-index: 111;
+}
+
+/* Transparent content, no internal scroll */
+.videoModal__content {
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow: hidden; /* prevent content scrollbar */
+}
+
+/* Responsive 16:9 player that never exceeds viewport */
+.videoModal__playerWrap {
+  max-width: 1200px;
+  width: min(90vw, 1600px);
+  aspect-ratio: 16 / 9; /* modern browsers */
+  position: relative;
+}
+.swiper-navigation-icon {
+  display: none;
+}
+.hamburger__line {
+  transition: all 0.3s ease;
+}
+.nav-open .hamburger__line:first-child {
+  translate: none;
+  rotate: none;
+  scale: none;
+  transform: translate(0px, 5px) rotate(45deg);
+}
+.nav-open .hamburger__line:last-child {
+  translate: none;
+  rotate: none;
+  scale: none;
+  transform: translate(0px, -5px) rotate(-45deg);
+}
+.loading__item,
+.loading__fade {
+  opacity: 0;
+}
+
+/* ------------------------------------------------
+ * XPLENDOR — Logo do header: o simbolo X troca conforme o tema.
+ * Tema claro (fundo claro) mostra o X escuro; tema escuro mostra o X claro.
+ * ------------------------------------------------ */
+.xplendor-x {
+  display: none;
+}
+html[color-scheme="light"] .xplendor-x--dark {
+  display: block;
+}
+html[color-scheme="dark"] .xplendor-x--light {
+  display: block;
+}
+
+/* ------------------------------------------------
+ * XPLENDOR — Wordmark do footer: texto grande "XPLENDOR" (substitui o SVG do
+ * template). Adapta-se ao tema (var(--t-bright)) e escala com o ecra. O overflow
+ * hidden no contentor garante que o texto grande nunca cria scroll horizontal.
+ * ------------------------------------------------ */
+.mxd-footer__fullwidth-text {
+  overflow: hidden;
+}
+.mxd-footer__wordmark {
+  display: block;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  font-family: var(--_font-accent);
+  font-weight: 700;
+  font-size: clamp(2.5rem, 17vw, 18rem);
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+  color: var(--t-bright);
+}
+
+/* Wordmark do footer em SVG (texto que escala a toda a largura, como o original
+ * do template). fill: currentColor herda a cor do tema (var(--t-bright)). */
+.mxd-footer__wordmark-text {
+  font-family: var(--_font-accent);
+  font-weight: 700;
+  font-size: 130px;
+  fill: currentColor;
+}
+
+/* ------------------------------------------------
+ * XPLENDOR — Mini-chat de WhatsApp (widget flutuante global).
+ * Verde WhatsApp fixo no cabecalho/botoes; corpo usa as cores do tema
+ * (var(--base)/var(--t-bright)) e as bolhas usam cinza neutro (ok em claro/escuro).
+ * ------------------------------------------------ */
+.xp-chat {
+  position: fixed;
+  right: 3rem;
+  bottom: 3rem;
+  z-index: 100;
+}
+@media (min-width: 992px) {
+  .xp-chat {
+    right: 6rem;
+    bottom: 4rem;
+  }
+}
+
+/* O botao "voltar ao topo" sobe para nao se sobrepor ao chat (chat e o protagonista). */
+.btn-to-top {
+  bottom: 9.6rem;
+}
+@media (min-width: 992px) {
+  .btn-to-top {
+    bottom: 11rem;
+  }
+}
+
+.xp-chat__toggle {
+  width: 5.6rem;
+  height: 5.6rem;
+  border-radius: 50%;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+.xp-chat__toggle:hover {
+  transform: scale(1.06);
+}
+
+.xp-chat__panel {
+  position: absolute;
+  bottom: calc(5.6rem + 1rem);
+  right: 0;
+  width: 34rem;
+  max-width: calc(100vw - 4rem);
+  background: var(--base);
+  color: var(--t-bright);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 1.6rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  transform-origin: bottom right;
+  opacity: 0;
+  transform: scale(0.9) translateY(1rem);
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.xp-chat.is-open .xp-chat__panel {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  pointer-events: auto;
+}
+
+.xp-chat__header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.2rem 1.4rem;
+  background: #075e54;
+  color: #fff;
+}
+/* Wrap SEM overflow: hidden para a bolinha "disponivel" nao ser cortada. */
+.xp-chat__avatar-wrap {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
+  flex: none;
+}
+/* So o circulo interior recorta a foto. */
+.xp-chat__avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.xp-chat__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.xp-chat__avatar-initials {
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.4rem;
+}
+/* Bolinha por CIMA e ligeiramente FORA do circulo (nao cortada pelo overflow). */
+.xp-chat__online {
+  position: absolute;
+  right: -0.2rem;
+  bottom: -0.2rem;
+  z-index: 2;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #4ade80;
+  border: 2px solid #075e54;
+}
+.xp-chat__id {
+  flex: 1;
+  min-width: 0;
+}
+.xp-chat__name {
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0;
+  color: #fff;
+}
+.xp-chat__role {
+  font-size: 1.2rem;
+  opacity: 0.85;
+  margin: 0;
+  color: #fff;
+}
+.xp-chat__close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.8rem;
+  cursor: pointer;
+  opacity: 0.85;
+  line-height: 1;
+}
+
+.xp-chat__body {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--base);
+  max-height: 32rem;
+  overflow-y: auto;
+}
+.xp-chat__msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+.xp-chat__msg-avatar {
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  overflow: hidden;
+  flex: none;
+  background: #25d366;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.xp-chat__msg-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.xp-chat__msg-avatar .xp-chat__avatar-initials {
+  font-size: 1rem;
+}
+.xp-chat__bubble {
+  background: rgba(128, 128, 128, 0.14);
+  color: var(--t-bright);
+  padding: 0.9rem 1.2rem;
+  border-radius: 1.2rem;
+  border-bottom-left-radius: 0.3rem;
+  font-size: 1.4rem;
+  line-height: 1.45;
+  margin: 0;
+  max-width: 80%;
+}
+
+.xp-chat__input {
+  display: flex;
+  gap: 0.6rem;
+  padding: 1rem 1.2rem;
+  border-top: 1px solid rgba(128, 128, 128, 0.18);
+  background: var(--base);
+}
+.xp-chat__input input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--t-bright);
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  border-radius: 2rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 1.4rem;
+  outline: none;
+}
+.xp-chat__send {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  flex: none;
+  background: #25d366;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.xp-chat__send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------
+ * XPLENDOR — Pagina de Servicos: lista "o que inclui".
+ * ------------------------------------------------ */
+.xp-includes__label {
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  opacity: 0.7;
+}
+.xp-includes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem 2rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+@media (max-width: 575px) {
+  .xp-includes {
+    grid-template-columns: 1fr;
+  }
+}
+.xp-includes li {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1.6rem;
+  color: var(--t-bright);
+}
+.xp-includes li i {
+  color: #25d366;
+  font-size: 1.6rem;
+  flex: none;
+}
+
+/* ------------------------------------------------
+ * XPLENDOR — Mockup de browser (modulos da plataforma + casos) e layouts da /plataforma.
+ * Portado do LandingX, adaptado aos tokens do Rayo (dark-mode-safe: cinzas neutros).
+ * ------------------------------------------------ */
+.xp-mockup {
+  position: relative;
+  width: 100%;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  background: rgba(128, 128, 128, 0.08);
+  border: 1px solid rgba(128, 128, 128, 0.22);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+}
+.xp-mockup__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1rem 1.4rem;
+  background: rgba(128, 128, 128, 0.14);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.18);
+}
+.xp-mockup__bar span {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, 0.5);
+}
+.xp-mockup__screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: rgba(128, 128, 128, 0.06);
+}
+.xp-mockup__screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+}
+.xp-mockup__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  color: var(--t-muted, rgba(128, 128, 128, 0.8));
+}
+.xp-mockup__empty i {
+  font-size: 3rem;
+}
+.xp-mockup__empty span {
+  font-size: 1.3rem;
+  letter-spacing: 0.03em;
+}
+
+/* Modulos: linhas alternadas (imagem/texto), imagem protagonista. */
+.xp-modules__item {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  margin-bottom: 8rem;
+}
+.xp-modules__item:last-child {
+  margin-bottom: 0;
+}
+.xp-modules__item:nth-child(even) .xp-modules__media {
+  order: 2;
+}
+@media (max-width: 991px) {
+  .xp-modules__item {
+    grid-template-columns: 1fr;
+    gap: 2.4rem;
+    margin-bottom: 5rem;
+  }
+  .xp-modules__item:nth-child(even) .xp-modules__media {
+    order: 0;
+  }
+}
+.xp-modules__title {
+  margin-bottom: 1.4rem;
+}
+.xp-modules__text {
+  color: var(--t-bright);
+}
+
+/* Casos: grelha de 2 colunas, cada caso num mockup. */
+.xp-cases {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4rem 3rem;
+}
+@media (max-width: 767px) {
+  .xp-cases {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+}
+.xp-case__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.8rem;
+  margin-bottom: 0.6rem;
+}
+.xp-case__name {
+  margin: 0;
+}
+.xp-case__badge {
+  flex: none;
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  color: var(--t-bright);
+  background: rgba(128, 128, 128, 0.14);
+  border: 1px solid rgba(128, 128, 128, 0.24);
+}
+.xp-case__descr {
+  color: var(--t-muted, rgba(128, 128, 128, 0.85));
+}
+/* Destaque da UZI (portal tecnologico): badge em verde e realce subtil no mockup. */
+.xp-case--featured .xp-case__badge {
+  color: #075e54;
+  background: rgba(37, 211, 102, 0.16);
+  border-color: rgba(37, 211, 102, 0.4);
+}
+.xp-case--featured .xp-mockup {
+  border-color: rgba(37, 211, 102, 0.4);
+}

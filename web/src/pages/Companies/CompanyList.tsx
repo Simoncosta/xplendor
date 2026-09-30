@@ -7,6 +7,7 @@ import { Badge, Card, CardBody, CardHeader, Col, Container, Row, Spinner } from 
 import { ToastContainer, toast } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
 import CompanyModulesModal from './components/CompanyModulesModal';
+import CompanyUsersModal from './components/CompanyUsersModal';
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
@@ -39,6 +40,7 @@ const CompanyList = () => {
 
     const [busyId, setBusyId] = useState<number | null>(null);
     const [modulesFor, setModulesFor] = useState<{ id: number; name: string } | null>(null);
+    const [usersFor, setUsersFor] = useState<{ id: number; name: string } | null>(null);
 
     const refetch = useCallback(() => {
         dispatch(
@@ -145,6 +147,14 @@ const CompanyList = () => {
                             </button>
                             <button
                                 type="button"
+                                className="btn btn-sm btn-soft-secondary"
+                                onClick={() => setUsersFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
+                                title="Utilizadores / aceder como"
+                            >
+                                <i className="ri-team-line align-bottom me-1" />Utilizadores
+                            </button>
+                            <button
+                                type="button"
                                 className={"btn btn-sm " + (active ? "btn-soft-danger" : "btn-soft-success")}
                                 disabled={busy}
                                 onClick={() => toggleStatus(c)}
@@ -209,6 +219,13 @@ const CompanyList = () => {
                 companyId={modulesFor?.id ?? null}
                 companyName={modulesFor?.name}
                 onClose={() => setModulesFor(null)}
+            />
+
+            <CompanyUsersModal
+                isOpen={usersFor !== null}
+                companyId={usersFor?.id ?? null}
+                companyName={usersFor?.name}
+                onClose={() => setUsersFor(null)}
             />
         </React.Fragment >
     )

@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "number": 50,
+    "suffix": "+",
+    "description": "Happy clients who\ntrust my work",
+    "image": "/img/icons/h70_stats-01.webp",
+    "imageWidth": 311,
+    "imageHeight": 280,
+    "counterId": "stats-counter-1"
+  },
+  {
+    "id": 2,
+    "number": 80,
+    "suffix": "%",
+    "description": "Clients come back for\na new projects",
+    "image": "/img/icons/h70_stats-02.webp",
+    "imageWidth": 280,
+    "imageHeight": 280,
+    "counterId": "stats-counter-2"
+  },
+  {
+    "id": 3,
+    "number": 5,
+    "suffix": "+",
+    "description": "Years of professional\nexperience",
+    "image": "/img/icons/h70_stats-03.webp",
+    "imageWidth": 280,
+    "imageHeight": 280,
+    "counterId": "stats-counter-3"
+  },
+  {
+    "id": 4,
+    "number": 70,
+    "suffix": "+",
+    "description": "Successfully\ncompleted projects",
+    "image": "/img/icons/h70_stats-04.webp",
+    "imageWidth": 274,
+    "imageHeight": 280,
+    "counterId": "stats-counter-4"
+  }
+]

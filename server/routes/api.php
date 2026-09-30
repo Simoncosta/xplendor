@@ -74,7 +74,12 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [UserController::class, 'logout']);
-        Route::post('/revoke-tokens', [UserController::class, 'revokeTokens']);
+        Route::post('/revoke-tokens', [UserController::class, 'revokeTokens'])->middleware('block_when_impersonating');
+
+        // IMPERSONATION — terminar + estado atual (verdade do backend p/ o banner). Fora do
+        // check_company_subscription: "sair" tem de funcionar mesmo com subscrição expirada.
+        Route::post('/impersonation/stop', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'stop']);
+        Route::get('/impersonation/current', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'current']);
 
         Route::apiResource('/plans', PlanController::class);
         Route::post('/companies', [CompanyController::class, 'store']);
@@ -151,14 +156,15 @@ Route::prefix('v1')->group(function () {
                 Route::get('/scraper/executions/{runId}', [ScraperController::class, 'show']);
 
                 Route::get('/integrations', [CompanyIntegrationController::class, 'index']);
-                Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta']);
-                Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
+                // Credenciais de integrações — SENSÍVEL: bloqueado em impersonation.
+                Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta'])->middleware('block_when_impersonating');
+                Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta'])->middleware('block_when_impersonating');
                 Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
 
                 // GA4 — tráfego do site do cliente (Service Account do servidor;
                 // property_id por empresa). Scoped por company_id.
-                Route::post('/integrations/google/connect', [GoogleAnalyticsController::class, 'connect']);
-                Route::delete('/integrations/google', [GoogleAnalyticsController::class, 'disconnect']);
+                Route::post('/integrations/google/connect', [GoogleAnalyticsController::class, 'connect'])->middleware('block_when_impersonating');
+                Route::delete('/integrations/google', [GoogleAnalyticsController::class, 'disconnect'])->middleware('block_when_impersonating');
                 Route::get('/analytics/ga4/traffic', [GoogleAnalyticsController::class, 'traffic']);
 
                 // Meta — LEITURA dos dados que o pipeline já ingere (gasto/cliques/
@@ -172,7 +178,7 @@ Route::prefix('v1')->group(function () {
                 // é cifrada; o cliente Python garante o logout.
                 Route::middleware('ensure_module:pingwin')->group(function () {
                     Route::get('/integrations/pingwin', [CompanyPingwinController::class, 'index']);
-                    Route::post('/integrations/pingwin/connect', [CompanyPingwinController::class, 'connect']);
+                    Route::post('/integrations/pingwin/connect', [CompanyPingwinController::class, 'connect'])->middleware('block_when_impersonating');
                     Route::post('/integrations/pingwin/sync', [CompanyPingwinController::class, 'sync']);
                     // Gatilho do dashboard: sincronização em FILA (não trava; notifica no sino).
                     Route::post('/integrations/pingwin/sync-queue', [CompanyPingwinController::class, 'queueSync']);
@@ -204,7 +210,8 @@ Route::prefix('v1')->group(function () {
                     Route::match(['put', 'patch'], '/integrations/pingwin/articles/{catalogItemId}', [CompanyPingwinController::class, 'updateArticle'])->whereNumber('catalogItemId');
                     Route::get('/integrations/pingwin/articles/edition/{creationId}', [CompanyPingwinController::class, 'articleUpdate']);
                     // Artigos — ANULAR (DELETE definitivo; exige confirm) + poll do resultado.
-                    Route::delete('/integrations/pingwin/articles/{catalogItemId}', [CompanyPingwinController::class, 'deleteArticle']);
+                    // ANULAR artigo (DELETE definitivo) — SENSÍVEL: bloqueado em impersonation.
+                    Route::delete('/integrations/pingwin/articles/{catalogItemId}', [CompanyPingwinController::class, 'deleteArticle'])->middleware('block_when_impersonating');
                     Route::get('/integrations/pingwin/articles/deletion/{creationId}', [CompanyPingwinController::class, 'articleDeletion']);
                     // Famílias PingWin (Fase 1, só leitura): árvore + sincronizar (+ religa artigos).
                     Route::get('/integrations/pingwin/families', [CompanyPingwinController::class, 'families']);
@@ -234,8 +241,8 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/integrations/pingwin/locations/{locationId}', [CompanyPingwinController::class, 'deleteLocation']);
                     // CoverManager — token AO NÍVEL DA EMPRESA (Integrações).
                     Route::get('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerIndex']);
-                    Route::post('/integrations/covermanager/connect', [CompanyPingwinController::class, 'coverManagerConnect']);
-                    Route::delete('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerDisconnect']);
+                    Route::post('/integrations/covermanager/connect', [CompanyPingwinController::class, 'coverManagerConnect'])->middleware('block_when_impersonating');
+                    Route::delete('/integrations/covermanager', [CompanyPingwinController::class, 'coverManagerDisconnect'])->middleware('block_when_impersonating');
                     // CoverManager (reservas) — Etapa 1: sincroniza o agregado por turno.
                     Route::post('/integrations/covermanager/sync', [CompanyPingwinController::class, 'coverManagerSync']);
                     // Sincronização por PERÍODO (um job por dia; 1 notificação no fim).
@@ -245,20 +252,21 @@ Route::prefix('v1')->group(function () {
                     Route::patch('/integrations/covermanager/settings', [CompanyPingwinController::class, 'updateCoverManagerSettings']);
                 });
 
-                Route::apiResource('/users', UserController::class);
+                // Gestão de utilizadores/password — SENSÍVEL: bloqueado em impersonation.
+                Route::apiResource('/users', UserController::class)->middleware('block_when_impersonating');
                 // ── Módulo STOCK (Fase 3: recusa 403 se não ativo) ──
                 Route::post('/cars/generate-description', [CarController::class, 'generateDescription'])->middleware('ensure_module:stock');
                 Route::apiResource('/cars', CarController::class)->middleware('ensure_module:stock');
                 // ── Módulo COMERCIAL/CRM ──
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update'])->middleware('ensure_module:commercial_crm');
-                Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware('ensure_module:stock');
+                Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware(['ensure_module:stock', 'block_when_impersonating']);
                 Route::apiResource('/blogs', BlogController::class);
                 // ── Módulo LINHA EDITORIAL (transversal) — escolha de ramo + calendário herdado ──
                 Route::middleware('ensure_module:linha_editorial')->group(function () {
                     Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);
                     Route::post('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'setSector']);
-                    // B3b — TROCA de ramo (destrutiva). PUT distingue-a da primeira escolha (POST).
-                    Route::put('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'changeSector']);
+                    // B3b — TROCA de ramo (destrutiva). SENSÍVEL: bloqueado em impersonation.
+                    Route::put('/editorial/sector', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'changeSector'])->middleware('block_when_impersonating');
                     Route::get('/editorial/calendar', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'calendar']);
                     // B2 — máquina de estados dos meses (abrir/fechar em sequência, com cascata).
                     Route::post('/editorial/months/{year}/{month}/open', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'openMonth'])
@@ -371,6 +379,11 @@ Route::prefix('v1')->group(function () {
         // que for transversal (tickets, consolas futuras) vive aqui dentro.
         Route::middleware('ensure_super_admin')->prefix('admin')->group(function () {
             Route::get('/ping', [AdminController::class, 'ping']);
+            // Contagens transversais para o dashboard root (users + carros da plataforma).
+            Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
+
+            // IMPERSONATION — INICIAR (só root). Emite token de impersonation p/ o user-alvo.
+            Route::post('/impersonation/start', [\App\Http\Controllers\Api\V1\ImpersonationController::class, 'start']);
 
             // Tickets de suporte — TRANSVERSAL (todas as empresas).
             Route::get('/tickets/summary', [AdminSupportTicketController::class, 'summary']);
@@ -403,6 +416,10 @@ Route::prefix('v1')->group(function () {
             Route::get('/stock/summary', [AdminStockController::class, 'summary']);
             Route::get('/stock/companies', [AdminStockController::class, 'companies']);
             Route::get('/stock', [AdminStockController::class, 'index']);
+
+            // Empresas (transversal) — lista + utilizadores por empresa (base da impersonation).
+            Route::get('/companies', [AdminCompanyController::class, 'index']);
+            Route::get('/companies/{company}/users', [AdminCompanyController::class, 'users'])->whereNumber('company');
 
             // Ativar/inativar empresa (root). Inativar tira acesso + exclui do stock.
             Route::patch('/companies/{company}/status', [AdminCompanyController::class, 'setStatus']);

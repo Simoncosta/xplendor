@@ -22,6 +22,13 @@ class CheckCompanySubscription
             return $next($request);
         }
 
+        // EXCEÇÃO EXPLÍCITA: uma sessão de impersonation fura o gate de subscrição — é
+        // justamente quando a subscrição expira que o root pode precisar de lá entrar.
+        // O user NORMAL (sem sessão de impersonation) continua bloqueado.
+        if (\App\Models\ImpersonationSession::activeFor($user)) {
+            return $next($request);
+        }
+
         $company = $user->company;
 
         if (!$company) {

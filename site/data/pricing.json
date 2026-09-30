@@ -1,0 +1,63 @@
+[
+  {
+    "tag": "🦄 Special Offer",
+    "tagClass": "tag-default tag-accent",
+    "title": "Custom Website",
+    "descr": "Inspiring ideas, creative insights, and the latest in design and tech. Fueling innovation for your digital journey.",
+    "currency": "$",
+    "amount": "8000",
+    "period": "/once",
+    "timeline": "Timeline: from 2 weeks to 1 month",
+    "btnText": "Start Project",
+    "btnHref": "contact.html",
+    "features": [
+      "Custom design and development",
+      "Responsive layout",
+      "SEO optimization",
+      "CMS integration",
+      "Basic training"
+    ],
+    "linkText": "Need more info? Let's talk.",
+    "linkHref": "contact.html"
+  },
+  {
+    "tag": "🔥 Best Choice",
+    "tagClass": "tag-default tag-additional",
+    "title": "Brand Support",
+    "descr": "Ongoing creative services to maintain, enhance, and grow your brand's visual identity.",
+    "currency": "$",
+    "amount": "399",
+    "period": "/month",
+    "timeline": "Timeline: monthly subscription",
+    "btnText": "Start Project",
+    "btnHref": "contact.html",
+    "features": [
+      "Digital and print design",
+      "Website updates & management",
+      "Social media branding",
+      "Brand strategy & consulting",
+      "Priority creative support"
+    ],
+    "linkText": "Need more info? Let's talk.",
+    "linkHref": "contact.html",
+    "best": true
+  },
+  {
+    "title": "Customize your package, and get exactly what fits your vision.",
+    "descr": "",
+    "currency": "",
+    "amount": "",
+    "period": "",
+    "btnText": "Start Project",
+    "btnHref": "contact.html",
+    "features": [
+      "Pick the services you need",
+      "Scalable projects",
+      "Flexible adjustments",
+      "Project management",
+      "Ongoing support"
+    ],
+    "linkText": "Need more info? Let's talk.",
+    "linkHref": "contact.html"
+  }
+]

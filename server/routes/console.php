@@ -10,6 +10,7 @@ use App\Jobs\{
     RecalculateAllCarScoresJob,
     RefreshStaleMarketAggregatesJob,
     FetchMetaAdsMetricsJob,
+    ScheduledRestaurantSyncJob,
     SyncCarmineCarsJob,
 };
 
@@ -77,4 +78,15 @@ Schedule::job(new SyncCarmineCarsJob())
     ->withoutOverlapping()
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Carmine Sync] Job falhou no scheduler');
+    });
+
+// 05:00 (Lisboa) — sync automático das vendas/reservas do DIA ANTERIOR de todas as
+// empresas de restauração com integração ativa (PingWin + CoverManager, em série).
+Schedule::job(new ScheduledRestaurantSyncJob())
+    ->dailyAt('05:00')
+    ->timezone('Europe/Lisbon')
+    ->name('restaurant-daily-sync')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Restaurant Daily Sync] Job falhou no scheduler');
     });

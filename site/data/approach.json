@@ -1,0 +1,28 @@
+{"approach1":[
+  {
+    "title": "Entender",
+    "description": "Começamos por conhecer o seu negócio a fundo: os objetivos, o público e o que o torna diferente. Sem isto, nenhuma estratégia funciona.",
+    "icon": "/img/icons/h70_appr-01.webp"
+  },
+  {
+    "title": "Estratégia",
+    "description": "Desenhamos um plano à medida, onde o marketing e a tecnologia trabalham para o mesmo objetivo. Nada de receitas iguais para todos.",
+    "icon": "/img/icons/h70_appr-02.webp"
+  },
+  {
+    "title": "Executar",
+    "description": "Pomos a mão na massa: campanhas, conteúdo, site ou plataforma. Feito por quem percebe do assunto, não por ferramentas automáticas.",
+    "icon": "/img/icons/h70_appr-03.webp"
+  },
+  {
+    "title": "Medir",
+    "description": "Acompanhamos os resultados de perto e mostramos-lhe o que está a acontecer. Decisões baseadas em dados, não em suposições.",
+    "icon": "/img/icons/h70_appr-04.webp"
+  },
+  {
+    "title": "Crescer",
+    "description": "Ajustamos e melhoramos de forma contínua, para o seu negócio crescer de forma sustentável. Estamos consigo a longo prazo.",
+    "icon": "/img/icons/h70_appr-05.webp"
+  }
+]
+}

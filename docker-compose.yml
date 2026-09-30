@@ -10,6 +10,10 @@ services:
       - ./docker/nginx/load/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
+      # Landing Rayo (Next.js exportado estático) — servido na raiz. Read-only.
+      - ./site/out:/var/www/site/out:ro
+      # App CRA (build de produção) — servida em /app. Read-only.
+      - ./web/build:/var/www/web/build:ro
     depends_on:
       - php
       - redis

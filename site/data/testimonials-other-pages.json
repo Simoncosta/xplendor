@@ -1,0 +1,22 @@
+[
+  {
+    "author": "John Lemon",
+    "avatar": "/img/avatars/300x300_ava-03.webp",
+    "position": "Brand Manager in",
+    "company": "Instant Design",
+    "rating": 5,
+    "text": "Working with Alex was an absolute pleasure! He took the time to understand our business needs and translated them into a beautifully designed, user-friendly website.",
+    "projectLink": "#",
+    "illustration": "/img/illustrations/1400x1400_values-01.webp"
+  },
+  {
+    "author": "Alex Tomato",
+    "avatar": "/img/avatars/300x300_ava-04.webp",
+    "position": "Brand Manager in",
+    "company": "Instant Design",
+    "rating": 5,
+    "text": "Amazing job on our website! Alex understood exactly what we needed and made it look great and easy to use.",
+    "projectLink": "#",
+    "illustration": "/img/illustrations/1400x1400_values-02.webp"
+  }
+]

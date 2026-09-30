@@ -1,0 +1,32 @@
+[
+  {
+    "img": "/img/illustrations/800x800_pinned-image-01.webp",
+    "title": "Digital art and graphic design",
+    "tags": ["UI/UX", "Web design", "Motion", "3D models"],
+    "desc": "We create visually compelling designs that enhance user experience. We make sure your brand’s visuals resonate with your audience."
+  },
+  {
+    "img": "/img/illustrations/800x800_pinned-image-02.webp",
+    "title": "Creative development",
+    "tags": ["Frontend", "Interactions", "Backend", "E-Commerce"],
+    "desc": "We build high-performance websites and applications using modern technologies. Our solutions are designed to be scalable and functional for optimal performance."
+  },
+  {
+    "img": "/img/illustrations/800x800_pinned-image-03.webp",
+    "title": "Brand identity",
+    "tags": [
+      "Brand strategy",
+      "Logo design",
+      "Guidelines",
+      "Visual identity",
+      "Rebranding"
+    ],
+    "desc": "From logo design to comprehensive brand strategies, we ensure your business stands out with a unique visual identity and consistent messaging across all touchpoints."
+  },
+  {
+    "img": "/img/illustrations/800x800_pinned-image-04.webp",
+    "title": "Digital marketing solutions",
+    "tags": ["Social media", "SEO Optimization", "Email", "Campaigns"],
+    "desc": "SEO and content marketing, social media management and paid campaigns - we help you reach and engage your target audience effectively."
+  }
+]

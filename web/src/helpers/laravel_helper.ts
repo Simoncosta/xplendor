@@ -26,6 +26,15 @@ export const isUserAuthenticated = () => {
 export const postApiLogin = (data: any) => api.create(url.POST_FAKE_API_LOGIN, data);
 // Logout Method
 export const postApiLogout = (data: any) => api.create(url.POST_FAKE_API_LOGOUT, data);
+
+// IMPERSONATION — start só root (/admin); stop/current com o token atual. Paths relativos à base /api/v1.
+export const startImpersonation = (userId: number, reason?: string) =>
+    api.create("/admin/impersonation/start", { user_id: userId, reason });
+export const stopImpersonation = () => api.create("/impersonation/stop", {});
+export const getCurrentImpersonation = () => api.get("/impersonation/current");
+// ROOT (área /admin, transversal): empresas + utilizadores por empresa (base da impersonation).
+export const getAdminCompanies = () => api.get("/admin/companies");
+export const getAdminCompanyUsers = (companyId: number) => api.get(`/admin/companies/${companyId}/users`);
 // User By Invite
 export const getUserByInvite = (token: string) => api.get(url.GET_USER_BY_INVITE + token);
 // Register By Invite
@@ -192,6 +201,8 @@ export const markAdminTicketCompleted = (id: number) =>
 export const getAdminQuotes = (params?: { status?: string; search?: string }) =>
     api.get(url.GET_ADMIN + `/quotes`, params);
 export const getAdminQuotesSummary = () => api.get(url.GET_ADMIN + `/quotes/summary`);
+// Dashboard root: contagens transversais da plataforma (users + carros).
+export const getAdminPlatformSummary = () => api.get(url.GET_ADMIN + `/platform/summary`);
 export const showAdminQuote = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}`);
 export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data);
 export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_ADMIN + `/quotes/${id}`, data);

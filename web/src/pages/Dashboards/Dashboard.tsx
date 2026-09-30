@@ -14,6 +14,7 @@ import StockBreakdownCard from './components/StockBreakdownCard';
 import SalesRevenueCard from './components/SalesRevenueCard';
 import { useModules } from "contexts/ModulesContext";
 import { PingwinDashboardContent } from "./PingwinDashboard";
+import RootDashboard from "./RootDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 
 const selectDashboardState = (state: any) => state.Dashboard;
@@ -29,7 +30,7 @@ const selectDashboardViewModel = createSelector(
     })
 );
 
-const Dashboard = () => {
+const ClientDashboard = () => {
     const dispatch: any = useDispatch();
     document.title = "Dashboard | Xplendor";
 
@@ -131,6 +132,21 @@ const Dashboard = () => {
             </div>
         </React.Fragment>
     );
+};
+
+/**
+ * Encaixe do dashboard ROOT (sem hooks aqui → não parte as regras dos hooks dos filhos):
+ * root DE VERDADE (role 'root' e NÃO em impersonation) → RootDashboard; caso contrário
+ * (cliente normal, ou root a ver como cliente) → o dashboard do cliente, intacto.
+ */
+const Dashboard = () => {
+    let isTrueRoot = false;
+    try {
+        const o = JSON.parse(sessionStorage.getItem("authUser") || "null");
+        isTrueRoot = o?.role === "root" && !o?.impersonating;
+    } catch { /* ignore */ }
+
+    return isTrueRoot ? <RootDashboard /> : <ClientDashboard />;
 };
 
 export default Dashboard;

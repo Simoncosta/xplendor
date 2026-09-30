@@ -1,0 +1,32 @@
+[
+  {
+    "title": "UI/UX design",
+    "num": "/ 01",
+    "hoverImage": "/img/illustrations/600x730_cpb-04.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-04.webp"
+  },
+  {
+    "title": "Hi-end websites",
+    "num": "/ 02",
+    "hoverImage": "/img/illustrations/600x730_cpb-01.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-01.webp"
+  },
+  {
+    "title": "Product design",
+    "num": "/ 03",
+    "hoverImage": "/img/illustrations/600x730_cpb-03.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-03.webp"
+  },
+  {
+    "title": "Web & mobile apps",
+    "num": "/ 04",
+    "hoverImage": "/img/illustrations/600x730_cpb-02.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-02.webp"
+  },
+  {
+    "title": "Project management",
+    "num": "/ 05",
+    "hoverImage": "/img/illustrations/600x730_cpb-05.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-05.webp"
+  }
+]

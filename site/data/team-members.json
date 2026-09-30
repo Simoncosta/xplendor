@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "name": "Alex Berry",
+    "position": "Frontend Developer",
+    "image": {
+      "src": "/img/team/800x920_team-01.webp",
+      "alt": "Alex Berry",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Behance",
+        "url": "https://www.behance.net/"
+      }
+    ],
+    "layout": {
+      "classes": "col-12 col-md-6 mxd-team-cards__item mxd-grid-item no-margin-desktop padding-bottom-desktop animate-card-3"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Helen Lemon",
+    "position": "Creative Designer",
+    "image": {
+      "src": "/img/team/800x920_team-04.webp",
+      "alt": "Helen Lemon",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Figma Community",
+        "url": "https://www.behance.net/"
+      }
+    ],
+    "layout": {
+      "classes": "col-12 col-md-6 mxd-team-cards__item mxd-grid-item no-margin-desktop padding-bottom-mobile padding-bottom-desktop animate-card-3"
+    }
+  },
+  {
+    "id": 3,
+    "name": "Sarah Olive",
+    "position": "Digital Marketing Strategist",
+    "image": {
+      "src": "/img/team/800x920_team-02.webp",
+      "alt": "Sarah Olive",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Behance",
+        "url": "https://www.behance.net/"
+      }
+    ],
+    "layout": {
+      "classes": "col-12 col-md-6 mxd-team-cards__item mxd-grid-item animate-card-3"
+    }
+  },
+  {
+    "id": 4,
+    "name": "Johanna Cherry",
+    "position": "Brand Identity Expert",
+    "image": {
+      "src": "/img/team/800x920_team-03.webp",
+      "alt": "Johanna Cherry",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Dribbble",
+        "url": "https://dribbble.com/"
+      }
+    ],
+    "layout": {
+      "classes": "col-12 col-md-6 mxd-team-cards__item mxd-grid-item padding-bottom-mobile animate-card-3"
+    }
+  }
+]

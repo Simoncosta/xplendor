@@ -1,0 +1,32 @@
+[
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-03.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "authorName": "Alex Tomato",
+    "authorPosition": "Brand Manager in",
+    "authorCompany": "Instant Design",
+    "authorCompanyUrl": "#",
+    "rating": 5,
+    "text": "Working with Rayo team was an absolute pleasure! They took the time to understand our business needs and translated them into a beautifully designed, user-friendly website.",
+    "projectPage": "#",
+    "testimonialImage": "/img/testimonials/1400x1200_t01.webp",
+    "testimonialImageWidth": 1433,
+    "testimonialImageHeight": 1200
+  },
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-04.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "authorName": "Alex Tomato",
+    "authorPosition": "SEO in",
+    "authorCompany": "Eye Candy",
+    "authorCompanyUrl": "#",
+    "rating": 5,
+    "text": "The team's attention to detail, creativity, and technical expertise exceeded our expectations. We've received so much positive feedback from our customers already.",
+    "projectPage": "#",
+    "testimonialImage": "/img/testimonials/1400x1200_t02.webp",
+    "testimonialImageWidth": 1433,
+    "testimonialImageHeight": 1200
+  }
+]

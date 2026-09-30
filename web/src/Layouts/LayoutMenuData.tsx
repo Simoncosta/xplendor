@@ -53,8 +53,9 @@ const Navdata = () => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
             const obj = JSON.parse(authUser);
-            setIsRoot(obj.role === 'root');
-            console.log(obj.role);
+            // Root "de verdade" só quando NÃO está em impersonation (aí authUser é o cliente,
+            // role 'user' → o menu volta a ser o do cliente automaticamente).
+            setIsRoot(obj.role === 'root' && !obj.impersonating);
         }
     }, []);
 
@@ -352,6 +353,44 @@ const Navdata = () => {
             return moduleVisible(it.module) ? [...acc, it] : acc;
         }, []);
 
-    return <React.Fragment>{filterMenu(menuItems)}</React.Fragment>;
+    // ── Menu ENXUTO do ROOT (COSMÉTICO) ───────────────────────────────────────
+    // Só quando é root de verdade (não em impersonation). NÃO é falta de permissão:
+    // o root mantém acesso a tudo pelo URL. Só curamos a LISTA do menu. Secções não
+    // listadas (ex.: Restauração, Cadastros) desaparecem; secções que ficam sem
+    // itens também. A Administração é reorganizada (Empresas → /root/companies).
+    const ROOT_KEEP: Record<string, string[] | "all"> = {
+        comercial: ["leads", "customers"],
+        analytics: "all",
+        finances: ["expenses", "suppliers"],
+        equipa: "all",
+        settings: "all",
+    };
+    const curateForRoot = (items: any[]): any[] =>
+        items.reduce((acc: any[], it: any) => {
+            if (it.isHeader) { acc.push(it); return acc; }
+            if (it.id === "dashboard") { acc.push(it); return acc; }
+            if (it.id === "admin") {
+                // UMA só entrada de empresas: a CompanyList (/companies) com gestão
+                // (criar/editar/módulos/ativar-inativar) + o novo modal de utilizadores
+                // ("entrar como"). + Tickets + Orçamentos; sem Stock global.
+                acc.push({
+                    ...it,
+                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes"].includes(s.id)),
+                });
+                return acc;
+            }
+            const keep = ROOT_KEEP[it.id];
+            if (!keep) return acc; // secção fora da lista → some (Restauração, Cadastros, …)
+            if (keep === "all") { acc.push(it); return acc; }
+            const subs = (it.subItems ?? []).filter((s: any) => keep.includes(s.id));
+            if (subs.length === 0) return acc; // sem itens → some
+            acc.push({ ...it, subItems: subs });
+            return acc;
+        }, []);
+
+    // Root (não impersonando) → lista curada; caso contrário → menu normal por módulos.
+    const finalMenu = isRoot ? curateForRoot(menuItems) : filterMenu(menuItems);
+
+    return <React.Fragment>{finalMenu}</React.Fragment>;
 };
 export default Navdata;

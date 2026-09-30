@@ -1,0 +1,10 @@
+[
+  { "name": "Photoshop", "icon": "/img/tech/icon-photoshop.svg" },
+  { "name": "Figma", "icon": "/img/tech/icon-figma.svg" },
+  { "name": "Illustrator", "icon": "/img/tech/icon-illustrator.svg" },
+  { "name": "Sketch", "icon": "/img/tech/icon-scketch.svg" },
+  { "name": "Blender", "icon": "/img/tech/icon-blender.svg" },
+  { "name": "HTML5", "icon": "/img/tech/icon-html.svg" },
+  { "name": "CSS3", "icon": "/img/tech/icon-css.svg" },
+  { "name": "Notion", "icon": "/img/tech/icon-notion.svg" }
+]

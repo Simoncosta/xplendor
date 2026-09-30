@@ -1,0 +1,58 @@
+[
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-05.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "companyLogo": "/img/brands/envato.svg",
+    "companyLogoWidth": 700,
+    "companyLogoHeight": 169,
+    "text": "The Rayo team nailed it! They understood our vision and delivered a sleek, intuitive site that our clients love.",
+    "projectPage": "#",
+    "authorName": "Lea Tomato",
+    "authorPosition": "Senior designer in",
+    "authorCompany": "The Way",
+    "authorCompanyUrl": "#"
+  },
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-04.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "companyLogo": "/img/brands/envato.svg",
+    "companyLogoWidth": 700,
+    "companyLogoHeight": 169,
+    "text": "The team's attention to detail, creativity, and technical expertise exceeded our expectations. We've received so much positive feedback from our customers already.",
+    "projectPage": "#",
+    "authorName": "Ashley Cherry",
+    "authorPosition": "SEO in",
+    "authorCompany": "Eye Candy",
+    "authorCompanyUrl": "#"
+  },
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-06.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "companyLogo": "/img/brands/envato.svg",
+    "companyLogoWidth": 700,
+    "companyLogoHeight": 169,
+    "text": "Amazing experience working with Rayo! They made the process smooth and gave us a website that truly reflects our brand.",
+    "projectPage": "#",
+    "authorName": "Patrick Pineapple",
+    "authorPosition": "SEO in",
+    "authorCompany": "Instant Design",
+    "authorCompanyUrl": "#"
+  },
+  {
+    "authorPhoto": "/img/avatars/300x300_ava-03.webp",
+    "authorPhotoWidth": 300,
+    "authorPhotoHeight": 300,
+    "companyLogo": "/img/brands/envato.svg",
+    "companyLogoWidth": 700,
+    "companyLogoHeight": 169,
+    "text": "Working with Rayo team was an absolute pleasure! They took the time to understand our business needs and translated them into a beautifully designed, user-friendly website.",
+    "projectPage": "#",
+    "authorName": "John Lemon",
+    "authorPosition": "Brand Manager in",
+    "authorCompany": "Instant Design",
+    "authorCompanyUrl": "#"
+  }
+]

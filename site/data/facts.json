@@ -1,0 +1,92 @@
+[
+  {
+    "number": 50,
+    "suffix": "+",
+    "description": "Happy clients who\ntrust my work",
+    "image": "/img/illustrations/800x800_card-image-01.webp",
+
+    "imageWidth": 800,
+    "imageHeight": 800,
+    "button": {
+      "text": "Studio",
+      "href": "/about-us",
+      "iconClass": "ph-bold ph-arrow-up-right",
+      "btnClass": "btn btn-anim btn-default btn-outline opposite slide-right-up"
+    },
+    "cardClass": "mxd-stats-cards__inner align-end bg-accent radius-m padding-4",
+    "counterId": "stats-counter-1",
+    "numberClass": "mxd-counter__number mxd-stats-number opposite",
+    "descrClass": "mxd-counter__descr t-140 t-bright opposite",
+    "imageClass": "mxd-stats-cards__image mxd-stats-cards-image-1",
+    "colClass": "col-12 col-xl-5 mxd-stats-cards__item mxd-grid-item anim-uni-scale-in-right"
+  },
+  {
+    "number": 80,
+    "suffix": "%",
+    "description": "Clients come back for\na new projects",
+    "image": "/img/illustrations/800x800_card-image-02.webp",
+    "imageWidth": 800,
+    "imageHeight": 800,
+    "avatars": [
+      {
+        "src": "/img/avatars/300x300_ava-02.webp",
+        "alt": "Avatar",
+        "width": 300,
+        "height": 300
+      },
+      { "svg": true },
+      {
+        "src": "/img/avatars/300x300_ava-01.webp",
+        "alt": "Avatar",
+        "width": 300,
+        "height": 300
+      }
+    ],
+    "cardClass": "mxd-stats-cards__inner align-end bg-base-tint radius-m padding-4",
+    "counterId": "stats-counter-2",
+    "numberClass": "mxd-counter__number mxd-stats-number",
+    "descrClass": "mxd-counter__descr t-140 t-bright",
+    "imageClass": "mxd-stats-cards__image mxd-stats-cards-image-2",
+    "colClass": "col-12 col-xl-7 mxd-stats-cards__item mxd-grid-item anim-uni-scale-in-left"
+  },
+  {
+    "number": 5,
+    "suffix": "+",
+    "description": "Years of professional experience in designing digital products",
+    "image": "/img/illustrations/800x800_card-image-03.webp",
+    "imageWidth": 800,
+    "imageHeight": 800,
+    "button": {
+      "text": "Start New Project",
+      "href": "/contact",
+      "iconClass": "ph-bold ph-arrow-down-right",
+      "btnClass": "btn btn-anim btn-default btn-outline slide-right-down"
+    },
+    "cardClass": "mxd-stats-cards__inner bg-base-tint radius-m padding-4",
+    "counterId": "stats-counter-3",
+    "numberClass": "mxd-counter__number mxd-stats-number",
+    "descrClass": "mxd-counter__descr t-140 t-bright",
+    "imageClass": "mxd-stats-cards__image mxd-stats-cards-image-3",
+    "colClass": "col-12 col-xl-7 mxd-stats-cards__item mxd-grid-item anim-uni-scale-in-right"
+  },
+  {
+    "number": 70,
+    "suffix": "+",
+    "description": "Successfully\ncompleted projects",
+    "image": "/img/illustrations/800x800_card-image-04.webp",
+    "imageWidth": 800,
+    "imageHeight": 800,
+    "button": {
+      "text": "Works",
+      "href": "/works-simple",
+      "iconClass": "ph-bold ph-arrow-up-right",
+      "btnClass": "btn btn-anim btn-default btn-outline slide-right-up"
+    },
+    "cardClass": "mxd-stats-cards__inner bg-base-tint radius-m padding-4",
+    "counterId": "stats-counter-4",
+    "numberClass": "mxd-counter__number mxd-stats-number",
+    "descrClass": "mxd-counter__descr t-140 t-bright",
+    "imageClass": "mxd-stats-cards__image mxd-stats-cards-image-4",
+    "colClass": "col-12 col-xl-5 mxd-stats-cards__item mxd-grid-item anim-uni-scale-in-left"
+  }
+]

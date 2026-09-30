@@ -1,0 +1,494 @@
+{
+  "projects1": [
+    {
+      "id": 1,
+      "title": "Creative studio",
+      "description": "template for modern agencies",
+      "previewClass": "preview-image-1",
+      "tags": ["UI/UX", "Web design", "Illustrations"],
+      "anim": "anim-uni-in-up"
+    },
+    {
+      "id": 2,
+      "title": "Interactive concept",
+      "description": "powered by AI",
+      "previewClass": "preview-image-2",
+      "tags": ["Sora", "AI", "Editorial"],
+      "anim": "anim-uni-in-up"
+    },
+    {
+      "id": 3,
+      "title": "Mobile app design",
+      "description": "for a cross-platform solution",
+      "previewClass": "preview-image-3",
+      "tags": ["UI/UX", "Design", "Android"],
+      "anim": ""
+    },
+    {
+      "id": 4,
+      "title": "NFT project",
+      "description": "branding",
+      "previewClass": "preview-image-4",
+      "tags": ["Brand identity", "Style guides"],
+      "anim": "anim-uni-in-up"
+    },
+    {
+      "id": 5,
+      "title": "Illustrations set",
+      "description": "for digital and print use.",
+      "previewClass": "preview-image-5",
+      "tags": ["Illustrations", "Design", "Packaging"],
+      "anim": "anim-uni-in-up"
+    },
+    {
+      "id": 6,
+      "title": "VR Vision",
+      "description": "experience concept",
+      "previewClass": "preview-image-6",
+      "tags": ["Midjourney", "AI Model"],
+      "anim": "anim-uni-in-up"
+    }
+  ],
+  "projects2": [
+    {
+      "id": 7,
+      "title": "AI Experiments",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-01.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-01.webp"
+      },
+      "tags": ["Midjourney", "AI", "Editorial"],
+      "justify": "justify-end"
+    },
+    {
+      "id": 8,
+      "title": "VR vision project",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-07.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-07.webp"
+      },
+      "tags": ["Development", "Web", "Editorial"],
+      "justify": "justify-end"
+    },
+    {
+      "id": 9,
+      "title": "NFT project branding",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-03.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-03.webp"
+      },
+      "tags": ["Branding", "Web", "Packaging"],
+      "justify": "justify-end"
+    },
+    {
+      "id": 10,
+      "title": "Studio template",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-04.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-04.webp"
+      },
+      "tags": ["UI/UX", "Development"],
+      "justify": "justify-end"
+    }
+  ],
+  "projects3": [
+    {
+      "id": 11,
+      "title": "Tech Impress",
+      "subtitle": "Mobile app",
+      "preview": {
+        "hover": "/img/works/preview/600x730_prv-06.webp",
+        "full": "/img/works/preview/1200x800_prv-06.webp"
+      },
+      "tags": [
+        {
+          "name": "Design system",
+          "icon": true
+        },
+        {
+          "name": "UX",
+          "icon": true
+        },
+        {
+          "name": "Motion",
+          "icon": false
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Rayo Studio",
+      "subtitle": "Website",
+      "preview": {
+        "hover": "/img/works/preview/600x730_prv-07.webp",
+        "full": "/img/works/preview/1200x800_prv-07.webp"
+      },
+      "tags": [
+        {
+          "name": "Creative direction",
+          "icon": true
+        },
+        {
+          "name": "Visual",
+          "icon": true
+        },
+        {
+          "name": "Motion",
+          "icon": false
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "AI Experiments",
+      "subtitle": "Illustrations",
+      "preview": {
+        "hover": "/img/works/preview/600x730_prv-05.webp",
+        "full": "/img/works/preview/1200x800_prv-05.webp"
+      },
+      "tags": [
+        {
+          "name": "Midjourney",
+          "icon": true
+        },
+        {
+          "name": "Visual",
+          "icon": true
+        },
+        {
+          "name": "Graphics",
+          "icon": false
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "VR Vision Project",
+      "subtitle": "Mobile app",
+      "preview": {
+        "hover": "/img/works/preview/600x730_prv-03.webp",
+        "full": "/img/works/preview/1200x800_prv-03.webp"
+      },
+      "tags": [
+        {
+          "name": "Art direction",
+          "icon": true
+        },
+        {
+          "name": "Visual",
+          "icon": true
+        },
+        {
+          "name": "Motion",
+          "icon": false
+        }
+      ]
+    }
+  ],
+  "projects4": [
+    {
+      "id": 15,
+      "title": "Studio template",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-04.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-04.webp"
+      },
+      "tags": ["Brand", "Illustrations", "Web"],
+      "justify": "justify-between"
+    },
+    {
+      "id": 16,
+      "title": "AI Experiments",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-01.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-01.webp"
+      },
+      "tags": ["Sora", "AI", "Editorial"],
+      "justify": "justify-between"
+    },
+    {
+      "id": 17,
+      "title": "Mobile app design",
+      "images": {
+        "mobile": "/img/works/preview/1080x1920_prv-05.webp",
+        "desktop": "/img/works/preview/1920x1080_prv-05.webp"
+      },
+      "tags": ["Design", "UI/UX", "Android"],
+      "justify": "justify-between"
+    }
+  ],
+  "projects5": [
+    {
+      "id": 18,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-01",
+      "wrapperClass": "mxd-hero-02-image__portrait portrait-01",
+      "innerType": "type-01",
+      "src": "/img/hero/07_hero-img.webp",
+      "width": 800,
+      "height": 1200
+    },
+    {
+      "id": 19,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-01",
+      "wrapperClass": "mxd-hero-02-image__landscape landscape-01",
+      "innerType": "type-03",
+      "src": "/img/hero/08_hero-img.webp",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": 20,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-01",
+      "wrapperClass": "mxd-hero-02-image__portrait portrait-02",
+      "innerType": "type-01",
+      "src": "/img/hero/09_hero-img.webp",
+      "width": 800,
+      "height": 1200
+    },
+    {
+      "id": 21,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-02",
+      "wrapperClass": "mxd-hero-02-image__landscape landscape-02",
+      "innerType": "type-03",
+      "src": "/img/hero/10_hero-img.webp",
+      "width": 1200,
+      "height": 900
+    },
+    {
+      "id": 22,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-02",
+      "wrapperClass": "mxd-hero-02-image__portrait portrait-xl portrait-03",
+      "innerType": "type-02",
+      "src": "/img/hero/11_hero-img.webp",
+      "width": 1000,
+      "height": 1316
+    },
+    {
+      "id": 23,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-03",
+      "wrapperClass": "mxd-hero-02-image__portrait portrait-04",
+      "innerType": "type-01",
+      "src": "/img/hero/13_hero-img.webp",
+      "width": 800,
+      "height": 1200
+    },
+    {
+      "id": 24,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-03",
+      "wrapperClass": "mxd-hero-02-image__landscape landscape-03",
+      "innerType": "type-03",
+      "src": "/img/hero/12_hero-img.webp",
+      "width": 1200,
+      "height": 900
+    },
+    {
+      "id": 25,
+      "row": "mxd-hero-02-images__row mxd-hero-02-images__row-03",
+      "wrapperClass": "mxd-hero-02-image__portrait portrait-05",
+      "innerType": "type-01",
+      "src": "/img/hero/14_hero-img.webp",
+      "width": 800,
+      "height": 1200
+    }
+  ],
+  "projects6": [
+    {
+      "id": 26,
+      "src": "/img/marquee/1200x1000_marquee-01.webp",
+      "title": "Inspiring ideas"
+    },
+    {
+      "id": 27,
+      "src": "/img/marquee/1200x1000_marquee-02.webp"
+    },
+    {
+      "id": 28,
+      "src": "/img/marquee/1200x1000_marquee-03.webp",
+      "title": "Creative minds"
+    },
+    {
+      "id": 29,
+      "src": "/img/marquee/1200x1000_marquee-04.webp"
+    }
+  ],
+  "projects7": [
+    {
+      "id": 30,
+      "src": "/img/marquee/1200x1000_marquee-05.webp",
+      "title": "Inspiring ideas"
+    },
+    {
+      "id": 31,
+      "src": "/img/marquee/1200x1000_marquee-06.webp"
+    },
+    {
+      "id": 32,
+      "src": "/img/marquee/1200x1000_marquee-07.webp",
+      "title": "Creative minds"
+    },
+    {
+      "id": 33,
+      "src": "/img/marquee/1200x1000_marquee-08.webp"
+    }
+  ],
+  "projects8": [
+    {
+      "id": 34,
+      "thumb": "/img/works/preview/600x730_prv-01.webp",
+      "image": "/img/works/preview/1200x800_prv-01.webp",
+      "title": "E-commerce website",
+      "tags": ["UI/UX design", "Development"],
+      "date": "2025"
+    },
+    {
+      "id": 35,
+      "thumb": "/img/works/preview/600x730_prv-02.webp",
+      "image": "/img/works/preview/1200x800_prv-02.webp",
+      "title": "NFT project branding",
+      "tags": ["Brand identity", "Style guides"],
+      "date": "2025"
+    },
+    {
+      "id": 36,
+      "thumb": "/img/works/preview/600x730_prv-03.webp",
+      "image": "/img/works/preview/1200x800_prv-03.webp",
+      "title": "VR vision project",
+      "tags": ["Midjourney", "AI model"],
+      "date": "2024"
+    },
+    {
+      "id": 37,
+      "thumb": "/img/works/preview/1200x800_prv-04.webp",
+      "image": "/img/works/preview/1200x800_prv-04.webp",
+      "title": "Illustrations set",
+      "tags": ["Illustrations", "Design"],
+      "date": "2024"
+    },
+    {
+      "id": 38,
+      "thumb": "/img/works/preview/600x730_prv-05.webp",
+      "image": "/img/works/preview/1200x800_prv-05.webp",
+      "title": "Blockchain app design",
+      "tags": ["IU/UX design", "Development"],
+      "date": "2024"
+    },
+    {
+      "id": 39,
+      "thumb": "/img/works/preview/600x730_prv-06.webp",
+      "image": "/img/works/preview/1200x800_prv-06.webp",
+      "title": "Rayo studio portfolio",
+      "tags": ["IU/UX design", "Development"],
+      "date": "2024"
+    }
+  ],
+  "projects9": [
+    {
+      "id": 1,
+      "wrapperClass": "mxd-services-stack__inner showcase-inner bg-base-opp",
+      "title": "Digital products",
+      "titleClass": "opposite",
+      "number": "/01",
+      "numberClass": "t-opp-muted",
+      "info": "We create visually compelling designs that enhance user experience. We make sure your brand's visuals resonate with your audience.",
+      "infoClass": "t-opposite",
+      "works": [
+        {
+          "id": 40,
+          "src": "/img/works/preview/800x400_prv-01.webp",
+          "tags": ["Sora", "AI", "Editorial"]
+        },
+        {
+          "id": 41,
+          "src": "/img/works/preview/800x400_prv-02.webp",
+          "tags": ["Frontend", "Interactions", "Web"]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "wrapperClass": "mxd-services-stack__inner showcase-inner bg-accent",
+      "title": "Corporate websites",
+      "titleClass": "opposite",
+      "number": "/02",
+      "numberClass": "t-opp-brigth",
+      "info": "We create visually compelling designs that enhance user experience. We make sure your brand's visuals resonate with your audience.",
+      "infoClass": "t-opposite",
+      "works": [
+        {
+          "id": 42,
+          "src": "/img/works/preview/800x400_prv-03.webp",
+          "tags": ["Frontend", "Interactions", "Web"]
+        },
+        {
+          "id": 43,
+          "src": "/img/works/preview/800x400_prv-04.webp",
+          "tags": ["Brand", "Illustrations", "Web"]
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "wrapperClass": "mxd-services-stack__inner radius-dark showcase-inner bg-base-tint",
+      "title": "eCommerce",
+      "titleClass": "",
+      "number": "/03",
+      "numberClass": "t-muted-extra",
+      "info": "We create visually compelling designs that enhance user experience. We make sure your brand's visuals resonate with your audience.",
+      "infoClass": "",
+      "works": [
+        {
+          "id": 44,
+          "src": "/img/works/preview/800x400_prv-05.webp",
+          "tags": ["Design", "UI/UX", "Android"]
+        },
+        {
+          "id": 45,
+          "src": "/img/works/preview/800x400_prv-06.webp",
+          "tags": ["IU/UX design", "Development"]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "wrapperClass": "mxd-services-stack__inner showcase-inner bg-base-opp",
+      "title": "Brand identity",
+      "titleClass": "opposite",
+      "number": "/04",
+      "numberClass": "t-opp-muted",
+      "info": "We create visually compelling designs that enhance user experience. We make sure your brand's visuals resonate with your audience.",
+      "infoClass": "t-opposite",
+      "works": [
+        {
+          "id": 46,
+          "src": "/img/works/preview/800x400_prv-07.webp",
+          "tags": ["Brand", "Style guides"]
+        },
+        {
+          "id": 47,
+          "src": "/img/works/preview/800x400_prv-08.webp",
+          "tags": ["Interactions", "Web", "Style guides"]
+        }
+      ]
+    }
+  ],
+  "projects10": [
+    {
+      "id": 48,
+      "image": "/img/works/preview/1920x1080_prv-04.webp",
+      "tags": ["Brand", "Illustrations", "Web"],
+      "title": "Studio template"
+    },
+    {
+      "id": 49,
+      "image": "/img/works/preview/1920x1080_prv-01.webp",
+      "tags": ["Sora", "AI", "Editorial"],
+      "title": "AI Experiments"
+    },
+    {
+      "id": 50,
+      "image": "/img/works/preview/1920x1080_prv-05.webp",
+      "tags": ["Design", "UI/UX", "Android"],
+      "title": "Mobile app design"
+    }
+  ]
+}

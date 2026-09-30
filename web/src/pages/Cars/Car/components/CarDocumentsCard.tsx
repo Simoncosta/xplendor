@@ -270,7 +270,7 @@ function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: n
                 const d = res?.data;
                 if (d?.public_token) {
                     setBox({
-                        link: `${window.location.origin}/r/${d.public_token}`,
+                        link: `${window.location.origin}${process.env.PUBLIC_URL || ""}/r/${d.public_token}`,
                         phone: d.customer?.phone ?? null,
                         email: d.customer?.email ?? null,
                         whatsappMessage: d.whatsapp_message ?? "",

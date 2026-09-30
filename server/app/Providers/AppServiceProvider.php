@@ -195,5 +195,6 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('resolve_report_token', ResolveReportToken::class);
         Route::aliasMiddleware('ensure_super_admin', EnsureSuperAdmin::class);
         Route::aliasMiddleware('ensure_module', \App\Http\Middleware\EnsureModuleActive::class);
+        Route::aliasMiddleware('block_when_impersonating', \App\Http\Middleware\BlockWhenImpersonating::class);
     }
 }

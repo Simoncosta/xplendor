@@ -1,0 +1,210 @@
+{
+  "blogs1": [
+    {
+      "id": 17,
+      "imageClass": "blog-preview-image-1",
+      "tags": ["Concept", "Editorial"],
+      "imgSrc": "/img/blog/preview/1000x1250_prv-01.webp",
+      "title": {
+        "before": "Frontend innovations",
+        "after": " and user journeys"
+      }
+    },
+    {
+      "id": 18,
+      "imageClass": "blog-preview-image-2",
+      "tags": ["UI/UX", "Development"],
+      "imgSrc": "/img/blog/preview/1000x1250_prv-02.webp",
+      "title": {
+        "before": "Branding in creating",
+        "highlight": "digital experiences"
+      }
+    },
+    {
+      "id": 19,
+      "imageClass": "blog-preview-image-3",
+      "imgSrc": "/img/blog/preview/1000x1250_prv-03.webp",
+      "tags": ["News", "AI"],
+      "title": {
+        "before": "Elevating ",
+        "highlight": "digital workshops",
+        "after": " with engaging design"
+      }
+    }
+  ],
+  "blogs2": [
+    {
+      "id": 1,
+      "img": "/img/blog/1400x900_pf-01.webp",
+      "categories": ["Midjourney", "AI", "Editorial"],
+      "meta": ["Midjourney", "AI", "Editorial"],
+      "date": "January 22, 2025",
+      "title": "My journey into the future of art",
+      "excerpt": "Discover how artificial intelligence is transforming artistic processes, pushing boundaries, and inspiring new possibilities in digital design."
+    }
+  ],
+  "blogs3": [
+    {
+      "id": 2,
+      "img": "/img/blog/800x680_ps-01.webp",
+      "imgAlt": "Post Simple Thumb",
+      "meta": [
+        {
+          "label": "Interactive design"
+        },
+        {
+          "label": "Web experience"
+        }
+      ],
+      "date": "January 22, 2025",
+      "title": "Designing for the future of interactive digital spaces"
+    },
+    {
+      "id": 3,
+      "img": "/img/blog/800x680_ps-02.webp",
+      "imgAlt": "Post Simple Thumb",
+      "meta": [
+        {
+          "label": "Web design"
+        },
+        {
+          "label": "Branding"
+        },
+        {
+          "label": "UI"
+        }
+      ],
+      "date": "January 09, 2025",
+      "title": "Mastering the art of minimalist web design with impact"
+    },
+    {
+      "id": 4,
+      "img": "/img/blog/800x680_ps-03.webp",
+      "imgAlt": "Post Simple Thumb",
+      "meta": [
+        {
+          "label": "3D"
+        },
+        {
+          "label": "Design"
+        },
+        {
+          "label": "Digital workshop"
+        }
+      ],
+      "date": "January 04, 2025",
+      "title": "Crafting immersive 3d worlds with modern tools"
+    },
+    {
+      "id": 5,
+      "img": "/img/blog/800x680_ps-04.webp",
+      "imgAlt": "Post Simple Thumb",
+      "meta": [
+        {
+          "label": "Motion design"
+        },
+        {
+          "label": "Branding"
+        },
+        {
+          "label": "Workshop"
+        }
+      ],
+      "date": "December 22, 2024",
+      "title": "Bringing ideas to life with motion design and creativity"
+    },
+    {
+      "id": 6,
+      "img": "/img/blog/800x680_ps-05.webp",
+      "imgAlt": "Post Simple Thumb",
+      "meta": [
+        {
+          "label": "UI/UX"
+        },
+        {
+          "label": "Frontend"
+        },
+        {
+          "label": "Branding"
+        }
+      ],
+      "date": "December 10, 2024",
+      "title": "The role of branding in creating memorable digital experiences"
+    }
+  ],
+  "blogs4": [
+    {
+      "id": 7,
+      "img": "/img/blog/300x300_rp-01.webp",
+      "category": "Design",
+      "title": "Mastering the art of minimalist web design with impact"
+    },
+    {
+      "id": 8,
+      "img": "/img/blog/300x300_rp-02.webp",
+      "category": "Technology",
+      "title": "Designing for the future of interactive digital spaces"
+    },
+    {
+      "id": 9,
+      "img": "/img/blog/300x300_rp-03.webp",
+      "category": "Technology",
+      "title": "Crafting immersive 3d worlds with modern tools"
+    }
+  ],
+  "blogs5": [
+    {
+      "id": 10,
+      "img": "/img/blog/1000x1250_psec-01.webp",
+      "categories": ["Interactive design", "Web experience"],
+      "meta": ["Interactive design", "Web experience"],
+      "date": "January 15, 2025",
+      "title": "Designing for the future of interactive digital spaces"
+    },
+    {
+      "id": 11,
+      "img": "/img/blog/1000x1250_psec-02.webp",
+      "categories": ["Web design", "Branding", "UI"],
+      "meta": ["Web design", "Branding", "UI"],
+      "date": "January 09, 2025",
+      "title": "Mastering the art of minimalist web design with impact"
+    }
+  ],
+  "blogs6": [
+    {
+      "id": 12,
+      "img": "/img/blog/1200x800_pa-01.webp",
+      "title": "Crafting immersive 3d worlds with modern tools",
+      "tags": ["3d", "Design", "Digital workshop"],
+      "date": "January 04, 2025"
+    },
+    {
+      "id": 13,
+      "img": "/img/blog/1200x800_pa-02.webp",
+      "title": "Bringing ideas to life with motion design and creativity",
+      "tags": ["Motion design", "Branding", "Workshop"],
+      "date": "December 22, 2024"
+    },
+    {
+      "id": 14,
+      "img": "/img/blog/1200x800_pa-03.webp",
+      "title": "The role of branding in creating memorable digital experiences",
+      "tags": ["UI/UX", "Frontend", "Branding"],
+      "date": "December 10, 2024"
+    },
+    {
+      "id": 15,
+      "img": "/img/blog/1200x800_pa-04.webp",
+      "title": "How frontend innovations shape interactive user journeys",
+      "tags": ["Frontend", "UX"],
+      "date": "November 22, 2024"
+    },
+    {
+      "id": 16,
+      "img": "/img/blog/1200x800_pa-05.webp",
+      "title": "Digital workshops with engaging and responsive design",
+      "tags": ["Digital workshop", "Interactive design", "UI"],
+      "date": "November 20, 2024"
+    }
+  ]
+}

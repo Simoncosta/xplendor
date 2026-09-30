@@ -1,0 +1,98 @@
+import { useEffect, useMemo, useState } from "react";
+import { Modal, ModalHeader, ModalBody, Table, Spinner, Badge, Button } from "reactstrap";
+import { toast } from "react-toastify";
+import { getAdminCompanyUsers } from "helpers/laravel_helper";
+import { startImpersonationFlow } from "helpers/impersonation";
+
+/**
+ * XPLENDOR — ROOT: utilizadores de uma empresa (modal, na CompanyList). Busca ao endpoint
+ * transversal GET /admin/companies/{id}/users (root-only; o UserController normal daria 403).
+ * Ação "Entrar como" (impersonation) só em não-root e não o próprio. Reaproveita os helpers
+ * já provados (getAdminCompanyUsers + startImpersonationFlow).
+ */
+
+type AdminUser = { id: number; name: string; email: string; role: string };
+
+const ROLE_META: Record<string, { label: string; color: string }> = {
+    root: { label: "Root", color: "danger" },
+    user: { label: "Utilizador", color: "secondary" },
+    admin: { label: "Admin", color: "primary" },
+};
+
+export default function CompanyUsersModal({
+    isOpen, companyId, companyName, onClose,
+}: {
+    isOpen: boolean;
+    companyId: number | null;
+    companyName?: string;
+    onClose: () => void;
+}) {
+    const me = useMemo(() => { try { return JSON.parse(sessionStorage.getItem("authUser") || "null"); } catch { return null; } }, []);
+    const [loading, setLoading] = useState(false);
+    const [users, setUsers] = useState<AdminUser[]>([]);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen || !companyId) { setUsers([]); return; }
+        let alive = true;
+        setLoading(true);
+        getAdminCompanyUsers(companyId)
+            .then((r: any) => { if (alive) setUsers(r?.data?.users ?? []); })
+            .catch((e: any) => { if (alive) toast.error(e?.message ?? "Não foi possível carregar os utilizadores."); })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+    }, [isOpen, companyId]);
+
+    const enterAs = async (id: number) => {
+        setBusy(true);
+        try { await startImpersonationFlow(id); } // recarrega a app na identidade do alvo
+        catch (e: any) { toast.error(e?.message ?? "Não foi possível iniciar a sessão."); setBusy(false); }
+    };
+
+    const roleBadge = (role: string) => {
+        const m = ROLE_META[role] ?? { label: role, color: "secondary" };
+        return <Badge color={m.color} className={`bg-${m.color}-subtle text-${m.color}`}>{m.label}</Badge>;
+    };
+
+    return (
+        <Modal isOpen={isOpen} toggle={onClose} centered size="lg">
+            <ModalHeader toggle={onClose}>Utilizadores{companyName ? ` — ${companyName}` : ""}</ModalHeader>
+            <ModalBody>
+                {loading ? (
+                    <div className="text-center py-4"><Spinner color="primary" /></div>
+                ) : (
+                    <div className="table-responsive">
+                        <Table className="align-middle mb-0">
+                            <thead>
+                                <tr className="text-muted fs-12 text-uppercase">
+                                    <th>Nome</th><th>Email</th><th>Perfil</th><th className="text-end"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.length === 0 ? (
+                                    <tr><td colSpan={4} className="text-center text-muted py-4">Sem utilizadores.</td></tr>
+                                ) : users.map((u) => {
+                                    const canImpersonate = u.role !== "root" && u.id !== me?.id;
+                                    return (
+                                        <tr key={u.id}>
+                                            <td className="fw-semibold">{u.name}</td>
+                                            <td>{u.email}</td>
+                                            <td>{roleBadge(u.role)}</td>
+                                            <td className="text-end">
+                                                {canImpersonate && (
+                                                    <Button color="soft-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
+                                                        <i className="ri-spy-line me-1" />Entrar como
+                                                    </Button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </Table>
+                    </div>
+                )}
+            </ModalBody>
+        </Modal>
+    );
+}

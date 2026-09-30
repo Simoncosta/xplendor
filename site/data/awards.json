@@ -1,0 +1,38 @@
+[
+  {
+    "title": "Some article on Medium",
+    "url": "https://medium.com/",
+    "image": "/img/works/preview/600x600_prv-01.webp",
+    "imageWidth": 601,
+    "imageHeight": 600,
+    "tags": ["UI/UX design", "Development"],
+    "date": "2025"
+  },
+  {
+    "title": "Awwwards nomination",
+    "url": "https://www.awwwards.com/",
+    "image": "/img/works/preview/600x600_prv-02.webp",
+    "imageWidth": 600,
+    "imageHeight": 601,
+    "tags": ["UI/UX", "Frontend"],
+    "date": "2024"
+  },
+  {
+    "title": "Behance curated work",
+    "url": "https://www.behance.net/",
+    "image": "/img/works/preview/600x600_prv-03.webp",
+    "imageWidth": 600,
+    "imageHeight": 600,
+    "tags": ["Illustrations", "Graphic design"],
+    "date": "2024"
+  },
+  {
+    "title": "Article on Medium",
+    "url": "https://medium.com/",
+    "image": "/img/works/preview/600x600_prv-04.webp",
+    "imageWidth": 600,
+    "imageHeight": 600,
+    "tags": ["UI/UX", "Frontend"],
+    "date": "2024"
+  }
+]

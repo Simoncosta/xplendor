@@ -7,6 +7,8 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import SupportFab from '../Components/Common/SupportFab';
+import ImpersonationBanner from '../Components/Common/ImpersonationBanner';
+import { reconcileImpersonation } from '../helpers/impersonation';
 import { ModulesProvider } from '../contexts/ModulesContext';
 
 //import actions
@@ -113,7 +115,12 @@ const Layout = (props: any) => {
         }
     };
 
-    // class add remove in header 
+    // IMPERSONATION — a VERDADE é do backend: se o sessionStorage achar que está em
+    // impersonation mas o backend disser que não (token expirou/sessão terminou), reconcilia
+    // (restaura root + reload). Corre uma vez ao montar o Layout.
+    useEffect(() => { reconcileImpersonation(); }, []);
+
+    // class add remove in header
     useEffect(() => {
         window.addEventListener("scroll", scrollNavigation, true);
     });
@@ -138,6 +145,7 @@ const Layout = (props: any) => {
 
     return (
         <ModulesProvider>
+            <ImpersonationBanner />
             <div id="layout-wrapper">
                 <Header
                     headerClass={headerClass}

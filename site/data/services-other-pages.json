@@ -1,0 +1,55 @@
+[
+  {
+    "title": "Design",
+    "image": "/img/illustrations/360x440_list-01.webp",
+    "desc": "We create visually compelling designs that enhance user experience. From UI/UX design to stunning websites, mobile apps, and print materials, we make sure your brand’s visuals resonate with your audience.",
+    "tags": [
+      "UI/UX",
+      "Web design",
+      "Applications",
+      "Print design",
+      "Packaging",
+      "Motion",
+      "3D models"
+    ]
+  },
+  {
+    "title": "Development",
+    "image": "/img/illustrations/360x440_list-02.webp",
+    "desc": "We build high-performance websites and applications using modern technologies. Our solutions are designed to be scalable and functional for optimal performance.",
+    "tags": [
+      "Frontend",
+      "Interactions",
+      "Backend",
+      "E-Commerce",
+      "Mobile Apps",
+      "Maintenance",
+      "Support"
+    ]
+  },
+  {
+    "title": "Branding",
+    "image": "/img/illustrations/360x440_list-03.webp",
+    "desc": "From logo design to comprehensive brand strategies, we ensure your business stands out with a unique visual identity and consistent messaging across all touchpoints.",
+    "tags": [
+      "Brand strategy",
+      "Logo design",
+      "Guidelines",
+      "Visual identity",
+      "Rebranding"
+    ]
+  },
+  {
+    "title": "Marketing",
+    "image": "/img/illustrations/360x440_list-04.webp",
+    "desc": "We develop and execute tailored digital marketing strategies. SEO and content marketing, social media management and paid campaigns - we help you reach and engage your target audience effectively.",
+    "tags": [
+      "Strategy",
+      "Social media",
+      "SEO",
+      "Optimization",
+      "Email",
+      "Campaigns"
+    ]
+  }
+]

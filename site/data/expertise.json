@@ -1,0 +1,38 @@
+[
+  {
+    "title": "UI/UX design",
+    "num": "/ 01",
+    "hoverImage": "/img/illustrations/600x730_cpb-04.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-04.webp"
+  },
+  {
+    "title": "Hi-end websites",
+    "num": "/ 02",
+    "hoverImage": "/img/illustrations/600x730_cpb-01.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-01.webp"
+  },
+  {
+    "title": "Framer",
+    "num": "/ 03",
+    "hoverImage": "/img/illustrations/600x730_cpb-02.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-02.webp"
+  },
+  {
+    "title": "Webflow",
+    "num": "/ 04",
+    "hoverImage": "/img/illustrations/600x730_cpb-03.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-03.webp"
+  },
+  {
+    "title": "3d art",
+    "num": "/ 05",
+    "hoverImage": "/img/illustrations/600x730_cpb-05.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-05.webp"
+  },
+  {
+    "title": "Motion graphics",
+    "num": "/ 06",
+    "hoverImage": "/img/illustrations/600x730_cpb-06.webp",
+    "mainImage": "/img/illustrations/1200x800_cpb-06.webp"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Início",
+    "href": "/"
+  },
+  {
+    "title": "Plataforma",
+    "href": "/plataforma"
+  },
+  {
+    "title": "Serviços",
+    "href": "/servicos"
+  },
+  {
+    "title": "Contacto",
+    "href": "/contact"
+  }
+]

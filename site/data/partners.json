@@ -1,0 +1,78 @@
+{
+  "top": [
+    {
+      "src": "/img/brands/envato.svg",
+      "width": 700,
+      "height": 169,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/angular.svg",
+      "width": 700,
+      "height": 169,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/deepseek.svg",
+      "width": 665,
+      "height": 148,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/dribbble.svg",
+      "width": 917,
+      "height": 258,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/udemy.svg",
+      "width": 631,
+      "height": 237,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/behance.svg",
+      "width": 2499,
+      "height": 464,
+      "href": "#0"
+    }
+  ],
+  "bottom": [
+    {
+      "src": "/img/brands/codeninja.svg",
+      "width": 223,
+      "height": 34,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/crewai.svg",
+      "width": 144,
+      "height": 38,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/smartlook.svg",
+      "width": 149,
+      "height": 24,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/ghostgaming.svg",
+      "width": 2854,
+      "height": 1199,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/logitech.svg",
+      "width": 702,
+      "height": 210,
+      "href": "#0"
+    },
+    {
+      "src": "/img/brands/mozilla.svg",
+      "width": 984,
+      "height": 235,
+      "href": "#0"
+    }
+  ]
+}

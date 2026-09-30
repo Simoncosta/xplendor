@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\Car;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -30,5 +32,21 @@ class AdminController extends Controller
             'role' => $user->role,
             'name' => $user->name,
         ], 'Admin console reachable.');
+    }
+
+    /**
+     * Contagens transversais da plataforma para o dashboard root (todas as empresas).
+     * users_total e cars_total são TOTAIS reais (sem filtro de empresa ativa) — rotular no
+     * frontend como "total da plataforma". Empresas vêm de /admin/companies; tickets/quotes
+     * dos seus próprios summaries. Root-only (defesa em profundidade além do middleware).
+     */
+    public function platformSummary()
+    {
+        abort_unless(Auth::user()?->role === 'root', 403);
+
+        return ApiResponse::success([
+            'users_total' => User::count(),
+            'cars_total'  => Car::count(),
+        ], 'Resumo da plataforma.');
     }
 }

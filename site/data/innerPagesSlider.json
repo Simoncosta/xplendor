@@ -1,0 +1,66 @@
+[
+  {
+    "href": "/services",
+    "target": "_blank",
+    "img": "/img/demo/inner/03_services.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "Services"
+  },
+  {
+    "href": "/team",
+    "target": "_blank",
+    "img": "/img/demo/inner/04_team.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "Our Team"
+  },
+  {
+    "href": "/pricing",
+    "target": "_blank",
+    "img": "/img/demo/inner/05_pricing.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "Pricing Plans"
+  },
+  {
+    "href": "/about-me",
+    "target": "_blank",
+    "img": "/img/demo/inner/01_about-me.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "About Me"
+  },
+  {
+    "href": "/about-us",
+    "target": "_blank",
+    "img": "/img/demo/inner/02_about-us.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "About Us"
+  },
+  {
+    "href": "/404",
+    "target": "_blank",
+    "img": "/img/demo/inner/08_404.webp",
+    "imgWidth": 1000,
+    "imgHeight": 628,
+    "title": "404 Error"
+  },
+  {
+    "href": "/faq",
+    "target": "_blank",
+    "img": "/img/demo/inner/06_faq.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "FAQ Page"
+  },
+  {
+    "href": "/contact",
+    "target": "_blank",
+    "img": "/img/demo/inner/07_contact.webp",
+    "imgWidth": 1000,
+    "imgHeight": 1413,
+    "title": "Contact"
+  }
+]

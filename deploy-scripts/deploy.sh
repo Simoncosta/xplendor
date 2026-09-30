@@ -30,19 +30,26 @@ docker exec -it xplendor-php php artisan route:clear
 docker exec -it xplendor-php php artisan route:cache
 docker exec -it xplendor-php php artisan view:clear
 
-echo "⚛️ Frontend build"
-cd "./web"
+echo "⚛️ Frontend (app CRA) build — basename /app vem do homepage:/app do package.json"
+cd "$APP_DIR/web"
 yarn install
 echo "⚛️ Delete old build"
 rm -rf build/
 echo "⚛️ Build new build"
 yarn build
 
+echo "🌐 Landing (Rayo / Next.js) build — export estático para site/out"
+cd "$APP_DIR/site"
+npm install
+echo "🌐 Delete old out"
+rm -rf out/
+echo "🌐 Build new out"
+npm run build
+
 echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx
 
 echo "Migrations (prod)"
-cd ".."
 docker exec -it xplendor-php php artisan migrate
 
 echo "✅ Deploy OK"

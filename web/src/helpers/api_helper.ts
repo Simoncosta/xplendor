@@ -45,6 +45,21 @@ axios.interceptors.response.use(
         // Ver T2 / X7.1 / MS1.e — 4.ª ocorrência do padrão do interceptor.
         const status = error?.response?.status;
         const body   = error?.response?.data;
+
+        // IMPERSONATION: token expirado/inválido (401) durante impersonation → mensagem
+        // HUMANA (não "Unauthenticated." cru) + marca p/ o Layout reconciliar (voltar a root).
+        if (status === 401) {
+            let impersonating = false;
+            try { impersonating = !!JSON.parse(sessionStorage.getItem("authUser") || "null")?.impersonating; } catch { /* ignore */ }
+            if (impersonating) {
+                return Promise.reject({
+                    message: "A tua sessão expirou. Volta a entrar para continuar.",
+                    __status: 401,
+                    __impersonation_expired: true,
+                });
+            }
+        }
+
         if (
             typeof status === "number" &&
             status >= 400 && status < 500 &&

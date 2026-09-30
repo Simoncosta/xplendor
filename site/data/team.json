@@ -1,0 +1,44 @@
+[
+  {
+    "id": 1,
+    "name": "Helen Pineapple",
+    "position": "Founder, SEO",
+    "image": {
+      "src": "/img/team/800x920_team-06.webp",
+      "alt": "Helen Pineapple",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Behance",
+        "url": "https://www.behance.net/"
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Alex Tomato",
+    "position": "SEO, Brand manager",
+    "image": {
+      "src": "/img/team/800x920_team-05.webp",
+      "alt": "Alex Tomato",
+      "width": 800,
+      "height": 920
+    },
+    "socials": [
+      {
+        "name": "Linkedin",
+        "url": "https://www.linkedin.com/"
+      },
+      {
+        "name": "Figma Community",
+        "url": "https://www.figma.com/community"
+      }
+    ]
+  }
+]
