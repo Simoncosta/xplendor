@@ -65,11 +65,13 @@ const Login = (props: any) => {
 
     return (
         <div className="xlogin" style={bgImageVar}>
-            {/* Voltar ao início (landing pública "/") */}
-            <Link to="/" className="xlogin-back">
+            {/* Voltar ao início (landing pública "/"). Âncora normal (não Link do
+                react-router): a app corre com basename "/app", por isso um Link "/"
+                iria para "/app/". A landing vive fora da SPA, em "/". */}
+            <a href="/" className="xlogin-back">
                 <i className="ri-arrow-left-line" aria-hidden="true" />
                 Voltar ao início
-            </Link>
+            </a>
 
             {/* Imagem full-screen de fundo + form centrado por cima (estilo Resend) */}
             <div className="xlogin-panel">
