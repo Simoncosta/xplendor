@@ -1,4 +1,4 @@
-import { Spinner } from "reactstrap";
+import { Alert, Collapse, Spinner, Table } from "reactstrap";
 import type {
     MarketAggregate,
     MarketAggregateConfidence,
@@ -8,28 +8,29 @@ import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FASE 1b — vista do motor de similaridade de AUTOCARAVANAS.
+// (Polish Fase B) — apresentação migrada para componentes Velzon (Alert, Badge,
+// Table, Collapse) e tokens; sem cores hardcoded. A LÓGICA e os ESTADOS da
+// Fase 1b mantêm-se intactos.
 //
-// Difere da vista dos carros (MarketPositionCard) porque o preço é calculado
-// por TIPOLOGIA + ano (cross-marca), não por marca+modelo. O selo comunica essa
-// natureza ao utilizador. O essencial em destaque: preço (mediana), grau de
-// confiança bem visível (é o que torna o motor honesto) e nº de anúncios. O
-// detalhe (banda p25-p75, top 5 comparáveis) fica recolhido.
+// Difere da vista dos carros porque o preço é por TIPOLOGIA + ano (cross-marca),
+// não por marca+modelo. O selo comunica essa natureza. Essencial em destaque:
+// preço (mediana), grau de confiança e nº de anúncios; detalhe (banda p25-p75,
+// top 5) recolhido.
 //
-// Contrato de dados assumido (backend Fase 1, provado):
+// Contrato de dados (backend Fase 1, provado):
 //   · method='motorhome_similarity_v1' seleciona esta vista.
 //   · n=0 (none/failed) → SEM preço; funil + link StandVirtual.
 //   · n=1-2 (low)       → preço indicativo + aviso "poucos anúncios".
 //   · p25/p75 só com n>=4.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CONFIDENCE_UI: Record<
-    MarketAggregateConfidence,
-    { label: string; dot: string; text: string; bg: string; border: string }
-> = {
-    high:   { label: "Confiança alta",   dot: "#0ab39c", text: "text-success", bg: "bg-success-subtle", border: "#0ab39c33" },
-    medium: { label: "Confiança média",  dot: "#f7b84b", text: "text-warning", bg: "bg-warning-subtle", border: "#f7b84b33" },
-    low:    { label: "Confiança baixa",  dot: "#f06548", text: "text-danger",  bg: "bg-danger-subtle",  border: "#f0654833" },
-    none:   { label: "Sem dados",        dot: "#878a99", text: "text-muted",   bg: "bg-light",          border: "#878a9933" },
+// Confiança → cor de tema Velzon (sem hex). O soft badge usa bg-{cor}-subtle +
+// text-{cor}, que o Velzon trata nos dois temas.
+const CONFIDENCE_UI: Record<MarketAggregateConfidence, { label: string; color: string }> = {
+    high:   { label: "Confiança alta",   color: "success" },
+    medium: { label: "Confiança média",  color: "warning" },
+    low:    { label: "Confiança baixa",  color: "danger" },
+    none:   { label: "Sem dados",        color: "secondary" },
 };
 
 const LAYOUT_LABELS: Record<string, string> = {
@@ -62,9 +63,7 @@ function formatDate(iso: string | null | undefined): string | null {
 }
 
 // ── Selo "comparação por tipologia + ano" ────────────────────────────────────
-// Comunica a diferença face aos carros: aqui o preço é cross-marca, agrupado
-// por tipologia. Importante para o utilizador entender a natureza do valor.
-function TypologySeal({ layout }: { layout: string | null | undefined }) {
+function TypologySeal() {
     return (
         <span
             className="badge bg-info-subtle text-info fw-normal fs-11 px-2 py-1"
@@ -93,20 +92,14 @@ export function MotorhomeEmptyState({
     refreshing: boolean;
 }) {
     const funnel = aggregate.funnel ?? null;
-    const layout = funnel?.layout ?? null;
-    const tipologia = layoutLabel(layout);
+    const tipologia = layoutLabel(funnel?.layout ?? null);
 
-    // Copy consoante o que o funil revela:
-    //   · sem funil (ex.: falhou por falta de tipologia) → mensagem accionável.
-    //   · vimos viaturas da tipologia mas nenhuma na janela → funil explícito.
-    //   · nunca vimos nenhuma da tipologia → honestidade direta.
     let headline: string;
     let detail: string | null = null;
 
     if (aggregate.status === "failed" || !funnel) {
-        // 'failed' = faltam DADOS de entrada do motor por tipologia. NÃO
-        // afirmamos que a categoria está em falta (pode estar lá e faltar o
-        // ano) — pedimos para confirmar ambos, sem culpar o que já existe.
+        // 'failed' = faltam DADOS de entrada (tipologia/ano). Não afirmamos que a
+        // categoria está em falta (pode estar lá e faltar o ano).
         headline = "Faltam dados para calcular o preço por tipologia.";
         detail = "Confirma na Ficha que a categoria (tipologia) e o ano de registo estão preenchidos.";
     } else if (funnel.layout_total > 0) {
@@ -120,32 +113,30 @@ export function MotorhomeEmptyState({
     }
 
     return (
-        <div className="py-1">
-            <div className="d-flex align-items-start gap-2 mb-2">
-                <i className="ri-search-eye-line fs-18 text-muted mt-1" />
-                <div>
-                    <p className="fs-13 text-body mb-1">{headline}</p>
-                    {detail && <p className="text-muted fs-12 mb-0">{detail}</p>}
+        <div>
+            <Alert color="light" className="mb-3">
+                <div className="d-flex align-items-start gap-2">
+                    <i className="ri-search-eye-line fs-18 text-muted mt-1" />
+                    <div>
+                        <p className="fs-13 text-body mb-1 fw-medium">{headline}</p>
+                        {detail && <p className="text-muted fs-12 mb-0">{detail}</p>}
+                    </div>
                 </div>
-            </div>
+            </Alert>
 
-            <div className="d-flex align-items-center gap-2 flex-wrap mt-3">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
                 {aggregate.search_url && (
                     <a
                         href={aggregate.search_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn btn-sm btn-soft-primary"
                     >
-                        <i className="ri-external-link-line me-1" />
+                        <i className="ri-external-link-line align-bottom me-1" />
                         Ver no StandVirtual
                     </a>
                 )}
-                <button
-                    className="btn btn-sm btn-outline-secondary"
-                    onClick={onRefresh}
-                    disabled={refreshing}
-                >
+                <button className="btn btn-sm btn-soft-secondary" onClick={onRefresh} disabled={refreshing}>
                     {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
                 </button>
             </div>
@@ -154,9 +145,7 @@ export function MotorhomeEmptyState({
 }
 
 // ── Estado de ERRO TÉCNICO (status='error') ──────────────────────────────────
-// Distinto do "faltam dados": aqui o cálculo REBENTOU (bug, worker desatualizado,
-// timeout, etc.). A categoria pode estar perfeitamente preenchida, por isso NUNCA
-// mandamos o utilizador confirmá-la. Mensagem honesta + retry.
+// Distinto do "faltam dados": o cálculo REBENTOU. NUNCA culpar a categoria.
 export function MotorhomeErrorState({
     onRefresh,
     refreshing,
@@ -167,28 +156,22 @@ export function MotorhomeErrorState({
     userRole?: string;
 }) {
     return (
-        <div className="py-1">
-            <div className="d-flex align-items-start gap-2 mb-2">
-                <i className="ri-error-warning-line fs-18 text-danger mt-1" />
-                <div>
-                    <p className="fs-13 text-body mb-1">
-                        Ocorreu um erro técnico ao calcular o preço de mercado.
+        <div>
+            <Alert color="danger" className="mb-3">
+                <p className="fs-13 mb-1 fw-medium">
+                    <i className="ri-error-warning-line align-bottom me-1" />
+                    Ocorreu um erro técnico ao calcular o preço de mercado.
+                </p>
+                <p className="mb-0 fs-12">
+                    Não é um problema com os dados desta autocaravana. Tenta novamente dentro de momentos.
+                </p>
+                {userRole === "root" && (
+                    <p className="fs-12 mb-0 mt-1">
+                        [root] Estado: error — verificar logs do worker (reiniciar após deploy de código novo).
                     </p>
-                    <p className="text-muted fs-12 mb-0">
-                        Não é um problema com os dados desta autocaravana. Tenta novamente dentro de momentos.
-                    </p>
-                    {userRole === "root" && (
-                        <p className="text-danger fs-12 mb-0 mt-1">
-                            [root] Estado: error — verificar logs do worker (reiniciar após deploy de código novo).
-                        </p>
-                    )}
-                </div>
-            </div>
-            <button
-                className="btn btn-sm btn-outline-secondary mt-2"
-                onClick={onRefresh}
-                disabled={refreshing}
-            >
+                )}
+            </Alert>
+            <button className="btn btn-sm btn-soft-secondary" onClick={onRefresh} disabled={refreshing}>
                 {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
             </button>
         </div>
@@ -207,8 +190,7 @@ export function MotorhomeSuccessBody({
 }) {
     const conf = CONFIDENCE_UI[aggregate.confidence] ?? CONFIDENCE_UI.none;
     const n = aggregate.comparables_count;
-    const isIndicative = aggregate.confidence === "low"; // n=1-2 (ou dispersão alta)
-    const layout = aggregate.funnel?.layout ?? null;
+    const isIndicative = aggregate.confidence === "low";
 
     const p25 = aggregate.prices.p25 ?? null;
     const p75 = aggregate.prices.p75 ?? null;
@@ -217,29 +199,19 @@ export function MotorhomeSuccessBody({
     return (
         <div>
             {isIndicative && (
-                <div
-                    className="mb-3 px-3 py-2 rounded-3 fs-13 bg-warning-subtle text-warning d-flex align-items-start gap-2"
-                    style={{ border: "1px solid #f7b84b33" }}
-                >
-                    <i className="ri-error-warning-line mt-1" />
+                <Alert color="warning" className="fs-13 d-flex align-items-start gap-2">
+                    <i className="ri-error-warning-line fs-16 mt-1" />
                     <span>
                         Valor indicativo — apenas {n} {n === 1 ? "anúncio comparável" : "anúncios comparáveis"} nesta
                         janela. Interpretar com precaução.
                     </span>
-                </div>
+                </Alert>
             )}
 
             {/* Essencial em destaque: preço (mediana) + confiança */}
             <div className="row g-3 mb-3">
                 <div className="col-sm-7">
-                    <div
-                        style={{
-                            padding: "14px 16px",
-                            borderRadius: "12px",
-                            border: "1px solid var(--vz-border-color)",
-                            background: "var(--vz-tertiary-bg)",
-                        }}
-                    >
+                    <div className="border rounded p-3 h-100" style={{ background: "var(--vz-tertiary-bg)" }}>
                         <span className="text-muted fs-12 d-block mb-1">
                             {isIndicative ? "Preço indicativo (mediana)" : "Preço de mercado (mediana)"}
                         </span>
@@ -254,30 +226,13 @@ export function MotorhomeSuccessBody({
                     </div>
                 </div>
                 <div className="col-sm-5">
-                    <div
-                        className={conf.bg}
-                        style={{
-                            padding: "14px 16px",
-                            borderRadius: "12px",
-                            border: `1px solid ${conf.border}`,
-                            height: "100%",
-                        }}
-                    >
-                        <span className="text-muted fs-12 d-block mb-1">Fiabilidade</span>
-                        <div className={`d-flex align-items-center gap-2 fw-semibold fs-15 ${conf.text}`}>
-                            <span
-                                style={{
-                                    width: 10,
-                                    height: 10,
-                                    borderRadius: "50%",
-                                    background: conf.dot,
-                                    display: "inline-block",
-                                    flexShrink: 0,
-                                }}
-                            />
+                    <div className="border rounded p-3 h-100" style={{ background: "var(--vz-tertiary-bg)" }}>
+                        <span className="text-muted fs-12 d-block mb-2">Fiabilidade</span>
+                        <span className={`badge bg-${conf.color}-subtle text-${conf.color} fs-13 px-2 py-1`}>
+                            <i className="ri-shield-check-line align-bottom me-1" />
                             {conf.label}
-                        </div>
-                        <span className="text-muted fs-12 d-block mt-1">
+                        </span>
+                        <span className="text-muted fs-12 d-block mt-2">
                             {n} {n === 1 ? "anúncio" : "anúncios"} usados
                         </span>
                     </div>
@@ -285,22 +240,17 @@ export function MotorhomeSuccessBody({
             </div>
 
             {/* Selo tipologia + toggle detalhe */}
-            <div
-                className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2"
-                style={{ borderTop: "1px solid var(--vz-border-color)" }}
-            >
-                <TypologySeal layout={layout} />
-                <button
-                    className="btn btn-link btn-sm p-0 text-decoration-none fs-12"
-                    onClick={onToggleComparables}
-                >
-                    {showComparables ? "Ocultar detalhe ↑" : "Ver detalhe ↓"}
+            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2 border-top">
+                <TypologySeal />
+                <button className="btn btn-soft-secondary btn-sm" onClick={onToggleComparables}>
+                    <i className={`align-bottom me-1 ${showComparables ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}`} />
+                    {showComparables ? "Ocultar detalhe" : "Ver detalhe"}
                 </button>
             </div>
 
-            {showComparables && (
+            <Collapse isOpen={showComparables}>
                 <MotorhomeDetail aggregate={aggregate} hasBand={hasBand} p25={p25} p75={p75} />
-            )}
+            </Collapse>
         </div>
     );
 }
@@ -319,8 +269,7 @@ function MotorhomeDetail({
     const outliers = aggregate.outliers_removed ?? 0;
 
     return (
-        <div className="mt-3" style={{ borderTop: "1px solid var(--vz-border-color)", paddingTop: 12 }}>
-            {/* Banda de preços (só n>=4) */}
+        <div className="mt-3 pt-3 border-top">
             {hasBand ? (
                 <div className="mb-3">
                     <span className="text-muted fs-12 d-block mb-1">Banda central de preços</span>
@@ -356,85 +305,76 @@ function MotorhomeComparablesList({
     searchUrl: string | null;
 }) {
     if (comparables.length === 0) {
-        return (
-            <p className="text-muted fs-13 mb-0">
-                Sem comparáveis para apresentar.
-            </p>
-        );
+        return <p className="text-muted fs-13 mb-0">Sem comparáveis para apresentar.</p>;
     }
 
     return (
-        <div className="d-flex flex-column gap-2">
-            {comparables.map((item, i) => {
-                const sim = item.similarity_score;
-                const simPct = sim !== null && sim !== undefined ? Math.round(sim * 100) : null;
-                const scrapedAt = formatDate(item.scraped_at);
+        <div className="table-responsive">
+            <Table className="table-sm align-middle mb-0">
+                <thead className="text-muted">
+                    <tr>
+                        <th scope="col">Autocaravana</th>
+                        <th scope="col" className="text-end">Preço</th>
+                        <th scope="col" className="text-end">Semelhança</th>
+                        <th scope="col" className="text-end">Visto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {comparables.map((item, i) => {
+                        const sim = item.similarity_score;
+                        const simPct = sim !== null && sim !== undefined ? Math.round(sim * 100) : null;
+                        const scrapedAt = formatDate(item.scraped_at);
 
-                // Cilindrada / comprimento / dormidas visíveis para o humano
-                // comparar (o comprimento não é critério do motor, mas ajuda).
-                const chips = [
-                    item.year ? String(item.year) : null,
-                    item.beds != null ? `${item.beds} ${item.beds === 1 ? "cama" : "camas"}` : null,
-                    item.displacement != null ? `${item.displacement} cc` : null,
-                    item.length != null ? `${item.length.toLocaleString("pt-PT")} m` : null,
-                    item.region ?? null,
-                    labelOf(item.source, MARKET_SOURCE_LABELS),
-                ].filter(Boolean).join(" · ");
+                        const chips = [
+                            item.year ? String(item.year) : null,
+                            item.beds != null ? `${item.beds} ${item.beds === 1 ? "cama" : "camas"}` : null,
+                            item.displacement != null ? `${item.displacement} cc` : null,
+                            item.length != null ? `${item.length.toLocaleString("pt-PT")} m` : null,
+                            item.region ?? null,
+                            labelOf(item.source, MARKET_SOURCE_LABELS),
+                        ].filter(Boolean).join(" · ");
 
-                const hasUrl = !!item.url;
-                const href = hasUrl ? item.url : (searchUrl ?? "https://www.standvirtual.com/autocaravanas");
+                        const hasUrl = !!item.url;
+                        const href = hasUrl ? item.url : (searchUrl ?? "https://www.standvirtual.com/autocaravanas");
 
-                return (
-                    <div
-                        key={i}
-                        className="d-flex align-items-start justify-content-between gap-3 rounded-3 px-3 py-2"
-                        style={{ background: "var(--vz-tertiary-bg)", border: "1px solid var(--vz-border-color)" }}
-                    >
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                            <div className="d-flex align-items-center gap-2">
-                                <span
-                                    className="fw-semibold fs-13 text-body"
-                                    style={{
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                        maxWidth: "100%",
-                                    }}
-                                    title={item.title}
-                                >
-                                    {item.title}
-                                </span>
-                                <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-muted fs-11 text-decoration-none flex-shrink-0"
-                                    style={{ lineHeight: 1, cursor: "pointer" }}
-                                    aria-label={hasUrl ? "Ver anúncio" : "Pesquisar semelhantes no StandVirtual"}
-                                >
-                                    ↗
-                                </a>
-                            </div>
-                            {chips && <span className="text-muted fs-12">{chips}</span>}
-                        </div>
-
-                        <div className="text-end flex-shrink-0">
-                            <div className="fw-semibold fs-14">{formatCurrency(item.price)}</div>
-                            <div className="d-flex align-items-center justify-content-end gap-2 mt-1">
-                                {simPct !== null && (
-                                    <span
-                                        className="badge bg-light text-muted fs-11"
-                                        title="Grau de semelhança com a tua autocaravana (ano, cilindrada, dormidas)"
-                                    >
-                                        {simPct}% semelhante
-                                    </span>
-                                )}
-                                {scrapedAt && <span className="text-muted fs-11">{scrapedAt}</span>}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })}
+                        return (
+                            <tr key={i}>
+                                <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <span className="fw-semibold text-body text-truncate" style={{ maxWidth: 240 }} title={item.title}>
+                                            {item.title}
+                                        </span>
+                                        <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-muted flex-shrink-0"
+                                            aria-label={hasUrl ? "Ver anúncio" : "Pesquisar semelhantes no StandVirtual"}
+                                        >
+                                            <i className="ri-external-link-line" />
+                                        </a>
+                                    </div>
+                                    {chips && <span className="text-muted fs-12">{chips}</span>}
+                                </td>
+                                <td className="text-end fw-semibold">{formatCurrency(item.price)}</td>
+                                <td className="text-end">
+                                    {simPct !== null ? (
+                                        <span
+                                            className="badge bg-light text-muted"
+                                            title="Grau de semelhança com a tua autocaravana (ano, cilindrada, dormidas)"
+                                        >
+                                            {simPct}%
+                                        </span>
+                                    ) : (
+                                        <span className="text-muted">—</span>
+                                    )}
+                                </td>
+                                <td className="text-end text-muted fs-12">{scrapedAt ?? "—"}</td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </Table>
         </div>
     );
 }

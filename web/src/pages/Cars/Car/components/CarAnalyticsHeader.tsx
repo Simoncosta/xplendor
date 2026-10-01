@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Card, CardBody } from "reactstrap";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import { formatIpsBadge } from "helpers/ips";
 
@@ -14,22 +15,23 @@ interface Props {
 export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Props) {
     const ipsBadge = ips ? formatIpsBadge(ips.score, ips.classification) : null;
 
+    // Agora é um <Card> Velzon (surface + sombra + raio nativos, como a Ficha).
+    // Porque a sombra anterior "não pegava": era um <div> à mão com a sombra
+    // global, que em dark é praticamente invisível e, com o card-bg só um tom
+    // acima do fundo, lia-se a flutuar. O <Card> dá o mesmo peso dos cards da
+    // Ficha; mantemos uma borda explícita (o .card do Velzon tem border 0) para
+    // garantir a separação no tema ESCURO, onde a sombra não ajuda.
     return (
-        <div
+        <Card
+            className="mb-0"
             style={{
                 position: "sticky",
                 top: "72px",
                 zIndex: 10,
                 border: "1px solid var(--vz-border-color)",
-                borderRadius: "18px",
-                background: "var(--vz-card-bg)",
-                // Sticky: o conteúdo passa por baixo. Sem separação cola-se ao
-                // fundo. Sombra separa no tema claro; a borda (acima) separa no
-                // escuro, onde a sombra não se vê. Token GLOBAL (--vz-box-shadow).
-                boxShadow: "var(--vz-box-shadow)",
             }}
         >
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-3" style={{ padding: "16px 18px" }}>
+            <CardBody className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div style={{ minWidth: 0 }}>
                     <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
                         <h5 className="mb-0 fw-semibold text-truncate" style={{ minWidth: 0 }}>
@@ -103,7 +105,7 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                         <span className="d-none d-md-inline ms-1">Editar viatura</span>
                     </Link>
                 </div>
-            </div>
-        </div>
+            </CardBody>
+        </Card>
     );
 }

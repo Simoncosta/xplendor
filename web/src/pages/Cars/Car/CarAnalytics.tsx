@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
-import { Col, Container, Row } from "reactstrap";
+import { Card, CardBody, Col, Container, Row } from "reactstrap";
 import { createSelector } from "reselect";
 import { ToastContainer } from "react-toastify";
 import ReactApexChart from "react-apexcharts";
@@ -20,19 +20,9 @@ import {
     ipsClassBadge, timelineDesc,
 } from "./helpers/CarAnalyticsData";
 
-const sectionStyle = {
-    padding: "16px 18px",
-    border: "1px solid var(--vz-border-color)",
-    borderRadius: "16px",
-    background: "var(--vz-card-bg)",
-    // Dois mecanismos de separação do fundo, um por tema:
-    //   · CLARO: a sombra levanta o card (--vz-box-shadow é o token GLOBAL do
-    //     :root; --vz-card-box-shadow só existe dentro do seletor .card, por
-    //     isso numa <section> ficava vazio e não renderizava).
-    //   · ESCURO: a sombra quase não se vê → a borda (--vz-border-color) é o
-    //     que separa. Por isso mantemos os dois.
-    boxShadow: "var(--vz-box-shadow)",
-};
+// As secções (Gráfico/Tabela/Timeline) passaram a usar o componente <Card> do
+// Velzon (como a Ficha) — surface + sombra + raio + dark-mode nativos. Deixou
+// de existir o sectionStyle inline (a "section falsa" com a sombra inválida).
 
 const selectCarState = (state: any) => state.Car;
 const selectCarAnalyticsViewModel = createSelector(
@@ -156,7 +146,7 @@ export default function CarAnalytics() {
                                         </div>
                                     </div>
 
-                                    <section style={sectionStyle}>
+                                    <Card className="mb-0"><CardBody>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -199,9 +189,9 @@ export default function CarAnalytics() {
                                         </Col>
                                     </Row>
                                 )}
-                                    </section>
+                                    </CardBody></Card>
 
-                                    <section style={sectionStyle}>
+                                    <Card className="mb-0"><CardBody>
                                 <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
                                     <div>
                                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
@@ -242,9 +232,9 @@ export default function CarAnalytics() {
                                         </tbody>
                                     </table>
                                 </div>
-                                    </section>
+                                    </CardBody></Card>
 
-                                    <section style={sectionStyle}>
+                                    <Card className="mb-0"><CardBody>
                                 <h6 className="fs-13 fw-semibold mb-3">
                                     <i className="ri-time-line me-2 text-primary" />
                                     Timeline de actividade
@@ -276,7 +266,7 @@ export default function CarAnalytics() {
                                         ))}
                                     </div>
                                 )}
-                                    </section>
+                                    </CardBody></Card>
                                 </div>
                             </ContactProbabilityPanel>
 
@@ -291,19 +281,14 @@ export default function CarAnalytics() {
 
 function Metric({ label, value }: { label: string; value: string | number }) {
     // Antes usava bg-light-subtle (#f9fbfc sobre body #f3f6f9 → contraste ~0).
-    // Agora é uma superfície de card real: fundo próprio + sombra (claro) +
-    // borda (escuro), tudo por token → levanta do fundo nos dois temas.
+    // Agora é um <Card> Velzon, igual à Ficha: surface + sombra + raio +
+    // dark-mode nativos → levanta do fundo nos dois temas.
     return (
-        <div
-            className="rounded-3 px-3 py-3"
-            style={{
-                background: "var(--vz-card-bg)",
-                border: "1px solid var(--vz-border-color)",
-                boxShadow: "var(--vz-box-shadow)",
-            }}
-        >
-            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>{label}</p>
-            <span className="fs-20 fw-bold">{value}</span>
-        </div>
+        <Card className="mb-0 h-100">
+            <CardBody className="px-3 py-3">
+                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>{label}</p>
+                <span className="fs-20 fw-bold">{value}</span>
+            </CardBody>
+        </Card>
     );
 }

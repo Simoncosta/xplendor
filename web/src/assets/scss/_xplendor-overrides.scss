@@ -24,3 +24,104 @@
     min-height: 100vh !important;
   }
 }
+
+// ───────────────────────────────────────────────────────
+// Polish Fase B — Tabs de navegação do carro (CarPageNav).
+//
+// Modelo "separadores/páginas abertas" sobre o nav-tabs do
+// Velzon, adaptado a navegação por ROTA (cada tab é um
+// <Link>). O separador ACTIVO salta à frente como uma página
+// aberta: surface de card, cantos de topo arredondados e
+// relevo. Dois mecanismos por tema: sombra (claro) + borda
+// (escuro, onde a sombra não se vê). Só tokens.
+// ───────────────────────────────────────────────────────
+
+.nav-tabs-custom-pages {
+  border-bottom: 1px solid var(--vz-border-color);
+  gap: 4px;
+
+  .nav-link {
+    border: 1px solid transparent;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    margin-bottom: -1px;
+    color: var(--vz-secondary-color);
+    padding: 0.5rem 0.9rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover:not(.active) {
+      background-color: var(--vz-tertiary-bg);
+      border-color: transparent;
+      color: var(--vz-body-color);
+    }
+
+    // O separador activo: página aberta, à frente, com relevo.
+    &.active {
+      background-color: var(--vz-card-bg);
+      color: var(--vz-primary);
+      font-weight: $font-weight-semibold;
+      border-color: var(--vz-border-color);
+      border-bottom-color: var(--vz-card-bg); // "liga-se" ao conteúdo
+      box-shadow: 0 -2px 6px #38414a1f;       // relevo no tema claro
+    }
+  }
+}
+
+// ───────────────────────────────────────────────────────
+// Polish Fase C — Impersonation: bolinha flutuante no canto
+// ESQUERDO (espelho da SupportFab à direita). Só apresentação;
+// a lógica vive no ImpersonationBanner.tsx (inalterada).
+//
+// Alinha-se à ESQUERDA DO CONTEÚDO (offset pela largura do
+// menu lateral, usando os mesmos tokens/seletores que o Velzon
+// aplica ao .main-content) para NÃO sobrepor o menu. No mobile
+// (<768px) o menu está escondido → encosta a left:24px.
+// ───────────────────────────────────────────────────────
+
+.impersonation-fab-wrap {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;                 // base (mobile: menu escondido)
+  z-index: 1031;             // acima da SupportFab (1030), abaixo dos modais (1050)
+}
+
+@media (min-width: 768px) {
+  // Desktop: encosta à esquerda do conteúdo, por tamanho de sidebar.
+  :is([data-layout="vertical"], [data-layout="semibox"]) .impersonation-fab-wrap {
+    left: calc(var(--vz-vertical-menu-width) + 16px);
+  }
+  :is([data-layout="vertical"], [data-layout="semibox"])[data-sidebar-size="md"] .impersonation-fab-wrap {
+    left: calc(var(--vz-vertical-menu-width-md) + 16px);
+  }
+  :is([data-layout="vertical"], [data-layout="semibox"]):is([data-sidebar-size="sm"], [data-sidebar-size="sm-hover"]) .impersonation-fab-wrap {
+    left: calc(var(--vz-vertical-menu-width-sm) + 16px);
+  }
+}
+
+.impersonation-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--vz-card-bg);   // anel que destaca em claro E escuro
+  background: var(--vz-danger);
+  color: #fff;
+  font-size: 24px;
+  box-shadow: var(--vz-box-shadow-lg);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+
+  &:hover { transform: scale(1.05); }
+}
+
+.impersonation-pop {
+  position: absolute;
+  bottom: 64px;              // acima da bolinha
+  left: 0;
+  width: 260px;
+  max-width: calc(100vw - 48px);
+  box-shadow: var(--vz-box-shadow-lg);
+  border: 1px solid var(--vz-border-color);
+}

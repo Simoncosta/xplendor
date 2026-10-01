@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Progress, Spinner } from "reactstrap";
+import { Alert, Card, CardBody, CardHeader, Collapse, Progress, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import type {
     MarketAggregate,
@@ -188,11 +188,12 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
     };
 
     return (
-        <section style={sectionStyle}>
-            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-3">
-                <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>
+        <Card className="mb-0">
+            <CardHeader className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                <h6 className="card-title mb-0 fw-semibold">
+                    <i className="ri-line-chart-line align-bottom me-1 text-primary" />
                     Posição no mercado
-                </p>
+                </h6>
                 {(pollTimedOut || (aggregate && TERMINAL_STATUSES.includes(aggregate.status))) && (() => {
                     // MS2.g item 2 — disabled quando preço efectivo é null/≤0.
                     // Sem preço interno, o degrau 5 da cascata fica matematicamente
@@ -206,37 +207,39 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                         : undefined;
                     return (
                         <button
-                            className="btn btn-sm btn-outline-secondary py-1 px-2 fs-12"
+                            className="btn btn-sm btn-soft-primary"
                             onClick={handleRefresh}
                             disabled={refreshing || noPrice}
                             title={disabledReason}
                         >
                             {refreshing
                                 ? <><Spinner size="sm" className="me-1" />A actualizar</>
-                                : "↻ Actualizar agora"}
+                                : <><i className="ri-refresh-line align-bottom me-1" />Actualizar agora</>}
                         </button>
                     );
                 })()}
-            </div>
+            </CardHeader>
 
-            {loadingInitial
-                ? <LoadingState />
-                : networkError
-                    ? <NetworkErrorState onRetry={retryFetch} />
-                    : <Body
-                        aggregate={aggregate}
-                        refreshing={refreshing}
-                        showComparables={showComparables}
-                        onToggleComparables={() => setShowComparables((v) => !v)}
-                        onRefresh={handleRefresh}
-                        pollAttempts={pollAttempts}
-                        pollTimedOut={pollTimedOut}
-                        userRole={userRole}
-                        companyId={companyId}
-                        carId={carId}
-                    />
-            }
-        </section>
+            <CardBody>
+                {loadingInitial
+                    ? <LoadingState />
+                    : networkError
+                        ? <NetworkErrorState onRetry={retryFetch} />
+                        : <Body
+                            aggregate={aggregate}
+                            refreshing={refreshing}
+                            showComparables={showComparables}
+                            onToggleComparables={() => setShowComparables((v) => !v)}
+                            onRefresh={handleRefresh}
+                            pollAttempts={pollAttempts}
+                            pollTimedOut={pollTimedOut}
+                            userRole={userRole}
+                            companyId={companyId}
+                            carId={carId}
+                        />
+                }
+            </CardBody>
+        </Card>
     );
 }
 
@@ -393,9 +396,10 @@ function Body({
     return (
         <div>
             {isLowConfidence && (
-                <div className="mb-3 px-3 py-2 rounded-3 fs-13 bg-warning-subtle text-warning" style={{ border: "1px solid #ffc10720" }}>
+                <Alert color="warning" className="fs-13 d-flex align-items-center gap-2">
+                    <i className="ri-error-warning-line fs-16" />
                     Análise baseada em poucos dados — interpretar com precaução.
-                </div>
+                </Alert>
             )}
 
             <div className="row g-3 mb-3">
@@ -431,10 +435,7 @@ function Body({
                 </div>
             </div>
 
-            <div
-                className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2"
-                style={{ borderTop: "1px solid #eef0f2" }}
-            >
+            <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2 border-top">
                 <div>
                     <div className="text-muted fs-12">
                         {/* MS2.f — atribuição da fonte:
@@ -482,20 +483,21 @@ function Body({
                     )}
                 </div>
                 <button
-                    className="btn btn-link btn-sm p-0 text-decoration-none fs-12"
+                    className="btn btn-soft-secondary btn-sm"
                     onClick={onToggleComparables}
                 >
-                    {showComparables ? "Ocultar comparáveis ↑" : "Ver comparáveis ↓"}
+                    <i className={`align-bottom me-1 ${showComparables ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}`} />
+                    {showComparables ? "Ocultar comparáveis" : "Ver comparáveis"}
                 </button>
             </div>
 
-            {showComparables && (
+            <Collapse isOpen={showComparables}>
                 <ComparablesList
                     comparables={aggregate.top_comparables}
                     effectivePrice={aggregate.comparison.car_price}
                     searchUrl={aggregate.search_url}
                 />
-            )}
+            </Collapse>
         </div>
     );
 }
@@ -643,15 +645,11 @@ function MetricBox({
     hint?: string;
     badge?: { label: string; className: string };
 }) {
+    // Bloco de KPI com utilitários Velzon (border = var(--vz-border-color),
+    // bg tertiary por token) — sem cores hardcoded. h-100 iguala a altura das
+    // 3 colunas.
     return (
-        <div
-            style={{
-                padding: "12px 14px",
-                borderRadius: "12px",
-                border: "1px solid #eef0f2",
-                background: "var(--vz-tertiary-bg)",
-            }}
-        >
+        <div className="border rounded p-3 h-100" style={{ background: "var(--vz-tertiary-bg)" }}>
             <span className="text-muted fs-12 d-block mb-1">{label}</span>
             <div className="fw-semibold fs-18 text-body">{value}</div>
             {hint && <span className="text-muted fs-11">{hint}</span>}
@@ -723,13 +721,3 @@ function clearStoredAggregateId(carId: number): void {
         // ignore
     }
 }
-
-const sectionStyle: React.CSSProperties = {
-    padding: "16px 18px",
-    border: "1px solid var(--vz-border-color)",
-    borderRadius: "16px",
-    background: "var(--vz-card-bg)",
-    // Levanta o card do fundo cinzento da página, igual aos cards reactstrap
-    // (mesmo token de sombra do tema → seguro em claro E escuro, nunca branco).
-    boxShadow: "var(--vz-card-box-shadow)",
-};

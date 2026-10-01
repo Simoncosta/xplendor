@@ -1,5 +1,7 @@
+import classnames from "classnames";
 import { Link, useParams } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { Nav, NavItem, NavLink } from "reactstrap";
 
 type NavPage = "analytics" | "intelligence" | "ficha" | "documents";
 
@@ -17,55 +19,47 @@ export default function CarPageNav({ active }: { active: NavPage }) {
     const metrics = carAnalytics?.metrics;
     const ips = carAnalytics?.potential_score;
 
+    // NOTA sobre o "Custom Nav" chanfrado do Velzon (.nav-customs): esse estilo
+    // foi desenhado para tabs de CONTEÚDO curtas num card de largura fixa —
+    // usa float:right (inverte a ordem), overflow:hidden (corta no telemóvel) e
+    // cunhas ::before/::after com skew dimensionadas para rótulos curtos. Com os
+    // nossos rótulos longos + badges + navegação por ROTA + scroll no telemóvel
+    // partia-se. Usamos o modelo robusto mais próximo de "separadores/páginas
+    // abertas": o nav-tabs clássico do Velzon (o separador activo salta à frente
+    // como uma página aberta), com cada tab a ser um <Link> de rota.
     return (
-        <div
-            style={{
-                border: "1px solid var(--vz-border-color)",
-                borderRadius: "14px",
-                background: "var(--vz-card-bg)",
-                // Sombra (separa no claro) + borda (separa no escuro). Token
-                // GLOBAL --vz-box-shadow (o --vz-card-* só vive dentro de .card).
-                boxShadow: "var(--vz-box-shadow)",
-                padding: "6px",
-                display: "flex",
-                gap: "4px",
-                flexWrap: "nowrap",
-                overflowX: "auto",
-                minWidth: 0,
-            }}
-        >
-            {pages.map((p) => {
-                const isActive = p.key === active;
-                const context = getPageContext(p.key, {
-                    views: Number(metrics?.views || 0),
-                    ipsScore: ips?.score,
-                });
+        <div style={{ overflowX: "auto" }}>
+            <Nav tabs className="nav-tabs-custom-pages flex-nowrap" style={{ minWidth: "max-content" }}>
+                {pages.map((p) => {
+                    const isActive = p.key === active;
+                    const context = getPageContext(p.key, {
+                        views: Number(metrics?.views || 0),
+                        ipsScore: ips?.score,
+                    });
 
-                return (
-                    <Link
-                        key={p.key}
-                        to={`/cars/${id}/${p.key}`}
-                        className="d-inline-flex align-items-center gap-2 px-3 py-2 rounded-3 text-decoration-none fs-13"
-                        style={{
-                            fontWeight: isActive ? 600 : 400,
-                            // Tab inativa por token (antes #878a99 fixo, que não
-                            // acompanha o tema). --vz-secondary-color adapta-se.
-                            color: isActive ? "var(--vz-primary)" : "var(--vz-secondary-color)",
-                            background: isActive ? "var(--vz-tertiary-bg)" : "transparent",
-                            border: isActive ? "1px solid var(--vz-border-color)" : "1px solid transparent",
-                            flexShrink: 0,
-                        }}
-                    >
-                        <i className={p.icon} />
-                        {p.label}
-                        {context && (
-                            <span className={`badge rounded-pill px-2 py-1 fs-11 ${context.className}`}>
-                                {context.label}
-                            </span>
-                        )}
-                    </Link>
-                );
-            })}
+                    return (
+                        <NavItem key={p.key}>
+                            <NavLink
+                                tag={Link}
+                                to={`/cars/${id}/${p.key}`}
+                                active={isActive}
+                                className={classnames(
+                                    "d-inline-flex align-items-center gap-2 text-nowrap",
+                                    { "text-body": !isActive }
+                                )}
+                            >
+                                <i className={p.icon} />
+                                {p.label}
+                                {context && (
+                                    <span className={`badge rounded-pill px-2 py-1 fs-11 ${context.className}`}>
+                                        {context.label}
+                                    </span>
+                                )}
+                            </NavLink>
+                        </NavItem>
+                    );
+                })}
+            </Nav>
         </div>
     );
 }
