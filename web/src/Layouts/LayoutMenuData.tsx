@@ -240,6 +240,7 @@ const Navdata = () => {
                 { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias" },
                 { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores" },
                 { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades" },
+                { id: "pingwin-condicoes-pagamento", label: "Condições de Pagamento", link: "/restauracao/condicoes-pagamento", parentId: "cadastros", module: "restauracao_condicoes_pagamento" },
             ],
         },
         {

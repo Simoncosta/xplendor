@@ -47,7 +47,8 @@ CLIENT_KEYS = ["auth_url", "api_url", "frontend_url", "database", "app_version",
                "username", "password", "report_id", "stores"]
 
 # Chaves opcionais que o construtor aceita (defaults no cliente).
-OPTIONAL_CLIENT = ["application", "app_grupopie", "units_url", "units_port", "product_url", "product_port"]
+OPTIONAL_CLIENT = ["application", "app_grupopie", "units_url", "units_port", "product_url", "product_port",
+                   "paycond_url", "paycond_port"]
 
 _SESSIONID_RE = re.compile(r"(sessionid=)[^&\s\"']+", re.IGNORECASE)
 
@@ -108,6 +109,22 @@ def run(cfg: dict) -> dict:
             docs = client.fetch_document_configs()
             return {"ok": True, "mode": "documents", "documents": docs}
 
+        if mode == "documentconfig_probe":
+            # PROBE (só leitura, D0): resumo estrutural de UM documento por id.
+            doc_id = str(cfg.get("doc_id") or "")
+            if not doc_id:
+                return {"ok": False, "error": "doc_id em falta (id do documento a sondar)."}
+            form = client.probe_documentconfig(doc_id)
+            return {"ok": True, "mode": "documentconfig_probe", "form": form}
+
+        if mode == "documents_rich":
+            # READ-ONLY (D0): config COMPLETA de cada documento (maindataset + options +
+            # 14 filhas + additionalfields). dataset_id da lista = PINGWIN_DOCS_DATASET_ID
+            # (default 1099511639239, o mesmo da lista básica).
+            dataset_id = cfg.get("docs_dataset_id") or "1099511639239"
+            documents = client.fetch_document_configs_rich(dataset_id)
+            return {"ok": True, "mode": "documents_rich", "documents": documents}
+
         if mode == "catalog":
             # READ-ONLY: catálogo de ARTIGOS (produtos) via browserdataset paginado.
             # O dataset_id do catálogo é por-instalação (capturado) → vem da config
@@ -121,6 +138,56 @@ def run(cfg: dict) -> dict:
             # NÃO aplica nada (nem os ativos): melhor não corrigir do que meio-corrigir.
             deleted_ids = client.fetch_catalog_deleted_ids(dataset_id)
             return {"ok": True, "mode": "catalog", "articles": articles, "deleted_ids": deleted_ids}
+
+        if mode == "paycond":
+            # READ-ONLY (Fatia 1): CONDIÇÕES DE PAGAMENTO. Lista (browserdataset, 8136) +
+            # detalhe por id (discount/days/tbdocs/additionalfields). O dataset_id é
+            # por-instalação (do HAR) → vem da config (PINGWIN_PAYCOND_DATASET_ID).
+            dataset_id = cfg.get("paycond_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "paycond_dataset_id em falta (definir PINGWIN_PAYCOND_DATASET_ID)."}
+            conditions = client.fetch_payment_conditions(dataset_id)
+            return {"ok": True, "mode": "paycond", "payment_conditions": conditions}
+
+        if mode == "create_paycond":
+            # ⚠️ ESCRITA (Fatia 2a): CRIAR condição de pagamento. NEW→MERGE→SAVE→CLOSE→
+            # confirmar por releitura. Ação deliberada (confirmada a montante). discount
+            # vai NÚMERO, days int. Aborta antes do commit se o passo 2 não der id final.
+            fields = cfg.get("paycond") or {}
+            tbdocs_unlinked = cfg.get("tbdocs_unlinked") or []
+            result = client.create_payment_condition(fields, tbdocs_unlinked)
+            return {"ok": bool(result.get("persisted")), "mode": "create_paycond", "result": result}
+
+        if mode == "update_paycond":
+            # ⚠️ ESCRITA (Fatia 2b): EDITAR condição ATIVA. Passo 1 abre o VIVO por id
+            # (matriz tbdocs real) → merge só das mudanças → MERGE→SAVE→CLOSE→confirmar.
+            # code NÃO muda; discount NÚMERO, days int. tbdocs_changes = [{docconfig_id, deleted}].
+            paycond_id = str(cfg.get("paycond_id") or "")
+            if not paycond_id:
+                return {"ok": False, "error": "paycond_id em falta (id da condição a editar)."}
+            fields = cfg.get("paycond") or {}
+            tbdocs_changes = cfg.get("tbdocs_changes") or []
+            result = client.update_payment_condition(paycond_id, fields, tbdocs_changes)
+            return {"ok": bool(result.get("persisted")), "mode": "update_paycond", "result": result}
+
+        if mode == "void_paycond":
+            # ⚠️ ESCRITA (Fatia 2c): ANULAR condição ATIVA (soft-delete, 1 POST sem body).
+            # Confirma por releitura (sai do STATE 0, entra no STATE 1). Só ativas.
+            paycond_id = str(cfg.get("paycond_id") or "")
+            if not paycond_id:
+                return {"ok": False, "error": "paycond_id em falta (id da condição a anular)."}
+            dataset_id = cfg.get("paycond_dataset_id")
+            if not dataset_id:
+                return {"ok": False, "error": "paycond_dataset_id em falta (confirmação por releitura)."}
+            result = client.void_payment_condition(paycond_id, dataset_id)
+            return {"ok": bool(result.get("voided_confirmed")), "mode": "void_paycond", "result": result}
+
+        if mode == "paycond_probe_new":
+            # PROBE SEGURO (só leitura): abre o form-novo do paycond e LÊ (sem commit).
+            # Para validar o Action do passo 1 e capturar a matriz-template. NÃO grava.
+            action = cfg.get("probe_action") or "NEW,GET,INFO"
+            form = client.probe_new_paycond_form(action)
+            return {"ok": True, "mode": "paycond_probe_new", "form": form}
 
         if mode == "families":
             # READ-ONLY: árvore de FAMÍLIAS (GET /family → family.maindataset). Um só

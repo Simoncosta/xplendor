@@ -140,6 +140,62 @@ class CompanyPingwinController extends Controller
         return ApiResponse::success(['queued' => true], 'A sincronizar documentos… serás notificado quando terminar.');
     }
 
+    /** Gatilho (Fase D0): sincroniza a config RICA dos documentos (fila; notifica no fim). */
+    public function syncDocumentsRich(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinDocumentConfigsRichJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar a config completa dos documentos… serás notificado quando terminar.');
+    }
+
+    /**
+     * Detalhe RICO de um documento (Fase D0, só leitura): a config completa do espelho —
+     * maindataset (via raw + _id-chave), 14 filhas, additionalfields e options. Resolve as
+     * condições de pagamento vinculadas (docconfig_paycond) cruzando com o espelho das
+     * Condições de Pagamento (nome + estado ativo). Torna visíveis as colunas JSON pesadas.
+     */
+    public function documentConfigDetail(int $companyId, string $externalId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $doc = \App\Models\PingwinDocumentConfig::where('company_id', $companyId)
+            ->where('external_id', $externalId)
+            ->first();
+        if (! $doc) {
+            return ApiResponse::error('Documento não encontrado.', 404);
+        }
+        $doc->makeVisible(\App\Models\PingwinDocumentConfig::RICH_JSON_COLUMNS);
+
+        // Cruzamento com as Condições de Pagamento já no espelho (nome + ativo).
+        $paycondLinks = [];
+        foreach (($doc->docconfig_paycond ?? []) as $link) {
+            $pid = (string) ($link['paycond_id'] ?? '');
+            if ($pid === '') {
+                continue;
+            }
+            $cond = \App\Models\PingwinPaymentCondition::where('company_id', $companyId)
+                ->where('pingwin_id', $pid)->first();
+            $paycondLinks[] = [
+                'paycond_id'  => $pid,
+                'description' => $link['description'] ?? ($cond->description ?? null),
+                'linked'      => (int) ($link['deleted'] ?? 0) === 0,     // deleted:0 = vinculada ao documento
+                'in_mirror'   => (bool) $cond,
+                'is_active'   => $cond ? (bool) $cond->is_active : null,   // estado da condição no espelho
+            ];
+        }
+
+        return ApiResponse::success([
+            'document'      => $doc,
+            'paycond_links' => $paycondLinks,
+        ], 'Detalhe do documento carregado.');
+    }
+
     /**
      * Artigos PingWin (Fase 1): lista da BD com paginação Laravel (EXIBIÇÃO —
      * aos poucos, page/perPage) + pesquisa (código/descrição) + filtros (família,
@@ -661,6 +717,247 @@ class CompanyPingwinController extends Controller
         \App\Jobs\SyncPingwinSuppliersJob::dispatch($companyId);
 
         return ApiResponse::success(['queued' => true], 'A sincronizar fornecedores… serás notificado quando terminar.');
+    }
+
+    /**
+     * Condições de Pagamento PingWin (Fatia 1): lista da BD com paginação Laravel
+     * (EXIBIÇÃO, page/perPage) + pesquisa (descrição/código) + filtro (estado
+     * ativo/inativo). Devolve última sincronização. Só leitura.
+     */
+    public function paymentConditions(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'page'    => ['nullable', 'integer', 'min:1'],
+            'perPage' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'search'  => ['nullable', 'string', 'max:120'],
+            'active'  => ['nullable', 'boolean'],
+        ]);
+        $perPage = (int) ($data['perPage'] ?? 20);
+
+        $base = \App\Models\PingwinPaymentCondition::where('company_id', $companyId);
+
+        $query = (clone $base)
+            ->when($data['search'] ?? null, function ($q, $s) {
+                $q->where(fn ($w) => $w->where('description', 'like', "%{$s}%")
+                    ->orWhere('code', 'like', "%{$s}%"));
+            })
+            ->when(array_key_exists('active', $data) && $data['active'] !== null,
+                fn ($q) => $q->where('is_active', (bool) $data['active']))
+            ->orderBy('code')->orderBy('description');
+
+        $lastSynced = (clone $base)->max('synced_at');
+
+        return ApiResponse::success([
+            'payment_conditions' => $query->paginate($perPage)->appends($request->query()),
+            'last_synced_at'     => $lastSynced ? Carbon::parse($lastSynced)->toIso8601String() : null,
+        ], 'Condições de pagamento carregadas.');
+    }
+
+    /** Gatilho: sincroniza as condições de pagamento PingWin (fila; notifica no fim). */
+    public function syncPaymentConditions(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        \App\Jobs\SyncPingwinPaymentConditionsJob::dispatch($companyId);
+
+        return ApiResponse::success(['queued' => true], 'A sincronizar condições de pagamento… serás notificado quando terminar.');
+    }
+
+    /**
+     * Template de documentos (tbdocs) para o modal de NOVA condição: a lista distinta
+     * de {docconfig_id, description, entitytype} das condições já espelhadas (todos os
+     * documentos existem em todas as condições; mudam só os deleted). Todos marcados por
+     * omissão no form novo. Só leitura.
+     */
+    public function paymentConditionDocsTemplate(int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $cond = \App\Models\PingwinPaymentCondition::where('company_id', $companyId)
+            ->whereNotNull('tbdocs')
+            ->orderByDesc('synced_at')
+            ->first();
+
+        $seen = [];
+        $docs = [];
+        foreach (($cond->tbdocs ?? []) as $d) {
+            $id = (string) ($d['docconfig_id'] ?? '');
+            if ($id === '' || isset($seen[$id])) {
+                continue;
+            }
+            $seen[$id] = true;
+            $docs[] = [
+                'docconfig_id' => $id,
+                'description'  => $d['description'] ?? null,
+                'entitytype'   => $d['entitytype'] ?? null,
+            ];
+        }
+
+        return ApiResponse::success(['documents' => $docs], 'Template de documentos carregado.');
+    }
+
+    /**
+     * ⚠️ ESCRITA (Fatia 2a): CRIAR uma condição de pagamento. Tenancy PRIMEIRO. Regista
+     * auditoria (pingwin_paycond_writes, a_criar) e despacha o job (worker). O espelho só
+     * é tocado após confirmação por releitura (no job). Devolve creation_id para polling.
+     */
+    public function createPaymentCondition(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $data = $request->validate([
+            'code'              => ['nullable', 'string', 'max:10'],
+            'description'       => ['required', 'string', 'max:50'],
+            'discount'          => ['nullable', 'numeric', 'min:0', 'max:100'],  // % (não cêntimos)
+            'days'              => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'tbdocs_unlinked'   => ['nullable', 'array'],
+            'tbdocs_unlinked.*' => ['string', 'max:64'],
+        ]);
+
+        $write = \App\Models\PingwinPaycondWrite::create([
+            'company_id'      => $companyId,
+            'user_id'         => Auth::id(),
+            'action'          => 'criar',
+            'code'            => $data['code'] ?? null,
+            'description'     => $data['description'],
+            'discount'        => $data['discount'] ?? 0,
+            'days'            => $data['days'] ?? 0,
+            'tbdocs_unlinked' => array_values($data['tbdocs_unlinked'] ?? []),
+            'status'          => 'a_criar',
+        ]);
+
+        \App\Jobs\CreatePingwinPaymentConditionJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $write->id, 'status' => 'a_criar'],
+            'A criar a condição de pagamento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /**
+     * ⚠️ ESCRITA (Fatia 2b): EDITAR uma condição de pagamento ATIVA. Tenancy PRIMEIRO.
+     * Só condições ATIVAS (is_active) do espelho desta empresa; o code NÃO muda. Regista
+     * auditoria (pingwin_paycond_writes, action=editar) e despacha o job (worker). O
+     * espelho só é tocado após confirmação por releitura (no job). O Python lê a matriz
+     * VIVA por id e aplica SÓ as mudanças (preservação de vínculos). Polling via creation.
+     */
+    public function updatePaymentCondition(Request $request, int $companyId, string $paycondId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $cond = \App\Models\PingwinPaymentCondition::where('company_id', $companyId)
+            ->where('pingwin_id', $paycondId)
+            ->first();
+        if (! $cond) {
+            return ApiResponse::error('Condição de pagamento não encontrada.', 404);
+        }
+        if (! $cond->is_active) {
+            // 2b é só para ATIVAS; reativar anulado é pós-2c.
+            return ApiResponse::error('Só é possível editar condições ativas.', 422);
+        }
+
+        $data = $request->validate([
+            'description'           => ['required', 'string', 'max:50'],
+            'discount'              => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'days'                  => ['nullable', 'integer', 'min:0', 'max:3650'],
+            'tbdocs_changes'        => ['nullable', 'array'],
+            'tbdocs_changes.*.docconfig_id' => ['required', 'string', 'max:64'],
+            'tbdocs_changes.*.deleted'      => ['required', 'integer', 'in:0,1'],
+        ]);
+
+        $write = \App\Models\PingwinPaycondWrite::create([
+            'company_id'     => $companyId,
+            'user_id'        => Auth::id(),
+            'action'         => 'editar',
+            'paycond_id'     => $paycondId,
+            'code'           => $cond->code,                 // inalterado (só para auditoria/alerta)
+            'description'    => $data['description'],
+            'discount'       => $data['discount'] ?? null,
+            'days'           => $data['days'] ?? null,
+            'tbdocs_changes' => array_values($data['tbdocs_changes'] ?? []),
+            'status'         => 'a_criar',
+        ]);
+
+        \App\Jobs\UpdatePingwinPaymentConditionJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $write->id, 'status' => 'a_criar'],
+            'A atualizar a condição de pagamento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /**
+     * ⚠️ ESCRITA (Fatia 2c): ANULAR uma condição de pagamento ATIVA (soft-delete). Tenancy
+     * PRIMEIRO. Só condições ATIVAS desta empresa (404 se não existe, 422 se já inativa).
+     * Regista auditoria (action=anular) e despacha o job (worker). O espelho só é marcado
+     * inativo após confirmação por releitura (STATE 1) no job. Polling via creation.
+     */
+    public function voidPaymentCondition(Request $request, int $companyId, string $paycondId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $cond = \App\Models\PingwinPaymentCondition::where('company_id', $companyId)
+            ->where('pingwin_id', $paycondId)
+            ->first();
+        if (! $cond) {
+            return ApiResponse::error('Condição de pagamento não encontrada.', 404);
+        }
+        if (! $cond->is_active) {
+            return ApiResponse::error('A condição já está inativa.', 422);
+        }
+
+        $write = \App\Models\PingwinPaycondWrite::create([
+            'company_id'  => $companyId,
+            'user_id'     => Auth::id(),
+            'action'      => 'anular',
+            'paycond_id'  => $paycondId,
+            'code'        => $cond->code,
+            'description' => $cond->description,
+            'status'      => 'a_criar',
+        ]);
+
+        \App\Jobs\VoidPingwinPaymentConditionJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['creation_id' => $write->id, 'status' => 'a_criar'],
+            'A anular a condição de pagamento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /** Polling do estado de uma escrita (criar|editar|anular) de condição de pagamento (a_criar|ok|erro). */
+    public function paymentConditionCreation(int $companyId, int $creationId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $write = \App\Models\PingwinPaycondWrite::where('company_id', $companyId)->find($creationId);
+        if (! $write) {
+            return ApiResponse::error('Criação não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'creation_id'   => $write->id,
+            'status'        => $write->status,
+            'code'          => $write->code,
+            'pingwin_id'    => $write->pingwin_id,
+            'error_message' => $write->error_message,
+            'description'   => $write->description,
+        ], 'Estado da criação.');
     }
 
     /**

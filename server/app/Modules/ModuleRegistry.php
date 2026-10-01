@@ -119,12 +119,18 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => ['pingwin'],
         ],
+        'restauracao_condicoes_pagamento' => [
+            'label' => 'Cadastros: Condições de Pagamento',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
     ];
 
-    /** As 8 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
+    /** As 9 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
     public const RESTAURANT_SECTIONS = [
         'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
         'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
+        'restauracao_condicoes_pagamento',
     ];
 
     /** Presets por ramo: um atalho que liga um conjunto (ajustável depois). */
@@ -135,6 +141,7 @@ class ModuleRegistry
             'marketing_analytics', 'support_tasks', 'pingwin',
             'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
             'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
+            'restauracao_condicoes_pagamento',
         ],
     ];
 

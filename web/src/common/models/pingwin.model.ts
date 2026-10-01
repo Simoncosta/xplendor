@@ -124,6 +124,42 @@ export interface PingwinDocumentConfig {
     fiscaltype_description: string | null;
     deleted: boolean;
     synced_at: string | null;
+    // Fase D0 (leitura rica) — só presentes no DETALHE (a lista é leve). Tudo opcional.
+    taxscenario_id?: string | null;
+    doctype_id?: string | null;
+    docfiscaltype_id?: string | null;
+    default_paycond_id?: string | null;
+    stock_signal?: string | null;
+    docseries_id?: string | null;
+    rich_synced_at?: string | null;
+    raw?: Record<string, any> | null;                 // maindataset (~50 campos, incl. _descr)
+    options?: Record<string, Array<Record<string, any>>> | null;
+    additionalfields_maindataset?: Array<Record<string, any>> | null;
+    additionalfields_storedataset?: Array<Record<string, any>> | null;
+    // 14 filhas (nome = chave do servidor; cada linha com deleted 0/1).
+    entitytype_docconfig?: Array<Record<string, any>> | null;
+    docconfig_detailstatus?: Array<Record<string, any>> | null;
+    default_detailstatus?: Array<Record<string, any>> | null;
+    docconfig_docmovreason?: Array<Record<string, any>> | null;
+    docconfig_docstatus?: Array<Record<string, any>> | null;
+    default_docsatatus?: Array<Record<string, any>> | null;
+    docconfig_docaccount?: Array<Record<string, any>> | null;   // tem credit/debit por linha
+    docconfig_local?: Array<Record<string, any>> | null;
+    docconfig_import?: Array<Record<string, any>> | null;
+    docconfig_paymethod?: Array<Record<string, any>> | null;
+    docconfig_docreference?: Array<Record<string, any>> | null;
+    docconfig_paycond?: Array<Record<string, any>> | null;      // traz paycond_id
+    userrole_docconfig?: Array<Record<string, any>> | null;
+    store_docconfig?: Array<Record<string, any>> | null;
+}
+
+/** Ligação resolvida documento→condição de pagamento (detalhe rico). */
+export interface PingwinDocPaycondLink {
+    paycond_id: string;
+    description: string | null;
+    linked: boolean;      // deleted:0 = vinculada ao documento
+    in_mirror: boolean;   // existe em pingwin_payment_conditions
+    is_active: boolean | null;
 }
 
 /** Artigo (produto) do catálogo PingWin, só leitura. Preços em CÊNTIMOS inteiros. */
@@ -199,6 +235,28 @@ export interface PingwinFamilyNode {
 }
 
 /** Paginador do Laravel (paginate()) — página de EXIBIÇÃO (aos poucos). */
+/** Documento vinculado a uma condição de pagamento (filho tbdocs do PingWin). */
+export interface PingwinPaymentConditionDoc {
+    docconfig_id?: string | number | null;
+    description?: string | null;
+    entitytype?: string | null;   // Cliente / Fornecedor / Armazém / Empregado
+    deleted?: boolean | number | null;
+    [key: string]: unknown;
+}
+
+/** Condição de pagamento do PingWin (paycond), só leitura. discount em % (não cêntimos). */
+export interface PingwinPaymentCondition {
+    id: number;
+    pingwin_id: string;
+    code: string | null;
+    description: string | null;
+    discount: string | null;   // percentagem (decimal:2 → string, ex.: "2.50")
+    days: number | null;        // dias de vencimento
+    is_active: boolean;
+    tbdocs: PingwinPaymentConditionDoc[] | null;
+    synced_at: string | null;
+}
+
 export interface LaravelPaginator<T> {
     data: T[];
     current_page: number;

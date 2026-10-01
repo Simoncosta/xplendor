@@ -84,6 +84,7 @@ return [
         'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores (Yuko: 1099511639262)
         'catalog_dataset_id' => env('PINGWIN_CATALOG_DATASET_ID', ''), // dataset (browserdataset) do catálogo de artigos — fetch_catalog (Yuko: 1099511639254)
         'suppliers_dataset_id' => env('PINGWIN_SUPPLIERS_DATASET_ID', ''), // dataset (browserdataset) de fornecedores — fetch_suppliers (Yuko: 1099511639252)
+        'paycond_dataset_id' => env('PINGWIN_PAYCOND_DATASET_ID', ''), // dataset (browserdataset) de condições de pagamento — fetch_payment_conditions (Yuko: 1099511639195)
         // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
         // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
         'units_url' => env('PINGWIN_UNITS_URL', ''),

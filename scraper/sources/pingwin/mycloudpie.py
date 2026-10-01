@@ -136,6 +136,8 @@ class MyCloudPieClient:
         units_port: str = "8138",
         product_url: str = "",
         product_port: str = "8134",
+        paycond_url: str = "",
+        paycond_port: str = "",
     ):
         self.auth_url = auth_url.rstrip("/")
         self.api_url = api_url.rstrip("/")
@@ -151,6 +153,12 @@ class MyCloudPieClient:
         # numa ÚNICA sessão/porta (o mesmo mecanismo por-porta das Unidades).
         self.product_url = product_url.rstrip("/") if product_url else ""
         self.product_port = str(product_port or "8134")
+        # ⚠️ CONDIÇÕES DE PAGAMENTO (paycond, Fatia 1 READ-ONLY). Default: MESMA porta
+        # da sessão principal (api_url = 8136, igual ao browserdataset de stores/
+        # catálogo/fornecedores — confirmado: auth_url e api_url são :8136). Overridable
+        # (paycond_url/paycond_port) caso uma instalação sirva o paycond noutra porta.
+        self.paycond_url = paycond_url.rstrip("/") if paycond_url else ""
+        self.paycond_port = str(paycond_port or "")
         self.username = username
         self.password = password
         self.report_id = report_id
@@ -561,6 +569,187 @@ class MyCloudPieClient:
         log.info(f"Tipos de documento: {len(docs)}")
         return docs
 
+    # ============================ DOCUMENTCONFIG — LEITURA RICA (Fase D0) ============================
+    # READ-ONLY. Lista (browserdataset, igual ao fetch_document_configs) + abre cada documento
+    # por id (OPEN,GET,INFO → CLOSE) trazendo numa só chamada: maindataset (~50 campos),
+    # OPTIONS dos selects, 14 TABELAS FILHAS e additionalfields. Molde: _paycond_open (leitura).
+    # Reusa o transporte (porta 8136, _paycond_base/_paycond_headers). NÃO abre sessão de
+    # escrita (o passo additionalfields.storedataset que gera ObjectID de escrita é da D1).
+    _DOCCONFIG_RICH_DATASETS = (
+        "maindataset,docfiscaltype,doctype,stock_signal,productgroup,taxscenario,tax_round_mode,"
+        "contacttype,report,printzone,docseries,entitytype_docconfig,docconfig_detailstatus,"
+        "default_detailstatus,docconfig_docmovreason,docconfig_docstatus,default_docsatatus,"
+        "docconfig_docaccount,docconfig_local,docconfig_import,docconfig_paymethod,"
+        "docconfig_docreference,docconfig_paycond,store_docconfig,userrole_docconfig,"
+        "additionalfields.fieldsinfo,additionalfields.maindataset"
+    )
+    # Selects de valor único cujas OPTIONS vêm no GET (id + description por linha).
+    _DOCCONFIG_OPTION_KEYS = ["docfiscaltype", "doctype", "stock_signal", "productgroup", "taxscenario",
+                              "tax_round_mode", "contacttype", "report", "printzone", "docseries"]
+    # 14 tabelas filhas (cada linha com deleted 0/1; docconfig_docaccount também com credit/debit).
+    _DOCCONFIG_CHILD_KEYS = ["entitytype_docconfig", "docconfig_detailstatus", "default_detailstatus",
+                             "docconfig_docmovreason", "docconfig_docstatus", "default_docsatatus",
+                             "docconfig_docaccount", "docconfig_local", "docconfig_import",
+                             "docconfig_paymethod", "docconfig_docreference", "docconfig_paycond",
+                             "userrole_docconfig", "store_docconfig"]
+
+    def _docconfig_base(self) -> str:
+        """Mesma porta/sessão do paycond (api_url, 8136). Reusa a lógica de base."""
+        return self._paycond_base()
+
+    def _docconfig_list(self, dataset_id: str, state: str) -> List[Dict[str, Any]]:
+        body = {"filter": {}, "params": {"CODE": "", "DESCRIPTION": "", "ENTITYTYPE_ID": "", "STATE": str(state)}}
+        return self.fetch_browserdataset(dataset_id, body)
+
+    def _docconfig_open_read(self, session: requests.Session, doc_id: str) -> Dict[str, Any]:
+        """Abre um documento por id (OPEN,GET,INFO), tenta ler a storedataset (passo próprio,
+        read-only com o MESMO ObjectID), e FECHA (CLOSE). Devolve o corpo + _storedataset."""
+        base = self._docconfig_base()
+        url = f"{base}/service/documentconfig/{doc_id}/{self._DOCCONFIG_RICH_DATASETS}"
+        r = session.post(url, data=b"", headers=self._paycond_headers("OPEN,GET,INFO"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig OPEN by id falhou: HTTP {r.status_code} — {r.text[:500]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        data = r.json()
+        body = data.get("documentconfig") or data
+
+        # storedataset (additionalfields por loja) vem num passo PRÓPRIO. Em D0 tentamos LER
+        # (GET,INFO) com o ObjectID da leitura — best-effort; se não vier, fica [] e reporta-se.
+        storedataset: List[Dict[str, Any]] = []
+        if object_id:
+            try:
+                rs = session.post(f"{base}/service/documentconfig/additionalfields.storedataset",
+                                  data=b"", headers=self._paycond_headers("GET,INFO", object_id))
+                if rs.status_code in (200, 206):
+                    sb = rs.json()
+                    sb = sb.get("documentconfig") or sb
+                    storedataset = sb.get("additionalfields.storedataset") or sb.get("storedataset") or []
+            except Exception as exc:  # noqa: BLE001
+                log.warning("documentconfig storedataset (read) falhou (ignorado): %s", type(exc).__name__)
+            try:  # CLOSE (leitura; descarta sem gravar)
+                session.post(f"{base}/service/documentconfig", data=b"",
+                             headers=self._paycond_headers("CLOSE", object_id))
+            except Exception as exc:  # noqa: BLE001
+                log.warning("documentconfig CLOSE falhou (ignorado): %s", type(exc).__name__)
+        body["_storedataset"] = storedataset
+        return body
+
+    @staticmethod
+    def _docconfig_id(row: Dict[str, Any]) -> str:
+        for k in ("id", "documentconfig_id", "code"):
+            v = row.get(k)
+            if v not in (None, ""):
+                return str(v)
+        return ""
+
+    def _shape_docconfig(self, body: Dict[str, Any], row: Dict[str, Any]) -> Dict[str, Any]:
+        """Dá forma ao documento rico: maindataset, options, 14 filhas, additionalfields, raw."""
+        main0 = (body.get("maindataset") or [{}])[0] if body.get("maindataset") else {}
+        item: Dict[str, Any] = {
+            "id": self._docconfig_id(row),
+            "code": main0.get("code") if main0.get("code") is not None else row.get("code"),
+            "description": main0.get("description") if main0.get("description") is not None else row.get("description"),
+            "entitytype": row.get("entitytype"),
+            "fiscaltype": row.get("fiscaltype"),
+            "fiscaltype_description": row.get("fiscaltype_description"),
+            "deleted": bool(int((main0.get("deleted") if main0.get("deleted") is not None else row.get("deleted")) or 0)),
+            "maindataset": main0,
+            "options": {k: (body.get(k) or []) for k in self._DOCCONFIG_OPTION_KEYS},
+            "children": {k: (body.get(k) or []) for k in self._DOCCONFIG_CHILD_KEYS},
+            "additionalfields": {
+                "fieldsinfo":  body.get("additionalfields.fieldsinfo") or [],
+                "maindataset": body.get("additionalfields.maindataset") or [],
+                "storedataset": body.get("_storedataset") or [],
+            },
+            # raw = SÓ o maindataset (~50 campos, incl. os _descr). As options/14 filhas/
+            # additionalfields já vão em chaves próprias — NÃO duplicar o corpo inteiro aqui.
+            "raw": main0,
+        }
+        return item
+
+    def fetch_document_configs_rich(self, dataset_id: str = "1099511639239") -> List[Dict[str, Any]]:
+        """
+        LEITURA RICA (D0): lista os documentos (STATE 0 ativos + STATE 1 anulados) e
+        ENRIQUECE cada ATIVO abrindo-o por id (maindataset + options + 14 filhas +
+        additionalfields). Os anulados ficam só com os campos da lista (deleted=True).
+        READ-ONLY. Devolve uma lista de dicts ricos (ver _shape_docconfig).
+        """
+        actives = self._docconfig_list(dataset_id, "0")
+        anulados = self._docconfig_list(dataset_id, "1")
+        log.info("documentconfig: %d ativo(s), %d anulado(s)", len(actives), len(anulados))
+
+        base = self._docconfig_base()
+        use_main = (base == self.api_url)
+        out: List[Dict[str, Any]] = []
+        seen: set = set()
+
+        def _enrich(session: requests.Session, row: Dict[str, Any]) -> None:
+            did = self._docconfig_id(row)
+            if did in seen:
+                return
+            seen.add(did)
+            if not did:
+                return
+            try:
+                body = self._docconfig_open_read(session, did)
+                out.append(self._shape_docconfig(body, row))
+            except Exception as exc:  # noqa: BLE001 — degrada p/ só-lista, não parte o sync
+                log.warning("documentconfig detalhe id=%s falhou (fica só lista): %s", did, type(exc).__name__)
+                out.append({"id": did, "code": row.get("code"), "description": row.get("description"),
+                            "entitytype": row.get("entitytype"), "deleted": bool(int(row.get("deleted") or 0))})
+
+        if use_main:
+            for row in actives:
+                _enrich(self.session, row)
+        else:
+            with self._port_session(base) as session:
+                for row in actives:
+                    _enrich(session, row)
+
+        for row in anulados:
+            did = self._docconfig_id(row)
+            if did in seen:
+                continue
+            seen.add(did)
+            out.append({"id": did, "code": row.get("code"), "description": row.get("description"),
+                        "entitytype": row.get("entitytype"), "deleted": True})
+
+        log.info("documentconfig: %d documento(s) no total (ativos enriquecidos + anulados)", len(out))
+        return out
+
+    def probe_documentconfig(self, doc_id: str) -> Dict[str, Any]:
+        """PROBE (só leitura) de UM documento por id: devolve um RESUMO estrutural
+        (chaves do maindataset, contagens das options e das 14 filhas, additionalfields)
+        para validar o terreno da D0 sem gravar nada."""
+        base = self._docconfig_base()
+        session = self.session if base == self.api_url else None
+        owns = False
+        if session is None:
+            ctx = self._port_session(base)
+            session = ctx.__enter__()
+            owns = True
+        try:
+            body = self._docconfig_open_read(session, str(doc_id))
+            main0 = (body.get("maindataset") or [{}])[0] if body.get("maindataset") else {}
+            return {
+                "id": str(doc_id),
+                "maindataset_keys": sorted(main0.keys()),
+                "maindataset_sample": {k: main0.get(k) for k in (
+                    "code", "description", "shortname", "taxscenario_id", "taxscenario_id_descr",
+                    "doctype_id", "docfiscaltype_id", "default_paycond_id", "stock_signal",
+                    "docseries_id", "deleted") if k in main0},
+                "options_counts": {k: len(body.get(k) or []) for k in self._DOCCONFIG_OPTION_KEYS},
+                "children_counts": {k: len(body.get(k) or []) for k in self._DOCCONFIG_CHILD_KEYS},
+                "additionalfields_maindataset": body.get("additionalfields.maindataset") or [],
+                "storedataset_count": len(body.get("_storedataset") or []),
+                "docconfig_paycond": body.get("docconfig_paycond") or [],
+                "docconfig_docaccount_sample": (body.get("docconfig_docaccount") or [])[:2],
+                "top_keys": sorted(body.keys()),
+            }
+        finally:
+            if owns:
+                ctx.__exit__(None, None, None)
+
     # -------------------------------------------------- BROWSER: CATÁLOGO
     def fetch_catalog(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
         """
@@ -641,6 +830,458 @@ class MyCloudPieClient:
         fams = r.json().get("family", {}).get("maindataset", [])
         log.info(f"Famílias: {len(fams)}")
         return fams
+
+    # ============================ CONDIÇÕES DE PAGAMENTO (paycond) ============================
+    # Fatia 1 — READ-ONLY. Bloco PARALELO (como units/BOM); NÃO reusa o fluxo product.
+    # LISTA via browserdataset (porta 8136, sessão principal — igual a stores/catálogo/
+    # fornecedores). DETALHE por id (OPEN,GET,INFO → CLOSE best-effort) para trazer
+    # discount/days/tbdocs/additionalfields, que a lista NÃO traz. NUNCA MERGE/SAVE.
+    _PAYCOND_DETAIL_DATASETS = (
+        "maindataset,tbdocs,additionalfields.fieldsinfo,additionalfields.maindataset"
+    )
+
+    def _paycond_base(self) -> str:
+        """Base URL do serviço paycond. Default = api_url (8136, a MESMA porta/sessão do
+        browserdataset). Overridable (paycond_url/paycond_port) caso uma instalação sirva
+        o paycond noutra porta — aí faz-se login PRÓPRIO nessa porta (_port_session)."""
+        if self.paycond_url:
+            return self.paycond_url
+        if self.paycond_port:
+            parsed = urlparse(self.api_url)
+            host = parsed.hostname or ""
+            netloc = f"{host}:{self.paycond_port}" if host else parsed.netloc
+            return f"{parsed.scheme}://{netloc}"
+        return self.api_url
+
+    def _paycond_headers(self, action: str, object_id: str | None = None) -> Dict[str, str]:
+        h = {
+            "Action":        action,
+            "X-Database":    self.database,
+            "X-AppGrupoPie": self.app_grupopie,
+            "Content-Type":  "application/json;charset=UTF-8",
+        }
+        if object_id:
+            h["ObjectID"] = object_id  # o MESMO handle em todos os passos
+        return h
+
+    def _paycond_list(self, dataset_id: str, state: str) -> List[Dict[str, Any]]:
+        """Lista (browserdataset, 8136 sessão principal) p/ um STATE (0=ativos, 1=anulados).
+        Body confirmado no HAR: {"params":{"CODE":"","DESCRIPTION":"","STATE":state}}."""
+        body = {"params": {"CODE": "", "DESCRIPTION": "", "STATE": str(state)}}
+        return self.fetch_browserdataset(dataset_id, body)
+
+    def _paycond_open(self, session: requests.Session, paycond_id: str) -> Dict[str, Any]:
+        """Abre UM registo pelo id (OPEN,GET,INFO) → maindataset + tbdocs + additionalfields.
+        Devolve o corpo (dict). CLOSE best-effort (leitura; sem SAVE nada persiste)."""
+        base = self._paycond_base()
+        url = f"{base}/service/paycond/{paycond_id}/{self._PAYCOND_DETAIL_DATASETS}"
+        r = session.post(url, data=b"", headers=self._paycond_headers("OPEN,GET,INFO"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"paycond OPEN by id falhou: HTTP {r.status_code} — {r.text[:600]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        try:
+            data = r.json()
+        except Exception:  # noqa: BLE001
+            data = {}
+        body = data.get("paycond") or data
+        if object_id:  # descarta o staging de leitura (CLOSE), sem SAVE
+            try:
+                session.post(f"{base}/service/paycond", data=b"",
+                             headers=self._paycond_headers("CLOSE", object_id))
+            except Exception as exc:  # noqa: BLE001
+                log.warning("paycond CLOSE falhou (ignorado): %s", type(exc).__name__)
+        return body
+
+    @staticmethod
+    def _paycond_id(row: Dict[str, Any]) -> str:
+        for k in ("id", "paycond_id", "dbid", "code"):
+            v = row.get(k)
+            if v not in (None, ""):
+                return str(v)
+        return ""
+
+    def fetch_payment_conditions(self, dataset_id: str) -> List[Dict[str, Any]]:
+        """
+        CONDIÇÕES DE PAGAMENTO (READ-ONLY). Lista ativos (STATE 0) e anulados (STATE 1)
+        via browserdataset e ENRIQUECE cada ATIVO com o detalhe (discount/days/tbdocs/
+        additionalfields) abrindo o registo pelo id. Os anulados ficam só com os campos
+        da lista (deleted=True) — não se abre o detalhe de um registo anulado.
+
+        Cada item: id, code, description, deleted, discount, days, tbdocs[],
+        additional_fields{}, raw{}. As conversões (discount decimal, days int) são
+        feitas A MONTANTE no PHP — aqui repassa-se tal e qual (transporte "burro").
+        """
+        actives = self._paycond_list(dataset_id, "0")
+        anulados = self._paycond_list(dataset_id, "1")
+        log.info("paycond: %d ativo(s), %d anulado(s)", len(actives), len(anulados))
+
+        base = self._paycond_base()
+        use_main = (base == self.api_url)  # default: sessão principal (8136) já autenticada
+
+        out: List[Dict[str, Any]] = []
+        seen: set = set()
+
+        def _enrich(session: requests.Session, row: Dict[str, Any]) -> Dict[str, Any]:
+            pid = self._paycond_id(row)
+            item: Dict[str, Any] = {
+                "id": pid,
+                "code": row.get("code"),
+                "description": row.get("description"),
+                "deleted": bool(int(row.get("deleted") or 0)),
+            }
+            if pid:
+                try:
+                    body = self._paycond_open(session, pid)
+                    main = body.get("maindataset") or []
+                    main0 = main[0] if main else {}
+                    item["discount"] = main0.get("discount")
+                    item["days"] = main0.get("days")
+                    item["tbdocs"] = body.get("tbdocs") or []
+                    item["additional_fields"] = {
+                        "fieldsinfo":  body.get("additionalfields.fieldsinfo") or [],
+                        "maindataset": body.get("additionalfields.maindataset") or [],
+                    }
+                    item["raw"] = body
+                    if main0.get("code") is not None:
+                        item["code"] = main0.get("code")
+                    if main0.get("description") is not None:
+                        item["description"] = main0.get("description")
+                    if main0.get("deleted") is not None:
+                        item["deleted"] = bool(int(main0.get("deleted") or 0))
+                except Exception as exc:  # noqa: BLE001 — degrada p/ só-lista, não parte o sync
+                    log.warning("paycond detalhe id=%s falhou (fica só lista): %s", pid, type(exc).__name__)
+            return item
+
+        def _consume_actives(session: requests.Session) -> None:
+            for row in actives:
+                pid = self._paycond_id(row)
+                if pid in seen:
+                    continue
+                seen.add(pid)
+                out.append(_enrich(session, row))
+
+        if use_main:
+            _consume_actives(self.session)
+        else:
+            # paycond noutra porta → login PRÓPRIO nessa porta, logout garantido.
+            with self._port_session(base) as session:
+                _consume_actives(session)
+
+        # Anulados: só os campos da lista (não se abre o detalhe), marcados deleted.
+        for row in anulados:
+            pid = self._paycond_id(row)
+            if pid in seen:
+                continue
+            seen.add(pid)
+            out.append({
+                "id": pid,
+                "code": row.get("code"),
+                "description": row.get("description"),
+                "deleted": True,
+            })
+
+        log.info("paycond: %d condição(ões) no total (ativos enriquecidos + anulados)", len(out))
+        return out
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — CRIAR CONDIÇÃO DE PAGAMENTO (Fatia 2a) ⚠️⚠️
+    # Bloco PARALELO novo (NÃO reusa create_product). Protocolo mais curto, confirmado
+    # por HAR + probe ao vivo (form-novo = NEW,GET,INFO; discount é NÚMERO; template
+    # 63× deleted:0; code sugerido pelo servidor). Sequência, mesma sessão/porta (8136)
+    # e MESMO ObjectID em todos os passos:
+    #   1. NEW,GET,INFO em /service/paycond/*/maindataset,tbdocs,additionalfields.*
+    #      → ObjectID (header) + maindataset[0] (id PROVISÓRIO a ignorar, code sugerido)
+    #        + tbdocs (63 linhas, todas deleted:0 = matriz-template).
+    #   2. MERGE em /service/paycond/maindataset,tbdocs com o body completo
+    #      (maindataset[1] + as 63 linhas tbdocs). A RESPOSTA traz maindataset[0].id =
+    #      o ID FINAL REAL (≠ provisório). ⚠️ discount vai NÚMERO, days int.
+    #   3. SAVE (corpo vazio) + CLOSE (corpo vazio) = commit/close (os 2 POSTs vazios).
+    #   4. Confirmação por releitura (OPEN,GET,INFO pelo id FINAL): code/description/
+    #      discount/days + os deleted das linhas tbdocs. "Sucesso do SAVE" ≠ gravado.
+    # ⚠️ SALVAGUARDA: se o passo 2 não devolver id final (HTTP != 200 ou sem id), ABORTA
+    # ANTES do commit (não envia SAVE/CLOSE) → nada persiste. TRAVA ANTI-ENCOLHIMENTO no
+    # tbdocs (nº enviado == nº do form-novo, senão aborta sem gravar).
+    _PAYCOND_ACT_OPEN        = "NEW,GET,INFO"    # passo 1 (form-NOVO, inserir)
+    _PAYCOND_ACT_OPEN_EXIST  = "OPEN,GET,INFO"   # passo 1 (abrir EXISTENTE por id, editar)
+    _PAYCOND_ACT_WRITE       = "MERGE"           # passo 2 (escrita do body)
+    _PAYCOND_ACT_COMMIT      = "SAVE"            # passo 3a (commit)
+    _PAYCOND_ACT_CLOSE       = "CLOSE"           # passo 3b (close)
+    _PAYCOND_ACT_VOID        = "DELETE"          # anular (soft-delete, 1 POST sem body)
+
+    def _paycond_open_form(self, session: requests.Session, paycond_id: str | None = None) -> tuple[str, Dict[str, Any]]:
+        """Passo 1 da ESCRITA: abre o form e devolve (object_id, body) SEM FECHAR (o
+        commit são os 2 POSTs vazios). `paycond_id` None → form-NOVO (`*`, NEW,GET,INFO);
+        caso contrário → abre o EXISTENTE por id (OPEN,GET,INFO) p/ obter a matriz VIVA.
+        ⚠️ Distinto do _paycond_open (de leitura, que FECHA) — não misturar."""
+        base = self._paycond_base()
+        target = paycond_id if paycond_id else "*"
+        action = self._PAYCOND_ACT_OPEN_EXIST if paycond_id else self._PAYCOND_ACT_OPEN
+        url = f"{base}/service/paycond/{target}/{self._PAYCOND_DETAIL_DATASETS}"
+        r = session.post(url, data=b"", headers=self._paycond_headers(action))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"paycond form-open falhou: HTTP {r.status_code} — {r.text[:600]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError(f"paycond form-open: header 'ObjectID' ausente. Headers: {dict(r.headers)}")
+        data = r.json()
+        return object_id, (data.get("paycond") or data)
+
+    @staticmethod
+    def _paycond_num(value: Any) -> float | int:
+        """discount como NÚMERO (não string). Inteiro quando for inteiro (0, 2 → 0, 2),
+        float caso contrário (2.5). Espelha o formato que o servidor devolve."""
+        try:
+            f = float(value if value not in (None, "") else 0)
+        except (TypeError, ValueError):
+            f = 0.0
+        return int(f) if f == int(f) else f
+
+    def _merge_tbdocs_template(self, template: List[Dict[str, Any]], unlinked: set) -> List[Dict[str, Any]]:
+        """INSERIR: aplica os desmarcados sobre a matriz-template do form-novo: deleted:1
+        nos docconfig_id em `unlinked`, o resto fica como veio (deleted:0 por omissão)."""
+        out: List[Dict[str, Any]] = []
+        for d in template:
+            nd = dict(d)
+            nd["deleted"] = 1 if str(nd.get("docconfig_id")) in unlinked else int(nd.get("deleted") or 0)
+            out.append(nd)
+        return out
+
+    def _apply_tbdocs_changes(self, live: List[Dict[str, Any]], changes_map: Dict[str, int]) -> List[Dict[str, Any]]:
+        """EDITAR (preservação de vínculos — R1): parte da matriz VIVA e altera SÓ o
+        `deleted` das linhas cujo docconfig_id está em `changes_map`; TODAS as outras
+        ficam com o deleted REAL que vinham do PingWin (preservadas). Reenvia as 63."""
+        out: List[Dict[str, Any]] = []
+        for d in live:
+            nd = dict(d)
+            did = str(nd.get("docconfig_id"))
+            nd["deleted"] = changes_map[did] if did in changes_map else int(nd.get("deleted") or 0)
+            out.append(nd)
+        return out
+
+    def _paycond_commit(self, session: requests.Session, object_id: str, row: Dict[str, Any],
+                        docs: List[Dict[str, Any]], n_expected: int, capture: Dict[str, Any]) -> Dict[str, Any]:
+        """Passos 2-4 COMUNS a inserir e editar: TRAVA anti-encolhimento → MERGE (lê id
+        final; aborta ANTES do commit se falhar/sem id) → SAVE+CLOSE → confirmação por
+        releitura. Devolve {ok, persisted, pingwin_id, code, capture, confirm, raw}."""
+        base = self._paycond_base()
+        # ⚠️ TRAVA ANTI-ENCOLHIMENTO: nº enviado tem de bater com o da matriz do passo 1.
+        if len(docs) != n_expected:
+            raise RuntimeError(f"paycond ABORTADO: tbdocs {len(docs)} != matriz {n_expected} (anti-encolhimento).")
+
+        # 2. MERGE — body completo. A RESPOSTA traz o id (final no inserir; o mesmo no editar).
+        write_url = f"{base}/service/paycond/maindataset,tbdocs"
+        rw = session.post(write_url, json={"maindataset": [row], "tbdocs": docs},
+                          headers=self._paycond_headers(self._PAYCOND_ACT_WRITE, object_id))
+        capture["tbdocs_sent"] = len(docs)
+        capture["write_http"] = rw.status_code
+        if rw.status_code not in (200, 206):
+            capture["write_body"] = rw.text[:800]
+            return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                    "error": f"MERGE falhou (HTTP {rw.status_code}) — abortado antes do commit."}
+        wmain0 = ((rw.json().get("paycond") or rw.json()).get("maindataset") or [{}])[0]
+        final_id = str(wmain0.get("id") or "")
+        capture["discount_returned"] = wmain0.get("discount")
+        capture["days_returned"] = wmain0.get("days")
+        capture["final_id"] = final_id
+        if not final_id:
+            return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                    "error": "MERGE não devolveu maindataset[0].id. Abortado antes do commit — contradiz o protocolo."}
+
+        # 3. SAVE (vazio) + CLOSE (vazio) = commit/close, mesmo ObjectID.
+        rs = session.post(f"{base}/service/paycond", data=b"",
+                          headers=self._paycond_headers(self._PAYCOND_ACT_COMMIT, object_id))
+        if rs.status_code not in (200, 206):
+            raise RuntimeError(f"paycond SAVE falhou: HTTP {rs.status_code} — {rs.text[:600]}")
+        rc = session.post(f"{base}/service/paycond", data=b"",
+                          headers=self._paycond_headers(self._PAYCOND_ACT_CLOSE, object_id))
+        if rc.status_code not in (200, 206):
+            log.warning("paycond CLOSE devolveu HTTP %s (ignorado)", rc.status_code)
+
+        # 4. CONFIRMAÇÃO por releitura pelo id (OPEN,GET,INFO → CLOSE, STATE 0).
+        reread = self._paycond_open(session, final_id)
+        rmain0 = ((reread.get("maindataset") or [{}])[0])
+        rtbdocs = reread.get("tbdocs") or []
+        linked_after = sorted(str(d.get("docconfig_id")) for d in rtbdocs if int(d.get("deleted") or 0) == 0)
+        confirm = {
+            "id":           str(rmain0.get("id") or ""),
+            "code":         rmain0.get("code"),
+            "description":  rmain0.get("description"),
+            "discount":     rmain0.get("discount"),
+            "days":         rmain0.get("days"),
+            "deleted":      int(rmain0.get("deleted") or 0),
+            "tbdocs_total": len(rtbdocs),
+            "tbdocs_linked": linked_after,
+        }
+        persisted = (confirm["id"] == final_id and int(confirm["deleted"] or 0) == 0)
+        return {
+            "ok": persisted, "persisted": persisted, "pingwin_id": final_id,
+            "code": str(rmain0.get("code") or row.get("code") or ""),
+            "capture": capture, "confirm": confirm, "raw": reread,
+        }
+
+    def create_payment_condition(self, fields: Dict[str, Any], tbdocs_unlinked: List[Any] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA (INSERIR): cria UMA condição. `fields` = {code?, description,
+        discount(number), days(int)}. `tbdocs_unlinked` = docconfig_id a DESMARCAR."""
+        base = self._paycond_base()
+        if base == self.api_url:
+            return self._create_paycond_on(self.session, fields, tbdocs_unlinked or [])
+        with self._port_session(base) as session:
+            return self._create_paycond_on(session, fields, tbdocs_unlinked or [])
+
+    def _create_paycond_on(self, session: requests.Session, fields: Dict[str, Any], tbdocs_unlinked: List[Any]) -> Dict[str, Any]:
+        # 1. NEW,GET,INFO (form-novo): ObjectID + provisório + template (63 deleted:0).
+        object_id, body = self._paycond_open_form(session, None)
+        template = body.get("tbdocs") or []
+        prov0 = (body.get("maindataset") or [{}])[0]
+        n_template = len(template)
+        if n_template == 0:
+            raise RuntimeError("create_paycond ABORTADO: form-novo sem tbdocs (matriz-template vazia).")
+
+        # code: usa o fornecido; senão o SUGERIDO pelo servidor (nunca inventado às cegas).
+        code = str(fields.get("code") if fields.get("code") not in (None, "") else prov0.get("code") or "")
+        row = {
+            "key":         "00000000",
+            "id":          str(prov0.get("id") or ""),   # provisório (o servidor devolve o final no MERGE)
+            "code":        code,
+            "description": str(fields.get("description") or ""),
+            "discount":    self._paycond_num(fields.get("discount")),  # ⚠️ NÚMERO
+            "days":        int(fields.get("days") or 0),
+            "deleted":     0,
+        }
+        unlinked = set(str(x) for x in (tbdocs_unlinked or []))
+        docs = self._merge_tbdocs_template(template, unlinked)
+        capture = {
+            "op": "create", "provisional_id": row["id"], "code_suggested": prov0.get("code"),
+            "code_sent": code, "discount_sent": row["discount"], "days_sent": row["days"],
+            "tbdocs_unlinked": sorted(unlinked),
+        }
+        return self._paycond_commit(session, object_id, row, docs, n_template, capture)
+
+    def update_payment_condition(self, paycond_id: str, fields: Dict[str, Any],
+                                 tbdocs_changes: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA (EDITAR condição ATIVA existente). Passo 1 abre o VIVO por id
+        (matriz tbdocs REAL). `fields` = {description, discount(number), days(int)} —
+        o code NÃO muda (read-only). `tbdocs_changes` = [{docconfig_id, deleted}] (SÓ as
+        mudanças); as linhas não mexidas ficam com o deleted VIVO (preservação R1)."""
+        base = self._paycond_base()
+        if base == self.api_url:
+            return self._update_paycond_on(self.session, paycond_id, fields, tbdocs_changes or [])
+        with self._port_session(base) as session:
+            return self._update_paycond_on(session, paycond_id, fields, tbdocs_changes or [])
+
+    def _update_paycond_on(self, session: requests.Session, paycond_id: str, fields: Dict[str, Any],
+                           tbdocs_changes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        # 1. OPEN,GET,INFO pelo id EXISTENTE → matriz tbdocs VIVA (deleted real) + valores atuais.
+        object_id, body = self._paycond_open_form(session, str(paycond_id))
+        live = body.get("tbdocs") or []
+        cur0 = (body.get("maindataset") or [{}])[0]
+        n_live = len(live)
+        if n_live == 0:
+            raise RuntimeError("update_paycond ABORTADO: open por id sem tbdocs (matriz viva vazia).")
+        if int(cur0.get("deleted") or 0) != 0:
+            # 2b é só para ATIVAS; reativar anulado é pós-2c.
+            raise RuntimeError("update_paycond ABORTADO: condição não está ativa (deleted!=0).")
+
+        # code INALTERADO (read-only no editar) — vem da releitura viva, não do input.
+        row = {
+            "key":         str(cur0.get("key") or "00000000"),
+            "id":          str(cur0.get("id") or paycond_id),   # id EXISTENTE
+            "code":        str(cur0.get("code") or ""),          # ⚠️ inalterado
+            "description": str(fields.get("description") if fields.get("description") is not None else (cur0.get("description") or "")),
+            "discount":    self._paycond_num(fields.get("discount") if fields.get("discount") is not None else cur0.get("discount")),
+            "days":        int(fields.get("days") if fields.get("days") is not None else (cur0.get("days") or 0)),
+            "deleted":     0,
+        }
+        # merge: aplica SÓ as mudanças sobre a matriz viva; preserva o resto (R1).
+        changes_map = {str(c.get("docconfig_id")): int(c.get("deleted") or 0) for c in (tbdocs_changes or []) if c.get("docconfig_id") not in (None, "")}
+        docs = self._apply_tbdocs_changes(live, changes_map)
+        capture = {
+            "op": "update", "paycond_id": str(paycond_id), "code_kept": row["code"],
+            "discount_sent": row["discount"], "days_sent": row["days"],
+            "tbdocs_changes": changes_map, "tbdocs_live": n_live,
+            "linked_before": sorted(str(d.get("docconfig_id")) for d in live if int(d.get("deleted") or 0) == 0),
+        }
+        return self._paycond_commit(session, object_id, row, docs, n_live, capture)
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — ANULAR CONDIÇÃO DE PAGAMENTO (Fatia 2c) ⚠️⚠️
+    # SOFT-DELETE (confirmado 2× nas limpezas das fatias 2a/2b): UM único POST sem body a
+    # /service/paycond/{id} com Action DELETE → o registo sai do STATE 0 (ativos) e entra
+    # no STATE 1 (anulados), deleted:1. NÃO é o hard-delete de 3 passos do product — bloco
+    # próprio, simples. Só anula se estiver ATIVA; confirma por releitura (STATE 0/1).
+    def void_payment_condition(self, paycond_id: str, dataset_id: str) -> Dict[str, Any]:
+        """⚠️ ESCRITA: anula (soft-delete) UMA condição ATIVA. Devolve {ok,
+        voided_confirmed, void_http, in_state0_ativos, in_state1_anulados, pingwin_id}.
+        Só voided_confirmed=True se a releitura mostrar: saiu do STATE 0 E está no STATE 1."""
+        base = self._paycond_base()
+        if base == self.api_url:
+            return self._void_paycond_on(self.session, str(paycond_id), dataset_id)
+        with self._port_session(base) as session:
+            return self._void_paycond_on(session, str(paycond_id), dataset_id)
+
+    def _void_paycond_on(self, session: requests.Session, pid: str, dataset_id: str) -> Dict[str, Any]:
+        base = self._paycond_base()
+        # Só anula se estiver ATIVA (STATE 0); se já estiver inativa, recusa (sem POST).
+        active_before = any(str(x.get("id")) == pid for x in self._paycond_list(dataset_id, "0"))
+        if not active_before:
+            return {"ok": False, "voided_confirmed": False,
+                    "error": "Condição não está ativa (STATE 0) — anular recusado."}
+
+        r = session.post(f"{base}/service/paycond/{pid}", data=b"",
+                         headers=self._paycond_headers(self._PAYCOND_ACT_VOID))
+        if r.status_code not in (200, 206):
+            return {"ok": False, "voided_confirmed": False, "void_http": r.status_code,
+                    "error": f"Anular falhou (HTTP {r.status_code}) — {r.text[:300]}"}
+
+        # Confirm-by-reread: tem de SAIR do STATE 0 e ESTAR no STATE 1. ("http 200" ≠ gravado.)
+        in0 = any(str(x.get("id")) == pid for x in self._paycond_list(dataset_id, "0"))
+        in1 = any(str(x.get("id")) == pid for x in self._paycond_list(dataset_id, "1"))
+        voided = (not in0) and in1
+        if not voided:
+            log.error("void_paycond: id=%s NÃO confirmado (in_state0=%s in_state1=%s).", pid, in0, in1)
+        return {
+            "ok": voided, "voided_confirmed": voided, "void_http": r.status_code,
+            "in_state0_ativos": in0, "in_state1_anulados": in1, "pingwin_id": pid,
+        }
+
+    # ---- PROBE SEGURO (SÓ LEITURA) do form-novo: passo 1 do inserir, SEM commit ----
+    # Abre o form-novo (POST /service/paycond/*/...), LÊ (id provisório, code sugerido,
+    # matriz-template tbdocs) e ABANDONA (NÃO envia os 2 POSTs vazios → NÃO persiste).
+    # Serve para validar o Action do passo 1 e capturar a template antes de construir a
+    # escrita. Tenta NEW,GET,INFO (aloca o form novo); reporta o que recebeu.
+    def probe_new_paycond_form(self, action: str = "NEW,GET,INFO") -> Dict[str, Any]:
+        base = self._paycond_base()
+        url = f"{base}/service/paycond/*/{self._PAYCOND_DETAIL_DATASETS}"
+        session = self.session if base == self.api_url else None
+        owns = False
+        if session is None:
+            ctx = self._port_session(base)
+            session = ctx.__enter__()
+            owns = True
+        try:
+            r = session.post(url, data=b"", headers=self._paycond_headers(action))
+            status = r.status_code
+            object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+            try:
+                data = r.json()
+            except Exception:  # noqa: BLE001
+                data = {}
+            body = data.get("paycond") or data
+            main = body.get("maindataset") or []
+            main0 = main[0] if main else {}
+            tbdocs = body.get("tbdocs") or []
+            # ⚠️ NÃO enviar os POSTs vazios → sem commit, não persiste. Abandona a sessão.
+            return {
+                "action_used": action,
+                "http_status": status,
+                "object_id_present": bool(object_id),
+                "maindataset0": main0,
+                "maindataset0_keys": list(main0.keys()),
+                "tbdocs_count": len(tbdocs),
+                "tbdocs_sample": tbdocs[:3],
+                "body_keys": list(body.keys()),
+            }
+        finally:
+            if owns:
+                ctx.__exit__(None, None, None)
 
     # ------------------------------------------------------- UNIDADES (porta 8138)
     def _units_base(self) -> str:

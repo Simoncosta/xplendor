@@ -33,6 +33,11 @@ class PingwinService
     private const CONFIG_KEYS = ['username', 'database'];
 
     /** Invoca o entrypoint Python, passando a config+senha por STDIN. */
+    /** Timeout (s) do docker exec. Default 180; operações pesadas (leitura rica de
+     *  documentos) sobem-no antes de invocar. Propriedade (não parâmetro) para manter
+     *  a assinatura de invoke() compatível com os fakes de teste que a fazem override. */
+    protected int $invokeTimeout = 180;
+
     protected function invoke(array $payload): array
     {
         $command = [
@@ -42,7 +47,7 @@ class PingwinService
         ];
 
         $process = new Process($command);
-        $process->setTimeout(180);
+        $process->setTimeout($this->invokeTimeout);
         $process->setInput(json_encode($payload)); // credenciais por STDIN (nunca argv)
         $process->run();
 
@@ -197,6 +202,105 @@ class PingwinService
         }
 
         return $saved;
+    }
+
+    /**
+     * DOCUMENTOS — LEITURA RICA (Fase D0, só leitura): busca a config COMPLETA de cada
+     * documento (maindataset + options + 14 filhas + additionalfields) e faz UPSERT em
+     * pingwin_document_configs. HÍBRIDO: os _id-chave em colunas, o resto do maindataset em
+     * `raw`; as 14 filhas, os additionalfields e as options em JSON. Mantém a syncDocuments
+     * básica intacta (esta é aditiva). Devolve o nº de documentos guardados.
+     */
+    public function syncDocumentConfigsRich(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        // Operação pesada (N documentos × GET grande): sobe o memory_limit e o timeout do
+        // docker exec (default 180s é pouco). Repõe o timeout no fim (finally).
+        @ini_set('memory_limit', '512M');
+        $this->invokeTimeout = 900;
+        try {
+            $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'documents_rich']));
+        } finally {
+            $this->invokeTimeout = 180;
+        }
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura rica de documentos PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        // Chaves das 14 filhas (nome = chave do servidor, incl. a grafia real "default_docsatatus").
+        $childKeys = [
+            'entitytype_docconfig', 'docconfig_detailstatus', 'default_detailstatus',
+            'docconfig_docmovreason', 'docconfig_docstatus', 'default_docsatatus',
+            'docconfig_docaccount', 'docconfig_local', 'docconfig_import',
+            'docconfig_paymethod', 'docconfig_docreference', 'docconfig_paycond',
+            'userrole_docconfig', 'store_docconfig',
+        ];
+        $jsonCol = static fn ($v) => is_array($v) ? json_encode($v, JSON_UNESCAPED_UNICODE) : null;
+
+        $now = now();
+        $rows = [];
+        foreach ($result['documents'] ?? [] as $doc) {
+            $externalId = (string) ($this->pick($doc, ['id', 'code']) ?? '');
+            if ($externalId === '') {
+                continue;
+            }
+            $main = $doc['maindataset'] ?? [];
+            $children = $doc['children'] ?? [];
+            $addf = $doc['additionalfields'] ?? [];
+            $enriched = ! empty($main);   // anulados vêm só com os campos da lista
+
+            $row = [
+                'company_id'             => $companyId,
+                'external_id'            => $externalId,
+                'code'                   => $this->str($this->pick($doc, ['code'])),
+                'description'            => $this->str($this->pick($doc, ['description'])),
+                'entitytype'             => $this->str($this->pick($doc, ['entitytype'])),
+                'fiscaltype'             => $this->str($this->pick($doc, ['fiscaltype'])),
+                'fiscaltype_description' => $this->str($this->pick($doc, ['fiscaltype_description'])),
+                'deleted'                => (bool) ($doc['deleted'] ?? false),
+                'synced_at'              => $now,
+                // _id-chave (string, tal como o PingWin os manda). NUNCA os _descr.
+                'taxscenario_id'     => $enriched ? $this->str($main['taxscenario_id'] ?? null) : null,
+                'doctype_id'         => $enriched ? $this->str($main['doctype_id'] ?? null) : null,
+                'docfiscaltype_id'   => $enriched ? $this->str($main['docfiscaltype_id'] ?? null) : null,
+                'default_paycond_id' => $enriched ? $this->str($main['default_paycond_id'] ?? null) : null,
+                'stock_signal'       => $enriched ? $this->str($main['stock_signal'] ?? null) : null,
+                'docseries_id'       => $enriched ? $this->str($main['docseries_id'] ?? null) : null,
+                'raw'                => $enriched ? $jsonCol($doc['raw'] ?? $main) : null,
+                'options'            => $enriched ? $jsonCol($doc['options'] ?? null) : null,
+                'additionalfields_maindataset'  => $enriched ? $jsonCol($addf['maindataset'] ?? null) : null,
+                'additionalfields_storedataset' => $enriched ? $jsonCol($addf['storedataset'] ?? null) : null,
+                'rich_synced_at'     => $enriched ? $now : null,
+                'created_at'         => $now,
+                'updated_at'         => $now,
+            ];
+            foreach ($childKeys as $ck) {
+                $row[$ck] = $enriched ? $jsonCol($children[$ck] ?? null) : null;
+            }
+            $rows[] = $row;
+        }
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $updateCols = array_values(array_diff(array_keys($rows[0]), ['company_id', 'external_id', 'created_at']));
+        foreach (array_chunk($rows, 25) as $chunk) {
+            \App\Models\PingwinDocumentConfig::upsert($chunk, ['company_id', 'external_id'], $updateCols);
+        }
+
+        return count($rows);
     }
 
     /**
@@ -883,6 +987,221 @@ class PingwinService
     }
 
     /**
+     * CONDIÇÕES DE PAGAMENTO (Fatia 1, só leitura): busca as condições (paycond) do
+     * PingWin — lista (browserdataset) + detalhe por id (discount/days/tbdocs) — e faz
+     * UPSERT idempotente em pingwin_payment_conditions por (company_id, pingwin_id).
+     *
+     * ⚠️ CONVERSÃO NA FRONTEIRA (fica no PHP; o Python é transporte "burro"):
+     *   · discount → decimal em PERCENTAGEM (ex.: 2.5), NÃO cêntimos;
+     *   · days     → inteiro (dias de vencimento).
+     * is_active = NOT deleted. Os anulados (STATE:1) voltam com deleted=true e ficam
+     * is_active=false (reconciliação natural via upsert). O filho tbdocs e o detalhe
+     * completo ficam em JSON (tbdocs / raw). Devolve o nº de condições guardadas.
+     */
+    public function syncPaymentConditions(int $companyId): int
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'paycond']));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Sincronização de condições de pagamento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        $now = now();
+        $rows = [];
+        foreach ($result['payment_conditions'] ?? [] as $pc) {
+            $pingwinId = (string) ($this->pick($pc, ['id', 'paycond_id', 'dbid', 'code']) ?? '');
+            if ($pingwinId === '') {
+                continue;
+            }
+            $deleted = (bool) ($this->pick($pc, ['deleted']) ?? false);
+            // Nomes de campo tolerantes (o detalhe do paycond pode variar por instalação).
+            // Se a captura (HAR) mostrar nomes diferentes, ajustar só estes aliases.
+            $tbdocs = $pc['tbdocs'] ?? null;
+            $raw = $pc['raw'] ?? $pc;
+            $rows[] = [
+                'company_id'  => $companyId,
+                'pingwin_id'  => $pingwinId,
+                'code'        => $this->str($this->pick($pc, ['code'])),
+                'description' => $this->str($this->pick($pc, ['description', 'descr'])),
+                // discount em %, NÃO cêntimos (decimal tal e qual, ex.: 2.5).
+                'discount'    => $this->numOrNull($this->pick($pc, ['discount', 'financialdiscount', 'financial_discount', 'discount_value', 'desconto'])),
+                // days inteiro (dias de vencimento).
+                'days'        => $this->intOrNull($this->pick($pc, ['days', 'duedays', 'due_days', 'deadline', 'days_due', 'vencimento'])),
+                'tbdocs'      => is_array($tbdocs) ? json_encode(array_values($tbdocs), JSON_UNESCAPED_UNICODE) : null,
+                'raw'         => is_array($raw) ? json_encode($raw, JSON_UNESCAPED_UNICODE) : null,
+                'is_active'   => ! $deleted,
+                'synced_at'   => $now,
+                'created_at'  => $now,
+                'updated_at'  => $now,
+            ];
+        }
+
+        if (empty($rows)) {
+            return 0;
+        }
+
+        // UPSERT idempotente por (company_id, pingwin_id). json_encode manual porque o
+        // upsert() ignora os casts do Eloquent (não serializa arrays sozinho).
+        $updateCols = ['code', 'description', 'discount', 'days', 'tbdocs', 'raw', 'is_active', 'synced_at', 'updated_at'];
+        foreach (array_chunk($rows, 500) as $chunk) {
+            \App\Models\PingwinPaymentCondition::upsert($chunk, ['company_id', 'pingwin_id'], $updateCols);
+        }
+
+        return count($rows);
+    }
+
+    /**
+     * CONDIÇÕES DE PAGAMENTO — CRIAR (Fatia 2a, ESCRITA REAL). Invoca o Python
+     * (create_paycond): NEW→MERGE→SAVE→CLOSE→confirmação por releitura, tudo numa só
+     * sessão/porta (8136), mesmo ObjectID. `$fields` = {code?, description, discount,
+     * days}; `$tbdocsUnlinked` = docconfig_id DESMARCADOS (deleted:1).
+     *
+     * ⚠️ CONVERSÕES NA FRONTEIRA (aqui no PHP): discount vai como NÚMERO (% — ex.: 2.5),
+     * NÃO string, NÃO cêntimos (confirmado por HAR/probe: difere do product que manda
+     * preços como string). days inteiro. NÃO toca no espelho — isso é o job, e SÓ após
+     * persisted=true (confirmado por releitura). Devolve {ok, persisted, pingwin_id,
+     * code, capture, confirm, raw}.
+     */
+    public function createPaymentCondition(int $companyId, array $fields, array $tbdocsUnlinked = []): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        // discount NÚMERO (float|int), NÃO string. days int. code opcional (servidor sugere).
+        $paycond = [
+            'description' => (string) ($fields['description'] ?? ''),
+            'discount'    => $this->numOrNull($fields['discount'] ?? null) ?? 0,
+            'days'        => $this->intOrNull($fields['days'] ?? null) ?? 0,
+        ];
+        if (isset($fields['code']) && $fields['code'] !== '') {
+            $paycond['code'] = (string) $fields['code'];
+        }
+
+        $extra = [
+            'mode'            => 'create_paycond',
+            'paycond'         => $paycond,
+            'tbdocs_unlinked' => array_values(array_map(static fn ($v) => (string) $v, $tbdocsUnlinked)),
+        ];
+
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Criar condição de pagamento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'persisted' => false];
+    }
+
+    /**
+     * CONDIÇÕES DE PAGAMENTO — EDITAR (Fatia 2b, ESCRITA REAL). Invoca o Python
+     * (update_paycond): OPEN por id (matriz VIVA) → MERGE (só as mudanças de tbdocs) →
+     * SAVE→CLOSE→confirmação por releitura. `$fields` = {description, discount, days}
+     * (o code NÃO muda). `$tbdocsChanges` = [{docconfig_id, deleted}] — SÓ as linhas
+     * mexidas; as outras ficam com o deleted VIVO (preservação de vínculos, R1).
+     *
+     * ⚠️ discount NÚMERO (%), days int (conversão na fronteira). NÃO toca no espelho —
+     * isso é o job, e SÓ após persisted=true (confirmado por releitura).
+     */
+    public function updatePaymentCondition(int $companyId, string $paycondId, array $fields, array $tbdocsChanges = []): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $paycond = [];
+        if (array_key_exists('description', $fields)) {
+            $paycond['description'] = (string) $fields['description'];
+        }
+        if (array_key_exists('discount', $fields)) {
+            $paycond['discount'] = $this->numOrNull($fields['discount']) ?? 0;   // NÚMERO
+        }
+        if (array_key_exists('days', $fields)) {
+            $paycond['days'] = $this->intOrNull($fields['days']) ?? 0;           // int
+        }
+
+        // Normaliza as mudanças: [{docconfig_id:string, deleted:0|1}].
+        $changes = [];
+        foreach ($tbdocsChanges as $c) {
+            $id = (string) ($c['docconfig_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $changes[] = ['docconfig_id' => $id, 'deleted' => ((int) ($c['deleted'] ?? 0)) === 1 ? 1 : 0];
+        }
+
+        $extra = [
+            'mode'           => 'update_paycond',
+            'paycond_id'     => $paycondId,
+            'paycond'        => $paycond,
+            'tbdocs_changes' => $changes,
+        ];
+
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Editar condição de pagamento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'persisted' => false];
+    }
+
+    /**
+     * CONDIÇÕES DE PAGAMENTO — ANULAR (Fatia 2c, ESCRITA REAL). Invoca o Python
+     * (void_paycond): 1 POST sem body (Action DELETE, soft-delete) + confirmação por
+     * releitura (sai do STATE 0, entra no STATE 1). Só anula ATIVAS. NÃO toca no espelho
+     * — isso é o job, e SÓ após voided_confirmed=true. Devolve {ok, voided_confirmed, ...}.
+     */
+    public function voidPaymentCondition(int $companyId, string $paycondId): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'void_paycond', 'paycond_id' => $paycondId,
+        ]));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Anular condição de pagamento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'voided_confirmed' => false];
+    }
+
+    /**
      * UNIDADES (Fase 1, só leitura): busca as unidades (PORTA 8138, LOGOUT garantido
      * no Python) e faz UPSERT idempotente em pingwin_units por (company_id,
      * pingwin_id). O Python já devolve SÓ o maindataset (o baseunit "radio conv." é
@@ -1357,6 +1676,16 @@ class PingwinService
         }
 
         return (float) $value;
+    }
+
+    /** Inteiro ou NULL se não numérico (ex.: days = dias de vencimento). */
+    private function intOrNull($value): ?int
+    {
+        if ($value === null || $value === '' || ! is_numeric($value)) {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     /** Normaliza para string (ou NULL) — evita guardar arrays/objetos por engano. */

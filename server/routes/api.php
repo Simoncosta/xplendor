@@ -191,6 +191,9 @@ Route::prefix('v1')->group(function () {
                     // Documentos PingWin (Fase 1, só leitura): lista + sincronizar.
                     Route::get('/integrations/pingwin/documents', [CompanyPingwinController::class, 'documents']);
                     Route::post('/integrations/pingwin/documents/sync', [CompanyPingwinController::class, 'syncDocuments']);
+                    // Documentos — LEITURA RICA (Fase D0): sincronizar config completa + detalhe por id.
+                    Route::post('/integrations/pingwin/documents/sync-rich', [CompanyPingwinController::class, 'syncDocumentsRich']);
+                    Route::get('/integrations/pingwin/documents/{externalId}', [CompanyPingwinController::class, 'documentConfigDetail'])->whereNumber('externalId');
                     // Artigos PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/catalog', [CompanyPingwinController::class, 'catalog']);
                     Route::post('/integrations/pingwin/catalog/sync', [CompanyPingwinController::class, 'syncCatalog']);
@@ -219,6 +222,17 @@ Route::prefix('v1')->group(function () {
                     // Fornecedores PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/suppliers', [CompanyPingwinController::class, 'suppliers']);
                     Route::post('/integrations/pingwin/suppliers/sync', [CompanyPingwinController::class, 'syncSuppliers']);
+                    // Condições de Pagamento PingWin (Fatia 1, só leitura): lista paginada + sincronizar.
+                    Route::get('/integrations/pingwin/payment-conditions', [CompanyPingwinController::class, 'paymentConditions']);
+                    Route::post('/integrations/pingwin/payment-conditions/sync', [CompanyPingwinController::class, 'syncPaymentConditions']);
+                    // Condições de Pagamento PingWin (Fatia 2a, ESCRITA): template de documentos + criar + polling.
+                    Route::get('/integrations/pingwin/payment-conditions/docs-template', [CompanyPingwinController::class, 'paymentConditionDocsTemplate']);
+                    Route::get('/integrations/pingwin/payment-conditions/creation/{creationId}', [CompanyPingwinController::class, 'paymentConditionCreation'])->whereNumber('creationId');
+                    Route::post('/integrations/pingwin/payment-conditions', [CompanyPingwinController::class, 'createPaymentCondition']);
+                    // Fatia 2b (ESCRITA): editar condição ATIVA por id (pingwin_id). code read-only.
+                    Route::match(['put', 'patch'], '/integrations/pingwin/payment-conditions/{paycondId}', [CompanyPingwinController::class, 'updatePaymentCondition'])->whereNumber('paycondId');
+                    // Fatia 2c (ESCRITA): anular (soft-delete) condição ATIVA por id. Destrutiva → bloqueada em impersonation.
+                    Route::delete('/integrations/pingwin/payment-conditions/{paycondId}', [CompanyPingwinController::class, 'voidPaymentCondition'])->whereNumber('paycondId')->middleware('block_when_impersonating');
                     // Unidades PingWin: lista paginada + sincronizar (porta 8138).
                     Route::get('/integrations/pingwin/units', [CompanyPingwinController::class, 'units']);
                     Route::post('/integrations/pingwin/units/sync', [CompanyPingwinController::class, 'syncUnits']);

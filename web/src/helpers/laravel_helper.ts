@@ -278,6 +278,11 @@ export const getPingwinDocuments = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, params);
 export const syncPingwinDocuments = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync`, {});
+// Documentos — LEITURA RICA (Fase D0): sincronizar config completa + detalhe por id.
+export const syncPingwinDocumentsRich = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync-rich`, {});
+export const getPingwinDocumentConfigDetail = (companyId: number, externalId: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`);
 
 export const getPingwinCatalog = (
     companyId: number,
@@ -382,6 +387,31 @@ export const getPingwinSuppliers = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, params);
 export const syncPingwinSuppliers = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {});
+// Condições de Pagamento PingWin (Fatia 1, só leitura): lista paginada + sincronizar.
+export const getPingwinPaymentConditions = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; search?: string; active?: number }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions`, params);
+export const syncPingwinPaymentConditions = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/sync`, {});
+// Fatia 2a (ESCRITA): template de documentos (p/ o modal), criar, e polling da criação.
+export const getPingwinPaymentConditionDocsTemplate = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/docs-template`);
+export const createPingwinPaymentCondition = (
+    companyId: number,
+    body: { code?: string; description: string; discount?: number; days?: number; tbdocs_unlinked?: string[] }
+) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions`, body);
+export const getPingwinPaymentConditionCreation = (companyId: number, creationId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/creation/${creationId}`);
+// Fatia 2b (ESCRITA): editar condição ATIVA por id (pingwin_id). code read-only; envia só as mudanças de tbdocs.
+export const updatePingwinPaymentCondition = (
+    companyId: number,
+    paycondId: string,
+    body: { description: string; discount?: number; days?: number; tbdocs_changes?: { docconfig_id: string; deleted: number }[] }
+) => api.update(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/${paycondId}`, body);
+// Fatia 2c (ESCRITA): anular (soft-delete) condição ATIVA por id (pingwin_id).
+export const voidPingwinPaymentCondition = (companyId: number, paycondId: string) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/payment-conditions/${paycondId}`);
 // Tab Compras (C1/C3): linhas de fornecedor de um artigo, do ESPELHO (recarregar após salvar).
 export const getPingwinArticleSupplierPrices = (companyId: number, catalogItemId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/articles/${catalogItemId}/supplier-prices`);
