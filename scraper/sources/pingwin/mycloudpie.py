@@ -750,6 +750,449 @@ class MyCloudPieClient:
             if owns:
                 ctx.__exit__(None, None, None)
 
+    # ============================ DOCUMENTCONFIG — EDITAR MAINDATASET (Fase D1) ============================
+    # ⚠️ ESCRITA. Bloco PARALELO novo (NÃO reusa _paycond_*). Sequência (HAR real):
+    #   1. GET rico por id (OPEN,GET,INFO) → MATRIZ VIVA (maindataset + 14 filhas + addfields).
+    #   2. POST /service/documentconfig/additionalfields.storedataset VAZIO → ABRE A SESSÃO
+    #      DE ESCRITA e gera o ObjectID (próprio do documentconfig; o paycond NÃO tinha).
+    #   3. WRITE GRANDE: POST /service/documentconfig/<WRITE_DATASETS> com maindataset editado
+    #      + 13 filhas + 2 additionalfields REENVIADOS TAL E QUAL da matriz viva. Mesmo ObjectID.
+    #   4. + 5. POST /service/documentconfig VAZIO ×2 (commit). Mesmo ObjectID.
+    # Só o maindataset se edita (D1); as filhas preservam-se. Confirma por releitura.
+    # NÃO replicar o POST /service/sessionsettings (ruído da UI, ObjectID vazio).
+    _DOCCONFIG_WRITE_DATASETS = (
+        "maindataset,entitytype_docconfig,docconfig_detailstatus,default_detailstatus,"
+        "docconfig_docmovreason,docconfig_docstatus,default_docsatatus,docconfig_docaccount,"
+        "docconfig_local,docconfig_import,docconfig_paymethod,docconfig_docreference,"
+        "docconfig_paycond,userrole_docconfig,additionalfields.maindataset,additionalfields.storedataset"
+    )
+    # Filhas reenviadas no WRITE (nota: store_docconfig é só de leitura — NÃO entra no write).
+    _DOCCONFIG_WRITE_CHILD_KEYS = [
+        "entitytype_docconfig", "docconfig_detailstatus", "default_detailstatus",
+        "docconfig_docmovreason", "docconfig_docstatus", "default_docsatatus",
+        "docconfig_docaccount", "docconfig_local", "docconfig_import",
+        "docconfig_paymethod", "docconfig_docreference", "docconfig_paycond", "userrole_docconfig",
+    ]
+    _DOCCONFIG_ACT_OPEN   = "OPEN,GET,INFO"   # passo 1 (abrir existente)
+    _DOCCONFIG_ACT_STORE  = "GET,INFO"        # passo 2 (abre sessão de escrita + gera ObjectID)
+    _DOCCONFIG_ACT_WRITE  = "MERGE"           # passo 3 (write grande)
+    _DOCCONFIG_ACT_COMMIT = "SAVE"            # passo 4 (commit)
+    _DOCCONFIG_ACT_CLOSE  = "CLOSE"           # passo 5 (close)
+    _DOCCONFIG_ACT_VOID   = "DELETE"          # anular (soft-delete, 1 POST sem body)
+
+    # D2a — filhas de MARCAÇÃO SIMPLES (só deleted) editáveis + a sua chave identificadora
+    # PRÓPRIA (confirmada no GET vivo). userrole_docconfig NÃO entra (tem field_value e chave
+    # composta — tratamento próprio noutra fatia); fica preservada verbatim como docaccount/defaults.
+    _DOCCONFIG_EDITABLE_CHILD_IDKEY = {
+        "entitytype_docconfig":   "entitytype_id",
+        "docconfig_detailstatus": "detailstatus_id",
+        "docconfig_docmovreason": "docmovreason_id",
+        "docconfig_docstatus":    "docstatus_id",
+        "docconfig_local":        "local_id",
+        "docconfig_import":       "importdocconfig_id",
+        "docconfig_paymethod":    "paymethod_id",
+        "docconfig_docreference": "docreference_id",
+        "docconfig_paycond":      "paycond_id",
+    }
+
+    def update_document_config(self, doc_id: str, fields: Dict[str, Any],
+                               children_changes: Dict[str, List[Dict[str, Any]]] | None = None,
+                               docaccount_changes: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
+        """⚠️ ESCRITA (D1/D2a/D2b): edita o MAINDATASET (`fields`), o `deleted` das 9 filhas de
+        marcação (`children_changes` = {filha: [{id, deleted}]}) e/ou o docaccount
+        (`docaccount_changes` = [{docaccount_id, deleted, credit, debit}]). As restantes
+        filhas + additionalfields reenviam-se PRESERVADAS da releitura viva. O diff aplica-se
+        sobre a MATRIZ VIVA (passo 1). Só persisted se a releitura confirmar."""
+        base = self._docconfig_base()
+        if base == self.api_url:
+            return self._update_docconfig_on(self.session, str(doc_id), fields or {}, children_changes or {}, docaccount_changes or [])
+        with self._port_session(base) as session:
+            return self._update_docconfig_on(session, str(doc_id), fields or {}, children_changes or {}, docaccount_changes or [])
+
+    def _update_docconfig_on(self, session: requests.Session, doc_id: str, fields: Dict[str, Any],
+                             children_changes: Dict[str, List[Dict[str, Any]]],
+                             docaccount_changes: List[Dict[str, Any]]) -> Dict[str, Any]:
+        base = self._docconfig_base()
+
+        # 1. GET rico (OPEN,GET,INFO) → matriz VIVA.
+        url1 = f"{base}/service/documentconfig/{doc_id}/{self._DOCCONFIG_RICH_DATASETS}"
+        r1 = session.post(url1, data=b"", headers=self._paycond_headers(self._DOCCONFIG_ACT_OPEN))
+        if r1.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig GET (open-for-write) falhou: HTTP {r1.status_code} — {r1.text[:400]}")
+        oid1 = r1.headers.get("ObjectID") or r1.headers.get("Objectid")
+        body = r1.json()
+        body = body.get("documentconfig") or body
+        main_live = (body.get("maindataset") or [{}])[0] if body.get("maindataset") else {}
+        if not main_live:
+            raise RuntimeError("documentconfig: GET sem maindataset.")
+        if int(main_live.get("deleted") or 0) != 0:
+            raise RuntimeError("documentconfig ABORTADO: só documentos ATIVOS são editáveis (deleted!=0).")
+
+        # 2. Abre a SESSÃO DE ESCRITA (storedataset vazio) → gera o ObjectID.
+        r2 = session.post(f"{base}/service/documentconfig/additionalfields.storedataset", data=b"",
+                          headers=self._paycond_headers(self._DOCCONFIG_ACT_STORE, oid1))
+        if r2.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig passo-2 (abre escrita) falhou: HTTP {r2.status_code} — {r2.text[:400]}")
+        oid = r2.headers.get("ObjectID") or r2.headers.get("Objectid") or oid1
+        if not oid:
+            raise RuntimeError("documentconfig: passo 2 não gerou ObjectID de escrita.")
+        try:
+            sb = r2.json()
+            sb = sb.get("documentconfig") or sb
+            store_live = sb.get("additionalfields.storedataset") or sb.get("storedataset") or body.get("_storedataset") or []
+        except Exception:  # noqa: BLE001
+            store_live = body.get("_storedataset") or []
+
+        # maindataset editado: parte do VIVO (verbatim) e sobrepõe os campos recebidos.
+        # Grava os _id (nunca mexe nos _descr — o servidor deriva-os do _id). code read-only.
+        row = dict(main_live)
+        protected = {"code", "id", "key"}
+        for k, v in (fields or {}).items():
+            if k in protected or k.endswith("_descr"):
+                continue
+            row[k] = v
+        row["deleted"] = 0
+
+        # WRITE body: maindataset editado + 13 filhas + 2 additionalfields, TAL E QUAL do vivo.
+        # Nas 9 filhas editáveis (D2a) aplica-se SÓ o diff de `deleted` sobre a matriz VIVA;
+        # as linhas não mexidas mantêm o deleted do vivo. As restantes filhas: verbatim.
+        write_body: Dict[str, Any] = {"maindataset": [row]}
+        counts: Dict[str, int] = {}
+        child_edits: Dict[str, Any] = {}   # para o capture: aplicados/não-casados por filha
+        for ck in self._DOCCONFIG_WRITE_CHILD_KEYS:
+            if ck not in body:
+                raise RuntimeError(f"documentconfig ABORTADO: bloco '{ck}' ausente na releitura viva.")
+            live_rows = body.get(ck) or []
+            changes = children_changes.get(ck) or []
+            if changes and ck in self._DOCCONFIG_EDITABLE_CHILD_IDKEY:
+                id_key = self._DOCCONFIG_EDITABLE_CHILD_IDKEY[ck]
+                want = {str(c.get("id")): (1 if int(c.get("deleted") or 0) == 1 else 0)
+                        for c in changes if c.get("id") not in (None, "")}
+                applied, matched = 0, set()
+                out_rows = []
+                for r in live_rows:
+                    nr = dict(r)
+                    rid = str(nr.get(id_key))
+                    if rid in want:
+                        nr["deleted"] = want[rid]
+                        matched.add(rid)
+                        applied += 1
+                    out_rows.append(nr)
+                write_body[ck] = out_rows
+                child_edits[ck] = {"id_key": id_key, "applied": applied,
+                                   "unmatched": sorted(set(want.keys()) - matched)}
+            elif ck == "docconfig_docaccount" and docaccount_changes:
+                # D2b: aplica os 3 flags (deleted/credit/debit) por conta, casando por
+                # docaccount_id. As contas NÃO mexidas reenviam-se TAL E QUAL (preserva
+                # qualquer combinação pré-existente, incl. um eventual ambos=1).
+                want_da = {str(c.get("docaccount_id")): c for c in docaccount_changes
+                           if c.get("docaccount_id") not in (None, "")}
+                applied, matched = 0, set()
+                out_rows = []
+                for r in live_rows:
+                    nr = dict(r)
+                    rid = str(nr.get("docaccount_id"))
+                    if rid in want_da:
+                        c = want_da[rid]
+                        nr["deleted"] = 1 if int(c.get("deleted") or 0) == 1 else 0
+                        nr["credit"] = 1 if int(c.get("credit") or 0) == 1 else 0
+                        nr["debit"] = 1 if int(c.get("debit") or 0) == 1 else 0
+                        matched.add(rid)
+                        applied += 1
+                    out_rows.append(nr)
+                write_body[ck] = out_rows
+                child_edits[ck] = {"id_key": "docaccount_id", "applied": applied,
+                                   "unmatched": sorted(set(want_da.keys()) - matched)}
+            else:
+                write_body[ck] = live_rows   # verbatim (não editável ou sem mudanças)
+            counts[ck] = len(write_body[ck])
+        write_body["additionalfields.maindataset"] = body.get("additionalfields.maindataset") or []
+        write_body["additionalfields.storedataset"] = store_live
+        counts["additionalfields.maindataset"] = len(write_body["additionalfields.maindataset"])
+        counts["additionalfields.storedataset"] = len(write_body["additionalfields.storedataset"])
+
+        # ⚠️ TRAVA ANTI-ENCOLHIMENTO POR BLOCO: cada bloco reenvia o nº de linhas do vivo.
+        # (Reenvio verbatim → iguais por construção; a trava protege contra bloco vazio
+        #  nos críticos, que teriam dados.)
+        for ck in ("docconfig_docstatus", "docconfig_docaccount", "docconfig_paycond"):
+            if counts.get(ck, 0) == 0:
+                raise RuntimeError(f"documentconfig ABORTADO: bloco crítico '{ck}' veio vazio do vivo (anti-encolhimento).")
+
+        # 3. WRITE GRANDE (MERGE), mesmo ObjectID.
+        url3 = f"{base}/service/documentconfig/{self._DOCCONFIG_WRITE_DATASETS}"
+        r3 = session.post(url3, json=write_body, headers=self._paycond_headers(self._DOCCONFIG_ACT_WRITE, oid))
+        capture = {
+            "oid1": oid1, "oid_write": oid, "write_http": r3.status_code,
+            "counts_sent": counts, "fields_applied": {k: row.get(k) for k in (fields or {}) if k not in ("code", "id", "key")},
+            "child_edits": child_edits,
+            # docaccount VIVO (passo 1) — para auditar a preservação das contas não mexidas.
+            "docaccount_live": [{"docaccount_id": str(r.get("docaccount_id")), "deleted": int(r.get("deleted") or 0),
+                                 "credit": int(r.get("credit") or 0), "debit": int(r.get("debit") or 0)}
+                                for r in (body.get("docconfig_docaccount") or [])],
+        }
+        if r3.status_code not in (200, 206):
+            capture["write_body_err"] = r3.text[:600]
+            return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                    "error": f"WRITE (MERGE) falhou (HTTP {r3.status_code}) — abortado antes do commit."}
+
+        # 4. + 5. commits (vazios), mesmo ObjectID.
+        rc1 = session.post(f"{base}/service/documentconfig", data=b"",
+                           headers=self._paycond_headers(self._DOCCONFIG_ACT_COMMIT, oid))
+        if rc1.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig SAVE falhou: HTTP {rc1.status_code} — {rc1.text[:400]}")
+        rc2 = session.post(f"{base}/service/documentconfig", data=b"",
+                           headers=self._paycond_headers(self._DOCCONFIG_ACT_CLOSE, oid))
+        if rc2.status_code not in (200, 206):
+            log.warning("documentconfig commit#2 devolveu HTTP %s (ignorado)", rc2.status_code)
+
+        # Confirm-by-reread: campo(s) novo(s) + 14 filhas/addfields intactas (contagem).
+        reread = self._docconfig_open_read(session, doc_id)
+        rmain = (reread.get("maindataset") or [{}])[0] if reread.get("maindataset") else {}
+        counts_after = {ck: len(reread.get(ck) or []) for ck in self._DOCCONFIG_CHILD_KEYS}
+        counts_after["additionalfields.maindataset"] = len(reread.get("additionalfields.maindataset") or [])
+        counts_after["additionalfields.storedataset"] = len(reread.get("_storedataset") or [])
+        confirm = {
+            "maindataset": {k: rmain.get(k) for k in (fields or {}) if k not in ("code", "id", "key")},
+            "code": rmain.get("code"),
+            "deleted": int(rmain.get("deleted") or 0),
+            "children_counts": counts_after,
+        }
+        # persisted se os campos editados batem na releitura.
+        fields_ok = all(str(rmain.get(k)) == str(v) for k, v in (fields or {}).items() if k not in ("code", "id", "key") and not k.endswith("_descr"))
+
+        # confirma as mudanças de filhas: cada id mexido tem o `deleted` pedido na releitura.
+        children_ok = True
+        children_confirm: Dict[str, Any] = {}
+        for ck, changes in (children_changes or {}).items():
+            if ck not in self._DOCCONFIG_EDITABLE_CHILD_IDKEY or not changes:
+                continue
+            id_key = self._DOCCONFIG_EDITABLE_CHILD_IDKEY[ck]
+            by_id = {str(r.get(id_key)): int(r.get("deleted") or 0) for r in (reread.get(ck) or [])}
+            want = {str(c.get("id")): (1 if int(c.get("deleted") or 0) == 1 else 0) for c in changes if c.get("id") not in (None, "")}
+            ok = all(by_id.get(rid) == dv for rid, dv in want.items())
+            children_ok = children_ok and ok
+            children_confirm[ck] = {
+                "ok": ok,
+                "linked_after": sorted(rid for rid, dv in by_id.items() if dv == 0),
+            }
+        confirm["children"] = children_confirm
+
+        # D2b — confirma o docaccount: cada conta mexida tem os 3 flags pedidos na releitura.
+        docaccount_ok = True
+        if docaccount_changes:
+            da_after = {str(r.get("docaccount_id")): r for r in (reread.get("docconfig_docaccount") or [])}
+            da_conf = []
+            for c in docaccount_changes:
+                rid = str(c.get("docaccount_id"))
+                r = da_after.get(rid) or {}
+                ok = (int(r.get("deleted") or 0) == (1 if int(c.get("deleted") or 0) == 1 else 0)
+                      and int(r.get("credit") or 0) == (1 if int(c.get("credit") or 0) == 1 else 0)
+                      and int(r.get("debit") or 0) == (1 if int(c.get("debit") or 0) == 1 else 0))
+                docaccount_ok = docaccount_ok and ok
+                da_conf.append({"docaccount_id": rid, "ok": ok,
+                                "deleted": r.get("deleted"), "credit": r.get("credit"), "debit": r.get("debit")})
+            confirm["docaccount"] = da_conf
+
+        persisted = bool(fields_ok and children_ok and docaccount_ok and int(confirm["deleted"] or 0) == 0)
+        return {
+            "ok": persisted, "persisted": persisted, "pingwin_id": doc_id,
+            "capture": capture, "confirm": confirm, "raw": reread,
+        }
+
+    # ============================ DOCUMENTCONFIG — CRIAR (Fase D3) ============================
+    # ⚠️ ESCRITA. Padrão paycond 2a + protocolo documentconfig. Sequência:
+    #   1. form-novo: POST /service/documentconfig/*/<RICH> (NEW,GET,INFO) → id PROVISÓRIO
+    #      (IGNORAR), code sugerido, 53 campos em branco, 14 filhas no estado-TEMPLATE + options.
+    #   2. POST /service/documentconfig/additionalfields.storedataset VAZIO → gera ObjectID.
+    #   3. WRITE: maindataset PREENCHIDO + 13 filhas template + 2 additionalfields. A RESPOSTA
+    #      traz maindataset[0].id = o ID FINAL REAL (≠ provisório). LER daqui.
+    #   4.+5. 2 commits vazios. Confirm-by-reread pelo id FINAL (NÃO exigir code igual — o
+    #      servidor TRUNCA o code em silêncio; confiar no id).
+    def probe_new_documentconfig(self) -> Dict[str, Any]:
+        """PROBE (só leitura) do form-novo: id provisório, code sugerido, tamanho do campo
+        code (datasetinfo), contagens das filhas template. NÃO faz commit (não persiste)."""
+        base = self._docconfig_base()
+        session = self.session if base == self.api_url else None
+        owns = False
+        if session is None:
+            ctx = self._port_session(base)
+            session = ctx.__enter__()
+            owns = True
+        try:
+            url = f"{base}/service/documentconfig/*/{self._DOCCONFIG_RICH_DATASETS}"
+            r = session.post(url, data=b"", headers=self._paycond_headers("NEW,GET,INFO"))
+            data = r.json() if r.status_code in (200, 206) else {}
+            body = data.get("documentconfig") or data
+            main0 = (body.get("maindataset") or [{}])[0] if body.get("maindataset") else {}
+            dsinfo = body.get("service.datasetinfo") or {}
+            # procurar o tamanho do campo 'code' no datasetinfo (estrutura varia).
+            code_info = None
+            for v in (dsinfo.values() if isinstance(dsinfo, dict) else []):
+                if isinstance(v, dict) and "code" in v and isinstance(v["code"], dict):
+                    code_info = v["code"]
+                    break
+            if code_info is None and isinstance(dsinfo.get("code"), dict):
+                code_info = dsinfo.get("code")
+            return {
+                "http": r.status_code,
+                "provisional_id": main0.get("id"),
+                "suggested_code": main0.get("code"),
+                "code_info": code_info,
+                "children_counts": {k: len(body.get(k) or []) for k in self._DOCCONFIG_CHILD_KEYS},
+                "dsinfo_keys": sorted(dsinfo.keys()) if isinstance(dsinfo, dict) else None,
+            }
+        finally:
+            if owns:
+                ctx.__exit__(None, None, None)
+
+    def create_document_config(self, fields: Dict[str, Any]) -> Dict[str, Any]:
+        """⚠️ ESCRITA (D3): cria um documento novo. `fields` = campos do maindataset a preencher
+        (os _id/texto; o PHP já filtra o whitelist e limita o code). As 14 filhas vão no
+        estado-TEMPLATE do form-novo (configuram-se depois por edição). Lê o id FINAL da
+        resposta do write; confirma por releitura (sem exigir code igual — truncagem)."""
+        base = self._docconfig_base()
+        if base == self.api_url:
+            return self._create_docconfig_on(self.session, fields or {})
+        with self._port_session(base) as session:
+            return self._create_docconfig_on(session, fields or {})
+
+    def _create_docconfig_on(self, session: requests.Session, fields: Dict[str, Any]) -> Dict[str, Any]:
+        base = self._docconfig_base()
+        # 1. form-novo (NEW,GET,INFO) → template + provisório + options.
+        url1 = f"{base}/service/documentconfig/*/{self._DOCCONFIG_RICH_DATASETS}"
+        r1 = session.post(url1, data=b"", headers=self._paycond_headers("NEW,GET,INFO"))
+        if r1.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig form-novo falhou: HTTP {r1.status_code} — {r1.text[:400]}")
+        oid1 = r1.headers.get("ObjectID") or r1.headers.get("Objectid")
+        body = r1.json()
+        body = body.get("documentconfig") or body
+        tmpl = (body.get("maindataset") or [{}])[0] if body.get("maindataset") else {}
+        if not tmpl:
+            raise RuntimeError("documentconfig form-novo sem maindataset.")
+        suggested_code = tmpl.get("code")
+        provisional_id = tmpl.get("id")
+
+        # 2. abre sessão de escrita (storedataset vazio) → ObjectID.
+        r2 = session.post(f"{base}/service/documentconfig/additionalfields.storedataset", data=b"",
+                          headers=self._paycond_headers(self._DOCCONFIG_ACT_STORE, oid1))
+        if r2.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig passo-2 (abre escrita) falhou: HTTP {r2.status_code} — {r2.text[:400]}")
+        oid = r2.headers.get("ObjectID") or r2.headers.get("Objectid") or oid1
+        if not oid:
+            raise RuntimeError("documentconfig: passo 2 não gerou ObjectID de escrita.")
+        try:
+            sb = r2.json()
+            sb = sb.get("documentconfig") or sb
+            store_live = sb.get("additionalfields.storedataset") or sb.get("storedataset") or body.get("_storedataset") or []
+        except Exception:  # noqa: BLE001
+            store_live = body.get("_storedataset") or []
+
+        # maindataset PREENCHIDO: parte do template e sobrepõe os campos do utilizador.
+        row = dict(tmpl)
+        code_sent = str(fields.get("code") if fields.get("code") not in (None, "") else (suggested_code or ""))
+        for k, v in (fields or {}).items():
+            if k in ("id", "key") or k.endswith("_descr"):
+                continue
+            row[k] = v
+        row["code"] = code_sent         # o utilizador define o code (servidor pode truncar)
+        row["id"] = str(provisional_id or "")   # provisório; o servidor devolve o final
+        row["deleted"] = 0
+
+        # WRITE body: maindataset + 13 filhas TEMPLATE + 2 additionalfields (tudo do form-novo).
+        write_body: Dict[str, Any] = {"maindataset": [row]}
+        counts: Dict[str, int] = {}
+        for ck in self._DOCCONFIG_WRITE_CHILD_KEYS:
+            if ck not in body:
+                raise RuntimeError(f"documentconfig CRIAR ABORTADO: bloco '{ck}' ausente no form-novo.")
+            write_body[ck] = body.get(ck) or []
+            counts[ck] = len(write_body[ck])
+        write_body["additionalfields.maindataset"] = body.get("additionalfields.maindataset") or []
+        write_body["additionalfields.storedataset"] = store_live
+        for ck in ("docconfig_docstatus", "docconfig_docaccount", "docconfig_paycond"):
+            if counts.get(ck, 0) == 0:
+                raise RuntimeError(f"documentconfig CRIAR ABORTADO: bloco '{ck}' vazio no form-novo (anti-encolhimento).")
+
+        # 3. WRITE (MERGE) → id FINAL na resposta.
+        url3 = f"{base}/service/documentconfig/{self._DOCCONFIG_WRITE_DATASETS}"
+        r3 = session.post(url3, json=write_body, headers=self._paycond_headers(self._DOCCONFIG_ACT_WRITE, oid))
+        capture = {"provisional_id": provisional_id, "suggested_code": suggested_code,
+                   "code_sent": code_sent, "oid_write": oid, "write_http": r3.status_code, "counts_sent": counts}
+        if r3.status_code not in (200, 206):
+            capture["write_body_err"] = r3.text[:600]
+            return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                    "error": f"WRITE (MERGE) falhou (HTTP {r3.status_code}) — abortado antes do commit."}
+        wmain0 = ((r3.json().get("documentconfig") or r3.json()).get("maindataset") or [{}])[0]
+        final_id = str(wmain0.get("id") or "")
+        capture["final_id"] = final_id
+        capture["code_returned"] = wmain0.get("code")
+        capture["final_id_differs_from_provisional"] = (final_id != str(provisional_id or ""))
+        if not final_id:
+            return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                    "error": "WRITE não devolveu maindataset[0].id (id final). Abortado antes do commit."}
+
+        # 4.+5. commits.
+        rc1 = session.post(f"{base}/service/documentconfig", data=b"",
+                           headers=self._paycond_headers(self._DOCCONFIG_ACT_COMMIT, oid))
+        if rc1.status_code not in (200, 206):
+            raise RuntimeError(f"documentconfig CRIAR SAVE falhou: HTTP {rc1.status_code} — {rc1.text[:400]}")
+        rc2 = session.post(f"{base}/service/documentconfig", data=b"",
+                           headers=self._paycond_headers(self._DOCCONFIG_ACT_CLOSE, oid))
+        if rc2.status_code not in (200, 206):
+            log.warning("documentconfig CRIAR commit#2 devolveu HTTP %s (ignorado)", rc2.status_code)
+
+        # Confirm-by-reread pelo id FINAL. ⚠️ NÃO exigir code igual (servidor trunca).
+        reread = self._docconfig_open_read(session, final_id)
+        rmain0 = (reread.get("maindataset") or [{}])[0] if reread.get("maindataset") else {}
+        confirm = {
+            "id": str(rmain0.get("id") or ""), "code": rmain0.get("code"),
+            "description": rmain0.get("description"), "deleted": int(rmain0.get("deleted") or 0),
+            "code_truncated": (str(rmain0.get("code") or "") != code_sent),
+        }
+        persisted = bool(confirm["id"] == final_id and int(confirm["deleted"] or 0) == 0)
+        return {
+            "ok": persisted, "persisted": persisted, "pingwin_id": final_id,
+            "capture": capture, "confirm": confirm, "raw": reread,
+        }
+
+    # ⚠️⚠️ ESCRITA NO PINGWIN — ANULAR DOCUMENTO (Fase D4) ⚠️⚠️
+    # SOFT-DELETE (confirmado por HAR e já usado na limpeza da D1/D3): UM POST sem body a
+    # /service/documentconfig/{id} (Action DELETE) → o documento sai do STATE 0 e vai para
+    # o STATE 1 (anulados), deleted=1. Resposta {"documentconfig":{}}. Só anula se ATIVO.
+    def void_document_config(self, doc_id: str, dataset_id: str = "1099511639239") -> Dict[str, Any]:
+        """⚠️ ESCRITA (D4): anula (soft-delete) um documento ATIVO. Devolve {ok,
+        voided_confirmed, void_http, in_state0_ativos, in_state1_anulados, pingwin_id}.
+        Só voided_confirmed=True se a releitura mostrar: saiu do STATE 0 E está no STATE 1."""
+        base = self._docconfig_base()
+        if base == self.api_url:
+            return self._void_docconfig_on(self.session, str(doc_id), dataset_id)
+        with self._port_session(base) as session:
+            return self._void_docconfig_on(session, str(doc_id), dataset_id)
+
+    def _void_docconfig_on(self, session: requests.Session, pid: str, dataset_id: str) -> Dict[str, Any]:
+        base = self._docconfig_base()
+        # Só anula se estiver ATIVO (STATE 0); se já inativo, recusa (sem POST).
+        active_before = any(str(x.get("id")) == pid for x in self._docconfig_list(dataset_id, "0"))
+        if not active_before:
+            return {"ok": False, "voided_confirmed": False,
+                    "error": "Documento não está ativo (STATE 0) — anular recusado."}
+
+        r = session.post(f"{base}/service/documentconfig/{pid}", data=b"",
+                         headers=self._paycond_headers(self._DOCCONFIG_ACT_VOID))
+        if r.status_code not in (200, 206):
+            return {"ok": False, "voided_confirmed": False, "void_http": r.status_code,
+                    "error": f"Anular falhou (HTTP {r.status_code}) — {r.text[:300]}"}
+
+        # Confirm-by-reread: tem de SAIR do STATE 0 e ESTAR no STATE 1. ("200" ≠ gravado.)
+        in0 = any(str(x.get("id")) == pid for x in self._docconfig_list(dataset_id, "0"))
+        in1 = any(str(x.get("id")) == pid for x in self._docconfig_list(dataset_id, "1"))
+        voided = (not in0) and in1
+        if not voided:
+            log.error("void_documentconfig: id=%s NÃO confirmado (in_state0=%s in_state1=%s).", pid, in0, in1)
+        return {
+            "ok": voided, "voided_confirmed": voided, "void_http": r.status_code,
+            "in_state0_ativos": in0, "in_state1_anulados": in1, "pingwin_id": pid,
+        }
+
     # -------------------------------------------------- BROWSER: CATÁLOGO
     def fetch_catalog(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
         """

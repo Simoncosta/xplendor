@@ -115,8 +115,11 @@ class EditorialLineService
             return ['has_sector' => false];
         }
 
-        // Janela: 1.º dia do mês corrente → último dia do mês +11 (12 meses), em Lisboa.
-        [$start, $end] = $this->windowBounds();
+        // Janela de LEITURA: 12 meses para trás → +11 à frente. Permite CONSULTAR
+        // meses passados (read-only). A tira de meses (monthsState) e as guardas de
+        // escrita usam a janela de ESCRITA (corrente → +11), por isso o passado
+        // aparece mas não é editável.
+        [$start, $end] = $this->readWindowBounds();
 
         // Herança: âncoras nos nós do caminho raiz→folha, país universal(null) ou 'PT'.
         $pathIds = array_map(static fn (ContentSector $s) => $s->id, $sector->pathFromRoot());
@@ -547,10 +550,28 @@ class EditorialLineService
     // ─────────────────────────── janela deslizante (Europe/Lisbon) ───────────────────────────
 
     /** [start, end] da janela: 1.º dia do mês corrente → último dia do mês +11 (em Lisboa). */
+    /** Janela de ESCRITA: mês corrente → +11 (12 meses). Define o que é editável
+     *  (abrir/fechar mês, criar/editar âncoras e publicações). O passado NÃO entra
+     *  aqui — por isso a escrita no passado continua recusada. */
     private function windowBounds(): array
     {
         $start = CarbonImmutable::now(self::REF_TZ)->startOfMonth();
         $end = $start->addMonths(self::WINDOW - 1)->endOfMonth();
+
+        return [$start, $end];
+    }
+
+    /** Janela de LEITURA/CONSULTA: 12 meses PARA TRÁS → +11 à frente. Só alarga o
+     *  que se pode VER (calendário, âncoras, publicações). Os meses passados ficam
+     *  read-only (a tira de meses e as guardas de escrita continuam na janela de
+     *  escrita acima). Separar ler de escrever é o cerne desta correção. */
+    private const READ_WINDOW_BACK = 12;
+
+    private function readWindowBounds(): array
+    {
+        $current = CarbonImmutable::now(self::REF_TZ)->startOfMonth();
+        $start   = $current->subMonths(self::READ_WINDOW_BACK);
+        $end     = $current->addMonths(self::WINDOW - 1)->endOfMonth();
 
         return [$start, $end];
     }

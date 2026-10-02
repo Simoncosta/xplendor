@@ -46,9 +46,9 @@ class MotorhomeMarketEngineTest extends TestCase
         });
     }
 
-    private function target(int $year = 2020, ?int $cc = 2287, ?int $beds = 4): array
+    private function target(int $year = 2020, ?int $cc = 2287): array
     {
-        return ['year' => $year, 'cc' => $cc, 'beds' => $beds];
+        return ['year' => $year, 'cc' => $cc];
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -67,23 +67,20 @@ class MotorhomeMarketEngineTest extends TestCase
         $this->assertSame(0.0, MotorhomeMarketEngine::ccScore(2287, 3000));   // Δ713
         $this->assertSame(0.5, MotorhomeMarketEngine::ccScore(2287, null));
         $this->assertSame(0.5, MotorhomeMarketEngine::ccScore(null, 2300));
-
-        $this->assertSame(1.0, MotorhomeMarketEngine::bedsScore(4, 4));
-        $this->assertSame(0.5, MotorhomeMarketEngine::bedsScore(4, 5));
-        $this->assertSame(0.0, MotorhomeMarketEngine::bedsScore(4, 6));
-        $this->assertSame(0.5, MotorhomeMarketEngine::bedsScore(null, 4));
     }
 
     public function test_desconhecido_nao_e_dissemelhanca_caso_do_painel(): void
     {
         // Refutador matemático: com desconhecido→0, o anúncio A (mesmo ano,
-        // cc/beds por parsear) perdia para B (2 anos off). Com 0.5 a ordem
-        // correta é restaurada: A=0.725 > B=0.5925.
-        $a = MotorhomeMarketEngine::similarityScore(2020, 2287, 4, 2020, null, null);
-        $b = MotorhomeMarketEngine::similarityScore(2020, 2287, 4, 2018, 2179, 3);
+        // cc por parsear) perdia para B (2 anos off). Com 0.5 a ordem
+        // correta é restaurada. Pesos 0.55/0.45 (2026-10-02, beds fora):
+        //   A = 0.55·1.0  + 0.45·0.5 = 0.775
+        //   B = 0.55·0.55 + 0.45·0.7 = 0.3025 + 0.315 = 0.6175
+        $a = MotorhomeMarketEngine::similarityScore(2020, 2287, 2020, null);
+        $b = MotorhomeMarketEngine::similarityScore(2020, 2287, 2018, 2179);
 
-        $this->assertSame(0.725, $a);
-        $this->assertSame(0.5925, $b);
+        $this->assertSame(0.775, $a);
+        $this->assertSame(0.6175, $b);
         $this->assertGreaterThan($b, $a);
     }
 
@@ -96,7 +93,7 @@ class MotorhomeMarketEngineTest extends TestCase
             ['external_id' => 'sv-2020',  'source' => 'standvirtual', 'year' => 2020],
         ]);
 
-        $sorted = $this->engine->sortForDisplay($pool, 2020, null, null)
+        $sorted = $this->engine->sortForDisplay($pool, 2020, null)
             ->pluck('external_id')->all();
 
         // 2020 (Δ0) primeiro; os três Δ1 empatam no score → Δano igual →
@@ -330,7 +327,7 @@ class MotorhomeMarketEngineTest extends TestCase
         $this->assertNotNull($result['p75_price']);
         $this->assertFalse($result['fallback_used']);
 
-        // Top por SCORE: o 36000 (Δ0 ano, cc igual, beds igual → 1.0) primeiro;
+        // Top por SCORE: o 36000 (Δ0 ano, cc igual → 0.55+0.45 = 1.0) primeiro;
         // o outlier removido NÃO aparece na montra.
         $top = $result['top_comparables'];
         $this->assertSame(36000.0, $top[0]['price']);
@@ -338,6 +335,30 @@ class MotorhomeMarketEngineTest extends TestCase
         $this->assertNotContains(200000.0, array_column($top, 'price'));
         $this->assertArrayHasKey('length', $top[0]);
         $this->assertArrayHasKey('scraped_at', $top[0]);
+    }
+
+    public function test_montra_mostra_ate_10_por_score(): void
+    {
+        // 12 elegíveis (preços próximos — sem outliers): a montra corta em 10
+        // e os 10 são os de MAIOR score (os dois 2018, Δ2 → 0.3025+0.45 =
+        // 0.7525, ficam de fora face aos Δ0/Δ1).
+        $rows = [];
+        foreach (range(0, 9) as $i) {
+            $rows[] = ['price' => 38000.0 + $i * 100, 'year' => $i < 5 ? 2020 : 2019, 'displacement' => 2287];
+        }
+        $rows[] = ['price' => 39000.0, 'year' => 2018, 'displacement' => 2287];
+        $rows[] = ['price' => 39100.0, 'year' => 2018, 'displacement' => 2287];
+
+        $result = $this->engine->compute($this->target(), $this->pool($rows));
+
+        $this->assertSame(12, $result['comparables_count']);
+        $this->assertCount(10, $result['top_comparables']);
+        $scores = array_column($result['top_comparables'], 'similarity_score');
+        $this->assertSame(1.0, $scores[0]);                    // 2020, cc igual
+        $this->assertNotContains(0.7525, $scores);             // os 2018 ficam fora
+        $sorted = $scores;
+        rsort($sorted);
+        $this->assertSame($sorted, $scores);                   // ordenado desc
     }
 
     public function test_compute_n1_2_devolve_preco_indicativo_nunca_vazio(): void

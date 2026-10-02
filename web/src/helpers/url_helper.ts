@@ -64,6 +64,7 @@ export const GET_CARS_ANALYSES = "/car-ai-analyses";
 export const GET_META_OAUTH_URL = "/oauth-url";
 export const GET_META_ADSETS = "/adsets";
 export const POST_META_CALLBACK = "/callback";
+export const PATCH_META_ACCOUNT = "/account";
 
 // USERS
 export const GET_USERS_APIS = "/users";

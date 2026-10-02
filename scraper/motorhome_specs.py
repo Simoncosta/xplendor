@@ -49,6 +49,7 @@ Regras de rigor:
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Optional
 
 # Tipologias canónicas (vocabulário = slugs Standvirtual, consistente com
@@ -296,24 +297,57 @@ def parse_layout_text(text: str) -> Optional[str]:
     return None
 
 
+def _strip_accents(value: str) -> str:
+    """Remove diacríticos ("Furgão" → "Furgao") via decomposição NFKD."""
+    return unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+
+
+# Aliases estruturados → canónico. Chaves SEM acentos e em minúsculas — a
+# normalização em normalize_structured_layout() garante que "Furgão", "FURGÃO",
+# " furgões " etc. chegam aqui como "furgao"/"furgoes". Endurecido 2026-10-02:
+# o Standvirtual envia hoje o SLUG ("furgao") em values[].value, mas se algum
+# dia enviar o LABEL ("Furgão") o mapa não pode partir em silêncio (provado ao
+# vivo que o label existe ao lado do slug). Inclui variantes de género/plural.
+_STRUCTURED_LAYOUT_ALIASES = {
+    # perfiladas (slug SV) + variantes de género/plural
+    "perfiladas": "perfiladas",
+    "perfilada": "perfiladas",
+    "perfilado": "perfiladas",
+    "perfilados": "perfiladas",
+    # integral + plural
+    "integral": "integral",
+    "integrais": "integral",
+    # capucine (slug SV) + variantes PT/FR
+    "capucine": "capucine",
+    "capucines": "capucine",
+    "capucino": "capucine",
+    "capucinos": "capucine",
+    "capuchino": "capucine",
+    "capuchon": "capucine",
+    # furgao (slug SV) + label/plural/sinónimos
+    "furgao": "furgao",
+    "furgoes": "furgao",
+    "furgonetas": "furgao",
+    "campervan": "furgao",
+    "campervans": "furgao",
+    "camper van": "furgao",
+    # caravana (estruturado apenas — nunca inferida de texto)
+    "caravana": "caravana",
+    "caravanas": "caravana",
+}
+
+
 def normalize_structured_layout(value: Optional[str]) -> Optional[str]:
     """Mapeia um body_type ESTRUTURADO (Standvirtual/CustoJusto) para o
-    canónico. Valores fora do vocabulário motorhome (ex.: atrelado-tenda)
-    devolvem None — não são tipologias de autocaravana."""
+    canónico. Normaliza ANTES de consultar o mapa: trim, minúsculas, remoção
+    de acentos e colapso de espaços internos. Valores fora do vocabulário
+    motorhome (ex.: atrelado-tenda) devolvem None — não são tipologias de
+    autocaravana."""
     if not value:
         return None
-    slug = str(value).strip().lower()
-    aliases = {
-        "perfiladas": "perfiladas",
-        "perfilada": "perfiladas",
-        "integral": "integral",
-        "capucine": "capucine",
-        "capucino": "capucine",
-        "furgao": "furgao",
-        "campervan": "furgao",
-        "caravana": "caravana",
-    }
-    return aliases.get(slug)
+    slug = _strip_accents(str(value)).strip().lower()
+    slug = re.sub(r"\s+", " ", slug)
+    return _STRUCTURED_LAYOUT_ALIASES.get(slug)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

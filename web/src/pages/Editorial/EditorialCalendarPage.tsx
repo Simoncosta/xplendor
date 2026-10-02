@@ -133,6 +133,14 @@ export default function EditorialCalendarPage() {
     const firstKey = months[0]?.month_key;
     const lastKey = months[months.length - 1]?.month_key;
 
+    // Limites de NAVEGAÇÃO (ler): a janela de leitura vai 12 meses para trás
+    // (range.from) até +11 à frente (range.to). O passado é só consulta.
+    const minKey = range ? range.from.slice(0, 7) : firstKey;       // 12 meses atrás
+    const maxKey = range ? range.to.slice(0, 7) : lastKey;          // +11 à frente
+    const currentKey = useMemo(() => months.find((m) => m.is_current)?.month_key ?? firstKey, [months, firstKey]);
+    // Mês em consulta (navegado para trás): fora da tira e anterior ao corrente.
+    const isPastView = !!selectedKey && !!currentKey && selectedKey < currentKey;
+
     const gotoKey = (key: string) => {
         const [y, m] = key.split("-").map(Number);
         calRef.current?.getApi().gotoDate(new Date(y, m - 1, 1));
@@ -327,36 +335,44 @@ export default function EditorialCalendarPage() {
                                         })}
                                     </div>
 
-                                    {/* CABEÇALHO DA GRELHA */}
-                                    {selected && (
+                                    {/* CABEÇALHO DA GRELHA — renderiza também em meses PASSADOS
+                                        (consulta), não só nos da tira. Navegação até 12 meses atrás. */}
+                                    {range && selectedKey && (
                                         <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                                             <div className="d-flex align-items-center gap-2">
-                                                <Button color="light" size="sm" disabled={selectedKey === firstKey} onClick={() => calRef.current?.getApi().prev()}><i className="ri-arrow-left-s-line" /></Button>
+                                                <Button color="light" size="sm" disabled={!!minKey && selectedKey <= minKey} onClick={() => calRef.current?.getApi().prev()}><i className="ri-arrow-left-s-line" /></Button>
                                                 <h5 className="mb-0" style={{ minWidth: 150, textAlign: "center" }}>{monthLabel(selectedKey)}</h5>
-                                                <Button color="light" size="sm" disabled={selectedKey === lastKey} onClick={() => calRef.current?.getApi().next()}><i className="ri-arrow-right-s-line" /></Button>
-                                                {selected.state === "open"
-                                                    ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
-                                                    : <span className="badge bg-body-secondary text-muted ms-1"><i className="ri-lock-2-line me-1" />Bloqueado</span>}
-                                            </div>
-                                            <div className="d-flex align-items-center gap-2">
-                                                {selected.state === "open" && (
-                                                    <>
-                                                        <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
-                                                            <i className="ri-image-add-line me-1" />Publicação
-                                                        </Button>
-                                                        <Button color="soft-secondary" size="sm" disabled={working} onClick={openCreate}>
-                                                            <i className="ri-calendar-event-line me-1" />Âncora própria
-                                                        </Button>
-                                                    </>
-                                                )}
-                                                {selected.can_open ? (
-                                                    <Button color="success" size="sm" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
-                                                ) : selected.can_close ? (
-                                                    <Button color="light" size="sm" disabled={acting} onClick={() => doClose(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-2-line me-1" />Fechar mês</>}</Button>
-                                                ) : selected.state === "closed" ? (
-                                                    <span className="text-muted fs-12"><i className="ri-lock-2-line me-1" />Abre o mês anterior primeiro</span>
+                                                <Button color="light" size="sm" disabled={!!maxKey && selectedKey >= maxKey} onClick={() => calRef.current?.getApi().next()}><i className="ri-arrow-right-s-line" /></Button>
+                                                {selected ? (
+                                                    selected.state === "open"
+                                                        ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
+                                                        : <span className="badge bg-body-secondary text-muted ms-1"><i className="ri-lock-2-line me-1" />Bloqueado</span>
+                                                ) : isPastView ? (
+                                                    <span className="badge bg-warning-subtle text-warning ms-1" title="Mês passado: só consulta, não editável."><i className="ri-archive-line me-1" />Mês arquivado · só consulta</span>
                                                 ) : null}
                                             </div>
+                                            {/* Ações de ESCRITA só nos meses da tira (presente+futuro). No passado não há. */}
+                                            {selected && (
+                                                <div className="d-flex align-items-center gap-2">
+                                                    {selected.state === "open" && (
+                                                        <>
+                                                            <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
+                                                                <i className="ri-image-add-line me-1" />Publicação
+                                                            </Button>
+                                                            <Button color="soft-secondary" size="sm" disabled={working} onClick={openCreate}>
+                                                                <i className="ri-calendar-event-line me-1" />Âncora própria
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                    {selected.can_open ? (
+                                                        <Button color="success" size="sm" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
+                                                    ) : selected.can_close ? (
+                                                        <Button color="light" size="sm" disabled={acting} onClick={() => doClose(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-2-line me-1" />Fechar mês</>}</Button>
+                                                    ) : selected.state === "closed" ? (
+                                                        <span className="text-muted fs-12"><i className="ri-lock-2-line me-1" />Abre o mês anterior primeiro</span>
+                                                    ) : null}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -366,7 +382,9 @@ export default function EditorialCalendarPage() {
                                             ref={calRef as any}
                                             plugins={[dayGridPlugin]}
                                             initialView="dayGridMonth"
-                                            initialDate={range.from}
+                                            // Abrir no mês CORRENTE (não em range.from, que agora é 12
+                                            // meses atrás — isso é só a fronteira de consulta).
+                                            initialDate={currentKey ? `${currentKey}-01` : range.from}
                                             locale={ptLocale}
                                             firstDay={1}
                                             height="auto"

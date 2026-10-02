@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
-import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings } from "helpers/laravel_helper";
+import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi } from "helpers/laravel_helper";
 import { useModules } from "contexts/ModulesContext";
 import { ICarmineApi } from "common/models/carmine-api.model";
 import { PingwinStatus } from "common/models/pingwin.model";
@@ -112,7 +112,11 @@ const selectGoogleIntegration = createSelector(
 export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: IntegrationsSettingsProps) {
     const dispatch: any = useDispatch();
     const { has } = useModules();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [companyId, setCompanyId] = useState<number>(0);
+    // Escolha da conta de anúncios após o OAuth (callback no backend não a pede).
+    const [metaAccountInput, setMetaAccountInput] = useState("");
+    const [savingMetaAccount, setSavingMetaAccount] = useState(false);
     const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
     const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
     const { loadingIntegrations, disconnectingIntegration } = useSelector(selectMetaAdsViewModel);
@@ -227,6 +231,49 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
         fetchPingwin(Number(company_id));
         fetchCover(Number(company_id));
     }, [fetchIntegrations, fetchPingwin, fetchCover]);
+
+    // Retorno do OAuth Meta (backend redireciona para cá com ?meta=...). Mostra
+    // o resultado e limpa o parâmetro do URL para não repetir ao refrescar.
+    useEffect(() => {
+        const meta = searchParams.get("meta");
+        if (!meta) return;
+
+        if (meta === "connected") {
+            toast.success("Meta Ads conectado com sucesso!");
+        } else if (meta === "choose_account") {
+            toast.info("Meta Ads ligado. Falta escolher a conta de anúncios.");
+        } else if (meta === "error") {
+            const reason = searchParams.get("reason");
+            const msg = reason === "denied"
+                ? "Autorização cancelada no Meta."
+                : reason === "state"
+                    ? "Sessão de ligação expirada. Tenta novamente."
+                    : "Não foi possível ligar o Meta Ads. Tenta novamente.";
+            toast.error(msg);
+        }
+
+        // Limpar ?meta (e ?reason) preservando qualquer outro parâmetro.
+        const next = new URLSearchParams(searchParams);
+        next.delete("meta");
+        next.delete("reason");
+        setSearchParams(next, { replace: true });
+    }, [searchParams, setSearchParams]);
+
+    const saveMetaAccount = async () => {
+        const acc = metaAccountInput.trim();
+        if (!acc || !companyId) return;
+        setSavingMetaAccount(true);
+        try {
+            await setMetaAccountApi(companyId, acc);
+            toast.success("Conta de anúncios guardada.");
+            setMetaAccountInput("");
+            await fetchIntegrations(companyId);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível guardar a conta de anúncios.");
+        } finally {
+            setSavingMetaAccount(false);
+        }
+    };
 
     const handleDisconnect = async (platform: string) => {
         setPendingPlatform(platform);
@@ -396,6 +443,32 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         {infoRow("Campanhas ativas", metaIntegration.active_campaigns_count ?? 0)}
                                         {infoRow("Último sync", fmtDate(metaIntegration.last_synced_at))}
                                         {infoRow("Token expira", fmtDate(metaIntegration.token_expires_at))}
+
+                                        {/* Conta por definir (logo após o OAuth): o token já está
+                                            guardado; falta escolher a conta de anúncios. */}
+                                        {!metaIntegration.account_id && (
+                                            <div className="border rounded p-2 mt-1" style={{ background: "var(--vz-tertiary-bg)" }}>
+                                                <p className="fs-12 text-body mb-2">
+                                                    Introduz o ID da tua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
+                                                </p>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm mb-2"
+                                                    placeholder="123456789 ou act_123456789"
+                                                    value={metaAccountInput}
+                                                    onChange={(e) => setMetaAccountInput(e.target.value)}
+                                                    onKeyDown={(e) => e.key === "Enter" && saveMetaAccount()}
+                                                />
+                                                <button
+                                                    className="btn btn-primary btn-sm w-100"
+                                                    onClick={saveMetaAccount}
+                                                    disabled={savingMetaAccount || !metaAccountInput.trim()}
+                                                >
+                                                    {savingMetaAccount ? <><Spinner size="sm" className="me-1" />A guardar…</> : "Guardar conta de anúncios"}
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {metaIntegration.status === "active" ? (
                                             <button
                                                 className="btn btn-soft-danger btn-sm mt-1"

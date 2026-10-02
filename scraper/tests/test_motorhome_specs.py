@@ -201,6 +201,41 @@ class TestParseLayout:
     def test_normalize_structured(self, value, expected):
         assert normalize_structured_layout(value) == expected
 
+    # Endurecimento 2026-10-02 — o SV envia o SLUG em values[].value, mas o
+    # LABEL ("Furgão") existe ao lado (provado ao vivo); se o contrato mudar,
+    # o mapa não pode partir em silêncio. Acentos, maiúsculas, espaços,
+    # género e plural normalizam TODOS para o canónico.
+    @pytest.mark.parametrize("value,expected", [
+        # label com acento/maiúsculas (o valor literal da "Secção" na ficha)
+        ("Furgão", "furgao"),
+        ("FURGÃO", "furgao"),
+        ("furgão", "furgao"),
+        ("Furgões", "furgao"),
+        ("  Furgão  ", "furgao"),
+        # género/plural em falta no mapa antigo
+        ("Perfilado", "perfiladas"),
+        ("perfilados", "perfiladas"),
+        ("Perfiladas", "perfiladas"),
+        ("Integrais", "integral"),
+        ("INTEGRAL", "integral"),
+        # variantes de capucine
+        ("Capuchino", "capucine"),
+        ("capuchon", "capucine"),
+        ("Capucines", "capucine"),
+        # espaços internos colapsados
+        ("camper  van", "furgao"),
+        ("Camper Van", "furgao"),
+        ("Campervans", "furgao"),
+        # plural de caravana
+        ("Caravanas", "caravana"),
+        # fora do vocabulário continua fora (acentos não criam falsos positivos)
+        ("Atrelado-Tenda", None),
+        ("Furgonte", None),
+        ("perfil", None),
+    ])
+    def test_normalize_structured_endurecido_acentos_caso_genero_plural(self, value, expected):
+        assert normalize_structured_layout(value) == expected
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Entrada única + integração com anúncios reais completos

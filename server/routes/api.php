@@ -66,6 +66,14 @@ Route::middleware(['check_scraper_api_token'])->group(function () {
     Route::post('/market/snapshots', [MarketSnapshotController::class, 'store']);
 });
 
+// OAuth Meta — callback do browser (GET, PÚBLICO). O Meta redireciona o browser
+// para aqui com ?code&state; não traz o bearer da SPA, por isso NÃO pode estar
+// atrás do auth:sanctum. O company_id vem do state (nonce validado em cache) e o
+// handler troca o code pelo token (secret no backend) e REDIRECIONA para /app.
+// URL completo: /api/oauth/meta/callback (registar este em "Valid OAuth Redirect
+// URIs" na Meta). Fica fora do grupo v1 para dar exactamente este caminho.
+Route::get('/oauth/meta/callback', [MetaOAuthController::class, 'handleCallbackRedirect']);
+
 Route::prefix('v1')->group(function () {
     Route::post('/register', [UserController::class, 'store']);
     Route::post('/login', [UserController::class, 'login']);
@@ -193,6 +201,13 @@ Route::prefix('v1')->group(function () {
                     Route::post('/integrations/pingwin/documents/sync', [CompanyPingwinController::class, 'syncDocuments']);
                     // Documentos — LEITURA RICA (Fase D0): sincronizar config completa + detalhe por id.
                     Route::post('/integrations/pingwin/documents/sync-rich', [CompanyPingwinController::class, 'syncDocumentsRich']);
+                    // D3 (ESCRITA): criar documento novo.
+                    Route::post('/integrations/pingwin/documents', [CompanyPingwinController::class, 'createDocumentConfig']);
+                    // D1 (ESCRITA): editar maindataset de um documento ativo + polling do estado.
+                    Route::get('/integrations/pingwin/documents/writes/{writeId}', [CompanyPingwinController::class, 'documentConfigWrite'])->whereNumber('writeId');
+                    Route::match(['put', 'patch'], '/integrations/pingwin/documents/{externalId}', [CompanyPingwinController::class, 'updateDocumentConfig'])->whereNumber('externalId');
+                    // D4 (ESCRITA): anular (soft-delete) documento ativo. Destrutiva → bloqueada em impersonation.
+                    Route::delete('/integrations/pingwin/documents/{externalId}', [CompanyPingwinController::class, 'voidDocumentConfig'])->whereNumber('externalId')->middleware('block_when_impersonating');
                     Route::get('/integrations/pingwin/documents/{externalId}', [CompanyPingwinController::class, 'documentConfigDetail'])->whereNumber('externalId');
                     // Artigos PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/catalog', [CompanyPingwinController::class, 'catalog']);
@@ -376,6 +391,11 @@ Route::prefix('v1')->group(function () {
                 Route::get('integrations', [CompanyIntegrationController::class, 'index']);
                 Route::delete('integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
                 Route::get('integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+                // Escolher a conta de anúncios APÓS o OAuth (o callback no backend
+                // guarda o token mas não pode perguntar o account_id). A página de
+                // integrações em /app define-o aqui.
+                Route::patch('integrations/meta/account', [CompanyIntegrationController::class, 'setMetaAccount'])
+                    ->middleware('block_when_impersonating');
             });
 
             Route::apiResource('/districts', DistrictController::class)->only(['index']);

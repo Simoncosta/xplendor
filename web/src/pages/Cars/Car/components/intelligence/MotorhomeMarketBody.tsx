@@ -15,7 +15,7 @@ import { labelOf, MARKET_SOURCE_LABELS } from "../../../../../helpers/labels";
 // Difere da vista dos carros porque o preço é por TIPOLOGIA + ano (cross-marca),
 // não por marca+modelo. O selo comunica essa natureza. Essencial em destaque:
 // preço (mediana), grau de confiança e nº de anúncios; detalhe (banda p25-p75,
-// top 5) recolhido.
+// top 10) recolhido.
 //
 // Contrato de dados (backend Fase 1, provado):
 //   · method='motorhome_similarity_v1' seleciona esta vista.

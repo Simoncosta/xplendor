@@ -17,8 +17,11 @@ use Illuminate\Support\Collection;
  * Desenho endurecido por 3 refutadores independentes (2026-09-30):
  *   - score ORDENA a montra; a mediana usa TODOS os elegíveis pós-outliers
  *     (dados em falta ≠ dissemelhança; o top-N não escolhe a base do cálculo);
- *   - desconhecido → 0.5 neutro em s_cc/s_beds (com 0, um anúncio do mesmo
+ *   - desconhecido → 0.5 neutro em s_cc (com 0, um anúncio do mesmo
  *     ano sem cc parseada perdia para um de outro ano com cc);
+ *   - 2026-10-02: s_beds REMOVIDO do score (beds preenchido em ~10% dos
+ *     anúncios → parcela quase sempre no neutro, sem sinal) e pesos
+ *     redistribuídos 0.55/0.45; montra top 5 → top 10;
  *   - dedupe cross-fonte ANTES de tudo (cross-posting SV+CJ fabricava n e
  *     estreitava o IQR → confiança alta artificial);
  *   - guarda grosseira (3×/⅓) em UMA passagem SIMULTÂNEA contra a mediana
@@ -46,11 +49,12 @@ final class MotorhomeMarketEngine
     public const FRESHNESS_DAYS  = 60;
 
     // ── Pesos do score (tipologia é ELIMINATÓRIA — não pontua; o seu "peso
-    //    máximo" é ser bilhete de entrada). Proporções ano≈cc>beds do modelo
-    //    (0.30/0.25/0.15) renormalizadas sobre os critérios variáveis. ──────
-    public const W_YEAR = 0.45;
-    public const W_CC   = 0.35;
-    public const W_BEDS = 0.20;
+    //    máximo" é ser bilhete de entrada). Desde 2026-10-02 o score é só
+    //    ano+cilindrada: as camas saíram do score (beds preenchido em ~10%
+    //    dos anúncios → a parcela corria quase sempre no neutro 0.5, sem
+    //    sinal; o campo continua capturado na BD para exibição/futuro). ─────
+    public const W_YEAR = 0.55;
+    public const W_CC   = 0.45;
 
     public const UNKNOWN_NEUTRAL = 0.5;
 
@@ -85,31 +89,14 @@ final class MotorhomeMarketEngine
         };
     }
 
-    public static function bedsScore(?int $targetBeds, ?int $snapshotBeds): float
-    {
-        if ($targetBeds === null || $snapshotBeds === null) {
-            return self::UNKNOWN_NEUTRAL;
-        }
-        $delta = abs($targetBeds - $snapshotBeds);
-
-        return match (true) {
-            $delta === 0 => 1.0,
-            $delta === 1 => 0.5,
-            default      => 0.0,
-        };
-    }
-
     public static function similarityScore(
         int $targetYear,
         ?int $targetCc,
-        ?int $targetBeds,
         int $snapshotYear,
         ?int $snapshotCc,
-        ?int $snapshotBeds,
     ): float {
         $score = self::W_YEAR * self::yearScore(abs($targetYear - $snapshotYear))
-            + self::W_CC * self::ccScore($targetCc, $snapshotCc)
-            + self::W_BEDS * self::bedsScore($targetBeds, $snapshotBeds);
+            + self::W_CC * self::ccScore($targetCc, $snapshotCc);
 
         return round($score, 4);
     }
@@ -139,17 +126,14 @@ final class MotorhomeMarketEngine
         Collection $snapshots,
         int $targetYear,
         ?int $targetCc,
-        ?int $targetBeds,
     ): Collection {
         return $snapshots
-            ->map(function ($s) use ($targetYear, $targetCc, $targetBeds) {
+            ->map(function ($s) use ($targetYear, $targetCc) {
                 $s->similarity_score = self::similarityScore(
                     $targetYear,
                     $targetCc,
-                    $targetBeds,
                     (int) $s->year,
                     $s->displacement !== null ? (int) $s->displacement : null,
-                    $s->beds !== null ? (int) $s->beds : null,
                 );
 
                 return $s;
@@ -329,17 +313,17 @@ final class MotorhomeMarketEngine
 
     // ─────────────────────────────────────────────────────────────────────────
     // Pipeline completo (ordem FIXA): dedupe → score/sort → guarda grosseira
-    // → fence IQR → estatísticas → confiança → top 5 por score
+    // → fence IQR → estatísticas → confiança → top 10 por score
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * @param array{year: int, cc: ?int, beds: ?int} $target
+     * @param array{year: int, cc: ?int} $target
      * @return array pronto a persistir em car_market_aggregates (sem funnel)
      */
     public function compute(array $target, Collection $eligiblePool): array
     {
         $deduped = $this->dedupeCrossSource($eligiblePool);
-        $scored  = $this->sortForDisplay($deduped, $target['year'], $target['cc'], $target['beds']);
+        $scored  = $this->sortForDisplay($deduped, $target['year'], $target['cc']);
 
         $gross = $this->removeGrossOutliers($scored);
         $fence = $this->applyIqrFence($gross['kept']);
@@ -396,12 +380,12 @@ final class MotorhomeMarketEngine
         ];
     }
 
-    /** Top 5 POR SCORE (os mais parecidos, já sem outliers) — não por
+    /** Top 10 POR SCORE (os mais parecidos, já sem outliers) — não por
      *  proximidade à mediana como nos carros. */
     private function topComparables(Collection $usedSortedByScore): array
     {
         return $usedSortedByScore
-            ->take(5)
+            ->take(10)
             ->map(fn ($s) => [
                 'external_id'      => $s->external_id,
                 'source'           => $s->source,

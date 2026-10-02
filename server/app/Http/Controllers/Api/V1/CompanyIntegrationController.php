@@ -68,6 +68,29 @@ class CompanyIntegrationController extends Controller
         return ApiResponse::success([], 'Meta Ads conectado com sucesso.');
     }
 
+    // PATCH /companies/{id}/integrations/meta/account
+    // Define a conta de anúncios DEPOIS do OAuth (o callback no backend guarda o
+    // token mas não pode perguntar o account_id). Body: { account_id: string }
+    public function setMetaAccount(Request $request, int $companyId): JsonResponse
+    {
+        $request->validate(['account_id' => 'required|string']);
+
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', 'meta')
+            ->first();
+
+        if (!$integration) {
+            return ApiResponse::error('Conta Meta não conectada.', 404);
+        }
+
+        // Normaliza "act_123" → "123" (o resto do sistema guarda sem prefixo).
+        $accountId = preg_replace('/^act_/', '', trim($request->account_id));
+
+        $integration->update(['account_id' => $accountId]);
+
+        return ApiResponse::success([], 'Conta de anúncios guardada.');
+    }
+
     // DELETE /companies/{id}/integrations/meta
     public function disconnectMeta(int $companyId): JsonResponse
     {

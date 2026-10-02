@@ -117,6 +117,41 @@ def run(cfg: dict) -> dict:
             form = client.probe_documentconfig(doc_id)
             return {"ok": True, "mode": "documentconfig_probe", "form": form}
 
+        if mode == "void_documentconfig":
+            # ⚠️ ESCRITA (D4): ANULAR documento ATIVO (soft-delete, 1 POST sem body).
+            # Confirma por releitura (sai do STATE 0, entra no STATE 1). Só ativos.
+            doc_id = str(cfg.get("doc_id") or "")
+            if not doc_id:
+                return {"ok": False, "error": "doc_id em falta (id do documento a anular)."}
+            dataset_id = cfg.get("docs_dataset_id") or "1099511639239"
+            result = client.void_document_config(doc_id, dataset_id)
+            return {"ok": bool(result.get("voided_confirmed")), "mode": "void_documentconfig", "result": result}
+
+        if mode == "documentconfig_probe_new":
+            # PROBE (só leitura): form-novo do documento — id provisório, code sugerido,
+            # tamanho do code, filhas template. NÃO grava.
+            return {"ok": True, "mode": "documentconfig_probe_new", "form": client.probe_new_documentconfig()}
+
+        if mode == "create_documentconfig":
+            # ⚠️ ESCRITA (D3): CRIAR documento novo. form-novo → abre escrita → write
+            # (maindataset preenchido + filhas template) → 2 commits → id final → confirmar.
+            fields = cfg.get("fields") or {}
+            result = client.create_document_config(fields)
+            return {"ok": bool(result.get("persisted")), "mode": "create_documentconfig", "result": result}
+
+        if mode == "update_documentconfig":
+            # ⚠️ ESCRITA (D1): editar o maindataset de um documento ATIVO. GET vivo →
+            # abre escrita (storedataset) → write grande (filhas preservadas) → 2 commits
+            # → confirmar por releitura. doc_id + fields (campos do maindataset a sobrepor).
+            doc_id = str(cfg.get("doc_id") or "")
+            if not doc_id:
+                return {"ok": False, "error": "doc_id em falta (id do documento a editar)."}
+            fields = cfg.get("fields") or {}
+            children_changes = cfg.get("children_changes") or {}
+            docaccount_changes = cfg.get("docaccount_changes") or []
+            result = client.update_document_config(doc_id, fields, children_changes, docaccount_changes)
+            return {"ok": bool(result.get("persisted")), "mode": "update_documentconfig", "result": result}
+
         if mode == "documents_rich":
             # READ-ONLY (D0): config COMPLETA de cada documento (maindataset + options +
             # 14 filhas + additionalfields). dataset_id da lista = PINGWIN_DOCS_DATASET_ID

@@ -22,15 +22,23 @@ class MetaOAuthController extends Controller
 
     public function getAuthUrl(int $companyId): JsonResponse
     {
+        // CSRF/state correcto: um nonce aleatório, guardado server-side (cache)
+        // ligado a este company_id e de uso único. Substitui o base64 com
+        // company_id+csrf_token() — em API stateless o csrf_token() vinha vazio
+        // ("csrf":null) e nunca era validado. O nonce é opaco e inforjável.
+        $nonce = \Illuminate\Support\Str::random(40);
+        \Illuminate\Support\Facades\Cache::put(
+            self::stateCacheKey($nonce),
+            $companyId,
+            now()->addMinutes(15)
+        );
+
         $params = http_build_query([
             'client_id'     => config('services.meta.app_id'),
             'redirect_uri'  => config('services.meta.redirect_uri'),
             'scope'         => 'ads_read,business_management',
             'response_type' => 'code',
-            'state'         => base64_encode(json_encode([
-                'company_id' => $companyId,
-                'csrf'       => csrf_token(),
-            ])),
+            'state'         => $nonce,
         ]);
 
         $url = 'https://www.facebook.com/v25.0/dialog/oauth?' . $params;
@@ -38,9 +46,117 @@ class MetaOAuthController extends Controller
         return ApiResponse::success(['url' => $url]);
     }
 
-    // ── Passo 2: Callback do Meta ─────────────────────────────────────────────
-    // POST /integrations/meta/callback
-    // O frontend chama este endpoint com o code recebido do Meta
+    private static function stateCacheKey(string $nonce): string
+    {
+        return 'meta_oauth_state:' . $nonce;
+    }
+
+    /**
+     * Base de retorno para a app (/app), derivada do próprio redirect_uri para
+     * acertar sempre com o ambiente (dev ngrok ou prod) sem nova env var:
+     * https://host/api/oauth/meta/callback → https://host/app
+     * Fallback: APP_URL.
+     */
+    private function appReturnBase(): string
+    {
+        $redirect = (string) config('services.meta.redirect_uri');
+        $origin   = preg_replace('#/api/oauth/meta/callback/?$#', '', $redirect);
+
+        if ($origin === null || $origin === '' || $origin === $redirect) {
+            $origin = rtrim((string) config('app.url'), '/');
+        }
+
+        return rtrim($origin, '/') . '/app';
+    }
+
+    // ── Passo 2 (NOVO): Callback do Meta tratado no BACKEND ───────────────────
+    // GET /api/oauth/meta/callback?code&state   (público — redirect do browser)
+    //
+    // O Meta redireciona o browser para aqui. Validamos o state (nonce em cache),
+    // trocamos o code pelo token (secret no backend), guardamos a credencial SEM
+    // account_id (escolhido depois em /app) e REDIRECIONAMOS para /app. Nunca
+    // devolve JSON — é navegação de browser.
+    public function handleCallbackRedirect(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        $base = $this->appReturnBase();
+
+        // 1) State primeiro: identifica a empresa e protege contra CSRF (nonce
+        //    de uso único). pull() lê e apaga — não pode ser reutilizado.
+        $nonce     = (string) $request->query('state', '');
+        $companyId = $nonce !== ''
+            ? \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey($nonce))
+            : null;
+
+        if (!$companyId) {
+            // State inválido/expirado: não sabemos a empresa → volta à raiz da app.
+            return redirect()->away($base . '/?meta=error&reason=state');
+        }
+
+        $companyReturn = $base . '/companies/' . $companyId;
+
+        // 2) O utilizador recusou / erro do próprio Meta.
+        if ($request->filled('error') || !$request->filled('code')) {
+            $reason = $request->filled('error') ? 'denied' : 'params';
+            return redirect()->away($companyReturn . '?meta=error&reason=' . $reason);
+        }
+
+        // 3) Trocar code → token curto (secret SÓ aqui, no backend).
+        $shortTokenResponse = \Illuminate\Support\Facades\Http::asForm()->post(
+            'https://graph.facebook.com/v25.0/oauth/access_token',
+            [
+                'client_id'     => config('services.meta.app_id'),
+                'client_secret' => config('services.meta.app_secret'),
+                'redirect_uri'  => config('services.meta.redirect_uri'),
+                'code'          => (string) $request->query('code'),
+            ]
+        );
+
+        if ($shortTokenResponse->failed()) {
+            Log::error('MetaOAuth: falha ao trocar code (redirect)', [
+                'status' => $shortTokenResponse->status(),
+                'body'   => $shortTokenResponse->body(),
+            ]);
+            return redirect()->away($companyReturn . '?meta=error&reason=token');
+        }
+
+        $shortToken = $shortTokenResponse->json('access_token');
+
+        $longToken = $this->metaAds->getLongLivedToken(
+            config('services.meta.app_id'),
+            config('services.meta.app_secret'),
+            $shortToken
+        );
+
+        if (!$longToken) {
+            return redirect()->away($companyReturn . '?meta=error&reason=token');
+        }
+
+        $appToken  = config('services.meta.app_id') . '|' . config('services.meta.app_secret');
+        $tokenInfo = $this->metaAds->debugToken($longToken, $appToken);
+        $expiresAt = isset($tokenInfo['expires_at'])
+            ? \Carbon\Carbon::createFromTimestamp($tokenInfo['expires_at'])
+            : now()->addDays(60);
+
+        // 4) Guardar o token. NÃO tocamos no account_id aqui: fica o que já
+        //    existia (reconexão) ou null (primeira vez) — escolhido em /app.
+        $integration = CompanyIntegration::firstOrNew([
+            'company_id' => $companyId,
+            'platform'   => 'meta',
+        ]);
+        $integration->access_token     = $longToken;
+        $integration->token_expires_at = $expiresAt;
+        $integration->status           = 'active';
+        $integration->error_message    = null;
+        $integration->save();
+
+        // 5) Voltar a /app: com conta → connected; sem conta → tem de a escolher.
+        $signal = $integration->account_id ? 'connected' : 'choose_account';
+        return redirect()->away($companyReturn . '?meta=' . $signal);
+    }
+
+    // ── Passo 2 (LEGADO): Callback via POST do frontend ───────────────────────
+    // POST /integrations/meta/callback  (mantido por retrocompatibilidade; o
+    // fluxo novo usa handleCallbackRedirect acima)
     // Body: { code, state, account_id }
 
     public function handleCallback(Request $request): JsonResponse

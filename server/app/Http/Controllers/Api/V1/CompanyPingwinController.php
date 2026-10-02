@@ -197,6 +197,191 @@ class CompanyPingwinController extends Controller
     }
 
     /**
+     * ⚠️ ESCRITA (Fase D1): EDITAR o maindataset de um documento ATIVO. Tenancy PRIMEIRO.
+     * Só ATIVOS (404 se não existe, 422 se inativo). As 14 filhas/additionalfields NÃO se
+     * editam aqui (preservam-se da releitura viva no Python). Regista auditoria + despacha
+     * o job (worker). O espelho só é tocado após confirmação por releitura. Polling via write.
+     */
+    /**
+     * ⚠️ ESCRITA (Fase D3): CRIAR um documento novo. Tenancy PRIMEIRO. Preenche o maindataset
+     * (`fields`, incl. code limitado); as 14 filhas vão no template do form-novo (configuram-se
+     * depois por edição). Regista auditoria (action=criar) + despacha o job (worker). O espelho
+     * só recebe o novo documento após confirmação por releitura. Polling via write.
+     */
+    public function createDocumentConfig(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $request->validate([
+            'fields'             => ['required', 'array'],
+            'fields.description' => ['required', 'string', 'max:120'],
+            'fields.code'        => ['nullable', 'string', 'max:16'],   // o servidor trunca ao tamanho real (datasetinfo ~5)
+            'fields.shortname'   => ['nullable', 'string', 'max:60'],
+        ]);
+
+        // ⚠️ Ler o `fields` COMPLETO do input (o validated() só devolveria as sub-chaves com
+        // regra, descartando doctype_id/etc). Whitelist = campos editáveis + code.
+        $fields = array_intersect_key(
+            (array) $request->input('fields', []),
+            array_flip(array_merge(PingwinService::DOCCONFIG_EDITABLE_FIELDS, ['code']))
+        );
+
+        $write = \App\Models\PingwinDocconfigWrite::create([
+            'company_id'   => $companyId,
+            'user_id'      => Auth::id(),
+            'action'       => 'criar',
+            'docconfig_id' => '',   // preenchido com o id FINAL quando o job confirmar
+            'code'         => $fields['code'] ?? null,
+            'description'  => $fields['description'] ?? null,
+            'fields'       => $fields,
+            'status'       => 'a_criar',
+        ]);
+
+        \App\Jobs\CreatePingwinDocumentConfigJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['write_id' => $write->id, 'status' => 'a_criar'],
+            'A criar o documento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    public function updateDocumentConfig(Request $request, int $companyId, string $externalId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $doc = \App\Models\PingwinDocumentConfig::where('company_id', $companyId)
+            ->where('external_id', $externalId)
+            ->first();
+        if (! $doc) {
+            return ApiResponse::error('Documento não encontrado.', 404);
+        }
+        if ($doc->deleted) {
+            return ApiResponse::error('Só é possível editar documentos ativos.', 422);
+        }
+
+        $data = $request->validate([
+            'fields'                => ['nullable', 'array'],
+            'children'              => ['nullable', 'array'],   // D2a: {filha: [{id, deleted}]}
+            'children.*'            => ['array'],
+            'children.*.*.id'       => ['required', 'string', 'max:64'],
+            'children.*.*.deleted'  => ['required', 'integer', 'in:0,1'],
+            'docaccount'            => ['nullable', 'array'],   // D2b: [{docaccount_id, deleted, credit, debit}]
+            'docaccount.*.docaccount_id' => ['required', 'string', 'max:64'],
+            'docaccount.*.deleted'  => ['required', 'integer', 'in:0,1'],
+            'docaccount.*.credit'   => ['required', 'integer', 'in:0,1'],
+            'docaccount.*.debit'    => ['required', 'integer', 'in:0,1'],
+        ]);
+
+        // Whitelist dos campos do maindataset (os restantes são ignorados).
+        $fields = array_intersect_key(
+            $data['fields'] ?? [],
+            array_flip(PingwinService::DOCCONFIG_EDITABLE_FIELDS)
+        );
+        // Whitelist das filhas de marcação editáveis (só as 9 permitidas).
+        $children = array_intersect_key(
+            $data['children'] ?? [],
+            PingwinService::DOCCONFIG_EDITABLE_CHILDREN
+        );
+        // D2b — docaccount: cada conta tem de estar num dos 3 estados COERENTES.
+        $docaccount = [];
+        foreach ($data['docaccount'] ?? [] as $c) {
+            if (PingwinService::coherentDocaccount($c) === null) {
+                return ApiResponse::error("Estado incoerente para a conta {$c['docaccount_id']} (usar não usada / crédito / débito).", 422);
+            }
+            $docaccount[] = $c;
+        }
+
+        if (empty($fields) && empty($children) && empty($docaccount)) {
+            return ApiResponse::error('Nenhuma alteração fornecida (maindataset, filhas ou contas).', 422);
+        }
+
+        $write = \App\Models\PingwinDocconfigWrite::create([
+            'company_id'   => $companyId,
+            'user_id'      => Auth::id(),
+            'action'       => 'editar',
+            'docconfig_id' => $externalId,
+            'code'         => $doc->code,
+            'description'  => $fields['description'] ?? $doc->description,
+            'fields'       => $fields,
+            'children'     => $children,
+            'docaccount'   => $docaccount,
+            'status'       => 'a_criar',
+        ]);
+
+        \App\Jobs\UpdatePingwinDocumentConfigJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['write_id' => $write->id, 'status' => 'a_criar'],
+            'A atualizar o documento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    /** Polling do estado de uma escrita de documento (a_criar|ok|erro). */
+    /**
+     * ⚠️ ESCRITA (Fase D4): ANULAR um documento ATIVO (soft-delete). Tenancy PRIMEIRO. Só
+     * ATIVOS (404 se não existe, 422 se já inativo). Regista auditoria (action=anular) e
+     * despacha o job (worker). O espelho só é marcado deleted após confirmação por releitura
+     * (STATE 1) no job. Polling via write.
+     */
+    public function voidDocumentConfig(Request $request, int $companyId, string $externalId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $doc = \App\Models\PingwinDocumentConfig::where('company_id', $companyId)
+            ->where('external_id', $externalId)
+            ->first();
+        if (! $doc) {
+            return ApiResponse::error('Documento não encontrado.', 404);
+        }
+        if ($doc->deleted) {
+            return ApiResponse::error('O documento já está inativo.', 422);
+        }
+
+        $write = \App\Models\PingwinDocconfigWrite::create([
+            'company_id'   => $companyId,
+            'user_id'      => Auth::id(),
+            'action'       => 'anular',
+            'docconfig_id' => $externalId,
+            'code'         => $doc->code,
+            'description'  => $doc->description,
+            'status'       => 'a_criar',
+        ]);
+
+        \App\Jobs\VoidPingwinDocumentConfigJob::dispatch($companyId, $write->id);
+
+        return ApiResponse::success(
+            ['write_id' => $write->id, 'status' => 'a_criar'],
+            'A anular o documento no PingWin… aguarda o resultado.'
+        );
+    }
+
+    public function documentConfigWrite(int $companyId, int $writeId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $write = \App\Models\PingwinDocconfigWrite::where('company_id', $companyId)->find($writeId);
+        if (! $write) {
+            return ApiResponse::error('Escrita não encontrada.', 404);
+        }
+
+        return ApiResponse::success([
+            'write_id'      => $write->id,
+            'status'        => $write->status,
+            'error_message' => $write->error_message,
+            'docconfig_id'  => $write->docconfig_id,
+            'description'   => $write->description,
+        ], 'Estado da escrita.');
+    }
+
+    /**
      * Artigos PingWin (Fase 1): lista da BD com paginação Laravel (EXIBIÇÃO —
      * aos poucos, page/perPage) + pesquisa (código/descrição) + filtros (família,
      * forsale/forpurchase). Devolve última sincronização + famílias distintas.

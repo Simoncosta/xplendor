@@ -303,6 +303,229 @@ class PingwinService
         return count($rows);
     }
 
+    /** Filhas de MARCAÇÃO editáveis na D2a + a sua chave identificadora. userrole_docconfig
+     *  NÃO entra (tem field_value e chave composta — fatia própria). */
+    public const DOCCONFIG_EDITABLE_CHILDREN = [
+        'entitytype_docconfig'   => 'entitytype_id',
+        'docconfig_detailstatus' => 'detailstatus_id',
+        'docconfig_docmovreason' => 'docmovreason_id',
+        'docconfig_docstatus'    => 'docstatus_id',
+        'docconfig_local'        => 'local_id',
+        'docconfig_import'       => 'importdocconfig_id',
+        'docconfig_paymethod'    => 'paymethod_id',
+        'docconfig_docreference' => 'docreference_id',
+        'docconfig_paycond'      => 'paycond_id',
+    ];
+
+    /** Campos do maindataset editáveis na D1 (whitelist). code/id são read-only; _descr é display. */
+    public const DOCCONFIG_EDITABLE_FIELDS = [
+        'description', 'shortname', 'number_copies', 'stock_signal',
+        'taxscenario_id', 'doctype_id', 'docfiscaltype_id', 'productgroup_id', 'tax_round_mode',
+        'contacttype_id', 'report_id', 'reportlayout_id', 'reportparam_id', 'printzone_id', 'docseries_id',
+        'default_docstatus_id', 'default_paycond_id', 'default_detailstatus_id',
+        // flags booleanos (0/1)
+        'pending_qnt', 'settled', 'allowfifo', 'islocal', 'notvalued', 'set_price', 'set_qnt',
+        'move_product', 'move_document', 'required_docreference', 'required_docmovreason',
+        'required_docsource', 'account_use_totalpaid',
+    ];
+
+    /**
+     * DOCUMENTOS — EDITAR MAINDATASET (Fase D1, ESCRITA REAL). Invoca o Python
+     * (update_documentconfig): GET vivo → abre escrita (storedataset) → write grande (14
+     * filhas + additionalfields PRESERVADOS da releitura viva) → 2 commits → confirmação
+     * por releitura. `$fields` = campos do maindataset a sobrepor (whitelist aplicado a
+     * montante). Só documentos ATIVOS. NÃO toca no espelho — isso é o job, só após
+     * persisted=true. Devolve {ok, persisted, capture, confirm, raw}.
+     */
+    /** Chave única da conta no docaccount (D2b). */
+    public const DOCCONFIG_DOCACCOUNT_IDKEY = 'docaccount_id';
+
+    /**
+     * Estado COERENTE de uma conta (D2b): exatamente um dos 3 —
+     *   "não usada" (deleted=1, credit=0, debit=0) · "crédito" (0,1,0) · "débito" (0,0,1).
+     * Rejeita deleted=0 com ambos a 0, e ambos=1. Devolve ['deleted','credit','debit'] ou null.
+     */
+    public static function coherentDocaccount(array $c): ?array
+    {
+        $deleted = ((int) ($c['deleted'] ?? 0)) === 1 ? 1 : 0;
+        $credit = ((int) ($c['credit'] ?? 0)) === 1 ? 1 : 0;
+        $debit = ((int) ($c['debit'] ?? 0)) === 1 ? 1 : 0;
+        if ($deleted === 1 && $credit === 0 && $debit === 0) {
+            return ['deleted' => 1, 'credit' => 0, 'debit' => 0];
+        }
+        if ($deleted === 0 && $credit === 1 && $debit === 0) {
+            return ['deleted' => 0, 'credit' => 1, 'debit' => 0];
+        }
+        if ($deleted === 0 && $credit === 0 && $debit === 1) {
+            return ['deleted' => 0, 'credit' => 0, 'debit' => 1];
+        }
+
+        return null;   // incoerente (ambos=1, deleted=0 com ambos 0, deleted=1 com algum flag, …)
+    }
+
+    public function updateDocumentConfig(int $companyId, string $docId, array $fields, array $childrenChanges = [], array $docaccountChanges = []): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        // Whitelist: só campos editáveis; code/id nunca. Flags normalizados a 0/1.
+        $clean = [];
+        $flags = ['pending_qnt', 'settled', 'allowfifo', 'islocal', 'notvalued', 'set_price', 'set_qnt',
+                  'move_product', 'move_document', 'required_docreference', 'required_docmovreason',
+                  'required_docsource', 'account_use_totalpaid'];
+        foreach ($fields as $k => $v) {
+            if (! in_array($k, self::DOCCONFIG_EDITABLE_FIELDS, true)) {
+                continue;
+            }
+            if (in_array($k, $flags, true)) {
+                $clean[$k] = ((int) $v) === 1 ? 1 : 0;
+            } elseif ($k === 'number_copies') {
+                $clean[$k] = (int) $v;
+            } else {
+                $clean[$k] = is_string($v) ? $v : (string) $v;   // _id/texto como string (como o PingWin os manda)
+            }
+        }
+
+        // D2a: mudanças de filhas de marcação. Só as 9 permitidas; cada mudança {id, deleted:0|1}.
+        $cleanChildren = [];
+        foreach ($childrenChanges as $child => $changes) {
+            if (! isset(self::DOCCONFIG_EDITABLE_CHILDREN[$child]) || ! is_array($changes)) {
+                continue;
+            }
+            $rows = [];
+            foreach ($changes as $c) {
+                $id = (string) ($c['id'] ?? '');
+                if ($id === '') {
+                    continue;
+                }
+                $rows[] = ['id' => $id, 'deleted' => ((int) ($c['deleted'] ?? 0)) === 1 ? 1 : 0];
+            }
+            if ($rows) {
+                $cleanChildren[$child] = $rows;
+            }
+        }
+
+        // D2b: mudanças do docaccount. Cada conta tem de estar num dos 3 estados COERENTES
+        // (não usada / crédito / débito); incoerências são rejeitadas (nunca grava ambos=1
+        // nem deleted=0 com ambos a 0). Valida aqui também (defesa), não só na UI.
+        $cleanDocaccount = [];
+        foreach ($docaccountChanges as $c) {
+            $id = (string) ($c['docaccount_id'] ?? '');
+            if ($id === '') {
+                continue;
+            }
+            $state = self::coherentDocaccount($c);
+            if ($state === null) {
+                throw ValidationException::withMessages([
+                    'docaccount' => ["Estado incoerente para a conta {$id}: usar não usada / crédito / débito."],
+                ]);
+            }
+            $cleanDocaccount[] = array_merge(['docaccount_id' => $id], $state);
+        }
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'update_documentconfig', 'doc_id' => $docId,
+            'fields' => $clean, 'children_changes' => $cleanChildren, 'docaccount_changes' => $cleanDocaccount,
+        ]));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Editar documento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'persisted' => false];
+    }
+
+    /**
+     * DOCUMENTOS — CRIAR (Fase D3, ESCRITA REAL). Invoca o Python (create_documentconfig):
+     * form-novo (*) → abre escrita → write (maindataset preenchido + 14 filhas no TEMPLATE) →
+     * 2 commits → lê o id FINAL da resposta → confirma por releitura (sem exigir code igual,
+     * pois o servidor TRUNCA). `$fields` = campos do maindataset (whitelist + code). As filhas
+     * NÃO se configuram aqui (fazem-se depois por edição). Devolve {ok, persisted, pingwin_id, ...}.
+     */
+    public function createDocumentConfig(int $companyId, array $fields): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        // Whitelist = campos editáveis do maindataset + o code (editável na criação, read-only na edição).
+        $allowed = array_merge(self::DOCCONFIG_EDITABLE_FIELDS, ['code']);
+        $flags = ['pending_qnt', 'settled', 'allowfifo', 'islocal', 'notvalued', 'set_price', 'set_qnt',
+                  'move_product', 'move_document', 'required_docreference', 'required_docmovreason',
+                  'required_docsource', 'account_use_totalpaid'];
+        $clean = [];
+        foreach ($fields as $k => $v) {
+            if (! in_array($k, $allowed, true)) {
+                continue;
+            }
+            if (in_array($k, $flags, true)) {
+                $clean[$k] = ((int) $v) === 1 ? 1 : 0;
+            } elseif ($k === 'number_copies') {
+                $clean[$k] = (int) $v;
+            } else {
+                $clean[$k] = is_string($v) ? $v : (string) $v;
+            }
+        }
+        if (empty($clean['description'] ?? null)) {
+            throw ValidationException::withMessages(['description' => ['A descrição é obrigatória.']]);
+        }
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'create_documentconfig', 'fields' => $clean,
+        ]));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Criar documento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'persisted' => false];
+    }
+
+    /**
+     * DOCUMENTOS — ANULAR (Fase D4, ESCRITA REAL). Invoca o Python (void_documentconfig):
+     * 1 POST sem body (soft-delete) + confirmação por releitura (sai do STATE 0, entra no
+     * STATE 1). Só anula ATIVOS. NÃO toca no espelho — isso é o job, só após
+     * voided_confirmed=true. Devolve {ok, voided_confirmed, ...}.
+     */
+    public function voidDocumentConfig(int $companyId, string $docId): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $password = (string) $integration->access_token; // o cast decifra
+        $config = $integration->config;
+
+        $result = $this->invoke($this->buildPayload($config, $password, [
+            'mode' => 'void_documentconfig', 'doc_id' => $docId,
+        ]));
+
+        if (! isset($result['result']) && ! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Anular documento PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return $result['result'] ?? ['ok' => false, 'voided_confirmed' => false];
+    }
+
     /**
      * ARTIGOS (Fase 1, só leitura): busca o catálogo COMPLETO (browserdataset
      * paginado por Range, LOGOUT garantido no Python) e faz UPSERT idempotente em

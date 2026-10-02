@@ -97,6 +97,9 @@ export const disconnectMetaAdsApi = (companyId: number, platform: string) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS + `/${platform}`);
 export const getMetaAdsetsApi = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_ADSETS);
+// Define a conta de anúncios após o OAuth (callback no backend). PATCH.
+export const setMetaAccountApi = (companyId: number, accountId: string) =>
+    api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.PATCH_META_ACCOUNT, { account_id: accountId });
 export const getCarAdCampaignsApi = (companyId: number, carId: number | string) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS);
 export const getCarAdCampaignActiveTargetsApi = (companyId: number, carId: number | string) =>
@@ -283,6 +286,20 @@ export const syncPingwinDocumentsRich = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/sync-rich`, {});
 export const getPingwinDocumentConfigDetail = (companyId: number, externalId: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`);
+// D1 (ESCRITA): editar o maindataset de um documento ativo + polling do estado.
+export const updatePingwinDocumentConfig = (
+    companyId: number, externalId: string, fields: Record<string, any>,
+    children?: Record<string, Array<{ id: string; deleted: number }>>,
+    docaccount?: Array<{ docaccount_id: string; deleted: number; credit: number; debit: number }>
+) => api.update(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`, { fields, children, docaccount });
+export const getPingwinDocumentConfigWrite = (companyId: number, writeId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/writes/${writeId}`);
+// D3 (ESCRITA): criar documento novo (fields = maindataset principal incl. code).
+export const createPingwinDocumentConfig = (companyId: number, fields: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents`, { fields });
+// D4 (ESCRITA): anular (soft-delete) um documento ativo por id.
+export const voidPingwinDocumentConfig = (companyId: number, externalId: string) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/documents/${externalId}`);
 
 export const getPingwinCatalog = (
     companyId: number,

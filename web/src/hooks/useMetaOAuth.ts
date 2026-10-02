@@ -1,34 +1,31 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useDispatch } from "react-redux";
 import { getMetaOAuthUrl } from "slices/metaAds/thunk";
 
 interface UseMetaOAuthOptions {
     companyId: number;
-    onSuccess: () => void;
+    /** Mantido por compatibilidade; já não é usado (o retorno é via ?meta= na
+     *  página de integrações após o redirect de volta). Opcional. */
+    onSuccess?: () => void;
     onError: (message: string) => void;
 }
 
 /**
- * Hook que gere o fluxo OAuth do Meta numa popup.
+ * Hook do fluxo OAuth do Meta por REDIRECT DE PÁGINA INTEIRA (sem popup).
  *
- * Fluxo:
- * 1. Frontend pede ao backend a URL de autorização
- * 2. Abre numa popup (não redireciona a página)
- * 3. O Meta redireciona para /oauth/meta/callback?code=XXX
- * 4. A página de callback extrai o code e account_id, envia ao backend e fecha a popup
- * 5. O hook detecta o fechamento e chama onSuccess
+ * Fluxo (depois da migração para /app + callback no backend):
+ * 1. Pede ao backend a URL de autorização (com state = nonce).
+ * 2. Navega a página inteira para a Meta (window.location.assign).
+ * 3. A Meta redireciona o browser para /api/oauth/meta/callback (BACKEND), que
+ *    troca o code pelo token e redireciona de volta para /app/companies/{id}
+ *    com ?meta=connected|choose_account|error.
+ * 4. A página de integrações lê ?meta= e reage (toast + escolher conta).
+ *
+ * Não há popup nem polling: o secret fica no backend e o basename /app é
+ * respeitado porque o backend constrói o URL de retorno.
  */
-export function useMetaOAuth({ companyId, onSuccess, onError }: UseMetaOAuthOptions) {
+export function useMetaOAuth({ companyId, onError }: UseMetaOAuthOptions) {
     const dispatch: any = useDispatch();
-    const popupRef = useRef<Window | null>(null);
-    const pollingRef = useRef<NodeJS.Timeout | null>(null);
-
-    // Limpar polling ao desmontar
-    useEffect(() => {
-        return () => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-        };
-    }, []);
 
     const connect = useCallback(async () => {
         if (!companyId) return;
@@ -42,31 +39,12 @@ export function useMetaOAuth({ companyId, onSuccess, onError }: UseMetaOAuthOpti
                 return;
             }
 
-            // 2. Abrir popup
-            const width = 600;
-            const height = 700;
-            const left = window.screenX + (window.outerWidth - width) / 2;
-            const top = window.screenY + (window.outerHeight - height) / 2;
-
-            popupRef.current = window.open(
-                authUrl,
-                "meta_oauth",
-                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-            );
-
-            // 3. Polling para detectar quando a popup fecha
-            pollingRef.current = setInterval(() => {
-                if (popupRef.current?.closed) {
-                    clearInterval(pollingRef.current!);
-                    // A popup fechou — verificar se a integração foi guardada
-                    onSuccess();
-                }
-            }, 500);
-
+            // Redirect de página inteira para a Meta.
+            window.location.assign(authUrl);
         } catch (err) {
             onError("Erro ao iniciar autenticação com o Meta.");
         }
-    }, [companyId, dispatch, onSuccess, onError]);
+    }, [companyId, dispatch, onError]);
 
     return { connect };
 }

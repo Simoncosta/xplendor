@@ -379,7 +379,8 @@ class MarketSnapshotService
         $data   = $engine->compute([
             'year' => $year,
             'cc'   => $car->engine_capacity_cc !== null ? (int) $car->engine_capacity_cc : null,
-            'beds' => $this->targetBedsFor($car),
+            // beds saiu do score em 2026-10-02 (sem sinal — ver docblock do
+            // engine); targetBedsFor mantém-se para exibição/futuro.
         ], $result['pool']);
 
         // Degrau pós-dedupe no funil (refutador de contrato): sem ele,
