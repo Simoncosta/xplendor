@@ -19,6 +19,7 @@ LOGOUT GARANTIDO ao sair do `with`, mesmo com erro a meio).
 """
 import base64
 import hashlib
+import json
 import logging
 import os
 import ssl
@@ -98,6 +99,23 @@ def parse_xls_to_dataframe(content: bytes) -> pd.DataFrame:
     ]
 
     return pd.DataFrame(rows, columns=headers)
+
+
+def parse_report_json_to_dataframe(reportdata_b64: str) -> pd.DataFrame:
+    """
+    Resumo de Vendas em JSON (HOTFIX 2026-10-03): reportdata é base64 de
+    {"data": {"info": {campo: {label, visible, …}}, "data": [ {campo: valor} ]}}.
+    Devolve um DataFrame com as colunas nomeadas pelos LABELS (os mesmos do Excel:
+    "Loja", "Vendas brutas", …), para extract_store_data ficar inalterado. Só
+    colunas visíveis — o info tem dois "Loja" (store_id oculto, store_desc visível).
+    """
+    payload = json.loads(base64.b64decode(reportdata_b64).decode("utf-8"))
+    data = payload.get("data") or {}
+    info = data.get("info") or {}
+    labels = {k: v.get("label") for k, v in info.items()
+              if isinstance(v, dict) and v.get("label") and str(v.get("visible", "true")).lower() != "false"}
+    rows = [{labels[k]: v for k, v in row.items() if k in labels} for row in (data.get("data") or [])]
+    return pd.DataFrame(rows, columns=list(labels.values()))
 
 
 def custom_pbkdf2(password: str, salt_hex: str) -> str:
@@ -342,8 +360,21 @@ class MyCloudPieClient:
         log.info(f"Login OK — session={self.session_id[:8]}…")
 
     # ----------------------------------------------------- GERAR RELATÓRIO
-    def trigger_report(self, target_date: datetime) -> str:
-        """Pede ao servidor para gerar o .xls (Resumo de Vendas). Devolve o id do ficheiro."""
+    # HOTFIX 2026-10-03 (HAR do BO): o Resumo de Vendas passa a pedir-se em JSON
+    # (mimetype application/json — o Excel dá "1411 Class does not exist" mesmo no
+    # BO). Os dados vêm INLINE em reportdata (base64), sem download separado.
+    # O servidor GrupoPIE está INTERMITENTE desde ~01/10: devolve ao acaso
+    # {"report":{"report":[]}} (medido: 3/10 a 6/10 vazios, com ou sem init de
+    # sessão — a init do BO NÃO influencia). Repetir na MESMA sessão recupera
+    # (todas as sessões testadas obtiveram dados em ≤4 tentativas).
+    REPORT_ATTEMPTS = 8
+    REPORT_RETRY_DELAY_S = 3.0
+
+    def trigger_report(self, target_date: datetime) -> Dict[str, Any]:
+        """Pede o Resumo de Vendas em JSON. Devolve a linha do relatório (com
+        reportdata). Repete enquanto o servidor devolver vazio/5xx; esgotadas as
+        tentativas, falha com mensagem explícita — NUNCA devolve vendas vazias
+        (isso gravaria um dia "sincronizado" com zero vendas)."""
         date_str = target_date.strftime("%Y%m%dT00:00:00")
         payload = {
             "params": {
@@ -355,8 +386,7 @@ class MyCloudPieClient:
                 "Family_level": "-1",
                 "GROUPBY_LOCAL": 0,
                 "sendmail": 0,
-                "mimetype": "application/vnd.ms-excel",
-                "reportaction": "execute",
+                "mimetype": "application/json",
             }
         }
         url = f"{self.api_url}/service/report/*/report"
@@ -364,17 +394,32 @@ class MyCloudPieClient:
             "Action":       "OPEN,GET,CLOSE",
             "Content-Type": "application/json;charset=UTF-8",
         }
-        r = self.session.post(url, json=payload, headers=headers)
 
-        if r.status_code != 200:
-            log.error(f"trigger_report falhou: HTTP {r.status_code}")
-            log.error(f"Response body (primeiros 2000 chars): {r.text[:2000]}")
-            r.raise_for_status()
+        for attempt in range(1, self.REPORT_ATTEMPTS + 1):
+            r = self.session.post(url, json=payload, headers=headers)
+            last = attempt == self.REPORT_ATTEMPTS
 
-        data = r.json()
-        report_file = data["report"]["report"][0]["reportfile"]
-        log.info(f"Relatório gerado: {report_file}")
-        return report_file
+            if r.status_code >= 500 and not last:
+                log.warning(f"trigger_report HTTP {r.status_code} (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — a repetir: {r.text[:200]}")
+                time.sleep(self.REPORT_RETRY_DELAY_S)
+                continue
+            if r.status_code != 200:
+                log.error(f"trigger_report falhou: HTTP {r.status_code}")
+                log.error(f"Response body (primeiros 2000 chars): {r.text[:2000]}")
+                r.raise_for_status()
+
+            rows = (r.json().get("report") or {}).get("report") or []
+            if rows and rows[0].get("reportdata"):
+                log.info(f"Relatório gerado (json): {rows[0].get('reportfile')} (tentativa {attempt}/{self.REPORT_ATTEMPTS})")
+                return rows[0]
+            if not last:
+                log.warning(f"trigger_report devolveu vazio (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — servidor intermitente, a repetir")
+                time.sleep(self.REPORT_RETRY_DELAY_S)
+
+        raise RuntimeError(
+            f"PingWin não gerou o relatório de vendas (report.id={self.report_id}) "
+            f"após {self.REPORT_ATTEMPTS} tentativas: resposta sem reportdata — {r.text[:200]}"
+        )
 
     # ------------------------------------------- GERAR RELATÓRIO (genérico)
     def trigger_report_custom(
@@ -2577,10 +2622,9 @@ class MyCloudPieClient:
 
     # ------------------------------------------------------------- PARSE
     def fetch_sales_report(self, target_date: datetime) -> pd.DataFrame:
-        report_file = self.trigger_report(target_date)
-        excel_bytes = self.download_report(report_file)
-        df = parse_xls_to_dataframe(excel_bytes)
-        log.info(f"Excel parsed: {len(df)} linhas | colunas: {list(df.columns)}")
+        row = self.trigger_report(target_date)
+        df = parse_report_json_to_dataframe(row["reportdata"])
+        log.info(f"Relatório (json) parsed: {len(df)} linhas | colunas: {list(df.columns)}")
         return df
 
     @staticmethod

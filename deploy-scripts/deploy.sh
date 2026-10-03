@@ -53,6 +53,6 @@ echo "🔁 Reload nginx (docker)"
 docker restart xplendor-nginx
 
 echo "Migrations (prod)"
-docker exec -it xplendor-php php artisan migrate
+docker exec -it xplendor-php php artisan migrate --force
 
 echo "✅ Deploy OK"
