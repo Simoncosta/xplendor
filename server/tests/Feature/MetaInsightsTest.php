@@ -88,6 +88,32 @@ class MetaInsightsTest extends TestCase
         $this->assertEquals(4, $res->json('data.overview.ctr'));          // 80/2000*100
     }
 
+    /**
+     * Rede de transição: um STAND com conta definida mas sem o 1.º backfill da conta
+     * continua a ver os dados do pipeline por carro (não fica a zero). Depois do
+     * backfill, passa à fonte ao nível da conta (mais completa: todas as campanhas).
+     */
+    public function test_stand_uses_car_legacy_until_account_backfill_then_account(): void
+    {
+        $integration = CompanyIntegration::create(['company_id' => $this->company->id, 'platform' => 'meta', 'access_token' => 't', 'status' => 'active', 'account_id' => '555', 'token_expires_at' => now()->addDays(30)]);
+        $this->metric($this->company->id, ['spend_normalized' => 25.00]);
+
+        $res = $this->actingAs($this->user, 'sanctum')->getJson($this->url())->assertStatus(200);
+        $res->assertJsonPath('data.source', 'car_legacy')->assertJsonPath('data.state', 'syncing_first');
+        $this->assertEquals(25, $res->json('data.overview.spend'));
+
+        DB::table('meta_account_insights_daily')->insert([
+            'company_id' => $this->company->id, 'account_id' => '555', 'date' => now()->toDateString(),
+            'campaign_id' => '111', 'campaign_name' => 'Todas as campanhas', 'spend' => 70, 'impressions' => 7000, 'clicks' => 70,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $integration->update(['insights_backfilled_at' => now(), 'insights_sync_status' => 'done']);
+
+        $res = $this->actingAs($this->user, 'sanctum')->getJson($this->url())->assertStatus(200);
+        $res->assertJsonPath('data.source', 'account')->assertJsonPath('data.state', 'ok');
+        $this->assertEquals(70, $res->json('data.overview.spend'));
+    }
+
     public function test_attributed_sales_are_shown(): void
     {
         CompanyIntegration::create(['company_id' => $this->company->id, 'platform' => 'meta', 'access_token' => 't', 'status' => 'active']);

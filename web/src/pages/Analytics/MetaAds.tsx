@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
+import { Alert, Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import BreadCrumb from "Components/Common/BreadCrumb";
 import { getMetaOverview } from "helpers/laravel_helper";
-import { MetaOverviewResponse, eur, nfmt, pct } from "common/models/metaAds.model";
+import { MetaOverviewResponse, MetaOverviewState, eur, nfmt, pct } from "common/models/metaAds.model";
 
 /**
  * XPLENDOR — Meta / Anúncios (LEITURA). Mostra os dados FACTUAIS que o pipeline
@@ -17,6 +17,9 @@ const RANGES = [
     { days: 90, label: "90 dias" },
 ];
 
+const POLL_INTERVAL_MS = 15000;
+const POLL_MAX_TICKS = 80; // ~20 min
+
 const MetaAds = () => {
     document.title = "Meta / Anúncios | Xplendor";
 
@@ -29,17 +32,31 @@ const MetaAds = () => {
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<MetaOverviewResponse | null>(null);
     const [error, setError] = useState(false);
+    // Refresca em silêncio enquanto o 1.º backfill corre (os dados aparecem sozinhos).
+    // `fetchedAt` muda a CADA resposta (sucesso ou erro) para o polling nunca morrer
+    // à primeira falha de rede; pára ao fim de POLL_MAX_TICKS (~20 min).
+    const [tick, setTick] = useState(0);
+    const [fetchedAt, setFetchedAt] = useState(0);
 
     useEffect(() => {
         if (!companyId) { setLoading(false); return; }
         let alive = true;
-        setLoading(true); setError(false);
+        if (tick === 0) { setLoading(true); setError(false); }
         getMetaOverview(companyId, days)
             .then((r: any) => { if (alive) setData(r?.data ?? null); })
-            .catch(() => { if (alive) setError(true); })
-            .finally(() => { if (alive) setLoading(false); });
+            .catch(() => { if (alive && tick === 0) setError(true); })
+            .finally(() => { if (alive) { setLoading(false); setFetchedAt(Date.now()); } });
         return () => { alive = false; };
-    }, [companyId, days]);
+    }, [companyId, days, tick]);
+
+    const pollExhausted = tick >= POLL_MAX_TICKS;
+    useEffect(() => {
+        if (data?.state !== "syncing_first" || pollExhausted) return;
+        const t = setTimeout(() => setTick((v) => v + 1), POLL_INTERVAL_MS);
+        return () => clearTimeout(t);
+    }, [data, fetchedAt, pollExhausted]);
+
+    const changeDays = (d: number) => { setTick(0); setDays(d); };
 
     const kpis = useMemo(() => {
         if (!data) return [];
@@ -56,7 +73,7 @@ const MetaAds = () => {
     const rangeToggle = (
         <div className="btn-group" role="group" aria-label="Intervalo">
             {RANGES.map((r) => (
-                <button key={r.days} type="button" className={"btn btn-sm " + (days === r.days ? "btn-primary" : "btn-outline-primary")} onClick={() => setDays(r.days)}>{r.label}</button>
+                <button key={r.days} type="button" className={"btn btn-sm " + (days === r.days ? "btn-primary" : "btn-outline-primary")} onClick={() => changeDays(r.days)}>{r.label}</button>
             ))}
         </div>
     );
@@ -77,11 +94,15 @@ const MetaAds = () => {
                     <Card><CardBody className="text-center py-5">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-light rounded fs-24" style={{ color: "#1877F2" }}><i className="ri-facebook-circle-line" /></span></div>
                         <h5 className="mb-2">Liga a conta Meta</h5>
-                        <p className="text-muted mb-3">Ainda não ligaste a conta Meta Ads deste stand.</p>
-                        <Link to={`/companies/${companyId}`} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
+                        <p className="text-muted mb-3">Ainda não ligaste a conta Meta Ads desta empresa.</p>
+                        <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
                     </CardBody></Card>
+                ) : data.source === "none" && data.state && BLOCKING_STATES.includes(data.state) ? (
+                    // Sem números para mostrar: o ESTADO explica porquê (nunca zeros falsos).
+                    <StateCard state={data.state} error={data.sync?.error ?? null} companyId={companyId} slow={pollExhausted} />
                 ) : (
                     <>
+                        {data.state && <StateBanner state={data.state} error={data.sync?.error ?? null} companyId={companyId} slow={pollExhausted} />}
                         <Row className="mb-3 align-items-center">
                             <Col>
                                 <p className="text-muted mb-0 fs-13">
@@ -109,7 +130,7 @@ const MetaAds = () => {
                             <Col xl={7}>
                                 <Card className="h-100 mb-0"><CardBody>
                                     <h6 className="mb-3 text-uppercase">Por campanha</h6>
-                                    {data.by_campaign.length === 0 ? <p className="text-muted fs-13 mb-0">Sem dados de campanhas no período.</p> : (
+                                    {data.by_campaign.length === 0 ? <p className="text-muted fs-13 mb-0">{data.state === "no_spend" ? "Sem gasto neste período." : "Sem dados de campanhas no período."}</p> : (
                                         <div className="table-responsive">
                                             <table className="table table-sm align-middle mb-0">
                                                 <thead className="text-muted"><tr><th>Campanha</th><th className="text-end">Gasto</th><th className="text-end">Impr.</th><th className="text-end">Cliques</th><th className="text-end">CTR</th></tr></thead>
@@ -161,6 +182,85 @@ const MetaAds = () => {
                 )}
             </Container>
         </div>
+    );
+};
+
+/** Estados em que, sem dados, se mostra um cartão explicativo em vez de zeros. */
+const BLOCKING_STATES: MetaOverviewState[] = ["token_expired", "needs_account", "syncing_first", "sync_failed"];
+
+type StateProps = { state: MetaOverviewState; error: string | null; companyId: number; slow?: boolean };
+
+/** Abre o perfil da empresa directamente no separador Integrações. */
+const integrationsUrl = (companyId: number) => `/companies/${companyId}?tab=integrations`;
+
+const SLOW_TEXT = "Está a demorar mais do que o normal. Recarrega a página daqui a pouco; se continuar, confirma a conta de anúncios nas Integrações.";
+
+const STATE_COPY: Partial<Record<MetaOverviewState, { title: string; text: string; color: string; icon: string; cta?: string }>> = {
+    token_expired: {
+        title: "Sessão Meta expirada — reconectar",
+        text: "A ligação à Meta expirou, por isso os dados deixaram de ser atualizados. Volta a ligar a conta nas Integrações.",
+        color: "danger", icon: "ri-error-warning-line", cta: "Reconectar a Meta",
+    },
+    needs_account: {
+        title: "Falta escolher a conta de anúncios",
+        text: "A Meta está ligada, mas ainda não indicaste qual é a conta de anúncios desta empresa. Escolhe-a nas Integrações.",
+        color: "warning", icon: "ri-advertisement-line", cta: "Escolher a conta",
+    },
+    syncing_first: {
+        title: "A sincronizar pela primeira vez…",
+        text: "Estamos a buscar os últimos 90 dias de anúncios à Meta. Os dados aparecem aqui sozinhos dentro de momentos.",
+        color: "info", icon: "ri-refresh-line",
+    },
+    sync_failed: {
+        title: "A sincronização com a Meta falhou",
+        text: "Não foi possível buscar os dados à Meta. Confirma a conta de anúncios nas Integrações e tenta de novo.",
+        color: "danger", icon: "ri-close-circle-line", cta: "Ver Integrações",
+    },
+};
+
+const StateCard = ({ state, error, companyId, slow }: StateProps) => {
+    const c = STATE_COPY[state];
+    if (!c) return null;
+    return (
+        <Card><CardBody className="text-center py-5">
+            <div className="avatar-md mx-auto mb-3">
+                <span className={`avatar-title bg-${c.color}-subtle text-${c.color} rounded fs-24`}>
+                    {state === "syncing_first" ? <Spinner size="sm" /> : <i className={c.icon} />}
+                </span>
+            </div>
+            <h5 className="mb-2">{c.title}</h5>
+            <p className="text-muted mb-3 mx-auto" style={{ maxWidth: 520 }}>{state === "syncing_first" && slow ? SLOW_TEXT : c.text}</p>
+            {state === "sync_failed" && error && <p className="text-danger fs-13 mb-3">{error}</p>}
+            {state === "syncing_first" && slow && <Link to={integrationsUrl(companyId)} className="btn btn-soft-primary"><i className="ri-links-line me-1" />Ver Integrações</Link>}
+            {c.cta && <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />{c.cta}</Link>}
+        </CardBody></Card>
+    );
+};
+
+/** Banner por cima dos dados (há números para mostrar, mas o estado merece aviso). */
+const StateBanner = ({ state, error, companyId, slow }: StateProps) => {
+    if (state === "ok") return null;
+    if (state === "no_spend") {
+        return (
+            <Alert color="light" className="d-flex align-items-center gap-2 fs-13">
+                <i className="ri-information-line fs-16" />
+                Sem gasto neste período — a ligação está correta. Experimenta um intervalo maior.
+            </Alert>
+        );
+    }
+    const c = STATE_COPY[state];
+    if (!c) return null;
+    const text = state === "sync_failed"
+        ? `Os números podem não estar atualizados.${error ? ` Motivo: ${error}` : ""}`
+        : state === "syncing_first" && slow ? SLOW_TEXT : c.text;
+    return (
+        <Alert color={c.color} className="d-flex align-items-start justify-content-between gap-3 flex-wrap fs-13">
+            <div>
+                <strong className="d-block mb-1">{state === "syncing_first" && !slow && <Spinner size="sm" className="me-2" />}{c.title}</strong>
+                {text}
+            </div>
+            {c.cta && <Link to={integrationsUrl(companyId)} className={`btn btn-sm btn-${c.color}`}>{c.cta}</Link>}
+        </Alert>
     );
 };
 

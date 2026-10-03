@@ -1,5 +1,5 @@
 // React
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 // Images
 import progileBg from '../../../assets/images/profile-company-bg.jpg';
 import avatar1 from '../../../assets/images/users/avatar-company.jpg';
@@ -47,7 +47,21 @@ export default function CompanyProfileEditor({
         `${data?.logo_path ? String(process.env.REACT_APP_PUBLIC_URL) + data?.logo_path : avatar1}` || null
     );
 
-    const [activeTab, setActiveTab] = useState("1");
+    // Abrir directamente o separador Integrações quando o link o pede
+    // (?tab=integrations — ex.: "Escolher a conta"/"Reconectar" no ecrã Meta) ou
+    // no retorno do OAuth Meta (?meta=…). Só em edição (o separador exige empresa).
+    const wantsIntegrations = useMemo(() => {
+        const q = new URLSearchParams(window.location.search);
+        return q.get('tab') === 'integrations' || q.has('meta');
+    }, []);
+    const [activeTab, setActiveTab] = useState(() => (isEdit && wantsIntegrations ? "3" : "1"));
+    const openedFromLink = useRef(false);
+    useEffect(() => {
+        if (isEdit && wantsIntegrations && !openedFromLink.current) {
+            openedFromLink.current = true;
+            setActiveTab("3");
+        }
+    }, [isEdit, wantsIntegrations]);
 
     const tabChange = (tab: any) => {
         if (activeTab !== tab) setActiveTab(tab);

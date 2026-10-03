@@ -149,7 +149,11 @@ class MetaOAuthController extends Controller
         $integration->error_message    = null;
         $integration->save();
 
-        // 5) Voltar a /app: com conta → connected; sem conta → tem de a escolher.
+        // 5) Disparar já o BACKFILL de 90 dias (ingestão ao nível da conta). Sem
+        //    conta de anúncios fica needs_account e corre quando a conta for escolhida.
+        app(\App\Services\MetaAccountInsightsService::class)->scheduleBackfill($integration);
+
+        // 6) Voltar a /app: com conta → connected; sem conta → tem de a escolher.
         $signal = $integration->account_id ? 'connected' : 'choose_account';
         return redirect()->away($companyReturn . '?meta=' . $signal);
     }
@@ -219,7 +223,10 @@ class MetaOAuthController extends Controller
             : now()->addDays(60);
 
         // Guardar na base de dados
-        CompanyIntegration::updateOrCreate(
+        $previousAccount = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', 'meta')->value('account_id');
+
+        $integration = CompanyIntegration::updateOrCreate(
             ['company_id' => $companyId, 'platform' => 'meta'],
             [
                 'access_token'     => $longToken,
@@ -229,6 +236,9 @@ class MetaOAuthController extends Controller
                 'error_message'    => null,
             ]
         );
+
+        // Ingestão ao nível da conta: backfill de 90 dias (e limpa a conta antiga se mudou).
+        app(\App\Services\MetaAccountInsightsService::class)->onAccountChanged($integration, $previousAccount);
 
         return ApiResponse::success([], 'Meta Ads conectado com sucesso.');
     }

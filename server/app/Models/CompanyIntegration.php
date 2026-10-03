@@ -20,6 +20,13 @@ class CompanyIntegration extends Model
         'status',
         'error_message',
         'last_synced_at',
+        // Ingestão Meta ao nível da conta — estado real do sync (ver migração 2026_10_03_100100).
+        'insights_sync_status',
+        'insights_backfilled_at',
+        'insights_last_run_at',
+        'insights_error',
+        'insights_synced_at',
+        'insights_synced_until',
     ];
 
     protected $hidden = ['access_token'];
@@ -31,6 +38,10 @@ class CompanyIntegration extends Model
         'config'           => 'array',
         'token_expires_at' => 'datetime',
         'last_synced_at'   => 'datetime',
+        'insights_backfilled_at' => 'datetime',
+        'insights_last_run_at'   => 'datetime',
+        'insights_synced_at'     => 'datetime',
+        'insights_synced_until'  => 'date',
     ];
 
     public function company(): BelongsTo

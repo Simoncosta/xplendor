@@ -29,8 +29,33 @@ export interface MetaAttributed {
     by_campaign: MetaAttributedCampaign[];
 }
 
+/** Estado honesto calculado no backend (o ecrã só reflecte), por precedência. */
+export type MetaOverviewState =
+    | "not_connected"
+    | "token_expired"   // "Sessão Meta expirada — reconectar"
+    | "needs_account"   // "Falta escolher a conta de anúncios"
+    | "syncing_first"   // "A sincronizar pela primeira vez…"
+    | "sync_failed"     // 1.º sync falhou (sync.error)
+    | "no_spend"        // zero REAL: tudo certo mas sem gasto no período
+    | "ok";
+
+/** De onde vêm os números: conta (todas as verticais), legado por carro (stands
+ *  ainda sem backfill da conta) ou nada. */
+export type MetaOverviewSource = "account" | "car_legacy" | "none";
+
+export interface MetaSyncInfo {
+    status: string | null;
+    backfilled_at: string | null;
+    last_run_at: string | null;
+    error: string | null;
+}
+
 export interface MetaOverviewResponse {
     connected: boolean;
+    state?: MetaOverviewState;
+    source?: MetaOverviewSource;
+    account_id?: string | null;
+    sync?: MetaSyncInfo;
     status?: string | null;
     last_synced_at?: string | null;
     range: { start: string; end: string; days: number };

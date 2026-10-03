@@ -138,6 +138,120 @@ class MetaAdsService
         return $data[0] ?? [];
     }
 
+    // ── Insights ao NÍVEL DA CONTA, por campanha e por dia ─────────────────────
+    // act_{account_id}/insights?level=campaign&time_increment=1 — serve TODAS as
+    // verticais (não depende de mapeamentos a carros). Segue a paginação.
+    //
+    // Devolve sempre uma estrutura (nunca lança):
+    //   ['ok' => bool, 'rows' => [...], 'token_invalid' => bool, 'retryable' => bool, 'error' => ?string]
+    // token_invalid = erro OAuth 190 (token expirado/revogado) → pedir reconexão.
+    // retryable     = a Meta pediu para abrandar / carga (HTTP 400 com códigos de
+    //                 throttling) → tentar de novo mais tarde, não é falha definitiva.
+
+    /** Limite de páginas por chamada (rede de segurança contra loops de paging). */
+    private const ACCOUNT_INSIGHTS_MAX_PAGES = 50;
+
+    /** Códigos de erro da Graph API que significam "abranda / tenta mais tarde"
+     *  (chegam como HTTP 400, por isso o sendWithRetry não os trata como transitórios). */
+    private const RETRYABLE_GRAPH_CODES = [1, 2, 4, 17, 32, 341, 613, 80000, 80004];
+
+    public function getAccountCampaignInsightsDaily(
+        string $accessToken,
+        string $accountId,
+        string $since,
+        string $until
+    ): array {
+        $accountId = preg_replace('/^act_/', '', trim($accountId));
+
+        $url   = self::GRAPH_URL . "/act_{$accountId}/insights";
+        $query = [
+            'access_token'   => $accessToken,
+            'level'          => 'campaign',
+            'time_increment' => 1,
+            'fields'         => 'campaign_id,campaign_name,spend,impressions,clicks',
+            'time_range'     => json_encode(['since' => $since, 'until' => $until]),
+            'limit'          => 500,
+        ];
+
+        $rows  = [];
+        $pages = 0;
+
+        while ($url !== null && $pages < self::ACCOUNT_INSIGHTS_MAX_PAGES) {
+            $response = $this->graphGet($url, $query);
+            $pages++;
+
+            if ($response->failed()) {
+                $code    = (int) $response->json('error.code', 0);
+                $message = (string) $response->json('error.message', 'Erro desconhecido da Meta.');
+
+                Log::error('MetaAdsService: getAccountCampaignInsightsDaily failed', [
+                    'account_id' => $accountId,
+                    'status'     => $response->status(),
+                    'code'       => $code,
+                    'message'    => $message,
+                ]);
+
+                return [
+                    'ok'            => false,
+                    'rows'          => [],
+                    'token_invalid' => $code === 190,
+                    // 5xx/ligação já vieram com retries do sendWithRetry; aqui só os
+                    // códigos de throttling da Meta (HTTP 400) e o 503 sintético.
+                    'retryable'     => in_array($code, self::RETRYABLE_GRAPH_CODES, true) || $response->status() >= 500,
+                    'error'         => $message,
+                ];
+            }
+
+            foreach ((array) $response->json('data', []) as $r) {
+                if (empty($r['campaign_id']) || empty($r['date_start'])) {
+                    continue;
+                }
+                $rows[] = [
+                    'date'          => (string) $r['date_start'],
+                    'campaign_id'   => (string) $r['campaign_id'],
+                    'campaign_name' => isset($r['campaign_name']) ? (string) $r['campaign_name'] : null,
+                    'spend'         => round((float) ($r['spend'] ?? 0), 2),
+                    'impressions'   => (int) ($r['impressions'] ?? 0),
+                    'clicks'        => (int) ($r['clicks'] ?? 0),
+                ];
+            }
+
+            // paging.next traz TODOS os parâmetros (token + cursor `after`). NÃO se
+            // pode pedir o URL com uma query vazia — o cliente HTTP substitui a query
+            // string por vazio e a 2.ª página sai sem token (erro 104). Por isso
+            // decompõe-se em URL base + query e reenvia-se tudo explicitamente.
+            $next = $response->json('paging.next');
+            if (is_string($next) && $next !== '') {
+                $parts = parse_url($next);
+                parse_str($parts['query'] ?? '', $nextQuery);
+                $url   = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? 'graph.facebook.com') . ($parts['path'] ?? '');
+                $query = $nextQuery;
+            } else {
+                $url = null;
+            }
+        }
+
+        // Saiu pelo limite de páginas com mais páginas por buscar → dados INCOMPLETOS.
+        // Não devolver ok=true: o chamador substituiria a janela por dados parciais.
+        if ($url !== null) {
+            Log::error('MetaAdsService: getAccountCampaignInsightsDaily truncado no limite de páginas', [
+                'account_id' => $accountId,
+                'pages'      => $pages,
+                'rows'       => count($rows),
+            ]);
+
+            return [
+                'ok'            => false,
+                'rows'          => [],
+                'token_invalid' => false,
+                'retryable'     => false,
+                'error'         => 'Demasiados dados para buscar de uma vez (limite de páginas atingido).',
+            ];
+        }
+
+        return ['ok' => true, 'rows' => $rows, 'token_invalid' => false, 'retryable' => false, 'error' => null];
+    }
+
     // ── Breakdown por faixa etária e género ───────────────────────────────────
     // "Ouro" para alimentar o motor de marketing IA com públicos reais.
 

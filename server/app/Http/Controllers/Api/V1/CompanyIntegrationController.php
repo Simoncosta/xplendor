@@ -54,7 +54,10 @@ class CompanyIntegrationController extends Controller
             ? \Carbon\Carbon::createFromTimestamp($tokenInfo['expires_at'])
             : now()->addDays(60);
 
-        CompanyIntegration::updateOrCreate(
+        $previousAccount = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', 'meta')->value('account_id');
+
+        $integration = CompanyIntegration::updateOrCreate(
             ['company_id' => $companyId, 'platform' => 'meta'],
             [
                 'access_token'     => $longToken,
@@ -64,6 +67,9 @@ class CompanyIntegrationController extends Controller
                 'error_message'    => null,
             ]
         );
+
+        // Ingestão ao nível da conta: backfill de 90 dias (e limpa a conta antiga se mudou).
+        app(\App\Services\MetaAccountInsightsService::class)->onAccountChanged($integration, $previousAccount);
 
         return ApiResponse::success([], 'Meta Ads conectado com sucesso.');
     }
@@ -85,10 +91,18 @@ class CompanyIntegrationController extends Controller
 
         // Normaliza "act_123" → "123" (o resto do sistema guarda sem prefixo).
         $accountId = preg_replace('/^act_/', '', trim($request->account_id));
+        if ($accountId === '') {
+            return ApiResponse::error('Conta de anúncios inválida.', 422);
+        }
 
+        $previousAccount = $integration->account_id;
         $integration->update(['account_id' => $accountId]);
 
-        return ApiResponse::success([], 'Conta de anúncios guardada.');
+        // Definir/mudar a conta DISPARA o backfill de 90 dias (e apaga os dados da
+        // conta antiga se mudou). O ecrã mostra "a sincronizar pela primeira vez…".
+        app(\App\Services\MetaAccountInsightsService::class)->onAccountChanged($integration, $previousAccount);
+
+        return ApiResponse::success([], 'Conta de anúncios guardada. A sincronizar os últimos 90 dias…');
     }
 
     // DELETE /companies/{id}/integrations/meta

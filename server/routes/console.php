@@ -36,6 +36,17 @@ Schedule::job(new FetchMetaAdsMetricsJob())
         \Illuminate\Support\Facades\Log::error('[FetchMetaAdsMetrics] Job falhou no scheduler');
     });
 
+// 01:15 — Meta Ads AO NÍVEL DA CONTA (todas as verticais): últimos 3 dias + hoje
+// por integração (a Meta ajusta a atribuição com atraso). Regista o estado de TODAS
+// as integrações (token expirado / conta por escolher). Não toca no job por carro.
+Schedule::job(new \App\Jobs\DispatchMetaAccountInsightsSyncJob())
+    ->dailyAt('01:15')
+    ->name('dispatch-meta-account-insights-sync')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[MetaAccountInsights] Despachante falhou no scheduler');
+    });
+
 // 01:00 — recalcula IPS com todos os dados completos (comportamentais + paid)
 Schedule::job(new RecalculateAllCarScoresJob())
     ->dailyAt('01:00')

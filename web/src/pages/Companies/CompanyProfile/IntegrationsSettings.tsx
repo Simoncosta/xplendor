@@ -117,6 +117,8 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     // Escolha da conta de anúncios após o OAuth (callback no backend não a pede).
     const [metaAccountInput, setMetaAccountInput] = useState("");
     const [savingMetaAccount, setSavingMetaAccount] = useState(false);
+    // Corrigir uma conta já guardada (ID mal escrito → sync falha sem outra saída).
+    const [editingMetaAccount, setEditingMetaAccount] = useState(false);
     const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
     const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
     const { loadingIntegrations, disconnectingIntegration } = useSelector(selectMetaAdsViewModel);
@@ -265,8 +267,9 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
         setSavingMetaAccount(true);
         try {
             await setMetaAccountApi(companyId, acc);
-            toast.success("Conta de anúncios guardada.");
+            toast.success("Conta de anúncios guardada. A sincronizar os últimos 90 dias…");
             setMetaAccountInput("");
+            setEditingMetaAccount(false);
             await fetchIntegrations(companyId);
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível guardar a conta de anúncios.");
@@ -444,9 +447,16 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         {infoRow("Último sync", fmtDate(metaIntegration.last_synced_at))}
                                         {infoRow("Token expira", fmtDate(metaIntegration.token_expires_at))}
 
-                                        {/* Conta por definir (logo após o OAuth): o token já está
-                                            guardado; falta escolher a conta de anúncios. */}
-                                        {!metaIntegration.account_id && (
+                                        {/* Corrigir a conta (ex.: ID mal escrito → sincronização falha). */}
+                                        {metaIntegration.account_id && !editingMetaAccount && (
+                                            <button type="button" className="btn btn-link btn-sm p-0 text-start fs-12" onClick={() => setEditingMetaAccount(true)}>
+                                                <i className="ri-edit-line me-1" />Alterar conta de anúncios
+                                            </button>
+                                        )}
+
+                                        {/* Conta por definir (logo após o OAuth) ou a corrigir: o token já
+                                            está guardado; falta escolher/corrigir a conta de anúncios. */}
+                                        {(!metaIntegration.account_id || editingMetaAccount) && (
                                             <div className="border rounded p-2 mt-1" style={{ background: "var(--vz-tertiary-bg)" }}>
                                                 <p className="fs-12 text-body mb-2">
                                                     Introduz o ID da tua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
