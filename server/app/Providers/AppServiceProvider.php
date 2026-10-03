@@ -121,7 +121,19 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Recommendations\RecommendationEngine::class, fn ($app) =>
             new \App\Recommendations\RecommendationEngine([
                 $app->make(\App\Recommendations\Rules\StaleCustomerAudienceRule::class),
+                // Ramo Automóvel (migradas do CarIssueEngine). A ordem desempata a
+                // prioridade quando a mesma viatura cumpre várias regras.
+                $app->make(\App\Recommendations\Rules\Automotive\SoldCarAdStillActiveRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\PriceAboveMarketRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\DeadStockRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\LowDemandRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\PoorListingRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\HighViewsNoContactsRule::class),
+                $app->make(\App\Recommendations\Rules\Automotive\SpendWithoutLeadRule::class),
             ]));
+
+        // Fotografia do stock partilhada pelas regras do Automóvel: uma por pedido/job.
+        $this->app->scoped(\App\Services\Automotive\AutomotiveStockSnapshot::class);
 
         $this->app->bind(BlogRepositoryInterface::class, BlogRepository::class);
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);

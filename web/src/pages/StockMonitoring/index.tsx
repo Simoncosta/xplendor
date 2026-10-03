@@ -13,7 +13,7 @@ import SummaryDashboard from "../Dashboards/components/SummaryDashboard";
  * (SummaryDashboard, marketing_performance, top_interest/low_lead). NÃO recalcula
  * nada: consome o mesmo blob `analytics` já produzido por getDashboard e reutiliza
  * o componente SummaryDashboard. As métricas dependentes (favoritos, comparações,
- * QR, demografia) aparecem como "Em breve", com a dependência indicada.
+ * QR, demografia) ficam numa secção "Em breve", hoje escondida (SHOW_COMING_SOON).
  *
  * Tenancy: usa o company_id do utilizador autenticado — cada empresa vê o SEU
  * stock (NÃO é a vista transversal /admin/stock, que é do root).
@@ -48,6 +48,12 @@ const selectVM = createSelector(
     [(state: any) => state.Dashboard],
     (d) => ({ analytics: d.data.analytics as StockAnalytics | null, loading: d.loading.list as boolean }),
 );
+
+/**
+ * Secção "Em breve" (favoritos, comparações, QR, faixa etária) escondida: são
+ * métricas sem dados por agora. O código fica; para voltar a mostrar, pôr a true.
+ */
+const SHOW_COMING_SOON = false;
 
 const nfmt = (n?: number | null) => Number(n ?? 0).toLocaleString("pt-PT");
 const carName = (c: DemandCar) =>
@@ -184,7 +190,8 @@ const StockMonitoring = () => {
                             </Col>
                         </Row>
 
-                        {/* 6-9 — Métricas dependentes: "Em breve" com a dependência */}
+                        {/* 6-9 — Métricas dependentes: "Em breve" com a dependência (escondido) */}
+                        {SHOW_COMING_SOON && (<>
                         <Row className="mb-3">
                             <Col>
                                 <h5 className="mb-0 mt-2"><i className="ri-time-line text-muted me-2" />Em breve</h5>
@@ -197,6 +204,7 @@ const StockMonitoring = () => {
                             <ComingSoonCard icon="ri-qr-code-line" title="QR scans" depends="Disponível com o QR Code por veículo." />
                             <ComingSoonCard icon="ri-group-line" title="Faixa etária dos visitantes" depends="Via Google Analytics (não é dado da plataforma)." />
                         </Row>
+                        </>)}
                     </>
                 )}
             </Container>

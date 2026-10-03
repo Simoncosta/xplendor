@@ -144,6 +144,9 @@ Route::prefix('v1')->group(function () {
                 // Visão 3 do Dashboard (2026-06-25) — FATURAÇÃO por período
                 // (NÃO É LUCRO). ?from=Y-m-d&to=Y-m-d&granularity=month|year.
                 Route::get('dashboard/sales-revenue', [DashboardController::class, 'salesRevenue']);
+                // Hub do Automóvel: resumo + recomendações + avisos; funil por viatura.
+                Route::get('automotive-hub', [\App\Http\Controllers\Api\V1\AutomotiveHubController::class, 'index']);
+                Route::get('automotive-hub/funnel', [\App\Http\Controllers\Api\V1\AutomotiveHubController::class, 'funnel']);
 
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);
