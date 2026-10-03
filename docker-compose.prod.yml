@@ -30,6 +30,9 @@ services:
     environment:
       COMPOSER_CACHE_DIR: /tmp/composer
       APP_ENV: production
+      # Variável real do contentor: ganha ao server/.env (o Laravel não a
+      # sobrescreve). Em produção nunca mostrar exception/file/trace.
+      APP_DEBUG: "false"
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
@@ -92,6 +95,9 @@ services:
     working_dir: /var/www/html
     entrypoint: []
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
@@ -110,6 +116,9 @@ services:
     working_dir: /var/www/html
     entrypoint: []
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor

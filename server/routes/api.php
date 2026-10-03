@@ -93,12 +93,16 @@ Route::prefix('v1')->group(function () {
         Route::post('/companies', [CompanyController::class, 'store']);
 
         Route::middleware('check_company_subscription')->group(function () {
-            Route::apiResource('/companies', CompanyController::class)->except(['store']);
+            // tenant: o {company} tem de ser a empresa do utilizador (ou root).
+            Route::apiResource('/companies', CompanyController::class)->except(['store'])->middleware('tenant');
 
-            // Callback OAuth - sem prefixo de company (o company_id vem no state)
+            // Callback OAuth (legado) - sem prefixo de company: a empresa vem do
+            // nonce em cache (state), validado contra a empresa do utilizador.
             Route::post('integrations/meta/callback', [MetaOAuthController::class, 'handleCallback']);
 
-            Route::prefix('/companies/{id}')->group(function () {
+            // tenant: portão único — o {id} tem de ser a empresa do utilizador (ou
+            // root). Corre antes do ensure_module das rotas de dentro do grupo.
+            Route::prefix('/companies/{id}')->middleware('tenant')->group(function () {
                 Route::get('/decisions', [CarDecisionController::class, 'index']);
                 Route::get('/alerts', [AlertController::class, 'index']);
                 Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
@@ -388,9 +392,8 @@ Route::prefix('v1')->group(function () {
 
                 // OAuth Meta
                 Route::get('integrations/meta/oauth-url', [MetaOAuthController::class, 'getAuthUrl']);
-                Route::get('integrations', [CompanyIntegrationController::class, 'index']);
-                Route::delete('integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta']);
-                Route::get('integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+                // (integrations, DELETE integrations/meta e adsets estão definidas acima,
+                // uma só vez; o DELETE com block_when_impersonating.)
                 // Escolher a conta de anúncios APÓS o OAuth (o callback no backend
                 // guarda o token mas não pode perguntar o account_id). A página de
                 // integrações em /app define-o aqui.
@@ -514,8 +517,17 @@ Route::match(['GET', 'OPTIONS'], '/media/{path}', function ($path) {
         ]);
     }
 
-    $fullPath = storage_path('app/public/' . $path);
-    abort_unless(file_exists($fullPath), 404);
+    // Defesa em profundidade: resolve o caminho real e recusa tudo o que saia
+    // da pasta pública do storage (../, %2F codificado, symlinks para fora).
+    $publicRoot = realpath(storage_path('app/public'));
+    $fullPath   = realpath(storage_path('app/public/' . $path));
+    abort_unless(
+        $publicRoot !== false
+            && $fullPath !== false
+            && str_starts_with($fullPath, $publicRoot . DIRECTORY_SEPARATOR)
+            && is_file($fullPath),
+        404
+    );
 
     return Response::file($fullPath, [
         'Access-Control-Allow-Origin' => in_array($origin, $allowed) ? $origin : '',

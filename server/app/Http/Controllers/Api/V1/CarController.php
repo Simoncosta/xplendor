@@ -13,6 +13,7 @@ use App\Http\Resources\CarSpecsResource;
 use App\Http\Resources\CarMarginResource;
 use App\Services\MarginService;
 use App\Models\Car;
+use App\Models\CarAiAnalysis;
 use App\Models\CarImage;
 use App\Models\CarMarketAggregate;
 use App\Services\Ads\AudienceSuggestionService;
@@ -140,6 +141,10 @@ class CarController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->carBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
         $car = $this->carService->findOrFail(
             $id,
             'id',
@@ -178,6 +183,13 @@ class CarController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->carBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
+        // A viatura já é desta empresa (verificado acima), por isso este company_id
+        // é sempre o atual: o update nunca a muda de empresa. O CarService usa-o
+        // para as pastas das imagens.
         $data = $request->validated();
         $data['company_id'] = $companyId;
 
@@ -204,6 +216,10 @@ class CarController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->carBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
         $this->carService->destroy($id);
 
         return ApiResponse::success(null, 'Car deleted successfully.');
@@ -211,8 +227,15 @@ class CarController extends Controller
 
     public function generateAiAnalyses(int $companyId, int $carId)
     {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        if (! $this->carBelongsToCompany($companyId, $carId)) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
+
         try {
-            $this->authorizeCompanyAccess($companyId);
             $car = $this->resolveCarForCompany($companyId, $carId);
 
             $analyses = $this->carService->generateAiAnalyses($car);
@@ -558,6 +581,15 @@ class CarController extends Controller
 
     public function feedbackAiAnalyses(Request $request, int $companyId, int $carAiAnalysisId)
     {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        // A análise tem de ser desta empresa (nunca por id solto).
+        if (! CarAiAnalysis::where('company_id', $companyId)->whereKey($carAiAnalysisId)->exists()) {
+            return ApiResponse::error('Análise não encontrada.', 404);
+        }
+
         $data = $request->validate([
             'feedback' => 'required|string|max:255|in:positive,negative',
         ]);
@@ -573,6 +605,12 @@ class CarController extends Controller
         $user = Auth::user();
 
         return $user->company_id === $companyId || $user->role === 'root';
+    }
+
+    /** A viatura existe E pertence à empresa da rota. */
+    private function carBelongsToCompany(int $companyId, int $carId): bool
+    {
+        return Car::where('company_id', $companyId)->whereKey($carId)->exists();
     }
 
     private function resolveCarForCompany(int $companyId, int $carId): Car

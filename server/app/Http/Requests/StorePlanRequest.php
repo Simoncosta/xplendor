@@ -7,11 +7,11 @@ use Illuminate\Foundation\Http\FormRequest;
 class StorePlanRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Planos são da plataforma: só o root os cria.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->role === 'root';
     }
 
     /**

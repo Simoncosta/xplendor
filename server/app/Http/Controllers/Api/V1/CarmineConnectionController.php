@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\CarmineConnection;
 use App\Services\Api\ApiCarmineService;
 use App\Services\CarmineConnectionService;
 use Illuminate\Http\Request;
@@ -76,6 +77,10 @@ class CarmineConnectionController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! CarmineConnection::where('company_id', $companyId)->whereKey($id)->exists()) {
+            return ApiResponse::error('Ligação Carmine não encontrada.', 404);
+        }
+
         $data = $request->validate([
             'dealer_id' => 'required|string|max:50',
             'token' => 'required|string|max:100',
@@ -94,6 +99,10 @@ class CarmineConnectionController extends Controller
         // Bloqueia caso o usuário não pertença à empresa da rota
         if ($user->company_id !== $companyId && $user->role !== 'root') {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        if (! CarmineConnection::where('company_id', $companyId)->whereKey($id)->exists()) {
+            return ApiResponse::error('Ligação Carmine não encontrada.', 404);
         }
 
         $this->carmineService->destroy($id);
