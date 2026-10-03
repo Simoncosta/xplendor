@@ -343,9 +343,16 @@ class SalesLearningService
         }
     }
 
+    /**
+     * Campanhas/conjuntos/anúncios desta viatura nos 14 dias antes da venda:
+     * anúncios com a tag dela (ativos ou com gasto na janela) + mapeamentos manuais
+     * de campanhas SEM tag (precedência do 2B: numa campanha com tag, a tag ganha).
+     */
     private function campaignContext(Car $car, Carbon $soldAt): array
     {
         $from = $soldAt->copy()->subDays(14);
+        $tagged = app(\App\Repositories\CarAdSpendRepository::class)->taggedCampaignIdList((int) $car->company_id);
+
         $mappings = DB::table('car_ad_campaigns')
             ->where('company_id', $car->company_id)
             ->where('car_id', $car->id)
@@ -353,12 +360,33 @@ class SalesLearningService
                 $query->where('is_active', true)
                     ->orWhere('updated_at', '>=', $from);
             })
+            ->when($tagged !== [], fn ($q) => $q->whereNotIn('campaign_id', $tagged))
             ->get(['campaign_id', 'adset_id', 'ad_id']);
 
+        $tagAds = collect();
+        if ($tagged !== []) {
+            $spentAdIds = DB::table('meta_ad_car_spend_daily')
+                ->where('company_id', $car->company_id)
+                ->where('tagged_car_id', $car->id)
+                ->whereBetween('date', [$from->toDateString(), $soldAt->toDateString()])
+                ->distinct()
+                ->pluck('ad_id')
+                ->all();
+
+            $tagAds = \App\Models\MetaAd::where('company_id', $car->company_id)
+                ->whereIn('tag_status', [\App\Models\MetaAd::TAG_MATCHED, \App\Models\MetaAd::TAG_SPLIT])
+                ->get(['ad_id', 'campaign_id', 'adset_id', 'effective_status', 'tag_car_ids'])
+                ->filter(fn ($ad) => in_array((int) $car->id, array_map('intval', (array) $ad->tag_car_ids), true)
+                    && ($ad->effective_status === 'ACTIVE' || in_array((string) $ad->ad_id, array_map('strval', $spentAdIds), true)));
+        }
+
+        $all = $mappings->map(fn ($m) => (array) $m)
+            ->merge($tagAds->map(fn ($a) => ['campaign_id' => $a->campaign_id, 'adset_id' => $a->adset_id, 'ad_id' => (string) $a->ad_id]));
+
         return [
-            'campaign_ids' => $mappings->pluck('campaign_id')->filter()->unique()->values()->all(),
-            'adset_ids' => $mappings->pluck('adset_id')->filter()->unique()->values()->all(),
-            'ad_ids' => $mappings->pluck('ad_id')->filter()->unique()->values()->all(),
+            'campaign_ids' => $all->pluck('campaign_id')->filter()->unique()->values()->all(),
+            'adset_ids' => $all->pluck('adset_id')->filter()->unique()->values()->all(),
+            'ad_ids' => $all->pluck('ad_id')->filter()->unique()->values()->all(),
         ];
     }
 }

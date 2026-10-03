@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Car;
 use App\Models\CarAdAttribution;
 use App\Models\CarAdCampaign;
+use App\Models\MetaAd;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -303,12 +305,16 @@ class AttributionService
                 return $this->resolvedPayload($mapping, 'direct', 'ad_id');
             }
 
+            // Sem mapeamento: campanha e conjunto a partir do catálogo de anúncios da
+            // ingestão por anúncio (anúncios com tag [id:N] não têm mapeamento).
+            $catalog = $this->catalogAd($car, (string) $directAdId);
+
             return [
                 'source' => 'direct',
-                'campaign_id' => null,
-                'adset_id' => null,
+                'campaign_id' => $catalog['campaign_id'] ?? null,
+                'adset_id' => $catalog['adset_id'] ?? null,
                 'ad_id' => $directAdId,
-                'reason' => 'ad_id',
+                'reason' => ($catalog['tagged'] ?? false) ? 'ad_id_tag' : 'ad_id',
             ];
         }
 
@@ -349,6 +355,7 @@ class AttributionService
             ->where('car_id', $car->id)
             ->platform('meta')
             ->active()
+            ->when($this->taggedCampaigns($car) !== [], fn ($q) => $q->whereNotIn('campaign_id', $this->taggedCampaigns($car)))
             ->orderByDesc('ad_id')
             ->orderByDesc('adset_id')
             ->orderBy('id')
@@ -385,6 +392,41 @@ class AttributionService
         ];
     }
 
+    /**
+     * Campanhas com anúncios com tag da empresa (precedência do 2B: a tag ganha, o
+     * mapeamento manual só vale para campanhas sem tag). [] sem tags.
+     */
+    private function taggedCampaigns(Car $car): array
+    {
+        return $this->taggedCampaignsMemo[$car->company_id]
+            ??= app(CarAdSpendRepository::class)->taggedCampaignIdList((int) $car->company_id);
+    }
+
+    /** @var array<int, list<string>> */
+    private array $taggedCampaignsMemo = [];
+
+    /**
+     * Anúncio no catálogo da empresa (meta_ads; senão, a última linha dos insights).
+     *
+     * @return array{campaign_id: ?string, adset_id: ?string, tagged: bool}|null
+     */
+    private function catalogAd(Car $car, string $adId): ?array
+    {
+        $ad = MetaAd::where('company_id', $car->company_id)->where('ad_id', $adId)->first();
+        if ($ad) {
+            return [
+                'campaign_id' => $ad->campaign_id,
+                'adset_id' => $ad->adset_id,
+                'tagged' => in_array($ad->tag_status, [MetaAd::TAG_MATCHED, MetaAd::TAG_SPLIT], true),
+            ];
+        }
+
+        $row = DB::table('meta_ad_insights_daily')->where('company_id', $car->company_id)->where('ad_id', $adId)
+            ->orderByDesc('date')->first(['campaign_id', 'adset_id']);
+
+        return $row ? ['campaign_id' => $row->campaign_id, 'adset_id' => $row->adset_id, 'tagged' => false] : null;
+    }
+
     private function findMapping(Car $car, string $candidate): ?CarAdCampaign
     {
         return CarAdCampaign::query()
@@ -392,6 +434,7 @@ class AttributionService
             ->where('car_id', $car->id)
             ->platform('meta')
             ->active()
+            ->when($this->taggedCampaigns($car) !== [], fn ($q) => $q->whereNotIn('campaign_id', $this->taggedCampaigns($car)))
             ->where(function (Builder $query) use ($candidate) {
                 $query->where('ad_id', $candidate)
                     ->orWhere('adset_id', $candidate)
@@ -413,6 +456,7 @@ class AttributionService
             ->where('car_id', $car->id)
             ->platform('meta')
             ->active()
+            ->when($this->taggedCampaigns($car) !== [], fn ($q) => $q->whereNotIn('campaign_id', $this->taggedCampaigns($car)))
             ->where(function (Builder $query) use ($utmCampaign) {
                 $query->where('campaign_id', $utmCampaign)
                     ->orWhere('campaign_name', $utmCampaign);

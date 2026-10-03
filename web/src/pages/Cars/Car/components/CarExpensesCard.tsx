@@ -111,6 +111,7 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
                                     <td>{e.date}</td>
                                     <td className={e.archived ? "" : "fw-medium"}>
                                         {e.description}
+                                        {e.is_automatic && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
                                         {e.archived && <Badge color="light" className="text-muted ms-2">Arquivada</Badge>}
                                     </td>
                                     <td>{e.category_name || <span className="text-muted">Sem categoria</span>}</td>
@@ -122,6 +123,9 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
                                         </Badge>
                                     </td>
                                     <td className="text-end">
+                                        {e.is_automatic ? (
+                                            <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
+                                        ) : (<>
                                         <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(e)} title="Editar"><i className="ri-pencil-line" /></button>
                                         {e.archived ? (
                                             <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(e, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>
@@ -129,6 +133,7 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
                                             <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(e, true)} title="Arquivar"><i className="ri-archive-line" /></button>
                                         )}
                                         <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(e)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
+                                        </>)}
                                     </td>
                                 </tr>
                             ))}

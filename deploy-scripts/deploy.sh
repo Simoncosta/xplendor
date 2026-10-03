@@ -69,5 +69,7 @@ A primeira fotografia dos públicos só aparece no próximo sync diário (01:15)
 php artisan meta:backfill-account-insights --all --company=<id>.
 
 php artisan migrate
-php artisan meta:backfill-ad-insights
 php artisan queue:restart
+
+docker exec xplendor-php php artisan meta:backfill-account-insights   # conta: 13 meses (só quem não os tem)
+docker exec xplendor-php php artisan meta:backfill-ad-insights        # anúncio: 13 meses, um mês por job

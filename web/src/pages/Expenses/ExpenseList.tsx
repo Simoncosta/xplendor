@@ -214,6 +214,13 @@ const ExpenseList = () => {
                             </CardBody></Card>
                         </Col>
                     </Row>
+                    {(summary?.automatic_meta?.amount ?? 0) > 0 && (
+                        <p className="text-muted fs-12 mb-3">
+                            <i className="ri-information-line me-1" />
+                            Publicidade Meta automática: {eur(summary?.automatic_meta?.amount ?? 0)} ({summary?.automatic_meta?.count} despesa(s)).
+                            Valor informativo, fora destes totais: conta na margem de cada viatura e a fatura da Meta é o registo financeiro.
+                        </p>
+                    )}
 
                     {/* Filtros */}
                     <Card className="mb-3"><CardBody>
@@ -287,6 +294,7 @@ const ExpenseList = () => {
                                                 <td>{e.date}</td>
                                                 <td className={e.archived ? "" : "fw-medium"}>
                                                     {e.description}
+                                                    {e.is_automatic && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
                                                     {e.archived && <Badge color="light" className="text-muted ms-2">Arquivada</Badge>}
                                                 </td>
                                                 <td>
@@ -304,12 +312,16 @@ const ExpenseList = () => {
                                                     <button
                                                         className={`btn btn-sm ${e.is_paid ? "btn-soft-success" : "btn-soft-warning"}`}
                                                         onClick={() => togglePaid(e)}
-                                                        title="Alternar pago/aberto"
+                                                        disabled={e.is_automatic}
+                                                        title={e.is_automatic ? "Cobrada automaticamente pela Meta" : "Alternar pago/aberto"}
                                                     >
                                                         {e.is_paid ? `Paga${e.paid_at ? ` · ${e.paid_at}` : ""}` : "Em aberto"}
                                                     </button>
                                                 </td>
                                                 <td className="text-end">
+                                                    {e.is_automatic ? (
+                                                        <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
+                                                    ) : (<>
                                                     <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(e)} title="Editar"><i className="ri-pencil-line" /></button>
                                                     {e.archived ? (
                                                         <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(e, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>
@@ -317,6 +329,7 @@ const ExpenseList = () => {
                                                         <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(e, true)} title="Arquivar"><i className="ri-archive-line" /></button>
                                                     )}
                                                     <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(e)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
+                                                    </>)}
                                                 </td>
                                             </tr>
                                         ))}

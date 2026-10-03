@@ -50,8 +50,25 @@ class CarAdSpendRepository
     }
 
     /**
+     * Campanhas com anúncios com tag (lista), para quem filtra mapeamentos manuais:
+     * a TAG ganha, o mapeamento só vale para campanhas sem tag. [] se a empresa não
+     * usa tags (comportamento antigo intacto).
+     *
+     * @return list<string>
+     */
+    public function taggedCampaignIdList(int $companyId): array
+    {
+        if (! $this->usesTags($companyId)) {
+            return [];
+        }
+
+        return $this->taggedCampaignIds($companyId)->distinct()->pluck('campaign_id')->map(fn ($id) => (string) $id)->all();
+    }
+
+    /**
      * Linhas diárias normalizadas (as duas origens, sem dupla contagem):
-     *   car_id, date, campaign_id, adset_id, ad_id, mapping_id, impressions, clicks, spend, source.
+     *   car_id, date, campaign_id, adset_id, ad_id, mapping_id, impressions, clicks, spend, source,
+     *   tagged_car_id (o N da tag; no legado = car_id), allocation_type (single|split; null no legado).
      *
      * @param  list<int>|null  $carIds  null = todas (inclui viaturas removidas, car_id null)
      */
@@ -67,6 +84,7 @@ class CarAdSpendRepository
                 'l.car_id', 'l.date', 'l.campaign_id', 'l.adset_id', 'm.ad_id', 'l.mapping_id',
                 'l.impressions', 'l.clicks', DB::raw('l.spend_normalized as spend'),
                 DB::raw("'" . self::SOURCE_LEGACY . "' as source"),
+                DB::raw('l.car_id as tagged_car_id'), DB::raw('NULL as allocation_type'),
             ]);
 
         if (! $this->usesTags($companyId)) {
@@ -86,6 +104,7 @@ class CarAdSpendRepository
                 DB::raw('t.impressions_allocated as impressions'), DB::raw('t.clicks_allocated as clicks'),
                 DB::raw('t.spend_allocated as spend'),
                 DB::raw("'" . self::SOURCE_TAG . "' as source"),
+                't.tagged_car_id', 't.allocation_type',
             ]);
 
         return DB::query()->fromSub($legacy->unionAll($tag), 'car_ad_spend');
@@ -178,6 +197,59 @@ class CarAdSpendRepository
             'clicks'      => (int) round((float) ($r->clicks ?? 0)),
             'spend'       => round((float) ($r->spend ?? 0), 2),
         ];
+    }
+
+    /**
+     * Gasto por viatura num período, agrupado pelo N da viatura (tagged_car_id), para
+     * a viatura apagada continuar na mesma linha: [tagged_car_id => [car_id (null se
+     * removida), spend, tag_spend, legacy_spend, split_spend]].
+     */
+    public function spendByCarKey(int $companyId, string $from, string $to): array
+    {
+        return $this->dailyRows($companyId, $from, $to)
+            ->selectRaw("tagged_car_id, MAX(car_id) as car_id,
+                COALESCE(SUM(spend), 0) as spend,
+                COALESCE(SUM(CASE WHEN source = '" . self::SOURCE_TAG . "' THEN spend ELSE 0 END), 0) as tag_spend,
+                COALESCE(SUM(CASE WHEN source = '" . self::SOURCE_LEGACY . "' THEN spend ELSE 0 END), 0) as legacy_spend,
+                COALESCE(SUM(CASE WHEN allocation_type = 'split' THEN spend ELSE 0 END), 0) as split_spend")
+            ->groupBy('tagged_car_id')
+            ->get()
+            ->mapWithKeys(fn ($r) => [(int) $r->tagged_car_id => [
+                'car_id' => $r->car_id !== null ? (int) $r->car_id : null,
+                'spend' => round((float) $r->spend, 2),
+                'tag_spend' => round((float) $r->tag_spend, 2),
+                'legacy_spend' => round((float) $r->legacy_spend, 2),
+                'split_spend' => round((float) $r->split_spend, 2),
+            ]])
+            ->all();
+    }
+
+    /**
+     * Gasto da ingestão por anúncio num período, pelo estado da tag do anúncio:
+     * [untagged] = stock geral; [invalid] = por atribuir (tag inválida).
+     *
+     * @param  list<string>  $tagStatuses
+     */
+    public function adLevelSpendByTagStatus(int $companyId, string $from, string $to, array $tagStatuses): float
+    {
+        return round((float) DB::table('meta_ad_insights_daily as i')
+            ->join('meta_ads as a', function ($j) {
+                $j->on('a.company_id', '=', 'i.company_id')
+                    ->on('a.account_id', '=', 'i.account_id')
+                    ->on('a.ad_id', '=', 'i.ad_id');
+            })
+            ->where('i.company_id', $companyId)
+            ->whereBetween('i.date', [$from, $to])
+            ->whereIn('a.tag_status', $tagStatuses)
+            ->sum('i.spend'), 2);
+    }
+
+    /** A empresa tem ingestão por anúncio (dados ou backfill feito)? */
+    public function hasAdLevelData(int $companyId): bool
+    {
+        return DB::table('meta_ad_insights_daily')->where('company_id', $companyId)->exists()
+            || DB::table('company_integrations')->where('company_id', $companyId)->where('platform', 'meta')
+                ->whereNotNull('ad_insights_backfilled_at')->exists();
     }
 
     /** Há algum gasto por viatura guardado para a empresa (qualquer origem)? */

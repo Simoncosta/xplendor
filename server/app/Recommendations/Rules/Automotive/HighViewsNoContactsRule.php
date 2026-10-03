@@ -98,12 +98,20 @@ class HighViewsNoContactsRule implements RecommendationRule
                 ruleKey: self::KEY,
                 priority: $priority,
                 title: 'Muitas vistas, nenhum contacto',
-                why: sprintf(
-                    'Teve %d vistas nos últimos %d dias, acima do percentil 75 do stock (%s vistas), e nenhum contacto por WhatsApp, chamada ou telefone no mesmo período.',
-                    $v,
-                    $params['window_days'],
-                    number_format($p75, 0, ',', ' ')
-                ),
+                why: $p75 >= $params['min_views']
+                    ? sprintf(
+                        'Teve %d vistas nos últimos %d dias, acima do percentil 75 do stock (%s vistas), e nenhum contacto por WhatsApp, chamada ou telefone no mesmo período.',
+                        $v,
+                        $params['window_days'],
+                        number_format($p75, 0, ',', ' ')
+                    )
+                    : sprintf(
+                        'Teve %d vistas nos últimos %d dias, acima do mínimo de %d vistas desta verificação (o percentil 75 do stock é de %s vistas), e nenhum contacto por WhatsApp, chamada ou telefone no mesmo período.',
+                        $v,
+                        $params['window_days'],
+                        $params['min_views'],
+                        number_format($p75, 0, ',', ' ')
+                    ),
                 evidence: [
                     'car_id' => $car->id,
                     'car_title' => AutomotiveStockSnapshot::carTitle($car),

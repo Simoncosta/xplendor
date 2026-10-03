@@ -7,7 +7,6 @@ namespace App\Services\Automotive;
 use App\Constants\StockThresholds;
 use App\Models\Car;
 use App\Models\Company;
-use App\Models\CompanyIntegration;
 use App\Models\MetaAd;
 use App\Recommendations\RecommendationEngine;
 use App\Recommendations\Rules\Automotive\DeadStockRule;
@@ -193,20 +192,8 @@ class AutomotiveHubService
         $tagOnly = round((float) DB::table('meta_ad_car_spend_daily')
             ->where('company_id', $companyId)->whereBetween('date', [$from, $to])->sum('spend_allocated'), 2);
 
-        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
-        $adLevel = $integration?->ad_insights_backfilled_at !== null
-            || DB::table('meta_ad_insights_daily')->where('company_id', $companyId)->exists();
-
-        $byTagStatus = fn (array $statuses) => round((float) DB::table('meta_ad_insights_daily as i')
-            ->join('meta_ads as a', function ($j) {
-                $j->on('a.company_id', '=', 'i.company_id')
-                    ->on('a.account_id', '=', 'i.account_id')
-                    ->on('a.ad_id', '=', 'i.ad_id');
-            })
-            ->where('i.company_id', $companyId)
-            ->whereBetween('i.date', [$from, $to])
-            ->whereIn('a.tag_status', $statuses)
-            ->sum('i.spend'), 2);
+        $adLevel = $this->spend->hasAdLevelData($companyId);
+        $byTagStatus = fn (array $statuses) => $this->spend->adLevelSpendByTagStatus($companyId, $from, $to, $statuses);
 
         return [
             'window_days' => self::SPEND_WINDOW_DAYS,

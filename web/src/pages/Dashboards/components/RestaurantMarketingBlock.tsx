@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ReactApexChart from "react-apexcharts";
+import Select from "react-select";
 import { Alert, Card, CardBody, Col, Row, Spinner } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getRestaurantMarketing } from "helpers/laravel_helper";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { MarketingComparison, RestaurantMarketing } from "common/models/restaurantMarketing.model";
-import RecommendationsCard from "./RecommendationsCard";
+import DashboardSectionHeader from "./DashboardSectionHeader";
+import RecommendationsCard, { type RecommendationsState } from "./RecommendationsCard";
 import { buildInsights, comparisonTag, eur0, int, monthLong, signedPct, signedPp, usesSeasonalityWarning } from "./restaurantMarketingText";
 
 /**
@@ -124,7 +127,11 @@ const MetricCard = ({
 
 // ── Bloco ────────────────────────────────────────────────────────────────────
 
-export default function RestaurantMarketingBlock({ companyId }: { companyId: number }) {
+export default function RestaurantMarketingBlock({ companyId, recommendations }: {
+    companyId: number;
+    /** Recomendações já carregadas pela página (para o contador do separador); evita pedi-las duas vezes. */
+    recommendations?: RecommendationsState;
+}) {
     const months = useMemo(lastMonths, []);
     const [month, setMonth] = useState(months[0]);
     const [data, setData] = useState<RestaurantMarketing | null>(null);
@@ -145,37 +152,47 @@ export default function RestaurantMarketingBlock({ companyId }: { companyId: num
 
     const insights = useMemo(() => (data ? buildInsights(data) : []), [data]);
     const seasonal = data ? usesSeasonalityWarning(data) : false;
+    const monthOptions = useMemo(
+        () => months.map((m, i) => ({ value: m, label: `${capitalize(monthLong(m))}${i === 0 ? " (mês em curso)" : ""}` })),
+        [months],
+    );
 
+    // Secção sem cartão à volta: título sobre o fundo da página e os cartões
+    // diretamente por baixo (nunca branco sobre branco).
     const header = (
-        <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <div>
-                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Marketing e resultados</p>
-                <h5 className="mb-0 fw-semibold">Como estão a empresa e o marketing</h5>
+        // Sem título: está dentro do separador "Marketing e resultados", que já o diz.
+        <DashboardSectionHeader subtitle="Como estão a empresa e o marketing no mês escolhido.">
+            <div style={{ minWidth: 240 }}>
+                <Select
+                    styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
+                    options={monthOptions}
+                    value={monthOptions.find((o) => o.value === month) ?? monthOptions[0]}
+                    onChange={(o: any) => o && setMonth(o.value)}
+                    isSearchable={false}
+                    isDisabled={loading}
+                    aria-label="Mês"
+                />
             </div>
-            <select
-                className="form-select form-select-sm"
-                style={{ width: 180 }}
-                value={month}
-                onChange={(e) => setMonth(e.target.value)}
-                aria-label="Mês"
-                disabled={loading}
-            >
-                {months.map((m, i) => (
-                    <option key={m} value={m}>{capitalize(monthLong(m))}{i === 0 ? " (mês em curso)" : ""}</option>
-                ))}
-            </select>
-        </div>
+        </DashboardSectionHeader>
     );
 
     if (loading && !data) {
-        return <Card className="mb-3"><CardBody>{header}<div className="text-center py-4"><Spinner color="primary" size="sm" /></div></CardBody></Card>;
+        return (
+            <section className="mb-4">
+                {header}
+                <Card className="mb-0"><CardBody className="text-center py-4"><Spinner color="primary" size="sm" /></CardBody></Card>
+            </section>
+        );
     }
     if (error || !data) {
         return (
-            <Card className="mb-3"><CardBody>
+            <section className="mb-4">
                 {header}
-                <p className="text-muted mb-0">Não foi possível carregar o resumo de marketing. Tente novamente dentro de momentos.</p>
-            </CardBody></Card>
+                <Card className="mb-0"><CardBody>
+                    <p className="text-muted mb-0">Não foi possível carregar o resumo de marketing. Tente novamente dentro de momentos.</p>
+                </CardBody></Card>
+            </section>
         );
     }
 
@@ -200,183 +217,183 @@ export default function RestaurantMarketingBlock({ companyId }: { companyId: num
     ) : undefined;
 
     return (
-        <Card className="mb-3">
-            <CardBody>
-                {header}
+        <section className="mb-4">
+            {header}
 
-                {data.period.days === 0 ? (
-                    <Alert color="light" className="mb-0 fs-13">
-                        <i className="ri-calendar-line me-1" />
-                        O mês acabou de começar. Os primeiros números aparecem amanhã, com o dia de hoje completo.
-                    </Alert>
-                ) : (
-                    <>
-                        {data.sources.internal.state === "no_data" && (
-                            <Alert color="light" className="fs-13">
-                                <i className="ri-information-line me-1" />
-                                Ainda não há vendas sincronizadas para este mês.
-                            </Alert>
-                        )}
-                        {metaBanner && (
-                            <Alert color={metaBanner.color} className="d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13 py-2">
-                                <span><i className="ri-facebook-circle-line me-1" />{metaBanner.text}</span>
-                                {metaBanner.cta && <Link to={integrationsUrl(companyId)} className={`btn btn-sm btn-${metaBanner.color === "info" ? "info" : "warning"}`}>{metaBanner.cta}</Link>}
-                            </Alert>
-                        )}
+            {data.period.days === 0 ? (
+                <Alert color="info" className="mb-3 fs-13">
+                    <i className="ri-calendar-line me-1" />
+                    O mês acabou de começar. Os primeiros números aparecem amanhã, com o dia de hoje completo.
+                </Alert>
+            ) : (
+                <>
+                    {data.sources.internal.state === "no_data" && (
+                        <Alert color="info" className="fs-13">
+                            <i className="ri-information-line me-1" />
+                            Ainda não há vendas sincronizadas para este mês.
+                        </Alert>
+                    )}
+                    {metaBanner && (
+                        <Alert color={metaBanner.color} className="d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13 py-2">
+                            <span><i className="ri-facebook-circle-line me-1" />{metaBanner.text}</span>
+                            {metaBanner.cta && <Link to={integrationsUrl(companyId)} className={`btn btn-sm btn-${metaBanner.color === "info" ? "info" : "warning"}`}>{metaBanner.cta}</Link>}
+                        </Alert>
+                    )}
 
-                        {/* ── INFORMAÇÃO: os 5 totais do mês ── */}
-                        <Row className="g-3 mb-3">
-                            <Col xs={12} sm={6} xl>
-                                <MetricCard
-                                    label="Faturação" icon="ri-money-euro-circle-line" color="primary"
-                                    value={m.revenue ? eur0(m.revenue.total) : "Sem dados"}
-                                    help="O total faturado nas lojas (com IVA) no período, segundo o sistema de vendas. Por baixo, as pessoas servidas segundo as reservas."
-                                >
-                                    <ComparisonBadge cmp={m.revenue?.comparison} />
-                                    {m.covers?.has_data && (
-                                        <div className="mt-2 fs-13">
-                                            <span className="text-body fw-medium">{int(m.covers.total)} pessoas</span>{" "}
-                                            <ComparisonBadge cmp={m.covers.comparison} />
-                                        </div>
-                                    )}
-                                </MetricCard>
-                            </Col>
-                            <Col xs={12} sm={6} xl>
-                                <MetricCard
-                                    label="Investimento Meta" icon="ri-facebook-circle-line" color="info"
-                                    value={m.meta_spend ? eur0(m.meta_spend.total) : undefined}
-                                    unavailable={metaUnavailable}
-                                    help="O dinheiro gasto em anúncios no Facebook e no Instagram no período. Os cliques são as vezes que alguém carregou num anúncio."
-                                >
-                                    <ComparisonBadge cmp={m.meta_spend?.comparison} />
-                                    {m.meta_clicks && (
-                                        <div className="mt-2 fs-13">
-                                            <span className="text-body fw-medium">{int(m.meta_clicks.total)} cliques</span>{" "}
-                                            <ComparisonBadge cmp={m.meta_clicks.comparison} />
-                                        </div>
-                                    )}
-                                </MetricCard>
-                            </Col>
-                            <Col xs={12} sm={6} xl>
-                                <MetricCard
-                                    label="Visitas ao site" icon="ri-global-line" color="success"
-                                    value={m.ga4_sessions ? `${int(m.ga4_sessions.total)} sessões` : undefined}
-                                    unavailable={ga4Unavailable}
-                                    help="Quantas vezes o site foi visitado (sessões), e de onde vieram as visitas: anúncios pagos, redes sociais, pesquisa no Google ou acesso direto."
-                                >
-                                    <ComparisonBadge cmp={m.ga4_sessions?.comparison} />
-                                    {m.ga4_sessions && m.ga4_sessions.total > 0 && (
-                                        <div className="mt-2 d-flex flex-wrap gap-1">
-                                            {([
-                                                ["paid", "Pago"], ["organic_social", "Redes sociais"], ["search", "Pesquisa"], ["direct", "Direto"],
-                                            ] as const).map(([k, l]) => (
-                                                <span key={k} className="badge bg-light text-body fw-normal">
-                                                    {l} {Math.round((m.ga4_sessions!.by_group[k].total / m.ga4_sessions!.total) * 100)}%
-                                                </span>
+                    {/* ── INFORMAÇÃO: os 5 totais do mês ── */}
+                    <Row className="g-3 mb-3">
+                        <Col xs={12} sm={6} xl>
+                            <MetricCard
+                                label="Faturação" icon="ri-money-euro-circle-line" color="primary"
+                                value={m.revenue ? eur0(m.revenue.total) : "Sem dados"}
+                                help="O total faturado nas lojas (com IVA) no período, segundo o sistema de vendas. Por baixo, as pessoas servidas segundo as reservas."
+                            >
+                                <ComparisonBadge cmp={m.revenue?.comparison} />
+                                {m.covers?.has_data && (
+                                    <div className="mt-2 fs-13">
+                                        <span className="text-body fw-medium">{int(m.covers.total)} pessoas</span>{" "}
+                                        <ComparisonBadge cmp={m.covers.comparison} />
+                                    </div>
+                                )}
+                            </MetricCard>
+                        </Col>
+                        <Col xs={12} sm={6} xl>
+                            <MetricCard
+                                label="Investimento Meta" icon="ri-facebook-circle-line" color="info"
+                                value={m.meta_spend ? eur0(m.meta_spend.total) : undefined}
+                                unavailable={metaUnavailable}
+                                help="O dinheiro gasto em anúncios no Facebook e no Instagram no período. Os cliques são as vezes que alguém carregou num anúncio."
+                            >
+                                <ComparisonBadge cmp={m.meta_spend?.comparison} />
+                                {m.meta_clicks && (
+                                    <div className="mt-2 fs-13">
+                                        <span className="text-body fw-medium">{int(m.meta_clicks.total)} cliques</span>{" "}
+                                        <ComparisonBadge cmp={m.meta_clicks.comparison} />
+                                    </div>
+                                )}
+                            </MetricCard>
+                        </Col>
+                        <Col xs={12} sm={6} xl>
+                            <MetricCard
+                                label="Visitas ao site" icon="ri-global-line" color="success"
+                                value={m.ga4_sessions ? `${int(m.ga4_sessions.total)} sessões` : undefined}
+                                unavailable={ga4Unavailable}
+                                help="Quantas vezes o site foi visitado (sessões), e de onde vieram as visitas: anúncios pagos, redes sociais, pesquisa no Google ou acesso direto."
+                            >
+                                <ComparisonBadge cmp={m.ga4_sessions?.comparison} />
+                                {m.ga4_sessions && m.ga4_sessions.total > 0 && (
+                                    <div className="mt-2 d-flex flex-wrap gap-1">
+                                        {([
+                                            ["paid", "Pago"], ["organic_social", "Redes sociais"], ["search", "Pesquisa"], ["direct", "Direto"],
+                                        ] as const).map(([k, l]) => (
+                                            <span key={k} className="badge bg-light text-body fw-normal">
+                                                {l} {Math.round((m.ga4_sessions!.by_group[k].total / m.ga4_sessions!.total) * 100)}%
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </MetricCard>
+                        </Col>
+                        <Col xs={12} sm={6} xl>
+                            <MetricCard
+                                label="Peso do marketing" icon="ri-pie-chart-2-line" color="warning"
+                                value={m.marketing_weight && m.marketing_weight.value !== null
+                                    ? `${m.marketing_weight.value.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}%`
+                                    : undefined}
+                                unavailable={!m.marketing_weight || m.marketing_weight.value === null
+                                    ? (m.meta_spend ? "Sem faturação no período para calcular." : "Precisa da Meta ligada para calcular.")
+                                    : undefined}
+                                help="Quanto o investimento na Meta representa da faturação: por cada 100 € faturados, quantos euros foram para anúncios. Não mede o efeito dos anúncios."
+                            >
+                                <ComparisonBadge cmp={m.marketing_weight?.comparison} points />
+                            </MetricCard>
+                        </Col>
+                        <Col xs={12} sm={6} xl>
+                            <MetricCard
+                                label="Reservas e sem reserva" icon="ri-calendar-check-line" color="secondary"
+                                value={m.reservations_mix && m.reservations_mix.reserved_share_pct !== null
+                                    ? `${m.reservations_mix.reserved_share_pct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% com reserva`
+                                    : undefined}
+                                unavailable={!m.reservations_mix || m.reservations_mix.reserved_share_pct === null ? "Sem dados de reservas neste mês." : undefined}
+                                help="Das entradas registadas, quantas foram reservas feitas com antecedência e quantas chegaram sem reserva (walk-in)."
+                            >
+                                <ComparisonBadge cmp={m.reservations_mix?.comparison} points />
+                                {m.reservations_mix && (
+                                    <div className="mt-2 fs-12 text-muted">
+                                        {int(m.reservations_mix.reserved)} reservas · {int(m.reservations_mix.walk_ins)} sem reserva
+                                    </div>
+                                )}
+                            </MetricCard>
+                        </Col>
+                    </Row>
+
+                    {/* ── INSIGHT + DADOS ── */}
+                    <Row className="g-3 mb-3">
+                        <Col lg={5}>
+                            <Card className="mb-0 h-100">
+                                <CardBody>
+                                    <h6 className="text-uppercase text-muted fs-12 mb-3">O que aconteceu neste período</h6>
+                                    {insights.length > 0 ? (
+                                        <ul className="list-unstyled vstack gap-2 mb-0">
+                                            {insights.map((s, i) => (
+                                                <li key={i} className="d-flex gap-2 fs-14">
+                                                    <i className="ri-checkbox-blank-circle-fill text-primary mt-2 flex-shrink-0" style={{ fontSize: 7 }} />
+                                                    <span>{s}</span>
+                                                </li>
                                             ))}
-                                        </div>
+                                        </ul>
+                                    ) : (
+                                        <p className="text-muted mb-0">Ainda não há dados suficientes para resumir este período.</p>
                                     )}
-                                </MetricCard>
-                            </Col>
-                            <Col xs={12} sm={6} xl>
-                                <MetricCard
-                                    label="Peso do marketing" icon="ri-pie-chart-2-line" color="warning"
-                                    value={m.marketing_weight && m.marketing_weight.value !== null
-                                        ? `${m.marketing_weight.value.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}%`
-                                        : undefined}
-                                    unavailable={!m.marketing_weight || m.marketing_weight.value === null
-                                        ? (m.meta_spend ? "Sem faturação no período para calcular." : "Precisa da Meta ligada para calcular.")
-                                        : undefined}
-                                    help="Quanto o investimento na Meta representa da faturação: por cada 100 € faturados, quantos euros foram para anúncios. Não mede o efeito dos anúncios."
-                                >
-                                    <ComparisonBadge cmp={m.marketing_weight?.comparison} points />
-                                </MetricCard>
-                            </Col>
-                            <Col xs={12} sm={6} xl>
-                                <MetricCard
-                                    label="Reservas e sem reserva" icon="ri-calendar-check-line" color="secondary"
-                                    value={m.reservations_mix && m.reservations_mix.reserved_share_pct !== null
-                                        ? `${m.reservations_mix.reserved_share_pct.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}% com reserva`
-                                        : undefined}
-                                    unavailable={!m.reservations_mix || m.reservations_mix.reserved_share_pct === null ? "Sem dados de reservas neste mês." : undefined}
-                                    help="Das entradas registadas, quantas foram reservas feitas com antecedência e quantas chegaram sem reserva (walk-in)."
-                                >
-                                    <ComparisonBadge cmp={m.reservations_mix?.comparison} points />
-                                    {m.reservations_mix && (
-                                        <div className="mt-2 fs-12 text-muted">
-                                            {int(m.reservations_mix.reserved)} reservas · {int(m.reservations_mix.walk_ins)} sem reserva
-                                        </div>
-                                    )}
-                                </MetricCard>
-                            </Col>
-                        </Row>
-
-                        {/* ── INSIGHT + DADOS ── */}
-                        <Row className="g-3 mb-3">
-                            <Col lg={5}>
-                                <Card className="mb-0 h-100">
-                                    <CardBody>
-                                        <h6 className="text-uppercase text-muted fs-12 mb-3">O que aconteceu neste período</h6>
-                                        {insights.length > 0 ? (
-                                            <ul className="list-unstyled vstack gap-2 mb-0">
-                                                {insights.map((s, i) => (
-                                                    <li key={i} className="d-flex gap-2 fs-14">
-                                                        <i className="ri-checkbox-blank-circle-fill text-primary mt-2 flex-shrink-0" style={{ fontSize: 7 }} />
-                                                        <span>{s}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-muted mb-0">Ainda não há dados suficientes para resumir este período.</p>
-                                        )}
-                                        <p className="text-muted fs-12 mb-0 mt-3">
-                                            <i className="ri-information-line me-1" />
-                                            Os números aparecem lado a lado para comparar. Não indicam que uns causaram os outros.
+                                    <p className="text-muted fs-12 mb-0 mt-3">
+                                        <i className="ri-information-line me-1" />
+                                        Os números aparecem lado a lado para comparar. Não indicam que uns causaram os outros.
+                                    </p>
+                                    {seasonal && (
+                                        <p className="text-muted fs-12 mb-0 mt-1">
+                                            <i className="ri-sun-cloudy-line me-1" />
+                                            Algumas comparações usam o mês anterior e podem refletir a época do ano.
                                         </p>
-                                        {seasonal && (
-                                            <p className="text-muted fs-12 mb-0 mt-1">
-                                                <i className="ri-sun-cloudy-line me-1" />
-                                                Algumas comparações usam o mês anterior e podem refletir a época do ano.
-                                            </p>
-                                        )}
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                            <Col lg={7}>
-                                <Card className="mb-0 h-100">
-                                    <CardBody>
-                                        <h6 className="text-uppercase text-muted fs-12 mb-2">Evolução diária</h6>
-                                        <DailyChart data={data} />
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        </Row>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </Col>
+                        <Col lg={7}>
+                            <Card className="mb-0 h-100">
+                                <CardBody>
+                                    <h6 className="text-uppercase text-muted fs-12 mb-2">Evolução diária</h6>
+                                    <DailyChart data={data} />
+                                </CardBody>
+                            </Card>
+                        </Col>
+                    </Row>
 
-                        {/* Sem GA4 nem Meta: painel suave sobre o que podem acrescentar. */}
-                        {noMarketing && (
-                            <Alert color="light" className="mb-3">
+                    {/* Sem GA4 nem Meta: painel suave sobre o que podem acrescentar. */}
+                    {noMarketing && (
+                        <Card className="mb-3">
+                            <CardBody>
                                 <h6 className="mb-1"><i className="ri-lightbulb-line me-1 text-warning" />O que o marketing digital pode acrescentar a esta vista</h6>
-                                <p className="fs-13 mb-2">
+                                <p className="text-muted fs-13 mb-2">
                                     Ao ligar a Meta (Facebook e Instagram) e o Google Analytics, passa a ver aqui, ao lado das vendas e das reservas,
                                     quanto investe em anúncios e quantas pessoas visitam o site em cada mês.
                                 </p>
                                 <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-primary"><i className="ri-links-line me-1" />Configurar integrações</Link>
-                            </Alert>
-                        )}
-                    </>
-                )}
+                            </CardBody>
+                        </Card>
+                    )}
+                </>
+            )}
 
-                {/* ── Recomendações (motor de regras explicáveis), entre o Insight e os atalhos ── */}
-                <RecommendationsCard companyId={companyId} vertical="restaurant" />
+            {/* ── Recomendações (motor de regras explicáveis), entre o Insight e os atalhos ── */}
+            <RecommendationsCard companyId={companyId} vertical="restaurant" state={recommendations} />
 
-                {/* ── AÇÃO: atalhos para as telas de detalhe ── */}
-                <div className="d-flex flex-wrap gap-2">
-                    <Link to="/meta-ads" className="btn btn-sm btn-soft-info"><i className="ri-advertisement-line me-1" />Ver campanhas</Link>
-                    <Link to="/trafego-site" className="btn btn-sm btn-soft-success"><i className="ri-line-chart-line me-1" />Ver tráfego do site</Link>
-                    <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-secondary"><i className="ri-settings-3-line me-1" />Configurar integrações</Link>
-                </div>
-            </CardBody>
-        </Card>
+            {/* ── AÇÃO: atalhos para as telas de detalhe ── */}
+            <div className="d-flex flex-wrap gap-2">
+                <Link to="/meta-ads" className="btn btn-sm btn-soft-info"><i className="ri-advertisement-line me-1" />Ver campanhas</Link>
+                <Link to="/trafego-site" className="btn btn-sm btn-soft-success"><i className="ri-line-chart-line me-1" />Ver tráfego do site</Link>
+                <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-secondary"><i className="ri-settings-3-line me-1" />Configurar integrações</Link>
+            </div>
+        </section>
     );
 }
 

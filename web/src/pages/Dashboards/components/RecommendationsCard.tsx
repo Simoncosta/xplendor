@@ -20,13 +20,24 @@ const LEVEL_UI: Record<RecommendationLevel, { label: string; color: string }> = 
 
 const isExternal = (url: string) => /^https?:\/\//i.test(url);
 
-export default function RecommendationsCard({ companyId, vertical }: { companyId: number; vertical: "restaurant" | "automotive" }) {
+export interface RecommendationsState {
+    data: RecommendationsResponse | null;
+    loading: boolean;
+    error: boolean;
+}
+
+/**
+ * Carrega as recomendações (não dependem do mês). Exportado para quem precisa
+ * delas fora do cartão (ex.: o contador de prioridade alta num separador), que
+ * depois passa o resultado ao cartão para não repetir o pedido.
+ */
+export function useRecommendations(companyId: number, vertical: "restaurant" | "automotive", enabled = true): RecommendationsState {
     const [data, setData] = useState<RecommendationsResponse | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(enabled);
     const [error, setError] = useState(false);
 
     useEffect(() => {
-        if (!companyId) return;
+        if (!enabled || !companyId) return;
         let alive = true;
         setLoading(true);
         setError(false);
@@ -35,7 +46,19 @@ export default function RecommendationsCard({ companyId, vertical }: { companyId
             .catch(() => { if (alive) setError(true); })
             .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
-    }, [companyId, vertical]);
+    }, [companyId, vertical, enabled]);
+
+    return { data, loading, error };
+}
+
+export default function RecommendationsCard({ companyId, vertical, state }: {
+    companyId: number;
+    vertical: "restaurant" | "automotive";
+    /** Recomendações já carregadas por quem usa o cartão; sem isto, o cartão carrega-as. */
+    state?: RecommendationsState;
+}) {
+    const own = useRecommendations(companyId, vertical, state === undefined);
+    const { data, loading, error } = state ?? own;
 
     const recs = (data?.recommendations ?? []).slice(0, MAX_SHOWN);
     const notices = data?.notices ?? [];

@@ -67,6 +67,22 @@ class SyncMetaAdInsightsJob implements ShouldQueue
             'backfill_in_progress' => self::dispatch($this->integrationId, MetaAdInsightsService::MODE_BACKFILL),
             default => null,
         };
+
+        // Despesas automáticas (projeção mensal do gasto). Um erro aqui NUNCA afeta a
+        // ingestão: fica no log e o despachante diário (02:30) volta a projetar.
+        if (($result['result'] ?? null) === 'done') {
+            try {
+                $months = ($result['mode'] ?? null) === MetaAdInsightsService::MODE_BACKFILL
+                    ? \App\Services\MetaExpenseProjector::recentMonths(\App\Services\MetaAccountInsightsService::BACKFILL_MONTHS + 1)
+                    : \App\Services\MetaExpenseProjector::monthsBetween($result['since'], $result['until']);
+                app(\App\Services\MetaExpenseProjector::class)->project((int) $integration->company_id, $months);
+            } catch (\Throwable $e) {
+                Log::warning('SyncMetaAdInsightsJob: despesas automáticas não projetadas', [
+                    'integration_id' => $this->integrationId,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     public function failed(\Throwable $e): void

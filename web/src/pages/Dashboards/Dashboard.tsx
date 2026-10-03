@@ -13,7 +13,7 @@ import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockBreakdownCard from './components/StockBreakdownCard';
 import SalesRevenueCard from './components/SalesRevenueCard';
 import { useModules } from "contexts/ModulesContext";
-import { PingwinDashboardContent } from "./PingwinDashboard";
+import { PingwinDashboardContent, RestaurantPageTitle } from "./PingwinDashboard";
 import RootDashboard from "./RootDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 
@@ -91,6 +91,8 @@ const ClientDashboard = () => {
             <React.Fragment>
                 <div className="page-content">
                     <Container fluid>
+                        {/* Um só título de página no topo; depois as secções. */}
+                        {showPingwin && <RestaurantPageTitle />}
                         <Row className="g-3 mb-3">
                             <SubscriptionTrialBanner />
                         </Row>

@@ -30,6 +30,15 @@ class ExpenseController extends Controller
         return $user->company_id === $companyId || $user->role === 'root';
     }
 
+    /** Despesas automáticas (gasto Meta) não se editam, arquivam nem apagam à mão. */
+    private function automaticLocked()
+    {
+        return ApiResponse::error(
+            'Esta despesa é automática: é atualizada a partir do gasto reportado pela Meta e não pode ser alterada à mão.',
+            409
+        );
+    }
+
     private function findScoped(int $companyId, int $id): ?Expense
     {
         return Expense::with(self::RELATIONS)->where('company_id', $companyId)->find($id);
@@ -48,6 +57,10 @@ class ExpenseController extends Controller
         }
         if ($request->filled('car_id')) {
             $query->where('car_id', (int) $request->input('car_id'));
+        }
+        // source=manual|meta_ads (despesas automáticas do gasto Meta).
+        if (in_array($request->input('source'), [Expense::SOURCE_MANUAL, Expense::SOURCE_META_ADS], true)) {
+            $query->where('source', $request->input('source'));
         }
         if ($request->has('is_paid') && $request->input('is_paid') !== '') {
             $query->where('is_paid', $request->boolean('is_paid'));
@@ -90,7 +103,13 @@ class ExpenseController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $base = $this->applyFilters(Expense::query(), $request, $companyId);
+        $filtered = $this->applyFilters(Expense::query(), $request, $companyId);
+
+        // Repartição analítica (opção 1): as despesas automáticas do gasto Meta ficam
+        // FORA dos totais (a fatura manual da Meta é o registo financeiro) e aparecem à
+        // parte, como informativas. Na margem por viatura contam (MarginService).
+        $base = (clone $filtered)->where('source', Expense::SOURCE_MANUAL);
+        $automatic = (clone $filtered)->where('source', Expense::SOURCE_META_ADS);
 
         $total = (float) (clone $base)->sum('amount');
         $paid  = (float) (clone $base)->where('is_paid', true)->sum('amount');
@@ -102,6 +121,12 @@ class ExpenseController extends Controller
             'paid_amount'  => $paid,
             'open_amount'  => $open,
             'count'        => $count,
+            'automatic_meta' => [
+                'amount'          => round((float) (clone $automatic)->sum('amount'), 2),
+                'count'           => (int) (clone $automatic)->count(),
+                'in_totals'       => false,
+                'with_car_amount' => round((float) (clone $automatic)->whereNotNull('car_id')->sum('amount'), 2),
+            ],
         ], 'Expense summary fetched successfully.');
     }
 
@@ -153,6 +178,10 @@ class ExpenseController extends Controller
             return ApiResponse::error('Despesa não encontrada.', 404);
         }
 
+        if ($expense->isAutomatic()) {
+            return $this->automaticLocked();
+        }
+
         $data = $this->service->normalizePaidState($request->validated());
         unset($data['company_id']);
 
@@ -175,6 +204,10 @@ class ExpenseController extends Controller
 
         if (! $expense) {
             return ApiResponse::error('Despesa não encontrada.', 404);
+        }
+
+        if ($expense->isAutomatic()) {
+            return $this->automaticLocked();
         }
 
         // Regra: sem vínculo → elimina; com vínculo → bloqueia (deve arquivar-se).

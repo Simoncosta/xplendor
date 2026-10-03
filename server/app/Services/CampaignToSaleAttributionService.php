@@ -4,14 +4,29 @@ namespace App\Services;
 
 use App\Models\Car;
 use App\Models\CarSaleAttribution;
+use App\Models\MetaAd;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * Atribuição de uma venda a uma campanha/anúncio Meta. Ordem (a primeira que
+ * encontrar ganha; cada venda tem UMA atribuição):
+ *   1. evidência de clique (car_ad_attributions, janela recente). Se o anúncio tem a
+ *      tag de OUTRA viatura, conta na mesma (o anúncio trouxe o cliente ao stand),
+ *      com menos confiança e marcado cross_car_ad;
+ *   2. recurso pela TAG: anúncio com a tag desta viatura que gastou nos 14 dias
+ *      antes da venda (tag_fallback, confiança baixa);
+ *   3. recurso ao mapeamento manual (CarAdCampaign), só para campanhas SEM tag.
+ * Precedência do 2B: numa campanha com tag, a tag ganha e o mapeamento não conta.
+ */
 class CampaignToSaleAttributionService
 {
     private const DEFAULT_WINDOW_DAYS = 7;
     private const MODEL = 'last_touch_recent_window';
+    private const TAG_FALLBACK_DAYS = 14;
+    private const CROSS_CAR_PENALTY = 15;
 
     public function attributeSale(Car $car, array $context = []): array
     {
@@ -19,13 +34,21 @@ class CampaignToSaleAttributionService
         $windowDays = (int) ($context['window_days'] ?? self::DEFAULT_WINDOW_DAYS);
         $from = $soldAt->copy()->subDays($windowDays);
 
-        $attribution = $this->bestRecentAttribution($car, $from, $soldAt);
+        $tagged = app(CarAdSpendRepository::class)->taggedCampaignIdList((int) $car->company_id);
+
+        $attribution = $this->bestRecentAttribution($car, $from, $soldAt, $tagged);
 
         if ($attribution) {
-            return $this->payloadFromAttribution($attribution, $windowDays, $soldAt);
+            return $this->payloadFromAttribution($car, $attribution, $windowDays, $soldAt);
         }
 
-        $mapping = $this->fallbackMapping($car, $soldAt);
+        $tagAd = $this->tagFallback($car, $soldAt);
+
+        if ($tagAd) {
+            return $this->payloadFromTag($tagAd, $windowDays, $soldAt);
+        }
+
+        $mapping = $this->fallbackMapping($car, $soldAt, $tagged);
 
         if ($mapping) {
             return $this->payloadFromMapping($mapping, $windowDays, $soldAt);
@@ -118,7 +141,7 @@ class CampaignToSaleAttributionService
         ];
     }
 
-    private function bestRecentAttribution(Car $car, Carbon $from, Carbon $soldAt): ?object
+    private function bestRecentAttribution(Car $car, Carbon $from, Carbon $soldAt, array $tagged = []): ?object
     {
         return DB::table('car_ad_attributions')
             ->where('company_id', $car->company_id)
@@ -129,6 +152,13 @@ class CampaignToSaleAttributionService
                     ->orWhereNotNull('adset_id')
                     ->orWhereNotNull('campaign_id');
             })
+            // Registos que vieram do recurso ao mapeamento manual numa campanha que já
+            // tem tag não contam (a tag ganha).
+            ->when($tagged !== [], fn ($q) => $q->where(function ($w) use ($tagged) {
+                $w->where('source', '!=', 'fallback')
+                    ->orWhereNull('campaign_id')
+                    ->orWhereNotIn('campaign_id', $tagged);
+            }))
             ->orderByRaw('CASE WHEN ad_id IS NOT NULL THEN 1 WHEN adset_id IS NOT NULL THEN 2 WHEN campaign_id IS NOT NULL THEN 3 ELSE 4 END')
             ->orderByDesc('has_whatsapp_click')
             ->orderByDesc('has_strong_intent')
@@ -137,13 +167,32 @@ class CampaignToSaleAttributionService
             ->first();
     }
 
-    private function fallbackMapping(Car $car, Carbon $soldAt): ?object
+    /**
+     * Anúncio com a tag desta viatura que gastou nos 14 dias antes da venda (o de
+     * gasto mais recente; empate → o de maior gasto).
+     */
+    private function tagFallback(Car $car, Carbon $soldAt): ?object
+    {
+        return DB::table('meta_ad_car_spend_daily')
+            ->where('company_id', $car->company_id)
+            ->where('tagged_car_id', $car->id)
+            ->whereBetween('date', [$soldAt->copy()->subDays(self::TAG_FALLBACK_DAYS)->toDateString(), $soldAt->toDateString()])
+            ->where('spend_allocated', '>', 0)
+            ->selectRaw('ad_id, campaign_id, adset_id, MAX(date) as last_date, SUM(spend_allocated) as spend')
+            ->groupBy('ad_id', 'campaign_id', 'adset_id')
+            ->orderByDesc('last_date')
+            ->orderByDesc('spend')
+            ->first();
+    }
+
+    private function fallbackMapping(Car $car, Carbon $soldAt, array $tagged = []): ?object
     {
         $from = $soldAt->copy()->subDays(14);
 
         return DB::table('car_ad_campaigns')
             ->where('company_id', $car->company_id)
             ->where('car_id', $car->id)
+            ->when($tagged !== [], fn ($q) => $q->whereNotIn('campaign_id', $tagged))
             ->where(function ($query) use ($from) {
                 $query->where('is_active', true)
                     ->orWhere('updated_at', '>=', $from);
@@ -154,7 +203,7 @@ class CampaignToSaleAttributionService
             ->first();
     }
 
-    private function payloadFromAttribution(object $attribution, int $windowDays, Carbon $soldAt): array
+    private function payloadFromAttribution(Car $car, object $attribution, int $windowDays, Carbon $soldAt): array
     {
         $hoursSinceLastInteraction = $this->hoursBetween($attribution->last_interaction_at, $soldAt);
         $confidence = 45 + $this->temporalConfidenceBonus($hoursSinceLastInteraction);
@@ -196,6 +245,21 @@ class CampaignToSaleAttributionService
             $reasons[] = 'múltiplos sinais';
         }
 
+        // Anúncio com a tag de OUTRA viatura: conta (trouxe o cliente ao stand), com
+        // menos confiança e marcado.
+        $crossCar = null;
+        if (! empty($attribution->ad_id)) {
+            $ad = MetaAd::where('company_id', $car->company_id)->where('ad_id', $attribution->ad_id)
+                ->whereIn('tag_status', [MetaAd::TAG_MATCHED, MetaAd::TAG_SPLIT])->first();
+            $adCars = array_map('intval', (array) ($ad?->tag_car_ids ?? []));
+            if ($ad && $adCars !== [] && ! in_array((int) $car->id, $adCars, true)) {
+                $crossCar = $adCars;
+                $confidence -= self::CROSS_CAR_PENALTY;
+                $matchType = 'cross_car_ad';
+                $reasons[] = 'anúncio da viatura n.º ' . implode(', ', $adCars) . ' (o cliente comprou outra viatura)';
+            }
+        }
+
         return [
             'platform' => $attribution->platform ?? 'meta',
             'campaign_id' => $attribution->campaign_id,
@@ -215,6 +279,43 @@ class CampaignToSaleAttributionService
                 'has_whatsapp_click' => (bool) $attribution->has_whatsapp_click,
                 'has_strong_intent' => (bool) $attribution->has_strong_intent,
                 'has_lead' => (bool) $attribution->has_lead,
+                'cross_car' => $crossCar !== null,
+                'ad_tag_car_ids' => $crossCar,
+            ],
+        ];
+    }
+
+    private function payloadFromTag(object $tagAd, int $windowDays, Carbon $soldAt): array
+    {
+        $lastSpend = Carbon::parse($tagAd->last_date)->endOfDay();
+        $days = max(0, (int) Carbon::parse($tagAd->last_date)->startOfDay()->diffInDays($soldAt->copy()->startOfDay()));
+        $hours = $this->hoursBetween($lastSpend->min($soldAt), $soldAt);
+        $confidence = 30 + match (true) {
+            $days <= 3 => 10,
+            $days <= 7 => 5,
+            default => 0,
+        };
+
+        return [
+            'platform' => 'meta',
+            'campaign_id' => $tagAd->campaign_id,
+            'adset_id' => $tagAd->adset_id,
+            'ad_id' => $tagAd->ad_id,
+            'model' => self::MODEL,
+            'window_days' => $windowDays,
+            'match_type' => 'tag_fallback',
+            'time_to_sale_hours' => $hours,
+            'time_from_last_interaction_hours' => null,
+            'confidence_score' => $confidence,
+            'confidence_reason' => sprintf(
+                'Anúncio com a etiqueta desta viatura com gasto até %s, sem clique registado.',
+                Carbon::parse($tagAd->last_date)->format('d/m/Y')
+            ),
+            'source_snapshot' => [
+                'source' => 'meta_ad_tag',
+                'last_spend_date' => (string) $tagAd->last_date,
+                'spend_window' => round((float) $tagAd->spend, 2),
+                'window_days' => self::TAG_FALLBACK_DAYS,
             ],
         ];
     }

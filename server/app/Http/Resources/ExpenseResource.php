@@ -36,7 +36,11 @@ class ExpenseResource extends JsonResource
             'is_paid'             => (bool) $this->is_paid,
             'paid_at'             => optional($this->paid_at)->toDateString(),
             'archived'            => (bool) $this->archived,
-            'can_delete'          => ! $hasLinks,
+            'can_delete'          => ! $hasLinks && ! $this->resource->isAutomatic(),
+            // Despesa automática (gasto Meta): não editável; fora dos totais da página.
+            'source'              => $this->source ?? 'manual',
+            'is_automatic'        => $this->resource->isAutomatic(),
+            'can_edit'            => ! $this->resource->isAutomatic(),
             'notes'               => $this->notes,
 
             'created_at'          => $this->created_at,

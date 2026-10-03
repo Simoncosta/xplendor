@@ -14,6 +14,9 @@ class ExpenseCategory extends Model implements AuditableContract
 {
     use Auditable;
 
+    /** Categoria de sistema das despesas automáticas do gasto Meta. */
+    public const SYSTEM_META_ADS = 'meta_ads';
+
     protected $fillable = [
         'company_id',
         'name',

@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, CardHeader, Container, Row, Col, Spinner } from "reactstrap";
+import classnames from "classnames";
+import { Link, useSearchParams } from "react-router-dom";
+import { Card, CardBody, CardHeader, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
+import BreadCrumb from "Components/Common/BreadCrumb";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { getPingwinDashboard, queuePingwinSync } from "helpers/laravel_helper";
 import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod } from "common/models/pingwin.model";
+import DashboardSectionHeader from "./components/DashboardSectionHeader";
 import MonthlyBillingChart from "./components/MonthlyBillingChart";
 import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
+import { useRecommendations } from "./components/RecommendationsCard";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
  * reais do PingWin. 3 cards (Anual / Mensal / Diário) com OS DOIS valores
  * (faturado c/IVA + líquido) e comparações (vs ano passado / mesmo dia da
- * semana) — que mostram "—" quando o período anterior não está todo sincronizado
+ * semana), que mostram "n.d." quando o período anterior não está todo sincronizado
  * (portão de honestidade). Tabela de lojas com faturação + última sincronização.
  * O conteúdo (PingwinDashboardContent) é reutilizado no painel principal.
  */
@@ -29,10 +34,13 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 const euro = (cents: number) =>
     (Number(cents || 0) / 100).toLocaleString("pt-PT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** % de comparação: "—" quando null (portão de honestidade); seta/cor conforme sinal. */
+/** Valor indisponível (sem dados comparáveis / sem sincronização): "n.d.", nunca 0 falso. */
+const NA = "n.d.";
+
+/** % de comparação: "n.d." quando null (portão de honestidade); seta/cor conforme sinal. */
 const DeltaPct = ({ pct }: { pct: number | null }) => {
     if (pct === null || pct === undefined) {
-        return <span className="text-muted">—</span>;
+        return <span className="text-muted" title="Sem dados comparáveis completos">{NA}</span>;
     }
     const up = pct >= 0;
     return (
@@ -69,7 +77,8 @@ const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, delta
                 <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
                         <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>{label}</p>
-                        {subtitle && <p className="text-muted fs-11 mb-0 text-capitalize">{subtitle}</p>}
+                        {/* Só a primeira letra em maiúscula ("Ano de 2026 (até à data)"), não cada palavra. */}
+                        {subtitle && <p className="text-muted fs-11 mb-0">{subtitle.charAt(0).toUpperCase() + subtitle.slice(1)}</p>}
                     </div>
                     <i className={`${icon} fs-4 text-${accent}`} />
                 </div>
@@ -98,9 +107,9 @@ const PeriodCard = ({ label, subtitle, icon, accent, values, compareLabel, delta
     </Col>
 );
 
-/** Valor em cêntimos → €X,XX, ou "—" quando null (sem dados / flag desligada). */
-const euroOrDash = (cents: number | null | undefined) =>
-    cents === null || cents === undefined ? "—" : euro(cents);
+/** Valor em cêntimos → €X,XX, ou "n.d." quando null (sem dados / flag desligada). */
+const euroOrNa = (cents: number | null | undefined) =>
+    cents === null || cents === undefined ? NA : euro(cents);
 
 /** Card do Ticket Médio (faturação PingWin ÷ pessoas CoverManager) — 3 períodos. */
 const AvgTicketCard = ({ avg, enabled }: { avg?: { annual: number | null; monthly: number | null; daily: number | null }; enabled: boolean }) => (
@@ -113,7 +122,7 @@ const AvgTicketCard = ({ avg, enabled }: { avg?: { annual: number | null; monthl
                 </div>
                 {!enabled ? (
                     <>
-                        <h4 className="mb-1 fw-semibold text-muted">—</h4>
+                        <h4 className="mb-1 fw-semibold text-muted">{NA}</h4>
                         <p className="text-muted fs-12 mb-0">Cálculo com o CoverManager desligado (Restauração › Lojas).</p>
                     </>
                 ) : (
@@ -121,7 +130,7 @@ const AvgTicketCard = ({ avg, enabled }: { avg?: { annual: number | null; monthl
                         {([["Anual", avg?.annual], ["Mensal", avg?.monthly], ["Diário", avg?.daily]] as const).map(([lbl, val], i) => (
                             <div className="col-4" key={lbl} style={{ borderLeft: i > 0 ? "1px solid var(--vz-border-color)" : "none" }}>
                                 <p className="text-muted fs-11 mb-1">{lbl}</p>
-                                <h5 className="mb-0 fw-semibold text-warning">{euroOrDash(val)}</h5>
+                                <h5 className="mb-0 fw-semibold text-warning">{euroOrNa(val)}</h5>
                             </div>
                         ))}
                     </div>
@@ -150,8 +159,8 @@ const OccupancyCard = ({ occ }: { occ?: { annual: PingwinOccupancyPeriod; monthl
                     {([["Anual", occ?.annual], ["Mensal", occ?.monthly], ["Diário", occ?.daily]] as const).map(([lbl, p], i) => (
                         <div className="col-4" key={lbl} style={{ borderLeft: i > 0 ? "1px solid var(--vz-border-color)" : "none" }}>
                             <p className="text-muted fs-11 mb-1">{lbl}</p>
-                            {/* has_data false → "—" (sem reservas sincronizadas), não 0 falso. */}
-                            <h5 className="mb-1 fw-semibold text-info">{p?.has_data ? num(p.total) : "—"}</h5>
+                            {/* has_data false → "n.d." (sem reservas sincronizadas), não 0 falso. */}
+                            <h5 className="mb-1 fw-semibold text-info">{p?.has_data ? num(p.total) : NA}</h5>
                             <p className="text-muted fs-11 mb-0">
                                 {p?.has_data ? <>{num(p.lunch)} almoço · {num(p.dinner)} jantar</> : "sem reservas"}
                             </p>
@@ -165,24 +174,19 @@ const OccupancyCard = ({ occ }: { occ?: { annual: PingwinOccupancyPeriod; monthl
 );
 
 const fmtDateTime = (d: string | null) =>
-    d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
+    d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "Nunca";
 
 /** Célula de um período por loja: faturado c/IVA (cor do tema) + líquido + lotação (pessoas). */
 const PeriodCell = ({ pair, occ, color }: { pair: PingwinMoneyPair; occ?: PingwinOccupancyPeriod; color: string }) => (
     <td className="text-end">
         <div className={`fw-semibold ${color}`}>{euro(pair?.invoiced_cents ?? 0)}</div>
         <div className="text-muted fs-11">{euro(pair?.net_cents ?? 0)} líq.</div>
-        <div className="text-muted fs-11">{occ?.has_data ? `${num(occ.total)} pessoas` : "— pessoas"}</div>
+        <div className="text-muted fs-11">{occ?.has_data ? `${num(occ.total)} pessoas` : "sem reservas"}</div>
     </td>
 );
 
-export function PingwinDashboardContent() {
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
-
+/** Separador "Vendas": faturação por período, ticket médio, lotação, gráfico e lojas, com a data e o "atualizar". */
+function RestaurantSalesTab({ companyId }: { companyId: number }) {
     const [date, setDate] = useState<string>(yesterdayIso());
     const [data, setData] = useState<PingwinDashboardData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -211,9 +215,9 @@ export function PingwinDashboardContent() {
         setQueuing(true);
         try {
             await queuePingwinSync(companyId, date);
-            toast.info("A atualizar… vais ser notificado no sino quando os dados estiverem prontos.");
+            toast.info("A atualizar. Será notificado no sino quando os dados estiverem prontos.");
         } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível pôr a atualização na fila.");
+            toast.error(e?.message ?? "Não foi possível agendar a atualização.");
         } finally {
             setQueuing(false);
             setConfirmOpen(false);
@@ -226,11 +230,10 @@ export function PingwinDashboardContent() {
 
     return (
         <>
-            <ToastContainer />
             <ConfirmModal
                 isOpen={confirmOpen}
                 title="Buscar dados de vendas"
-                message={`Buscar os dados de vendas atualizados de ${date}? A busca corre em segundo plano e podes continuar a trabalhar.`}
+                message={`Pretende buscar os dados de vendas atualizados de ${dayLabel(date)}? A atualização decorre em segundo plano e pode continuar a trabalhar.`}
                 confirmText="Buscar"
                 cancelText="Cancelar"
                 variant="default"
@@ -239,40 +242,25 @@ export function PingwinDashboardContent() {
                 onConfirm={() => { void confirmRefresh(); }}
             />
 
-            {/* HUB: marketing e resultados do mês (GA4 + Meta + dados internos), no topo.
-                As métricas de vendas abaixo ficam como estavam. */}
-            {companyId > 0 && (
-                <Row>
-                    <Col xs={12}>
-                        <RestaurantMarketingBlock companyId={companyId} />
-                    </Col>
-                </Row>
-            )}
-
-            {/* Cabeçalho no padrão do sistema (page-title-box): título + ações alinhados. */}
-            <Row>
-                <Col xs={12}>
-                    <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                        <h4 className="mb-sm-0">Restauração — Vendas</h4>
-                        <div className="d-flex align-items-end gap-2">
-                            <div>
-                                <label className="form-label fs-12 text-muted mb-1">Data</label>
-                                <input
-                                    type="date"
-                                    className="form-control"
-                                    value={date}
-                                    max={todayIso()}
-                                    onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
-                                    style={{ minWidth: 160 }}
-                                />
-                            </div>
-                            <button className="btn btn-soft-primary" onClick={() => setConfirmOpen(true)} disabled={!date || queuing || !companyId}>
-                                {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" /> Buscar dados atualizados</>}
-                            </button>
-                        </div>
-                    </div>
-                </Col>
-            </Row>
+            {/* Descrição + controlos do separador (data + atualizar), junto do conteúdo
+                que controlam. Sem título: o separador "Vendas" já o diz. */}
+            <DashboardSectionHeader subtitle="Faturação, ticket médio e lotação, segundo o sistema de vendas e as reservas.">
+                <div>
+                    <label htmlFor="pingwin-sales-date" className="form-label fs-12 text-muted mb-1">Data</label>
+                    <input
+                        id="pingwin-sales-date"
+                        type="date"
+                        className="form-control"
+                        value={date}
+                        max={todayIso()}
+                        onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
+                        style={{ minWidth: 160 }}
+                    />
+                </div>
+                <button className="btn btn-soft-primary" onClick={() => setConfirmOpen(true)} disabled={!date || queuing || !companyId}>
+                    {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" /> Buscar dados atualizados</>}
+                </button>
+            </DashboardSectionHeader>
 
             {/* 3 cards de faturação por período (contexto do período no subtítulo) */}
             <Row className="g-3 mb-3">
@@ -299,7 +287,7 @@ export function PingwinDashboardContent() {
                     icon="ri-calendar-check-line"
                     accent="success"
                     values={daily ?? { invoiced_cents: 0, net_cents: 0 }}
-                    compareLabel="vs mesmo dia (−7d)"
+                    compareLabel="vs mesmo dia da semana anterior"
                     deltaInvoiced={daily?.delta_pct_invoiced ?? null}
                     deltaNet={daily?.delta_pct_net ?? null}
                 />
@@ -328,8 +316,8 @@ export function PingwinDashboardContent() {
                         </CardHeader>
                         <CardBody className="p-0">
                             <div className="table-responsive">
-                                {/* Header visível: mesmo mecanismo das tabelas do sistema (Carros/Leads)
-                                    — table-bordered + thead "text-muted table-light". */}
+                                {/* Header visível: mesmo mecanismo das tabelas do sistema (Carros/Leads):
+                                    table-bordered + thead "text-muted table-light". */}
                                 <table className="table table-bordered table-hover table-nowrap align-middle mb-0">
                                     <thead className="text-muted table-light">
                                         <tr>
@@ -344,7 +332,7 @@ export function PingwinDashboardContent() {
                                         {(data?.locations?.length ?? 0) === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="text-center text-muted py-4">
-                                                    Sem dados. Escolhe uma data e usa <strong>“Buscar dados atualizados”</strong>.
+                                                    Sem dados. Escolha uma data e use <strong>“Buscar dados atualizados”</strong>.
                                                 </td>
                                             </tr>
                                         ) : (
@@ -376,11 +364,111 @@ export function PingwinDashboardContent() {
     );
 }
 
+// ── Separadores "Vendas" | "Marketing e resultados" ─────────────────────────
+
+type RestaurantTab = "vendas" | "marketing";
+
+const RESTAURANT_TABS: { key: RestaurantTab; label: string; icon: string }[] = [
+    { key: "vendas", label: "Vendas", icon: "ri-money-euro-circle-line" },
+    { key: "marketing", label: "Marketing e resultados", icon: "ri-line-chart-line" },
+];
+
+/** O separador vem do URL (?tab=vendas | ?tab=marketing); por defeito, Vendas. */
+const tabFromSearch = (value: string | null): RestaurantTab => (value === "marketing" ? "marketing" : "vendas");
+
+/**
+ * Nav de separadores no mesmo estilo das páginas da viatura (nav-tabs-custom-pages):
+ * o separador ativo salta à frente como uma página aberta. Cada separador é um
+ * link (?tab=…), por isso recarregar ou partilhar o URL abre no mesmo sítio.
+ * Em mobile, scroll horizontal se não couber.
+ */
+function RestaurantTabsNav({ active, highCount }: { active: RestaurantTab; highCount: number }) {
+    return (
+        <div style={{ overflowX: "auto" }} className="mb-3">
+            <Nav tabs className="nav-tabs-custom-pages flex-nowrap" style={{ minWidth: "max-content" }}>
+                {RESTAURANT_TABS.map((t) => {
+                    const isActive = t.key === active;
+                    return (
+                        <NavItem key={t.key}>
+                            <NavLink
+                                tag={Link}
+                                to={`?tab=${t.key}`}
+                                replace
+                                active={isActive}
+                                aria-current={isActive ? "page" : undefined}
+                                className={classnames("d-inline-flex align-items-center gap-2 text-nowrap", { "text-body": !isActive })}
+                            >
+                                <i className={t.icon} />
+                                {t.label}
+                                {/* Contador das recomendações de prioridade alta, para não passarem despercebidas. */}
+                                {t.key === "marketing" && highCount > 0 && (
+                                    <span
+                                        className="badge rounded-pill bg-danger fs-11"
+                                        title={`${highCount} ${highCount === 1 ? "recomendação" : "recomendações"} de prioridade alta`}
+                                        aria-label={`${highCount} ${highCount === 1 ? "recomendação" : "recomendações"} de prioridade alta`}
+                                    >
+                                        {highCount}
+                                    </span>
+                                )}
+                            </NavLink>
+                        </NavItem>
+                    );
+                })}
+            </Nav>
+        </div>
+    );
+}
+
+export function PingwinDashboardContent() {
+    const companyId = useMemo(() => {
+        const authUser = sessionStorage.getItem("authUser");
+        if (!authUser) return 0;
+        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
+    }, []);
+
+    const [searchParams] = useSearchParams();
+    const tab = tabFromSearch(searchParams.get("tab"));
+
+    // Cada separador só monta (e só carrega os seus dados) quando é aberto pela
+    // primeira vez; depois fica montado, escondido, para manter o mês/data escolhidos.
+    const [opened, setOpened] = useState<Record<RestaurantTab, boolean>>({ vendas: tab === "vendas", marketing: tab === "marketing" });
+    useEffect(() => {
+        setOpened((o) => (o[tab] ? o : { ...o, [tab]: true }));
+    }, [tab]);
+
+    // Só as recomendações carregam logo (são leves): o contador do separador precisa
+    // delas. Os dados de marketing (GA4, Meta) só carregam ao abrir o separador.
+    const recommendations = useRecommendations(companyId, "restaurant", companyId > 0);
+    const highCount = (recommendations.data?.recommendations ?? []).filter((r) => r.level === "high").length;
+
+    return (
+        <>
+            <ToastContainer />
+            <RestaurantTabsNav active={tab} highCount={highCount} />
+
+            {opened.vendas && (
+                <div className={tab === "vendas" ? undefined : "d-none"}>
+                    <RestaurantSalesTab companyId={companyId} />
+                </div>
+            )}
+            {opened.marketing && companyId > 0 && (
+                <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
+                    <RestaurantMarketingBlock companyId={companyId} recommendations={recommendations} />
+                </div>
+            )}
+        </>
+    );
+}
+
+/** Título de página único (padrão Velzon), comum ao /dashboard e ao /restauracao. */
+export const RestaurantPageTitle = () => <BreadCrumb title="Restauração" pageTitle="Painel" pageLink="/dashboard" />;
+
 export default function PingwinDashboard() {
     document.title = "Restauração | Xplendor";
     return (
         <div className="page-content">
             <Container fluid>
+                <RestaurantPageTitle />
                 <PingwinDashboardContent />
             </Container>
         </div>

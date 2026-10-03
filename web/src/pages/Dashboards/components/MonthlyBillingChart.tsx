@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
+import Select from "react-select";
 import { Card, CardBody, Col } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getPingwinMonthlyBilling } from "helpers/laravel_helper";
+import { reactSelectThemeSm } from "helpers/reactSelectStyles";
 import { PingwinMonthlyBilling } from "common/models/pingwin.model";
 
 /**
@@ -88,14 +90,14 @@ export default function MonthlyBillingChart() {
             },
         },
         grid: { borderColor: "var(--vz-border-color)", strokeDashArray: 3 },
-        tooltip: { y: { formatter: (val) => (val === null ? "—" : euro(Number(val))) } },
+        tooltip: { y: { formatter: (val) => (val === null ? "Sem dados" : euro(Number(val))) } },
         legend: { show: true, position: "top", horizontalAlign: "right", fontSize: "12px" },
         // ⚠️ Não ligar pontos através de meses sem dados (null) — honestidade.
         // (connectNulls fica false por defeito; deixado explícito.)
     };
 
     // Anos disponíveis para o filtro (corrente + 4 anteriores).
-    const years = [0, 1, 2, 3, 4].map((n) => thisYear - n);
+    const yearOptions = [0, 1, 2, 3, 4].map((n) => ({ value: thisYear - n, label: String(thisYear - n) }));
 
     return (
         <Col xs={12}>
@@ -106,7 +108,7 @@ export default function MonthlyBillingChart() {
                             <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Faturação mensal</p>
                             <h5 className="mb-0 fw-semibold">Evolução por restaurante</h5>
                         </div>
-                        <div className="d-flex align-items-center gap-2">
+                        <div className="d-flex flex-wrap align-items-center gap-2">
                             <div className="btn-group btn-group-sm" role="group" aria-label="Período">
                                 {RANGES.map((r) => (
                                     <button
@@ -119,9 +121,18 @@ export default function MonthlyBillingChart() {
                                     </button>
                                 ))}
                             </div>
-                            <select className="form-select form-select-sm" style={{ width: 120 }} value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={loading}>
-                                {years.map((y) => <option key={y} value={y}>{y}</option>)}
-                            </select>
+                            <div style={{ minWidth: 120 }}>
+                                <Select
+                                    styles={reactSelectThemeSm}
+                                    menuPortalTarget={document.body}
+                                    options={yearOptions}
+                                    value={yearOptions.find((o) => o.value === year) ?? yearOptions[0]}
+                                    onChange={(o: any) => o && setYear(o.value)}
+                                    isSearchable={false}
+                                    isDisabled={loading}
+                                    aria-label="Ano"
+                                />
+                            </div>
                         </div>
                     </div>
 

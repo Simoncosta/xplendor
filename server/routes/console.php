@@ -57,6 +57,16 @@ Schedule::job(new \App\Jobs\DispatchMetaAdInsightsSyncJob())
         \Illuminate\Support\Facades\Log::error('[MetaAdInsights] Despachante falhou no scheduler');
     });
 
+// 02:30 — despesas automáticas do gasto Meta (mês atual e anterior), depois da
+// ingestão por anúncio das 01:45. Rede de segurança: o job da ingestão já projeta.
+Schedule::job(new \App\Jobs\ProjectMetaExpensesJob())
+    ->dailyAt('02:30')
+    ->name('project-meta-expenses')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[MetaExpenses] Projeção falhou no scheduler');
+    });
+
 // 01:00 — recalcula IPS com todos os dados completos (comportamentais + paid)
 Schedule::job(new RecalculateAllCarScoresJob())
     ->dailyAt('01:00')

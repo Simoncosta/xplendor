@@ -19,6 +19,10 @@ export interface IExpense {
     archived: boolean;
     can_delete: boolean; // false quando tem vínculo → só arquivar
     notes: string | null;
+    // Despesa automática (gasto Meta por viatura/mês): não editável à mão.
+    source?: "manual" | "meta_ads";
+    is_automatic?: boolean;
+    can_edit?: boolean;
 
     created_at?: string;
     updated_at?: string;
@@ -43,6 +47,9 @@ export interface IExpenseSummary {
     paid_amount: number;
     open_amount: number;
     count: number;
+    // Despesas automáticas do gasto Meta: informativas, FORA dos totais acima
+    // (a fatura da Meta, lançada à mão, é o registo financeiro).
+    automatic_meta?: { amount: number; count: number; in_totals: boolean; with_car_amount: number };
 }
 
 export interface IExpenseFilters {

@@ -53,6 +53,13 @@ class MarginService
             ->where('archived', false)
             ->count();
 
+        // Parte das despesas que é gasto Meta automático (já incluída no total).
+        $metaAdsTotal = (float) Expense::where('company_id', $companyId)
+            ->where('car_id', $carId)
+            ->where('archived', false)
+            ->where('source', Expense::SOURCE_META_ADS)
+            ->sum('amount');
+
         $salePrice = $sale && $sale->sale_price !== null ? (float) $sale->sale_price : null;
         $purchasePrice = $car->purchase_price !== null ? (float) $car->purchase_price : null;
 
@@ -78,6 +85,7 @@ class MarginService
             expensesTotal: $expensesTotal,
             expensesCount: $expensesCount,
             margin: $margin,
+            metaAdsTotal: round($metaAdsTotal, 2),
         );
     }
 
@@ -90,6 +98,7 @@ class MarginService
         float $expensesTotal = 0.0,
         int $expensesCount = 0,
         ?float $margin = null,
+        float $metaAdsTotal = 0.0,
     ): array {
         return [
             'found'          => $found,
@@ -100,6 +109,8 @@ class MarginService
             'expenses_total' => $expensesTotal,
             'expenses_count' => $expensesCount,
             'margin'         => $margin,
+            // Parte de expenses_total que é gasto Meta automático (informativo).
+            'expenses_meta_ads_total' => $metaAdsTotal,
         ];
     }
 }

@@ -55,3 +55,21 @@ export const reactSelectTheme = {
     dropdownIndicator: (base: any) => ({ ...base, color: "var(--vz-secondary-color)" }),
     clearIndicator: (base: any) => ({ ...base, color: "var(--vz-secondary-color)" }),
 };
+
+/**
+ * Variante compacta (altura de um .btn-sm / .form-select-sm), para barras de
+ * filtros onde o select fica ao lado de botões pequenos. Mesmas cores de tema.
+ */
+export const reactSelectThemeSm = {
+    ...reactSelectTheme,
+    control: (base: any, state: any) => ({
+        ...reactSelectTheme.control(base, state),
+        minHeight: 31,
+        fontSize: "0.8125rem",
+    }),
+    valueContainer: (base: any) => ({ ...reactSelectTheme.valueContainer(base), padding: "0 8px" }),
+    input: (base: any) => ({ ...reactSelectTheme.input(base), margin: 0, padding: 0 }),
+    dropdownIndicator: (base: any) => ({ ...reactSelectTheme.dropdownIndicator(base), padding: 4 }),
+    clearIndicator: (base: any) => ({ ...reactSelectTheme.clearIndicator(base), padding: 4 }),
+    option: (base: any, state: any) => ({ ...reactSelectTheme.option(base, state), fontSize: "0.8125rem" }),
+};

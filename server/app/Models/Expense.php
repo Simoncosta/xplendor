@@ -14,6 +14,15 @@ class Expense extends Model implements AuditableContract
 {
     use Auditable;
 
+    public const SOURCE_MANUAL = 'manual';
+
+    /**
+     * Despesa automática: projeção mensal do gasto Meta (CarAdSpendRepository), não
+     * editável à mão. Conta na margem por viatura; fica fora dos totais da página de
+     * Despesas (repartição analítica: a fatura da Meta é o registo financeiro).
+     */
+    public const SOURCE_META_ADS = 'meta_ads';
+
     protected $fillable = [
         'company_id',
         'description',
@@ -34,7 +43,13 @@ class Expense extends Model implements AuditableContract
         'paid_at'  => 'date',
         'is_paid'  => 'boolean',
         'archived' => 'boolean',
+        'source_synced_at' => 'datetime',
     ];
+
+    public function isAutomatic(): bool
+    {
+        return ($this->source ?? self::SOURCE_MANUAL) !== self::SOURCE_MANUAL;
+    }
 
     public function company(): BelongsTo
     {

@@ -92,14 +92,14 @@ export default function SubscriptionTrialBanner() {
                 ? "bg-warning text-warning-emphasis"
                 : "bg-primary text-white",
             title: isExpiringSoon
-                ? `O teu trial expira em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`
-                : `Trial ativo até ${formattedDate}`,
+                ? `O seu período experimental termina dentro de ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`
+                : `Período experimental ativo até ${formattedDate}`,
             subtitle: isExpiringSoon
-                ? "Garante a continuidade da tua conta antes do fim do período experimental."
-                : "Estás a explorar a Xplendor com acesso experimental completo.",
+                ? "Garanta a continuidade da sua conta antes do fim do período experimental."
+                : "Está a explorar a Xplendor com acesso experimental completo.",
             badgeText: isExpiringSoon
-                ? `Expira em ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`
-                : "Trial",
+                ? `Termina dentro de ${daysLeft} ${daysLeft === 1 ? "dia" : "dias"}`
+                : "Experimental",
             badgeClass: isExpiringSoon
                 ? "bg-warning text-warning-emphasis"
                 : "bg-white text-primary",
