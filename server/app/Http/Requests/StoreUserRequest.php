@@ -7,11 +7,15 @@ use Illuminate\Foundation\Http\FormRequest;
 class StoreUserRequest extends FormRequest
 {
     /**
-     * Determine if the user is authorized to make this request.
+     * Só um admin convida utilizadores, e só para a sua própria empresa.
      */
     public function authorize(): bool
     {
-        return true;
+        $auth = $this->user();
+
+        return $auth !== null
+            && $auth->role === 'admin'
+            && (int) $auth->company_id === (int) $this->route('id');
     }
 
     /**

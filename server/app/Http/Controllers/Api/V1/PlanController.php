@@ -39,8 +39,13 @@ class PlanController extends Controller
         return ApiResponse::success(new PlanResource($plan), 'Plan updated successfully.');
     }
 
-    public function destroy(int $id)
+    public function destroy(Request $request, int $id)
     {
+        // Planos são da plataforma: só o root os apaga.
+        if ($request->user()?->role !== 'root') {
+            return ApiResponse::error('Acesso restrito ao administrador da plataforma.', 403);
+        }
+
         $this->planService->destroy($id);
         return ApiResponse::success(null, 'Plan deleted successfully.');
     }

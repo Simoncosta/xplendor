@@ -171,16 +171,18 @@ class MetaOAuthController extends Controller
             'account_id' => 'required|string',
         ]);
 
-        // Validar state e extrair company_id
-        try {
-            $state     = json_decode(base64_decode($request->state), true);
-            $companyId = $state['company_id'] ?? null;
-        } catch (\Throwable $e) {
-            return ApiResponse::error('State inválido.', 422);
-        }
+        // State = o MESMO nonce de uso único do fluxo GET (emitido por getAuthUrl,
+        // que só o dá para a empresa do utilizador). O antigo base64 com
+        // company_id era forjável e deixava ligar a Meta de qualquer empresa.
+        $companyId = \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey((string) $request->state));
 
         if (!$companyId) {
-            return ApiResponse::error('company_id em falta no state.', 422);
+            return ApiResponse::error('State inválido ou expirado.', 422);
+        }
+
+        $user = $request->user();
+        if (!$user || ((int) $user->company_id !== (int) $companyId && $user->role !== 'root')) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
         // Trocar code por token de curta duração

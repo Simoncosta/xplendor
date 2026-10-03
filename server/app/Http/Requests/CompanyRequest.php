@@ -7,9 +7,24 @@ use Illuminate\Validation\Rule;
 
 class CompanyRequest extends FormRequest
 {
+    /**
+     * Criar empresa: só root. Alterar: admin da própria empresa, ou root (que
+     * edita as empresas dos clientes a partir da lista /companies).
+     */
     public function authorize(): bool
     {
-        return true;
+        $auth = $this->user();
+        if (! $auth) {
+            return false;
+        }
+
+        $companyId = $this->route('company');
+        if ($companyId === null) {
+            return $auth->role === 'root';
+        }
+
+        return $auth->role === 'root'
+            || ($auth->role === 'admin' && (int) $auth->company_id === (int) $companyId);
     }
 
     public function rules(): array

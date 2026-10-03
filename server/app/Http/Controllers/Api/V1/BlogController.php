@@ -7,6 +7,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\BlogRequest;
 use App\Http\Requests\PaginateRequest;
+use App\Models\Blog;
 use App\Services\BlogService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -74,6 +75,10 @@ class BlogController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->blogBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
         $blog = $this->blogService->findOrFail(
             $id,
             'id',
@@ -93,6 +98,10 @@ class BlogController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->blogBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
         $data = $request->validated();
         $data['company_id'] = $companyId;
 
@@ -110,9 +119,19 @@ class BlogController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        if (! $this->blogBelongsToCompany($companyId, $id)) {
+            return ApiResponse::error('Artigo não encontrado.', 404);
+        }
+
         $this->blogService->destroy($id);
 
         return ApiResponse::success(null, 'Blog deleted successfully.');
+    }
+
+    /** O artigo existe E pertence à empresa da rota. */
+    private function blogBelongsToCompany(int $companyId, int $blogId): bool
+    {
+        return Blog::where('company_id', $companyId)->whereKey($blogId)->exists();
     }
 
     public function buildRssUrl(Request $request, int $companyId)

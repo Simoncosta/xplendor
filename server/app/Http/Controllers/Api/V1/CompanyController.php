@@ -86,6 +86,11 @@ class CompanyController extends Controller
 
     public function destroy(int $id)
     {
+        // Apagar uma empresa (e tudo o que dela depende) é só do root.
+        if (Auth::user()?->role !== 'root') {
+            return ApiResponse::error('Acesso restrito ao administrador da plataforma.', 403);
+        }
+
         $this->companyService->destroy($id);
         return ApiResponse::success(null, 'Company deleted successfully.');
     }
