@@ -5,19 +5,53 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CarAdCampaign;
+use App\Repositories\CarAdSpendRepository;
 use App\Services\MetaAdsTargetResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CarAdCampaignController extends Controller
 {
     public function __construct(
         protected MetaAdsTargetResolver $targetResolver,
+        protected CarAdSpendRepository $carAdSpend,
     ) {}
+
+    /** Tenancy: só a própria empresa (ou root). */
+    private function denied(int $companyId): ?JsonResponse
+    {
+        $user = Auth::user();
+        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        return null;
+    }
+
+    /**
+     * Empresa que já atribui o gasto pela tag [id:N] nos anúncios: o mapeamento
+     * manual fica SÓ DE LEITURA (conta apenas para campanhas antigas sem tag).
+     */
+    private function readOnly(int $companyId): ?JsonResponse
+    {
+        if ($this->carAdSpend->usesTags($companyId)) {
+            return ApiResponse::error(
+                'Esta empresa já atribui o gasto às viaturas pela etiqueta [id:N] no nome dos anúncios. O mapeamento manual de campanhas está apenas para consulta.',
+                409
+            );
+        }
+
+        return null;
+    }
 
     // GET /companies/{id}/cars/{car}/ad-campaigns
     public function index(int $companyId, int $carId): JsonResponse
     {
+        if ($r = $this->denied($companyId)) {
+            return $r;
+        }
+
         $campaigns = CarAdCampaign::where('company_id', $companyId)
             ->where('car_id', $carId)
             ->orderByDesc('created_at')
@@ -29,6 +63,10 @@ class CarAdCampaignController extends Controller
     // GET /companies/{id}/cars/{car}/ad-campaigns/active-targets
     public function activeTargets(int $companyId, int $carId): JsonResponse
     {
+        if ($r = $this->denied($companyId)) {
+            return $r;
+        }
+
         $targets = $this->targetResolver->getActiveMappingsForCar($companyId, $carId);
 
         return ApiResponse::success($targets);
@@ -38,6 +76,10 @@ class CarAdCampaignController extends Controller
     // Body: { platform, campaign_id, campaign_name, adset_id, adset_name, level, spend_split_pct }
     public function store(Request $request, int $companyId, int $carId): JsonResponse
     {
+        if ($r = $this->denied($companyId) ?? $this->readOnly($companyId)) {
+            return $r;
+        }
+
         $request->validate([
             'platform'        => 'required|in:meta,google',
             'campaign_id'     => 'required|string',
@@ -106,6 +148,10 @@ class CarAdCampaignController extends Controller
     // DELETE /companies/{id}/cars/{car}/ad-campaigns/{campaign}
     public function destroy(int $companyId, int $carId, int $campaignId): JsonResponse
     {
+        if ($r = $this->denied($companyId) ?? $this->readOnly($companyId)) {
+            return $r;
+        }
+
         CarAdCampaign::where('id', $campaignId)
             ->where('company_id', $companyId)
             ->where('car_id', $carId)
@@ -117,6 +163,10 @@ class CarAdCampaignController extends Controller
     // PATCH /companies/{id}/cars/{car}/ad-campaigns/{campaign}/toggle
     public function toggle(int $companyId, int $carId, int $campaignId): JsonResponse
     {
+        if ($r = $this->denied($companyId) ?? $this->readOnly($companyId)) {
+            return $r;
+        }
+
         $campaign = CarAdCampaign::where('id', $campaignId)
             ->where('company_id', $companyId)
             ->where('car_id', $carId)

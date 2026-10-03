@@ -193,7 +193,7 @@ class CarMarketingRoiRepository extends BaseRepository implements CarMarketingRo
 
     public function getMetaSpendSummary(int $companyId, string $from, string $to): object
     {
-        return $this->applyPeriodOverlap(
+        $summary = $this->applyPeriodOverlap(
             DB::table('meta_audience_insights')->where('company_id', $companyId),
             $from,
             $to
@@ -204,6 +204,17 @@ class CarMarketingRoiRepository extends BaseRepository implements CarMarketingRo
                 COALESCE(SUM(clicks), 0) as total_clicks
             ')
             ->first();
+
+        // Empresa com tags [id:N] nos anúncios: gasto/cliques pagos da fonte única
+        // (o alcance continua a vir dos públicos).
+        $spendRepo = app(CarAdSpendRepository::class);
+        if ($spendRepo->usesTags($companyId)) {
+            $paid = $spendRepo->companyTotals($companyId, $from, $to);
+            $summary->total_spend = $paid['spend'];
+            $summary->total_clicks = $paid['clicks'];
+        }
+
+        return $summary;
     }
 
     public function getMetaSpendByCar(int $companyId, string $from, string $to): Collection
@@ -220,6 +231,28 @@ class CarMarketingRoiRepository extends BaseRepository implements CarMarketingRo
 
     private function buildMetaSpendByCarQuery(int $companyId, string $from, string $to)
     {
+        $spendRepo = app(CarAdSpendRepository::class);
+        if ($spendRepo->usesTags($companyId)) {
+            // Empresa com tags [id:N]: gasto por viatura da fonte única; alcance e
+            // cliques de público continuam a vir dos públicos. Mesmas colunas.
+            $spend = $spendRepo->dailyRows($companyId, $from, $to)
+                ->whereNotNull('car_id')
+                ->selectRaw('car_id, COALESCE(SUM(spend), 0) as spend, 0 as reach, 0 as audience_clicks')
+                ->groupBy('car_id');
+            $audience = $this->applyPeriodOverlap(
+                DB::table('meta_audience_insights')->where('company_id', $companyId),
+                $from,
+                $to
+            )
+                ->selectRaw('car_id, 0 as spend, COALESCE(SUM(reach), 0) as reach, COALESCE(SUM(clicks), 0) as audience_clicks')
+                ->groupBy('car_id');
+
+            return DB::query()
+                ->fromSub($spend->unionAll($audience), 'meta_by_car')
+                ->selectRaw('car_id, SUM(spend) as spend, SUM(reach) as reach, SUM(audience_clicks) as audience_clicks')
+                ->groupBy('car_id');
+        }
+
         return $this->applyPeriodOverlap(
             DB::table('meta_audience_insights')->where('company_id', $companyId),
             $from,

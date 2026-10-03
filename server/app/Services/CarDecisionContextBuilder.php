@@ -44,6 +44,7 @@ class CarDecisionContextBuilder
                 'fuel_type' => $car->fuel_type,
                 'transmission' => $car->transmission,
                 'segment' => $car->segment,
+                'vehicle_type' => $car->vehicle_type, // limiares de idade por tipo (StockThresholds)
                 'brand' => $car->brand?->name,
                 'model' => $car->model?->name,
             ],

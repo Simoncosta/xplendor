@@ -47,6 +47,16 @@ Schedule::job(new \App\Jobs\DispatchMetaAccountInsightsSyncJob())
         \Illuminate\Support\Facades\Log::error('[MetaAccountInsights] Despachante falhou no scheduler');
     });
 
+// 01:45 — Meta Ads POR ANÚNCIO: últimos 3 dias + hoje por integração, e reconstrói
+// o gasto por viatura (tag [id:N] no nome do anúncio). Depois da ingestão por conta.
+Schedule::job(new \App\Jobs\DispatchMetaAdInsightsSyncJob())
+    ->dailyAt('01:45')
+    ->name('dispatch-meta-ad-insights-sync')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[MetaAdInsights] Despachante falhou no scheduler');
+    });
+
 // 01:00 — recalcula IPS com todos os dados completos (comportamentais + paid)
 Schedule::job(new RecalculateAllCarScoresJob())
     ->dailyAt('01:00')

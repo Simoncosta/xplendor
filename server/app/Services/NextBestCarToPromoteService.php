@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Repositories\CarAdSpendRepository;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -393,30 +394,19 @@ class NextBestCarToPromoteService
 
     private function campaignMetrics(int $companyId, array $carIds): array
     {
-        $active = DB::table('car_ad_campaigns')
-            ->select('car_id', DB::raw('COUNT(*) as active_campaigns'))
-            ->where('company_id', $companyId)
-            ->whereIn('car_id', $carIds)
-            ->where('is_active', true)
-            ->groupBy('car_id')
-            ->get()
-            ->keyBy('car_id');
-
-        $spend = DB::table('campaign_car_metrics_daily')
-            ->select('car_id', DB::raw('SUM(spend_normalized) as spend_last_7d'))
-            ->where('company_id', $companyId)
-            ->whereIn('car_id', $carIds)
-            ->where('date', '>=', now()->subDays(self::WINDOW_DAYS)->toDateString())
-            ->groupBy('car_id')
-            ->get()
-            ->keyBy('car_id');
+        // Fonte única do gasto por viatura (tag [id:N] ou mapeamento manual, sem
+        // dupla contagem) e das campanhas activas (mapeamentos + anúncios com tag ativos).
+        $spendRepo = app(CarAdSpendRepository::class);
+        $carIds = array_map('intval', $carIds);
+        $active = $spendRepo->activeCampaignsByCar($companyId, $carIds);
+        $spend = $spendRepo->totalsByCar($companyId, $carIds, now()->subDays(self::WINDOW_DAYS)->toDateString());
 
         $map = [];
 
         foreach ($carIds as $carId) {
             $map[$carId] = [
-                'active_campaigns' => (int) (($active[$carId] ?? null)->active_campaigns ?? 0),
-                'spend_last_7d' => (float) (($spend[$carId] ?? null)->spend_last_7d ?? 0),
+                'active_campaigns' => (int) ($active[$carId] ?? 0),
+                'spend_last_7d' => (float) ($spend[$carId]['spend'] ?? 0),
             ];
         }
 
@@ -578,22 +568,14 @@ class NextBestCarToPromoteService
 
     private function daysInStock(Car $car): int
     {
-        $date = $car->car_created_at ?? $car->created_at;
-
-        if (!$date instanceof CarbonInterface) {
-            return 0;
-        }
-
-        return max(0, $date->diffInDays(now()));
+        // Fonte única dos dias em stock (App\Support\StockAge).
+        return (int) (\App\Support\StockAge::daysInStock($car) ?? 0);
     }
 
     private function effectivePrice(Car $car): ?float
     {
-        if ($car->promo_price_gross && $car->price_gross && (float) $car->promo_price_gross < (float) $car->price_gross) {
-            return (float) $car->promo_price_gross;
-        }
-
-        return $car->price_gross !== null ? (float) $car->price_gross : null;
+        // Regra única do preço efetivo (App\Support\PricePosition).
+        return \App\Support\PricePosition::effectivePriceForCar($car);
     }
 
     private function carName(Car $car): string

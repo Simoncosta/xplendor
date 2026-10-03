@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Support\PricePosition;
 use App\Repositories\Contracts\CarMarketSnapshotRepositoryInterface;
 
 class CarMarketIntelligenceService
@@ -11,38 +12,23 @@ class CarMarketIntelligenceService
         protected CarMarketSnapshotRepositoryInterface $repository
     ) {}
 
+    /**
+     * Posição da viatura face ao mercado. Passou a LER da fonte única
+     * (App\Support\PricePosition: mediana do último car_market_aggregates, incl. o
+     * motor das autocaravanas, vs o preço ATUAL efetivo), com o MESMO formato de
+     * saída de sempre — IPS, motor de problemas, contexto de decisão e análise IA
+     * continuam a ler as mesmas chaves.
+     */
     public function analyze(Car $car): array
     {
-        $car->loadMissing(['brand:id,name', 'model:id,name']);
+        $pos = PricePosition::for($car);
+        $currentPrice = $pos['effective_price'];
 
-        $snapshots = $this->repository->getComparableSnapshots($car);
-        $competitorsCount = $snapshots->count();
-        $currentPrice = $car->price_gross !== null ? round((float) $car->price_gross, 2) : null;
-
-        if ($competitorsCount < 3 || $currentPrice === null || $currentPrice <= 0) {
-            return $this->buildInsufficientDataResponse($competitorsCount, $currentPrice);
+        if (! $pos['available'] || $currentPrice === null || $pos['median'] === null) {
+            return $this->buildInsufficientDataResponse($pos['comparables_count'], $currentPrice);
         }
 
-        $prices = $snapshots
-            ->pluck('price')
-            ->filter(fn($price) => is_numeric($price) && (float) $price > 0)
-            ->map(fn($price) => (float) $price)
-            ->sort()
-            ->values();
-
-        if ($prices->count() < 3) {
-            return $this->buildInsufficientDataResponse($competitorsCount, $currentPrice);
-        }
-
-        $median = $this->quantile($prices->all(), 0.50);
-        $p25 = $this->quantile($prices->all(), 0.25);
-        $p75 = $this->quantile($prices->all(), 0.75);
-
-        $vsMedianPct = $median > 0
-            ? round((($currentPrice - $median) / $median) * 100, 2)
-            : null;
-
-        $marketPosition = $this->resolveMarketPosition($vsMedianPct);
+        $marketPosition = $pos['position']; // escala de 3 (já com a regra de confiança mínima)
         $pricingSignal = match ($marketPosition) {
             'below_market' => 'good',
             'above_market' => 'warning',
@@ -50,14 +36,14 @@ class CarMarketIntelligenceService
         };
 
         return [
-            'competitors_count' => $competitorsCount,
-            'market_median_price' => $this->roundMoney($median),
-            'market_p25_price' => $this->roundMoney($p25),
-            'market_p75_price' => $this->roundMoney($p75),
-            'car_price_vs_median_pct' => $vsMedianPct,
+            'competitors_count' => $pos['comparables_count'],
+            'market_median_price' => $pos['median'],
+            'market_p25_price' => $pos['p25'],
+            'market_p75_price' => $pos['p75'],
+            'car_price_vs_median_pct' => $pos['difference_pct'],
             'market_position' => $marketPosition,
             'pricing_signal' => $pricingSignal,
-            'recommended_price' => $this->recommendPrice($marketPosition, $currentPrice, $median),
+            'recommended_price' => $this->recommendPrice($marketPosition, $currentPrice, $pos['median']),
         ];
     }
 
@@ -75,23 +61,6 @@ class CarMarketIntelligenceService
         ];
     }
 
-    private function resolveMarketPosition(?float $vsMedianPct): string
-    {
-        if ($vsMedianPct === null) {
-            return 'insufficient_data';
-        }
-
-        if ($vsMedianPct < -5) {
-            return 'below_market';
-        }
-
-        if ($vsMedianPct > 5) {
-            return 'above_market';
-        }
-
-        return 'aligned_market';
-    }
-
     private function recommendPrice(string $marketPosition, ?float $currentPrice, float $median): ?float
     {
         if ($currentPrice === null) {
@@ -103,27 +72,6 @@ class CarMarketIntelligenceService
         }
 
         return $this->roundMoney($currentPrice);
-    }
-
-    private function quantile(array $values, float $quantile): float
-    {
-        $count = count($values);
-
-        if ($count === 1) {
-            return (float) $values[0];
-        }
-
-        $position = ($count - 1) * $quantile;
-        $lowerIndex = (int) floor($position);
-        $upperIndex = (int) ceil($position);
-
-        if ($lowerIndex === $upperIndex) {
-            return (float) $values[$lowerIndex];
-        }
-
-        $weight = $position - $lowerIndex;
-
-        return ((1 - $weight) * (float) $values[$lowerIndex]) + ($weight * (float) $values[$upperIndex]);
     }
 
     private function roundMoney(?float $value): ?float

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
+use App\Repositories\CarAdSpendRepository;
 use App\Services\MetaAccountInsightsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -35,7 +36,27 @@ class MetaInsightsController extends Controller
         return $user->company_id === $companyId || $user->role === 'root';
     }
 
-    public function overview(Request $request, int $companyId)
+    /**
+     * AVISOS DE QUALIDADE da tag [id:N]: anúncios com IDs que não pertencem à empresa
+     * (inexistentes ou de outra empresa). Esse gasto NÃO é atribuído a nenhuma
+     * viatura e não cai em silêncio no stock geral — aparece aqui (a UI vem no 2c).
+     */
+    public function adTagWarnings(int $companyId, CarAdSpendRepository $spendRepo)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
+        $warnings = $spendRepo->invalidTagWarnings($companyId);
+
+        return ApiResponse::success([
+            'uses_tags' => $spendRepo->usesTags($companyId),
+            'count'     => count($warnings),
+            'warnings'  => $warnings,
+        ]);
+    }
+
+    public function overview(Request $request, int $companyId, CarAdSpendRepository $spendRepo)
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
@@ -64,25 +85,24 @@ class MetaInsightsController extends Controller
         //   'none'       → nada para mostrar (o `state` explica porquê).
         if ($connected && $accountId !== null && $backfilled) {
             $source = 'account';
-        } elseif (DB::table('campaign_car_metrics_daily')->where('company_id', $companyId)->exists()) {
+        } elseif ($spendRepo->hasAnyRows($companyId)) {
             $source = 'car_legacy';
         } else {
             $source = 'none';
         }
 
         // Colunas normalizadas por fonte: spend / impressions / clicks / campaign_id / date.
-        $spendCol = $source === 'account' ? 'spend' : 'spend_normalized';
-        $base = function () use ($source, $companyId, $accountId, $from, $to) {
+        $spendCol = 'spend';
+        $base = function () use ($source, $companyId, $accountId, $from, $to, $spendRepo) {
             if ($source === 'account') {
                 return DB::table('meta_account_insights_daily')
                     ->where('company_id', $companyId)
                     ->where('account_id', $accountId)
                     ->whereBetween('date', [$from, $to]);
             }
-            // car_legacy (e 'none' devolve vazio pela mesma via — sem linhas).
-            return DB::table('campaign_car_metrics_daily')
-                ->where('company_id', $companyId)
-                ->whereBetween('date', [$from, $to]);
+            // car_legacy (e 'none' devolve vazio pela mesma via — sem linhas): gasto por
+            // viatura da fonte única (tag [id:N] ou mapeamento manual, sem dupla contagem).
+            return $spendRepo->dailyRows($companyId, $from, $to);
         };
 
         $tot = $base()->selectRaw("COALESCE(SUM({$spendCol}),0) spend, COALESCE(SUM(impressions),0) impressions, COALESCE(SUM(clicks),0) clicks")->first();
@@ -171,26 +191,10 @@ class MetaInsightsController extends Controller
                 ]),
         ];
 
-        // ── ESTADO honesto (o ecrã só reflecte) — por ordem de precedência ──
-        $tokenExpired = $integration !== null && (
-            $integration->status === 'expired'
-            || $integration->isTokenExpired()
-            || $integration->insights_sync_status === MetaAccountInsightsService::STATUS_TOKEN_EXPIRED
-        );
-        if (! $connected) {
-            $state = 'not_connected';
-        } elseif ($tokenExpired) {
-            $state = 'token_expired';          // "Sessão Meta expirada — reconectar"
-        } elseif ($accountId === null) {
-            $state = 'needs_account';          // "Falta escolher a conta de anúncios"
-        } elseif ($integration->insights_sync_status === MetaAccountInsightsService::STATUS_FAILED) {
-            // Sync a falhar (1.º ou diário): NUNCA mostrar "sem gasto" — os números
-            // podem estar só desactualizados. Os dados antigos (se houver) ficam
-            // visíveis com o aviso (source continua 'account').
-            $state = 'sync_failed';
-        } elseif (! $backfilled) {
-            $state = 'syncing_first';          // "A sincronizar pela primeira vez…"
-        } else {
+        // ── ESTADO honesto (o ecrã só reflecte) — precedência partilhada com o
+        // bloco de marketing da restauração (MetaAccountInsightsService). ──
+        $state = MetaAccountInsightsService::connectionState($integration);
+        if ($state === 'ok') {
             $state = ($spend <= 0 && $impressions <= 0) ? 'no_spend' : 'ok'; // zero REAL vs dados
         }
 

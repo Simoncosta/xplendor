@@ -32,11 +32,28 @@ class GoogleAnalyticsService
      * quota…), a exceção sobe e NADA é cacheado — um erro temporário nunca fica
      * preso 12h; a próxima leitura tenta de novo.
      */
-    public function getTraffic(int $companyId, int $propertyId, int $days = 28, bool $fresh = false): array
-    {
-        $days = max(1, min($days, 365));
+    public function getTraffic(
+        int $companyId,
+        int $propertyId,
+        int $days = 28,
+        bool $fresh = false,
+        ?string $start = null,
+        ?string $end = null,
+    ): array {
         $minutes = (int) config('services.ga4.cache_minutes', 720);
-        $key = "ga4:traffic:{$companyId}:{$propertyId}:{$days}";
+
+        // Datas EXPLÍCITAS (ex.: um mês, o mesmo mês do ano anterior) têm prioridade
+        // sobre a janela móvel; sem elas, mantém-se o comportamento de sempre
+        // (janela de N dias a acabar hoje — 7/28/90 no painel).
+        if ($start !== null && $end !== null) {
+            $range = ['start' => $start, 'end' => $end];
+            $key = "ga4:traffic:{$companyId}:{$propertyId}:{$start}:{$end}";
+        } else {
+            $days = max(1, min($days, 365));
+            $endDate = CarbonImmutable::today();
+            $range = ['start' => $endDate->subDays($days - 1)->toDateString(), 'end' => $endDate->toDateString()];
+            $key = "ga4:traffic:{$companyId}:{$propertyId}:{$days}";
+        }
 
         if ($fresh) {
             Cache::forget($key);
@@ -49,8 +66,55 @@ class GoogleAnalyticsService
 
         // Pode lançar — de propósito: o erro real sobe ao controller (que o expõe
         // no log e, em debug, ao Simon). Só chegamos ao put() em caso de sucesso.
-        $data = $this->buildTraffic($propertyId, $days);
+        $data = $this->buildTraffic($propertyId, $range);
 
+        Cache::put($key, $data, now()->addMinutes($minutes));
+
+        return $data;
+    }
+
+    /**
+     * Sessões por canal (sessionDefaultChannelGroup) e por DIA, num intervalo
+     * explícito — o que o bloco de marketing do dashboard de restauração precisa
+     * (1 só runReport, em vez dos 9 do painel completo). Cacheado como o resto;
+     * só sucessos entram na cache.
+     *
+     * @return array{series: array<string, array<string,int>>, by_channel: array<string,int>, total: int}
+     */
+    public function sessionsByChannel(int $companyId, int $propertyId, string $start, string $end): array
+    {
+        $minutes = (int) config('services.ga4.cache_minutes', 720);
+        $key = "ga4:channels:{$companyId}:{$propertyId}:{$start}:{$end}";
+
+        $cached = Cache::get($key);
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $res = $this->ga4->runReport($propertyId, [
+            'start' => $start,
+            'end' => $end,
+            'dimensions' => ['date', 'sessionDefaultChannelGroup'],
+            'metrics' => ['sessions'],
+        ]);
+
+        $series = [];
+        $byChannel = [];
+        $total = 0;
+        foreach ($res['rows'] as $r) {
+            $date = $this->isoDate($r['dimensions'][0] ?? '');
+            $channel = ($r['dimensions'][1] ?? '') ?: '(other)';
+            $sessions = $this->int($r['metrics'][0] ?? null);
+            if ($date === '') {
+                continue;
+            }
+            $series[$date][$channel] = ($series[$date][$channel] ?? 0) + $sessions;
+            $byChannel[$channel] = ($byChannel[$channel] ?? 0) + $sessions;
+            $total += $sessions;
+        }
+        ksort($series);
+
+        $data = ['series' => $series, 'by_channel' => $byChannel, 'total' => $total];
         Cache::put($key, $data, now()->addMinutes($minutes));
 
         return $data;
@@ -62,14 +126,12 @@ class GoogleAnalyticsService
         Cache::forget("ga4:traffic:{$companyId}:{$propertyId}:{$days}");
     }
 
-    private function buildTraffic(int $propertyId, int $days): array
+    private function buildTraffic(int $propertyId, array $range): array
     {
-        $end = CarbonImmutable::today();
-        $start = $end->subDays($days - 1);
-        $range = ['start' => $start->toDateString(), 'end' => $end->toDateString()];
+        $days = CarbonImmutable::parse($range['start'])->diffInDays(CarbonImmutable::parse($range['end'])) + 1;
 
         return [
-            'range' => $range + ['days' => $days],
+            'range' => $range + ['days' => (int) $days],
             'overview' => $this->overview($propertyId, $range),
             'top_pages' => $this->topPages($propertyId, $range),
             'traffic_sources' => $this->trafficSources($propertyId, $range),

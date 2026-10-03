@@ -116,6 +116,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Motor de recomendações (regras de especialista, explicáveis). Registo das
+        // regras: para acrescentar uma regra nova, juntá-la a esta lista.
+        $this->app->singleton(\App\Recommendations\RecommendationEngine::class, fn ($app) =>
+            new \App\Recommendations\RecommendationEngine([
+                $app->make(\App\Recommendations\Rules\StaleCustomerAudienceRule::class),
+            ]));
+
         $this->app->bind(BlogRepositoryInterface::class, BlogRepository::class);
         $this->app->bind(CarRepositoryInterface::class, CarRepository::class);
         $this->app->bind(CarAiAnalysesRepositoryInterface::class, CarAiAnalysesRepository::class);

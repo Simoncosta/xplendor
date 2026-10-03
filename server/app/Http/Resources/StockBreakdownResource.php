@@ -30,14 +30,31 @@ class StockBreakdownResource extends JsonResource
         $data = $this->resource;
 
         return [
-            'by_brand' => array_map(static fn (array $row): array => [
-                'name'  => (string) $row['name'],
-                'count' => (int) $row['count'],
-            ], $data['by_brand'] ?? []),
-            'by_type' => array_map(static fn (array $row): array => [
-                'type'  => (string) $row['type'],
-                'count' => (int) $row['count'],
-            ], $data['by_type'] ?? []),
+            // Âmbito "Ativos" (retrocompatível — o que sempre foi devolvido).
+            'by_brand' => self::brands($data['by_brand'] ?? []),
+            'by_type'  => self::types($data['by_type'] ?? []),
+            // Filtro do dashboard [Todos | Ativos | Vendidos] — tudo num só pedido,
+            // o frontend troca de âmbito sem novas chamadas.
+            'scopes' => array_map(static fn (array $scope): array => [
+                'by_brand' => self::brands($scope['by_brand'] ?? []),
+                'by_type'  => self::types($scope['by_type'] ?? []),
+            ], $data['scopes'] ?? []),
         ];
+    }
+
+    private static function brands(array $rows): array
+    {
+        return array_map(static fn (array $row): array => [
+            'name'  => (string) $row['name'],
+            'count' => (int) $row['count'],
+        ], $rows);
+    }
+
+    private static function types(array $rows): array
+    {
+        return array_map(static fn (array $row): array => [
+            'type'  => (string) $row['type'],
+            'count' => (int) $row['count'],
+        ], $rows);
     }
 }

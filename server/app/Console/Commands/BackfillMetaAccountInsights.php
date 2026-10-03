@@ -11,7 +11,7 @@ use Illuminate\Console\Command;
  * antes do deploy (a migração deixa-as sem estado e nada as enfileirava até ao
  * despachante das 01:15). Correr UMA vez no deploy:
  *
- *   php artisan meta:backfill-account-insights           # só as que nunca fizeram backfill
+ *   php artisan meta:backfill-account-insights           # as que nunca fizeram backfill ou o têm mais curto (ex.: 90 dias)
  *   php artisan meta:backfill-account-insights --all     # força re-backfill de todas
  *   php artisan meta:backfill-account-insights --company=12
  *
@@ -23,7 +23,7 @@ class BackfillMetaAccountInsights extends Command
                             {--all : Re-faz o backfill mesmo das que já o concluíram}
                             {--company= : Só esta empresa}';
 
-    protected $description = 'Enfileira o backfill de 90 dias da ingestão Meta ao nível da conta';
+    protected $description = 'Enfileira o backfill (13 meses) da ingestão Meta ao nível da conta';
 
     public function handle(MetaAccountInsightsService $service): int
     {
@@ -33,7 +33,13 @@ class BackfillMetaAccountInsights extends Command
             $query->where('company_id', (int) $this->option('company'));
         }
         if (! $this->option('all')) {
-            $query->whereNull('insights_backfilled_at');
+            // Nunca fizeram backfill, OU fizeram com uma profundidade menor que a
+            // actual (o antigo de 90 dias fica com insights_backfill_months = null).
+            $query->where(function ($q) {
+                $q->whereNull('insights_backfilled_at')
+                    ->orWhereNull('insights_backfill_months')
+                    ->orWhere('insights_backfill_months', '<', MetaAccountInsightsService::BACKFILL_MONTHS);
+            });
         }
 
         $queued = 0;

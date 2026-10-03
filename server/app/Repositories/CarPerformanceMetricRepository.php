@@ -40,13 +40,16 @@ class CarPerformanceMetricRepository implements CarPerformanceMetricRepositoryIn
      */
     public function getSummary(int $carId, int $companyId): array
     {
+        $paid = $this->tagPaidTotals($carId, $companyId);
+        [$spendSql, $impSql, $clickSql] = $this->paidColumnsSql($paid !== null);
+
         $raw = CarPerformanceMetric::query()
             ->forCompany($companyId)
             ->forCar($carId)
-            ->selectRaw('
-                SUM(spend_amount)           AS total_spend,
-                SUM(impressions)            AS total_impressions,
-                SUM(clicks)                 AS total_clicks,
+            ->selectRaw("
+                SUM({$spendSql})           AS total_spend,
+                SUM({$impSql})            AS total_impressions,
+                SUM({$clickSql})                 AS total_clicks,
                 SUM(sessions)               AS total_sessions,
                 SUM(leads_count)            AS total_leads,
                 SUM(interactions_count)     AS total_interactions,
@@ -62,9 +65,15 @@ class CarPerformanceMetricRepository implements CarPerformanceMetricRepositoryIn
                 MAX(purchase_price)         AS purchase_price,
                 MAX(gross_margin)           AS gross_margin,
                 MAX(roi)                    AS roi
-            ')
+            ")
             ->first()
             ->toArray();
+
+        if ($paid !== null) {
+            $raw['total_spend'] = round((float) ($raw['total_spend'] ?? 0) + $paid['spend'], 2);
+            $raw['total_impressions'] = (int) ($raw['total_impressions'] ?? 0) + $paid['impressions'];
+            $raw['total_clicks'] = (int) ($raw['total_clicks'] ?? 0) + $paid['clicks'];
+        }
 
         $totalSpend        = (float) ($raw['total_spend']            ?? 0);
         $totalLeads        = (int)   ($raw['total_leads']            ?? 0);
@@ -103,14 +112,17 @@ class CarPerformanceMetricRepository implements CarPerformanceMetricRepositoryIn
      */
     public function getSummaryByChannel(int $carId, int $companyId): Collection
     {
-        return CarPerformanceMetric::query()
+        $paid = $this->tagPaidTotals($carId, $companyId);
+        [$spendSql, $impSql, $clickSql] = $this->paidColumnsSql($paid !== null);
+
+        $rows = CarPerformanceMetric::query()
             ->forCompany($companyId)
             ->forCar($carId)
-            ->selectRaw('
+            ->selectRaw("
                 channel,
-                SUM(spend_amount)           AS total_spend,
-                SUM(impressions)            AS total_impressions,
-                SUM(clicks)                 AS total_clicks,
+                SUM({$spendSql})           AS total_spend,
+                SUM({$impSql})            AS total_impressions,
+                SUM({$clickSql})                 AS total_clicks,
                 SUM(sessions)               AS total_sessions,
                 SUM(leads_count)            AS total_leads,
                 SUM(interactions_count)     AS total_interactions,
@@ -118,7 +130,7 @@ class CarPerformanceMetricRepository implements CarPerformanceMetricRepositoryIn
                 SUM(phone_clicks)           AS total_phone_clicks,
                 AVG(ctr)                    AS avg_ctr,
                 AVG(conversion_rate)        AS avg_conversion_rate
-            ')
+            ")
             ->groupBy('channel')
             ->orderByDesc('total_interactions') // ordenar por intenção, não por spend
             ->get()
@@ -138,6 +150,69 @@ class CarPerformanceMetricRepository implements CarPerformanceMetricRepositoryIn
 
                 return $row;
             });
+
+        // Empresa com tags [id:N]: o gasto pago da Meta vem da fonte única e soma-se
+        // ao canal 'paid' (as linhas copiadas pelo pipeline antigo ficaram de fora).
+        if ($paid !== null && ($paid['spend'] > 0 || $paid['impressions'] > 0)) {
+            $paidRow = $rows->firstWhere('channel', 'paid');
+            if ($paidRow) {
+                $paidRow->total_spend = round((float) $paidRow->total_spend + $paid['spend'], 2);
+                $paidRow->total_impressions = (int) $paidRow->total_impressions + $paid['impressions'];
+                $paidRow->total_clicks = (int) $paidRow->total_clicks + $paid['clicks'];
+            } else {
+                $rows->push((new CarPerformanceMetric())->setRawAttributes([
+                    'channel' => 'paid',
+                    'total_spend' => $paid['spend'],
+                    'total_impressions' => $paid['impressions'],
+                    'total_clicks' => $paid['clicks'],
+                    'total_sessions' => 0,
+                    'total_leads' => 0,
+                    'total_interactions' => 0,
+                    'total_whatsapp_clicks' => 0,
+                    'total_phone_clicks' => 0,
+                    'avg_ctr' => null,
+                    'avg_conversion_rate' => null,
+                    'weighted_engagement_rate' => null,
+                ]));
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Empresa com tags [id:N]: totais pagos da Meta da viatura (fonte única), ou null
+     * se a empresa ainda não usa tags (leitura igual à de sempre).
+     *
+     * @return array{impressions: int, clicks: int, spend: float}|null
+     */
+    private function tagPaidTotals(int $carId, int $companyId): ?array
+    {
+        $spendRepo = app(CarAdSpendRepository::class);
+
+        return $spendRepo->usesTags($companyId) ? $spendRepo->totalsForCar($companyId, $carId) : null;
+    }
+
+    /**
+     * Colunas de gasto/impressões/cliques. Com tags, as linhas que o pipeline antigo
+     * copiou (channel paid, data_source meta_ads) ficam de fora — o valor delas vem da
+     * fonte única; as manuais continuam a contar. Nunca as duas.
+     *
+     * @return array{0: string, 1: string, 2: string}
+     */
+    private function paidColumnsSql(bool $usesTags): array
+    {
+        if (! $usesTags) {
+            return ['spend_amount', 'impressions', 'clicks'];
+        }
+
+        $legacy = "channel = 'paid' AND data_source = 'meta_ads'";
+
+        return [
+            "CASE WHEN {$legacy} THEN 0 ELSE spend_amount END",
+            "CASE WHEN {$legacy} THEN 0 ELSE impressions END",
+            "CASE WHEN {$legacy} THEN 0 ELSE clicks END",
+        ];
     }
 
     // ── Escrita ───────────────────────────────────────────────────────────────

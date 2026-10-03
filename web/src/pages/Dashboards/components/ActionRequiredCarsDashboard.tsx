@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Col } from "reactstrap";
+import { Card, Col } from "reactstrap";
 
 interface IActionRequiredCar {
     id: number;
@@ -71,14 +71,9 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
 
     return (
         <Col xs={12}>
-            <section
-                style={{
-                    border: "1px solid var(--vz-border-color)",
-                    borderRadius: 16,
-                    background: "var(--vz-card-bg)",
-                    overflow: "hidden",
-                }}
-            >
+            {/* <Card> Velzon (como no Analytics) — antes era uma <section> só com
+                borda, que se misturava com o fundo. */}
+            <Card className="mb-0 overflow-hidden">
                 <div
                     className="d-flex align-items-start justify-content-between gap-3 flex-wrap"
                     style={{ padding: "16px 18px", borderBottom: "1px solid var(--vz-border-color)" }}
@@ -98,11 +93,14 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                 </div>
 
                 {cars.length > 0 ? (
-                    <div style={{ padding: 16 }}>
-                        <div className="d-flex flex-column gap-3">
+                    <div style={{ padding: "12px 16px" }}>
+                        <div className="d-flex flex-column gap-2">
                             {cars.map((car) => {
                                 const priority = getPriorityMeta(car.priority_score);
 
+                                // Linha COMPACTA: o mesmo conteúdo (título, preço,
+                                // diagnóstico, 4 sinais, cor de prioridade) numa só
+                                // faixa em vez de um bloco alto com caixas.
                                 return (
                                     <button
                                         key={car.id}
@@ -113,45 +111,32 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                                             width: "100%",
                                             border: "1px solid var(--vz-border-color)",
                                             borderLeft: `4px solid ${priority.border}`,
-                                            borderRadius: 14,
+                                            borderRadius: 10,
                                             background: priority.cardBg,
-                                            padding: 16,
+                                            padding: "10px 14px",
                                             transition: "all 0.2s ease",
                                         }}
                                     >
-                                        <div className="mb-3">
-                                            <h6 className="mb-1 fw-semibold text-body">{car.title}</h6>
-                                            <p className="text-muted fs-13 mb-0">{formatPrice(car.price)}</p>
-                                        </div>
-
-                                        <div className="row g-3 align-items-stretch">
-                                            <div className="col-lg-7">
-                                                <p className="text-uppercase text-muted fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                    Diagnóstico
-                                                </p>
-                                                <p className="mb-0 text-body fs-14">{buildFactualDescription(car.signals)}</p>
+                                        <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                                            <div style={{ minWidth: 0, flex: "1 1 260px" }}>
+                                                <div className="d-flex align-items-baseline gap-2" style={{ minWidth: 0 }}>
+                                                    <span className="fw-semibold text-body fs-14 text-truncate">{car.title}</span>
+                                                    <span className="text-muted fs-12 flex-shrink-0">{formatPrice(car.price)}</span>
+                                                </div>
+                                                <div className="text-muted fs-12 text-truncate">
+                                                    {buildFactualDescription(car.signals)}
+                                                </div>
                                             </div>
 
-                                            <div className="col-lg-5">
-                                                <div className="row g-2">
-                                                    {signalItems(car.signals).map((signal) => (
-                                                        <div className="col-6 col-lg-3" key={signal.label}>
-                                                            <div
-                                                                style={{
-                                                                    border: "1px solid var(--vz-border-color)",
-                                                                    borderRadius: 12,
-                                                                    padding: "8px 10px",
-                                                                    background: "var(--vz-card-bg)",
-                                                                }}
-                                                            >
-                                                                <div className="text-muted fs-11 text-uppercase fw-semibold mb-1" style={{ letterSpacing: "0.06em" }}>
-                                                                    {signal.label}
-                                                                </div>
-                                                                <div className="fw-semibold text-body fs-14">{signal.value}</div>
-                                                            </div>
+                                            <div className="d-flex gap-3 flex-shrink-0">
+                                                {signalItems(car.signals).map((signal) => (
+                                                    <div key={signal.label} className="text-center" style={{ minWidth: 44 }}>
+                                                        <div className="fw-semibold text-body fs-13 lh-1">{signal.value}</div>
+                                                        <div className="text-muted fs-10 text-uppercase mt-1" style={{ letterSpacing: "0.04em" }}>
+                                                            {signal.label}
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
                                     </button>
@@ -164,7 +149,7 @@ export default function ActionRequiredCarsDashboard({ cars }: ActionRequiredCars
                         Nenhuma viatura a acompanhar neste momento.
                     </div>
                 )}
-            </section>
+            </Card>
         </Col>
     );
 }

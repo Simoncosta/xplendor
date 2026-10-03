@@ -17,6 +17,10 @@ import { PingwinDashboardContent } from "./PingwinDashboard";
 import RootDashboard from "./RootDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 
+// Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
+// true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
+const SHOW_SILENT_BUYER = false;
+
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
     [selectDashboardState],
@@ -123,7 +127,7 @@ const ClientDashboard = () => {
                     <Row className="g-3 mb-3">
                         <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />
                     </Row>
-                    {(analytics.silent_buyers?.total_detected ?? 0) > 0 && (
+                    {SHOW_SILENT_BUYER && (analytics.silent_buyers?.total_detected ?? 0) > 0 && (
                         <Row className="g-3 mb-3">
                             <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
                         </Row>

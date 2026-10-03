@@ -38,6 +38,12 @@ class MetaAdsCarSyncService
             throw new \DomainException('O token da integracao Meta Ads expirou. Reconecta a conta para continuar.');
         }
 
+        // Empresa com a tag [id:N] nos anúncios: o mapeamento manual está só de leitura
+        // e o gasto vem da ingestão por anúncio (actualizada todas as noites).
+        if (app(\App\Repositories\CarAdSpendRepository::class)->usesTags((int) $car->company_id)) {
+            throw new \DomainException('Esta empresa já atribui o gasto às viaturas pela etiqueta [id:N] no nome dos anúncios. Os dados são atualizados automaticamente todas as noites.');
+        }
+
         $mappings = CarAdCampaign::active()
             ->platform('meta')
             ->where('company_id', $car->company_id)

@@ -2,16 +2,19 @@
 
 namespace App\Services;
 
-use App\Models\CampaignCarMetricDaily;
 use App\Models\Car;
 use App\Models\CarLead;
 use App\Models\MetaAudienceInsight;
+use App\Repositories\CarAdSpendRepository;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AdsGuardrailService
 {
-    public function __construct(protected AttributionService $attributionService) {}
+    public function __construct(
+        protected AttributionService $attributionService,
+        protected CarAdSpendRepository $carAdSpend,
+    ) {}
 
     private const DEFAULT_WINDOW_DAYS = 7;
 
@@ -177,40 +180,38 @@ class AdsGuardrailService
 
     private function aggregateCampaignMetrics(Car $car, Carbon $from, Carbon $to): array
     {
-        $row = CampaignCarMetricDaily::query()
-            ->where('company_id', $car->company_id)
-            ->where('car_id', $car->id)
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->selectRaw('
-                COALESCE(SUM(impressions), 0) as impressions,
-                COALESCE(SUM(clicks), 0) as clicks,
-                COALESCE(SUM(spend_normalized), 0) as spend_normalized
-            ')
-            ->first();
+        // Fonte única do gasto por viatura (tag [id:N] ou mapeamento manual).
+        $t = $this->carAdSpend->totalsForCar((int) $car->company_id, (int) $car->id, $from->toDateString(), $to->toDateString());
 
         return [
-            'impressions' => (int) ($row->impressions ?? 0),
-            'clicks' => (int) ($row->clicks ?? 0),
-            'spend_normalized' => round((float) ($row->spend_normalized ?? 0), 2),
+            'impressions' => $t['impressions'],
+            'clicks' => $t['clicks'],
+            'spend_normalized' => $t['spend'],
         ];
     }
 
     private function loadDailyRiskRows(Car $car, Carbon $from, Carbon $to): array
     {
-        return DB::table('campaign_car_metrics_daily as campaign')
-            ->leftJoin('car_funnel_metrics_daily as funnel', function ($join) {
-                $join->on('funnel.company_id', '=', 'campaign.company_id')
-                    ->on('funnel.car_id', '=', 'campaign.car_id')
-                    ->on('funnel.date', '=', 'campaign.date');
+        $companyId = (int) $car->company_id;
+        $carId = (int) $car->id;
+
+        // Gasto diário da fonte única (tag [id:N] ou mapeamento manual), um registo por dia.
+        $spendByDay = $this->carAdSpend
+            ->dailyRows($companyId, $from->toDateString(), $to->toDateString(), [$carId])
+            ->selectRaw('date, COALESCE(SUM(spend), 0) as spend')
+            ->groupBy('date');
+
+        return DB::query()->fromSub($spendByDay, 'campaign')
+            ->leftJoin('car_funnel_metrics_daily as funnel', function ($join) use ($companyId, $carId) {
+                $join->on('funnel.date', '=', 'campaign.date')
+                    ->where('funnel.company_id', '=', $companyId)
+                    ->where('funnel.car_id', '=', $carId);
             })
-            ->where('campaign.company_id', $car->company_id)
-            ->where('campaign.car_id', $car->id)
-            ->whereBetween('campaign.date', [$from->toDateString(), $to->toDateString()])
             ->groupBy('campaign.date')
             ->orderBy('campaign.date')
             ->get([
                 'campaign.date',
-                DB::raw('ROUND(COALESCE(SUM(campaign.spend_normalized), 0), 2) as spend'),
+                DB::raw('ROUND(COALESCE(SUM(campaign.spend), 0), 2) as spend'),
                 DB::raw('MAX(funnel.avg_time_on_page) as avg_time_on_page'),
                 DB::raw('MAX(funnel.scroll) as scroll'),
                 DB::raw('MAX(funnel.whatsapp_clicks) as whatsapp_clicks'),

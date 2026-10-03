@@ -2,8 +2,12 @@
 
 namespace App\Repositories;
 
+use App\Constants\StockThresholds;
+use App\Support\StockAge;
+
 use App\Models\Car;
 use App\Repositories\Contracts\DashboardRepositoryInterface;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Facades\DB;
 
 class DashboardRepository extends BaseRepository implements DashboardRepositoryInterface
@@ -18,15 +22,18 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
      */
     public function getSummary(int $companyId): array
     {
+        // Universo "em stock" e dias em stock pelas fontes únicas (Car::IN_STOCK_STATUSES
+        // e StockAge) — antes: só 'active' e DATEDIFF a partir de created_at.
+        $days = StockAge::sqlExpr('cars');
         $summary = $this->model->where('company_id', $companyId)
-            ->where('status', 'active')
+            ->whereIn('status', Car::IN_STOCK_STATUSES)
             ->selectRaw("
                 COUNT(*) as total_cars,
                 SUM(CASE WHEN is_resume = 0 THEN 1 ELSE 0 END) as own_stock,
                 SUM(CASE WHEN is_resume = 1 THEN 1 ELSE 0 END) as trade_ins,
                 AVG(price_gross) as avg_price,
                 AVG(mileage_km) as avg_km,
-                AVG(DATEDIFF(NOW(), created_at)) as avg_days_in_stock
+                AVG({$days}) as avg_days_in_stock
             ")
             ->first();
 
@@ -107,7 +114,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
     public function getOldestCars(int $companyId, int $limit = 5)
     {
         return $this->model->where('company_id', $companyId)
-            ->where('status', 'active')
+            ->whereIn('status', Car::IN_STOCK_STATUSES)
             ->where('is_resume', false)
             ->select([
                 'id',
@@ -116,7 +123,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'version',
                 'price_gross',
                 'created_at',
-                DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock')
+                DB::raw(StockAge::sqlExpr('cars') . ' as days_in_stock'),
             ])
             ->with([
                 'brand:id,name',
@@ -176,12 +183,33 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
      */
     public function getStockBreakdown(int $companyId): array
     {
-        $visibleStatuses = ['active', 'available_soon', 'reserved'];
+        // Âmbitos do filtro [Todos | Ativos | Vendidos] do dashboard. "Ativos" é o
+        // comportamento de sempre (by_brand/by_type continuam a ser este âmbito —
+        // retrocompatível). "Todos" = ativos + vendidos (soma coerente com os dois
+        // botões; rascunhos e inativos ficam de fora em todos os âmbitos).
+        $active = ['active', 'available_soon', 'reserved'];
+        $sold   = ['sold'];
 
+        $scopes = [
+            'active' => $this->stockBreakdownFor($companyId, $active),
+            'sold'   => $this->stockBreakdownFor($companyId, $sold),
+            'all'    => $this->stockBreakdownFor($companyId, array_merge($active, $sold)),
+        ];
+
+        return [
+            'by_brand' => $scopes['active']['by_brand'],
+            'by_type'  => $scopes['active']['by_type'],
+            'scopes'   => $scopes,
+        ];
+    }
+
+    /** Contagens por marca e por tipo para um conjunto de estados. */
+    private function stockBreakdownFor(int $companyId, array $statuses): array
+    {
         $brandRows = DB::table('cars')
             ->join('car_brands', 'cars.car_brand_id', '=', 'car_brands.id')
             ->where('cars.company_id', $companyId)
-            ->whereIn('cars.status', $visibleStatuses)
+            ->whereIn('cars.status', $statuses)
             ->groupBy('car_brands.name')
             ->selectRaw('car_brands.name as name, COUNT(*) as count')
             ->orderByDesc('count')
@@ -190,7 +218,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
         $typeRows = DB::table('cars')
             ->where('company_id', $companyId)
-            ->whereIn('status', $visibleStatuses)
+            ->whereIn('status', $statuses)
             ->whereNotNull('vehicle_type')
             ->groupBy('vehicle_type')
             ->selectRaw('vehicle_type as type, COUNT(*) as count')
@@ -332,36 +360,47 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function getCapitalSummary(int $companyId): array
     {
+        // "Parado" = dias em stock ≥ limiar do TIPO (StockThresholds), não um 60 fixo.
+        $days = StockAge::sqlExpr('cars');
+        $threshold = StockThresholds::sqlThresholdExpr('cars');
         $result = $this->model->where('company_id', $companyId)
-            ->where('status', 'active')
+            ->whereIn('status', Car::IN_STOCK_STATUSES)
             ->where('is_resume', 0)
             ->selectRaw("
             COALESCE(SUM(price_gross), 0) as total_capital,
-            COALESCE(SUM(CASE WHEN DATEDIFF(NOW(), created_at) > 60 THEN price_gross ELSE 0 END), 0) as stuck_capital_over_60_days
+            COALESCE(SUM(CASE WHEN {$days} >= {$threshold} THEN price_gross ELSE 0 END), 0) as stuck_capital
         ")
             ->first();
 
+        $stuck = (float) ($result->stuck_capital ?? 0);
+
         return [
             'total_capital' => (float) ($result->total_capital ?? 0),
-            'stuck_capital_over_60_days' => (float) ($result->stuck_capital_over_60_days ?? 0),
+            'stuck_capital_over_threshold' => $stuck,
+            // Chave antiga mantida por compatibilidade (mesmo valor; o "60" deixou de
+            // ser fixo — agora é o limiar por tipo).
+            'stuck_capital_over_60_days' => $stuck,
         ];
     }
 
     public function getHighestStuckCapitalCars(int $companyId, int $limit = 5)
     {
+        $days = StockAge::sqlExpr('cars');
+
         return $this->model->where('company_id', $companyId)
-            ->where('status', 'active')
+            ->whereIn('status', Car::IN_STOCK_STATUSES)
             ->where('is_resume', 0)
-            ->whereRaw('DATEDIFF(NOW(), created_at) > 60')
+            ->whereRaw("{$days} >= " . StockThresholds::sqlThresholdExpr('cars'))
             ->select([
                 'id',
                 'car_brand_id',
                 'car_model_id',
                 'version',
+                'vehicle_type',
                 'price_gross',
                 'promo_price_gross',
                 'created_at',
-                DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock'),
+                DB::raw("{$days} as days_in_stock"),
             ])
             ->with([
                 'brand:id,name',
@@ -386,6 +425,8 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
     public function getUrgentActionCars(int $companyId, int $limit = 5)
     {
+        // Lista de AÇÃO (promover/rever preço): só viaturas à venda ('active') — uma
+        // reservada não deve ser promovida. Os dias e o limiar vêm das fontes únicas.
         $cars = $this->model->where('company_id', $companyId)
             ->where('status', 'active')
             ->where('is_resume', 0)
@@ -394,10 +435,11 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 'car_brand_id',
                 'car_model_id',
                 'version',
+                'vehicle_type',
                 'price_gross',
                 'promo_price_gross',
                 'created_at',
-                DB::raw('DATEDIFF(NOW(), created_at) as days_in_stock'),
+                DB::raw(StockAge::sqlExpr('cars') . ' as days_in_stock'),
             ])
             ->with([
                 'brand:id,name',
@@ -448,7 +490,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
             }
 
             // ⏳ Inventário parado
-            elseif ($car->days_in_stock > 60) {
+            elseif (StockThresholds::isStale($car->vehicle_type, (int) $car->days_in_stock)) {
 
                 $reason = "Inventário parado";
                 $suggestion = "Rever preço ou criar campanha de destaque";
@@ -703,6 +745,14 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
 
         $metaClicks = (int) ($metaSignals->total_clicks ?? 0);
         $metaSpend = (float) ($metaSignals->total_spend ?? 0);
+
+        // Empresa com tags [id:N]: cliques/gasto pagos por viatura da fonte única.
+        $spendRepo = app(CarAdSpendRepository::class);
+        if ($spendRepo->usesTags($companyId)) {
+            $paid = $spendRepo->companyTotals($companyId, $fromDate, $toDate);
+            $metaClicks = $paid['clicks'];
+            $metaSpend = $paid['spend'];
+        }
 
         if ($metaClicks > 0) {
             $channelSignals['paid'] = ($channelSignals['paid'] ?? 0) + $metaClicks;

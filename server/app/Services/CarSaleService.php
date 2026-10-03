@@ -358,8 +358,8 @@ class CarSaleService extends BaseService
 
     private function fillTimesToSale(Car $car, Carbon $soldAt): void
     {
-        $publishedAt = Carbon::parse($car->created_at);
-        $days = (int) $publishedAt->diffInDays($soldAt);
+        // Tempo até à venda = dias em stock até à data da venda (fonte única: StockAge).
+        $days = (int) (\App\Support\StockAge::daysInStock($car, $soldAt) ?? 0);
 
         CarPerformanceMetric::where('car_id', $car->id)
             ->whereNull('time_to_sale_days')

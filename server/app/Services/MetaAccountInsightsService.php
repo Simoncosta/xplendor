@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
  * reparte o gasto por viatura para a atribuição de vendas dos stands).
  *
  * Janelas:
- *   · backfill → últimos 90 dias (ao ligar / ao definir ou mudar a conta);
+ *   · backfill → últimos 13 meses completos (ao ligar / ao definir ou mudar a conta);
  *   · daily    → últimos 3 dias completos + hoje (a Meta ajusta a atribuição com
  *                atraso; re-buscar corrige os números).
  *
@@ -33,7 +33,10 @@ use Illuminate\Support\Facades\Log;
  */
 class MetaAccountInsightsService
 {
-    public const BACKFILL_DAYS = 90;
+    /** Backfill: 13 MESES completos (desde o dia 1 de há 13 meses) — garante o
+     *  mesmo mês do ano anterior para as comparações do dashboard. A Meta permite
+     *  até 37 meses. */
+    public const BACKFILL_MONTHS = 13;
     public const DAILY_LOOKBACK_DAYS = 3;
 
     public const MODE_BACKFILL = 'backfill';
@@ -48,6 +51,65 @@ class MetaAccountInsightsService
 
     public function __construct(private readonly MetaAdsService $metaAds) {}
 
+    /** 1.º dia do mês de há BACKFILL_MONTHS meses (ex.: hoje 2026-10-03 → 2025-09-01). */
+    public static function backfillStart(?CarbonImmutable $today = null): CarbonImmutable
+    {
+        return ($today ?? CarbonImmutable::today())->subMonths(self::BACKFILL_MONTHS)->startOfMonth();
+    }
+
+    /** Precisa de (novo) backfill: nunca fez, ou fez com uma profundidade menor que
+     *  a actual (ex.: o backfill antigo de 90 dias → null). */
+    public static function needsBackfill(CompanyIntegration $integration): bool
+    {
+        return $integration->insights_backfilled_at === null
+            || (int) ($integration->insights_backfill_months ?? 0) < self::BACKFILL_MONTHS;
+    }
+
+    /**
+     * Estado HONESTO da ligação Meta (sem olhar para os números), por precedência:
+     * not_connected > token_expired > needs_account > sync_failed > syncing_first > ok.
+     * Partilhado pelo overview da Meta e pelo bloco de marketing do dashboard de
+     * restauração (o overview acrescenta 'no_spend' quando 'ok' e sem gasto).
+     */
+    public static function connectionState(?CompanyIntegration $integration): string
+    {
+        if (! $integration || $integration->status === 'revoked') {
+            return 'not_connected';
+        }
+        if ($integration->status === 'expired'
+            || $integration->isTokenExpired()
+            || $integration->insights_sync_status === self::STATUS_TOKEN_EXPIRED) {
+            return 'token_expired';
+        }
+        if (self::normalizeAccountId($integration->account_id) === null) {
+            return 'needs_account';
+        }
+        if ($integration->insights_sync_status === self::STATUS_FAILED) {
+            return 'sync_failed';
+        }
+        if ($integration->insights_backfilled_at === null) {
+            return 'syncing_first';
+        }
+
+        return 'ok';
+    }
+
+    /**
+     * Desde que data os dados da conta estão completos (cobertura do backfill
+     * concluído), ou null se nunca concluiu. Backfill antigo (90 dias, months null)
+     * conta como 90 dias a partir da data em que concluiu.
+     */
+    public static function coverageStart(CompanyIntegration $integration): ?CarbonImmutable
+    {
+        if ($integration->insights_backfilled_at === null) {
+            return null;
+        }
+        $done = CarbonImmutable::parse($integration->insights_backfilled_at->toDateString());
+        $months = $integration->insights_backfill_months;
+
+        return $months ? $done->subMonths((int) $months)->startOfMonth() : $done->subDays(89);
+    }
+
     public static function normalizeAccountId(?string $accountId): ?string
     {
         if ($accountId === null) {
@@ -60,7 +122,7 @@ class MetaAccountInsightsService
 
     /**
      * [since, until] (datas Y-m-d) da janela para o modo pedido.
-     *   backfill: hoje-89 … hoje (90 dias).
+     *   backfill: dia 1 de há 13 meses … hoje.
      *   daily:    hoje-3 … hoje — MAS se o último sync com sucesso parou antes
      *             (vários dias a falhar / fila parada), recua até ao dia a seguir à
      *             marca d'água (insights_synced_until) para não deixar buracos a
@@ -69,7 +131,7 @@ class MetaAccountInsightsService
     public function windowFor(string $mode, ?CarbonImmutable $today = null, ?CarbonImmutable $syncedUntil = null): array
     {
         $today = $today ?? CarbonImmutable::today();
-        $floor = $today->subDays(self::BACKFILL_DAYS - 1);
+        $floor = self::backfillStart($today);
 
         if ($mode === self::MODE_BACKFILL) {
             $since = $floor;
@@ -104,6 +166,11 @@ class MetaAccountInsightsService
 
         $integration->update(['insights_sync_status' => self::STATUS_PENDING]);
         SyncMetaAccountInsightsJob::dispatch($integration->id, self::MODE_BACKFILL);
+
+        // Ingestão por anúncio (gasto por viatura pela tag [id:N]): em modo diário,
+        // que sobe a backfill sozinho se ainda não o fez; se a conta mudou, o próprio
+        // sync apaga os dados da conta antiga.
+        app(MetaAdInsightsService::class)->schedule($integration->fresh());
     }
 
     /**
@@ -129,8 +196,9 @@ class MetaAccountInsightsService
 
             // Conta nova: sem histórico, sem marca d'água, sem erro herdado.
             $integration->update([
-                'insights_backfilled_at' => null,
-                'insights_synced_until'  => null,
+                'insights_backfilled_at'   => null,
+                'insights_backfill_months' => null,
+                'insights_synced_until'    => null,
                 'insights_error'         => null,
             ]);
         }
@@ -172,9 +240,10 @@ class MetaAccountInsightsService
             return ['result' => 'needs_account'];
         }
 
-        // Sem 1.º backfill concluído → o diário sobe a backfill (garante os 90 dias
-        // mesmo que o disparo ao ligar se tenha perdido).
-        if ($integration->insights_backfilled_at === null) {
+        // Sem backfill concluído (ou com um mais curto que o actual — ex.: o antigo de
+        // 90 dias) → o diário sobe a backfill. Garante os 13 meses mesmo que o
+        // disparo ao ligar se tenha perdido ou o backfill seja anterior a esta versão.
+        if (self::needsBackfill($integration)) {
             $mode = self::MODE_BACKFILL;
         }
 
@@ -249,6 +318,9 @@ class MetaAccountInsightsService
             'insights_backfilled_at' => $mode === self::MODE_BACKFILL
                 ? $now
                 : ($integration->insights_backfilled_at ?? $now),
+            'insights_backfill_months' => $mode === self::MODE_BACKFILL
+                ? self::BACKFILL_MONTHS
+                : $integration->insights_backfill_months,
             'insights_synced_at'     => $now,
             'insights_synced_until'  => $until,
             'insights_error'         => null,

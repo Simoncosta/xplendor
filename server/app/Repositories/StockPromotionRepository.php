@@ -103,6 +103,8 @@ class StockPromotionRepository
                 // `is_primary DESC, order ASC, id ASC` desde T3 (2026-06-09).
                 'images:id,car_id,image,is_primary,order',
                 'latestMarketAggregate',
+                // Referência do preço vs mercado (PricePosition) — evita 1 query por linha.
+                'latestPricedMarketAggregate',
                 'latestSalePotentialScore',
                 'promotionPriority.markedBy:id,name',
             ]);
@@ -264,19 +266,25 @@ class StockPromotionRepository
             return;
         }
 
-        $query->whereExists(function ($sub) use ($valid) {
+        // Fonte única (PricePosition): preço ATUAL da viatura (cars.price_gross/promo,
+        // regra única do preço efetivo) vs a mediana do último aggregate COM mediana.
+        // Antes usava a cópia do preço guardada no aggregate (podia estar desatualizada).
+        $price = \App\Support\PricePosition::effectivePriceSql('cars');
+        $diff = "(({$price}) - agg.median_price) / agg.median_price * 100";
+
+        $query->whereExists(function ($sub) use ($valid, $diff) {
             $sub->select(DB::raw(1))
                 ->from('car_market_aggregates as agg')
                 ->whereColumn('agg.car_id', 'cars.id')
-                ->whereRaw('agg.id = (SELECT MAX(id) FROM car_market_aggregates WHERE car_id = cars.id)')
+                ->whereRaw('agg.id = (SELECT MAX(id) FROM car_market_aggregates WHERE car_id = cars.id AND median_price IS NOT NULL AND median_price > 0)')
                 ->whereNotNull('agg.median_price')
                 ->where('agg.median_price', '>', 0)
-                ->where(function ($q) use ($valid) {
+                ->where(function ($q) use ($valid, $diff) {
                     $clauses = [
-                        'overpriced'    => '(COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 >= 10',
-                        'slightly_high' => '(COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 >= 3 AND (COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 < 10',
-                        'fair'          => '(COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 >= -5 AND (COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 < 3',
-                        'competitive'   => '(COALESCE(agg.promo_price_gross, agg.car_price_gross) - agg.median_price) / agg.median_price * 100 < -5',
+                        'overpriced'    => "{$diff} >= 10",
+                        'slightly_high' => "{$diff} >= 3 AND {$diff} < 10",
+                        'fair'          => "{$diff} >= -5 AND {$diff} < 3",
+                        'competitive'   => "{$diff} < -5",
                     ];
                     foreach ($valid as $signal) {
                         $q->orWhereRaw($clauses[$signal]);
@@ -293,10 +301,8 @@ class StockPromotionRepository
      */
     private function daysSinceEntryExpr(): string
     {
-        $col = 'COALESCE(cars.car_created_at, cars.created_at)';
-        return $this->isSqlite()
-            ? "CAST((julianday(CURRENT_DATE) - julianday({$col})) AS INTEGER)"
-            : "DATEDIFF(CURRENT_DATE, {$col})";
+        // Fonte única dos dias em stock (PHP == SQL): App\Support\StockAge.
+        return \App\Support\StockAge::sqlExpr('cars');
     }
 
     private function isSqlite(): bool

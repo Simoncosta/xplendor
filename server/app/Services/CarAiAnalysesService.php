@@ -76,7 +76,7 @@ class CarAiAnalysesService extends BaseService
         $interactions7d    = $car->interactions()->where('created_at', '>=', now()->subDays(7))->count();
         $interactions14d   = $car->interactions()->where('created_at', '>=', now()->subDays(14))->count();
         $interactions30d   = $car->interactions()->where('created_at', '>=', now()->subDays(30))->count();
-        $daysInStock       = $car->created_at ? (int) $car->created_at->diffInDays(now()) : null;
+        $daysInStock       = $car->daysInStock(); // fonte única (StockAge)
         $engagementTotal   = $leadsTotal + $interactionsTotal;
         $taxaInteresse     = $viewsTotal > 0 ? round(($engagementTotal / $viewsTotal) * 100, 2) : 0;
 
@@ -209,6 +209,15 @@ class CarAiAnalysesService extends BaseService
         $clicks = (int) ($metrics->clicks ?? 0);
         $reach = (int) ($audience->reach ?? 0);
         $spend = round((float) ($metrics->spend ?? 0), 2);
+
+        // Empresa com tags [id:N]: impressões/cliques/gasto pagos da fonte única.
+        $spendRepo = app(\App\Repositories\CarAdSpendRepository::class);
+        if ($spendRepo->usesTags((int) $car->company_id)) {
+            $paid = $spendRepo->totalsForCar((int) $car->company_id, (int) $car->id, $from, $to);
+            $impressions = $paid['impressions'];
+            $clicks = $paid['clicks'];
+            $spend = $paid['spend'];
+        }
         $ctr = $impressions > 0 ? round(($clicks / $impressions) * 100, 2) : 0.0;
         $cpc = $clicks > 0 ? round($spend / $clicks, 2) : null;
         $frequency = $reach > 0 ? round($impressions / $reach, 2) : null;

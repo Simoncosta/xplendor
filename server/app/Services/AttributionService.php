@@ -485,7 +485,7 @@ class AttributionService
             'platform' => $platform,
             'campaign_id' => $tracking['campaign_id'] ?? null,
             'adset_id' => $tracking['adset_id'] ?? null,
-            'ad_id' => $tracking['ad_id'] ?? $queryValues['ad_id'] ?? null,
+            'ad_id' => $this->resolveAdId($tracking, $queryValues),
             'utm_source' => $tracking['utm_source'] ?? $queryValues['utm_source'] ?? null,
             'utm_medium' => $tracking['utm_medium'] ?? $queryValues['utm_medium'] ?? null,
             'utm_campaign' => $tracking['utm_campaign'] ?? $queryValues['utm_campaign'] ?? null,
@@ -493,6 +493,39 @@ class AttributionService
             'utm_id' => $tracking['utm_id'] ?? $queryValues['utm_id'] ?? null,
             'click_id' => $clickId,
         ];
+    }
+
+    /**
+     * ad_id do anúncio Meta (liga a visita/lead a meta_ad_insights_daily.ad_id).
+     * Modelo de URL dos anúncios: utm_source=meta&utm_medium=paid&utm_content={{ad.id}}&ad_id={{ad.id}}.
+     *   · uma macro que a Meta não substituiu ("{{ad.id}}", ex.: pré-visualização) não é um ID;
+     *   · sem ad_id, um utm_content só com dígitos vindo da Meta é o ID do anúncio.
+     */
+    private function resolveAdId(array $tracking, array $queryValues): ?string
+    {
+        $clean = function (mixed $value): ?string {
+            if (! is_scalar($value)) {
+                return null;
+            }
+            $value = trim((string) $value);
+
+            return ($value === '' || str_contains($value, '{{') || str_contains($value, '}}')) ? null : $value;
+        };
+
+        $adId = $clean($tracking['ad_id'] ?? null) ?? $clean($queryValues['ad_id'] ?? null);
+        if ($adId !== null) {
+            return $adId;
+        }
+
+        $source = strtolower((string) ($tracking['utm_source'] ?? $queryValues['utm_source'] ?? ''));
+        $content = $clean($tracking['utm_content'] ?? $queryValues['utm_content'] ?? null);
+        if ($content !== null
+            && in_array($source, ['meta', 'facebook', 'fb', 'instagram', 'ig'], true)
+            && preg_match('/^\d{6,30}$/', $content)) {
+            return $content;
+        }
+
+        return null;
     }
 
     private function parseQueryString(?string $url): array

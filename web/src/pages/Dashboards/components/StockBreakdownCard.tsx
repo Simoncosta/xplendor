@@ -1,12 +1,15 @@
+import { useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import { Card, CardBody, Col, Row } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { labelOf, VEHICLE_TYPE_LABELS } from "../../../helpers/labels";
-import type { StockBreakdown } from "../../../types/api";
+import type { StockBreakdown, StockBreakdownScope } from "../../../types/api";
 
 /**
- * Visões 1+2 do Dashboard (2026-06-25) — stock por marca + tipo de veículo.
+ * Visões 1+2 do Dashboard (2026-06-25) — stock por marca + tipo de veículo,
+ * com filtro [Todos | Ativos | Vendidos] (default Ativos; os 3 âmbitos vêm no
+ * mesmo payload, troca sem novos pedidos).
  *
  * 2 gráficos lado a lado em desktop, empilhados em mobile (`useIsMobile(992)`).
  *  - Marcas: bar horizontal Apex, ordenado por contagem (backend já entrega
@@ -19,6 +22,20 @@ import type { StockBreakdown } from "../../../types/api";
  */
 const MAX_BRANDS_VISIBLE = 10;
 
+/** Filtro [Todos | Ativos | Vendidos] — mesmo padrão dos botões de período do
+ *  gráfico da restauração (MonthlyBillingChart). Default: Ativos. */
+const SCOPES: { key: StockBreakdownScope; label: string }[] = [
+    { key: "all", label: "Todos" },
+    { key: "active", label: "Ativos" },
+    { key: "sold", label: "Vendidos" },
+];
+
+const EMPTY_TEXT: Record<StockBreakdownScope, string> = {
+    all: "Sem viaturas para mostrar.",
+    active: "Sem viaturas em stock para mostrar.",
+    sold: "Sem viaturas vendidas para mostrar.",
+};
+
 interface Props {
     data: StockBreakdown | null;
     loading?: boolean;
@@ -26,9 +43,12 @@ interface Props {
 
 const StockBreakdownCard = ({ data, loading = false }: Props) => {
     const isStacked = useIsMobile(992);
+    const [scope, setScope] = useState<StockBreakdownScope>("active");
 
-    const byBrand = data?.by_brand ?? [];
-    const byType = data?.by_type ?? [];
+    // Âmbito escolhido; payloads antigos (sem scopes) só têm "Ativos" na raiz.
+    const slice = data?.scopes?.[scope] ?? (scope === "active" ? data : null);
+    const byBrand = slice?.by_brand ?? [];
+    const byType = slice?.by_type ?? [];
     const hasBrands = byBrand.length > 0;
     const hasTypes = byType.length > 0;
     const hasAny = hasBrands || hasTypes;
@@ -115,11 +135,26 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
         <Col xs={12}>
             <Card className="mb-0">
                 <CardBody>
-                    <div className="mb-3">
-                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                            Composição do stock
-                        </p>
-                        <h5 className="mb-0 fw-semibold">Por marca e tipo de veículo</h5>
+                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <div>
+                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
+                                Composição do stock
+                            </p>
+                            <h5 className="mb-0 fw-semibold">Por marca e tipo de veículo</h5>
+                        </div>
+                        <div className="btn-group btn-group-sm" role="group" aria-label="Âmbito do stock">
+                            {SCOPES.map((s) => (
+                                <button
+                                    key={s.key}
+                                    type="button"
+                                    className={"btn " + (scope === s.key ? "btn-primary" : "btn-outline-primary")}
+                                    onClick={() => setScope(s.key)}
+                                    disabled={loading}
+                                >
+                                    {s.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {loading && (
@@ -131,7 +166,7 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
                     {!loading && !hasAny && (
                         <div className="text-center text-muted py-5">
                             <i className="ri-archive-drawer-line fs-3 d-block mb-2" />
-                            Sem viaturas em stock para mostrar.
+                            {EMPTY_TEXT[scope]}
                         </div>
                     )}
 
@@ -156,7 +191,7 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
                                         height={brandChartHeight}
                                     />
                                 ) : (
-                                    <div className="text-muted small">Sem marcas em stock.</div>
+                                    <div className="text-muted small">Sem marcas neste filtro.</div>
                                 )}
                             </Col>
 
@@ -174,7 +209,7 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
                                         height={280}
                                     />
                                 ) : (
-                                    <div className="text-muted small">Sem tipos em stock.</div>
+                                    <div className="text-muted small">Sem tipos neste filtro.</div>
                                 )}
                             </Col>
                         </Row>

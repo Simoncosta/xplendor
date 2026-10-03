@@ -12,6 +12,19 @@ use OwenIt\Auditing\Auditable;
 
 class Car extends Model implements AuditableContract
 {
+    /**
+     * Universo ÚNICO "em stock" (decisão de produto): ativas + disponível em breve +
+     * reservadas. Uma reservada ainda está no stand e conta para o stock e a idade;
+     * vendidas, inativas e rascunhos não.
+     */
+    public const IN_STOCK_STATUSES = ['active', 'available_soon', 'reserved'];
+
+    /** Dias em stock (fonte única: App\Support\StockAge). */
+    public function daysInStock(?\Carbon\CarbonInterface $asOf = null): ?int
+    {
+        return \App\Support\StockAge::daysInStock($this, $asOf);
+    }
+
     use Auditable, HasFactory;
 
     protected $fillable = [
@@ -276,6 +289,15 @@ class Car extends Model implements AuditableContract
     public function latestMarketAggregate(): HasOne
     {
         return $this->hasOne(CarMarketAggregate::class)->latestOfMany();
+    }
+
+    /** Último aggregate COM mediana — a referência do preço vs mercado (PricePosition). */
+    public function latestPricedMarketAggregate(): HasOne
+    {
+        return $this->hasOne(CarMarketAggregate::class)->ofMany(
+            ['id' => 'max'],
+            fn ($q) => $q->whereNotNull('median_price')->where('median_price', '>', 0)
+        );
     }
 
     /**

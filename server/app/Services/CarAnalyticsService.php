@@ -98,10 +98,11 @@ class CarAnalyticsService
                 'sold_at'                => $car->sold_at,
                 'price_gross'            => $car->price_gross,
                 'promo_price_gross'      => $car->promo_price_gross,
-                'effective_price_gross'  => $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross
-                    ? $car->promo_price_gross
-                    : $car->price_gross,
-                'has_promo_price'        => $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross,
+                // Regra única do preço efetivo (App\Support\PricePosition).
+                'effective_price_gross'  => \App\Support\PricePosition::effectivePriceForCar($car),
+                'has_promo_price'        => \App\Support\PricePosition::effectivePriceForCar($car) !== null
+                    && $car->price_gross !== null
+                    && \App\Support\PricePosition::effectivePriceForCar($car) < (float) $car->price_gross,
                 'promo_discount_value'   => $promoDiscountValue,
                 'promo_discount_pct'     => $promoDiscountPct,
                 'price'                  => $car->price_gross,

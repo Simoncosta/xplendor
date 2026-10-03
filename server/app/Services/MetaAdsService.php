@@ -163,16 +163,140 @@ class MetaAdsService
     ): array {
         $accountId = preg_replace('/^act_/', '', trim($accountId));
 
-        $url   = self::GRAPH_URL . "/act_{$accountId}/insights";
-        $query = [
-            'access_token'   => $accessToken,
-            'level'          => 'campaign',
-            'time_increment' => 1,
-            'fields'         => 'campaign_id,campaign_name,spend,impressions,clicks',
-            'time_range'     => json_encode(['since' => $since, 'until' => $until]),
-            'limit'          => 500,
-        ];
+        return $this->fetchGraphPaged(
+            'getAccountCampaignInsightsDaily',
+            $accountId,
+            self::GRAPH_URL . "/act_{$accountId}/insights",
+            [
+                'access_token'   => $accessToken,
+                'level'          => 'campaign',
+                'time_increment' => 1,
+                'fields'         => 'campaign_id,campaign_name,spend,impressions,clicks',
+                'time_range'     => json_encode(['since' => $since, 'until' => $until]),
+                'limit'          => 500,
+            ],
+            function (array $r): ?array {
+                if (empty($r['campaign_id']) || empty($r['date_start'])) {
+                    return null;
+                }
 
+                return [
+                    'date'          => (string) $r['date_start'],
+                    'campaign_id'   => (string) $r['campaign_id'],
+                    'campaign_name' => isset($r['campaign_name']) ? (string) $r['campaign_name'] : null,
+                    'spend'         => round((float) ($r['spend'] ?? 0), 2),
+                    'impressions'   => (int) ($r['impressions'] ?? 0),
+                    'clicks'        => (int) ($r['clicks'] ?? 0),
+                ];
+            }
+        );
+    }
+
+    /**
+     * Todos os effective_status de um anúncio. Por omissão a Graph API deixa de fora
+     * dos insights os anúncios arquivados/apagados — sem este filtro o histórico de
+     * 13 meses perdia o gasto de anúncios que já não existem (e de viaturas vendidas).
+     */
+    public const AD_EFFECTIVE_STATUSES = [
+        'ACTIVE', 'PAUSED', 'DELETED', 'ARCHIVED', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED',
+        'IN_PROCESS', 'WITH_ISSUES', 'DISAPPROVED', 'PENDING_REVIEW', 'PREAPPROVED',
+        'PENDING_BILLING_INFO',
+    ];
+
+    /**
+     * Insights por ANÚNCIO e por dia (level=ad). Mesmo contrato e mesmas regras de
+     * paginação/throttling que a ingestão por conta. O chamador pede um mês de cada
+     * vez no backfill (há muito mais linhas que por campanha; o limite é 50×500).
+     */
+    public function getAccountAdInsightsDaily(
+        string $accessToken,
+        string $accountId,
+        string $since,
+        string $until
+    ): array {
+        $accountId = preg_replace('/^act_/', '', trim($accountId));
+
+        return $this->fetchGraphPaged(
+            'getAccountAdInsightsDaily',
+            $accountId,
+            self::GRAPH_URL . "/act_{$accountId}/insights",
+            [
+                'access_token'   => $accessToken,
+                'level'          => 'ad',
+                'time_increment' => 1,
+                'fields'         => 'campaign_id,adset_id,ad_id,ad_name,spend,impressions,clicks',
+                'time_range'     => json_encode(['since' => $since, 'until' => $until]),
+                'filtering'      => json_encode([[
+                    'field'    => 'ad.effective_status',
+                    'operator' => 'IN',
+                    'value'    => self::AD_EFFECTIVE_STATUSES,
+                ]]),
+                'limit'          => 500,
+            ],
+            function (array $r): ?array {
+                if (empty($r['ad_id']) || empty($r['campaign_id']) || empty($r['date_start'])) {
+                    return null;
+                }
+
+                return [
+                    'date'        => (string) $r['date_start'],
+                    'campaign_id' => (string) $r['campaign_id'],
+                    'adset_id'    => isset($r['adset_id']) && $r['adset_id'] !== '' ? (string) $r['adset_id'] : null,
+                    'ad_id'       => (string) $r['ad_id'],
+                    'ad_name'     => isset($r['ad_name']) ? (string) $r['ad_name'] : null,
+                    'spend'       => round((float) ($r['spend'] ?? 0), 2),
+                    'impressions' => (int) ($r['impressions'] ?? 0),
+                    'clicks'      => (int) ($r['clicks'] ?? 0),
+                ];
+            }
+        );
+    }
+
+    /**
+     * Catálogo de anúncios da conta (act_{id}/ads): nome actual e effective_status
+     * (para a regra "anúncio de viatura vendida ainda ativo"). Mesmo contrato.
+     */
+    public function getAccountAdsCatalog(string $accessToken, string $accountId): array
+    {
+        $accountId = preg_replace('/^act_/', '', trim($accountId));
+
+        return $this->fetchGraphPaged(
+            'getAccountAdsCatalog',
+            $accountId,
+            self::GRAPH_URL . "/act_{$accountId}/ads",
+            [
+                'access_token' => $accessToken,
+                'fields'       => 'id,name,effective_status,campaign_id,adset_id',
+                'limit'        => 500,
+            ],
+            function (array $a): ?array {
+                if (empty($a['id'])) {
+                    return null;
+                }
+
+                return [
+                    'ad_id'            => (string) $a['id'],
+                    'ad_name'          => isset($a['name']) ? (string) $a['name'] : null,
+                    'effective_status' => isset($a['effective_status']) ? mb_substr((string) $a['effective_status'], 0, 40) : null,
+                    'campaign_id'      => isset($a['campaign_id']) && $a['campaign_id'] !== '' ? (string) $a['campaign_id'] : null,
+                    'adset_id'         => isset($a['adset_id']) && $a['adset_id'] !== '' ? (string) $a['adset_id'] : null,
+                ];
+            }
+        );
+    }
+
+    /**
+     * GET paginado à Graph API com as regras comuns da ingestão:
+     *   · erro → estrutura (nunca lança): token_invalid (190) / retryable (throttling, 5xx);
+     *   · paging.next decomposto em URL base + query (nunca query vazia, senão a
+     *     2.ª página sai sem token — erro 104);
+     *   · limite de páginas atingido com mais por buscar → ok=false (dados incompletos
+     *     nunca substituem uma janela).
+     *
+     * @param  callable(array): ?array  $mapRow  linha da Graph → linha normalizada (null = ignorar)
+     */
+    private function fetchGraphPaged(string $label, string $accountId, string $url, array $query, callable $mapRow): array
+    {
         $rows  = [];
         $pages = 0;
 
@@ -184,7 +308,7 @@ class MetaAdsService
                 $code    = (int) $response->json('error.code', 0);
                 $message = (string) $response->json('error.message', 'Erro desconhecido da Meta.');
 
-                Log::error('MetaAdsService: getAccountCampaignInsightsDaily failed', [
+                Log::error("MetaAdsService: {$label} failed", [
                     'account_id' => $accountId,
                     'status'     => $response->status(),
                     'code'       => $code,
@@ -203,17 +327,10 @@ class MetaAdsService
             }
 
             foreach ((array) $response->json('data', []) as $r) {
-                if (empty($r['campaign_id']) || empty($r['date_start'])) {
-                    continue;
+                $mapped = is_array($r) ? $mapRow($r) : null;
+                if ($mapped !== null) {
+                    $rows[] = $mapped;
                 }
-                $rows[] = [
-                    'date'          => (string) $r['date_start'],
-                    'campaign_id'   => (string) $r['campaign_id'],
-                    'campaign_name' => isset($r['campaign_name']) ? (string) $r['campaign_name'] : null,
-                    'spend'         => round((float) ($r['spend'] ?? 0), 2),
-                    'impressions'   => (int) ($r['impressions'] ?? 0),
-                    'clicks'        => (int) ($r['clicks'] ?? 0),
-                ];
             }
 
             // paging.next traz TODOS os parâmetros (token + cursor `after`). NÃO se
@@ -234,7 +351,7 @@ class MetaAdsService
         // Saiu pelo limite de páginas com mais páginas por buscar → dados INCOMPLETOS.
         // Não devolver ok=true: o chamador substituiria a janela por dados parciais.
         if ($url !== null) {
-            Log::error('MetaAdsService: getAccountCampaignInsightsDaily truncado no limite de páginas', [
+            Log::error("MetaAdsService: {$label} truncado no limite de páginas", [
                 'account_id' => $accountId,
                 'pages'      => $pages,
                 'rows'       => count($rows),
@@ -250,6 +367,99 @@ class MetaAdsService
         }
 
         return ['ok' => true, 'rows' => $rows, 'token_invalid' => false, 'retryable' => false, 'error' => null];
+    }
+
+    // ── Públicos personalizados da conta (só metadados) ────────────────────────
+    // act_{account_id}/customaudiences — alimenta o motor de recomendações
+    // (regra "público de clientes desatualizado"). Nunca lança. Distingue:
+    //   no_permission → a ligação não tem permissão para ler públicos (ads_read pode
+    //                   não chegar): estado honesto, sem rebentar;
+    //   token_invalid → erro OAuth 190.
+
+    /** Códigos de erro de permissão da Graph API (10 e 200–299). */
+    private static function isPermissionError(int $code): bool
+    {
+        return $code === 10 || ($code >= 200 && $code <= 299);
+    }
+
+    public function getCustomAudiences(string $accessToken, string $accountId): array
+    {
+        $accountId = preg_replace('/^act_/', '', trim($accountId));
+        $url   = self::GRAPH_URL . "/act_{$accountId}/customaudiences";
+        $query = [
+            'access_token' => $accessToken,
+            'fields'       => 'id,name,subtype,approximate_count_lower_bound,approximate_count_upper_bound,time_content_updated,delivery_status',
+            'limit'        => 200,
+        ];
+
+        $rows  = [];
+        $pages = 0;
+
+        while ($url !== null && $pages < self::ACCOUNT_INSIGHTS_MAX_PAGES) {
+            $response = $this->graphGet($url, $query);
+            $pages++;
+
+            if ($response->failed()) {
+                $code    = (int) $response->json('error.code', 0);
+                $message = (string) $response->json('error.message', 'Erro desconhecido da Meta.');
+                Log::warning('MetaAdsService: getCustomAudiences failed', [
+                    'account_id' => $accountId, 'status' => $response->status(), 'code' => $code, 'message' => $message,
+                ]);
+
+                return [
+                    'ok'            => false,
+                    'rows'          => [],
+                    'no_permission' => self::isPermissionError($code),
+                    'token_invalid' => $code === 190,
+                    'error'         => $message,
+                ];
+            }
+
+            foreach ((array) $response->json('data', []) as $a) {
+                if (empty($a['id'])) {
+                    continue;
+                }
+                $rows[] = [
+                    'audience_id'                   => (string) $a['id'],
+                    'name'                          => isset($a['name']) ? (string) $a['name'] : null,
+                    'subtype'                       => isset($a['subtype']) ? (string) $a['subtype'] : null,
+                    'approximate_count_lower_bound' => isset($a['approximate_count_lower_bound']) ? (int) $a['approximate_count_lower_bound'] : null,
+                    'approximate_count_upper_bound' => isset($a['approximate_count_upper_bound']) ? (int) $a['approximate_count_upper_bound'] : null,
+                    // A Graph devolve um timestamp unix; tolera também uma data em texto.
+                    'time_content_updated'          => self::parseGraphTime($a['time_content_updated'] ?? null),
+                    'delivery_status_code'          => isset($a['delivery_status']['code']) ? (int) $a['delivery_status']['code'] : null,
+                    'delivery_status_description'   => isset($a['delivery_status']['description']) ? mb_substr((string) $a['delivery_status']['description'], 0, 255) : null,
+                ];
+            }
+
+            $next = $response->json('paging.next');
+            if (is_string($next) && $next !== '') {
+                // Mesma regra da paginação dos insights: decompor (nunca query vazia).
+                $parts = parse_url($next);
+                parse_str($parts['query'] ?? '', $nextQuery);
+                $url   = ($parts['scheme'] ?? 'https') . '://' . ($parts['host'] ?? 'graph.facebook.com') . ($parts['path'] ?? '');
+                $query = $nextQuery;
+            } else {
+                $url = null;
+            }
+        }
+
+        return ['ok' => true, 'rows' => $rows, 'no_permission' => false, 'token_invalid' => false, 'error' => null];
+    }
+
+    private static function parseGraphTime(mixed $value): ?string
+    {
+        if ($value === null || $value === '' || $value === 0 || $value === '0') {
+            return null;
+        }
+        if (is_numeric($value)) {
+            return \Carbon\CarbonImmutable::createFromTimestamp((int) $value)->toDateTimeString();
+        }
+        try {
+            return \Carbon\CarbonImmutable::parse((string) $value)->toDateTimeString();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     // ── Breakdown por faixa etária e género ───────────────────────────────────

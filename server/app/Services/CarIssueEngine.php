@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Constants\StockThresholds;
+
 use App\Models\Car;
 
 class CarIssueEngine
@@ -43,7 +45,8 @@ class CarIssueEngine
             ])
             ->get()
             ->map(function (Car $car) {
-                $car->days_in_stock = (int) $car->created_at->diffInDays(now());
+                // Fonte única dos dias em stock (App\Support\StockAge).
+                $car->days_in_stock = (int) ($car->daysInStock() ?? 0);
                 return $car;
             });
 
@@ -119,7 +122,8 @@ class CarIssueEngine
         $recommendedPrice = $market['recommended_price'] ?? $this->resolveEffectivePrice($car);
         $priority = 68 + min(22, (int) round(max(0, $delta - 5) * 1.8));
 
-        if ((int) ($car->days_in_stock ?? 0) >= 45) {
+        // Já "parada há muito" para o seu tipo (StockThresholds) → mais urgente.
+        if (StockThresholds::isStale($car->vehicle_type, (int) ($car->days_in_stock ?? 0))) {
             $priority += 8;
         }
 
@@ -148,11 +152,14 @@ class CarIssueEngine
         $views = (int) ($car->views_count ?? 0);
         $leads = (int) ($car->leads_count ?? 0);
 
-        if ($days < 60 || $leads > 1) {
+        // "Stock parado" = dias ≥ limiar do TIPO (StockThresholds: 45 carros, 120
+        // autocaravanas), não um 60 fixo para todos.
+        $threshold = StockThresholds::ageThresholdFor($car->vehicle_type);
+        if ($days < $threshold || $leads > 1) {
             return null;
         }
 
-        $priority = 72 + min(18, (int) floor(($days - 60) / 10) * 3);
+        $priority = 72 + min(18, (int) floor(($days - $threshold) / 10) * 3);
 
         if (($market['market_position'] ?? null) === 'above_market') {
             $priority += 8;
@@ -247,16 +254,8 @@ class CarIssueEngine
 
     private function resolveEffectivePrice(Car $car): ?float
     {
-        if (
-            $car->promo_price_gross !== null
-            && (float) $car->promo_price_gross > 0
-            && $car->price_gross !== null
-            && (float) $car->promo_price_gross < (float) $car->price_gross
-        ) {
-            return round((float) $car->promo_price_gross, 2);
-        }
-
-        return $car->price_gross !== null ? round((float) $car->price_gross, 2) : null;
+        // Regra única do preço efetivo (App\Support\PricePosition).
+        return \App\Support\PricePosition::effectivePriceForCar($car);
     }
 
     private function formatMoney(?float $value): string

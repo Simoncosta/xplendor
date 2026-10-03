@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -14,6 +15,7 @@ class SmartAdsOptimizerService
         protected IntentAnalysisService $intentAnalysisService,
         protected AdsGuardrailService $adsGuardrailService,
         protected LeadRealityGapService $leadRealityGapService,
+        protected CarAdSpendRepository $carAdSpend,
     ) {}
 
     public function generateRecommendations(int $carId): array
@@ -108,6 +110,25 @@ class SmartAdsOptimizerService
         ];
     }
 
+    /**
+     * Gasto por alvo Meta da viatura (fonte única CarAdSpendRepository), no formato
+     * das linhas antigas: mapping_id, campaign_id, adset_id, ad_id, impressions,
+     * clicks, spend_normalized.
+     */
+    private function targetRows(Car $car, string $from, string $to): Collection
+    {
+        return collect($this->carAdSpend->targetsForCar((int) $car->company_id, (int) $car->id, $from, $to))
+            ->map(fn (array $t) => (object) [
+                'mapping_id' => $t['mapping_id'],
+                'campaign_id' => $t['campaign_id'],
+                'adset_id' => $t['adset_id'],
+                'ad_id' => $t['ad_id'],
+                'impressions' => $t['impressions'],
+                'clicks' => $t['clicks'],
+                'spend_normalized' => $t['spend'],
+            ]);
+    }
+
     private function buildTargetContexts(Car $car, array $analysis, array $intelligence): Collection
     {
         $period = $analysis['period'] ?? [];
@@ -117,22 +138,9 @@ class SmartAdsOptimizerService
         $globalFrequency = $this->resolveFrequency($car, $from, $to, $metrics);
         $attributionRows = collect($this->attributionService->getAttributionSummary($car->id)['rows'] ?? []);
 
-        $performanceRows = DB::table('campaign_car_metrics_daily as daily')
-            ->join('car_ad_campaigns as mapping', 'mapping.id', '=', 'daily.mapping_id')
-            ->where('daily.company_id', $car->company_id)
-            ->where('daily.car_id', $car->id)
-            ->whereBetween('daily.date', [$from, $to])
-            ->groupBy('mapping.id', 'mapping.campaign_id', 'mapping.adset_id', 'mapping.ad_id')
-            ->orderBy('mapping.id')
-            ->get([
-                'mapping.id as mapping_id',
-                'mapping.campaign_id',
-                'mapping.adset_id',
-                'mapping.ad_id',
-                DB::raw('COALESCE(SUM(daily.impressions), 0) as impressions'),
-                DB::raw('COALESCE(SUM(daily.clicks), 0) as clicks'),
-                DB::raw('ROUND(COALESCE(SUM(daily.spend_normalized), 0), 2) as spend_normalized'),
-            ]);
+        // Alvos com gasto da fonte única: mapeamentos manuais (por mapping) e anúncios
+        // com tag [id:N] (mapping_id null), sem dupla contagem.
+        $performanceRows = $this->targetRows($car, $from, $to);
 
         $contexts = $performanceRows->map(function ($row) use ($attributionRows, $globalFrequency, $intelligence) {
             $attribution = $attributionRows->first(function (array $item) use ($row) {
@@ -151,7 +159,7 @@ class SmartAdsOptimizerService
             $targetIntentScore = $this->resolveTargetIntentScore($strongIntentUsers, $whatsappClicks, $leads);
 
             return [
-                'mapping_id' => (int) $row->mapping_id,
+                'mapping_id' => $row->mapping_id !== null ? (int) $row->mapping_id : null,
                 'campaign_id' => $row->campaign_id,
                 'adset_id' => $row->adset_id,
                 'ad_id' => $row->ad_id,

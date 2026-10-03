@@ -344,9 +344,18 @@ export interface StockBreakdownTypeRow {
     count: number;
 }
 
-export interface StockBreakdown {
+/** Âmbito do filtro [Todos | Ativos | Vendidos] da composição do stock. */
+export type StockBreakdownScope = "all" | "active" | "sold";
+
+export interface StockBreakdownSlice {
     by_brand: StockBreakdownBrandRow[];
     by_type: StockBreakdownTypeRow[];
+}
+
+export interface StockBreakdown extends StockBreakdownSlice {
+    /** Os 3 âmbitos num só pedido (by_brand/by_type na raiz = "active"). Opcional
+     *  para tolerar payloads antigos. */
+    scopes?: Partial<Record<StockBreakdownScope, StockBreakdownSlice>>;
 }
 
 // ────────────────────────────────────────────────────────────────────────────

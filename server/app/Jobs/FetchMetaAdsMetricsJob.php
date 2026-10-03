@@ -49,6 +49,12 @@ class FetchMetaAdsMetricsJob implements ShouldQueue
                 continue;
             }
 
+            // Empresa que já usa a tag [id:N] nos anúncios: o gasto por viatura vem da
+            // ingestão por anúncio (CarAdSpendRepository). O job antigo desliga-se.
+            if (app(\App\Repositories\CarAdSpendRepository::class)->usesTags((int) $integration->company_id)) {
+                continue;
+            }
+
             // Buscar todos os mapeamentos activos desta empresa
             $mappings = CarAdCampaign::active()
                 ->platform('meta')

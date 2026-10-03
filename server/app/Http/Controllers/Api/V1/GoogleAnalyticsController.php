@@ -108,8 +108,28 @@ class GoogleAnalyticsController extends Controller
         $fresh = $request->boolean('fresh'); // ?fresh=1 → ignora a cache (testar leitura fresca)
         $propertyId = (int) $integration->property_id;
 
+        // Datas explícitas opcionais (?start=Y-m-d&end=Y-m-d) — ex.: um mês, ou o
+        // mesmo mês do ano anterior. Sem elas, usa a janela de `days` (como sempre).
+        $start = $request->query('start');
+        $end = $request->query('end');
+        if ($start !== null || $end !== null) {
+            $validator = \Illuminate\Support\Facades\Validator::make(
+                ['start' => $start, 'end' => $end],
+                [
+                    'start' => ['required', 'date_format:Y-m-d'],
+                    'end'   => ['required', 'date_format:Y-m-d', 'after_or_equal:start', 'before_or_equal:today'],
+                ]
+            );
+            if ($validator->fails()) {
+                return ApiResponse::error('Intervalo de datas inválido.', 422, $validator->errors()->toArray());
+            }
+            if (\Carbon\CarbonImmutable::parse($start)->diffInDays(\Carbon\CarbonImmutable::parse($end)) > 731) {
+                return ApiResponse::error('Intervalo de datas demasiado longo (máx. 2 anos).', 422);
+            }
+        }
+
         try {
-            $traffic = $this->service->getTraffic($companyId, $propertyId, $days, $fresh);
+            $traffic = $this->service->getTraffic($companyId, $propertyId, $days, $fresh, $start, $end);
 
             // Sucesso → marcar sincronização.
             $integration->update(['status' => 'active', 'error_message' => null, 'last_synced_at' => now()]);

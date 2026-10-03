@@ -19,6 +19,16 @@ class DashboardController extends Controller
 
     public function index(Request $request, int $companyId)
     {
+        // Tenant guard (igual ao stockBreakdown/salesRevenue): o utilizador só vê a
+        // SUA empresa; root vê qualquer uma. Em impersonation o token é do
+        // utilizador-alvo, por isso fica limitado à empresa desse utilizador.
+        // Sem isto, qualquer utilizador autenticado lia o dashboard de outra
+        // empresa trocando o {id} da rota.
+        $user = Auth::user();
+        if (!$user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+
         $data = $this->dashboardService->getDashboard($companyId);
 
         return ApiResponse::success($data, 'Dashboard fetched successfully.');

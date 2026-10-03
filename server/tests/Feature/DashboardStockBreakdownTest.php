@@ -174,6 +174,37 @@ class DashboardStockBreakdownTest extends TestCase
         $this->assertSame([['name' => 'Renault', 'count' => 1]], $response->json('data.by_brand'));
     }
 
+    /** Filtro do dashboard [Todos | Ativos | Vendidos]: os 3 âmbitos num só payload. */
+    public function test_returns_active_sold_and_all_scopes(): void
+    {
+        $this->makeCar(['brand_name' => 'Renault', 'status' => 'active']);
+        $this->makeCar(['brand_name' => 'Renault', 'status' => 'reserved']);
+        $this->makeCar(['brand_name' => 'Peugeot', 'status' => 'sold', 'vehicle_type' => 'motorhome']);
+        $this->makeCar(['brand_name' => 'Peugeot', 'status' => 'sold']);
+        $this->makeCar(['brand_name' => 'Renault', 'status' => 'draft']);    // nunca conta
+        $this->makeCar(['brand_name' => 'Renault', 'status' => 'inactive']); // nunca conta
+
+        $res = $this->actingAs($this->admin, 'sanctum')
+            ->getJson($this->url($this->company->id))
+            ->assertStatus(200);
+
+        // by_brand/by_type continuam = Ativos (retrocompatível).
+        $this->assertSame([['name' => 'Renault', 'count' => 2]], $res->json('data.by_brand'));
+        $this->assertSame($res->json('data.by_brand'), $res->json('data.scopes.active.by_brand'));
+
+        $this->assertSame([['name' => 'Peugeot', 'count' => 2]], $res->json('data.scopes.sold.by_brand'));
+        $this->assertEqualsCanonicalizing(
+            [['type' => 'car', 'count' => 1], ['type' => 'motorhome', 'count' => 1]],
+            $res->json('data.scopes.sold.by_type')
+        );
+
+        // Todos = ativos + vendidos (sem rascunho nem inativo).
+        $this->assertEqualsCanonicalizing(
+            [['name' => 'Renault', 'count' => 2], ['name' => 'Peugeot', 'count' => 2]],
+            $res->json('data.scopes.all.by_brand')
+        );
+    }
+
     public function test_includes_available_soon_and_reserved(): void
     {
         $this->makeCar(['brand_name' => 'Renault', 'status' => 'active']);

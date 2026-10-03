@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Constants\StockThresholds;
+
 use App\Models\Car;
 
 class CarDecisionEngineService
@@ -109,17 +111,20 @@ class CarDecisionEngineService
     {
         $days = (int) ($context['performance']['days_in_stock'] ?? 0);
         $leadsTotal = (int) ($context['performance']['leads_total'] ?? 0);
+        $type = $context['car']['vehicle_type'] ?? null;
 
+        // Curva DERIVADA do limiar do tipo (StockThresholds): 2T, 4T/3, T, 2T/3, T/3.
+        // Carros: 90/60/45/30/15; autocaravanas: 240/160/120/80/40.
         $score = match (true) {
-            $days >= 90 => 95,
-            $days >= 60 => 84,
-            $days >= 45 => 72,
-            $days >= 30 => 58,
-            $days >= 14 => 42,
+            $days >= StockThresholds::scaled($type, 2.0) => 95,
+            $days >= StockThresholds::scaled($type, 4 / 3) => 84,
+            $days >= StockThresholds::ageThresholdFor($type) => 72,
+            $days >= StockThresholds::scaled($type, 2 / 3) => 58,
+            $days >= StockThresholds::scaled($type, 1 / 3) => 42,
             default => 25,
         };
 
-        if ($days >= 45 && $leadsTotal === 0) {
+        if (StockThresholds::isStale($type, $days) && $leadsTotal === 0) {
             $score += 6;
         }
 
@@ -218,7 +223,7 @@ class CarDecisionEngineService
             $weights['conversion_score'] -= 0.04;
         }
 
-        if ($days >= 45) {
+        if (StockThresholds::isStale($context['car']['vehicle_type'] ?? null, $days)) {
             $weights['stock_pressure_score'] += 0.08;
             $weights['interest_score'] -= 0.04;
             $weights['benchmark_score'] -= 0.04;
@@ -400,7 +405,7 @@ class CarDecisionEngineService
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market'
                 ? 'Existe interesse, mas o preco acima do mercado esta a reduzir a capacidade de conversao.'
                 : 'O carro precisa de correccoes em proposta, criativo ou segmentacao antes de receber novo investimento.',
-            default => $days >= 45
+            default => StockThresholds::isStale($context['car']['vehicle_type'] ?? null, $days)
                 ? 'O contexto atual e demasiado fraco para justificar investimento pago enquanto o carro nao for reposicionado.'
                 : 'Ainda nao existem sinais suficientes para recomendar investimento imediato.',
         };

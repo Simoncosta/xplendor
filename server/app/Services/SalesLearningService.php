@@ -34,10 +34,9 @@ class SalesLearningService
         $dailySignals = $this->dailyContactSignals($car, $from, $soldAt);
         $peakSignal = $this->peakContactSignal($dailySignals);
         $contactSignalScore = max((int) ($contactSignal['score'] ?? 0), $this->recentContactSignalFloor($recentMetrics));
-        $daysInStock = $car->created_at ? (int) $car->created_at->diffInDays($soldAt) : null;
-        $priceAtSale = $car->promo_price_gross && $car->price_gross && $car->promo_price_gross < $car->price_gross
-            ? $car->promo_price_gross
-            : $car->price_gross;
+        // Fontes únicas: dias em stock até à venda (StockAge) e preço efetivo (PricePosition).
+        $daysInStock = \App\Support\StockAge::daysInStock($car, $soldAt);
+        $priceAtSale = \App\Support\PricePosition::effectivePriceForCar($car);
         $priceVsBenchmark = $this->priceVsBenchmark($car);
 
         $snapshot = CarSalesLearning::query()->updateOrCreate(
@@ -65,7 +64,7 @@ class SalesLearningService
                 'adset_ids' => $campaignContext['adset_ids'],
                 'price_at_sale' => $priceAtSale,
                 'days_in_stock' => $daysInStock,
-                'sale_quality_score' => $this->saleQualityScore($contactSignalScore, $daysInStock, $priceVsBenchmark),
+                'sale_quality_score' => $this->saleQualityScore($contactSignalScore, $daysInStock, $priceVsBenchmark, $car->vehicle_type),
             ]
         );
 
@@ -205,14 +204,16 @@ class SalesLearningService
         return 'unknown';
     }
 
-    private function saleQualityScore(int $contactSignalScore, ?int $daysInStock, ?float $priceVsBenchmark): int
+    private function saleQualityScore(int $contactSignalScore, ?int $daysInStock, ?float $priceVsBenchmark, ?string $vehicleType = null): int
     {
+        // Curva por idade DERIVADA do limiar do tipo (StockThresholds): T/3, 2T/3,
+        // 4T/3, 2T — carros 15/30/60/90 (os de sempre), autocaravanas 40/80/160/240.
         $stockScore = match (true) {
             $daysInStock === null => 45,
-            $daysInStock <= 15 => 100,
-            $daysInStock <= 30 => 80,
-            $daysInStock <= 60 => 60,
-            $daysInStock <= 90 => 40,
+            $daysInStock <= \App\Constants\StockThresholds::scaled($vehicleType, 1 / 3) => 100,
+            $daysInStock <= \App\Constants\StockThresholds::scaled($vehicleType, 2 / 3) => 80,
+            $daysInStock <= \App\Constants\StockThresholds::scaled($vehicleType, 4 / 3) => 60,
+            $daysInStock <= \App\Constants\StockThresholds::scaled($vehicleType, 2.0) => 40,
             default => 25,
         };
         $priceScore = match (true) {

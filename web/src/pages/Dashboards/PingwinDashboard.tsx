@@ -5,6 +5,7 @@ import ConfirmModal from "Components/Common/ConfirmModal";
 import { getPingwinDashboard, queuePingwinSync } from "helpers/laravel_helper";
 import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod } from "common/models/pingwin.model";
 import MonthlyBillingChart from "./components/MonthlyBillingChart";
+import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -237,6 +238,16 @@ export function PingwinDashboardContent() {
                 onCancel={() => setConfirmOpen(false)}
                 onConfirm={() => { void confirmRefresh(); }}
             />
+
+            {/* HUB: marketing e resultados do mês (GA4 + Meta + dados internos), no topo.
+                As métricas de vendas abaixo ficam como estavam. */}
+            {companyId > 0 && (
+                <Row>
+                    <Col xs={12}>
+                        <RestaurantMarketingBlock companyId={companyId} />
+                    </Col>
+                </Row>
+            )}
 
             {/* Cabeçalho no padrão do sistema (page-title-box): título + ações alinhados. */}
             <Row>

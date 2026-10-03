@@ -1,4 +1,4 @@
-import { Col } from "reactstrap";
+import { Card, Col } from "reactstrap";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 
 interface ISummaryDashboard {
@@ -46,14 +46,10 @@ export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
 
     return (
         <Col xs={12}>
-            <section
-                style={{
-                    border: "1px solid var(--vz-border-color)",
-                    borderRadius: 16,
-                    background: "var(--vz-card-bg)",
-                    overflow: "hidden",
-                }}
-            >
+            {/* <Card> Velzon (surface + sombra + raio + dark-mode nativos), como no
+                Analytics — antes era uma <section> só com borda que se misturava
+                com o fundo. */}
+            <Card className="mb-0 overflow-hidden">
                 <div className="row g-0">
                     {metrics(summary).map((item, index) => (
                         <div className="col-xl-3 col-md-6" key={item.label}>
@@ -76,7 +72,7 @@ export default function SummaryDashboard({ summary }: SummaryDashboardProps) {
                         </div>
                     ))}
                 </div>
-            </section>
+            </Card>
         </Col>
     );
 }

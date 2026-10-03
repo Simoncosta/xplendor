@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Car;
 use App\Repositories\Contracts\CarRepositoryInterface;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -142,6 +143,13 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
         $leads = (int) ($performance->leads ?? 0);
         $fallbackSpend = round((float) ($performance->fallback_spend ?? 0), 2);
         $spend = round($metaSpend > 0 ? $metaSpend : $fallbackSpend, 2);
+
+        // Empresa com tags [id:N] nos anúncios: o gasto vem da fonte única (as cópias
+        // do pipeline antigo deixam de ser actualizadas para ela).
+        $spendRepo = app(CarAdSpendRepository::class);
+        if ($spendRepo->usesTags($companyId)) {
+            $spend = $spendRepo->totalsForCar($companyId, $carId, $from, $to)['spend'];
+        }
         $promo = $this->promotionMetrics($car);
 
         return [
@@ -156,7 +164,7 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
             'conversion_rate' => $views > 0 ? round(($leads / $views) * 100, 2) : 0.0,
             'cost_per_lead' => $leads > 0 ? round($spend / $leads, 2) : null,
             'ips_score' => (int) round((float) ($ips->score ?? 0)),
-            'days_in_stock' => (int) $car->created_at->diffInDays(now()),
+            'days_in_stock' => (int) ($car->daysInStock() ?? 0),
         ];
     }
 

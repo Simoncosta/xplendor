@@ -117,7 +117,7 @@ class CarDecisionRepository implements CarDecisionRepositoryInterface
             'avg_views' => round((float) $similarCars->avg('views_count'), 2),
             'avg_leads' => round((float) $similarCars->avg('leads_count'), 2),
             'avg_interactions' => round((float) $similarCars->avg('interactions_count'), 2),
-            'avg_days_in_stock' => round((float) $similarCars->avg(fn($item) => $item->created_at?->diffInDays(now()) ?? 0), 1),
+            'avg_days_in_stock' => round((float) $similarCars->avg(fn($item) => \App\Support\StockAge::daysInStock($item) ?? 0), 1),
             'avg_interest_rate' => $interestRates->isNotEmpty() ? round((float) $interestRates->avg(), 2) : null,
             'avg_conversion_rate' => $conversionRates->isNotEmpty() ? round((float) $conversionRates->avg(), 2) : null,
         ];

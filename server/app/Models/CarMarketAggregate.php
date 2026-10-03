@@ -62,40 +62,24 @@ class CarMarketAggregate extends Model
      */
     public function effectivePrice(): ?float
     {
-        if ($this->promo_price_gross !== null) {
-            return (float) $this->promo_price_gross;
-        }
-
-        return $this->car_price_gross !== null ? (float) $this->car_price_gross : null;
+        // Regra ÚNICA do preço efetivo (App\Support\PricePosition), aplicada à cópia
+        // do preço guardada no momento da análise. Antes usava a promo sempre que
+        // existisse, mesmo acima do preço bruto.
+        return \App\Support\PricePosition::effectivePrice($this->car_price_gross, $this->promo_price_gross);
     }
 
     /** Percentage difference between effective car price and market median. Positive = above market. */
     public function priceDifference(): ?float
     {
-        $median   = $this->median_price !== null ? (float) $this->median_price : null;
-        $carPrice = $this->effectivePrice();
+        $median = $this->median_price !== null ? (float) $this->median_price : null;
 
-        if ($median === null || $median <= 0.0 || $carPrice === null) {
-            return null;
-        }
-
-        return round(($carPrice - $median) / $median * 100.0, 2);
+        return \App\Support\PricePosition::differencePct($this->effectivePrice(), $median);
     }
 
     /** Human-readable price position relative to market. */
     public function priceSignal(): ?string
     {
-        $diff = $this->priceDifference();
-
-        if ($diff === null) {
-            return null;
-        }
-
-        return match (true) {
-            $diff >= 10.0  => 'overpriced',
-            $diff >= 3.0   => 'slightly_high',
-            $diff >= -5.0  => 'fair',
-            default        => 'competitive',
-        };
+        // As MESMAS 4 faixas da fonte única (App\Support\PricePosition::band).
+        return \App\Support\PricePosition::band($this->priceDifference());
     }
 }

@@ -78,7 +78,7 @@ class PromotionCandidateResource extends JsonResource
             // (data de entrada no stand) com fallback para `created_at` (data
             // do record). `is_stale` cruza com o threshold por vehicle_type.
             'days_in_stock' => $this->daysInStock(),
-            'is_stale'      => $this->daysInStock() >= StockThresholds::ageThresholdFor($this->vehicle_type),
+            'is_stale'      => StockThresholds::isStale($this->vehicle_type, $this->daysInStock()),
 
             // Engagement — subqueries puxam estas colunas como aliases.
             // Sempre números (0 é estado real, não null).
@@ -97,10 +97,11 @@ class PromotionCandidateResource extends JsonResource
                     'median_price'      => $this->latestMarketAggregate->median_price !== null
                         ? (float) $this->latestMarketAggregate->median_price
                         : null,
-                    // `priceSignal()` devolve null quando median ou preço efectivo
-                    // estão em falta — coerente com a UI mostrar "—".
-                    'price_signal'      => $this->latestMarketAggregate->priceSignal(),
-                    'price_difference_percent' => $this->latestMarketAggregate->priceDifference(),
+                    // Fonte única (PricePosition): mediana do último aggregate COM
+                    // mediana vs o preço ATUAL da viatura — o mesmo critério do
+                    // filtro por price_signal. null → a UI mostra "—".
+                    'price_signal'      => $this->pricePosition()['band'],
+                    'price_difference_percent' => $this->pricePosition()['difference_pct'],
                 ]
                 : null
             ),
@@ -132,25 +133,22 @@ class PromotionCandidateResource extends JsonResource
         ];
     }
 
-    /**
-     * Dias em stock — `car_created_at` é a data oficial (introdução manual),
-     * com fallback para `created_at`. Devolve sempre int >= 0.
-     */
+    /** Dias em stock — fonte única (App\Support\StockAge). Sempre int >= 0. */
     private function daysInStock(): int
     {
-        $entry = $this->car_created_at ?? $this->created_at;
-        if ($entry === null) {
-            return 0;
-        }
-        return max(0, (int) $entry->diffInDays(now()));
+        return (int) (\App\Support\StockAge::daysInStock($this->resource) ?? 0);
     }
 
-    /** Replica `CarMarketAggregate::effectivePrice` no contexto da viatura. */
+    /** Preço efetivo — regra única (App\Support\PricePosition). */
     private function effectivePrice(): ?float
     {
-        if ($this->promo_price_gross !== null) {
-            return (float) $this->promo_price_gross;
-        }
-        return $this->price_gross !== null ? (float) $this->price_gross : null;
+        return \App\Support\PricePosition::effectivePriceForCar($this->resource);
+    }
+
+    private ?array $pricePositionCache = null;
+
+    private function pricePosition(): array
+    {
+        return $this->pricePositionCache ??= \App\Support\PricePosition::for($this->resource);
     }
 }

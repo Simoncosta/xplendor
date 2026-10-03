@@ -154,7 +154,7 @@ class MetaAccountInsightsTest extends TestCase
 
     // ── Backfill de 90 dias ───────────────────────────────────────────────────
 
-    public function test_backfill_fetches_90_days_writes_rows_and_marks_state(): void
+    public function test_backfill_fetches_13_months_writes_rows_and_marks_state(): void
     {
         $integration = $this->integration(['insights_sync_status' => 'pending']);
         Http::fake(['graph.facebook.com/*' => Http::response(['data' => [
@@ -165,12 +165,13 @@ class MetaAccountInsightsTest extends TestCase
         (new SyncMetaAccountInsightsJob($integration->id, MetaAccountInsightsService::MODE_BACKFILL))
             ->handle(app(MetaAccountInsightsService::class));
 
-        Http::assertSent(fn (HttpRequest $r) => $this->timeRangeOf($r) === ['since' => '2026-07-06', 'until' => self::TODAY]); // 90 dias
+        Http::assertSent(fn (HttpRequest $r) => $this->timeRangeOf($r) === ['since' => '2025-09-01', 'until' => self::TODAY]); // 13 meses completos
         $this->assertSame(2, MetaAccountInsightDaily::where('company_id', $this->company->id)->count());
 
         $integration->refresh();
         $this->assertSame('done', $integration->insights_sync_status);
         $this->assertNotNull($integration->insights_backfilled_at);
+        $this->assertSame(13, $integration->insights_backfill_months);
         $this->assertNotNull($integration->last_synced_at);
         $this->assertNotNull($integration->insights_last_run_at);
         $this->assertNull($integration->insights_error);
@@ -182,7 +183,7 @@ class MetaAccountInsightsTest extends TestCase
 
     public function test_daily_fetches_last_3_days_and_replaces_window(): void
     {
-        $integration = $this->integration(['insights_backfilled_at' => now()->subDay(), 'insights_sync_status' => 'done']);
+        $integration = $this->integration(['insights_backfilled_at' => now()->subDay(), 'insights_backfill_months' => 13, 'insights_sync_status' => 'done']);
         $this->row('2026-10-02', 'stale', 99, 999, 99);   // dentro da janela → substituída
         $this->row('2026-09-20', 'keep', 50, 500, 10);    // fora da janela → intacta
 
@@ -207,7 +208,7 @@ class MetaAccountInsightsTest extends TestCase
         (new SyncMetaAccountInsightsJob($integration->id, MetaAccountInsightsService::MODE_DAILY))
             ->handle(app(MetaAccountInsightsService::class));
 
-        Http::assertSent(fn (HttpRequest $r) => ($this->timeRangeOf($r)['since'] ?? null) === '2026-07-06');
+        Http::assertSent(fn (HttpRequest $r) => ($this->timeRangeOf($r)['since'] ?? null) === '2025-09-01');
         $integration->refresh();
         $this->assertNotNull($integration->insights_backfilled_at); // 0 linhas também é sucesso
         $this->assertSame('done', $integration->insights_sync_status);
@@ -295,12 +296,26 @@ class MetaAccountInsightsTest extends TestCase
         $this->assertSame('active', $integration->fresh()->status);
     }
 
+    public function test_legacy_90_day_backfill_is_upgraded_to_13_months_by_daily(): void
+    {
+        // Integração com o backfill ANTIGO (90 dias → months null): o diário sobe a
+        // backfill de 13 meses, sem esperar pelo comando.
+        $integration = $this->integration(['insights_backfilled_at' => now()->subDays(10), 'insights_sync_status' => 'done']);
+        Http::fake(['graph.facebook.com/*' => Http::response(['data' => []])]);
+
+        (new SyncMetaAccountInsightsJob($integration->id))->handle(app(MetaAccountInsightsService::class));
+
+        Http::assertSent(fn (HttpRequest $r) => ($this->timeRangeOf($r)['since'] ?? null) === '2025-09-01');
+        $this->assertSame(13, $integration->fresh()->insights_backfill_months);
+    }
+
     public function test_daily_recovers_missed_days_from_watermark(): void
     {
         // Último sync com sucesso parou há 10 dias → o diário recua até lá (sem buracos).
         $integration = $this->integration([
-            'insights_backfilled_at' => now()->subDays(20),
-            'insights_synced_until'  => '2026-09-23',
+            'insights_backfilled_at'   => now()->subDays(20),
+            'insights_backfill_months' => 13,
+            'insights_synced_until'    => '2026-09-23',
         ]);
         Http::fake(['graph.facebook.com/*' => Http::response(['data' => []])]);
 
@@ -339,12 +354,14 @@ class MetaAccountInsightsTest extends TestCase
     {
         Queue::fake();
         $pending = $this->integration();                                                          // nunca fez backfill
-        $done = $this->integration(['insights_backfilled_at' => now()], $this->makeCompany('500002004', 'Já feito'));
+        $done = $this->integration(['insights_backfilled_at' => now(), 'insights_backfill_months' => 13], $this->makeCompany('500002004', 'Já feito'));
+        $legacy = $this->integration(['insights_backfilled_at' => now()->subDays(3)], $this->makeCompany('500002006', 'Backfill antigo 90d'));
         $noAccount = $this->integration(['account_id' => null], $this->makeCompany('500002005', 'Sem conta'));
 
         $this->artisan('meta:backfill-account-insights')->assertSuccessful();
 
         Queue::assertPushed(SyncMetaAccountInsightsJob::class, fn ($j) => $j->integrationId === $pending->id && $j->mode === 'backfill');
+        Queue::assertPushed(SyncMetaAccountInsightsJob::class, fn ($j) => $j->integrationId === $legacy->id && $j->mode === 'backfill'); // 90 dias → 13 meses
         Queue::assertNotPushed(SyncMetaAccountInsightsJob::class, fn ($j) => $j->integrationId === $done->id);
         $this->assertSame('needs_account', $noAccount->fresh()->insights_sync_status);
     }

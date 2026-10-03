@@ -178,6 +178,8 @@ Route::prefix('v1')->group(function () {
                 // Meta — LEITURA dos dados que o pipeline já ingere (gasto/cliques/
                 // CTR + vendas atribuídas). Zero fetch/escrita aqui. Scoped por company.
                 Route::get('/analytics/meta/overview', [MetaInsightsController::class, 'overview']);
+                // Avisos de qualidade da tag [id:N] nos anúncios (tags inválidas).
+                Route::get('/analytics/meta/ad-tag-warnings', [MetaInsightsController::class, 'adTagWarnings']);
 
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
@@ -196,6 +198,9 @@ Route::prefix('v1')->group(function () {
                     Route::get('/analytics/pingwin/calendar', [CompanyPingwinController::class, 'calendar']);
                     // Faturação mensal por loja (uma linha por loja, filtro de ano).
                     Route::get('/analytics/pingwin/monthly-billing', [CompanyPingwinController::class, 'monthlyBilling']);
+                    // Dashboard de restauração — bloco "marketing e resultados" (GA4 +
+                    // Meta + dados internos) de um mês: ?month=Y-m (default: mês em curso).
+                    Route::get('/analytics/restaurant/marketing', [\App\Http\Controllers\Api\V1\RestaurantMarketingController::class, 'show']);
                     // Documentos PingWin (Fase 1, só leitura): lista + sincronizar.
                     Route::get('/integrations/pingwin/documents', [CompanyPingwinController::class, 'documents']);
                     Route::post('/integrations/pingwin/documents/sync', [CompanyPingwinController::class, 'syncDocuments']);
@@ -385,6 +390,9 @@ Route::prefix('v1')->group(function () {
 
                 Route::get('cars/{car}/potential-score', [CarSalePotentialScoreController::class, 'show']);
                 Route::post('cars/{car}/potential-score/recalculate', [CarSalePotentialScoreController::class, 'recalculate']);
+
+                // Motor de recomendações (regras explicáveis), por ramo.
+                Route::get('recommendations', [\App\Http\Controllers\Api\V1\RecommendationController::class, 'index']);
 
                 // OAuth Meta
                 Route::get('integrations/meta/oauth-url', [MetaOAuthController::class, 'getAuthUrl']);

@@ -23,6 +23,17 @@ class CarObserver
         $this->recalculatePotentialScoreIfPricingChanged($car);
     }
 
+    /**
+     * Viatura apagada: o gasto Meta atribuído pela tag [id:N] NÃO se apaga (não há
+     * cascade de propósito). Fica como "viatura removida": car_id null, tagged_car_id N.
+     */
+    public function deleted(Car $car): void
+    {
+        \App\Models\MetaAdCarSpendDaily::where('company_id', $car->company_id)
+            ->where('car_id', $car->id)
+            ->update(['car_id' => null]);
+    }
+
     private function recalculatePotentialScoreIfPricingChanged(Car $car): void
     {
         $priceChanged = $car->wasChanged('price_gross');

@@ -38,7 +38,7 @@ class CarSalePotentialScoreService
         $marketIntelligence = $this->carMarketIntelligenceService->analyze($car);
         $priceVsMarket = $this->getPriceVsMarketPercent($marketIntelligence);
         $viewsTotal = (int) DB::table('car_views')->where('car_id', $car->id)->count();
-        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $daysInStock = (int) ($car->daysInStock() ?? 0);
 
         $breakdown = [
             'price_vs_market' => $this->scorePriceVsMarket($marketIntelligence),
@@ -263,11 +263,15 @@ class CarSalePotentialScoreService
 
     private function scoreDaysInStock(Car $car): int
     {
-        $days = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $days = (int) ($car->daysInStock() ?? 0);
 
-        if ($days <= 15) return 20;
-        if ($days <= 30) return 12;
-        if ($days <= 60) return 5;
+        // Faixas DERIVADAS do limiar do tipo (StockThresholds): [T/3, 2T/3, 4T/3].
+        // Carros: 15/30/60 (os valores de sempre); autocaravanas: 40/80/160.
+        [$fresh, $young, $aging] = \App\Constants\StockThresholds::ageBandsFor($car->vehicle_type);
+
+        if ($days <= $fresh) return 20;
+        if ($days <= $young) return 12;
+        if ($days <= $aging) return 5;
         return 0;
     }
 
@@ -332,7 +336,7 @@ class CarSalePotentialScoreService
             return 0;
         }
 
-        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $daysInStock = (int) ($car->daysInStock() ?? 0);
         $views = DB::table('car_views')->where('car_id', $car->id)->count();
         $leads = DB::table('car_leads')->where('car_id', $car->id)->count();
         $interactions = DB::table('car_interactions')->where('car_id', $car->id)->count();
@@ -381,7 +385,7 @@ class CarSalePotentialScoreService
 
         if ($avgDays === null) return 5; // sem histórico → neutro
 
-        $daysInStock = (int) Carbon::parse($car->created_at)->diffInDays(now());
+        $daysInStock = (int) ($car->daysInStock() ?? 0);
 
         // Se está a vender mais rápido que a média histórica → bom sinal
         if ($daysInStock < $avgDays * 0.7) return 10;
@@ -417,17 +421,7 @@ class CarSalePotentialScoreService
 
     private function resolveEffectivePrice(mixed $priceGross, mixed $promoPriceGross): ?float
     {
-        if ($priceGross === null) {
-            return null;
-        }
-
-        $basePrice = (float) $priceGross;
-        $promoPrice = $promoPriceGross !== null ? (float) $promoPriceGross : null;
-
-        if ($promoPrice !== null && $promoPrice > 0 && $promoPrice < $basePrice) {
-            return $promoPrice;
-        }
-
-        return $basePrice > 0 ? $basePrice : null;
+        // Regra única do preço efetivo (App\Support\PricePosition).
+        return \App\Support\PricePosition::effectivePrice($priceGross, $promoPriceGross);
     }
 }

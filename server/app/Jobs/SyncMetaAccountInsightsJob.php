@@ -64,6 +64,21 @@ class SyncMetaAccountInsightsJob implements ShouldQueue
         // A Meta pediu para abrandar → volta a tentar daqui a 5 min (sem falhar).
         if (($result['result'] ?? null) === 'retryable') {
             $this->release(300);
+
+            return;
+        }
+
+        // Fotografia dos públicos personalizados (motor de recomendações). Só com a
+        // ligação utilizável; um erro aqui NUNCA afeta o sync dos insights.
+        if (in_array($result['result'] ?? null, ['done', 'failed'], true)) {
+            try {
+                app(\App\Services\MetaCustomAudiencesService::class)->sync($integration->fresh());
+            } catch (\Throwable $e) {
+                Log::warning('SyncMetaAccountInsightsJob: públicos não sincronizados', [
+                    'integration_id' => $this->integrationId,
+                    'error'          => $e->getMessage(),
+                ]);
+            }
         }
     }
 

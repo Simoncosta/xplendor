@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Car;
+use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -87,7 +88,7 @@ class CarFunnelAnalyzer
             'vehicle_type' => $car->vehicle_type ?: 'car',
             'price' => $car->price_gross !== null ? (float) $car->price_gross : null,
             'segment' => $car->segment,
-            'days_in_stock' => $car->created_at ? (int) $car->created_at->diffInDays(now()) : null,
+            'days_in_stock' => $car->daysInStock(), // fonte única (StockAge)
         ];
 
         return [
@@ -119,7 +120,7 @@ class CarFunnelAnalyzer
                 'vehicle_type' => $car->vehicle_type ?: 'car',
                 'price' => $car->price_gross !== null ? (float) $car->price_gross : null,
                 'segment' => $car->segment,
-                'days_in_stock' => $car->created_at ? (int) $car->created_at->diffInDays(now()) : null,
+                'days_in_stock' => $car->daysInStock(), // fonte única (StockAge)
             ];
 
             return [
@@ -155,19 +156,13 @@ class CarFunnelAnalyzer
         $companyId = (int) $cars->first()->company_id;
         $carIds = $cars->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        $campaign = DB::table('campaign_car_metrics_daily')
-            ->where('company_id', $companyId)
-            ->whereIn('car_id', $carIds)
-            ->whereBetween('date', [$from, $to])
-            ->selectRaw('
-                car_id,
-                COALESCE(SUM(impressions), 0) as impressions,
-                COALESCE(SUM(clicks), 0) as clicks,
-                COALESCE(SUM(spend_normalized), 0) as spend_normalized
-            ')
-            ->groupBy('car_id')
-            ->get()
-            ->keyBy('car_id');
+        // Gasto por viatura da fonte única (tag [id:N] ou mapeamento manual).
+        $campaign = collect(app(CarAdSpendRepository::class)->totalsByCar($companyId, $carIds, $from, $to))
+            ->map(fn (array $t) => (object) [
+                'impressions' => $t['impressions'],
+                'clicks' => $t['clicks'],
+                'spend_normalized' => $t['spend'],
+            ]);
 
         $funnel = DB::table('car_funnel_metrics_daily')
             ->where('company_id', $companyId)
@@ -424,7 +419,9 @@ class CarFunnelAnalyzer
             || $clicks >= $thresholds['mature_clicks']
             || $spend >= $thresholds['mature_spend']
         ) {
-            $state = $vehicleType === 'motorhome' && $daysInStock <= 90 ? 'warning' : 'bad';
+            // Autocaravana: a conversão ainda está em maturação enquanto a viatura não
+            // está "parada há muito" para o seu tipo (StockThresholds; antes: 90 fixo).
+            $state = $vehicleType === 'motorhome' && ! \App\Constants\StockThresholds::isStale($vehicleType, $daysInStock) ? 'warning' : 'bad';
             $diagnosis = $vehicleType === 'motorhome'
                 ? 'Existe aprendizagem, mas a conversão ainda não amadureceu para um produto de decisão longa'
                 : 'Campanha madura sem conversão';
