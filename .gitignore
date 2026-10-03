@@ -1,1 +1,3 @@
 docker/scraper/scraper.log
+# Dados locais do Redis (dev): o contentor escreve aqui; nunca no git.
+docker/redis/db/dump.rdb
