@@ -1,10 +1,15 @@
 // React
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createSelector } from 'reselect';
+import { Link, useSearchParams } from 'react-router-dom';
+import classnames from 'classnames';
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Container, Row } from 'reactstrap';
+import { Container, Nav, NavItem, NavLink, Row, Spinner } from 'reactstrap';
+import AutomotiveMarketingBlock from './components/AutomotiveMarketingBlock';
+import { useRecommendations } from './components/RecommendationsCard';
+import { countHighPriority } from './components/automotiveMarketingText';
 import SummaryDashboard from './components/SummaryDashboard';
 import { getAnalyticsDashboard, getStockBreakdown, getSalesRevenue } from 'slices/dashboards/thunk';
 import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
@@ -34,28 +39,70 @@ const selectDashboardViewModel = createSelector(
     })
 );
 
-const ClientDashboard = () => {
-    const dispatch: any = useDispatch();
-    document.title = "Dashboard | Xplendor";
+// ── Separadores do dashboard do automóvel ────────────────────────────────────
 
+type CarTab = "stock" | "marketing";
+
+const CAR_TABS: { key: CarTab; label: string; icon: string }[] = [
+    { key: "stock", label: "Stock", icon: "ri-car-line" },
+    { key: "marketing", label: "Marketing e resultados", icon: "ri-line-chart-line" },
+];
+
+/** O separador vem do URL (?tab=stock | ?tab=marketing); por defeito, Stock. */
+const tabFromSearch = (value: string | null): CarTab => (value === "marketing" ? "marketing" : "stock");
+
+/**
+ * Nav de separadores no estilo Custom Nav (nav-tabs-custom-pages), como na
+ * restauração: cada separador é um link (?tab=…), por isso recarregar ou partilhar
+ * o URL abre no mesmo sítio. Em mobile, scroll horizontal se não couber.
+ */
+function CarTabsNav({ active, highCount }: { active: CarTab; highCount: number }) {
+    return (
+        <div style={{ overflowX: "auto" }} className="mb-3">
+            <Nav tabs className="nav-tabs-custom-pages flex-nowrap" style={{ minWidth: "max-content" }}>
+                {CAR_TABS.map((t) => {
+                    const isActive = t.key === active;
+                    return (
+                        <NavItem key={t.key}>
+                            <NavLink
+                                tag={Link}
+                                to={`?tab=${t.key}`}
+                                replace
+                                active={isActive}
+                                aria-current={isActive ? "page" : undefined}
+                                className={classnames("d-inline-flex align-items-center gap-2 text-nowrap", { "text-body": !isActive })}
+                            >
+                                <i className={t.icon} />
+                                {t.label}
+                                {/* Recomendações de prioridade alta (uma por viatura), para não passarem despercebidas. */}
+                                {t.key === "stock" && highCount > 0 && (
+                                    <span
+                                        className="badge rounded-pill bg-danger fs-11"
+                                        title={`${highCount} ${highCount === 1 ? "recomendação" : "recomendações"} de prioridade alta`}
+                                        aria-label={`${highCount} ${highCount === 1 ? "recomendação" : "recomendações"} de prioridade alta`}
+                                    >
+                                        {highCount}
+                                    </span>
+                                )}
+                            </NavLink>
+                        </NavItem>
+                    );
+                })}
+            </Nav>
+        </div>
+    );
+}
+
+/** Separador "Stock": o dashboard do automóvel como estava (carrega ao abrir). */
+const CarStockTab = () => {
+    const dispatch: any = useDispatch();
     const {
         analytics, loading,
         stockBreakdown, stockBreakdownLoading,
         salesRevenue, salesRevenueLoading,
     } = useSelector(selectDashboardViewModel);
 
-    // O dashboard atual é de CARROS. Só o mostramos a empresas com módulos de
-    // carros (stock/commercial_crm). Sem eles (ex.: restauração) → dashboard
-    // vazio, sem crash (o dashboard do ramo é tarefa futura). `has` já trata
-    // root/desconhecido como "vê tudo".
-    const { has, isRoot, loading: modulesLoading } = useModules();
-    const showCars = isRoot || has('stock') || has('commercial_crm');
-
-    // Effects — só busca os dados de carros quando faz sentido (evita chamadas
-    // desnecessárias na restauração; espera saber os módulos primeiro).
     useEffect(() => {
-        if (modulesLoading || !showCars) return;
-
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
 
@@ -67,7 +114,7 @@ const ClientDashboard = () => {
         dispatch(getStockBreakdown({ companyId: obj.company_id }));
         // V3 dispara o seu próprio fetch via callback no SalesRevenueCard
         // (preset default "Este ano" no primeiro mount).
-    }, [dispatch, modulesLoading, showCars]);
+    }, [dispatch]);
 
     const handleSalesRangeChange = (range: { from: string; to: string; granularity: SalesRevenueGranularity }) => {
         const authUser = sessionStorage.getItem("authUser");
@@ -82,10 +129,92 @@ const ClientDashboard = () => {
         }));
     };
 
+    if (loading) return <div className="text-center py-4"><Spinner color="primary" size="sm" /></div>;
+    if (!analytics) return null;
+
+    return (
+        <>
+            <Row className="g-3 mb-3">
+                <SummaryDashboard summary={analytics.summary} />
+            </Row>
+            <Row className="g-3 mb-3">
+                <SubscriptionTrialBanner />
+            </Row>
+            <Row className="g-3 mb-3">
+                <StockBreakdownCard data={stockBreakdown} loading={stockBreakdownLoading} />
+            </Row>
+            <Row className="g-3 mb-3">
+                <SalesRevenueCard
+                    data={salesRevenue}
+                    loading={salesRevenueLoading}
+                    onRangeChange={handleSalesRangeChange}
+                />
+            </Row>
+            <Row className="g-3 mb-3">
+                <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />
+            </Row>
+            {SHOW_SILENT_BUYER && (analytics.silent_buyers?.total_detected ?? 0) > 0 && (
+                <Row className="g-3 mb-3">
+                    <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
+                </Row>
+            )}
+        </>
+    );
+};
+
+/** Dashboard do automóvel com separadores: "Stock" (por defeito) e "Marketing e resultados". */
+const CarDashboardTabs = () => {
+    const companyId = useMemo(() => {
+        const authUser = sessionStorage.getItem("authUser");
+        if (!authUser) return 0;
+        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
+    }, []);
+
+    const [searchParams] = useSearchParams();
+    const tab = tabFromSearch(searchParams.get("tab"));
+
+    // Cada separador só monta (e só carrega os seus dados) quando é aberto pela
+    // primeira vez; depois fica montado, escondido, para manter o mês escolhido.
+    const [opened, setOpened] = useState<Record<CarTab, boolean>>({ stock: tab === "stock", marketing: tab === "marketing" });
+    useEffect(() => {
+        setOpened((o) => (o[tab] ? o : { ...o, [tab]: true }));
+    }, [tab]);
+
+    // Só as recomendações carregam logo (são leves): o contador do separador precisa delas.
+    const recommendations = useRecommendations(companyId, "automotive", companyId > 0);
+    const highCount = countHighPriority(recommendations.data?.recommendations ?? []);
+
+    return (
+        <>
+            <CarTabsNav active={tab} highCount={highCount} />
+            {opened.stock && (
+                <div className={tab === "stock" ? undefined : "d-none"}>
+                    <CarStockTab />
+                </div>
+            )}
+            {opened.marketing && companyId > 0 && (
+                <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
+                    <AutomotiveMarketingBlock companyId={companyId} />
+                </div>
+            )}
+        </>
+    );
+};
+
+const ClientDashboard = () => {
+    document.title = "Dashboard | Xplendor";
+
+    // O dashboard atual é de CARROS. Só o mostramos a empresas com módulos de
+    // carros (stock/commercial_crm). Sem eles (ex.: restauração) → dashboard
+    // vazio, sem crash (o dashboard do ramo é tarefa futura). `has` já trata
+    // root/desconhecido como "vê tudo".
+    const { has, isRoot, loading: modulesLoading } = useModules();
+    const showCars = isRoot || has('stock') || has('commercial_crm');
+
     // O painel principal adapta-se ao RAMO. Empresa de restauração (módulo
     // pingwin, sem os de carros) vê o dashboard de restauração — já não fica em
     // branco. Sem nenhum ramo reconhecido → só o essencial.
-    if (!showCars) {
+    if (!modulesLoading && !showCars) {
         const showPingwin = isRoot || has('pingwin');
         return (
             <React.Fragment>
@@ -103,37 +232,14 @@ const ClientDashboard = () => {
         );
     }
 
-    if (loading) return null;
-    if (!analytics) return null;
+    // Espera saber os módulos antes de carregar os dados de carros.
+    if (modulesLoading) return null;
 
     return (
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
-                    <Row className="g-3 mb-3">
-                        <SummaryDashboard summary={analytics.summary} />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <SubscriptionTrialBanner />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <StockBreakdownCard data={stockBreakdown} loading={stockBreakdownLoading} />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <SalesRevenueCard
-                            data={salesRevenue}
-                            loading={salesRevenueLoading}
-                            onRangeChange={handleSalesRangeChange}
-                        />
-                    </Row>
-                    <Row className="g-3 mb-3">
-                        <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />
-                    </Row>
-                    {SHOW_SILENT_BUYER && (analytics.silent_buyers?.total_detected ?? 0) > 0 && (
-                        <Row className="g-3 mb-3">
-                            <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
-                        </Row>
-                    )}
+                    <CarDashboardTabs />
                 </Container>
             </div>
         </React.Fragment>

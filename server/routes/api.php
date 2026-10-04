@@ -151,6 +151,9 @@ Route::prefix('v1')->group(function () {
                 // Hub do Automóvel: resumo + recomendações + avisos; funil por viatura.
                 Route::get('automotive-hub', [\App\Http\Controllers\Api\V1\AutomotiveHubController::class, 'index']);
                 Route::get('automotive-hub/funnel', [\App\Http\Controllers\Api\V1\AutomotiveHubController::class, 'funnel']);
+                // Dashboard do automóvel: bloco "Marketing e resultados" (GA4 + Meta + leads).
+                Route::get('analytics/automotive/marketing', [\App\Http\Controllers\Api\V1\AutomotiveMarketingController::class, 'show'])
+                    ->middleware('ensure_module:stock');
 
                 Route::post('/cars/{carId}/meta-ads/refresh', [CarController::class, 'refreshMetaAds']);
                 Route::post('/cars/{carId}/analysis/regenerate', [CarController::class, 'regenerateAiAnalysis']);

@@ -272,6 +272,9 @@ export const getRecommendations = (companyId: number, vertical: "restaurant" | "
 // Dashboard de restauração — bloco "marketing e resultados" de um mês (AAAA-MM; omisso = mês em curso).
 export const getRestaurantMarketing = (companyId: number, month?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/restaurant/marketing`, month ? { month } : undefined);
+// Dashboard do automóvel — bloco "Marketing e resultados" de um mês (AAAA-MM; omisso = mês em curso).
+export const getAutomotiveMarketing = (companyId: number, month?: string) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/analytics/automotive/marketing`, month ? { month } : undefined);
 export const getPingwinDashboard = (companyId: number, date?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/pingwin/dashboard`, date ? { date } : undefined);
 // Calendário de faturação: números por dia de um mês (YYYY-MM) + filtro por loja.
