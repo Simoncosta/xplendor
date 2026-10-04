@@ -25,7 +25,10 @@ use Carbon\CarbonImmutable;
 class SoldCarAdStillActiveRule implements RecommendationRule
 {
     public const KEY = 'automotive_sold_car_ad_active';
-    public const PRIORITY = 100;
+    /** Anúncio ativo E gasto depois da venda: o único caso que chega a 100. */
+    public const PRIORITY = AutomotivePriority::RESERVED_MAX;
+    /** Só um dos dois (anúncio ativo sem gasto ainda, ou gasto com o anúncio já pausado). */
+    public const PRIORITY_PARTIAL = AutomotivePriority::MAX_REGULAR;
 
     public function __construct(private readonly CarAdSpendRepository $spend) {}
 
@@ -123,7 +126,7 @@ class SoldCarAdStillActiveRule implements RecommendationRule
 
             $recommendations[] = new Recommendation(
                 ruleKey: self::KEY,
-                priority: self::PRIORITY,
+                priority: ($ads !== [] && $postSale > 0) ? self::PRIORITY : self::PRIORITY_PARTIAL,
                 title: 'Anúncio de viatura vendida ainda ativo',
                 why: $why,
                 evidence: [
@@ -135,6 +138,9 @@ class SoldCarAdStillActiveRule implements RecommendationRule
                     'post_sale_spend' => $postSale,
                     'recent_post_sale_spend' => $recentPostSale,
                     'lookback_days' => $params['lookback_days'],
+                    // Desempates: o dinheiro gasto depois da venda e há quantos dias foi vendida.
+                    'impact_eur' => $postSale,
+                    'days_over_threshold' => (int) CarbonImmutable::parse($soldDate)->diffInDays($now->startOfDay()),
                 ],
                 action: [
                     'label' => 'Abrir no Gestor de Anúncios',

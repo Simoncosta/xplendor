@@ -352,6 +352,37 @@ class AutomotiveMarketingTest extends TestCase
         $this->assertSame(0, $out['metrics']['leads']['total']);
     }
 
+    public function test_stopped_tracking_is_flagged_instead_of_showing_zeros_as_real(): void
+    {
+        // Registos de março a junho e depois mais nada (como a empresa 3 em dev).
+        $this->trackingSince('2026-03-09');
+        $this->interaction('whatsapp_click', '2026-06-17 10:00:00');
+
+        $t = $this->build()['sources']['tracking'];   // outubro (mês em curso, hoje 16/10)
+        $this->assertSame('stale', $t['state']);
+        $this->assertSame('2026-06-17', $t['last_seen']);
+        $this->assertSame(121, $t['days_without']);      // 17/06 → 16/10
+        $this->assertSame(7, $t['stale_after_days']);
+
+        // Em maio o registo funcionava: não está parado. Em junho parou a 17 (os 13
+        // dias seguintes sem nada): já conta como parado.
+        $this->assertSame('ok', $this->build('2026-05')['sources']['tracking']['state']);
+        $this->assertSame('stale', $this->build('2026-06')['sources']['tracking']['state']);
+        // Em julho (mês passado) parou: dias sem registos até ao fim do mês.
+        $jul = $this->build('2026-07')['sources']['tracking'];
+        $this->assertSame('stale', $jul['state']);
+        $this->assertSame(44, $jul['days_without']);   // 17/06 → 31/07
+    }
+
+    public function test_recent_tracking_is_ok(): void
+    {
+        $this->trackingSince('2026-08-01');
+        $this->interaction('call_click', '2026-10-12 10:00:00');
+
+        $this->assertSame('ok', $this->build()['sources']['tracking']['state']);
+        $this->assertNull($this->build()['sources']['tracking']['days_without']);
+    }
+
     public function test_meta_token_expired_keeps_ingested_data_and_ga4_error_is_a_state(): void
     {
         $this->meta(['status' => 'expired', 'insights_sync_status' => 'token_expired']);

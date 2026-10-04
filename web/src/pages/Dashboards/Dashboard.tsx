@@ -1,18 +1,17 @@
 // React
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createSelector } from 'reselect';
 import { Link, useSearchParams } from 'react-router-dom';
 import classnames from 'classnames';
 // Redux
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Container, Nav, NavItem, NavLink, Row, Spinner } from 'reactstrap';
+import { Container, Nav, NavItem, NavLink, Row } from 'reactstrap';
 import AutomotiveMarketingBlock from './components/AutomotiveMarketingBlock';
+import AutomotiveHubStock from './components/AutomotiveHubStock';
 import { useRecommendations } from './components/RecommendationsCard';
 import { countHighPriority } from './components/automotiveMarketingText';
-import SummaryDashboard from './components/SummaryDashboard';
 import { getAnalyticsDashboard, getStockBreakdown, getSalesRevenue } from 'slices/dashboards/thunk';
-import ActionRequiredCarsDashboard from './components/ActionRequiredCarsDashboard';
 import SubscriptionTrialBanner from './components/SubscriptionTrialBanner';
 import SilentBuyerExecutiveCard from './components/SilentBuyerExecutiveCard';
 import StockBreakdownCard from './components/StockBreakdownCard';
@@ -25,6 +24,10 @@ import type { SalesRevenueGranularity } from "../../types/api";
 // Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
 // true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
 const SHOW_SILENT_BUYER = false;
+
+// "Composição do stock" ESCONDIDA do dashboard (decisão de produto). Reversível:
+// basta pôr true. O componente e o endpoint dashboard/stock-breakdown ficam.
+const SHOW_STOCK_BREAKDOWN = false;
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectDashboardViewModel = createSelector(
@@ -52,14 +55,14 @@ const CAR_TABS: { key: CarTab; label: string; icon: string }[] = [
 const tabFromSearch = (value: string | null): CarTab => (value === "marketing" ? "marketing" : "stock");
 
 /**
- * Nav de separadores no estilo Custom Nav (nav-tabs-custom-pages), como na
- * restauração: cada separador é um link (?tab=…), por isso recarregar ou partilhar
+ * Nav de separadores no estilo "Border Top Nav" do template (nav-border-top), como
+ * na restauração: cada separador é um link (?tab=…), por isso recarregar ou partilhar
  * o URL abre no mesmo sítio. Em mobile, scroll horizontal se não couber.
  */
 function CarTabsNav({ active, highCount }: { active: CarTab; highCount: number }) {
     return (
         <div style={{ overflowX: "auto" }} className="mb-3">
-            <Nav tabs className="nav-tabs-custom-pages flex-nowrap" style={{ minWidth: "max-content" }}>
+            <Nav tabs className="nav-border-top nav-border-top-primary flex-nowrap" style={{ minWidth: "max-content" }}>
                 {CAR_TABS.map((t) => {
                     const isActive = t.key === active;
                     return (
@@ -93,56 +96,45 @@ function CarTabsNav({ active, highCount }: { active: CarTab; highCount: number }
     );
 }
 
-/** Separador "Stock": o dashboard do automóvel como estava (carrega ao abrir). */
-const CarStockTab = () => {
+/**
+ * Separador "Stock": o hub do automóvel (resumo, recomendações do motor novo,
+ * funil por viatura, avisos e atalhos), seguido da composição do stock e da
+ * faturação por período. Carrega ao abrir. O antigo "Viaturas que merecem
+ * atenção" (CarIssueEngine) saiu: as recomendações vêm do mesmo motor do contador.
+ */
+const CarStockTab = ({ companyId, onHighCount }: { companyId: number; onHighCount: (n: number) => void }) => {
     const dispatch: any = useDispatch();
     const {
-        analytics, loading,
+        analytics,
         stockBreakdown, stockBreakdownLoading,
         salesRevenue, salesRevenueLoading,
     } = useSelector(selectDashboardViewModel);
 
     useEffect(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-
-        const obj = JSON.parse(authUser);
-        if (!obj?.company_id) return;
-
-        dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
-        // Visões 1+2 (2026-06-25) — endpoint próprio, paralelo ao blob principal.
-        dispatch(getStockBreakdown({ companyId: obj.company_id }));
-        // V3 dispara o seu próprio fetch via callback no SalesRevenueCard
-        // (preset default "Este ano" no primeiro mount).
-    }, [dispatch]);
+        if (!companyId) return;
+        // Visões 1+2 (2026-06-25) — composição do stock (escondida; só pede se voltar).
+        if (SHOW_STOCK_BREAKDOWN) dispatch(getStockBreakdown({ companyId }));
+        // O blob antigo do dashboard só faz falta ao Silent Buyer (escondido).
+        if (SHOW_SILENT_BUYER) dispatch(getAnalyticsDashboard({ companyId }));
+        // A faturação (V3) dispara o seu próprio pedido no SalesRevenueCard.
+    }, [dispatch, companyId]);
 
     const handleSalesRangeChange = (range: { from: string; to: string; granularity: SalesRevenueGranularity }) => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-        const obj = JSON.parse(authUser);
-        if (!obj?.company_id) return;
-        dispatch(getSalesRevenue({
-            companyId: obj.company_id,
-            from: range.from,
-            to: range.to,
-            granularity: range.granularity,
-        }));
+        if (!companyId) return;
+        dispatch(getSalesRevenue({ companyId, from: range.from, to: range.to, granularity: range.granularity }));
     };
-
-    if (loading) return <div className="text-center py-4"><Spinner color="primary" size="sm" /></div>;
-    if (!analytics) return null;
 
     return (
         <>
             <Row className="g-3 mb-3">
-                <SummaryDashboard summary={analytics.summary} />
-            </Row>
-            <Row className="g-3 mb-3">
                 <SubscriptionTrialBanner />
             </Row>
-            <Row className="g-3 mb-3">
-                <StockBreakdownCard data={stockBreakdown} loading={stockBreakdownLoading} />
-            </Row>
+            <AutomotiveHubStock companyId={companyId} onHighCount={onHighCount} />
+            {SHOW_STOCK_BREAKDOWN && (
+                <Row className="g-3 mb-3">
+                    <StockBreakdownCard data={stockBreakdown} loading={stockBreakdownLoading} />
+                </Row>
+            )}
             <Row className="g-3 mb-3">
                 <SalesRevenueCard
                     data={salesRevenue}
@@ -150,10 +142,7 @@ const CarStockTab = () => {
                     onRangeChange={handleSalesRangeChange}
                 />
             </Row>
-            <Row className="g-3 mb-3">
-                <ActionRequiredCarsDashboard cars={analytics.immediate_actions || []} />
-            </Row>
-            {SHOW_SILENT_BUYER && (analytics.silent_buyers?.total_detected ?? 0) > 0 && (
+            {SHOW_SILENT_BUYER && (analytics?.silent_buyers?.total_detected ?? 0) > 0 && (
                 <Row className="g-3 mb-3">
                     <SilentBuyerExecutiveCard summary={analytics.silent_buyers} />
                 </Row>
@@ -180,16 +169,20 @@ const CarDashboardTabs = () => {
         setOpened((o) => (o[tab] ? o : { ...o, [tab]: true }));
     }, [tab]);
 
-    // Só as recomendações carregam logo (são leves): o contador do separador precisa delas.
+    // Contador do separador "Stock": enquanto o separador não abriu, vem do motor
+    // (as recomendações são leves); quando abre, passa a ler a MESMA resposta do hub
+    // que mostra a lista (high_count), com a mesma regra: uma por viatura.
     const recommendations = useRecommendations(companyId, "automotive", companyId > 0);
-    const highCount = countHighPriority(recommendations.data?.recommendations ?? []);
+    const [hubHighCount, setHubHighCount] = useState<number | null>(null);
+    const onHighCount = useCallback((n: number) => setHubHighCount(n), []);
+    const highCount = hubHighCount ?? countHighPriority(recommendations.data?.recommendations ?? []);
 
     return (
         <>
             <CarTabsNav active={tab} highCount={highCount} />
             {opened.stock && (
                 <div className={tab === "stock" ? undefined : "d-none"}>
-                    <CarStockTab />
+                    <CarStockTab companyId={companyId} onHighCount={onHighCount} />
                 </div>
             )}
             {opened.marketing && companyId > 0 && (

@@ -8,7 +8,7 @@ import { getAutomotiveMarketing } from "helpers/laravel_helper";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { AutoComparison, AutomotiveMarketing } from "common/models/automotiveMarketing.model";
 import DashboardSectionHeader from "./DashboardSectionHeader";
-import { buildAutoInsights, comparisonView, eur2, usesSeasonality, type ZeroNoun } from "./automotiveMarketingText";
+import { buildAutoInsights, comparisonView, dayMonth, eur2, usesSeasonality, type ZeroNoun } from "./automotiveMarketingText";
 import { eur0, int, monthLong, signedPct } from "./restaurantMarketingText";
 
 /**
@@ -70,7 +70,7 @@ const ComparisonLine = ({ cmp, zero }: { cmp: AutoComparison | null | undefined;
 
 // ── Cartão de métrica com "?" ────────────────────────────────────────────────
 
-const MetricCard = ({ label, icon, color, value, children, help, unavailable }: {
+export const MetricCard = ({ label, icon, color, value, children, help, unavailable }: {
     label: string; icon: string; color: string; value?: string; children?: ReactNode; help: string; unavailable?: ReactNode;
 }) => {
     const [showHelp, setShowHelp] = useState(false);
@@ -188,6 +188,15 @@ export default function AutomotiveMarketingBlock({ companyId }: { companyId: num
                 </Alert>
             ) : (
                 <>
+                    {/* Registo de visitas parado: os zeros podem não ser reais. */}
+                    {data.sources.tracking.state === "stale" && (
+                        <Alert color="warning" className="fs-13">
+                            <i className="ri-error-warning-line me-1" />
+                            <strong>Sem registos de visitas há {int(data.sources.tracking.days_without ?? 0)} dias</strong>
+                            {data.sources.tracking.last_seen && <> (o último foi a {dayMonth(data.sources.tracking.last_seen)})</>}.
+                            {" "}Os números de leads e contactos deste período podem estar incompletos. Confirme que o código de registo de visitas continua instalado no site.
+                        </Alert>
+                    )}
                     {data.sources.tracking.state === "no_data" && (
                         <Alert color="info" className="fs-13">
                             <i className="ri-information-line me-1" />
@@ -223,6 +232,7 @@ export default function AutomotiveMarketingBlock({ companyId }: { companyId: num
                                 value={m.leads ? int(m.leads.total) : "Sem dados"}
                                 help="Pedidos de contacto registados no site (formulários e pedidos de informação). As pagas são as que chegaram de anúncios com os parâmetros de URL corretos.">
                                 <ComparisonLine cmp={m.leads?.comparison} zero="leads" />
+                                {data.sources.tracking.state === "stale" && <div className="fs-12 text-warning mt-1">Registo de visitas parado: pode estar incompleto.</div>}
                                 {m.leads && (
                                     <SubLine>
                                         <span className="text-body fw-medium">{int(m.leads.paid)} {m.leads.paid === 1 ? "paga" : "pagas"}</span>
@@ -285,6 +295,7 @@ export default function AutomotiveMarketingBlock({ companyId }: { companyId: num
                                 value={m.contacts ? int(m.contacts.total) : "Sem dados"}
                                 help="Contactos feitos diretamente a partir do site: cliques no WhatsApp, chamadas e vezes que o número de telefone foi mostrado ou copiado.">
                                 <ComparisonLine cmp={m.contacts?.comparison} zero="contactos" />
+                                {data.sources.tracking.state === "stale" && <div className="fs-12 text-warning mt-1">Registo de visitas parado: pode estar incompleto.</div>}
                                 {m.contacts && (
                                     <div className="mt-2 fs-12 text-muted">
                                         WhatsApp {int(m.contacts.by_type.whatsapp)} · Chamada {int(m.contacts.by_type.call)} · Telefone {int(m.contacts.by_type.phone_reveal)}
@@ -350,12 +361,6 @@ export default function AutomotiveMarketingBlock({ companyId }: { companyId: num
                 </>
             )}
 
-            {/* ── Atalhos para as telas de detalhe ── */}
-            <div className="d-flex flex-wrap gap-2">
-                <Link to="/meta-ads" className="btn btn-sm btn-soft-info"><i className="ri-advertisement-line me-1" />Meta / Anúncios</Link>
-                <Link to="/trafego-site" className="btn btn-sm btn-soft-success"><i className="ri-line-chart-line me-1" />Tráfego do site</Link>
-                <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-secondary"><i className="ri-settings-3-line me-1" />Integrações</Link>
-            </div>
         </section>
     );
 }
@@ -367,7 +372,7 @@ function DailyChart({ data }: { data: AutomotiveMarketing }) {
     const dates = (m.leads?.series ?? []).map((p) => p.date);
     if (dates.length === 0) return <p className="text-muted mb-0">Sem dados diários para este período.</p>;
 
-    const palette = getChartColorsArray('["--vz-primary", "--vz-info", "--vz-success"]');
+    const palette = getChartColorsArray('["--vz-primary", "--vz-info", "--vz-success", "--vz-warning"]');
     const narrow = typeof window !== "undefined" && window.innerWidth < 576;
     const maxLabels = narrow ? 6 : 16;
     const labelStep = Math.max(1, Math.ceil(dates.length / maxLabels));
@@ -377,8 +382,14 @@ function DailyChart({ data }: { data: AutomotiveMarketing }) {
 
     if (m.leads) {
         series.push({ name: "Leads", type: "column", data: m.leads.series.map((p) => p.total) });
-        yaxis.push({ seriesName: "Leads", title: { text: "Leads" }, labels: { formatter: (v: number) => int(v) } });
+        yaxis.push({ seriesName: "Leads", title: { text: "Leads e contactos" }, labels: { formatter: (v: number) => int(v) } });
         colors.push(palette[0]);
+    }
+    if (m.contacts) {
+        // Contactos diretos (WhatsApp, chamada, telefone) no mesmo eixo das leads.
+        series.push({ name: "Contactos diretos", type: "line", data: m.contacts.series.map((p) => p.value) });
+        yaxis.push({ seriesName: "Leads", show: false, labels: { formatter: (v: number) => int(v) } });
+        colors.push(palette[3]);
     }
     if (m.meta_spend) {
         series.push({ name: "Investimento Meta (€)", type: "line", data: m.meta_spend.series.map((p) => p.spend) });

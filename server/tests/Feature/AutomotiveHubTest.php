@@ -172,8 +172,13 @@ class AutomotiveHubTest extends TestCase
     {
         $exactAbove = $this->car(10, ['price_gross' => 23000]);
         $this->aggregate($exactAbove, 20000, 'high');                 // +15%, exata → conta
-        $approxAbove = $this->car(10, ['price_gross' => 24000]);
-        $this->aggregate($approxAbove, 20000, 'high', true);          // +20%, FALLBACK → aproximada
+        // Decisão 1: aproximado só quando a comparação pode ter largado o modelo
+        // (aggregate antigo de autocaravana, da cascata). Um carro com recurso
+        // mantém marca e modelo: conta como exato, com "critérios alargados".
+        $approxAbove = $this->car(10, ['vehicle_type' => 'motorhome', 'price_gross' => 24000]);
+        $this->aggregate($approxAbove, 20000, 'high', true);          // +20%, cascata antiga → aproximada
+        $widened = $this->car(10, ['price_gross' => 22500]);
+        $this->aggregate($widened, 20000, 'high', true);              // +12,5%, carro com recurso → exata
         $lowConf = $this->car(10, ['price_gross' => 26000]);
         $this->aggregate($lowConf, 20000, 'low');                     // confiança baixa
         $fair = $this->car(10, ['price_gross' => 20000]);
@@ -182,9 +187,9 @@ class AutomotiveHubTest extends TestCase
 
         $p = $this->hub()->summary($this->company->id)['price_position'];
 
-        $this->assertSame(1, $p['above_market_cars']);
-        $this->assertSame(2, $p['eligible_cars']);
-        $this->assertSame(50.0, $p['above_market_pct']);
+        $this->assertSame(2, $p['above_market_cars']);
+        $this->assertSame(3, $p['eligible_cars']);
+        $this->assertSame(66.7, $p['above_market_pct']);
         $this->assertSame(1, $p['approximate_cars']);
         $this->assertSame(1, $p['low_confidence_cars']);
         $this->assertSame(1, $p['no_data_cars']);
@@ -195,6 +200,10 @@ class AutomotiveHubTest extends TestCase
         $this->assertSame('approximate', $byCar[$approxAbove->id]['comparison']);
         $this->assertSame('approximate_comparison', $byCar[$approxAbove->id]['display_position']);
         $this->assertFalse($byCar[$approxAbove->id]['counts_as_above_market']);
+        $this->assertSame('exact', $byCar[$widened->id]['comparison']);
+        $this->assertTrue($byCar[$widened->id]['criteria_widened']);
+        $this->assertTrue($byCar[$widened->id]['counts_as_above_market']);
+        $this->assertFalse($byCar[$exactAbove->id]['criteria_widened']);
         $this->assertNull($byCar[$this->company->cars()->latest('id')->first()->id]['comparison'] ?? null);
     }
 
@@ -272,9 +281,11 @@ class AutomotiveHubTest extends TestCase
     {
         $this->equivalenceFixture();
 
+        // A escala de prioridade mudou de propósito (decisão 5: o topo comprimido, 100
+        // raro); o que tem de bater é o PROBLEMA PRINCIPAL escolhido para cada viatura.
         $old = collect(app(CarIssueEngine::class)->getImmediateActions($this->company->id, 10))
-            ->map(fn ($r) => [$r['id'], $r['issue_type'], $r['priority_score']])
-            ->sortBy(fn ($r) => [-$r[2], $r[0]])->values()->all();
+            ->map(fn ($r) => [$r['id'], $r['issue_type']])
+            ->sortBy(fn ($r) => $r[0])->values()->all();
 
         // Só as regras migradas (as novas do 2D desligadas para esta comparação).
         foreach (['automotive_sold_car_ad_active', 'automotive_high_views_no_contacts', 'automotive_spend_without_lead'] as $key) {
@@ -282,12 +293,13 @@ class AutomotiveHubTest extends TestCase
                 'enabled' => false, 'params' => null, 'created_at' => now(), 'updated_at' => now()]);
         }
 
-        $new = collect($this->hub()->recommendations($this->company, null, 10)['recommendations'])
-            ->map(fn ($r) => [$r['evidence']['car_id'], $r['evidence']['issue_type'], $r['priority']])
-            ->sortBy(fn ($r) => [-$r[2], $r[0]])->values()->all();
+        $recs = $this->hub()->recommendations($this->company, null, 10)['recommendations'];
+        $new = collect($recs)
+            ->map(fn ($r) => [$r['evidence']['car_id'], $r['evidence']['issue_type']])
+            ->sortBy(fn ($r) => $r[0])->values()->all();
+        $this->assertLessThan(100, max(array_column($recs, 'priority')));   // 100 fica reservado
 
-        // 2D: "acima do mercado e parada" sai fundida (um só tipo) com a MESMA prioridade
-        // que o motor antigo dava ao problema principal da viatura (preço ou parada).
+        // 2D: "acima do mercado e parada" sai fundida (um só tipo).
         foreach ($new as $i => $row) {
             if ($row[1] === 'price_above_market_stale') {
                 $this->assertContains($old[$i][1], ['price_above_market', 'dead_stock']);
@@ -309,7 +321,7 @@ class AutomotiveHubTest extends TestCase
         $this->assertLessThanOrEqual(5, $recs->count());
         // Acima do mercado (100) e parada (99): uma só recomendação fundida.
         $this->assertSame('high', $top['level']);
-        $this->assertSame(100, $top['priority']);
+        $this->assertSame(88, $top['priority']);   // bruto 100 → 70 + 30 × 0,6
         $this->assertSame('Acima do mercado e parada', $top['title']);
         $this->assertSame('price_above_market_stale', $top['evidence']['issue_type']);
         $this->assertStringContainsString('15,0% acima da mediana de 12 anúncios comparáveis', $top['why']);
@@ -343,8 +355,8 @@ class AutomotiveHubTest extends TestCase
 
     public function test_price_rule_never_fires_on_an_approximate_comparison(): void
     {
-        $car = $this->car(10, ['price_gross' => 26000]);
-        $this->aggregate($car, 20000, 'high', true);   // +30%, mas FALLBACK
+        $car = $this->car(10, ['vehicle_type' => 'motorhome', 'price_gross' => 26000]);
+        $this->aggregate($car, 20000, 'high', true);   // +30%, mas cascata antiga (pode ter largado o modelo)
         $this->views($car, 100);
         $this->interaction($car, 'whatsapp_click', 1, 10);
         $this->images($car, 10);
@@ -451,6 +463,32 @@ class AutomotiveHubTest extends TestCase
         $this->assertSame(80, collect($f30['rows'])->firstWhere('car_id', $withLeads->id)['views']);
     }
 
+    public function test_funnel_is_paginated_in_the_backend_by_days_in_stock(): void
+    {
+        foreach ([5, 50, 20, 80, 10, 35, 60, 15, 25, 45, 70, 30] as $d) {
+            $this->car($d);
+        }
+        $this->views($this->company->cars()->orderBy('id')->first(), 4, 2);
+
+        $p1 = $this->hub()->funnel($this->company->id, 30);
+        $this->assertCount(10, $p1['rows']);   // 10 por omissão
+        $this->assertSame([80, 70, 60, 50, 45, 35, 30, 25, 20, 15], array_column($p1['rows'], 'days_in_stock'));
+        $this->assertSame(['current_page' => 1, 'per_page' => 10, 'total' => 12, 'last_page' => 2, 'from' => 1, 'to' => 10], $p1['pagination']);
+        $this->assertSame(12, $p1['totals']['cars']);   // totais de todas as viaturas, não da página
+        $this->assertSame(4, $p1['totals']['views']);
+
+        $p2 = $this->hub()->funnel($this->company->id, 30, null, 2);
+        $this->assertSame([10, 5], array_column($p2['rows'], 'days_in_stock'));
+        $this->assertSame(11, $p2['pagination']['from']);
+
+        $url = "/api/v1/companies/{$this->company->id}/automotive-hub/funnel?days=14";
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&page=2&per_page=5")->assertOk()
+            ->assertJsonPath('data.pagination.current_page', 2)->assertJsonPath('data.pagination.last_page', 3)
+            ->assertJsonCount(5, 'data.rows');
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&per_page=500")->assertStatus(422);
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&page=99")->assertOk()->assertJsonPath('data.pagination.current_page', 2);
+    }
+
     public function test_cpl_never_divides_by_zero(): void
     {
         $this->assertSame(['cpl' => null, 'cpl_state' => 'no_spend'], AutomotiveHubService::cpl(0.0, 0));
@@ -461,10 +499,15 @@ class AutomotiveHubTest extends TestCase
 
     public function test_funnel_price_column_says_exact_or_approximate(): void
     {
-        $car = $this->car(10, ['price_gross' => 24000]);
+        $car = $this->car(10, ['vehicle_type' => 'motorhome', 'price_gross' => 24000]);
         $this->aggregate($car, 20000, 'high', true);
+        $widened = $this->car(10, ['price_gross' => 24000]);
+        $this->aggregate($widened, 20000, 'high', true);
 
-        $row = $this->hub()->funnel($this->company->id, 30)['rows'][0];
+        $rows = collect($this->hub()->funnel($this->company->id, 30)['rows'])->keyBy('car_id');
+        $this->assertSame('exact', $rows[$widened->id]['price']['comparison']);
+        $this->assertTrue($rows[$widened->id]['price']['criteria_widened']);
+        $row = $rows[$car->id];
 
         $this->assertSame('approximate', $row['price']['comparison']);
         $this->assertSame('approximate_comparison', $row['price']['display_position']);

@@ -63,9 +63,11 @@ abstract class AutomotiveCarRule implements RecommendationRule
                 continue;
             }
 
+            $days = (int) $car->days_in_stock;
             $recommendations[] = new Recommendation(
                 ruleKey: $this->key(),
-                priority: min(100, (int) $issue['priority']),
+                // Escala comprimida no topo (100 fica reservado): ver AutomotivePriority.
+                priority: AutomotivePriority::scale($issue['priority']),
                 title: $issue['title'],
                 why: $issue['why'],
                 evidence: [
@@ -80,6 +82,10 @@ abstract class AutomotiveCarRule implements RecommendationRule
                         'interactions' => (int) $car->interactions_count,
                         'window_days' => (int) $snapshot['context']['window_days'],
                     ],
+                    // Desempates: impacto em euros (capital parado, salvo a regra dizer
+                    // outro) e depois os dias acima do limiar do tipo.
+                    'impact_eur' => round((float) ($issue['impact_eur'] ?? AutomotivePriority::stuckCapital($car, $days)), 2),
+                    'days_over_threshold' => AutomotivePriority::daysOverThreshold($car, $days),
                 ] + $issue['evidence'],
                 action: [
                     'label' => $issue['action_label'],

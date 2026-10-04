@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
+import { Card, CardBody } from "reactstrap";
 
 /**
- * Cabeçalho de secção dos dashboards (padrão Velzon): título e subtítulo
- * diretamente sobre o fundo da página, sem cartão à volta, com os controlos da
- * secção à direita (perto do conteúdo que controlam). Em mobile os controlos
- * passam para baixo do título. Dentro de um separador o título pode ser omitido
- * (o próprio separador já o diz): fica só a descrição e os controlos.
+ * Cabeçalho de secção dos dashboards (padrão Velzon): título, subtítulo e os
+ * controlos da secção dentro de um Card (fundo de cartão só à volta do cabeçalho).
+ * Os cartões das métricas continuam por baixo, sobre o fundo da página (nunca
+ * cartão dentro de cartão). Em mobile os controlos passam para baixo do título.
+ * Dentro de um separador o título pode ser omitido (o separador já o diz).
  */
 export default function DashboardSectionHeader({
     title, subtitle, children, className = "",
@@ -16,12 +17,16 @@ export default function DashboardSectionHeader({
     className?: string;
 }) {
     return (
-        <div className={`d-flex flex-wrap align-items-end justify-content-between gap-2 mb-3 ${className}`}>
-            <div>
-                {title && <h5 className="mb-1 fw-semibold">{title}</h5>}
-                {subtitle && <p className="text-muted fs-13 mb-0">{subtitle}</p>}
-            </div>
-            {children && <div className="d-flex flex-wrap align-items-end gap-2">{children}</div>}
-        </div>
+        <Card className={`mb-3 ${className}`}>
+            <CardBody className="py-3">
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <div>
+                        {title && <h5 className="mb-1 fw-semibold">{title}</h5>}
+                        {subtitle && <p className="text-muted fs-13 mb-0">{subtitle}</p>}
+                    </div>
+                    {children && <div className="d-flex flex-wrap align-items-center gap-2">{children}</div>}
+                </div>
+            </CardBody>
+        </Card>
     );
 }

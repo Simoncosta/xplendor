@@ -17,7 +17,7 @@ const data = (over: Partial<AutomotiveMarketing["metrics"]> = {}): AutomotiveMar
     is_current_month: true,
     period: { start: "2026-10-01", end: "2026-10-15", days: 15 },
     comparison_windows: {},
-    sources: { tracking: { state: "ok", since: "2026-01-01" }, meta: { state: "ok" }, ga4: { state: "ok" } },
+    sources: { tracking: { state: "ok", since: "2026-01-01", last_seen: "2026-10-14", days_without: null }, meta: { state: "ok" }, ga4: { state: "ok" } },
     metrics: {
         leads: { total: 12, paid: 4, series: [], comparison: prev(20), paid_comparison: prev(0) },
         contacts: { total: 30, by_type: { whatsapp: 20, call: 6, phone_reveal: 4 }, series: [], comparison: prev(-10) },
@@ -80,6 +80,23 @@ describe("automotiveMarketingText", () => {
     it("gasto sem lead paga é descrito sem dividir por zero", () => {
         const s = buildAutoInsights(data({ paid_cpl: { spend: 50, paid_leads: 0, value: null, state: "spend_without_lead", comparison: none } })).map(sp);
         expect(s).toContain("Houve 50 € de investimento na Meta e nenhuma lead com origem paga.");
+    });
+
+    it("zero leads com base zero: 'não registou leads, tal como no mês anterior'", () => {
+        const s = buildAutoInsights(data({
+            meta_spend: null,
+            paid_cpl: null,
+            leads: { total: 0, paid: 0, series: [], comparison: prev(null, 0), paid_comparison: prev(null, 0) },
+        })).map(sp);
+        expect(s[0]).toBe("Entre 1 e 15 de outubro, não registou leads, tal como no mês anterior.");
+        expect(s.join(" ")).not.toContain("registou 0 leads");
+    });
+
+    it("contactos diretos sem parênteses duplos", () => {
+        const s = buildAutoInsights(data()).map(sp).join(" ");
+        const c = buildAutoInsights(data({ meta_spend: null, paid_cpl: null, ga4_sessions: null })).map(sp);
+        expect(c).toContain("Registou 30 contactos diretos por WhatsApp, chamada ou telefone (-10% face a setembro).");
+        expect(s).not.toMatch(/\)\s*\(/);
     });
 
     it("contador do separador Stock: uma recomendação alta por viatura", () => {

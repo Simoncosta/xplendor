@@ -32,7 +32,14 @@ export interface AutomotiveMarketing {
     period: { start: string; end: string; days: number };
     comparison_windows: Record<string, { start: string; end: string }>;
     sources: {
-        tracking: { state: "ok" | "no_data"; since: string | null };
+        /** stale = o registo de visitas parou (sem registos há days_without dias). */
+        tracking: {
+            state: "ok" | "no_data" | "stale";
+            since: string | null;
+            last_seen: string | null;
+            days_without: number | null;
+            stale_after_days?: number;
+        };
         meta: { state: SourceState };
         ga4: { state: SourceState; error?: string };
     };

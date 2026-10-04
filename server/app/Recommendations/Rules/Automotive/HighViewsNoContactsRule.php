@@ -92,7 +92,7 @@ class HighViewsNoContactsRule implements RecommendationRule
                 continue;
             }
 
-            $priority = 55 + min(20, max(0, (int) round(($v / max(1.0, $p75) - 1) * 20)));
+            $priority = AutomotivePriority::scale(55 + min(20, max(0, (int) round(($v / max(1.0, $p75) - 1) * 20))));
 
             $recommendations[] = new Recommendation(
                 ruleKey: self::KEY,
@@ -121,6 +121,8 @@ class HighViewsNoContactsRule implements RecommendationRule
                     'p75_views' => round($p75, 1),
                     'min_views' => $params['min_views'],
                     'window_days' => $params['window_days'],
+                    'impact_eur' => AutomotivePriority::stuckCapital($car, (int) $car->days_in_stock),
+                    'days_over_threshold' => AutomotivePriority::daysOverThreshold($car, (int) $car->days_in_stock),
                 ],
                 action: [
                     'label' => 'Rever o anúncio',

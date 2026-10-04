@@ -40,6 +40,8 @@ class AutomotiveHubService
 {
     public const SPEND_WINDOW_DAYS = 30;
     public const FUNNEL_WINDOWS = [14, 30];
+    public const FUNNEL_PER_PAGE = 10;
+    public const FUNNEL_MAX_PER_PAGE = 50;
     public const RECOMMENDATIONS_LIMIT = 5;
 
     /** Ordem das regras por viatura: desempata quando a mesma viatura cumpre várias. */
@@ -124,6 +126,7 @@ class AutomotiveHubService
             'display_position' => $p['display_position'],
             'comparison' => $p['comparison'],
             'counts_as_above_market' => $p['counts_as_above_market'],
+            'criteria_widened' => $p['criteria_widened'],
             'difference_pct' => $p['difference_pct'],
             'confidence' => $p['confidence'],
             'comparables_count' => $p['comparables_count'],
@@ -212,13 +215,22 @@ class AutomotiveHubService
     // ── 2. RECOMENDAÇÕES (top 5) ───────────────────────────────────────────
 
     /**
-     * Recomendações do motor (ramo Automóvel). Por viatura fica só a de maior
-     * prioridade (como o antigo "Viaturas que merecem atenção"); empate → ordem das
-     * regras. Recomendações que não são de uma viatura passam tal como vêm.
+     * Recomendações do motor (ramo Automóvel). Por viatura fica só a mais
+     * prioritária (como o antigo "Viaturas que merecem atenção"). Desempates
+     * (decisão do utilizador): impacto em euros, depois dias acima do limiar; só no
+     * fim, para a ordem ser estável, a ordem das regras e o ID da viatura.
+     * high_count = recomendações de prioridade alta depois de juntar por viatura (o
+     * número do contador do separador, a mesma conta).
      */
     public function recommendations(Company $company, ?CarbonImmutable $now = null, int $limit = self::RECOMMENDATIONS_LIMIT): array
     {
         $result = $this->engine->forCompany($company, 'automotive', $now);
+
+        $key = fn (array $r) => [
+            (int) $r['priority'],
+            (float) ($r['evidence']['impact_eur'] ?? 0),
+            (int) ($r['evidence']['days_over_threshold'] ?? 0),
+        ];
 
         $byCar = [];
         $other = [];
@@ -229,27 +241,35 @@ class AutomotiveHubService
                 continue;
             }
             $current = $byCar[$carId] ?? null;
-            if ($current === null
-                || $r['priority'] > $current['priority']
-                || ($r['priority'] === $current['priority'] && self::CAR_RULE_ORDER[$r['rule_key']] < self::CAR_RULE_ORDER[$current['rule_key']])) {
+            if ($current === null) {
+                $byCar[$carId] = $r;
+                continue;
+            }
+            $cmp = $key($r) <=> $key($current);
+            if ($cmp > 0 || ($cmp === 0 && self::CAR_RULE_ORDER[$r['rule_key']] < self::CAR_RULE_ORDER[$current['rule_key']])) {
                 $byCar[$carId] = $r;
             }
         }
 
         $all = array_merge(array_values($byCar), $other);
-        usort($all, fn ($a, $b) => [$b['priority'], $a['evidence']['car_id'] ?? PHP_INT_MAX]
-            <=> [$a['priority'], $b['evidence']['car_id'] ?? PHP_INT_MAX]);
+        usort($all, fn ($a, $b) => [...$key($b), -1 * (int) ($b['evidence']['car_id'] ?? PHP_INT_MAX)]
+            <=> [...$key($a), -1 * (int) ($a['evidence']['car_id'] ?? PHP_INT_MAX)]);
 
         return [
             'recommendations' => array_slice($all, 0, $limit),
             'total' => count($all),
+            'high_count' => count(array_filter($all, fn ($r) => ($r['level'] ?? null) === 'high')),
             'notices' => $result['notices'],
         ];
     }
 
     // ── 3. FUNIL POR VIATURA ───────────────────────────────────────────────
 
-    public function funnel(int $companyId, int $days, ?CarbonImmutable $now = null): array
+    /**
+     * Funil por viatura, paginado (ordenado por dias em stock, maior primeiro). Os
+     * totais são de TODAS as viaturas do período, não só da página.
+     */
+    public function funnel(int $companyId, int $days, ?CarbonImmutable $now = null, int $page = 1, int $perPage = self::FUNNEL_PER_PAGE): array
     {
         $now = $now ?? CarbonImmutable::now();
         $from = $now->subDays($days - 1)->toDateString();
@@ -307,6 +327,7 @@ class AutomotiveHubService
                     'effective_price' => $price['effective_price'],
                     'display_position' => $price['display_position'],
                     'comparison' => $price['comparison'],
+                    'criteria_widened' => $price['criteria_widened'],
                     'difference_pct' => $price['difference_pct'],
                     'confidence' => $price['confidence'],
                 ],
@@ -320,16 +341,30 @@ class AutomotiveHubService
                 ...self::cpl($carSpend, $paid),
                 'ad_status' => $adStatus[$car->id] ?? ['status' => 'none', 'active_ads' => 0],
             ];
-        })->sortByDesc('days_in_stock')->values();
+        })->sortBy([['days_in_stock', 'desc'], ['car_id', 'asc']])->values();
 
         $totSpend = round((float) $rows->sum('paid_spend'), 2);
         $totPaid = (int) $rows->sum('paid_leads');
+
+        $perPage = max(1, min(self::FUNNEL_MAX_PER_PAGE, $perPage));
+        $total = $rows->count();
+        $lastPage = max(1, (int) ceil($total / $perPage));
+        $page = max(1, min($lastPage, $page));
+        $pageRows = $rows->slice(($page - 1) * $perPage, $perPage)->values();
 
         return [
             'days' => $days,
             'from' => $from,
             'to' => $to,
-            'rows' => $rows->all(),
+            'rows' => $pageRows->all(),
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $total,
+                'last_page' => $lastPage,
+                'from' => $total === 0 ? 0 : ($page - 1) * $perPage + 1,
+                'to' => ($page - 1) * $perPage + $pageRows->count(),
+            ],
             'totals' => [
                 'cars' => $rows->count(),
                 'views' => (int) $rows->sum('views'),

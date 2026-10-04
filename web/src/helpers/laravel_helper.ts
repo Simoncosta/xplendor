@@ -272,6 +272,11 @@ export const getRecommendations = (companyId: number, vertical: "restaurant" | "
 // Dashboard de restauração — bloco "marketing e resultados" de um mês (AAAA-MM; omisso = mês em curso).
 export const getRestaurantMarketing = (companyId: number, month?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/restaurant/marketing`, month ? { month } : undefined);
+// Hub do automóvel (separador "Stock"): resumo + recomendações + avisos; funil por viatura (14 ou 30 dias).
+export const getAutomotiveHub = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/automotive-hub`);
+export const getAutomotiveHubFunnel = (companyId: number, days: 14 | 30, page = 1, perPage = 10) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/automotive-hub/funnel`, { days, page, per_page: perPage });
 // Dashboard do automóvel — bloco "Marketing e resultados" de um mês (AAAA-MM; omisso = mês em curso).
 export const getAutomotiveMarketing = (companyId: number, month?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/automotive/marketing`, month ? { month } : undefined);

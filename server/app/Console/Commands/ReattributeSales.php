@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
  * pela tag, mapeamento só para campanhas sem tag).
  *
  * SIMULAÇÃO por omissão: não grava nada; mostra e guarda um relatório (CSV em
- * storage/app/reports) do que mudaria. Só grava com --write, depois de ver o
+ * storage/app/private/reports) do que mudaria. Só grava com --write, depois de ver o
  * relatório:
  *
  *   php artisan meta:reattribute-sales --since=2025-09-01                 # simulação
@@ -106,9 +106,11 @@ class ReattributeSales extends Command
         Storage::disk('local')->put($path, $this->csv($report));
 
         $this->info(sprintf(
-            '%s: %d vendas · %d sem alteração · %d mudariam · %d novas. Relatório: storage/app/%s',
+            '%s: %d vendas · %d sem alteração · %d mudariam · %d novas. Relatório: %s',
             $write ? 'GRAVADO' : 'SIMULAÇÃO (nada foi gravado)',
-            $cars->count(), $counts['unchanged'], $counts['changed'], $counts['new'], $path
+            $cars->count(), $counts['unchanged'], $counts['changed'], $counts['new'],
+            // Caminho real do disco 'local' (em Laravel 11+ é storage/app/private), relativo à app.
+            ltrim(str_replace(base_path(), '', Storage::disk('local')->path($path)), '/')
         ));
 
         return self::SUCCESS;

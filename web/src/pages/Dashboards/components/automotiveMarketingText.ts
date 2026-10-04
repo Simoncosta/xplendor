@@ -96,9 +96,18 @@ export function buildAutoInsights(data: AutomotiveMarketing): string[] {
 
     // 2) Leads, lado a lado.
     if (m.leads) {
-        const lead = out.length > 0 ? "No mesmo período, registou" : `${when}, registou`;
-        const paid = m.leads.total > 0 ? `, ${m.leads.paid === 1 ? "1 das quais" : `${int(m.leads.paid)} das quais`} com origem paga` : "";
-        out.push(`${lead} ${plural(m.leads.total, "lead", "leads")}${paid}${vs(m.leads.comparison, data.month, "leads")}.`);
+        const lead = out.length > 0 ? "No mesmo período," : `${when},`;
+        if (m.leads.total === 0) {
+            // Zero com base zero: "não registou leads, tal como no mês anterior".
+            const v = comparisonView(m.leads.comparison, "leads");
+            const tail = v.kind === "zero" && m.leads.comparison.tier !== null
+                ? `, tal como ${tierPhrase(m.leads.comparison)}`
+                : vs(m.leads.comparison, data.month, "leads");
+            out.push(`${lead} não registou leads${tail}.`);
+        } else {
+            const paid = `, ${m.leads.paid === 1 ? "1 das quais" : `${int(m.leads.paid)} das quais`} com origem paga`;
+            out.push(`${lead} registou ${plural(m.leads.total, "lead", "leads")}${paid}${vs(m.leads.comparison, data.month, "leads")}.`);
+        }
     }
 
     // 3) Custo por lead pago (descritivo; sem divisão por zero).
@@ -116,7 +125,7 @@ export function buildAutoInsights(data: AutomotiveMarketing): string[] {
         out.push(`O site teve ${plural(m.ga4_sessions.total, "visita", "visitas")}${vs(m.ga4_sessions.comparison, data.month, "visitas")}, ${paidShare}% das quais vindas de anúncios pagos.`);
     }
     if (m.contacts && m.contacts.total > 0) {
-        out.push(`Registou ${plural(m.contacts.total, "contacto direto", "contactos diretos")} (WhatsApp, chamada ou telefone)${vs(m.contacts.comparison, data.month, "contactos")}.`);
+        out.push(`Registou ${plural(m.contacts.total, "contacto direto", "contactos diretos")} por WhatsApp, chamada ou telefone${vs(m.contacts.comparison, data.month, "contactos")}.`);
     }
 
     return out.slice(0, 4);

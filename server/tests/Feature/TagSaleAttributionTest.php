@@ -264,7 +264,9 @@ class TagSaleAttributionTest extends TestCase
         $this->adSpend('120001', "Golf [id:{$car->id}]", 10.0, '2026-10-18', 'C1');   // agora a campanha tem tag
 
         $this->artisan('meta:reattribute-sales', ['--since' => '2026-10-01'])
-            ->expectsOutputToContain('SIMULAÇÃO (nada foi gravado): 1 vendas · 0 sem alteração · 1 mudariam · 0 novas')
+            // O caminho mostrado é o real do disco 'local' (não o antigo storage/app/reports).
+            ->expectsOutputToContain('SIMULAÇÃO (nada foi gravado): 1 vendas · 0 sem alteração · 1 mudariam · 0 novas. Relatório: storage/framework/testing/disks/local/reports/reattribute_sales_')
+            ->doesntExpectOutputToContain('Relatório: storage/app/reports/')
             ->assertSuccessful();
         $this->assertSame('fallback', CarSaleAttribution::sole()->match_type);
         $files = Storage::disk('local')->files('reports');

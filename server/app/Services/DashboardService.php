@@ -14,7 +14,6 @@ class DashboardService extends BaseService
         protected CarMarketingRoiService                     $carMarketingRoiService,
         protected SilentBuyerDetectionService                $silentBuyerDetectionService,
         protected StockIntelligenceService                   $stockIntelligenceService,
-        protected CarIssueEngine                             $carIssueEngine,
         protected StockAdRankingService                      $stockAdRankingService,
     ) {}
 
@@ -54,7 +53,6 @@ class DashboardService extends BaseService
             'capital_summary'                  => $this->dashboardRepository->getCapitalSummary($companyId),
             'highest_stuck_capital_cars'       => $this->dashboardRepository->getHighestStuckCapitalCars($companyId),
             'urgent_action_cars'               => $urgentActionCars,
-            'immediate_actions'                => $this->carIssueEngine->getImmediateActions($companyId),
             'high_demand_opportunity_cars'     => $highDemandOpportunityCars,
             'high_interest_low_conversion_cars' => $this->dashboardRepository->getHighInterestLowConversionCars($companyId),
             'marketing_performance'            => $this->dashboardRepository->getMarketingPerformance($companyId),

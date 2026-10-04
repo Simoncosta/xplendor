@@ -73,7 +73,13 @@ class RecommendationEngine
             }
         }
 
-        usort($recommendations, fn (Recommendation $a, Recommendation $b) => $b->priority <=> $a->priority);
+        // Prioridade; desempate pelo impacto em euros e pelos dias acima do limiar
+        // (quando a regra os dá na evidência; senão 0).
+        usort($recommendations, fn (Recommendation $a, Recommendation $b) => [
+            $b->priority, (float) ($b->evidence['impact_eur'] ?? 0), (int) ($b->evidence['days_over_threshold'] ?? 0),
+        ] <=> [
+            $a->priority, (float) ($a->evidence['impact_eur'] ?? 0), (int) ($a->evidence['days_over_threshold'] ?? 0),
+        ]);
 
         return [
             'recommendations' => array_map(fn (Recommendation $r) => $r->toArray(), $recommendations),

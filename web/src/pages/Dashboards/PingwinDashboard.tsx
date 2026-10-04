@@ -377,15 +377,15 @@ const RESTAURANT_TABS: { key: RestaurantTab; label: string; icon: string }[] = [
 const tabFromSearch = (value: string | null): RestaurantTab => (value === "marketing" ? "marketing" : "vendas");
 
 /**
- * Nav de separadores no mesmo estilo das páginas da viatura (nav-tabs-custom-pages):
- * o separador ativo salta à frente como uma página aberta. Cada separador é um
+ * Nav de separadores no estilo "Border Top Nav" do template (nav-border-top): o
+ * separador ativo tem um traço por cima. Cada separador é um
  * link (?tab=…), por isso recarregar ou partilhar o URL abre no mesmo sítio.
  * Em mobile, scroll horizontal se não couber.
  */
 function RestaurantTabsNav({ active, highCount }: { active: RestaurantTab; highCount: number }) {
     return (
         <div style={{ overflowX: "auto" }} className="mb-3">
-            <Nav tabs className="nav-tabs-custom-pages flex-nowrap" style={{ minWidth: "max-content" }}>
+            <Nav tabs className="nav-border-top nav-border-top-primary flex-nowrap" style={{ minWidth: "max-content" }}>
                 {RESTAURANT_TABS.map((t) => {
                     const isActive = t.key === active;
                     return (

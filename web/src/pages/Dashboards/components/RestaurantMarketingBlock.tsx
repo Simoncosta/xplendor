@@ -19,7 +19,7 @@ import { buildInsights, comparisonTag, eur0, int, monthLong, signedPct, signedPp
  *     comparação usada (e o aviso de sazonalidade, discreto);
  *   · INSIGHT: 2 a 4 frases descritivas (nunca causais);
  *   · DADOS: série diária de faturação, gasto Meta e sessões lado a lado;
- *   · AÇÃO: atalhos para as telas de detalhe (que continuam a existir).
+ *   · AÇÃO: as ações de cada aviso e de cada recomendação (sem atalhos genéricos).
  * Estados honestos (Meta/GA4 por ligar, sessão expirada, conta em falta, a
  * sincronizar, sem dados). Os números vêm do backend; aqui só se apresentam.
  */
@@ -387,12 +387,6 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
             {/* ── Recomendações (motor de regras explicáveis), entre o Insight e os atalhos ── */}
             <RecommendationsCard companyId={companyId} vertical="restaurant" state={recommendations} />
 
-            {/* ── AÇÃO: atalhos para as telas de detalhe ── */}
-            <div className="d-flex flex-wrap gap-2">
-                <Link to="/meta-ads" className="btn btn-sm btn-soft-info"><i className="ri-advertisement-line me-1" />Ver campanhas</Link>
-                <Link to="/trafego-site" className="btn btn-sm btn-soft-success"><i className="ri-line-chart-line me-1" />Ver tráfego do site</Link>
-                <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-secondary"><i className="ri-settings-3-line me-1" />Configurar integrações</Link>
-            </div>
         </section>
     );
 }

@@ -166,7 +166,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
     ];
 
     const chartOptions: ApexCharts.ApexOptions = {
-        chart: { type: "bar", height: 300, toolbar: { show: false }, parentHeightOffset: 0 },
+        chart: { type: "bar", height: 220, toolbar: { show: false }, parentHeightOffset: 0 },
         plotOptions: {
             bar: {
                 horizontal: false,
@@ -224,12 +224,9 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
         <Col xs={12}>
             <Card className="mb-0">
                 <CardBody>
-                    <div className="d-flex flex-wrap justify-content-between gap-2 mb-3">
+                    <div className="d-flex flex-wrap justify-content-between gap-2 mb-2">
                         <div>
-                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                Faturação
-                            </p>
-                            <h5 className="mb-0 fw-semibold">Vendas no período</h5>
+                            <h6 className="text-uppercase text-muted fs-12 mb-1">Vendas no período</h6>
                             <small className="text-muted">Valor das vendas registadas (não é lucro).</small>
                         </div>
                         <div className="d-flex flex-wrap gap-1 align-items-start">
@@ -275,30 +272,26 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                         </div>
                     )}
 
-                    {/* Destaque com o total */}
-                    <div className="d-flex flex-wrap align-items-baseline gap-3 mb-3 pb-3 border-bottom">
+                    {/* Os números do período numa só linha (compacto). */}
+                    <div className="d-flex flex-wrap align-items-start gap-4 mb-2 pb-2 border-bottom">
                         <div>
-                            <p className="text-muted fs-12 mb-1">{rangeLabel}</p>
-                            <h2 className="mb-0 fw-bold" style={{ color: "#0ab39c" }}>
+                            <p className="text-muted fs-12 mb-0">{rangeLabel}</p>
+                            <h4 className="mb-0 fw-semibold" style={{ color: "#0ab39c" }}>
                                 {loading ? "—" : formatCurrency(Number(totalRevenue) || 0)}
-                            </h2>
+                            </h4>
                         </div>
-                        <div className="ms-auto text-end">
-                            <p className="text-muted fs-12 mb-1">Vendas</p>
-                            <p className="mb-0 fw-semibold">{loading ? "—" : `${salesCount} venda${salesCount === 1 ? "" : "s"}`}</p>
+                        <div>
+                            <p className="text-muted fs-12 mb-0">Vendas</p>
+                            <h4 className="mb-0 fw-semibold">{loading ? "—" : `${salesCount} venda${salesCount === 1 ? "" : "s"}`}</h4>
                             {!loading && withoutValue > 0 && (
-                                <small className="text-warning d-block mt-1">
+                                <small className="text-warning d-block">
                                     <i className="ri-information-line me-1" />
                                     {withoutValue} sem valor registado
                                 </small>
                             )}
                         </div>
-                    </div>
-
-                    {/* Fase 2A — margem do período (rótulo honesto conforme uses_vat). */}
-                    <div className="d-flex flex-wrap align-items-baseline gap-3 mb-3 pb-3 border-bottom">
                         <div>
-                            <p className="text-muted fs-12 mb-1">
+                            <p className="text-muted fs-12 mb-0">
                                 {marginLbls.title}
                                 {marginLbls.warning && (
                                     <span className="text-warning ms-1" title={marginLbls.warning}>
@@ -306,33 +299,27 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                                     </span>
                                 )}
                             </p>
-                            <h3 className="mb-0 fw-bold" style={{ color: (Number(totalMargin) || 0) >= 0 ? "var(--vz-primary)" : "#f06548" }}>
+                            <h4 className="mb-0 fw-semibold" style={{ color: (Number(totalMargin) || 0) >= 0 ? "var(--vz-primary)" : "#f06548" }}>
                                 {loading ? "—" : formatCurrency(Number(totalMargin) || 0)}
-                            </h3>
-                            {!loading && marginLbls.warning && (
-                                <small className="text-warning d-block mt-1">{marginLbls.warning}</small>
-                            )}
-                        </div>
-                        {!loading && marginWithoutCost > 0 && (
-                            <div className="ms-auto text-end">
+                            </h4>
+                            {!loading && marginWithoutCost > 0 && (
                                 <small className="text-warning d-block">
                                     <i className="ri-information-line me-1" />
-                                    {marginWithoutCost} venda{marginWithoutCost === 1 ? "" : "s"} sem custo registado
+                                    {marginWithoutCost} venda{marginWithoutCost === 1 ? "" : "s"} sem custo registado (fora da margem)
                                 </small>
-                                <small className="text-muted">fora do cálculo da margem</small>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
                     {loading && (
-                        <div className="text-center text-muted py-5">
-                            <i className="ri-loader-2-line spin fs-3" /> A carregar…
+                        <div className="text-center text-muted py-3">
+                            <i className="ri-loader-2-line spin fs-4" /> A carregar…
                         </div>
                     )}
 
                     {!loading && !hasData && (
-                        <div className="text-center text-muted py-5">
-                            <i className="ri-funds-line fs-3 d-block mb-2" />
+                        <div className="text-center text-muted py-3 fs-13">
+                            <i className="ri-funds-line me-1" />
                             Sem vendas neste período.
                         </div>
                     )}
@@ -342,7 +329,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                             options={chartOptions}
                             series={series}
                             type="bar"
-                            height={300}
+                            height={220}
                         />
                     )}
                 </CardBody>

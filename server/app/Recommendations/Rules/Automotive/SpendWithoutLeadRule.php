@@ -102,7 +102,8 @@ class SpendWithoutLeadRule implements RecommendationRule
                 continue;
             }
             $spend = $tagSpend[$car->id];
-            $priority = min(85, 60 + (int) floor(($spend - $min) / $min * 10));
+            $priority = AutomotivePriority::scale(min(85, 60 + (int) floor(($spend - $min) / $min * 10)));
+            $days = (int) ($car->daysInStock($context->now) ?? 0);
             $ads = $adsByCar[$car->id] ?? [];
 
             $recommendations[] = new Recommendation(
@@ -123,6 +124,8 @@ class SpendWithoutLeadRule implements RecommendationRule
                     'paid_leads' => 0,
                     'min_spend' => $min,
                     'window_days' => $params['window_days'],
+                    'impact_eur' => $spend,
+                    'days_over_threshold' => AutomotivePriority::daysOverThreshold($car, $days),
                 ],
                 action: [
                     'label' => 'Rever no Gestor de Anúncios',

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Auth;
 /**
  * XPLENDOR — Hub do Automóvel.
  *   GET /companies/{id}/automotive-hub          → resumo + recomendações (top 5) + avisos
- *   GET /companies/{id}/automotive-hub/funnel   → funil por viatura (?days=14|30)
+ *   GET /companies/{id}/automotive-hub/funnel   → funil por viatura (?days=14|30&page=1&per_page=10)
  */
 class AutomotiveHubController extends Controller
 {
@@ -56,6 +56,12 @@ class AutomotiveHubController extends Controller
             return ApiResponse::error('Janela inválida: use 14 ou 30 dias.', 422);
         }
 
-        return ApiResponse::success($this->hub->funnel($companyId, $days));
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = (int) $request->query('per_page', AutomotiveHubService::FUNNEL_PER_PAGE);
+        if ($perPage < 1 || $perPage > AutomotiveHubService::FUNNEL_MAX_PER_PAGE) {
+            return ApiResponse::error('per_page inválido: entre 1 e ' . AutomotiveHubService::FUNNEL_MAX_PER_PAGE . '.', 422);
+        }
+
+        return ApiResponse::success($this->hub->funnel($companyId, $days, null, $page, $perPage));
     }
 }

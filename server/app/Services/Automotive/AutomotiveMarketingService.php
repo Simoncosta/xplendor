@@ -40,6 +40,13 @@ class AutomotiveMarketingService
     /** Contactos diretos (a mesma definição da coluna contacts do view do funil). */
     public const CONTACT_TYPES = ['whatsapp_click', 'call_click', 'show_phone', 'copy_phone'];
 
+    /**
+     * Registo de visitas PARADO: o último evento (vista, interação ou lead) é mais
+     * antigo do que isto em relação ao fim do período. Os zeros deixam de parecer
+     * reais: o ecrã avisa "sem registos há N dias".
+     */
+    public const TRACKING_STALE_DAYS = 7;
+
     public function __construct(
         private readonly GoogleAnalyticsService $ga4,
         private readonly CarAdSpendRepository $spend,
@@ -56,6 +63,7 @@ class AutomotiveMarketingService
         $ga4Integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'google')->first();
         $metaState = MetaAccountInsightsService::connectionState($metaIntegration);
         $trackingStart = $this->trackingStart($companyId);
+        $trackingLast = $this->trackingLast($companyId);
 
         $out = [
             'month' => $p['month'],
@@ -63,7 +71,7 @@ class AutomotiveMarketingService
             'period' => $period,
             'comparison_windows' => array_map(fn ($w) => ['start' => $w['start'], 'end' => $w['end']], $windows),
             'sources' => [
-                'tracking' => ['state' => $trackingStart !== null ? 'ok' : 'no_data', 'since' => $trackingStart?->toDateString()],
+                'tracking' => $this->trackingState($trackingStart, $trackingLast, $period, $p['is_current'], $today),
                 'meta' => ['state' => $metaState],
                 'ga4' => ['state' => $this->ga4Connected($ga4Integration) ? 'ok' : 'not_connected'],
             ],
@@ -282,6 +290,46 @@ class AutomotiveMarketingService
     // ── Fontes de dados ───────────────────────────────────────────────────────
 
     /** Primeiro dia com tracking do site (vistas, interações ou leads) da empresa. */
+    /**
+     * Estado do registo de visitas no período:
+     *   · no_data → nunca houve registos;
+     *   · stale   → o último registo é mais antigo do que TRACKING_STALE_DAYS antes do
+     *               fim do período (o registo parou; os zeros podem não ser reais).
+     *               days_without = dias sem registos até hoje (mês em curso) ou até ao
+     *               fim do período (mês passado);
+     *   · ok      → com registos recentes.
+     */
+    private function trackingState(?CarbonImmutable $start, ?CarbonImmutable $last, array $period, bool $isCurrent, CarbonImmutable $today): array
+    {
+        if ($start === null || $last === null) {
+            return ['state' => 'no_data', 'since' => null, 'last_seen' => null, 'days_without' => null];
+        }
+
+        $periodEnd = CarbonImmutable::parse($period['end']);
+        $reference = $isCurrent ? $today : $periodEnd;
+        $stale = $last->lt($periodEnd->subDays(self::TRACKING_STALE_DAYS));
+
+        return [
+            'state' => $stale ? 'stale' : 'ok',
+            'since' => $start->toDateString(),
+            'last_seen' => $last->toDateString(),
+            'days_without' => $stale ? (int) $last->diffInDays($reference) : null,
+            'stale_after_days' => self::TRACKING_STALE_DAYS,
+        ];
+    }
+
+    /** Último dia com registo do site (vistas, interações ou leads) da empresa. */
+    private function trackingLast(int $companyId): ?CarbonImmutable
+    {
+        $dates = array_filter([
+            DB::table('car_views')->where('company_id', $companyId)->max('created_at'),
+            DB::table('car_interactions')->where('company_id', $companyId)->max('created_at'),
+            DB::table('car_leads')->where('company_id', $companyId)->max('created_at'),
+        ]);
+
+        return $dates === [] ? null : CarbonImmutable::parse(max($dates))->startOfDay();
+    }
+
     private function trackingStart(int $companyId): ?CarbonImmutable
     {
         $dates = array_filter([

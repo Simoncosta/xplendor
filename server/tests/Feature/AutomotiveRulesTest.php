@@ -224,9 +224,9 @@ class AutomotiveRulesTest extends TestCase
 
     public function test_above_market_and_stale_never_on_approximate_or_low_confidence(): void
     {
-        $approx = $this->car(100, ['price_gross' => 26000]);
-        $this->aggregate($approx, 20000, 'high', true);    // fallback → aproximada
-        $low = $this->car(100, ['price_gross' => 26000]);
+        $approx = $this->car(130, ['vehicle_type' => 'motorhome', 'price_gross' => 26000]);
+        $this->aggregate($approx, 20000, 'high', true);    // cascata antiga de autocaravana → aproximada
+        $low = $this->car(130, ['vehicle_type' => 'motorhome', 'price_gross' => 26000]);
         $this->aggregate($low, 20000, 'low');              // confiança baixa
 
         $this->assertSame([], $this->recs('automotive_price_above_market'));
@@ -346,6 +346,69 @@ class AutomotiveRulesTest extends TestCase
 
         $this->assertSame([], $this->recs('automotive_spend_without_lead'));
         $this->assertCount(1, $this->recs('automotive_sold_car_ad_active'));
+    }
+
+    // ── Escala de prioridade e desempates (decisão 5) ───────────────────────
+
+    public function test_widened_criteria_on_a_car_counts_as_exact(): void
+    {
+        $car = $this->car(100, ['price_gross' => 23000]);
+        $this->aggregate($car, 20000, 'high', true);   // carro com recurso: mantém marca e modelo
+
+        $r = $this->recs('automotive_price_above_market');
+        $this->assertCount(1, $r);
+        $this->assertSame('price_above_market_stale', $r[0]['evidence']['issue_type']);
+    }
+
+    public function test_priority_100_is_reserved_for_sold_car_with_active_ad_and_post_sale_spend(): void
+    {
+        $full = $this->car(90, ['status' => 'sold', 'sold_at' => '2026-09-20 15:00:00']);
+        $this->adSpend('A1', "Golf [id:{$full->id}]", 18.0, '2026-09-25');                 // ativo + gasto
+        $partial = $this->car(90, ['status' => 'sold', 'sold_at' => '2026-09-20 15:00:00']);
+        $this->adSpend('A2', "Polo [id:{$partial->id}]", 9.0, '2026-09-25', 'PAUSED');      // só gasto
+        $priced = $this->car(300, ['price_gross' => 40000]);
+        $this->aggregate($priced, 20000);                                                    // +100% e parada
+
+        $all = collect($this->recs());
+        $this->assertSame(100, $all->firstWhere('evidence.car_id', $full->id)['priority']);
+        $this->assertSame(95, $all->firstWhere('evidence.car_id', $partial->id)['priority']);
+        $this->assertSame([$full->id], $all->where('priority', 100)->pluck('evidence.car_id')->values()->all());
+        $this->assertLessThanOrEqual(95, $all->firstWhere('evidence.car_id', $priced->id)['priority']);
+    }
+
+    public function test_ties_are_broken_by_euro_impact_then_days_over_threshold(): void
+    {
+        // Duas viaturas paradas com a MESMA prioridade (dias e vistas iguais), preços diferentes.
+        $cheap = $this->car(100, ['price_gross' => 9000]);
+        $expensive = $this->car(100, ['price_gross' => 45000]);
+        foreach ([$cheap, $expensive] as $c) {
+            $this->views($c, 100);
+            $this->interaction($c, 'whatsapp_click', 1, 5);
+        }
+
+        $dead = $this->recs('automotive_dead_stock');
+        $this->assertSame($dead[0]['priority'], $dead[1]['priority']);
+        $this->assertSame([$expensive->id, $cheap->id], array_column(array_column($dead, 'evidence'), 'car_id'));
+        $this->assertSame(45000.0, $dead[0]['evidence']['impact_eur']);
+        $this->assertSame(55, $dead[0]['evidence']['days_over_threshold']);
+    }
+
+    public function test_hub_high_count_matches_the_tab_counter_rule(): void
+    {
+        $sold = $this->car(90, ['status' => 'sold', 'sold_at' => '2026-09-20 15:00:00']);
+        $this->adSpend('A1', "Golf [id:{$sold->id}]", 18.0, '2026-09-25');
+        $priced = $this->car(100, ['price_gross' => 24000]);
+        $this->aggregate($priced, 20000);
+        $low = $this->car(20);
+        $this->views($low, 3);
+
+        $hub = app(AutomotiveHubService::class)->recommendations($this->company, null, 2);
+
+        // Contador do separador: uma recomendação alta por viatura (a mais prioritária), sobre o motor.
+        $byCar = collect($this->recs())->groupBy(fn ($r) => $r['evidence']['car_id'] ?? 'x')->map(fn ($g) => $g->sortByDesc('priority')->first());
+        $this->assertSame($byCar->where('level', 'high')->count(), $hub['high_count']);
+        $this->assertSame(2, $hub['high_count']);
+        $this->assertCount(2, $hub['recommendations']);   // o limite não mexe no contador
     }
 
     // ── Sem duplicados no hub, configuração e tenancy ───────────────────────
