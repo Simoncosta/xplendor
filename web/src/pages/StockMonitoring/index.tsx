@@ -7,6 +7,22 @@ import { getAnalyticsDashboard } from "slices/dashboards/thunk";
 import SummaryDashboard from "../Dashboards/components/SummaryDashboard";
 
 /**
+ * ⚠️ PÁGINA ÓRFÃ (desativada; código mantido para ser reversível).
+ *
+ * O que era único passou para o separador "Stock" do dashboard (/dashboard?tab=stock):
+ *   · Preço médio → linha por baixo de "Viaturas em stock" (summary.stock.avg_price);
+ *   · Mais procurados → funil por viatura ordenável por Vistas (ordenação no backend).
+ * O resto já existia no separador (totais, dias médios, funil 14/30 dias e a regra
+ * "muitas vistas, zero contactos"). A rota /stock/monitoring redireciona para
+ * /dashboard?tab=stock e o item saiu do menu.
+ *
+ * Para repor: em Routes/allRoutes.tsx, voltar a importar esta página
+ * (`import StockMonitoring from "pages/StockMonitoring";`) e trocar o <Navigate> da
+ * rota /stock/monitoring por
+ * `<RequireModule module="stock"><StockMonitoring /></RequireModule>`; em
+ * Layouts/LayoutMenuData.tsx, voltar a pôr o item "Monitorização de stock" no grupo
+ * Comercial (id "stock-monitoring", link "/stock/monitoring", module "stock").
+ *
  * XPLENDOR — Painel de MONITORIZAÇÃO DE STOCK (lado stand, por empresa).
  *
  * Junta num só sítio as métricas de stock que JÁ existem e viviam dispersas

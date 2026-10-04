@@ -80,9 +80,6 @@ import StockPromotionPage from "pages/StockPromotion";
 // Orçamentos (lado stand — a empresa vê/aprova os que a XPLENDOR lhe enviou)
 import CompanyQuotesList from "pages/Quotes/CompanyQuotesList";
 
-// Monitorização de stock (lado stand — junta métricas de stock já existentes)
-import StockMonitoring from "pages/StockMonitoring";
-
 // Internal tools
 // Support tickets (lado stand)
 import SupportTicketsList from "pages/Support/SupportTicketsList";
@@ -171,8 +168,9 @@ const authProtectedRoutes = [
     // Stock & Promoção — módulo COMERCIAL/CRM
     { path: "/stock/promotion", component: <RequireModule module="commercial_crm"><StockPromotionPage /></RequireModule> },
 
-    // Monitorização de stock — módulo STOCK
-    { path: "/stock/monitoring", component: <RequireModule module="stock"><StockMonitoring /></RequireModule> },
+    // A antiga "Monitorização de stock" foi absorvida pelo separador "Stock" do
+    // dashboard. A rota fica só para não partir links e favoritos antigos.
+    { path: "/stock/monitoring", component: <Navigate to="/dashboard?tab=stock" replace /> },
 
     // Orçamentos (lado stand)
     { path: "/quotes", component: <CompanyQuotesList /> },

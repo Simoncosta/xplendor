@@ -14,7 +14,7 @@ export interface HubPrice {
 }
 
 export interface AutomotiveHubSummary {
-    stock: { total_cars: number; own_stock: number; trade_ins: number; avg_days_in_stock: number };
+    stock: { total_cars: number; own_stock: number; trade_ins: number; avg_days_in_stock: number; avg_price: number };
     stuck_capital: { amount: number; total_capital: number; cars: number; thresholds: Record<string, number> };
     price_position: {
         above_market_pct: number | null;
@@ -69,12 +69,17 @@ export interface FunnelRow {
     ad_status: { status: "active" | "inactive" | "none"; active_ads: number };
 }
 
+export type FunnelSortKey = "days_in_stock" | "views" | "contacts" | "leads";
+export type SortDirection = "asc" | "desc";
+
 export interface AutomotiveFunnel {
     days: 14 | 30;
     from: string;
     to: string;
     rows: FunnelRow[];
-    /** Paginação no backend (ordenado por dias em stock, maior primeiro). */
+    /** Ordenação aplicada no backend, antes da paginação (por omissão: dias em stock, maior primeiro). */
+    sort: { by: FunnelSortKey; direction: SortDirection };
+    /** Paginação no backend. */
     pagination: { current_page: number; per_page: number; total: number; last_page: number; from: number; to: number };
     /** Totais de TODAS as viaturas do período (não só da página). */
     totals: {

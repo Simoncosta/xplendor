@@ -489,6 +489,57 @@ class AutomotiveHubTest extends TestCase
         $this->actingAs($this->user, 'sanctum')->getJson("{$url}&page=99")->assertOk()->assertJsonPath('data.pagination.current_page', 2);
     }
 
+    public function test_funnel_sort_is_applied_in_the_backend_before_pagination(): void
+    {
+        // 12 viaturas; as com MAIS vistas são as MAIS RECENTES (poucos dias), que na
+        // ordem por omissão (dias em stock, maior primeiro) caem na página 2.
+        $byDays = [];
+        foreach ([80, 70, 60, 50, 45, 35, 30, 25, 20, 15, 10, 5] as $i => $d) {
+            $byDays[$d] = $this->car($d);
+            $this->views($byDays[$d], $i + 1, 2);   // 80 dias → 1 vista … 5 dias → 12 vistas
+        }
+        $this->interaction($byDays[80], 'whatsapp_click', 2, 3);
+        $this->lead($byDays[70], 2);
+        $this->lead($byDays[70], 3);
+
+        // Por omissão: igual ao que já era (dias em stock, maior primeiro).
+        $default = $this->hub()->funnel($this->company->id, 30);
+        $this->assertSame(['by' => 'days_in_stock', 'direction' => 'desc'], $default['sort']);
+        $this->assertSame([80, 70, 60, 50, 45, 35, 30, 25, 20, 15], array_column($default['rows'], 'days_in_stock'));
+
+        // Por vistas: o top REAL de todas as viaturas fica na página 1.
+        $views = $this->hub()->funnel($this->company->id, 30, null, 1, 10, 'views', 'desc');
+        $this->assertSame([12, 11, 10, 9, 8, 7, 6, 5, 4, 3], array_column($views['rows'], 'views'));
+        $this->assertSame($byDays[5]->id, $views['rows'][0]['car_id']);
+        $this->assertSame([2, 1], array_column($this->hub()->funnel($this->company->id, 30, null, 2, 10, 'views', 'desc')['rows'], 'views'));
+        $this->assertSame(12, $views['totals']['cars']);   // totais não dependem da ordem
+
+        $asc = $this->hub()->funnel($this->company->id, 30, null, 1, 3, 'views', 'asc');
+        $this->assertSame([1, 2, 3], array_column($asc['rows'], 'views'));
+
+        $this->assertSame($byDays[80]->id, $this->hub()->funnel($this->company->id, 30, null, 1, 10, 'contacts')['rows'][0]['car_id']);
+        $this->assertSame($byDays[70]->id, $this->hub()->funnel($this->company->id, 30, null, 1, 10, 'leads')['rows'][0]['car_id']);
+
+        $url = "/api/v1/companies/{$this->company->id}/automotive-hub/funnel?days=30";
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&sort=views&direction=desc&per_page=5")->assertOk()
+            ->assertJsonPath('data.rows.0.views', 12)
+            ->assertJsonPath('data.sort.by', 'views');
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&sort=price")->assertStatus(422);
+        $this->actingAs($this->user, 'sanctum')->getJson("{$url}&sort=views&direction=up")->assertStatus(422);
+    }
+
+    public function test_summary_includes_the_average_price_from_the_single_source(): void
+    {
+        $this->car(10, ['price_gross' => 10000]);
+        $this->car(20, ['price_gross' => 30000]);
+        $this->car(30, ['status' => 'sold', 'price_gross' => 99000]);   // vendida: fora
+
+        $s = $this->hub()->summary($this->company->id);
+
+        $this->assertEquals(20000, $s['stock']['avg_price']);
+        $this->assertSame(app(DashboardRepository::class)->getSummary($this->company->id)['avg_price'], $s['stock']['avg_price']);
+    }
+
     public function test_cpl_never_divides_by_zero(): void
     {
         $this->assertSame(['cpl' => null, 'cpl_state' => 'no_spend'], AutomotiveHubService::cpl(0.0, 0));

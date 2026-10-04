@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Button, ButtonGroup, Card, CardBody, Col, Row, Spinner, Table } from "reactstrap";
 import { getAutomotiveHub, getAutomotiveHubFunnel } from "helpers/laravel_helper";
-import type { AutomotiveFunnel, AutomotiveHub, FunnelRow, HubPrice } from "common/models/automotiveHub.model";
+import type { AutomotiveFunnel, AutomotiveHub, FunnelRow, FunnelSortKey, HubPrice, SortDirection } from "common/models/automotiveHub.model";
 import type { Recommendation, RecommendationLevel } from "common/models/recommendation.model";
 import Pagination from "Components/Common/Pagination";
 import { MetricCard } from "./AutomotiveMarketingBlock";
@@ -114,9 +114,38 @@ const Cpl = ({ value, state }: { value: number | null; state: FunnelRow["cpl_sta
         : state === "spend_without_lead" ? <span className="badge bg-warning-subtle text-warning fw-normal" title="Houve investimento e nenhuma lead com origem paga no período.">gasto sem lead</span>
             : <span className="text-muted">—</span>;
 
+/**
+ * Cabeçalho ordenável do funil. A ordenação é pedida ao BACKEND (sobre todas as
+ * viaturas, antes da paginação): ordenar por vistas dá o top real, não só o da
+ * página. Primeiro clique: maior primeiro; segundo clique na mesma coluna: inverte.
+ */
+function SortableTh({ label, sortKey, sort, onSort }: {
+    label: string;
+    sortKey: FunnelSortKey;
+    sort: { by: FunnelSortKey; direction: SortDirection };
+    onSort: (key: FunnelSortKey) => void;
+}) {
+    const active = sort.by === sortKey;
+    const icon = !active ? "ri-arrow-up-down-line opacity-50" : sort.direction === "desc" ? "ri-arrow-down-line" : "ri-arrow-up-line";
+    return (
+        <th className="text-end" aria-sort={active ? (sort.direction === "desc" ? "descending" : "ascending") : "none"}>
+            <button
+                type="button"
+                className={`btn btn-link btn-sm p-0 text-decoration-none fs-13 ${active ? "text-primary fw-semibold" : "text-muted"}`}
+                onClick={() => onSort(sortKey)}
+                title={`Ordenar por ${label.toLowerCase()}`}
+            >
+                {label} <i className={icon} />
+            </button>
+        </th>
+    );
+}
+
 function FunnelCard({ companyId }: { companyId: number }) {
     const [days, setDays] = useState<14 | 30>(30);
     const [page, setPage] = useState(1);
+    // Por omissão: dias em stock, maior primeiro (a mesma do backend).
+    const [sort, setSort] = useState<{ by: FunnelSortKey; direction: SortDirection }>({ by: "days_in_stock", direction: "desc" });
     const [data, setData] = useState<AutomotiveFunnel | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -125,12 +154,17 @@ function FunnelCard({ companyId }: { companyId: number }) {
         let alive = true;
         setLoading(true);
         setError(false);
-        getAutomotiveHubFunnel(companyId, days, page)
+        getAutomotiveHubFunnel(companyId, days, page, 10, sort.by, sort.direction)
             .then((r: any) => { if (alive) setData(r?.data ?? null); })
             .catch(() => { if (alive) setError(true); })
             .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
-    }, [companyId, days, page]);
+    }, [companyId, days, page, sort]);
+
+    const onSort = (key: FunnelSortKey) => {
+        setSort((s) => (s.by === key ? { by: key, direction: s.direction === "desc" ? "asc" : "desc" } : { by: key, direction: "desc" }));
+        setPage(1);
+    };
 
     const t = data?.totals;
 
@@ -163,11 +197,11 @@ function FunnelCard({ companyId }: { companyId: number }) {
                             <thead className="text-muted">
                                 <tr>
                                     <th>Viatura</th>
-                                    <th className="text-end">Dias em stock</th>
+                                    <SortableTh label="Dias em stock" sortKey="days_in_stock" sort={sort} onSort={onSort} />
                                     <th>Preço face ao mercado</th>
-                                    <th className="text-end">Vistas</th>
-                                    <th className="text-end">Contactos</th>
-                                    <th className="text-end">Leads</th>
+                                    <SortableTh label="Vistas" sortKey="views" sort={sort} onSort={onSort} />
+                                    <SortableTh label="Contactos" sortKey="contacts" sort={sort} onSort={onSort} />
+                                    <SortableTh label="Leads" sortKey="leads" sort={sort} onSort={onSort} />
                                     <th>Venda</th>
                                     <th className="text-end">Investimento</th>
                                     <th className="text-end">CPL pago</th>
@@ -278,6 +312,9 @@ export default function AutomotiveHubStock({ companyId, onHighCount }: {
                                 ? <>Inclui {int(s.stock.trade_ins)} {s.stock.trade_ins === 1 ? "retoma" : "retomas"} · {int(s.stock.own_stock)} de stock próprio</>
                                 : <>Todas de stock próprio</>}
                         </div>
+                        {s.stock.total_cars > 0 && (
+                            <div className="fs-12 text-muted">Preço médio {eur0(s.stock.avg_price)}</div>
+                        )}
                     </MetricCard>
                 </Col>
                 <Col xs={12} sm={6} xl>

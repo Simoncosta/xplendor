@@ -41,6 +41,11 @@ class AutomotiveHubService
     public const SPEND_WINDOW_DAYS = 30;
     public const FUNNEL_WINDOWS = [14, 30];
     public const FUNNEL_PER_PAGE = 10;
+
+    /** Colunas pelas quais o funil pode ser ordenado (no backend, antes da paginação). */
+    public const FUNNEL_SORTS = ['days_in_stock', 'views', 'contacts', 'leads'];
+    public const FUNNEL_DEFAULT_SORT = 'days_in_stock';
+    public const FUNNEL_DEFAULT_DIRECTION = 'desc';
     public const FUNNEL_MAX_PER_PAGE = 50;
     public const RECOMMENDATIONS_LIMIT = 5;
 
@@ -75,6 +80,8 @@ class AutomotiveHubService
                 'own_stock' => $stock['own_stock'],
                 'trade_ins' => $stock['trade_ins'],
                 'avg_days_in_stock' => $stock['avg_days_in_stock'],
+                // Preço médio do stock (veio da antiga "Monitorização de Stock"; mesma fonte).
+                'avg_price' => $stock['avg_price'],
             ],
             'stuck_capital' => [
                 'amount' => round($capital['stuck_capital_over_threshold'], 2),
@@ -266,11 +273,22 @@ class AutomotiveHubService
     // ── 3. FUNIL POR VIATURA ───────────────────────────────────────────────
 
     /**
-     * Funil por viatura, paginado (ordenado por dias em stock, maior primeiro). Os
-     * totais são de TODAS as viaturas do período, não só da página.
+     * Funil por viatura, paginado. A ordenação (por omissão: dias em stock, maior
+     * primeiro) é feita aqui, sobre TODAS as viaturas do período, antes de cortar a
+     * página: ordenar por vistas dá o top real, não só o da página. Os totais são
+     * de todas as viaturas do período, não só da página.
      */
-    public function funnel(int $companyId, int $days, ?CarbonImmutable $now = null, int $page = 1, int $perPage = self::FUNNEL_PER_PAGE): array
-    {
+    public function funnel(
+        int $companyId,
+        int $days,
+        ?CarbonImmutable $now = null,
+        int $page = 1,
+        int $perPage = self::FUNNEL_PER_PAGE,
+        string $sort = self::FUNNEL_DEFAULT_SORT,
+        string $direction = self::FUNNEL_DEFAULT_DIRECTION,
+    ): array {
+        $sort = in_array($sort, self::FUNNEL_SORTS, true) ? $sort : self::FUNNEL_DEFAULT_SORT;
+        $direction = $direction === 'asc' ? 'asc' : 'desc';
         $now = $now ?? CarbonImmutable::now();
         $from = $now->subDays($days - 1)->toDateString();
         $to = $now->toDateString();
@@ -341,7 +359,7 @@ class AutomotiveHubService
                 ...self::cpl($carSpend, $paid),
                 'ad_status' => $adStatus[$car->id] ?? ['status' => 'none', 'active_ads' => 0],
             ];
-        })->sortBy([['days_in_stock', 'desc'], ['car_id', 'asc']])->values();
+        })->sortBy([[$sort, $direction], ['car_id', 'asc']])->values();   // desempate estável pelo id
 
         $totSpend = round((float) $rows->sum('paid_spend'), 2);
         $totPaid = (int) $rows->sum('paid_leads');
@@ -357,6 +375,7 @@ class AutomotiveHubService
             'from' => $from,
             'to' => $to,
             'rows' => $pageRows->all(),
+            'sort' => ['by' => $sort, 'direction' => $direction],
             'pagination' => [
                 'current_page' => $page,
                 'per_page' => $perPage,

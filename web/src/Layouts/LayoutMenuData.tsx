@@ -170,7 +170,6 @@ const Navdata = () => {
             // Comercial = operação de carros (stock + CRM). Módulos por sub-item.
             subItems: [
                 { id: "cars", label: "Carros", link: "/cars", parentId: "comercial", module: "stock" },
-                { id: "stock-monitoring", label: "Monitorização de stock", link: "/stock/monitoring", parentId: "comercial", module: "stock" },
                 { id: "leads", label: "Leads", link: "/leads", parentId: "comercial", module: "commercial_crm" },
                 { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial", module: "commercial_crm" },
                 // Clientes (CRM) — mantém o gate 'finance' (a rota /customers é gated por finance no backend).

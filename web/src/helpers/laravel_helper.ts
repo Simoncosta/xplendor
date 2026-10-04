@@ -275,8 +275,16 @@ export const getRestaurantMarketing = (companyId: number, month?: string) =>
 // Hub do automóvel (separador "Stock"): resumo + recomendações + avisos; funil por viatura (14 ou 30 dias).
 export const getAutomotiveHub = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/automotive-hub`);
-export const getAutomotiveHubFunnel = (companyId: number, days: 14 | 30, page = 1, perPage = 10) =>
-    api.get(url.GET_COMPANIES + `/${companyId}/automotive-hub/funnel`, { days, page, per_page: perPage });
+export const getAutomotiveHubFunnel = (
+    companyId: number,
+    days: 14 | 30,
+    page = 1,
+    perPage = 10,
+    sort: "days_in_stock" | "views" | "contacts" | "leads" = "days_in_stock",
+    direction: "asc" | "desc" = "desc",
+) =>
+    // A ordenação é feita no backend, sobre todas as viaturas, antes da paginação.
+    api.get(url.GET_COMPANIES + `/${companyId}/automotive-hub/funnel`, { days, page, per_page: perPage, sort, direction });
 // Dashboard do automóvel — bloco "Marketing e resultados" de um mês (AAAA-MM; omisso = mês em curso).
 export const getAutomotiveMarketing = (companyId: number, month?: string) =>
     api.get(url.GET_COMPANIES + `/${companyId}/analytics/automotive/marketing`, month ? { month } : undefined);

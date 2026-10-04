@@ -62,6 +62,16 @@ class AutomotiveHubController extends Controller
             return ApiResponse::error('per_page inválido: entre 1 e ' . AutomotiveHubService::FUNNEL_MAX_PER_PAGE . '.', 422);
         }
 
-        return ApiResponse::success($this->hub->funnel($companyId, $days, null, $page, $perPage));
+        $sort = (string) $request->query('sort', AutomotiveHubService::FUNNEL_DEFAULT_SORT);
+        if (! in_array($sort, AutomotiveHubService::FUNNEL_SORTS, true)) {
+            return ApiResponse::error('sort inválido: use ' . implode(', ', AutomotiveHubService::FUNNEL_SORTS) . '.', 422);
+        }
+
+        $direction = (string) $request->query('direction', AutomotiveHubService::FUNNEL_DEFAULT_DIRECTION);
+        if (! in_array($direction, ['asc', 'desc'], true)) {
+            return ApiResponse::error('direction inválido: use asc ou desc.', 422);
+        }
+
+        return ApiResponse::success($this->hub->funnel($companyId, $days, null, $page, $perPage, $sort, $direction));
     }
 }
