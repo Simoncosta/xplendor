@@ -55,7 +55,9 @@ class QuoteSnapshot
                 'label'  => $quote->global_discount_label ?: config('quotes.defaults.global_discount_label'),
             ],
             'minimum_contract_months' => $quote->minimum_contract_months,
-            'payment_terms'           => $quote->payment_terms,
+            'monthly_start_terms'     => $quote->monthly_start_terms,
+            'payment_terms_monthly'   => $quote->payment_terms_monthly,
+            'payment_terms_one_off'   => $quote->payment_terms_one_off,
         ];
     }
 }

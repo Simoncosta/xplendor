@@ -39,7 +39,7 @@ class Quote extends Model implements AuditableContract
         'title', 'intro', 'description', 'amount',
         'global_discount_type', 'global_discount_value', 'global_discount_target', 'global_discount_label',
         'total_monthly', 'total_one_off',
-        'minimum_contract_months', 'payment_terms',
+        'minimum_contract_months', 'payment_terms', 'monthly_start_terms', 'payment_terms_monthly', 'payment_terms_one_off',
         'status', 'sent_at', 'valid_until', 'decided_at', 'expired_at', 'legacy_status',
         'notes', 'created_by_user_id',
     ];

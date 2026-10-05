@@ -66,12 +66,21 @@ class QuotePdfPresenter
             ['key' => 'IVA', 'value' => $texts['vat_condition']],
             ['key' => 'Anúncios', 'value' => $texts['ads_condition']],
         ];
-        $minimum = $s['minimum_contract_months'] && $s['buckets']['monthly']['count'] > 0 ? self::months((int) $s['minimum_contract_months']) : null;
+        // Condições dos serviços mensais só com linhas mensais; a do valor único só com linhas de valor único.
+        $hasMonthly = $s['buckets']['monthly']['count'] > 0;
+        $hasOneOff = $s['buckets']['one_off']['count'] > 0;
+        $minimum = $hasMonthly && ! empty($s['minimum_contract_months']) ? self::months((int) $s['minimum_contract_months']) : null;
+        if ($hasMonthly && self::filled($s['monthly_start_terms'] ?? null)) {
+            $conditions[] = ['key' => 'Início dos serviços mensais', 'value' => trim($s['monthly_start_terms'])];
+        }
         if ($minimum) {
             $conditions[] = ['key' => 'Contrato mínimo', 'value' => $minimum . ' para os serviços mensais.'];
         }
-        if ($s['payment_terms']) {
-            $conditions[] = ['key' => 'Forma de pagamento', 'value' => $s['payment_terms']];
+        if ($hasMonthly && self::filled($s['payment_terms_monthly'] ?? null)) {
+            $conditions[] = ['key' => 'Pagamento dos serviços mensais', 'value' => trim($s['payment_terms_monthly'])];
+        }
+        if ($hasOneOff && self::filled($s['payment_terms_one_off'] ?? null)) {
+            $conditions[] = ['key' => 'Pagamento do valor único', 'value' => trim($s['payment_terms_one_off'])];
         }
         $conditions[] = ['key' => 'Validade', 'value' => $validUntil
             ? "Este orçamento é válido até {$validUntil}."
@@ -107,8 +116,9 @@ class QuotePdfPresenter
             'valid_until'      => $validUntil ?? config('quotes.validity_days') . ' dias após o envio',
             'minimum_contract' => $minimum,
             'customer'         => ['name' => $s['customer']['name'], 'lines' => $customerLines],
-            'title_text'       => $s['title'],
-            'intro'            => $s['intro'],
+            // Título e introdução são opcionais: vazios, não aparecem no PDF.
+            'title_text'       => self::filled($s['title'] ?? null) ? trim($s['title']) : null,
+            'intro'            => self::filled($s['intro'] ?? null) ? trim($s['intro']) : null,
             'sections'         => $sections,
             'totals'           => $totals,
             'vat_note'         => $texts['vat_note'],
@@ -132,6 +142,11 @@ class QuotePdfPresenter
     private static function number(float $v): string
     {
         return rtrim(rtrim(number_format($v, 2, ',', '.'), '0'), ',');
+    }
+
+    private static function filled(?string $text): bool
+    {
+        return $text !== null && trim($text) !== '';
     }
 
     private static function months(int $n): string

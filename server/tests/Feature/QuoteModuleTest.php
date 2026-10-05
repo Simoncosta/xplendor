@@ -110,20 +110,25 @@ class QuoteModuleTest extends TestCase
         $this->assertNull($q['number']);                        // número só no envio
         $this->assertSame('Rascunho', $q['display_number']);
         $this->assertSame(3, $q['minimum_contract_months']);    // condições por omissão
-        $this->assertStringStartsWith('Serviços mensais: pagamento antecipado', $q['payment_terms']);
+        $this->assertSame('Os serviços mensais têm início no mês seguinte à aceitação.', $q['monthly_start_terms']);
+        $this->assertStringStartsWith('Pagamento antecipado', $q['payment_terms_monthly']);
+        $this->assertSame('50% na adjudicação e 50% na entrega.', $q['payment_terms_one_off']);
+        $this->assertNull($q['intro']);                         // introdução vazia por omissão
     }
 
     public function test_empty_conditions_on_create_fall_back_to_the_defaults(): void
     {
-        $q = $this->createDraft(['payment_terms' => '', 'minimum_contract_months' => null]);
+        $q = $this->createDraft(['payment_terms_monthly' => '', 'payment_terms_one_off' => null, 'monthly_start_terms' => '', 'minimum_contract_months' => null]);
 
         $this->assertSame(3, $q['minimum_contract_months']);
-        $this->assertSame(config('quotes.defaults.payment_terms'), $q['payment_terms']);
+        $this->assertSame(config('quotes.defaults.payment_terms_monthly'), $q['payment_terms_monthly']);
+        $this->assertSame(config('quotes.defaults.payment_terms_one_off'), $q['payment_terms_one_off']);
+        $this->assertSame(config('quotes.defaults.monthly_start_terms'), $q['monthly_start_terms']);
         $this->api()->getJson('/api/v1/admin/quotes/defaults')->assertOk()
             ->assertJsonPath('data.minimum_contract_months', 3)->assertJsonPath('data.validity_days', 30);
 
         // Depois de criado, a forma de pagamento pode ser apagada de propósito.
-        $this->api()->putJson("/api/v1/admin/quotes/{$q['id']}", ['payment_terms' => ''])->assertOk()->assertJsonPath('data.payment_terms', null);
+        $this->api()->putJson("/api/v1/admin/quotes/{$q['id']}", ['payment_terms_monthly' => ''])->assertOk()->assertJsonPath('data.payment_terms_monthly', null);
     }
 
     public function test_existing_customer_is_used_and_another_companys_customer_is_refused(): void
@@ -189,6 +194,82 @@ class QuoteModuleTest extends TestCase
         $this->assertStringContainsString('não está incluído', collect($doc['conditions'])->firstWhere('key', 'Anúncios')['value']);
         $this->assertSame('XPLENDOR é uma marca de Simon Costa, Unipessoal, Lda · NIF 517343355', $doc['legal']['brand_line']);
         $this->assertStringNotContainsString('—', json_encode($doc, JSON_UNESCAPED_UNICODE));
+    }
+
+    // ── Título, introdução e condições conforme as linhas ────────────────────
+
+    /** Documento do PDF (presenter) e o HTML da vista, para um orçamento com estas linhas. */
+    private function documentFor(array $lines, array $extra = []): array
+    {
+        $q = Quote::find($this->createDraft(array_merge(['lines' => $lines, 'title' => null, 'global_discount_type' => null, 'global_discount_value' => null], $extra))['id']);
+        $doc = app(QuotePdfPresenter::class)->present(QuoteSnapshot::fromQuote($q));
+
+        return [$doc, view('pdf.quote', ['doc' => $doc])->render()];
+    }
+
+    private const MONTHLY_LINE = ['name' => 'Social Media', 'unit' => 'month', 'billing_type' => 'monthly', 'quantity' => 1, 'unit_price' => 200];
+    private const ONE_OFF_LINE = ['name' => 'Website', 'unit' => 'hour', 'billing_type' => 'one_off', 'quantity' => 10, 'unit_price' => 25];
+
+    public function test_only_monthly_shows_the_monthly_conditions_and_not_the_one_off_one(): void
+    {
+        [$doc, $html] = $this->documentFor([self::MONTHLY_LINE]);
+
+        $this->assertSame(['IVA', 'Anúncios', 'Início dos serviços mensais', 'Contrato mínimo', 'Pagamento dos serviços mensais', 'Validade'], array_column($doc['conditions'], 'key'));
+        $this->assertSame('3 meses', $doc['minimum_contract']);
+        $this->assertSame(['Serviços mensais'], array_column($doc['sections'], 'title'));
+        $this->assertSame(['Total mensal'], array_column($doc['totals'], 'label'));
+        $this->assertStringContainsString('Os serviços mensais têm início no mês seguinte à aceitação.', $html);
+        $this->assertStringNotContainsString('50% na adjudicação', $html);
+        $this->assertStringNotContainsString('Pagamento do valor único', $html);
+        $this->assertStringNotContainsString('Total valor único', $html);
+    }
+
+    public function test_only_one_off_hides_every_monthly_condition(): void
+    {
+        [$doc, $html] = $this->documentFor([self::ONE_OFF_LINE]);
+
+        $this->assertSame(['IVA', 'Anúncios', 'Pagamento do valor único', 'Validade'], array_column($doc['conditions'], 'key'));
+        $this->assertNull($doc['minimum_contract']);
+        $this->assertSame(['Total valor único'], array_column($doc['totals'], 'label'));
+        $this->assertStringContainsString('50% na adjudicação e 50% na entrega.', $html);
+        foreach (['têm início no mês seguinte', 'Contrato mínimo', 'Pagamento dos serviços mensais', 'Serviços mensais', 'Total mensal', '/mês'] as $absent) {
+            $this->assertStringNotContainsString($absent, $html, $absent);
+        }
+    }
+
+    public function test_mixed_shows_both_sets_of_conditions(): void
+    {
+        [$doc, $html] = $this->documentFor([self::MONTHLY_LINE, self::ONE_OFF_LINE]);
+
+        $this->assertSame(
+            ['IVA', 'Anúncios', 'Início dos serviços mensais', 'Contrato mínimo', 'Pagamento dos serviços mensais', 'Pagamento do valor único', 'Validade'],
+            array_column($doc['conditions'], 'key')
+        );
+        $this->assertSame(['Total mensal', 'Total valor único'], array_column($doc['totals'], 'label'));
+        $this->assertStringContainsString('Os serviços mensais têm início no mês seguinte à aceitação.', $html);
+        $this->assertStringContainsString('50% na adjudicação e 50% na entrega.', $html);
+    }
+
+    public function test_title_and_intro_are_optional_and_absent_from_the_pdf_when_empty(): void
+    {
+        [$doc, $html] = $this->documentFor([self::MONTHLY_LINE], ['title' => '   ', 'intro' => '']);
+        $this->assertNull($doc['title_text']);
+        $this->assertNull($doc['intro']);
+        $this->assertStringNotContainsString('class="intro"', $html);
+
+        [$doc2, $html2] = $this->documentFor([self::MONTHLY_LINE], ['title' => 'Presença digital', 'intro' => 'Proposta para o próximo trimestre.']);
+        $this->assertStringContainsString('Presença digital', $html2);
+        $this->assertStringContainsString('Proposta para o próximo trimestre.', $html2);
+    }
+
+    public function test_an_emptied_condition_is_not_shown(): void
+    {
+        $q = $this->createDraft(['lines' => [self::MONTHLY_LINE]]);
+        $this->api()->putJson("/api/v1/admin/quotes/{$q['id']}", ['monthly_start_terms' => '', 'minimum_contract_months' => null])->assertOk();
+
+        $doc = app(QuotePdfPresenter::class)->present(QuoteSnapshot::fromQuote(Quote::find($q['id'])));
+        $this->assertSame(['IVA', 'Anúncios', 'Pagamento dos serviços mensais', 'Validade'], array_column($doc['conditions'], 'key'));
+        $this->assertNull($doc['minimum_contract']);
     }
 
     // ── Envio: número, validade, versão congelada com o PDF ──────────────────

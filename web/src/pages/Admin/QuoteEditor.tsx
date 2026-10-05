@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert, Badge, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import Select from "react-select";
@@ -38,14 +38,20 @@ interface FormState {
     global_discount_target: QuoteBilling | "";
     global_discount_label: string;
     minimum_contract_months: string;
-    payment_terms: string;
+    monthly_start_terms: string;
+    payment_terms_monthly: string;
+    payment_terms_one_off: string;
 }
+
+/** Distância ao topo do bloco fixo da coluna da direita (barra superior + folga). */
+const STICKY_TOP = 90;
+type StickyMode = "none" | "all" | "totals";
 
 const EMPTY: FormState = {
     customerMode: "existing", customer: null, newCustomer: { name: "", phone: "", email: "" }, company_id: null,
     title: "", intro: "", notes: "", lines: [],
     global_discount_type: "", global_discount_value: "", global_discount_target: "", global_discount_label: "Desconto de pacote",
-    minimum_contract_months: "3", payment_terms: "",
+    minimum_contract_months: "3", monthly_start_terms: "", payment_terms_monthly: "", payment_terms_one_off: "",
 };
 
 const fromQuote = (q: IQuote): FormState => ({
@@ -62,7 +68,9 @@ const fromQuote = (q: IQuote): FormState => ({
     global_discount_target: q.global_discount_target ?? "",
     global_discount_label: q.global_discount_label ?? "Desconto de pacote",
     minimum_contract_months: q.minimum_contract_months != null ? String(q.minimum_contract_months) : "",
-    payment_terms: q.payment_terms ?? "",
+    monthly_start_terms: q.monthly_start_terms ?? "",
+    payment_terms_monthly: q.payment_terms_monthly ?? "",
+    payment_terms_one_off: q.payment_terms_one_off ?? "",
 });
 
 const toPayload = (f: FormState) => ({
@@ -83,7 +91,9 @@ const toPayload = (f: FormState) => ({
     global_discount_target: f.global_discount_type === "amount" ? f.global_discount_target || null : null,
     global_discount_label: f.global_discount_label || null,
     minimum_contract_months: f.minimum_contract_months === "" ? null : Number(f.minimum_contract_months),
-    payment_terms: f.payment_terms,
+    monthly_start_terms: f.monthly_start_terms,
+    payment_terms_monthly: f.payment_terms_monthly,
+    payment_terms_one_off: f.payment_terms_one_off,
 });
 
 const firstError = (e: any, fallback: string) => {
@@ -142,7 +152,9 @@ const QuoteEditor = () => {
                 setForm((f) => ({
                     ...f,
                     minimum_contract_months: d.minimum_contract_months != null ? String(d.minimum_contract_months) : f.minimum_contract_months,
-                    payment_terms: d.payment_terms ?? f.payment_terms,
+                    monthly_start_terms: d.monthly_start_terms ?? f.monthly_start_terms,
+                    payment_terms_monthly: d.payment_terms_monthly ?? f.payment_terms_monthly,
+                    payment_terms_one_off: d.payment_terms_one_off ?? f.payment_terms_one_off,
                     global_discount_label: d.global_discount_label ?? f.global_discount_label,
                 }));
             }).catch(() => undefined);
@@ -302,6 +314,29 @@ const QuoteEditor = () => {
         if (!r.ok) toast.error("Não foi possível abrir o PDF desta versão.");
     };
 
+    // Coluna da direita (só em ecrãs largos, onde fica ao lado do formulário): totais e
+    // notas num só bloco fixo; se o bloco não couber no ecrã, só os totais ficam fixos e
+    // as notas seguem o scroll. Abaixo de xl a coluna passa para baixo e nada fica fixo.
+    const totalsRef = useRef<HTMLDivElement>(null);
+    const notesRef = useRef<HTMLDivElement>(null);
+    const [stickyMode, setStickyMode] = useState<StickyMode>("none");
+    useLayoutEffect(() => {
+        const calc = () => {
+            if (window.innerWidth < 1200) { setStickyMode("none"); return; }
+            const available = window.innerHeight - STICKY_TOP - 16;
+            const totalsH = totalsRef.current?.offsetHeight ?? 0;
+            const notesH = notesRef.current?.offsetHeight ?? 0;
+            setStickyMode(totalsH + 16 + notesH <= available ? "all" : totalsH <= available ? "totals" : "none");
+        };
+        calc();
+        window.addEventListener("resize", calc);
+        const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(calc) : null;
+        if (totalsRef.current) observer?.observe(totalsRef.current);
+        if (notesRef.current) observer?.observe(notesRef.current);
+        return () => { window.removeEventListener("resize", calc); observer?.disconnect(); };
+    }, [loading]);
+    const stickyStyle: React.CSSProperties = { position: "sticky", top: STICKY_TOP, zIndex: 2 };
+
     if (loading) {
         return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner color="primary" /></div></Container></div>;
     }
@@ -312,6 +347,28 @@ const QuoteEditor = () => {
         label: `${c.name} · ${formatQuoteEuro(c.unit_price)} ${UNIT_LABEL[c.unit]} · ${BILLING_LABEL[c.billing_type]}`,
         item: c,
     }));
+    const versionsCard = (quote?.versions?.length ?? 0) > 0 ? (
+
+                                <Card className="mb-3">
+                                    <CardHeader><h6 className="mb-0">Versões enviadas</h6></CardHeader>
+                                    <CardBody>
+                                        <ul className="list-unstyled vstack gap-2 mb-0">
+                                            {quote!.versions!.map((v) => (
+                                                <li key={v.version} className="d-flex align-items-center justify-content-between gap-2">
+                                                    <div className="fs-13">
+                                                        <div className="fw-medium">{v.number} · versão {v.version}</div>
+                                                        <small className="text-muted">Enviada a {longDate(v.sent_at)}{v.valid_until ? ` · válida até ${longDate(v.valid_until)}` : ""}</small>
+                                                    </div>
+                                                    <button type="button" className="btn btn-soft-secondary btn-sm flex-shrink-0" onClick={() => void openVersion(v.version)}>
+                                                        <i className="ri-file-pdf-line me-1" />PDF
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </CardBody>
+                                </Card>
+                            
+    ) : null;
     const hasMonthly = totals.buckets.monthly.count > 0;
     const hasOneOff = totals.buckets.one_off.count > 0;
 
@@ -424,10 +481,12 @@ const QuoteEditor = () => {
                             <Card className="mb-3">
                                 <CardHeader><h6 className="mb-0">Apresentação</h6></CardHeader>
                                 <CardBody>
-                                    <Label className="form-label">Título</Label>
+                                    <Label className="form-label">Título (opcional)</Label>
                                     <Input className="mb-2" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Ex.: Presença digital e tráfego pago" />
-                                    <Label className="form-label">Introdução (aparece no PDF)</Label>
-                                    <Input type="textarea" rows={3} value={form.intro} onChange={(e) => set("intro", e.target.value)} />
+                                    <Label className="form-label">Introdução (opcional, aparece no PDF)</Label>
+                                    <Input type="textarea" rows={3} value={form.intro} onChange={(e) => set("intro", e.target.value)}
+                                        placeholder="Ex.: Proposta para gestão das redes sociais e das campanhas de anúncios." />
+                                    <small className="text-muted">Título e introdução são opcionais: se ficarem vazios, não aparecem no PDF.</small>
                                 </CardBody>
                             </Card>
 
@@ -558,17 +617,39 @@ const QuoteEditor = () => {
                             <Card className="mb-3">
                                 <CardHeader><h6 className="mb-0">Condições</h6></CardHeader>
                                 <CardBody>
+                                    {/* Cada condição só aparece (aqui e no PDF) quando há linhas do tipo a que se refere. */}
                                     <Row className="g-2">
-                                        <Col md={3}>
-                                            <Label className="form-label">Contrato mínimo (meses)</Label>
-                                            <Input type="number" min={1} max={60} value={form.minimum_contract_months} onChange={(e) => set("minimum_contract_months", e.target.value)} placeholder="Sem mínimo" />
-                                        </Col>
-                                        <Col md={9}>
-                                            <Label className="form-label">Forma de pagamento</Label>
-                                            <Input type="textarea" rows={2} value={form.payment_terms} onChange={(e) => set("payment_terms", e.target.value)} />
-                                        </Col>
+                                        {!hasMonthly && !hasOneOff && (
+                                            <Col xs={12}><p className="text-muted mb-1">As condições de pagamento aparecem quando acrescentar serviços mensais ou de valor único.</p></Col>
+                                        )}
+                                        {hasMonthly && (
+                                            <>
+                                                <Col xs={12}><div className="text-muted text-uppercase fs-11 fw-semibold">Serviços mensais</div></Col>
+                                                <Col md={9}>
+                                                    <Label className="form-label">Início dos serviços mensais</Label>
+                                                    <Input value={form.monthly_start_terms} onChange={(e) => set("monthly_start_terms", e.target.value)} placeholder="Vazio: não aparece no PDF" />
+                                                </Col>
+                                                <Col md={3}>
+                                                    <Label className="form-label">Contrato mínimo (meses)</Label>
+                                                    <Input type="number" min={1} max={60} value={form.minimum_contract_months} onChange={(e) => set("minimum_contract_months", e.target.value)} placeholder="Sem mínimo" />
+                                                </Col>
+                                                <Col xs={12}>
+                                                    <Label className="form-label">Pagamento dos serviços mensais</Label>
+                                                    <Input type="textarea" rows={2} value={form.payment_terms_monthly} onChange={(e) => set("payment_terms_monthly", e.target.value)} placeholder="Vazio: não aparece no PDF" />
+                                                </Col>
+                                            </>
+                                        )}
+                                        {hasOneOff && (
+                                            <>
+                                                <Col xs={12}><div className={`text-muted text-uppercase fs-11 fw-semibold${hasMonthly ? " mt-2" : ""}`}>Valor único</div></Col>
+                                                <Col xs={12}>
+                                                    <Label className="form-label">Pagamento do valor único</Label>
+                                                    <Input type="textarea" rows={2} value={form.payment_terms_one_off} onChange={(e) => set("payment_terms_one_off", e.target.value)} placeholder="Vazio: não aparece no PDF" />
+                                                </Col>
+                                            </>
+                                        )}
                                         <Col xs={12}>
-                                            <small className="text-muted d-block">Sempre no PDF: "{VAT_NOTE}" e "{ADS_NOTE}"</small>
+                                            <small className="text-muted d-block mt-1">Sempre no PDF: "{VAT_NOTE}" e "{ADS_NOTE}"</small>
                                         </Col>
                                     </Row>
                                 </CardBody>
@@ -576,9 +657,14 @@ const QuoteEditor = () => {
                             </fieldset>
                         </Col>
 
-                        {/* Coluna lateral: totais, notas internas, versões */}
+                        {/* Coluna lateral: versões (em cima, para nada ficar por baixo do bloco fixo), totais e notas. */}
                         <Col xl={4}>
-                            <Card className="mb-3" style={{ position: "sticky", top: 90 }}>
+                            {stickyMode !== "none" && versionsCard}
+                            {/* "all": o bloco inteiro fica fixo. "totals": o invólucro deixa de ser uma caixa
+                                (display: contents) para os totais ficarem fixos em toda a coluna e as notas seguirem o scroll. */}
+                            <div style={stickyMode === "all" ? stickyStyle : stickyMode === "totals" ? { display: "contents" } : undefined}>
+                            <div ref={totalsRef} style={stickyMode === "totals" ? stickyStyle : undefined}>
+                            <Card className="mb-3">
                                 <CardHeader><h6 className="mb-0">Totais (sem IVA)</h6></CardHeader>
                                 <CardBody>
                                     {!hasMonthly && !hasOneOff && <p className="text-muted mb-0">Acrescente linhas para ver os totais.</p>}
@@ -603,34 +689,19 @@ const QuoteEditor = () => {
                                     {(hasMonthly || hasOneOff) && <p className="fw-semibold fs-13 mb-0">{VAT_NOTE}</p>}
                                 </CardBody>
                             </Card>
+                            </div>
 
+                            <div ref={notesRef}>
                             <Card className="mb-3">
                                 <CardHeader><h6 className="mb-0">Notas internas</h6></CardHeader>
                                 <CardBody>
                                     <Input type="textarea" rows={3} disabled={readOnly} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Não aparecem no PDF nem para o cliente." />
                                 </CardBody>
                             </Card>
+                            </div>
+                            </div>
 
-                            {(quote?.versions?.length ?? 0) > 0 && (
-                                <Card className="mb-3">
-                                    <CardHeader><h6 className="mb-0">Versões enviadas</h6></CardHeader>
-                                    <CardBody>
-                                        <ul className="list-unstyled vstack gap-2 mb-0">
-                                            {quote!.versions!.map((v) => (
-                                                <li key={v.version} className="d-flex align-items-center justify-content-between gap-2">
-                                                    <div className="fs-13">
-                                                        <div className="fw-medium">{v.number} · versão {v.version}</div>
-                                                        <small className="text-muted">Enviada a {longDate(v.sent_at)}{v.valid_until ? ` · válida até ${longDate(v.valid_until)}` : ""}</small>
-                                                    </div>
-                                                    <button type="button" className="btn btn-soft-secondary btn-sm flex-shrink-0" onClick={() => void openVersion(v.version)}>
-                                                        <i className="ri-file-pdf-line me-1" />PDF
-                                                    </button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </CardBody>
-                                </Card>
-                            )}
+                            {stickyMode === "none" && versionsCard}
                         </Col>
                 </Row>
             </Container>

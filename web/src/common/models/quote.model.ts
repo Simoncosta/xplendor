@@ -49,7 +49,9 @@ export interface IQuote {
     global_discount_target: QuoteBilling | null;
     global_discount_label: string | null;
     minimum_contract_months: number | null;
-    payment_terms: string | null;
+    monthly_start_terms: string | null;     // só com linhas mensais
+    payment_terms_monthly: string | null;   // só com linhas mensais
+    payment_terms_one_off: string | null;   // só com linhas de valor único
     sent_at: string | null;
     valid_until: string | null;
     decided_at: string | null;

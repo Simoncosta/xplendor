@@ -40,6 +40,9 @@ class QuoteService extends BaseService
 {
     private const NOTIFY_RECIPIENT = 'simonfrtd@gmail.com';
 
+    /** Condições com valor por omissão (config quotes.defaults), editáveis por orçamento. */
+    private const CONDITION_FIELDS = ['minimum_contract_months', 'monthly_start_terms', 'payment_terms_monthly', 'payment_terms_one_off'];
+
     public function __construct(
         protected QuoteRepositoryInterface $quoteRepository,
         private readonly QuoteNumberAllocator $numbers,
@@ -88,13 +91,10 @@ class QuoteService extends BaseService
     public function createQuote(array $data, User $actor): Quote
     {
         return DB::transaction(function () use ($data, $actor) {
-            $quote = new Quote([
-                'status' => 'draft', 'version' => 1, 'created_by_user_id' => $actor->id,
-                'minimum_contract_months' => config('quotes.defaults.minimum_contract_months'),
-                'payment_terms' => config('quotes.defaults.payment_terms'),
-            ]);
+            $quote = new Quote(['status' => 'draft', 'version' => 1, 'created_by_user_id' => $actor->id]
+                + collect(self::CONDITION_FIELDS)->mapWithKeys(fn ($f) => [$f => config("quotes.defaults.{$f}")])->all());
             // Condições por omissão quando o formulário as traz vazias (editáveis depois).
-            foreach (['payment_terms', 'minimum_contract_months'] as $field) {
+            foreach (self::CONDITION_FIELDS as $field) {
                 if (array_key_exists($field, $data) && ($data[$field] === null || $data[$field] === '')) {
                     unset($data[$field]);
                 }
@@ -189,7 +189,7 @@ class QuoteService extends BaseService
             $this->reject('customer_id', 'Escolha um cliente ou crie um novo.');
         }
 
-        foreach (['company_id', 'title', 'intro', 'notes', 'minimum_contract_months', 'payment_terms',
+        foreach (['company_id', 'title', 'intro', 'notes', 'minimum_contract_months', 'monthly_start_terms', 'payment_terms_monthly', 'payment_terms_one_off',
             'global_discount_type', 'global_discount_value', 'global_discount_target', 'global_discount_label'] as $field) {
             if (array_key_exists($field, $data)) {
                 $quote->{$field} = $data[$field] === '' ? null : $data[$field];

@@ -12,8 +12,12 @@ return [
     'validity_days' => 30,
 
     'defaults' => [
+        // Só aparecem no ecrã e no PDF quando o orçamento tem linhas MENSAIS:
         'minimum_contract_months' => 3,
-        'payment_terms' => 'Serviços mensais: pagamento antecipado, por transferência bancária, até ao dia 8 de cada mês. Valor único: 50% na adjudicação e 50% na entrega.',
+        'monthly_start_terms' => 'Os serviços mensais têm início no mês seguinte à aceitação.',
+        'payment_terms_monthly' => 'Pagamento antecipado, por transferência bancária, até ao dia 8 de cada mês.',
+        // Só aparece quando o orçamento tem linhas de VALOR ÚNICO:
+        'payment_terms_one_off' => '50% na adjudicação e 50% na entrega.',
         'global_discount_label' => 'Desconto de pacote',
     ],
 
