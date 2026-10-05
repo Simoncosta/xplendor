@@ -59,11 +59,12 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
         if (!social || handledReturn.current) return;
         handledReturn.current = true;
         if (social === "choose") {
-            toast.success("Redes sociais autorizadas. Falta escolher as Páginas e as contas de Instagram.");
+            // toastId fixo: o cartão pode montar duas vezes enquanto a página carrega.
+            toast.success("Redes sociais autorizadas. Falta escolher as Páginas e as contas de Instagram.", { toastId: "social-return" });
             setChoosing(true);
         } else {
             const m = RETURN_MESSAGES[searchParams.get("reason") ?? ""] ?? { kind: "error", text: "Não foi possível ligar as redes sociais. Tente novamente." };
-            m.kind === "info" ? toast.info(m.text, { autoClose: 10000 }) : toast.error(m.text);
+            m.kind === "info" ? toast.info(m.text, { autoClose: 10000, toastId: "social-return" }) : toast.error(m.text, { toastId: "social-return" });
         }
         const next = new URLSearchParams(searchParams);
         next.delete("social");

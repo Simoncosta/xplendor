@@ -280,6 +280,78 @@ class SocialConnectionTest extends TestCase
         Queue::assertPushed(ReadSocialFollowersJob::class, fn ($j) => $j->companyId === $this->a->id);
     }
 
+    // ── Escolhas independentes (só Facebook, só Instagram, os dois) ────────────
+
+    /** Escolhe, corre a leitura diária e devolve [contas guardadas, pedidos à Graph de seguidores]. */
+    private function chooseAndRead(array $facebook, array $instagram): array
+    {
+        Queue::fake();
+        SocialConnection::create(['company_id' => $this->a->id, 'access_token' => self::USER_TOKEN, 'granted_scopes' => SocialConnection::SCOPES,
+            'status' => SocialConnection::STATUS_PENDING_SELECTION, 'token_expires_at' => now()->addDays(60)]);
+
+        $this->as($this->adminA)->putJson($this->url($this->a, '/integrations/social/accounts'), ['facebook' => $facebook, 'instagram' => $instagram])
+            ->assertOk()->assertJsonPath('data.status', SocialConnection::STATUS_ACTIVE);
+        (new ReadSocialFollowersJob())->handle(app(SocialConnectionService::class));
+
+        $read = [];
+        Http::assertSent(function (HttpRequest $r) use (&$read) {
+            $path = (string) parse_url($r->url(), PHP_URL_PATH);
+            if (preg_match('#/(1001|1784001)$#', $path, $m)) {
+                $read[] = $m[1];
+            }
+
+            return true;
+        });
+
+        return [SocialConnectionAccount::where('company_id', $this->a->id)->get()->keyBy('platform'), array_values(array_unique($read))];
+    }
+
+    public function test_choosing_only_the_facebook_page(): void
+    {
+        [$accounts, $read] = $this->chooseAndRead(['1001'], []);
+
+        $this->assertSame(['facebook'], $accounts->keys()->all());
+        $this->assertSame(['1001'], $read, 'O Instagram da Página não é lido.');
+        $this->assertSame(['facebook'], SocialFollowerSnapshot::where('company_id', $this->a->id)->pluck('platform')->all());
+
+        $cand = $this->as($this->adminA)->getJson($this->url($this->a, '/integrations/social/candidates'))->assertOk();
+        $this->assertTrue($cand->json('data.pages.0.selected'));
+        $this->assertFalse($cand->json('data.pages.0.instagram.selected'));
+    }
+
+    public function test_choosing_only_instagram_keeps_the_page_link_internally_without_following_the_page(): void
+    {
+        [$accounts, $read] = $this->chooseAndRead([], ['1784001']);
+
+        $this->assertSame(['instagram'], $accounts->keys()->all(), 'A Página não fica escolhida.');
+        $igAccount = $accounts['instagram'];
+        $this->assertSame('1001', $igAccount->page_id, 'Guarda a ligação da Página necessária para ler o Instagram.');
+        $this->assertSame(self::PAGE_TOKEN, $igAccount->page_access_token);
+        $this->assertTrue($igAccount->is_primary);
+        $this->assertSame(['1784001'], $read, 'Os seguidores da Página não são lidos.');
+        $this->assertSame(['instagram'], SocialFollowerSnapshot::where('company_id', $this->a->id)->pluck('platform')->all());
+        $this->assertSame(4200, SocialFollowerSnapshot::where('company_id', $this->a->id)->value('followers_count'));
+
+        $f = $this->as($this->userA)->getJson($this->url($this->a, '/followers'))->assertOk();
+        $this->assertTrue($f->json('data.automation.instagram.connected'));
+        $this->assertFalse($f->json('data.automation.facebook.connected'));
+
+        $cand = $this->as($this->adminA)->getJson($this->url($this->a, '/integrations/social/candidates'))->assertOk();
+        $this->assertFalse($cand->json('data.pages.0.selected'));
+        $this->assertTrue($cand->json('data.pages.0.instagram.selected'));
+    }
+
+    public function test_choosing_both_the_page_and_its_instagram(): void
+    {
+        [$accounts, $read] = $this->chooseAndRead(['1001'], ['1784001']);
+
+        $this->assertEqualsCanonicalizing(['facebook', 'instagram'], $accounts->keys()->all());
+        $this->assertEqualsCanonicalizing(['1001', '1784001'], $read);
+        $this->assertEqualsCanonicalizing(['facebook', 'instagram'], SocialFollowerSnapshot::where('company_id', $this->a->id)->pluck('platform')->all());
+        $this->assertTrue($accounts['facebook']->is_primary);
+        $this->assertTrue($accounts['instagram']->is_primary);
+    }
+
     // ── Seguidores automáticos ─────────────────────────────────────────────────
 
     public function test_daily_job_records_api_reading_that_wins_over_the_manual_one(): void

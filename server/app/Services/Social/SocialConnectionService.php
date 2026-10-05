@@ -174,6 +174,10 @@ class SocialConnectionService
                     'external_id' => $id, 'page_id' => $id, 'name' => $p['name'], 'page_access_token' => $p['access_token'], 'is_primary' => $id === $primaryFacebook,
                 ]);
             }
+            // Instagram e Página são escolhas independentes: a conta de Instagram guarda a
+            // ligação da Página a que está ligada (page_id e token, cifrado), necessária para
+            // a ler, mesmo quando a Página não foi escolhida (e então os seguidores da Página
+            // não são lidos nem guardados).
             foreach ($instagramIds as $id) {
                 $p = $byInstagram[$id];
                 SocialConnectionAccount::create([

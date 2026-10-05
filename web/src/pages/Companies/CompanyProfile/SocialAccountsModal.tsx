@@ -6,8 +6,10 @@ import type { SocialCandidatePage, SocialConnectionState } from "common/models/s
 
 /**
  * Escolher que Páginas de Facebook e que contas de Instagram ficam ligadas à empresa.
- * A conta de Instagram profissional aparece através da Página a que está ligada. Com
- * mais do que uma da mesma rede, escolhe-se a principal: é essa que conta para o
+ * Um cartão por Página, com dois interruptores independentes ao mesmo nível: a Página
+ * (Facebook) e a conta de Instagram profissional ligada a ela. Pode escolher-se só o
+ * Instagram: o servidor guarda internamente a ligação da Página necessária para o ler.
+ * Com mais do que uma da mesma rede, escolhe-se a principal: é essa que conta para o
  * histórico de seguidores da marca.
  */
 
@@ -15,6 +17,13 @@ const errorMessage = (e: any, fallback: string) => {
     const first = e?.errors ? Object.values(e.errors).flat()[0] : null;
     return (first as string) || e?.message || fallback;
 };
+
+/** Pesquisa sem acentos, maiúsculas nem pontuação ("Pós-venda" encontra-se com "pos venda"). */
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+const SEARCH_FROM = 6; // a caixa de pesquisa aparece com mais de 5 Páginas
+
+const igLabel = (ig: NonNullable<SocialCandidatePage["instagram"]>) => (ig.username ? `@${ig.username}` : ig.name ?? "");
 
 type Props = {
     isOpen: boolean;
@@ -30,12 +39,14 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
     const [ig, setIg] = useState<string[]>([]);
     const [primaryFb, setPrimaryFb] = useState<string | null>(null);
     const [primaryIg, setPrimaryIg] = useState<string | null>(null);
+    const [search, setSearch] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         if (!isOpen || !companyId) return;
         setPages(null);
         setLoadError(null);
+        setSearch("");
         getSocialCandidates(companyId)
             .then((r: any) => {
                 const list: SocialCandidatePage[] = r?.data?.pages ?? [];
@@ -58,8 +69,15 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
     const toggle = (list: string[], set: (v: string[]) => void, id: string, on: boolean) => set(on ? [...list, id] : list.filter((x) => x !== id));
     const effectivePrimaryFb = fb.includes(primaryFb ?? "") ? primaryFb : fb[0] ?? null;
     const effectivePrimaryIg = ig.includes(primaryIg ?? "") ? primaryIg : ig[0] ?? null;
-    const igNames = useMemo(() => Object.fromEntries((pages ?? []).filter((p) => p.instagram).map((p) => [p.instagram!.id, p.instagram!.username ? `@${p.instagram!.username}` : p.instagram!.name ?? p.name])), [pages]);
+    const igNames = useMemo(() => Object.fromEntries((pages ?? []).filter((p) => p.instagram).map((p) => [p.instagram!.id, igLabel(p.instagram!) || p.name])), [pages]);
     const fbNames = useMemo(() => Object.fromEntries((pages ?? []).map((p) => [p.id, p.name])), [pages]);
+
+    const showSearch = (pages?.length ?? 0) >= SEARCH_FROM;
+    const visible = useMemo(() => {
+        const q = norm(search.trim());
+        if (!pages || !showSearch || q === "") return pages ?? [];
+        return pages.filter((p) => norm(p.name).includes(q) || (p.instagram && norm(igLabel(p.instagram)).includes(q)));
+    }, [pages, search, showSearch]);
 
     const save = async () => {
         setSaving(true);
@@ -88,13 +106,10 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
         );
 
     return (
-        <Modal isOpen={isOpen} toggle={!saving ? onClose : undefined} centered scrollable>
+        <Modal isOpen={isOpen} toggle={!saving ? onClose : undefined} centered scrollable size="lg">
             <ModalHeader toggle={!saving ? onClose : undefined}>Escolher as Páginas e as contas de Instagram</ModalHeader>
             <ModalBody>
-                <p className="text-muted fs-13">
-                    Escolha o que fica ligado à empresa. A XPLENDOR só lê o número de seguidores; não publica nem altera nada.
-                    A conta de Instagram profissional aparece através da Página de Facebook a que está ligada.
-                </p>
+                <p className="text-muted fs-13 mb-3">Escolha as redes desta empresa. Cada Página e cada conta de Instagram escolhe-se à parte.</p>
                 {loadError ? (
                     <div className="alert alert-warning fs-13 mb-0">{loadError}</div>
                 ) : pages === null ? (
@@ -105,29 +120,45 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
                     </div>
                 ) : (
                     <>
+                        {showSearch && (
+                            <div className="search-box mb-3">
+                                <Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Procurar pelo nome da Página ou da conta" aria-label="Procurar Páginas" />
+                                <i className="ri-search-line search-icon" />
+                            </div>
+                        )}
                         <div className="vstack gap-2">
-                            {pages.map((p) => (
-                                <div key={p.id} className="border rounded p-2">
-                                    <div className="form-check">
-                                        <Input className="form-check-input" type="checkbox" id={`fb-${p.id}`} checked={fb.includes(p.id)}
-                                            onChange={(e) => toggle(fb, setFb, p.id, e.target.checked)} />
-                                        <Label className="form-check-label" for={`fb-${p.id}`}>
-                                            <i className="ri-facebook-circle-line me-1 text-primary" />Página: <strong>{p.name}</strong>
-                                        </Label>
-                                    </div>
-                                    {p.instagram ? (
-                                        <div className="form-check ms-3 mt-1">
-                                            <Input className="form-check-input" type="checkbox" id={`ig-${p.instagram.id}`} checked={ig.includes(p.instagram.id)}
-                                                onChange={(e) => toggle(ig, setIg, p.instagram!.id, e.target.checked)} />
-                                            <Label className="form-check-label" for={`ig-${p.instagram.id}`}>
-                                                <i className="ri-instagram-line me-1 text-danger" />Instagram: <strong>{p.instagram.username ? `@${p.instagram.username}` : p.instagram.name}</strong>
-                                            </Label>
+                            {visible.map((p) => (
+                                <div key={p.id} className="border rounded p-2 px-sm-3 py-sm-3">
+                                    <div className="fw-semibold mb-2 text-break">{p.name}</div>
+                                    <div className="row g-2">
+                                        <div className="col-6">
+                                            <div className="form-check form-switch mb-0">
+                                                <Input className="form-check-input" type="checkbox" role="switch" id={`fb-${p.id}`} checked={fb.includes(p.id)}
+                                                    onChange={(e) => toggle(fb, setFb, p.id, e.target.checked)} />
+                                                <Label className="form-check-label" for={`fb-${p.id}`}>
+                                                    <i className="ri-facebook-circle-line me-1 text-primary" />Facebook
+                                                </Label>
+                                            </div>
                                         </div>
-                                    ) : (
-                                        <div className="text-muted fs-12 ms-4 mt-1">Sem conta de Instagram profissional ligada a esta Página.</div>
-                                    )}
+                                        <div className="col-6">
+                                            {p.instagram ? (
+                                                <div className="form-check form-switch mb-0">
+                                                    <Input className="form-check-input" type="checkbox" role="switch" id={`ig-${p.instagram.id}`} checked={ig.includes(p.instagram.id)}
+                                                        onChange={(e) => toggle(ig, setIg, p.instagram!.id, e.target.checked)} />
+                                                    <Label className="form-check-label" for={`ig-${p.instagram.id}`}>
+                                                        <i className="ri-instagram-line me-1 text-danger" />Instagram{" "}
+                                                        {/* O @ passa inteiro para a linha seguinte; só um nome muito longo se parte. */}
+                                                        <strong className="d-inline-block mw-100 fs-13" style={{ overflowWrap: "anywhere" }}>{igLabel(p.instagram)}</strong>
+                                                    </Label>
+                                                </div>
+                                            ) : (
+                                                <div className="text-muted fs-12 lh-sm">Sem conta de Instagram profissional ligada a esta Página.</div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
+                            {visible.length === 0 && <p className="text-muted fs-13 text-center mb-0 py-2">Nenhuma Página com este nome.</p>}
                         </div>
                         {primaryPicker("Página principal (conta para o histórico de seguidores)", fb, fbNames, effectivePrimaryFb, setPrimaryFb, "primary-fb")}
                         {primaryPicker("Conta de Instagram principal (conta para o histórico de seguidores)", ig, igNames, effectivePrimaryIg, setPrimaryIg, "primary-ig")}
@@ -137,6 +168,7 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
                                 {ig.length > 0 && <Badge color="danger-subtle" className="text-danger fw-normal">{ig.length === 1 ? "1 conta de Instagram" : `${ig.length} contas de Instagram`}</Badge>}
                             </div>
                         )}
+                        <p className="text-muted fs-12 mt-3 mb-0">A XPLENDOR só lê o número de seguidores; não publica nem altera nada.</p>
                     </>
                 )}
             </ModalBody>
