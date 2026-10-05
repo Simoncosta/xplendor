@@ -20,6 +20,8 @@ export interface ProfileSuggestion {
     template: string | null;
     audience_warning: string | null;
     error_message: string | null;
+    stalled?: boolean;
+    stalled_message?: string | null;
     used: number;
     cap: number;
 }
@@ -56,6 +58,8 @@ export interface CreativeSuggestion {
     status: AiRequestStatus;
     result: CreativeSuggestionResult | null;
     error_message: string | null;
+    stalled?: boolean;
+    stalled_message?: string | null;
     used: number;
     cap: number;
 }

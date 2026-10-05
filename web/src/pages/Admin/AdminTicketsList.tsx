@@ -216,8 +216,8 @@ const AdminTicketsList = () => {
                 </Row>
                 )}
 
-                {/* Kanban: pipeline de orçamentos numa faixa compacta (uma linha; desliza na
-                    horizontal; no telemóvel fica recolhida atrás de "Resumo dos orçamentos"). */}
+                {/* Kanban: pipeline de orçamentos numa faixa compacta (quebra linha em vez de alargar
+                    a página; no telemóvel fica recolhida atrás de "Resumo dos orçamentos"). */}
                 {view === "kanban" && pipeline && pipeline.total.count > 0 && (
                     <Card className="mb-3">
                         <CardBody className="py-2 px-3">
@@ -226,12 +226,12 @@ const AdminTicketsList = () => {
                                 <i className={stripOpen ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} />
                                 Resumo dos orçamentos · {formatEuro(pipeline.total.amount)}
                             </button>
-                            <div className={`${stripOpen ? "d-flex mt-2" : "d-none"} d-md-flex align-items-center gap-4 overflow-auto text-nowrap`}>
+                            <div className={`${stripOpen ? "d-flex mt-2" : "d-none"} d-md-flex flex-wrap align-items-center column-gap-4 row-gap-1`}>
                                 <span className="text-muted fs-12 text-uppercase fw-semibold d-none d-md-inline">Orçamentos</span>
                                 {PIPELINE_CARDS.map((c) => {
                                     const b = pipeline.by_status[c.key];
                                     return (
-                                        <span key={c.key} className="d-inline-flex align-items-center gap-2 fs-13">
+                                        <span key={c.key} className="d-inline-flex flex-wrap align-items-center column-gap-2 fs-13">
                                             <i className={`${c.icon} text-${c.color}`} />
                                             <span className="text-muted">{QUOTE_STATUS_META[c.key].label}</span>
                                             <span className="fw-semibold">{formatEuro(b.amount)}</span>

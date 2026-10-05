@@ -6,6 +6,7 @@ namespace App\Services\Brand;
 
 use App\Jobs\ProcessAiRequestJob;
 use App\Models\AiRequest;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Models\Company;
 use App\Models\CompanyBrandProfile;
 use App\Models\EditorialPost;
@@ -91,7 +92,7 @@ class CreativeAiService
             $response = $this->openAi->call($this->messages($context), (string) $request->model, 2500, 0.6);
             $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']), $post->channel, $context['format']);
 
-            $request->update([
+            app(AiRequestLifecycle::class)->complete($request, [
                 'status'            => AiRequest::DONE,
                 'context'           => $context,
                 'result'            => $result,
@@ -102,7 +103,7 @@ class CreativeAiService
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Criativo IA] Falhou', ['request_id' => $requestId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
-            $request->update(['status' => AiRequest::ERROR, 'error_message' => 'Não foi possível gerar a sugestão. Tente novamente dentro de alguns minutos.']);
+            app(AiRequestLifecycle::class)->fail($request, $e);
         }
     }
 

@@ -8,7 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\AiRequest;
 use App\Models\Company;
-use App\Services\Ai\AiRequestQuota;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Brand\BrandProfileAiService;
 use App\Services\CollaboratorService;
 use Illuminate\Http\Request;
@@ -45,15 +45,6 @@ class BrandProfileSuggestionController extends Controller
 
     private function present(AiRequest $r): array
     {
-        return [
-            'id'            => $r->id,
-            'status'        => $r->status,
-            'result'        => $r->status === AiRequest::DONE ? $r->result : null,
-            'template'      => $r->input['template'] ?? null,
-            'audience_warning' => $r->context['audience']['warning'] ?? null,
-            'error_message' => $r->error_message,
-            'used'          => AiRequestQuota::used((int) $r->company_id, AiRequest::MODE_BRAND_PROFILE),
-            'cap'           => AiRequestQuota::cap(AiRequest::MODE_BRAND_PROFILE),
-        ];
+        return app(AiRequestLifecycle::class)->present($r);
     }
 }

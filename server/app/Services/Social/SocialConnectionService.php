@@ -335,7 +335,7 @@ class SocialConnectionService
         $out = [];
         foreach (SocialFollowerSnapshot::PLATFORMS as $platform) {
             $account = $connection?->accounts->firstWhere('platform', $platform);
-            $out[$platform] = $account && $connection->status !== SocialConnection::STATUS_REVOKED ? [
+            $entry = $account && $connection->status !== SocialConnection::STATUS_REVOKED ? [
                 'connected' => true,
                 'connection_status' => $connection->status,
                 'account' => $account->username ? '@' . $account->username : $account->name,
@@ -343,9 +343,35 @@ class SocialConnectionService
                 'last_error_at' => $account->last_error_at?->toIso8601String(),
                 'last_error_kind' => $account->last_error_kind,
             ] : ['connected' => false];
+            $out[$platform] = $entry + self::manualEntry($entry);
         }
 
         return $out;
+    }
+
+    /**
+     * Registo manual dos seguidores de uma rede: escondido enquanto a leitura automática
+     * funciona; disponível (com o porquê) se a rede não está ligada, se a ligação expirou,
+     * foi retirada, aguarda a aprovação da Meta, ou se a última leitura falhou.
+     *
+     * @return array{manual_allowed: bool, manual_reason: ?string}
+     */
+    public static function manualEntry(array $automation): array
+    {
+        if (! ($automation['connected'] ?? false)) {
+            return ['manual_allowed' => true, 'manual_reason' => null];
+        }
+
+        $reason = match ($automation['connection_status'] ?? null) {
+            SocialConnection::STATUS_EXPIRED => 'A ligação expirou: registe os seguidores à mão até voltar a ligar a rede.',
+            SocialConnection::STATUS_PERMISSION_REMOVED => 'A autorização foi retirada no Facebook: registe os seguidores à mão até voltar a ligar a rede.',
+            SocialConnection::STATUS_NOT_APPROVED => 'A leitura automática aguarda a aprovação da Meta: registe os seguidores à mão por agora.',
+            default => ! empty($automation['last_error_at'])
+                ? 'A última leitura automática falhou: pode registar à mão o valor de hoje.'
+                : null,
+        };
+
+        return ['manual_allowed' => $reason !== null, 'manual_reason' => $reason];
     }
 
     // ── Auxiliares ─────────────────────────────────────────────────────────────

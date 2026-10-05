@@ -9,7 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AiRequest;
 use App\Models\Company;
 use App\Models\EditorialPost;
-use App\Services\Ai\AiRequestQuota;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Editorial\EditorialIdeasAiService;
 use App\Services\EditorialLineService;
 use Illuminate\Http\Request;
@@ -76,15 +76,6 @@ class EditorialIdeasController extends Controller
 
     private function present(AiRequest $r): array
     {
-        return [
-            'id'            => $r->id,
-            'status'        => $r->status,
-            'year'          => (int) ($r->input['year'] ?? 0),
-            'month'         => (int) ($r->input['month'] ?? 0),
-            'result'        => $r->status === AiRequest::DONE ? $r->result : null,
-            'error_message' => $r->error_message,
-            'used'          => AiRequestQuota::used((int) $r->company_id, AiRequest::MODE_IDEAS),
-            'cap'           => AiRequestQuota::cap(AiRequest::MODE_IDEAS),
-        ];
+        return app(AiRequestLifecycle::class)->present($r);
     }
 }

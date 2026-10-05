@@ -144,6 +144,11 @@ export const blogBackToDraft = (companyId: number, id: number) => api.create(`${
 export const getBlogAiContext = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/blog-ai/context`);
 export const createBlogAiDraft = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/blog-ai/drafts`, data, BLOG_JSON);
 export const getBlogAiDraft = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/blog-ai/drafts/${id}`);
+// Pedidos à IA à espera: retomar ao voltar à página (último do contexto) e descartar.
+export const getLatestAiRequest = (companyId: number, params: { mode: string; editorial_post_id?: number; blog_id?: number | null; year?: number; month?: number }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ai-requests/latest`, params);
+export const dismissAiRequest = (companyId: number, id: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ai-requests/${id}/dismiss`, {}, { headers: { "Content-Type": "application/json" } });
 export const getBrandProfile = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/brand-profile`);
 export const updateBrandProfile = (companyId: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/brand-profile`, data);
 // Seguidores (Perfil da Marca): estado e crescimento; registo manual de hoje.

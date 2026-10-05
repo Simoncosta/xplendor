@@ -98,6 +98,8 @@ export interface EditorialIdeasRequest {
     month: number;
     result: { ideas: EditorialIdea[]; skipped_duplicates: number; has_profile: boolean } | null;
     error_message: string | null;
+    stalled?: boolean;
+    stalled_message?: string | null;
     used: number;
     cap: number;
 }

@@ -10,7 +10,7 @@ use App\Models\AiRequest;
 use App\Models\Company;
 use App\Models\EditorialPost;
 use App\Models\EditorialPostCreative;
-use App\Services\Ai\AiRequestQuota;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Ai\AiText;
 use App\Services\Brand\CreativeAiService;
 use App\Services\EditorialLineService;
@@ -153,15 +153,7 @@ class EditorialCreativeController extends Controller
 
     private function presentSuggestion(AiRequest $r): array
     {
-        return [
-            'id'            => $r->id,
-            'post_id'       => $r->editorial_post_id,
-            'status'        => $r->status,
-            'result'        => $r->status === AiRequest::DONE ? $r->result : null,
-            'error_message' => $r->error_message,
-            'used'          => AiRequestQuota::used((int) $r->company_id, AiRequest::MODE_CREATIVE),
-            'cap'           => AiRequestQuota::cap(AiRequest::MODE_CREATIVE),
-        ];
+        return app(AiRequestLifecycle::class)->present($r);
     }
 
     private function presentCreative(EditorialPost $post): array

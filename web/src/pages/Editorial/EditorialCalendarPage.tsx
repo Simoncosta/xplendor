@@ -20,7 +20,7 @@ import {
     EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
 } from "common/models/editorialPost.model";
 import { BLOG_STATUS_META } from "common/models/blog.model";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
 import CreativeModal from "./CreativeModal";
 import IdeasModal from "./IdeasModal";
@@ -169,6 +169,34 @@ export default function EditorialCalendarPage() {
         const [y, m] = key.split("-").map(Number);
         calRef.current?.getApi().gotoDate(new Date(y, m - 1, 1));
     };
+
+    // Ligações do sino: ?ideas=AAAA-MM abre as ideias desse mês; ?creative=ID abre o
+    // criativo da publicação. O resultado à espera é retomado pelo próprio modal.
+    const [searchParams, setSearchParams] = useSearchParams();
+    const handledLink = useRef(false);
+    useEffect(() => {
+        if (handledLink.current || !range) return;
+        const ideasKey = searchParams.get("ideas");
+        const creativeId = Number(searchParams.get("creative") || 0);
+        if (!ideasKey && !creativeId) return;
+        handledLink.current = true;
+        if (ideasKey && months.some((mo) => mo.month_key === ideasKey)) {
+            setSelectedKey(ideasKey);
+            gotoKey(ideasKey);
+            setIdeasOpen(true);
+        }
+        const post = creativeId ? posts.find((p) => p.id === creativeId) : null;
+        if (post) {
+            gotoKey(post.month_key);
+            openEditPost(post);
+            setCreativeOpen(true);
+        }
+        const next = new URLSearchParams(searchParams);
+        next.delete("ideas");
+        next.delete("creative");
+        setSearchParams(next, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [range, months, posts]);
 
     // ── Eventos: âncoras (ocasiões) + publicações (trabalho) ──
     const events = useMemo(() => {

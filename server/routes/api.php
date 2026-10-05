@@ -363,6 +363,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('/blog-ai/context', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'context']);
                 Route::post('/blog-ai/drafts', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'store'])->middleware('throttle:10,1');
                 Route::get('/blog-ai/drafts/{draft}', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'show'])->whereNumber('draft');
+                // Pedidos à IA à espera (retomar ao voltar à página) e descartar.
+                Route::get('/ai-requests/latest', [\App\Http\Controllers\Api\V1\AiRequestController::class, 'latest']);
+                Route::post('/ai-requests/{requestId}/dismiss', [\App\Http\Controllers\Api\V1\AiRequestController::class, 'dismiss'])->whereNumber('requestId');
                 Route::get('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'show']);
                 Route::put('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'update']);
                 // Seguidores (Perfil da Marca): estado, crescimento e registo manual de hoje.

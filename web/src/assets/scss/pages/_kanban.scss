@@ -140,3 +140,35 @@
         }
     }
 }
+// ── Kanban dos tickets: ocupa a largura disponível, sem scroll da página ──────
+// Em computador (a partir de 1366px) as quatro colunas dividem a largura e cabem sem
+// scroll. Em ecrãs mais pequenos cada coluna mantém uma largura mínima legível e o
+// scroll horizontal fica só DENTRO do quadro (nunca alarga a página).
+.tasks-board.tasks-board--fit {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+
+    .tasks-list {
+        flex: 1 0 280px;
+        min-width: 280px;
+        margin-right: 16px;
+
+        &:last-child {
+            margin-right: 0;
+        }
+    }
+
+    @media (min-width: 1366px) {
+        // As colunas cabem por construção; "clip" só evita a barra criada por
+        // arredondamentos de subpíxel (1px).
+        overflow-x: clip;
+
+        .tasks-list {
+            flex: 1 1 0;
+            min-width: 0;
+        }
+    }
+}

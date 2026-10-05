@@ -1,13 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Badge, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Nav, NavItem, NavLink, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { createBlogAiDraft, getBlogAiContext, getBlogAiDraft } from "helpers/laravel_helper";
+import { createBlogAiDraft, dismissAiRequest, getBlogAiContext, getBlogAiDraft, getLatestAiRequest } from "helpers/laravel_helper";
+import { useAiRequestPoll } from "hooks/useAiRequestPoll";
+import AiRequestState from "Components/Common/AiRequestState";
 import { AUDIENCE_REASON, IBlogAiContext, IBlogAiDraft, IBlogAiResult } from "common/models/blog.model";
 
 /**
  * "Ajudar a escrever": a IA propõe título, endereço, SEO, resumo e texto a partir de um tema
- * ou de uma publicação das redes (colar o texto). Corre em fila; aqui espera-se pelo
- * resultado. Nada é gravado: "Usar no artigo" só preenche o formulário para revisão.
+ * ou de uma publicação das redes (colar o texto). Corre em fila sem prender o ecrã: pode
+ * fechar-se a janela; ao voltar, o pedido à espera é retomado (e há aviso no sino).
+ * Nada é gravado: "Usar no artigo" só preenche o formulário para revisão.
  */
 type Props = {
     isOpen: boolean;
@@ -27,8 +30,6 @@ const errorMessage = (e: any, fallback: string) => {
 };
 
 const SOURCE_LABEL: Record<string, string> = { ga4: "GA4", meta: "Meta", sales: "Vendas" };
-const POLL_MS = 2500;
-const POLL_LIMIT = 72; // cerca de 3 minutos
 
 const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaultTopic = "", onApply, onOpenBrandProfile }: Props) => {
     const [mode, setMode] = useState<"topic" | "from_post">("topic");
@@ -38,9 +39,8 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
     const [keyword, setKeyword] = useState(defaultKeyword);
     const [secondary, setSecondary] = useState("");
     const [notes, setNotes] = useState("");
-    const [draft, setDraft] = useState<IBlogAiDraft | null>(null);
-    const [busy, setBusy] = useState(false);
-    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const fetchOne = useCallback((id: number) => getBlogAiDraft(companyId, id), [companyId]);
+    const { data: draft, busy, stalled, start, resume, reset } = useAiRequestPoll<IBlogAiDraft>(fetchOne);
 
     useEffect(() => {
         if (!isOpen || !companyId) return;
@@ -49,37 +49,28 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
         getBlogAiContext(companyId).then((r: any) => setContext(r.data)).catch(() => setContext(null));
     }, [isOpen, companyId, defaultKeyword, defaultTopic]);
 
-    useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+    // Ao abrir: retoma o rascunho que ficou à espera para este artigo (ou para o artigo
+    // novo do próprio utilizador). Fechar a janela não cancela o pedido.
+    useEffect(() => {
+        if (!isOpen || !companyId || draft) return;
+        getLatestAiRequest(companyId, { mode: "blog", blog_id: blogId ?? undefined })
+            .then((r: any) => {
+                const d: IBlogAiDraft | null = r?.data ?? null;
+                if (!d) return;
+                resume(d);
+                if (d.input?.topic) setTopic(d.input.topic);
+                if (d.input?.keyword) setKeyword(d.input.keyword);
+            })
+            .catch(() => undefined);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, companyId, blogId]);
 
-    const poll = (id: number, attempt = 0) => {
-        timer.current = setTimeout(async () => {
-            try {
-                const r: any = await getBlogAiDraft(companyId, id);
-                const d: IBlogAiDraft = r.data;
-                setDraft(d);
-                if (d.status === "done" || d.status === "error") {
-                    setBusy(false);
-                    setContext((c) => (c ? { ...c, used: d.used } : c));
-                    return;
-                }
-                if (attempt >= POLL_LIMIT) {
-                    setBusy(false);
-                    toast.warning("O rascunho está a demorar. Volte a abrir o assistente dentro de alguns minutos.");
-                    return;
-                }
-                poll(id, attempt + 1);
-            } catch {
-                setBusy(false);
-                toast.error("Não foi possível obter o rascunho.");
-            }
-        }, POLL_MS);
-    };
+    // A contagem do mês acompanha o pedido.
+    useEffect(() => { if (draft) setContext((c) => (c ? { ...c, used: draft.used } : c)); }, [draft]);
 
     const generate = async () => {
-        setBusy(true);
-        setDraft(null);
         try {
-            const r: any = await createBlogAiDraft(companyId, {
+            await start(() => createBlogAiDraft(companyId, {
                 mode,
                 topic: mode === "topic" ? topic : null,
                 source_text: mode === "from_post" ? sourceText : null,
@@ -87,28 +78,25 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                 secondary_keywords: secondary.split(",").map((s) => s.trim()).filter(Boolean),
                 notes: notes || null,
                 blog_id: blogId,
-            });
-            const d: IBlogAiDraft = r.data;
-            setDraft(d);
-            if (d.status === "done" || d.status === "error") {
-                setBusy(false);
-                setContext((c) => (c ? { ...c, used: d.used } : c));
-            } else {
-                poll(d.id);
-            }
+            }));
         } catch (e: any) {
-            setBusy(false);
             toast.error(errorMessage(e, "Não foi possível pedir o rascunho."));
         }
     };
 
+    /** O rascunho foi usado ou descartado: deixa de ficar à espera. */
+    const dismiss = () => {
+        if (draft) dismissAiRequest(companyId, draft.id).catch(() => undefined);
+        reset();
+    };
+
     const limitReached = !!context && context.used >= context.cap;
-    const canGenerate = !busy && !limitReached && (mode === "topic" ? topic.trim().length > 2 : sourceText.trim().length > 20);
+    const canGenerate = (!busy || stalled) && !limitReached && (mode === "topic" ? topic.trim().length > 2 : sourceText.trim().length > 20);
     const result = draft?.status === "done" ? draft.result : null;
 
     return (
-        <Modal isOpen={isOpen} toggle={busy ? undefined : toggle} size="xl" centered scrollable>
-            <ModalHeader toggle={busy ? undefined : toggle}>
+        <Modal isOpen={isOpen} toggle={toggle} size="xl" centered scrollable>
+            <ModalHeader toggle={toggle}>
                 <i className="ri-magic-line me-1" />Ajudar a escrever
             </ModalHeader>
             <ModalBody>
@@ -185,12 +173,7 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                     </div>
 
                     <div className="col-lg-7">
-                        {draft?.status === "error" && <div className="alert alert-danger">{draft.error_message}</div>}
-                        {busy && !result && (
-                            <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5">
-                                <Spinner className="mb-2" />Normalmente demora menos de um minuto.
-                            </div>
-                        )}
+                        <AiRequestState data={draft} what="o rascunho" />
                         {!busy && !result && draft?.status !== "error" && (
                             <div className="h-100 d-flex align-items-center justify-content-center text-muted py-5 text-center">
                                 O rascunho proposto aparece aqui.
@@ -226,8 +209,9 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                 </div>
             </ModalBody>
             <ModalFooter>
-                <button type="button" className="btn btn-light" onClick={toggle} disabled={busy}>Fechar</button>
-                <button type="button" className="btn btn-success" disabled={!result || busy} onClick={() => result && onApply(result)}>
+                {result && <button type="button" className="btn btn-light" onClick={dismiss}>Descartar</button>}
+                <button type="button" className="btn btn-light" onClick={toggle}>Fechar</button>
+                <button type="button" className="btn btn-success" disabled={!result || busy} onClick={() => { if (result) { onApply(result); dismiss(); } }}>
                     <i className="ri-check-line me-1" />Usar no artigo
                 </button>
             </ModalFooter>

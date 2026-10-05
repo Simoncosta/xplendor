@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { acceptEditorialIdea, getBrandProfile, getEditorialIdeas, requestEditorialIdeas } from "helpers/laravel_helper";
+import { acceptEditorialIdea, dismissAiRequest, getBrandProfile, getEditorialIdeas, getLatestAiRequest, requestEditorialIdeas } from "helpers/laravel_helper";
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
+import AiRequestState from "Components/Common/AiRequestState";
 import { EditorialIdea, EditorialIdeasRequest, POST_CHANNEL_META, PostChannel, mediaFormatLabel } from "common/models/editorialPost.model";
 
 /**
@@ -35,7 +36,7 @@ type Edit = { date: string; channel: PostChannel };
 
 export default function IdeasModal({ isOpen, toggle, companyId, year, month, monthLabel, onAccepted }: Props) {
     const fetchOne = useCallback((id: number) => getEditorialIdeas(companyId, id), [companyId]);
-    const { data, busy, timedOut, start, reset } = useAiRequestPoll<EditorialIdeasRequest>(fetchOne);
+    const { data, busy, stalled, start, resume, reset } = useAiRequestPoll<EditorialIdeasRequest>(fetchOne);
     const [profileEmpty, setProfileEmpty] = useState<boolean | null>(null);
     const [edits, setEdits] = useState<Record<number, Edit>>({});
     const [accepting, setAccepting] = useState<number | null>(null);
@@ -51,6 +52,23 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
 
     // Outro mês: começa do zero.
     useEffect(() => { reset(); setEdits({}); setAcceptedNow({}); }, [year, month, reset]);
+
+    // Ao abrir: retoma as ideias que ficaram à espera para este mês (fechar não cancela nada).
+    useEffect(() => {
+        if (!isOpen || !companyId || data) return;
+        getLatestAiRequest(companyId, { mode: "ideas", year, month })
+            .then((r: any) => { if (r?.data) resume(r.data); })
+            .catch(() => undefined);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, companyId, year, month]);
+
+    /** Arquivar estas ideias: deixam de ficar à espera. */
+    const discard = () => {
+        if (data) dismissAiRequest(companyId, data.id).catch(() => undefined);
+        reset();
+        setEdits({});
+        setAcceptedNow({});
+    };
 
     useEffect(() => {
         if (!isOpen || !companyId) return;
@@ -100,8 +118,8 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
     const limitReached = !!data && data.used >= data.cap;
 
     return (
-        <Modal isOpen={isOpen} toggle={busy ? undefined : toggle} size="lg" centered scrollable>
-            <ModalHeader toggle={busy ? undefined : toggle}><i className="ri-lightbulb-flash-line me-1" />Ideias para {monthLabel}</ModalHeader>
+        <Modal isOpen={isOpen} toggle={toggle} size="lg" centered scrollable>
+            <ModalHeader toggle={toggle}><i className="ri-lightbulb-flash-line me-1" />Ideias para {monthLabel}</ModalHeader>
             <ModalBody>
                 <p className="text-muted fs-13">
                     A IA propõe ideias a partir das âncoras do mês, dos pilares e do perfil da marca, sem repetir as publicações que já existem.
@@ -116,14 +134,12 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
                     </div>
                 )}
 
-                {!result && (
+                <AiRequestState data={data} what="as ideias" />
+                {!result && (!busy || stalled) && (
                     <div className="text-center py-3">
-                        <Button color="primary" onClick={generate} disabled={busy}>
-                            {busy ? <><Spinner size="sm" className="me-1" />A pensar nas ideias…</> : <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>}
+                        <Button color="primary" onClick={generate}>
+                            <i className="ri-lightbulb-flash-line me-1" />{data?.status === "error" || stalled ? "Tentar outra vez" : "Gerar ideias"}
                         </Button>
-                        {busy && <p className="text-muted fs-12 mt-2 mb-0">Normalmente demora menos de um minuto.</p>}
-                        {timedOut && <p className="text-warning fs-13 mt-2 mb-0">Está a demorar mais do que o habitual. Volte a abrir dentro de alguns minutos.</p>}
-                        {data?.status === "error" && <div className="alert alert-danger fs-13 mt-3 mb-0">{data.error_message}</div>}
                     </div>
                 )}
 
@@ -186,7 +202,8 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
                             {busy ? <Spinner size="sm" /> : <><i className="ri-refresh-line me-1" />Gerar outras</>}
                         </Button>
                     )}
-                    <Button color="light" onClick={toggle} disabled={busy}>Fechar</Button>
+                    {result && <Button color="light" onClick={discard}>Descartar</Button>}
+                    <Button color="light" onClick={toggle}>Fechar</Button>
                 </div>
             </ModalFooter>
         </Modal>

@@ -3,7 +3,8 @@ import { Card, CardBody, CardHeader, Col, Container, Label, Row, Spinner } from 
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { toast, ToastContainer } from "react-toastify";
-import { getBrandProfile, updateBrandProfile } from "helpers/laravel_helper";
+import { getBrandProfile, getLatestAiRequest, updateBrandProfile } from "helpers/laravel_helper";
+import { useSearchParams } from "react-router-dom";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { BrandPillar, EmojiPolicy, IBrandProfile } from "common/models/blog.model";
 import BrandProfileSuggestModal from "./BrandProfileSuggestModal";
@@ -63,6 +64,21 @@ export default function BrandProfilePage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [suggestOpen, setSuggestOpen] = useState(false);
+    // Sugestão à espera (pedida antes de sair da página) e ligação vinda do sino (?suggestion=).
+    const [waiting, setWaiting] = useState<{ status: string } | null>(null);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (!companyId || !canEdit) return;
+        getLatestAiRequest(companyId, { mode: "brand_profile" }).then((r: any) => setWaiting(r?.data ?? null)).catch(() => setWaiting(null));
+        if (searchParams.get("suggestion")) {
+            setSuggestOpen(true);
+            const next = new URLSearchParams(searchParams);
+            next.delete("suggestion");
+            setSearchParams(next, { replace: true });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId, canEdit, suggestOpen]);
 
     useEffect(() => {
         if (!companyId) return;
@@ -122,7 +138,13 @@ export default function BrandProfilePage() {
                                 <p className="text-muted fs-13 mb-0 mt-1">Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA.</p>
                             </div>
                             {canEdit && (
-                                <div className="d-flex flex-wrap gap-2 mt-2 mt-sm-0">
+                                <div className="d-flex flex-wrap align-items-center gap-2 mt-2 mt-sm-0">
+                                    {waiting && !suggestOpen && (
+                                        <button type="button" className={`btn btn-sm ${waiting.status === "done" ? "btn-soft-success" : waiting.status === "error" ? "btn-soft-danger" : "btn-soft-secondary"}`} onClick={() => setSuggestOpen(true)}>
+                                            <i className={`${waiting.status === "done" ? "ri-checkbox-circle-line" : waiting.status === "error" ? "ri-error-warning-line" : "ri-time-line"} me-1`} />
+                                            {waiting.status === "done" ? "Sugestão pronta: ver" : waiting.status === "error" ? "A sugestão falhou: ver" : "Sugestão em preparação"}
+                                        </button>
+                                    )}
                                     <button type="button" className="btn btn-soft-primary" onClick={() => setSuggestOpen(true)} disabled={loading}>
                                         <i className="ri-magic-line me-1" />Sugerir perfil
                                     </button>

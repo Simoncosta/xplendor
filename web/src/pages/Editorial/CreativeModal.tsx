@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import Select from "react-select";
 import { toast } from "react-toastify";
-import { acceptPostCreative, getCreativeSuggestion, getPostCreative, requestCreativeSuggestion } from "helpers/laravel_helper";
+import { acceptPostCreative, dismissAiRequest, getCreativeSuggestion, getLatestAiRequest, getPostCreative, requestCreativeSuggestion } from "helpers/laravel_helper";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
+import AiRequestState from "Components/Common/AiRequestState";
 import { mediaFormatLabel } from "common/models/editorialPost.model";
 import { CREATIVE_SOURCE_LABEL, CreativeSuggestion, PostCreative } from "common/models/brandAssistants.model";
 
@@ -38,21 +39,31 @@ type Props = {
 
 export default function CreativeModal({ isOpen, toggle, companyId, postId, postTitle, onSaved }: Props) {
     const fetchOne = useCallback((id: number) => getCreativeSuggestion(companyId, postId, id), [companyId, postId]);
-    const { data, busy, timedOut, start, reset } = useAiRequestPoll<CreativeSuggestion>(fetchOne);
+    const { data, busy, stalled, start, resume, reset } = useAiRequestPoll<CreativeSuggestion>(fetchOne);
     const [saved, setSaved] = useState<PostCreative | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [draft, setDraft] = useState<Record<Field, string>>({ media_format: "", hook: "", caption: "", hashtags: "", cta: "" });
     const [accepted, setAccepted] = useState<Record<Field, boolean>>({ media_format: false, hook: false, caption: false, hashtags: false, cta: false });
 
+    // Outra publicação: começa do zero.
+    useEffect(() => { reset(); }, [postId, reset]);
+
     useEffect(() => {
-        if (!isOpen) { reset(); return; }
+        if (!isOpen) return;
+        // Retoma a sugestão que ficou à espera para esta publicação (fechar não cancela).
+        if (!data) {
+            getLatestAiRequest(companyId, { mode: "creative", editorial_post_id: postId })
+                .then((r: any) => { if (r?.data) resume(r.data); })
+                .catch(() => undefined);
+        }
         setLoading(true);
         getPostCreative(companyId, postId)
             .then((r: any) => setSaved(r?.data ?? null))
             .catch(() => toast.error("Não foi possível carregar o criativo."))
             .finally(() => setLoading(false));
-    }, [isOpen, companyId, postId, reset]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, companyId, postId]);
 
     // Quando a sugestão chega, pré-preenche os campos editáveis (nenhum fica aceite sozinho).
     const result = data?.status === "done" ? data.result : null;
@@ -88,6 +99,7 @@ export default function CreativeModal({ isOpen, toggle, companyId, postId, postT
             setSaved(r?.data ?? null);
             toast.success("Criativo guardado.");
             onSaved(r?.data?.media_format ?? null);
+            if (data) dismissAiRequest(companyId, data.id).catch(() => undefined);
             reset();
         } catch (e: any) {
             toast.error(errorMessage(e, "Não foi possível guardar o criativo."));
@@ -128,7 +140,7 @@ export default function CreativeModal({ isOpen, toggle, companyId, postId, postT
                             </div>
                         )}
 
-                        {!result && !busy && (
+                        {!result && (!busy || stalled) && (!data || data.status === "error" || stalled) && (
                             <>
                                 <p className="text-muted fs-13">
                                     A IA propõe o formato, o gancho, a legenda, as hashtags e a chamada à ação para esta publicação, a partir da data, da âncora,
@@ -137,9 +149,7 @@ export default function CreativeModal({ isOpen, toggle, companyId, postId, postT
                                 <Button color="primary" onClick={ask}><i className="ri-magic-line me-1" />Sugerir criativo</Button>
                             </>
                         )}
-                        {busy && <div className="d-flex align-items-center gap-2 text-muted py-3"><Spinner size="sm" /> A preparar a sugestão…</div>}
-                        {timedOut && <div className="alert alert-warning fs-13">A sugestão está a demorar. Tente novamente dentro de alguns minutos.</div>}
-                        {data?.status === "error" && <div className="alert alert-danger fs-13">{data.error_message}</div>}
+                        <div className="mt-2"><AiRequestState data={data} what="a sugestão" /></div>
 
                         {result && (
                             <>

@@ -36,6 +36,7 @@ class AiRequest extends Model
     protected $fillable = [
         'company_id', 'blog_id', 'editorial_post_id', 'user_id', 'mode', 'variant', 'status', 'input', 'context', 'result',
         'model', 'prompt_version', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'error_message',
+        'dismissed_at', 'stalled_logged_at',
     ];
 
     protected $casts = [
@@ -45,7 +46,14 @@ class AiRequest extends Model
         'prompt_tokens' => 'integer',
         'completion_tokens' => 'integer',
         'total_tokens' => 'integer',
+        'dismissed_at' => 'datetime',
+        'stalled_logged_at' => 'datetime',
     ];
+
+    public function isPending(): bool
+    {
+        return in_array($this->status, [self::QUEUED, self::PROCESSING], true);
+    }
 
     public function company(): BelongsTo
     {

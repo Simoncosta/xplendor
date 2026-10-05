@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Blog\BlogAiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,5 +28,11 @@ class GenerateBlogAiDraftJob implements ShouldQueue
     public function handle(BlogAiService $service): void
     {
         $service->process($this->draftId);
+    }
+
+    /** Tempo esgotado ou worker parado: o pedido não fica "a gerar" para sempre. */
+    public function failed(?\Throwable $e): void
+    {
+        app(AiRequestLifecycle::class)->interrupted($this->draftId, $e);
     }
 }

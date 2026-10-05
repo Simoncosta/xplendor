@@ -26,7 +26,10 @@ export interface FollowersOverview {
     automation?: Record<FollowerPlatform, FollowerAutomation>;
 }
 
-export type FollowerAutomation =
+/** Registo manual: escondido enquanto a leitura automática funciona; o porquê quando aparece numa rede ligada. */
+type ManualEntry = { manual_allowed: boolean; manual_reason: string | null };
+
+export type FollowerAutomation = ManualEntry & (
     | { connected: false }
     | {
           connected: true;
@@ -35,5 +38,5 @@ export type FollowerAutomation =
           last_read_at: string | null;
           last_error_at: string | null;
           last_error_kind: string | null;
-      };
+      });
 

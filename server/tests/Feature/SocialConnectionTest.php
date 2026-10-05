@@ -352,6 +352,43 @@ class SocialConnectionTest extends TestCase
         $this->assertTrue($accounts['instagram']->is_primary);
     }
 
+    // ── Registo manual só quando a leitura automática não funciona ─────────────
+
+    private function followersAutomation(): array
+    {
+        return $this->as($this->adminA)->getJson($this->url($this->a, '/followers'))->assertOk()->json('data.automation');
+    }
+
+    public function test_manual_entry_is_hidden_while_automatic_reading_works_and_shown_with_a_reason_otherwise(): void
+    {
+        // Sem ligação: registo manual normal, sem explicação extra.
+        $auto = $this->followersAutomation();
+        $this->assertSame([true, null], [$auto['instagram']['manual_allowed'], $auto['instagram']['manual_reason']]);
+
+        // Ligada e a funcionar (mesmo antes da primeira leitura do dia): escondido e recusado.
+        $c = $this->connected();
+        $auto = $this->followersAutomation();
+        $this->assertFalse($auto['instagram']['manual_allowed']);
+        $this->assertFalse($auto['facebook']['manual_allowed']);
+        $this->as($this->adminA)->postJson($this->url($this->a, '/followers'), ['platform' => 'instagram', 'followers_count' => 10])->assertStatus(409);
+
+        // Última leitura falhada (só no Instagram): volta a aparecer, com o porquê.
+        SocialConnectionAccount::where('external_id', '1784001')->update(['last_error_at' => now(), 'last_error_kind' => 'failed']);
+        $auto = $this->followersAutomation();
+        $this->assertTrue($auto['instagram']['manual_allowed']);
+        $this->assertStringContainsString('última leitura automática falhou', $auto['instagram']['manual_reason']);
+        $this->assertFalse($auto['facebook']['manual_allowed']);
+        $this->as($this->adminA)->postJson($this->url($this->a, '/followers'), ['platform' => 'instagram', 'followers_count' => 10])->assertOk();
+
+        // Ligação expirada ou autorização retirada: aparece nas duas redes, com o porquê.
+        foreach ([SocialConnection::STATUS_EXPIRED => 'expirou', SocialConnection::STATUS_PERMISSION_REMOVED => 'retirada'] as $status => $word) {
+            $c->update(['status' => $status]);
+            $auto = $this->followersAutomation();
+            $this->assertTrue($auto['facebook']['manual_allowed'], $status);
+            $this->assertStringContainsString($word, $auto['facebook']['manual_reason']);
+        }
+    }
+
     // ── Seguidores automáticos ─────────────────────────────────────────────────
 
     public function test_daily_job_records_api_reading_that_wins_over_the_manual_one(): void

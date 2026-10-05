@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\AiRequest;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Models\Company;
 use App\Services\Blog\BlogAiService;
 use App\Services\BlogWorkflowService;
@@ -69,16 +70,6 @@ class BlogAiController extends Controller
 
     private function present(AiRequest $d): array
     {
-        return [
-            'id'            => $d->id,
-            // A API do blog continua a chamar "mode" ao subtipo (topic | from_post).
-            'mode'          => $d->variant,
-            'status'        => $d->status,
-            'result'        => $d->status === AiRequest::DONE ? $d->result : null,
-            'audience_warning' => $d->context['audience']['warning'] ?? null,
-            'error_message' => $d->error_message,
-            'used'          => BlogAiService::usedThisMonth((int) $d->company_id),
-            'cap'           => BlogAiService::monthlyCap(),
-        ];
+        return app(AiRequestLifecycle::class)->present($d);
     }
 }

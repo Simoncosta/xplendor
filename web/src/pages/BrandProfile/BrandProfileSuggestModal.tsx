@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Table } from "reactstrap";
+import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Table } from "reactstrap";
 import { toast } from "react-toastify";
-import { getBrandProfileSuggestion, requestBrandProfileSuggestion } from "helpers/laravel_helper";
+import { dismissAiRequest, getBrandProfileSuggestion, getLatestAiRequest, requestBrandProfileSuggestion } from "helpers/laravel_helper";
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
+import AiRequestState from "Components/Common/AiRequestState";
 import type { BrandPillar, IBrandProfile } from "common/models/blog.model";
 import { PROFILE_SOURCE_LABEL, ProfileSuggestion, ProfileSuggestionValue } from "common/models/brandAssistants.model";
 
@@ -51,10 +52,25 @@ type Props = {
 
 export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, current, onApply }: Props) {
     const fetchOne = useCallback((id: number) => getBrandProfileSuggestion(companyId, id), [companyId]);
-    const { data, busy, timedOut, start, reset } = useAiRequestPoll<ProfileSuggestion>(fetchOne);
+    const { data, busy, stalled, start, resume, reset } = useAiRequestPoll<ProfileSuggestion>(fetchOne);
     const [accepted, setAccepted] = useState<Record<string, boolean>>({});
 
-    useEffect(() => { if (!isOpen) { reset(); setAccepted({}); } }, [isOpen, reset]);
+    // Ao abrir: retoma o pedido que ficou à espera (pendente, pronto ou com erro). Fechar
+    // não cancela nada: o pedido continua no servidor e o aviso chega ao sino.
+    useEffect(() => {
+        if (!isOpen || !companyId || data) return;
+        getLatestAiRequest(companyId, { mode: "brand_profile" })
+            .then((r: any) => { if (r?.data) resume(r.data); })
+            .catch(() => undefined);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen, companyId]);
+
+    /** O resultado foi usado ou descartado: deixa de ficar à espera. */
+    const dismiss = () => {
+        if (data) dismissAiRequest(companyId, data.id).catch(() => undefined);
+        reset();
+        setAccepted({});
+    };
 
     const fields = useMemo(() => {
         const f = data?.status === "done" ? data.result?.fields ?? {} : {};
@@ -75,6 +91,7 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
         fields.filter((f) => accepted[f.key]).forEach((f) => { (patch as any)[f.key] = f.value as ProfileSuggestionValue; });
         onApply(patch);
         toast.info("Campos aplicados ao formulário. Reveja e carregue em Guardar para os gravar.");
+        dismiss();
         toggle();
     };
 
@@ -89,12 +106,10 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
                     Escolha campo a campo o que quer usar: nada é gravado até carregar em Guardar na página.
                 </p>
 
-                {!data && !busy && (
-                    <Button color="primary" onClick={ask}><i className="ri-magic-line me-1" />Pedir sugestão</Button>
+                {(!data || data.status === "error" || stalled) && (!busy || stalled) && (
+                    <Button color="primary" className="mb-3" onClick={ask}><i className="ri-magic-line me-1" />{data ? "Pedir outra vez" : "Pedir sugestão"}</Button>
                 )}
-                {busy && <div className="d-flex align-items-center gap-2 text-muted py-3"><Spinner size="sm" /> A preparar a sugestão…</div>}
-                {timedOut && <div className="alert alert-warning fs-13">A sugestão está a demorar. Tente abrir o assistente dentro de alguns minutos.</div>}
-                {data?.status === "error" && <div className="alert alert-danger fs-13">{data.error_message}</div>}
+                <AiRequestState data={data} what="a sugestão" />
                 {data?.audience_warning && data.status === "done" && (
                     <div className="alert alert-info fs-13 py-2"><i className="ri-information-line me-1" />{data.audience_warning}</div>
                 )}
@@ -147,6 +162,7 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
             <ModalFooter className="justify-content-between">
                 <span className="text-muted fs-12">{data ? `Sugestões este mês: ${data.used} de ${data.cap}` : ""}</span>
                 <div className="d-flex gap-2">
+                    {data?.status === "done" && <Button color="light" onClick={dismiss}>Descartar</Button>}
                     <Button color="light" onClick={toggle}>Fechar</Button>
                     {data?.status === "done" && fields.length > 0 && (
                         <Button color="primary" onClick={apply} disabled={chosen === 0}>

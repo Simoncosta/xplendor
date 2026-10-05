@@ -112,7 +112,9 @@ const TicketsKanban: React.FC<Props> = ({
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="tasks-board mb-3 d-flex" id="kanbanboard" ref={boardRef}>
+            {/* tasks-board--fit: as colunas ocupam a largura disponível; a partir de 1366px cabem sem
+                scroll e, abaixo disso, o scroll horizontal fica só dentro do quadro. */}
+            <div className="tasks-board tasks-board--fit mb-3 d-flex" id="kanbanboard" ref={boardRef}>
                 {COLUMNS.map((col) => {
                     const meta = TICKET_STATUS_META[col];
                     const items = board[col];
@@ -187,7 +189,7 @@ const TicketsKanban: React.FC<Props> = ({
                                                                         </div>
 
                                                                         {qm && (
-                                                                            <Badge color={qm.color}>
+                                                                            <Badge color={qm.color} className="text-wrap text-start lh-sm mw-100">
                                                                                 <i className="ri-money-euro-circle-line me-1" />
                                                                                 {qm.label}{t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}
                                                                             </Badge>

@@ -7,6 +7,7 @@ namespace App\Services\Blog;
 use App\Jobs\GenerateBlogAiDraftJob;
 use App\Models\Blog;
 use App\Models\AiRequest;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Ai\AiRequestQuota;
 use App\Services\Ai\OpenAiChat;
 use App\Models\Company;
@@ -119,7 +120,7 @@ class BlogAiService
             $response = $this->callOpenAi($messages);
             $result = $this->sanitizeResult($this->decodeJson((string) $response['content']));
 
-            $draft->update([
+            app(AiRequestLifecycle::class)->complete($draft, [
                 'status'            => AiRequest::DONE,
                 'context'           => $context,
                 'result'            => $result,
@@ -130,7 +131,7 @@ class BlogAiService
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Blog IA] Falhou', ['draft_id' => $draftId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
-            $draft->update(['status' => AiRequest::ERROR, 'error_message' => 'Não foi possível gerar o rascunho. Tente novamente dentro de alguns minutos.']);
+            app(AiRequestLifecycle::class)->fail($draft, $e);
         }
     }
 

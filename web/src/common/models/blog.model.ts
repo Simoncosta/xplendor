@@ -154,6 +154,10 @@ export interface IBlogAiResult {
 export interface IBlogAiDraft {
     id: number; mode: "topic" | "from_post"; status: "queued" | "processing" | "done" | "error";
     result: IBlogAiResult | null; audience_warning: string | null; error_message: string | null; used: number; cap: number;
+    /** Pedido parado há mais de 3 minutos (com a frase a mostrar). */
+    stalled?: boolean; stalled_message?: string | null;
+    blog_id?: number | null;
+    input?: { topic?: string; source_text?: string; keyword?: string; secondary_keywords?: string[]; notes?: string };
 }
 
 export const AUDIENCE_REASON: Record<string, string> = {

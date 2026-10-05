@@ -171,7 +171,14 @@ export default function FollowersCard({ companyId }: { companyId: number }) {
                                             ) : (
                                                 <p className="text-muted fs-13 mb-2">Ainda sem registos.</p>
                                             )}
-                                            {data.can_record && (
+                                            {/* Registo manual: só quando a leitura automática não está a funcionar. */}
+                                            {data.can_record && data.automation?.[p.key]?.manual_allowed === false && (
+                                                <p className="text-muted fs-12 mb-0"><i className="ri-checkbox-circle-line me-1 text-success" />Lido automaticamente: não é preciso registar à mão.</p>
+                                            )}
+                                            {data.can_record && data.automation?.[p.key]?.manual_allowed !== false && data.automation?.[p.key]?.manual_reason && (
+                                                <p className="text-warning fs-12 mb-2"><i className="ri-hand-coin-line me-1" />{data.automation[p.key].manual_reason}</p>
+                                            )}
+                                            {data.can_record && data.automation?.[p.key]?.manual_allowed !== false && (
                                                 <div className="d-flex gap-2">
                                                     <Input
                                                         type="number"

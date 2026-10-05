@@ -97,6 +97,12 @@ const BlogEditor = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [companyId, id, isNew]);
 
+    // Ligação do sino (?ai=1 ou ?ai_request=ID): abre o "Ajudar a escrever" com o rascunho à espera.
+    useEffect(() => {
+        if (searchParams.get("ai") || searchParams.get("ai_request")) setAiOpen(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Vindo da Linha Editorial: título e tema preenchidos e o "Ajudar a escrever" aberto, pronto a usar.
     useEffect(() => {
         if (!fromPostId) return;

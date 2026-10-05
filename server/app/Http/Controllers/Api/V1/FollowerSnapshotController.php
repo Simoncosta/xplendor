@@ -51,6 +51,12 @@ class FollowerSnapshotController extends Controller
             'followers_count.min'      => 'O número de seguidores não pode ser negativo.',
         ]);
 
+        // Com a leitura automática a funcionar, o registo manual não está disponível.
+        $automation = $this->social->automation($companyId)[$data['platform']] ?? ['connected' => false];
+        if (! SocialConnectionService::manualEntry($automation)['manual_allowed']) {
+            return ApiResponse::error('Esta rede é lida automaticamente: o registo manual só fica disponível se a leitura deixar de funcionar.', 409);
+        }
+
         $this->followers->recordManual($companyId, $data['platform'], (int) $data['followers_count'], $request->user());
 
         return ApiResponse::success(

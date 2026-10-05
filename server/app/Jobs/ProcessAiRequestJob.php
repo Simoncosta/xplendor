@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\AiRequest;
+use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Brand\BrandProfileAiService;
 use App\Services\Brand\CreativeAiService;
 use App\Services\Editorial\EditorialIdeasAiService;
@@ -35,5 +36,11 @@ class ProcessAiRequestJob implements ShouldQueue
             AiRequest::MODE_IDEAS         => app(EditorialIdeasAiService::class)->process($this->requestId),
             default                       => null,
         };
+    }
+
+    /** Tempo esgotado ou worker parado: o pedido não fica "a gerar" para sempre. */
+    public function failed(?\Throwable $e): void
+    {
+        app(AiRequestLifecycle::class)->interrupted($this->requestId, $e);
     }
 }
