@@ -1,3 +1,5 @@
+import { COMPANY } from "@/data/legal/company";
+
 export default function PageTitle() {
   return (
     <div className="mxd-section mxd-section-inner-headline padding-s-text-pre-form overflow-hidden">
@@ -47,9 +49,9 @@ export default function PageTitle() {
                     </h1>
                     <a
                       className="btn btn-line-headline slide-right-up anim-no-delay"
-                      href="mailto:simonfrtd@gmail.com"
+                      href={`mailto:${COMPANY.email}`}
                     >
-                      <span className="btn-caption">simonfrtd@gmail.com</span>
+                      <span className="btn-caption">{COMPANY.email}</span>
                       <i className="ph-bold ph-arrow-up-right" />
                     </a>
                     <p className="inner-headline__text t-large t-bright loading__item">

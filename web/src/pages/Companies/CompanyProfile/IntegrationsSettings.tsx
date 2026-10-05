@@ -4,7 +4,6 @@ import { createSelector } from "reselect";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import ConfirmModal from "Components/Common/ConfirmModal";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
 import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi } from "helpers/laravel_helper";
@@ -13,6 +12,7 @@ import { ICarmineApi } from "common/models/carmine-api.model";
 import { PingwinStatus } from "common/models/pingwin.model";
 import PingwinConnectModal from "./PingwinConnectModal";
 import CarmineConnectModal from "./CarmineConnectModal";
+import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
 
 interface Integration {
     id: number;
@@ -119,8 +119,8 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     const [savingMetaAccount, setSavingMetaAccount] = useState(false);
     // Corrigir uma conta já guardada (ID mal escrito → sync falha sem outra saída).
     const [editingMetaAccount, setEditingMetaAccount] = useState(false);
-    const [confirmDisconnectOpen, setConfirmDisconnectOpen] = useState(false);
-    const [pendingPlatform, setPendingPlatform] = useState<string | null>(null);
+    // Desligar a Meta (com escolha: manter histórico ou apagar) ou apagar o histórico guardado.
+    const [metaModalMode, setMetaModalMode] = useState<MetaDisconnectMode | null>(null);
     const { loadingIntegrations, disconnectingIntegration } = useSelector(selectMetaAdsViewModel);
     const metaIntegration = useSelector(selectMetaIntegration);
     const googleIntegration = useSelector(selectGoogleIntegration);
@@ -278,23 +278,19 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
         }
     };
 
-    const handleDisconnect = async (platform: string) => {
-        setPendingPlatform(platform);
-        setConfirmDisconnectOpen(true);
-    };
-
-    const confirmDisconnect = async () => {
-        if (!pendingPlatform) return;
-
+    const confirmMetaDisconnect = async ({ purge, confirmation }: { purge: boolean; confirmation?: string }) => {
+        const mode = metaModalMode;
         try {
-            await dispatch(disconnectMetaAds({ companyId, platform: pendingPlatform })).unwrap();
-            toast.success("Integração desconectada.");
+            const res: any = await dispatch(disconnectMetaAds({ companyId, platform: "meta", purge, confirmation })).unwrap();
+            toast.success(purge ? "Dados da Meta apagados." : "Meta desligada. O histórico foi mantido.");
+            if (mode === "disconnect" && !res?.data?.permissions_revoked) {
+                toast.warning("Não foi possível retirar a autorização na Meta (a sessão pode ter expirado). Pode removê-la no Facebook, em Definições, Integrações empresariais.");
+            }
             await fetchIntegrations(companyId);
-        } catch {
-            toast.error("Erro ao desconectar integração.");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível desligar a Meta.");
         } finally {
-            setConfirmDisconnectOpen(false);
-            setPendingPlatform(null);
+            setMetaModalMode(null);
         }
     };
 
@@ -360,20 +356,13 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     return (
         <Row>
             <ToastContainer />
-            <ConfirmModal
-                isOpen={confirmDisconnectOpen}
-                title="Desconectar integração"
-                message={`Vais perder ligação com ${pendingPlatform ?? "esta integração"}.`}
-                confirmText="Desconectar"
-                cancelText="Cancelar"
-                variant="danger"
+            <MetaDisconnectModal
+                isOpen={metaModalMode !== null}
+                mode={metaModalMode ?? "disconnect"}
                 loading={disconnectingIntegration}
-                onCancel={() => {
-                    setConfirmDisconnectOpen(false);
-                    setPendingPlatform(null);
-                }}
-                onConfirm={() => {
-                    void confirmDisconnect();
+                onCancel={() => setMetaModalMode(null)}
+                onConfirm={(options) => {
+                    void confirmMetaDisconnect(options);
                 }}
             />
 
@@ -482,19 +471,32 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         {metaIntegration.status === "active" ? (
                                             <button
                                                 className="btn btn-soft-danger btn-sm mt-1"
-                                                onClick={() => handleDisconnect("meta")}
+                                                onClick={() => setMetaModalMode("disconnect")}
                                             >
-                                                <i className="ri-unlink me-1" /> Desconectar
+                                                <i className="ri-unlink me-1" /> Desligar
                                             </button>
                                         ) : (
-                                            <button
-                                                className="btn btn-primary w-100 mt-1"
-                                                onClick={connectMeta}
-                                                style={{ background: "#1877F2", borderColor: "#1877F2" }}
-                                            >
-                                                <i className="ri-facebook-fill me-2" />
-                                                Reconectar com Facebook
-                                            </button>
+                                            <>
+                                                <button
+                                                    className="btn btn-primary w-100 mt-1"
+                                                    onClick={connectMeta}
+                                                    style={{ background: "#1877F2", borderColor: "#1877F2" }}
+                                                >
+                                                    <i className="ri-facebook-fill me-2" />
+                                                    Reconectar com Facebook
+                                                </button>
+                                                {/* Token expirado ou com falha: também se pode desligar (e apagar).
+                                                    Já desligada: o histórico guardado pode ser apagado. */}
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-link btn-sm p-0 text-start fs-12 text-danger"
+                                                    onClick={() => setMetaModalMode(metaIntegration.status === "revoked" ? "purge" : "disconnect")}
+                                                >
+                                                    {metaIntegration.status === "revoked"
+                                                        ? <><i className="ri-delete-bin-line me-1" />Apagar os dados da Meta guardados</>
+                                                        : <><i className="ri-unlink me-1" />Desligar a Meta</>}
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 ) : (

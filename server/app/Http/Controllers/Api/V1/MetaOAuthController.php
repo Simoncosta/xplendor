@@ -36,7 +36,7 @@ class MetaOAuthController extends Controller
         $params = http_build_query([
             'client_id'     => config('services.meta.app_id'),
             'redirect_uri'  => config('services.meta.redirect_uri'),
-            'scope'         => 'ads_read,business_management',
+            'scope'         => 'ads_read',
             'response_type' => 'code',
             'state'         => $nonce,
         ]);

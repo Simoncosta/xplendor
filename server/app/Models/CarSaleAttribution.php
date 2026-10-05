@@ -10,6 +10,7 @@ class CarSaleAttribution extends Model
     protected $fillable = [
         'company_id',
         'car_id',
+        'car_sale_id',
         'sold_at',
         'sale_price',
         'attributed_platform',

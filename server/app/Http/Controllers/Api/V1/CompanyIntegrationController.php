@@ -6,6 +6,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
 use App\Services\CompanyIntegrationService;
+use App\Services\Meta\MetaDataPurger;
 use App\Services\MetaAdsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -106,13 +107,58 @@ class CompanyIntegrationController extends Controller
     }
 
     // DELETE /companies/{id}/integrations/meta
-    public function disconnectMeta(int $companyId): JsonResponse
+    // Body (opcional): { purge: bool, confirmation: "APAGAR" }
+    //   1. Retira a autorização da app na Meta (DELETE /me/permissions) com o token,
+    //      ANTES de o apagar. Se falhar (token expirado, já revogado), continua e regista.
+    //   2. Por omissão mantém o histórico (só apaga o token). Com purge + confirmação,
+    //      apaga todos os dados da Meta da empresa (MetaDataPurger), mantendo as vendas.
+    //   Também serve para apagar o histórico de uma integração já desligada.
+    public function disconnectMeta(Request $request, int $companyId): JsonResponse
     {
-        CompanyIntegration::where('company_id', $companyId)
-            ->where('platform', 'meta')
-            ->update(['status' => 'revoked', 'access_token' => '']);
+        $data = $request->validate([
+            'purge'        => 'sometimes|boolean',
+            'confirmation' => 'nullable|string',
+        ]);
+        $purge = (bool) ($data['purge'] ?? false);
 
-        return ApiResponse::success([], 'Meta Ads desconectado.');
+        if ($purge && ($data['confirmation'] ?? null) !== MetaDataPurger::CONFIRMATION) {
+            return ApiResponse::error('Para apagar os dados da Meta, confirme escrevendo ' . MetaDataPurger::CONFIRMATION . '.', 422);
+        }
+
+        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
+
+        $revoked = false;
+        $token = (string) ($integration?->access_token ?? '');
+        if ($token !== '') {
+            $result = $this->metaAds->revokePermissions($token);
+            $revoked = $result['revoked'];
+            if (! $revoked) {
+                Log::warning('Meta: não foi possível retirar a autorização da app ao desligar; desligado na mesma.', [
+                    'company_id' => $companyId,
+                    'status'     => $integration->status,
+                    'error'      => $result['error'],
+                ]);
+            }
+        }
+
+        if ($purge) {
+            $deleted = app(MetaDataPurger::class)->purge($companyId);
+            Log::info('Meta: dados apagados a pedido do cliente.', ['company_id' => $companyId, 'deleted' => $deleted]);
+
+            return ApiResponse::success(
+                ['permissions_revoked' => $revoked, 'purged' => true, 'deleted' => $deleted],
+                'Meta Ads desligado e dados da Meta apagados.'
+            );
+        }
+
+        if ($integration) {
+            CompanyIntegration::whereKey($integration->id)->update(['status' => 'revoked', 'access_token' => '']);
+        }
+
+        return ApiResponse::success(
+            ['permissions_revoked' => $revoked, 'purged' => false, 'deleted' => null],
+            'Meta Ads desconectado.'
+        );
     }
 
     // GET /companies/{id}/integrations/meta/adsets

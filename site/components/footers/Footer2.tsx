@@ -3,6 +3,7 @@ import footerNav from "@/data/footer-nav.json";
 import socials from "@/data/socials.json";
 import AnimatedButton from "../animation/AnimatedButton";
 import SubscribeForm from "./SubscribeForm";
+import { COMPANY } from "@/data/legal/company";
 
 export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
   return (
@@ -90,7 +91,7 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
                 text="Política de Privacidade"
                 as={"a"}
                 className="btn btn-line-xsmall btn-muted slide-right anim-no-delay"
-                href="#"
+                href="/politica-de-privacidade/"
               >
                 <i className="ph ph-arrow-right" />
               </AnimatedButton>
@@ -98,7 +99,7 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
                 text="Termos e condições"
                 as={"a"}
                 className="btn btn-line-xsmall btn-muted slide-right anim-no-delay"
-                href="#"
+                href="/termos-e-condicoes/"
               >
                 <i className="ph ph-arrow-right" />
               </AnimatedButton>
@@ -131,9 +132,7 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
             c0,0,1.3-0.1,1.8-0.2c1,0,4,0,4,0c0.2,0,0.4-0.2,0.4-0.4C20,9.8,19.8,9.6,19.6,9.6L19.6,9.6z"
                 />
               </svg>
-              <a href="mailto:simonfrtd@gmail.com">
-                simonfrtd@gmail.com
-              </a>
+              <a href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a>
             </p>
           </div>
           {/* inner card */}
@@ -222,6 +221,9 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
               <p className="t-xsmall t-muted">
                 <i className="ph-bold ph-copyright" />
                 {new Date().getFullYear()} XPLENDOR
+              </p>
+              <p className="t-xsmall t-muted">
+                XPLENDOR é uma marca de Simon Costa, Unipessoal Lda.
               </p>
             </div>
           </div>

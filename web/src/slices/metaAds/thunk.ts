@@ -38,9 +38,12 @@ export const connectMetaAds = createAsyncThunk(
 
 export const disconnectMetaAds = createAsyncThunk(
     "metaAds/disconnectMetaAds",
-    async ({ companyId, platform }: { companyId: number; platform: string }, { rejectWithValue }) => {
+    async (
+        { companyId, platform, purge, confirmation }: { companyId: number; platform: string; purge?: boolean; confirmation?: string },
+        { rejectWithValue }
+    ) => {
         try {
-            return await disconnectMetaAdsApi(companyId, platform);
+            return await disconnectMetaAdsApi(companyId, platform, purge ? { purge, confirmation } : undefined);
         } catch (error: any) {
             return rejectWithValue(error?.response?.data || error?.message || error);
         }

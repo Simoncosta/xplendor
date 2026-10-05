@@ -61,7 +61,9 @@ class CampaignToSaleAttributionService
             'ad_id' => null,
             'model' => self::MODEL,
             'window_days' => $windowDays,
-            'match_type' => 'fallback',
+            // Venda SEM campanha: tipo próprio, separado do recurso ao mapeamento
+            // ('fallback'), para não se misturarem nas estatísticas.
+            'match_type' => 'none',
             'time_to_sale_hours' => null,
             'time_from_last_interaction_hours' => null,
             'confidence_score' => 0,
@@ -74,18 +76,26 @@ class CampaignToSaleAttributionService
         ];
     }
 
+    /**
+     * Grava a atribuição da venda. UMA por venda: a chave é a viatura (a car_sales só
+     * permite uma venda por viatura), com a ligação à venda registada em car_sale_id.
+     * Antes a chave era a hora (sold_at): marcar a venda duas vezes com horas
+     * diferentes criava duas atribuições para a mesma venda.
+     */
     public function recordSaleAttribution(Car $car, array $context = []): CarSaleAttribution
     {
         $soldAt = Carbon::parse($context['sold_at'] ?? $car->sold_at ?? now());
         $result = $this->attributeSale($car, $context);
+        $saleId = DB::table('car_sales')->where('car_id', $car->id)->value('id');
 
         $record = CarSaleAttribution::query()->updateOrCreate(
             [
                 'company_id' => $car->company_id,
                 'car_id' => $car->id,
-                'sold_at' => $soldAt,
             ],
             [
+                'car_sale_id' => $saleId,
+                'sold_at' => $soldAt,
                 'sale_price' => $context['sale_price'] ?? null,
                 'attributed_platform' => $result['platform'],
                 'attributed_campaign_id' => $result['campaign_id'],

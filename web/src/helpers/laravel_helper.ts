@@ -93,8 +93,9 @@ export const connectMetaAdsApi = (data: { code: string; state: string; account_i
     api.create(url.GET_META_INTEGRATIONS + url.POST_META_CALLBACK, data, {
         headers: { "Content-Type": "application/json" }
     });
-export const disconnectMetaAdsApi = (companyId: number, platform: string) =>
-    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS + `/${platform}`);
+// Meta: { purge, confirmation: "APAGAR" } apaga também os dados da Meta já recebidos.
+export const disconnectMetaAdsApi = (companyId: number, platform: string, options?: { purge?: boolean; confirmation?: string }) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_INTEGRATIONS + `/${platform}`, options ? { data: options } : undefined);
 export const getMetaAdsetsApi = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_META_INTEGRATIONS + url.GET_META_ADSETS);
 // Define a conta de anúncios após o OAuth (callback no backend). PATCH.

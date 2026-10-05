@@ -559,3 +559,107 @@ html[color-scheme="dark"] .xplendor-x--light {
 .xp-case--featured .xp-mockup {
   border-color: rgba(37, 211, 102, 0.4);
 }
+
+/* Páginas legais (privacidade, termos, eliminação de dados): índice + leitura. */
+.xp-legal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: 5rem;
+  align-items: start;
+}
+@media (max-width: 991px) {
+  .xp-legal {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+}
+.xp-legal__meta {
+  margin-top: 2rem;
+  color: var(--t-muted, rgba(128, 128, 128, 0.85));
+  font-size: 1.5rem;
+}
+.xp-legal__meta a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.xp-legal__sep {
+  margin: 0 0.8rem;
+}
+.xp-legal__toc {
+  position: sticky;
+  top: 12rem;
+}
+@media (max-width: 991px) {
+  .xp-legal__toc {
+    position: static;
+  }
+}
+.xp-legal__toc-title {
+  font-size: 1.3rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t-muted, rgba(128, 128, 128, 0.85));
+  margin-bottom: 1.2rem;
+}
+.xp-legal__toc ol {
+  padding-left: 1.8rem;
+  margin: 0;
+}
+.xp-legal__toc li {
+  margin-bottom: 0.8rem;
+  font-size: 1.5rem;
+  line-height: 1.4;
+}
+.xp-legal__body {
+  max-width: 78rem;
+}
+.xp-legal__section {
+  margin-bottom: 4.8rem;
+  scroll-margin-top: 12rem;
+}
+.xp-legal__section:last-child {
+  margin-bottom: 0;
+}
+.xp-legal__section h2 {
+  font-size: 2.6rem;
+  margin-bottom: 1.6rem;
+}
+.xp-legal__section p,
+.xp-legal__section li {
+  color: var(--t-bright);
+  font-size: 1.7rem;
+  line-height: 1.65;
+}
+.xp-legal__section p {
+  margin-bottom: 1.4rem;
+}
+.xp-legal__section ul {
+  padding-left: 2rem;
+  margin-bottom: 1.6rem;
+}
+.xp-legal__section li {
+  margin-bottom: 0.8rem;
+}
+.xp-legal__section h3 {
+  font-size: 1.9rem;
+  margin: 2.8rem 0 1.2rem;
+}
+.xp-legal__section a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.xp-legal__section ul {
+  list-style: disc;
+}
+.xp-legal__toc ol {
+  list-style: none;
+  padding-left: 0;
+}
+.xp-legal__toc a,
+.xp-legal__section a,
+.xp-legal__meta a {
+  color: var(--t-bright);
+}
+.xp-legal__toc a:hover {
+  text-decoration: underline;
+}

@@ -1,3 +1,5 @@
+import { COMPANY } from "@/data/legal/company";
+
 export default function Locations() {
   return (
     <div className="mxd-section padding-default">
@@ -29,8 +31,8 @@ export default function Locations() {
                             </div>
                             <ul>
                               <li className="anim-uni-in-up">
-                                <a href="mailto:simonfrtd@gmail.com">
-                                  simonfrtd@gmail.com
+                                <a href={`mailto:${COMPANY.email}`}>
+                                  {COMPANY.email}
                                 </a>
                               </li>
                             </ul>

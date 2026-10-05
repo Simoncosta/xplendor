@@ -52,8 +52,9 @@ class ReattributeSales extends Command
 
         foreach ($cars as $car) {
             $soldAt = Carbon::parse($car->sold_at);
+            // Uma atribuição por venda: procura-se pela viatura, não pela hora.
             $old = CarSaleAttribution::where('company_id', $car->company_id)->where('car_id', $car->id)
-                ->where('sold_at', $soldAt)->first();
+                ->orderByDesc('id')->first();
             $new = $service->attributeSale($car, ['sold_at' => $soldAt]);
 
             $newValues = [

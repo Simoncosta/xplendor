@@ -106,6 +106,33 @@ class MetaAdsService
         return (int) ($ms * 1000);
     }
 
+    /**
+     * Retira a autorização da app XPLENDOR na conta Meta do cliente
+     * (DELETE /me/permissions), usada ao desligar a integração, ANTES de apagar o
+     * token. Nunca lança: com o token já expirado ou revogado a Meta responde com
+     * erro e o chamador continua o desligar. O token nunca vai para os registos.
+     *
+     * @return array{revoked: bool, error: ?string}
+     */
+    public function revokePermissions(string $accessToken): array
+    {
+        if ($accessToken === '') {
+            return ['revoked' => false, 'error' => 'sem token'];
+        }
+
+        $response = $this->sendWithRetry(fn () => Http::timeout(self::HTTP_TIMEOUT)
+            ->connectTimeout(self::HTTP_CONNECT_TIMEOUT)
+            ->delete(self::GRAPH_URL . '/me/permissions?' . http_build_query(['access_token' => $accessToken])));
+
+        if ($response->successful() && $response->json('success') === true) {
+            return ['revoked' => true, 'error' => null];
+        }
+
+        $error = $response->json('error.message') ?? ('HTTP ' . $response->status());
+
+        return ['revoked' => false, 'error' => (string) $error];
+    }
+
     // ── Métricas de performance por ad/campanha/adset ──────────────────────────
     // Devolve spend, impressions, clicks, cpm, ctr, cpc, reach, frequency
     // para o período especificado.
