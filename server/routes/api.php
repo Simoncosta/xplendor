@@ -77,6 +77,9 @@ Route::middleware(['check_scraper_api_token'])->group(function () {
 // URL completo: /api/oauth/meta/callback (registar este em "Valid OAuth Redirect
 // URIs" na Meta). Fica fora do grupo v1 para dar exactamente este caminho.
 Route::get('/oauth/meta/callback', [MetaOAuthController::class, 'handleCallbackRedirect']);
+// Redes sociais (Instagram e Facebook): callback próprio, separado do dos anúncios.
+// URL completo: /api/oauth/meta/social/callback (registar também em "Valid OAuth Redirect URIs").
+Route::get('/oauth/meta/social/callback', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'callback']);
 
 Route::prefix('v1')->group(function () {
     Route::post('/register', [UserController::class, 'store']);
@@ -182,6 +185,16 @@ Route::prefix('v1')->group(function () {
                 Route::post('/integrations/meta/connect', [CompanyIntegrationController::class, 'connectMeta'])->middleware('block_when_impersonating');
                 Route::delete('/integrations/meta', [CompanyIntegrationController::class, 'disconnectMeta'])->middleware('block_when_impersonating');
                 Route::get('/integrations/meta/adsets', [CompanyIntegrationController::class, 'listMetaAdsets']);
+
+                // Redes sociais (Instagram e Facebook): ligação separada da dos anúncios. Ver:
+                // qualquer utilizador; ligar, escolher e desligar: admin da empresa, nunca em impersonation.
+                Route::get('/integrations/social', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'show']);
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::get('/integrations/social/auth-url', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'authUrl']);
+                    Route::get('/integrations/social/candidates', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'candidates']);
+                    Route::put('/integrations/social/accounts', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'saveAccounts']);
+                    Route::delete('/integrations/social', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'disconnect']);
+                });
 
                 // GA4 — tráfego do site do cliente (Service Account do servidor;
                 // property_id por empresa). Scoped por company_id.

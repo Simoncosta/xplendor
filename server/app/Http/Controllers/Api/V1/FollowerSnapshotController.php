@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialFollowerSnapshot;
 use App\Services\CollaboratorService;
 use App\Services\Social\FollowerSnapshotService;
+use App\Services\Social\SocialConnectionService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,10 @@ use Illuminate\Validation\Rule;
  */
 class FollowerSnapshotController extends Controller
 {
-    public function __construct(private readonly FollowerSnapshotService $followers) {}
+    public function __construct(
+        private readonly FollowerSnapshotService $followers,
+        private readonly SocialConnectionService $social,
+    ) {}
 
     public function index(Request $request, int $companyId)
     {
@@ -27,7 +31,7 @@ class FollowerSnapshotController extends Controller
 
         return ApiResponse::success(
             $this->followers->overview($companyId, $days)
-                + ['can_record' => CollaboratorService::canEditContent($request->user(), $companyId)],
+                + ['can_record' => CollaboratorService::canEditContent($request->user(), $companyId), 'automation' => $this->social->automation($companyId)],
             'Seguidores carregados.'
         );
     }
@@ -50,7 +54,7 @@ class FollowerSnapshotController extends Controller
         $this->followers->recordManual($companyId, $data['platform'], (int) $data['followers_count'], $request->user());
 
         return ApiResponse::success(
-            $this->followers->overview($companyId) + ['can_record' => true],
+            $this->followers->overview($companyId) + ['can_record' => true, 'automation' => $this->social->automation($companyId)],
             'Seguidores registados.'
         );
     }

@@ -39,6 +39,9 @@ return [
         'app_id'     => env('META_APP_ID'),
         'app_secret' => env('META_APP_SECRET'),
         'redirect_uri' => env('META_REDIRECT_URI'),
+        // Redes sociais (Instagram e Facebook). Vazio: deriva do redirect_uri dos anúncios
+        // (.../api/oauth/meta/callback → .../api/oauth/meta/social/callback).
+        'social_redirect_uri' => env('META_SOCIAL_REDIRECT_URI'),
     ],
 
     'openai' => [

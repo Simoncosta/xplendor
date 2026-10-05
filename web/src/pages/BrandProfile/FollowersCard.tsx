@@ -4,13 +4,15 @@ import { Button, ButtonGroup, Card, CardBody, CardHeader, Col, Input, Row, Spinn
 import { toast } from "react-toastify";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getFollowers, recordFollowers } from "helpers/laravel_helper";
+import { Link } from "react-router-dom";
 import type { FollowerPlatform, FollowerSource, FollowersOverview } from "common/models/followers.model";
+import { socialStateView } from "common/models/socialConnection.model";
 
 /**
  * Seguidores (Instagram e Página de Facebook): valor atual, registo manual de hoje e
  * crescimento. Os dias sem registo ficam como falhas (sem inventar valores) e os pontos
- * registados à mão aparecem marcados. A leitura automática chega com a ligação às redes;
- * até lá, o estado diz-o com honestidade.
+ * registados à mão aparecem marcados. A leitura automática vem da ligação das redes sociais
+ * (Integrações); o estado de cada rede diz-o com honestidade.
  */
 
 const PLATFORMS: { key: FollowerPlatform; label: string; icon: string; colorVar: string }[] = [
@@ -131,11 +133,14 @@ export default function FollowersCard({ companyId }: { companyId: number }) {
                     <p className="text-muted mb-0">Não foi possível carregar os seguidores. Tente novamente dentro de momentos.</p>
                 ) : (
                     <>
-                        <div className="alert alert-info fs-13 py-2 mb-3" role="note">
-                            <i className="ri-information-line me-1" />
-                            A leitura automática dos seguidores ainda não está disponível: depende da ligação às redes e das permissões da Meta.
-                            Até lá, registe os valores à mão; quando a leitura automática chegar, prevalece sobre o registo manual do mesmo dia.
-                        </div>
+                        {!PLATFORMS.some((p) => data.automation?.[p.key]?.connected) && (
+                            <div className="alert alert-info fs-13 py-2 mb-3" role="note">
+                                <i className="ri-information-line me-1" />
+                                A leitura automática dos seguidores fica ativa quando o administrador ligar as redes sociais
+                                em <Link to={`/companies/${companyId}?tab=integrations`}>Integrações</Link>.
+                                Até lá, registe os valores à mão; a leitura automática prevalece sobre o registo manual do mesmo dia.
+                            </div>
+                        )}
 
                         <Row className="g-3 mb-3">
                             {PLATFORMS.map((p) => {
@@ -147,6 +152,17 @@ export default function FollowersCard({ companyId }: { companyId: number }) {
                                                 <i className={`${p.icon} fs-4`} style={{ color: `var(${p.colorVar})` }} />
                                                 <span className="fw-medium">{p.label}</span>
                                             </div>
+                                            {(() => {
+                                                const auto = data.automation?.[p.key];
+                                                if (!auto || !auto.connected) return <div className="text-muted fs-12 mb-2"><i className="ri-hand-coin-line me-1" />Registo manual</div>;
+                                                const v = socialStateView(auto.connection_status, auto.last_read_at, auto.last_error_at, auto.last_error_kind);
+                                                return v && (
+                                                    <div className={`fs-12 mb-2 text-${v.tone === "success" ? "success" : v.tone === "info" ? "info" : v.tone}`}>
+                                                        <i className={`${v.tone === "success" ? "ri-refresh-line" : "ri-error-warning-line"} me-1`} />
+                                                        <strong>{v.badge}</strong>{auto.account ? ` (${auto.account})` : ""}. {v.text}
+                                                    </div>
+                                                );
+                                            })()}
                                             {current ? (
                                                 <>
                                                     <div className="fs-20 fw-semibold">{int(current.count)} <span className="fs-13 fw-normal text-muted">seguidores</span></div>

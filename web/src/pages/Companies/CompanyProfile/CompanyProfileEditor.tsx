@@ -49,10 +49,10 @@ export default function CompanyProfileEditor({
 
     // Abrir directamente o separador Integrações quando o link o pede
     // (?tab=integrations — ex.: "Escolher a conta"/"Reconectar" no ecrã Meta) ou
-    // no retorno do OAuth Meta (?meta=…). Só em edição (o separador exige empresa).
+    // no retorno do OAuth Meta (?meta=…) ou das redes sociais (?social=…). Só em edição.
     const wantsIntegrations = useMemo(() => {
         const q = new URLSearchParams(window.location.search);
-        return q.get('tab') === 'integrations' || q.has('meta');
+        return q.get('tab') === 'integrations' || q.has('meta') || q.has('social');
     }, []);
     const [activeTab, setActiveTab] = useState(() => (isEdit && wantsIntegrations ? "3" : "1"));
     const openedFromLink = useRef(false);

@@ -6,6 +6,7 @@ import { COMPANY } from "./company";
  * Instructions URL". Descreve o comportamento atual: ao desligar, a autorização é
  * retirada na Meta e o token apagado; o histórico mantém-se por omissão e pode ser
  * apagado por opção (ao desligar ou depois, na Plataforma) ou a pedido por email.
+ * Nas redes sociais (Instagram e Facebook) retiram-se só as três permissões delas.
  */
 
 export const dataDeletionPt: LegalContent = {
@@ -22,14 +23,14 @@ export const dataDeletionPt: LegalContent = {
       id: "pedido",
       title: "1. Como pedir a eliminação",
       blocks: [
-        "Os clientes podem apagar os dados recebidos da Meta diretamente na Plataforma, em Integrações, ao desligar a Meta ou mais tarde (secção 4). A eliminação é imediata.",
+        "Os clientes podem apagar os dados recebidos da Meta diretamente na Plataforma, em Integrações, ao desligar os anúncios ou as redes sociais, ou mais tarde (secção 4). A eliminação é imediata.",
         "Também pode pedir a eliminação por email, por exemplo se não for cliente ou já não tiver acesso à Plataforma.",
         `Envie um email para ${COMPANY.email} com o assunto \"Eliminação de dados\", indicando:`,
         {
           list: [
             "o nome da empresa e o NIPC usados na conta XPLENDOR (ou, se não for cliente, o seu nome e email);",
             "o que pretende eliminar: só os dados recebidos da Meta, ou todos os dados da conta;",
-            "se possível, o identificador da conta de anúncios da Meta ligada à XPLENDOR.",
+            "se possível, o identificador da conta de anúncios da Meta ou o nome da Página de Facebook ou da conta de Instagram ligadas à XPLENDOR.",
           ],
         },
         "O pedido deve ser enviado a partir do email de um utilizador da conta. Se não for possível, pediremos outra forma de confirmar a identidade, para evitar eliminações indevidas.",
@@ -55,16 +56,18 @@ export const dataDeletionPt: LegalContent = {
             "as métricas diárias de desempenho (por conta, campanha e anúncio) e as métricas agregadas por idade e género;",
             "os nomes e identificadores de campanhas, conjuntos de anúncios e anúncios, e as associações entre anúncios e produtos;",
             "os metadados de públicos personalizados e as configurações de segmentação;",
-            "as despesas de marketing calculadas a partir do investimento na Meta.",
+            "as despesas de marketing calculadas a partir do investimento na Meta;",
+            "na ligação das redes sociais: os tokens de acesso, as Páginas e contas de Instagram escolhidas (identificador, nome e nome de utilizador) e o histórico de seguidores lido automaticamente.",
           ],
         },
+        "Os números de seguidores que o próprio cliente registou à mão não vêm da Meta; mantêm-se, salvo num pedido de eliminação de todos os dados.",
         "As vendas e restantes dados de negócio que o cliente introduziu mantêm-se, mas deixam de estar associadas a campanhas ou anúncios da Meta.",
         "Num pedido de eliminação de todos os dados, a conta da empresa é encerrada e todos os dados associados são eliminados, salvo os que a lei obrigue a conservar (por exemplo, documentos de faturação).",
       ],
     },
     {
       id: "desligar",
-      title: "4. O que acontece ao desligar a integração com a Meta",
+      title: "4. O que acontece ao desligar as integrações com a Meta",
       blocks: [
         "Na Plataforma, em Integrações, o cliente pode desligar a Meta a qualquer momento. Ao fazê-lo:",
         {
@@ -76,6 +79,16 @@ export const dataDeletionPt: LegalContent = {
         },
         "Se tiver mantido o histórico, pode apagá-lo mais tarde no mesmo ecrã (\"Apagar os dados da Meta guardados\") ou pedir a eliminação por email, como descrito na secção 1.",
         "Se a Meta não aceitar o pedido de retirada da autorização (por exemplo, porque o token já expirou), o desligar conclui-se na mesma; nesse caso, remova a XPLENDOR nas definições do Facebook, como descrito na secção 5.",
+        { h3: "Redes sociais (Instagram e Facebook)" },
+        "No cartão \"Redes sociais (Instagram e Facebook)\", em Integrações, o administrador pode desligar a ligação das redes sociais a qualquer momento. Ao fazê-lo:",
+        {
+          list: [
+            "a XPLENDOR pede à Meta que retire, uma a uma, apenas as permissões das redes sociais (pages_show_list, pages_read_engagement e instagram_basic); a ligação dos anúncios mantém-se;",
+            "os tokens de acesso e as Páginas e contas escolhidas são apagados e a XPLENDOR deixa de ler os seguidores;",
+            "o cliente escolhe entre \"Manter o histórico de seguidores\" (opção por omissão) e \"Apagar o histórico lido automaticamente\", que elimina de imediato os números de seguidores lidos da Meta, depois de escrever APAGAR para confirmar. Os valores registados à mão mantêm-se.",
+          ],
+        },
+        "Se tiver mantido o histórico, pode apagá-lo mais tarde no mesmo cartão (\"Apagar o histórico de seguidores lido automaticamente\") ou pedir a eliminação por email.",
       ],
     },
     {
@@ -90,7 +103,7 @@ export const dataDeletionPt: LegalContent = {
             "selecione XPLENDOR e escolha Remover.",
           ],
         },
-        "Depois disso, a XPLENDOR deixa de conseguir aceder a quaisquer dados da sua conta de anúncios. Os dados já recebidos podem ser apagados na Plataforma ou mediante pedido, nos termos das secções 1 e 4.",
+        "Depois disso, a XPLENDOR deixa de conseguir aceder a quaisquer dados da sua conta de anúncios, das suas Páginas e das suas contas de Instagram, porque esta remoção retira todas as permissões dadas à aplicação. Os dados já recebidos podem ser apagados na Plataforma ou mediante pedido, nos termos das secções 1 e 4.",
       ],
     },
     {
@@ -118,14 +131,14 @@ export const dataDeletionEn: LegalContent = {
       id: "request",
       title: "1. How to request deletion",
       blocks: [
-        "Customers can delete the data received from Meta directly in the Platform, under Integrations, when disconnecting Meta or later (section 4). Deletion is immediate.",
+        "Customers can delete the data received from Meta directly in the Platform, under Integrations, when disconnecting the advertising or the social media connection, or later (section 4). Deletion is immediate.",
         "You can also request deletion by email, for example if you are not a customer or no longer have access to the Platform.",
         `Send an email to ${COMPANY.email} with the subject \"Data deletion\", stating:`,
         {
           list: [
             "the company name and company tax number used in the XPLENDOR account (or, if you are not a customer, your name and email);",
             "what you want deleted: only the data received from Meta, or all account data;",
-            "if possible, the ID of the Meta ad account connected to XPLENDOR.",
+            "if possible, the ID of the Meta ad account, or the name of the Facebook Page or Instagram account, connected to XPLENDOR.",
           ],
         },
         "The request should be sent from the email address of a user of the account. If that is not possible, we will ask for another way to confirm your identity, to prevent improper deletions.",
@@ -151,16 +164,18 @@ export const dataDeletionEn: LegalContent = {
             "daily performance metrics (per account, campaign and ad) and metrics aggregated by age and gender;",
             "names and IDs of campaigns, ad sets and ads, and the links between ads and products;",
             "custom audience metadata and targeting settings;",
-            "marketing expenses calculated from Meta spend.",
+            "marketing expenses calculated from Meta spend;",
+            "for the social media connection: the access tokens, the chosen Pages and Instagram accounts (ID, name and username) and the follower history read automatically.",
           ],
         },
+        "Follower counts entered manually by the customer do not come from Meta; they are kept, except in a request to delete all data.",
         "Sales and other business data entered by the customer are kept, but are no longer linked to Meta campaigns or ads.",
         "For a request to delete all data, the company account is closed and all associated data is deleted, except data that the law requires to be kept (for example invoicing documents).",
       ],
     },
     {
       id: "disconnect",
-      title: "4. What happens when you disconnect the Meta integration",
+      title: "4. What happens when you disconnect the Meta integrations",
       blocks: [
         "In the Platform, under Integrations, the customer can disconnect Meta at any time. When doing so:",
         {
@@ -172,6 +187,16 @@ export const dataDeletionEn: LegalContent = {
         },
         "If the history was kept, it can be deleted later on the same screen (\"Apagar os dados da Meta guardados\", delete stored Meta data) or by email request, as described in section 1.",
         "If Meta does not accept the authorisation removal request (for example because the token has already expired), the disconnection still completes; in that case, remove XPLENDOR in your Facebook settings, as described in section 5.",
+        { h3: "Social media (Instagram and Facebook)" },
+        "In the \"Redes sociais (Instagram e Facebook)\" card (social media), under Integrations, the administrator can disconnect the social media connection at any time. When doing so:",
+        {
+          list: [
+            "XPLENDOR asks Meta to remove, one by one, only the social media permissions (pages_show_list, pages_read_engagement and instagram_basic); the advertising connection is kept;",
+            "the access tokens and the chosen Pages and accounts are deleted and XPLENDOR stops reading followers;",
+            "the customer chooses between \"Manter o histórico de seguidores\" (keep the follower history, the default) and \"Apagar o histórico lido automaticamente\" (delete the history read automatically), which immediately deletes the follower counts read from Meta, after typing APAGAR to confirm. Values entered manually are kept.",
+          ],
+        },
+        "If the history was kept, it can be deleted later on the same card (\"Apagar o histórico de seguidores lido automaticamente\") or by email request.",
       ],
     },
     {
@@ -186,7 +211,7 @@ export const dataDeletionEn: LegalContent = {
             "select XPLENDOR and choose Remove.",
           ],
         },
-        "After that, XPLENDOR can no longer access any data from your ad account. Data already received can be deleted in the Platform or on request, as described in sections 1 and 4.",
+        "After that, XPLENDOR can no longer access any data from your ad account, your Pages or your Instagram accounts, because this removal withdraws all permissions given to the app. Data already received can be deleted in the Platform or on request, as described in sections 1 and 4.",
       ],
     },
     {

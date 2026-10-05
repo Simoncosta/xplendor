@@ -148,6 +148,14 @@ export const getBrandProfile = (companyId: number) => api.get(url.GET_COMPANIES 
 export const updateBrandProfile = (companyId: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/brand-profile`, data);
 // Seguidores (Perfil da Marca): estado e crescimento; registo manual de hoje.
 export const getFollowers = (companyId: number, days = 90) => api.get(url.GET_COMPANIES + `/${companyId}/followers`, { days });
+// Redes sociais (Instagram e Facebook): ligação separada da dos anúncios.
+export const getSocialConnection = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/social`);
+export const getSocialAuthUrl = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/social/auth-url`);
+export const getSocialCandidates = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/social/candidates`);
+export const saveSocialAccounts = (companyId: number, data: { facebook: string[]; instagram: string[]; primary_facebook: string | null; primary_instagram: string | null }) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/social/accounts`, data);
+export const disconnectSocial = (companyId: number, options?: { purge: boolean; confirmation?: string }) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/social`, options ? { data: options } : undefined);
 export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
 // "Sugerir perfil" (IA): pedir e consultar. Nunca grava o perfil.

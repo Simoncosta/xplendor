@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
 import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi } from "helpers/laravel_helper";
@@ -13,6 +13,7 @@ import { PingwinStatus } from "common/models/pingwin.model";
 import PingwinConnectModal from "./PingwinConnectModal";
 import CarmineConnectModal from "./CarmineConnectModal";
 import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
+import SocialConnectionCard from "./SocialConnectionCard";
 
 interface Integration {
     id: number;
@@ -355,7 +356,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
 
     return (
         <Row>
-            <ToastContainer />
+            {/* Os avisos usam o ToastContainer da página (CompanyProfileUpdate); um segundo duplicava-os. */}
             <MetaDisconnectModal
                 isOpen={metaModalMode !== null}
                 mode={metaModalMode ?? "disconnect"}
@@ -512,6 +513,9 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                             </CardBody>
                         </Card>
                     </Col>
+
+                    {/* Redes sociais (Instagram e Facebook): ligação separada da dos anúncios. */}
+                    {companyId > 0 && <SocialConnectionCard companyId={companyId} />}
 
                     {/* ── Google Analytics (GA4) — tráfego do site do cliente ── */}
                     <Col md={6} xl={4}>

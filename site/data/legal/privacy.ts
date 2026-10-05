@@ -4,7 +4,8 @@ import { COMPANY } from "./company";
 /**
  * Política de privacidade (PT e EN). Descreve o que o código do server/ faz hoje
  * com os dados da Meta. Se o comportamento mudar (por exemplo, o que acontece ao
- * desligar a integração: MetaDataPurger e CompanyIntegrationController::disconnectMeta),
+ * desligar a integração: MetaDataPurger e CompanyIntegrationController::disconnectMeta; nas
+ * redes sociais, SocialConnectionService::disconnect),
  * este texto tem de mudar no mesmo momento.
  * Os campos entre parênteses retos são para preencher.
  */
@@ -69,10 +70,18 @@ export const privacyPt: LegalContent = {
       id: "dados-meta",
       title: "4. Dados recebidos da Meta (Facebook e Instagram)",
       blocks: [
-        "Esta secção descreve, de forma específica, os dados que a XPLENDOR recebe quando um cliente liga a sua conta de anúncios da Meta à Plataforma através do Facebook Login. A ligação é sempre iniciada pelo cliente e pode ser desligada a qualquer momento.",
-        { h3: "4.1 Permissão pedida" },
-        "A XPLENDOR pede apenas a permissão ads_read, para ler os dados de desempenho da conta de anúncios indicada pelo cliente.",
-        "A XPLENDOR apenas lê dados. Não cria, edita, pausa nem apaga campanhas, anúncios, públicos ou qualquer outro conteúdo na Meta.",
+        "Esta secção descreve, de forma específica, os dados que a XPLENDOR recebe da Meta através do Facebook Login. Há duas ligações separadas, cada uma com as suas permissões: a dos anúncios (a conta de anúncios da Meta) e a das redes sociais (as Páginas de Facebook e as contas de Instagram profissionais da empresa). Cada ligação é sempre iniciada pelo administrador da empresa cliente e pode ser desligada a qualquer momento, sem afetar a outra.",
+        { h3: "4.1 Permissões pedidas" },
+        "Ligação dos anúncios: a XPLENDOR pede apenas a permissão ads_read, para ler os dados de desempenho da conta de anúncios indicada pelo cliente.",
+        "Ligação das redes sociais: a XPLENDOR pede apenas três permissões:",
+        {
+          list: [
+            "pages_show_list, para listar as Páginas de Facebook que o cliente gere, de modo a escolher quais ficam ligadas à empresa;",
+            "pages_read_engagement, para ler o número de seguidores das Páginas escolhidas;",
+            "instagram_basic, para identificar a conta de Instagram profissional ligada a cada Página e ler o respetivo número de seguidores.",
+          ],
+        },
+        "A XPLENDOR apenas lê dados. Não publica, não cria, não edita, não pausa nem apaga campanhas, anúncios, públicos, publicações ou qualquer outro conteúdo na Meta.",
         { h3: "4.2 O que recolhemos e para quê" },
         {
           list: [
@@ -85,14 +94,24 @@ export const privacyPt: LegalContent = {
             "Metadados dos públicos personalizados: identificador, nome, tipo, dimensão aproximada, estado de entrega e data de atualização. A XPLENDOR não recebe nem guarda a lista de pessoas que compõem esses públicos.",
           ],
         },
-        "Finalidade: mostrar ao cliente quanto investiu em publicidade, que resultados obteve, que anúncios estão associados a cada produto (por exemplo, a cada viatura), e relacionar o investimento com as vendas que o próprio cliente regista na Plataforma. A partir destes dados a Plataforma calcula indicadores como custo por contacto e regista o investimento da Meta como despesa de marketing do cliente.",
+        "Finalidade (anúncios): mostrar ao cliente quanto investiu em publicidade, que resultados obteve, que anúncios estão associados a cada produto (por exemplo, a cada viatura), e relacionar o investimento com as vendas que o próprio cliente regista na Plataforma. A partir destes dados a Plataforma calcula indicadores como custo por contacto e regista o investimento da Meta como despesa de marketing do cliente.",
+        "Na ligação das redes sociais:",
+        {
+          list: [
+            "Tokens de acesso: o token de longa duração emitido pela Meta para esta ligação, a respetiva data de expiração e o identificador numérico que a Meta atribui à conta Facebook que autorizou; e o token de cada Página escolhida. São guardados cifrados (AES-256-CBC) na base de dados e nunca são mostrados no navegador.",
+            "Páginas de Facebook: identificador e nome. Contas de Instagram profissionais: identificador, nome e nome de utilizador. Guardamos apenas as que o cliente escolhe e qual é a principal de cada rede.",
+            "Número de seguidores, lido uma vez por dia, de cada Página e conta escolhida; na conta de Instagram, também o número de contas seguidas e de publicações. Fica um histórico diário por empresa.",
+          ],
+        },
+        "Finalidade (redes sociais): mostrar ao cliente, no Perfil da Marca, os seguidores atuais e o crescimento ao longo do tempo, e adequar as sugestões de formato das publicações à dimensão da audiência.",
         "Fundamento: execução do contrato com o cliente, que autoriza expressamente a ligação.",
         { h3: "4.3 O que não recolhemos" },
         {
           list: [
             "Dados de utilizadores individuais do Facebook ou do Instagram (perfis, contactos, mensagens, comentários ou listas de membros de públicos).",
             "Leads de formulários da Meta, dados do Pixel ou da API de Conversões.",
-            "Publicações, páginas ou contas de Instagram, nem dados de faturação da conta de anúncios.",
+            "O conteúdo das Páginas e das contas de Instagram (publicações, comentários, mensagens, estatísticas das publicações) nem a lista de seguidores: apenas o número total de seguidores.",
+            "Dados de faturação da conta de anúncios.",
           ],
         },
         { h3: "4.4 Uso limitado" },
@@ -114,6 +133,16 @@ export const privacyPt: LegalContent = {
             "ao apagar, as vendas registadas pelo cliente mantêm-se, sem ligação a campanhas ou anúncios.",
           ],
         },
+        "Quando o cliente desliga as redes sociais na Plataforma:",
+        {
+          list: [
+            "a XPLENDOR pede à Meta que retire, uma a uma, apenas as três permissões das redes sociais (pages_show_list, pages_read_engagement e instagram_basic); a ligação dos anúncios não é afetada;",
+            "os tokens de acesso e as Páginas e contas escolhidas são apagados e a XPLENDOR deixa de ler os seguidores;",
+            "o cliente escolhe o que acontece ao histórico de seguidores: por omissão mantém-se para consulta; em alternativa, pode apagar de imediato os números lidos automaticamente da Meta, mediante confirmação explícita. Os valores que o próprio cliente registou à mão mantêm-se.",
+          ],
+        },
+        "Desligar os anúncios retira a autorização da aplicação por completo. Se a mesma conta Facebook autorizou também as redes sociais, essa ligação deixa igualmente de funcionar e a Plataforma indica que é preciso voltar a ligar; o histórico de seguidores mantém-se.",
+        "O histórico de seguidores é conservado enquanto a conta do cliente na Plataforma estiver ativa, salvo se o cliente o apagar antes.",
         "Quando o cliente muda de conta de anúncios, as métricas e os anúncios da conta anterior são eliminados.",
         "Quando a conta do cliente na Plataforma é encerrada, todos os dados da empresa, incluindo os dados recebidos da Meta, são eliminados da base de dados.",
         "Eliminação posterior: se tiver mantido o histórico, o cliente pode apagá-lo mais tarde na Plataforma (Integrações) ou pedir a eliminação por email, sem encerrar a conta. As instruções e o prazo estão na página Eliminação de Dados (/eliminacao-de-dados/).",
@@ -240,10 +269,18 @@ export const privacyEn: LegalContent = {
       id: "meta-data",
       title: "4. Data received from Meta (Facebook and Instagram)",
       blocks: [
-        "This section specifically describes the data XPLENDOR receives when a customer connects their Meta ad account to the Platform through Facebook Login. The connection is always started by the customer and can be disconnected at any time.",
-        { h3: "4.1 Permission requested" },
-        "XPLENDOR requests only the ads_read permission, to read the performance data of the ad account selected by the customer.",
-        "XPLENDOR only reads data. It does not create, edit, pause or delete campaigns, ads, audiences or any other content on Meta.",
+        "This section specifically describes the data XPLENDOR receives from Meta through Facebook Login. There are two separate connections, each with its own permissions: the advertising connection (the Meta ad account) and the social media connection (the company's Facebook Pages and Instagram professional accounts). Each connection is always started by an administrator of the customer company and can be disconnected at any time without affecting the other.",
+        { h3: "4.1 Permissions requested" },
+        "Advertising connection: XPLENDOR requests only the ads_read permission, to read the performance data of the ad account selected by the customer.",
+        "Social media connection: XPLENDOR requests only three permissions:",
+        {
+          list: [
+            "pages_show_list, to list the Facebook Pages the customer manages, so that the customer can choose which ones are linked to the company;",
+            "pages_read_engagement, to read the follower count of the chosen Pages;",
+            "instagram_basic, to identify the Instagram professional account linked to each Page and read its follower count.",
+          ],
+        },
+        "XPLENDOR only reads data. It does not publish, create, edit, pause or delete campaigns, ads, audiences, posts or any other content on Meta.",
         { h3: "4.2 What we collect and why" },
         {
           list: [
@@ -256,14 +293,24 @@ export const privacyEn: LegalContent = {
             "Custom audience metadata: ID, name, type, approximate size, delivery status and last update date. XPLENDOR does not receive or store the list of people in those audiences.",
           ],
         },
-        "Purpose: to show the customer how much they spent on advertising, what results they obtained, which ads relate to each product (for example each vehicle), and to relate that spend to the sales the customer records in the Platform. From this data the Platform calculates indicators such as cost per contact and records Meta spend as a marketing expense of the customer.",
+        "Purpose (advertising): to show the customer how much they spent on advertising, what results they obtained, which ads relate to each product (for example each vehicle), and to relate that spend to the sales the customer records in the Platform. From this data the Platform calculates indicators such as cost per contact and records Meta spend as a marketing expense of the customer.",
+        "In the social media connection:",
+        {
+          list: [
+            "Access tokens: the long-lived token issued by Meta for this connection, its expiry date and the numeric ID Meta assigns to the Facebook account that authorised it; and the token of each chosen Page. They are stored encrypted (AES-256-CBC) in the database and are never shown in the browser.",
+            "Facebook Pages: ID and name. Instagram professional accounts: ID, name and username. We store only the ones the customer chooses, and which one is the main account of each network.",
+            "Follower count, read once a day, of each chosen Page and account; for the Instagram account, also the number of accounts followed and of posts. A daily history is kept per company.",
+          ],
+        },
+        "Purpose (social media): to show the customer, in the Brand Profile, the current followers and their growth over time, and to adapt the post format suggestions to the size of the audience.",
         "Legal basis: performance of the contract with the customer, who expressly authorises the connection.",
         { h3: "4.3 What we do not collect" },
         {
           list: [
             "Data about individual Facebook or Instagram users (profiles, contacts, messages, comments or audience member lists).",
             "Meta lead form data, Pixel data or Conversions API data.",
-            "Posts, Pages or Instagram accounts, or ad account billing data.",
+            "The content of Pages and Instagram accounts (posts, comments, messages, post statistics) or the list of followers: only the total follower count.",
+            "Ad account billing data.",
           ],
         },
         { h3: "4.4 Limited use" },
@@ -285,6 +332,16 @@ export const privacyEn: LegalContent = {
             "when deleting, the sales recorded by the customer are kept, without any link to campaigns or ads.",
           ],
         },
+        "When the customer disconnects the social media connection in the Platform:",
+        {
+          list: [
+            "XPLENDOR asks Meta to remove, one by one, only the three social media permissions (pages_show_list, pages_read_engagement and instagram_basic); the advertising connection is not affected;",
+            "the access tokens and the chosen Pages and accounts are deleted and XPLENDOR stops reading followers;",
+            "the customer chooses what happens to the follower history: by default it is kept for reference; alternatively, the customer can immediately delete the counts read automatically from Meta, after explicit confirmation. Values the customer entered manually are kept.",
+          ],
+        },
+        "Disconnecting the advertising connection removes the app authorisation completely. If the same Facebook account also authorised the social media connection, that connection also stops working and the Platform shows that it must be connected again; the follower history is kept.",
+        "The follower history is kept while the customer's Platform account is active, unless the customer deletes it earlier.",
         "When the customer switches to a different ad account, the metrics and ads of the previous account are deleted.",
         "When the customer's Platform account is closed, all company data, including the data received from Meta, is deleted from the database.",
         "Later deletion: if the history was kept, the customer can delete it later in the Platform (Integrations) or request deletion by email, without closing the account. Instructions and timeframes are on the Data Deletion page (/en/data-deletion/).",

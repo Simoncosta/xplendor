@@ -339,7 +339,9 @@ class BrandProfileAssistantsTest extends TestCase
 
     public function test_migration_copies_legacy_media_formats_without_deleting_anything(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+        // Só a migração da Parte B (há migrações mais recentes depois dela).
+        $migration = 'database/migrations/2026_11_14_100000_create_creative_suggestions_foundation.php';
+        $this->artisan('migrate:rollback', ['--path' => $migration])->assertSuccessful();
 
         $ids = [];
         foreach ([['instagram', 'Carrossel'], ['instagram', 'Vídeo'], ['facebook', 'Imagem única'], ['facebook', 'Stories'], ['instagram', 'Tutorial'], ['site', 'Artigo']] as [$channel, $format]) {
@@ -347,7 +349,7 @@ class BrandProfileAssistantsTest extends TestCase
                 'format' => $format, 'status' => 'rascunho', 'channel' => $channel, 'created_at' => now(), 'updated_at' => now()]);
         }
 
-        $this->artisan('migrate')->assertSuccessful();
+        $this->artisan('migrate', ['--path' => $migration])->assertSuccessful();
 
         $rows = DB::table('editorial_posts')->whereIn('id', $ids)->orderBy('id')->get(['format', 'media_format']);
         $this->assertSame(

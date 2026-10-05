@@ -142,3 +142,14 @@ Schedule::job(new \App\Jobs\PublishScheduledBlogsJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Blog Publish] Job falhou no scheduler');
     });
+
+// 04:30 (Lisboa): seguidores automáticos do Instagram e da Página de Facebook ligados
+// nas redes sociais. Só grava quando lê de facto; a leitura ganha ao registo manual do dia.
+Schedule::job(new \App\Jobs\ReadSocialFollowersJob())
+    ->dailyAt('04:30')
+    ->timezone('Europe/Lisbon')
+    ->name('social-followers-daily')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Redes sociais] Job de seguidores falhou no scheduler');
+    });

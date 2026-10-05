@@ -1,4 +1,5 @@
 // Seguidores (Perfil da Marca). Espelha GET /companies/{id}/followers?days=N.
+import type { SocialStatus } from "./socialConnection.model";
 
 export type FollowerPlatform = "instagram" | "facebook";
 export type FollowerSource = "manual" | "api" | "business_discovery";
@@ -21,4 +22,18 @@ export interface FollowersOverview {
     today: string;
     platforms: Record<FollowerPlatform, FollowerPlatformData>;
     can_record: boolean;
+    /** Leitura automática por rede (ligação das redes sociais). */
+    automation?: Record<FollowerPlatform, FollowerAutomation>;
 }
+
+export type FollowerAutomation =
+    | { connected: false }
+    | {
+          connected: true;
+          connection_status: SocialStatus;
+          account: string | null;
+          last_read_at: string | null;
+          last_error_at: string | null;
+          last_error_kind: string | null;
+      };
+
