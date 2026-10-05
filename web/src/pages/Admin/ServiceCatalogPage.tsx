@@ -10,8 +10,10 @@ import { BILLING_LABEL, ICatalogItem, QuoteBilling, QuoteUnit, UNIT_LABEL, forma
  * Preços sem IVA. Os serviços não se apagam: desativam-se (os orçamentos já feitos
  * guardam a sua própria cópia de cada linha).
  */
-type Draft = { id?: number; name: string; description: string; unit_price: string; unit: QuoteUnit; billing_type: QuoteBilling; active: boolean };
-const EMPTY: Draft = { name: "", description: "", unit_price: "", unit: "month", billing_type: "monthly", active: true };
+// checklist: a lista de arranque (tarefas copiadas para o ticket quando um orçamento com o serviço é aceite).
+type Draft = { id?: number; name: string; description: string; unit_price: string; unit: QuoteUnit; billing_type: QuoteBilling; active: boolean; checklist: string[] };
+const EMPTY: Draft = { name: "", description: "", unit_price: "", unit: "month", billing_type: "monthly", active: true, checklist: [] };
+const MAX_TASKS = 30;
 
 const ServiceCatalogPage = () => {
     document.title = "Catálogo de serviços | Xplendor";
@@ -32,6 +34,7 @@ const ServiceCatalogPage = () => {
         const payload = {
             name: editing.name.trim(), description: editing.description.trim() || null, unit_price: Number(editing.unit_price),
             unit: editing.unit, billing_type: editing.billing_type, active: editing.active,
+            onboarding_checklist: editing.checklist.map((t) => t.trim()).filter(Boolean),
         };
         try {
             if (editing.id) await updateServiceCatalogItem(editing.id, payload);
@@ -88,7 +91,13 @@ const ServiceCatalogPage = () => {
                                             <tr key={i.id} className={i.active ? "" : "opacity-50"}>
                                                 <td style={{ minWidth: 200 }}>
                                                     <div className="fw-medium">{i.name}</div>
-                                                    {i.description && <small className="text-muted">{i.description}</small>}
+                                                    {i.description && <small className="text-muted d-block">{i.description}</small>}
+                                                    <small className={(i.onboarding_checklist?.length ?? 0) > 0 ? "text-muted" : "text-warning"}>
+                                                        <i className="ri-rocket-2-line me-1" />
+                                                        {(i.onboarding_checklist?.length ?? 0) > 0
+                                                            ? `Lista de arranque: ${i.onboarding_checklist!.length} ${i.onboarding_checklist!.length === 1 ? "tarefa" : "tarefas"}`
+                                                            : "Sem lista de arranque"}
+                                                    </small>
                                                 </td>
                                                 <td className="text-end text-nowrap">{formatQuoteEuro(i.unit_price)} <small className="text-muted">{UNIT_LABEL[i.unit]}</small></td>
                                                 <td><Badge color={i.billing_type === "monthly" ? "info" : "secondary"}>{BILLING_LABEL[i.billing_type]}</Badge></td>
@@ -101,7 +110,7 @@ const ServiceCatalogPage = () => {
                                                 <td className="text-end">
                                                     <button className="btn btn-soft-secondary btn-sm" onClick={() => setEditing({
                                                         id: i.id, name: i.name, description: i.description ?? "", unit_price: String(i.unit_price),
-                                                        unit: i.unit, billing_type: i.billing_type, active: i.active,
+                                                        unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: [...(i.onboarding_checklist ?? [])],
                                                     })}><i className="ri-edit-line" /></button>
                                                 </td>
                                             </tr>
@@ -143,6 +152,34 @@ const ServiceCatalogPage = () => {
                                     </Input>
                                 </Col>
                             </Row>
+
+                            {/* Lista de arranque */}
+                            <div className="border-top mt-3 pt-3">
+                                <Label className="form-label mb-1">Lista de arranque</Label>
+                                <p className="text-muted fs-12 mb-2">
+                                    Quando um orçamento com este serviço é aceite, estas tarefas entram no ticket de arranque. Sem lista, fica uma tarefa genérica.
+                                </p>
+                                <div className="vstack gap-2">
+                                    {editing.checklist.map((t, idx) => (
+                                        <div key={idx} className="d-flex gap-2">
+                                            <Input value={t} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
+                                                onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? e.target.value : x)) })} />
+                                            <button type="button" className="btn btn-light btn-sm" disabled={idx === 0} aria-label="Subir"
+                                                onClick={() => { const c = [...editing.checklist]; [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]; setEditing({ ...editing, checklist: c }); }}>
+                                                <i className="ri-arrow-up-line" />
+                                            </button>
+                                            <button type="button" className="btn btn-soft-danger btn-sm" aria-label="Remover tarefa"
+                                                onClick={() => setEditing({ ...editing, checklist: editing.checklist.filter((_, j) => j !== idx) })}>
+                                                <i className="ri-delete-bin-line" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button type="button" className="btn btn-soft-primary btn-sm mt-2" disabled={editing.checklist.length >= MAX_TASKS}
+                                    onClick={() => setEditing({ ...editing, checklist: [...editing.checklist, ""] })}>
+                                    <i className="ri-add-line me-1" />Acrescentar tarefa
+                                </button>
+                            </div>
                         </ModalBody>
                     )}
                     <ModalFooter>

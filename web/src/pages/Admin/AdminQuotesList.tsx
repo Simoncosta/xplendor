@@ -124,6 +124,7 @@ const AdminQuotesList = () => {
                                             <th className="text-end">Mensal</th>
                                             <th className="text-end">Valor único</th>
                                             <th>Válido até</th>
+                                            <th>Visto</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -143,6 +144,14 @@ const AdminQuotesList = () => {
                                                     <td className="text-end text-nowrap">{q.total_monthly > 0 ? `${formatQuoteEuro(q.total_monthly)}/mês` : <span className="text-muted">0,00 €</span>}</td>
                                                     <td className="text-end text-nowrap">{formatQuoteEuro(q.total_one_off)}</td>
                                                     <td className="text-nowrap">{q.valid_until ? longDate(q.valid_until) : <span className="text-muted">Sem data</span>}</td>
+                                                    <td className="text-nowrap">
+                                                        {(q.open_count ?? 0) > 0 ? (
+                                                            <span className="text-success" title={q.last_opened_at ? `Última abertura: ${longDate(q.last_opened_at)}` : undefined}>
+                                                                <i className="ri-eye-line me-1" />{q.open_count} {q.open_count === 1 ? "vez" : "vezes"}
+                                                            </span>
+                                                        ) : q.status === "draft" ? <span className="text-muted">Por enviar</span> : <span className="text-muted"><i className="ri-eye-off-line me-1" />Não visto</span>}
+                                                        {q.changes_requested_at && q.status === "sent" && <div><small className="text-warning">Pediu alterações</small></div>}
+                                                    </td>
                                                 </tr>
                                             );
                                         })}

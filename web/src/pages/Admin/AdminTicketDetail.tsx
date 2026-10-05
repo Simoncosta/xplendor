@@ -5,13 +5,14 @@ import { ToastContainer, toast } from "react-toastify";
 import BreadCrumb from "Components/Common/BreadCrumb";
 import {
     showAdminTicket, updateAdminTicketStatus, addAdminTicketMessage,
-    setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted,
+    setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted, updateAdminTicketTask,
 } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType, TICKET_TYPE_META, TICKET_STATUS_META,
     QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
 import { useTicketTypeChange } from "Components/Common/useTicketTypeChange";
+import TicketTasksCard from "Components/Common/TicketTasksCard";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
@@ -173,10 +174,15 @@ const AdminTicketDetail = () => {
                                 {/* Tipo: com orçamento orçado ou rejeitado pede confirmação; aprovado, pago ou concluído fica bloqueado. */}
                                 <div className="mb-4">
                                     <Label className="form-label">Tipo</Label>
-                                    <select className="form-control" value={ticket.type} disabled={typeBusy}
-                                        onChange={(e) => requestTypeChange(ticket, e.target.value as SupportTicketType)}>
-                                        {TYPES.map((t) => <option key={t} value={t}>{TICKET_TYPE_META[t].label}</option>)}
-                                    </select>
+                                    {ticket.type === "onboarding" ? (
+                                        // Ticket de arranque (criado por um orçamento aceite): o tipo não muda.
+                                        <div className="form-control bg-light"><i className={`${TICKET_TYPE_META.onboarding.icon} me-1`} />{TICKET_TYPE_META.onboarding.label}</div>
+                                    ) : (
+                                        <select className="form-control" value={ticket.type} disabled={typeBusy}
+                                            onChange={(e) => requestTypeChange(ticket, e.target.value as SupportTicketType)}>
+                                            {TYPES.map((t) => <option key={t} value={t}>{TICKET_TYPE_META[t].label}</option>)}
+                                        </select>
+                                    )}
                                 </div>
                                 <div className="table-card">
                                     <table className="table mb-0">
@@ -320,6 +326,17 @@ const AdminTicketDetail = () => {
                                 )}
                             </CardBody>
                         </Card>
+
+                        {ticket.tasks && ticket.tasks.length > 0 && (
+                            <TicketTasksCard tasks={ticket.tasks} onToggle={async (task, done) => {
+                                try {
+                                    const r: any = await updateAdminTicketTask(ticket.id, task.id, done);
+                                    if (r?.data) setTicket((prev) => (prev ? { ...prev, tasks: r.data.tasks } : prev));
+                                } catch (e: any) {
+                                    toast.error(e?.message ?? "Não foi possível atualizar a tarefa.");
+                                }
+                            }} />
+                        )}
 
                         <Card>
                             <CardBody>

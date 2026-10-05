@@ -1,6 +1,7 @@
 // DMS — Tickets de suporte (lado stand).
 // "site_change" é o tipo PAGO (Alteração ao site) — dispara a camada de orçamento.
-export type SupportTicketType = "idea" | "improvement" | "bug" | "suggestion" | "site_change";
+// "onboarding" é de SISTEMA: o ticket de arranque de um orçamento aceite (nunca escolhido pelo cliente).
+export type SupportTicketType = "idea" | "improvement" | "bug" | "suggestion" | "site_change" | "onboarding";
 export type SupportTicketStatus = "open" | "in_review" | "resolved" | "closed";
 
 // Fluxo de orçamento — só em tickets site_change (null nos grátis).
@@ -54,6 +55,17 @@ export interface ISupportTicket {
     invoice_url?: string | null;
     hourly_rate?: number | null;
     type_changes?: ISupportTicketTypeChange[]; // só no lado admin
+    // Lista de tarefas (ticket de arranque).
+    tasks?: ISupportTicketTask[];
+}
+
+export interface ISupportTicketTask {
+    id: number;
+    group_label: string | null;
+    title: string;
+    done: boolean;
+    done_at: string | null;
+    done_by_name: string | null;
 }
 
 // Rótulos + ícones por tipo (pt-PT).
@@ -63,6 +75,7 @@ export const TICKET_TYPE_META: Record<SupportTicketType, { label: string; icon: 
     bug:         { label: "Bug",             icon: "ri-bug-line" },
     suggestion:  { label: "Sugestão",        icon: "ri-chat-smile-2-line" },
     site_change: { label: "Alteração ao site", icon: "ri-tools-line" },
+    onboarding:  { label: "Arranque",        icon: "ri-rocket-2-line" },
 };
 
 // Rótulos + cor (Bootstrap/Velzon) por estado.

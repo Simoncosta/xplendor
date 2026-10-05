@@ -264,6 +264,12 @@ export const createAdminQuoteCustomer = (data: { name: string; phone?: string; e
 // PDFs (blob, via download_helper): pré-visualização do estado atual e versões congeladas.
 export const adminQuotePdfPath = (id: number) => url.GET_ADMIN + `/quotes/${id}/pdf`;
 export const adminQuoteVersionPdfPath = (id: number, version: number) => url.GET_ADMIN + `/quotes/${id}/versions/${version}/pdf`;
+// Link público: atividade (link, aberturas, respostas) e a página vista pela equipa (não conta).
+export const getAdminQuoteActivity = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}/activity`);
+export const getAdminQuotePublicPreview = (id: number, version: number) => api.get(url.GET_ADMIN + `/quotes/${id}/versions/${version}/public-preview`);
+// Tarefas do ticket de arranque.
+export const updateAdminTicketTask = (ticketId: number, taskId: number, done: boolean) =>
+    api.update(url.GET_ADMIN + `/tickets/${ticketId}/tasks/${taskId}`, { done });
 // Catálogo de serviços (tabela padrão).
 export const getServiceCatalog = (activeOnly = false) => api.get(url.GET_ADMIN + `/service-catalog`, activeOnly ? { active_only: 1 } : undefined);
 export const createServiceCatalogItem = (data: any) => api.create(url.GET_ADMIN + `/service-catalog`, data);

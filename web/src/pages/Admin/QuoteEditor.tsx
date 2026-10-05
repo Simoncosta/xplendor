@@ -7,13 +7,14 @@ import { ToastContainer, toast } from "react-toastify";
 import {
     createAdminQuote, updateAdminQuote, showAdminQuote, sendAdminQuote, decideAdminQuote, duplicateAdminQuote,
     deleteAdminQuote, getAdminQuoteCompanies, getAdminQuoteDefaults, searchAdminQuoteCustomers, getServiceCatalog,
-    adminQuotePdfPath, adminQuoteVersionPdfPath,
+    adminQuotePdfPath, adminQuoteVersionPdfPath, getAdminQuoteActivity,
 } from "helpers/laravel_helper";
 import { openPdfGet } from "helpers/download_helper";
+import QuoteActivityCard from "./QuoteActivityCard";
 import { confirmAction } from "helpers/swal";
 import {
-    IQuote, IQuoteLine, IQuoteCustomer, IQuoteCompanyOption, ICatalogItem, QuoteBilling, QuoteDiscountType, QuoteUnit,
-    QUOTE_STATUS_META, UNIT_LABEL, BILLING_LABEL, DEFAULT_UNIT, VAT_NOTE, ADS_NOTE, formatQuoteEuro, longDate, quoteTotals,
+    IQuote, IQuoteActivity, IQuoteLine, IQuoteCustomer, IQuoteCompanyOption, ICatalogItem, QuoteBilling, QuoteDiscountType, QuoteUnit,
+    QUOTE_STATUS_META, UNIT_LABEL, BILLING_LABEL, DEFAULT_UNIT, VAT_NOTE, ADS_NOTE, formatQuoteEuro, longDate, longDateTime, quoteTotals,
 } from "common/models/quote.model";
 
 /**
@@ -86,6 +87,7 @@ const toPayload = (f: FormState) => ({
         catalog_item_id: l.catalog_item_id ?? null, name: l.name, description: l.description || null,
         unit: l.unit, billing_type: l.billing_type, quantity: Number(l.quantity), unit_price: Number(l.unit_price),
         discount_type: l.discount_value ? l.discount_type ?? "percent" : null, discount_value: l.discount_value ? Number(l.discount_value) : null,
+        is_optional: !!l.is_optional, in_package: !!l.in_package,
     })),
     global_discount_type: f.global_discount_type || null,
     global_discount_value: f.global_discount_value === "" ? null : Number(f.global_discount_value),
@@ -136,6 +138,22 @@ const QuoteEditor = () => {
         }, 250);
         return () => clearTimeout(t);
     }, [customerSearch]);
+
+    // Link público, aberturas e respostas (só quando há versões enviadas).
+    const [activity, setActivity] = useState<IQuoteActivity | null>(null);
+    const [activityLoading, setActivityLoading] = useState(false);
+    const versionsCount = quote?.versions?.length ?? 0;
+    useEffect(() => {
+        if (!quote?.id || versionsCount === 0) { setActivity(null); return; }
+        let alive = true;
+        setActivityLoading(true);
+        getAdminQuoteActivity(quote.id)
+            .then((r: any) => { if (alive) setActivity(r?.data ?? null); })
+            .catch(() => { if (alive) setActivity(null); })
+            .finally(() => { if (alive) setActivityLoading(false); });
+        return () => { alive = false; };
+    }, [quote?.id, quote?.status, quote?.version, versionsCount]);
+    const lastChangeRequest = activity?.responses.find((r) => r.type === "changes_requested") ?? null;
 
     const apply = (q: IQuote) => {
         setQuote(q);
@@ -431,8 +449,17 @@ const QuoteEditor = () => {
                     </Alert>
                 )}
 
+                {lastChangeRequest && quote?.changes_requested_at && (status === "sent" || status === "draft") && (
+                    <Alert color="warning" className="py-2">
+                        <strong>O cliente pediu alterações</strong> a {longDateTime(lastChangeRequest.created_at)} (versão {lastChangeRequest.version}):
+                        <div className="mt-1" style={{ whiteSpace: "pre-line" }}>{lastChangeRequest.message}</div>
+                        {status === "sent" && <small className="d-block mt-1">Altere e guarde para criar a versão seguinte; depois envie o novo link.</small>}
+                    </Alert>
+                )}
+
                 <Row className="g-3">
                         <Col xl={8}>
+                            {quote && <QuoteActivityCard quote={quote} activity={activity} loading={activityLoading} />}
                             <fieldset disabled={readOnly}>
                             {/* Cliente */}
                             <Card className="mb-3">
@@ -567,6 +594,18 @@ const QuoteEditor = () => {
                                                                 </>
                                                             )}
                                                         </Col>
+                                                        <Col xs={12} className="d-flex flex-wrap gap-4">
+                                                            <div className="form-check form-switch mb-0">
+                                                                <Input className="form-check-input" type="switch" id={`opt-${i}`} checked={!!l.is_optional}
+                                                                    onChange={(e) => setLine(i, { is_optional: e.target.checked })} />
+                                                                <Label className="form-check-label fs-13" for={`opt-${i}`}>Opcional <span className="text-muted">(o cliente pode desmarcar)</span></Label>
+                                                            </div>
+                                                            <div className="form-check form-switch mb-0">
+                                                                <Input className="form-check-input" type="switch" id={`pkg-${i}`} checked={!!l.in_package}
+                                                                    onChange={(e) => setLine(i, { in_package: e.target.checked })} />
+                                                                <Label className="form-check-label fs-13" for={`pkg-${i}`}>Do pacote <span className="text-muted">(se sair, o desconto de pacote sai)</span></Label>
+                                                            </div>
+                                                        </Col>
                                                     </Row>
                                                 </div>
                                             ))}
@@ -607,6 +646,24 @@ const QuoteEditor = () => {
                                                 <Col md={form.global_discount_type === "amount" ? 4 : 7}>
                                                     <Label className="form-label">Texto no PDF</Label>
                                                     <Input value={form.global_discount_label} onChange={(e) => set("global_discount_label", e.target.value)} />
+                                                </Col>
+                                                <Col xs={12}>
+                                                    {(() => {
+                                                        const pkg = form.lines.filter((l) => l.in_package).map((l) => l.name || "linha sem nome");
+                                                        const optionalPkg = form.lines.filter((l) => l.in_package && l.is_optional).map((l) => l.name || "linha sem nome");
+                                                        return pkg.length === 0 ? (
+                                                            <small className="text-muted d-block">
+                                                                Nenhuma linha marcada como "Do pacote": o desconto aplica-se sempre ao que o cliente aceitar.
+                                                            </small>
+                                                        ) : (
+                                                            <small className="text-muted d-block">
+                                                                Linhas do pacote: {pkg.join(", ")}.{" "}
+                                                                {optionalPkg.length > 0
+                                                                    ? `Se o cliente deixar de fora ${optionalPkg.length === 1 ? optionalPkg[0] : "alguma delas"}, o desconto deixa de se aplicar e a página explica porquê.`
+                                                                    : "Como nenhuma delas é opcional, o desconto aplica-se sempre."}
+                                                            </small>
+                                                        );
+                                                    })()}
                                                 </Col>
                                             </>
                                         )}

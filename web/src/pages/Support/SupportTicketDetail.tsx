@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import TicketTasksCard from "Components/Common/TicketTasksCard";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import BreadCrumb from "Components/Common/BreadCrumb";
@@ -201,6 +202,9 @@ const SupportTicketDetail = () => {
                                 )}
                             </CardBody>
                         </Card>
+
+                        {/* Ticket de arranque: o cliente acompanha a lista de tarefas (só leitura). */}
+                        {ticket.tasks && ticket.tasks.length > 0 && <TicketTasksCard tasks={ticket.tasks} />}
 
                         <Card>
                             <CardBody>

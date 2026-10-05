@@ -18,6 +18,10 @@ export interface IQuoteLine {
     discount_type?: QuoteDiscountType | null;
     discount_value?: number | null;
     line_total?: number;
+    /** O cliente pode desmarcá-la no link público. */
+    is_optional?: boolean;
+    /** Faz parte do pacote: se o cliente a deixar de fora, o desconto de pacote sai. */
+    in_package?: boolean;
 }
 
 export interface IQuoteBucket { subtotal: number; discount: number; total: number; count: number; }
@@ -57,6 +61,14 @@ export interface IQuote {
     decided_at: string | null;
     expired_at: string | null;
     notes?: string | null;
+    // Link público (só a equipa)
+    accepted_total_monthly?: number | null;
+    accepted_total_one_off?: number | null;
+    open_count?: number;
+    first_opened_at?: string | null;
+    last_opened_at?: string | null;
+    changes_requested_at?: string | null;
+    onboarding_ticket_id?: number | null;
     lines?: IQuoteLine[];
     buckets?: Record<QuoteBilling, IQuoteBucket>;
     versions?: IQuoteVersion[];
@@ -76,7 +88,54 @@ export interface ICatalogItem {
     billing_type: QuoteBilling;
     active: boolean;
     sort: number;
+    /** Lista de arranque: tarefas copiadas para o ticket quando um orçamento com o serviço é aceite. */
+    onboarding_checklist?: string[] | null;
 }
+
+// Atividade do link público (GET /admin/quotes/{id}/activity).
+export type QuoteResponseType = "accepted" | "refused" | "changes_requested";
+export interface IQuoteActivity {
+    current_version: number;
+    links: { version: number; url: string; is_latest: boolean; created_at: string | null }[];
+    opens: {
+        count: number;
+        first_at: string | null;
+        last_at: string | null;
+        timeline: { opened_at: string; last_seen_at: string; device: "mobile" | "desktop"; version: number }[];
+    };
+    responses: {
+        type: QuoteResponseType;
+        version: number;
+        name: string | null;
+        email: string | null;
+        message: string | null;
+        terms_accepted: boolean;
+        accepted_line_keys: number[] | null;
+        selection: {
+            buckets?: Record<QuoteBilling, IQuoteBucket>;
+            discount?: { label: string; applies: boolean; reason: string | null };
+            lines?: { key: number; name: string; billing_type: QuoteBilling; line_total: number }[];
+            excluded_keys?: number[];
+        } | null;
+        after_changes_request: boolean;
+        device: string | null;
+        created_at: string;
+    }[];
+    onboarding_ticket_id: number | null;
+}
+
+/** Data e hora (ex.: "5 de outubro de 2026, 10:32"). */
+export const longDateTime = (iso?: string | null): string =>
+    iso ? new Date(iso).toLocaleString("pt-PT", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
+/** Número para o wa.me (só dígitos, com indicativo; 9 dígitos portugueses ganham o 351). */
+export const whatsappNumber = (phone?: string | null): string => {
+    let d = String(phone ?? "").replace(/[^\d+]/g, "");
+    if (d.startsWith("+")) d = d.slice(1);
+    else if (d.startsWith("00")) d = d.slice(2);
+    else if (/^[29]\d{8}$/.test(d)) d = "351" + d;
+    return /^\d{8,15}$/.test(d) ? d : "";
+};
 
 interface IMoneyBucket { count: number; monthly: number; one_off: number; }
 export interface IQuoteSummary {

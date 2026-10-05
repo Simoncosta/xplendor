@@ -44,7 +44,8 @@ const FilterSelect = ({ value, onChange, options, label, searchable = false }: {
 interface Summary { open: number; in_review: number; pending: number; resolved: number; closed: number; total: number; }
 
 const STATUS_OPTIONS: SupportTicketStatus[] = ["open", "in_review", "resolved", "closed"];
-const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", "site_change"];
+// Inclui "Arranque" (tickets criados por orçamentos aceites) para a equipa os poder filtrar.
+const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", "site_change", "onboarding"];
 
 /**
  * DMS — Consola de administração: tickets de suporte de TODAS as empresas.
