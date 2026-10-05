@@ -63,6 +63,7 @@ export const dataDeletionPt: LegalContent = {
         "Os números de seguidores que o próprio cliente registou à mão não vêm da Meta; mantêm-se, salvo num pedido de eliminação de todos os dados.",
         "As vendas e restantes dados de negócio que o cliente introduziu mantêm-se, mas deixam de estar associadas a campanhas ou anúncios da Meta.",
         "Num pedido de eliminação de todos os dados, a conta da empresa é encerrada e todos os dados associados são eliminados, salvo os que a lei obrigue a conservar (por exemplo, documentos de faturação).",
+        "Quem recebeu um orçamento da XPLENDOR pode pedir, pelo mesmo email, a eliminação dos registos de abertura do link e dos seus dados de contacto. Os registos de aceitação, recusa ou pedido de alterações são conservados enquanto a lei o exigir (até 10 anos) e eliminados depois; as aberturas são apagadas automaticamente ao fim de 12 meses.",
       ],
     },
     {
@@ -171,6 +172,7 @@ export const dataDeletionEn: LegalContent = {
         "Follower counts entered manually by the customer do not come from Meta; they are kept, except in a request to delete all data.",
         "Sales and other business data entered by the customer are kept, but are no longer linked to Meta campaigns or ads.",
         "For a request to delete all data, the company account is closed and all associated data is deleted, except data that the law requires to be kept (for example invoicing documents).",
+        "Anyone who received a quote from XPLENDOR can request, by the same email, deletion of the link open records and of their contact details. Records of acceptance, refusal or change requests are kept for as long as the law requires (up to 10 years) and deleted afterwards; opens are deleted automatically after 12 months.",
       ],
     },
     {

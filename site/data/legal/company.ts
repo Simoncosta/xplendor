@@ -14,4 +14,5 @@ export const COMPANY = {
   address: legal.address,
   // Email provisório até existir o email da empresa (também usado como mailto no rodapé).
   email: legal.email,
+  phone: legal.phone,
 };

@@ -45,7 +45,8 @@ export const privacyPt: LegalContent = {
           list: [
             "visitantes deste site;",
             "empresas clientes da Plataforma e aos utilizadores que estas autorizam;",
-            "visitantes dos sites dos clientes que instalaram o script de medição da XPLENDOR (secção 6).",
+            "visitantes dos sites dos clientes que instalaram o script de medição da XPLENDOR (secção 6);",
+            "pessoas e empresas a quem a XPLENDOR envia orçamentos (secção 7).",
           ],
         },
       ],
@@ -158,8 +159,39 @@ export const privacyPt: LegalContent = {
       ],
     },
     {
+      id: "orcamentos",
+      title: "7. Orçamentos",
+      blocks: [
+        "Quando a XPLENDOR envia um orçamento, envia também um link para uma página onde o destinatário o pode consultar, descarregar em PDF e responder: aceitar, no todo ou em parte, recusar ou pedir alterações. Cada link dá acesso a uma única versão do orçamento, não pode ser adivinhado e a página não é indexada por motores de pesquisa.",
+        { h3: "7.1 Dados do cliente no orçamento" },
+        "Nome, email, telefone e NIF da pessoa ou empresa a quem o orçamento se destina, os serviços propostos e os valores. Servem para preparar a proposta e, se for aceite, para iniciar o serviço. Fundamento: diligências pré-contratuais a pedido do interessado.",
+        { h3: "7.2 Aberturas do link" },
+        "Registamos quando o link é aberto, para a equipa saber se a proposta foi vista e quando faz sentido dar seguimento. Por cada abertura guardamos apenas a data e a hora e o tipo de dispositivo (telemóvel ou computador).",
+        {
+          list: [
+            "Não guardamos o endereço IP: é usado apenas no momento do pedido, para limitar pedidos abusivos, e não fica registado.",
+            "Para que recarregar a página no mesmo browser conte como a mesma abertura, a página guarda no browser um identificador aleatório. No servidor, esse identificador fica só em forma cifrada irreversível (hash) e não identifica a pessoa.",
+            "As pré-visualizações automáticas de links (por exemplo, do WhatsApp, das redes sociais ou dos verificadores de links do email) e as aberturas feitas pela equipa XPLENDOR não são registadas.",
+            "A página não usa cookies nem ferramentas de análise de terceiros. O tipo de letra base da Plataforma é obtido no Google Fonts, que recebe o endereço IP do browser para entregar esse ficheiro.",
+          ],
+        },
+        "Fundamento: interesse legítimo da XPLENDOR em acompanhar as propostas que envia.",
+        { h3: "7.3 Registo da resposta" },
+        "Quando o orçamento é aceite, guardamos o nome e o email indicados, a confirmação de que as condições foram lidas e aceites, a data e a hora, os serviços aceites e os totais resultantes. Quando é recusado ou são pedidas alterações, guardamos o motivo ou a mensagem, se indicados, e a data e a hora. Este registo é a prova da aceitação e serve de base ao início do serviço. Fundamento: diligências pré-contratuais, execução do contrato e cumprimento de obrigações legais.",
+        { h3: "7.4 Conservação" },
+        {
+          list: [
+            "aberturas: 12 meses, depois são apagadas automaticamente (fica apenas o número total de aberturas do orçamento);",
+            "aceitações, recusas e pedidos de alterações: 10 anos, o prazo de conservação da documentação comercial, depois são apagados automaticamente;",
+            "o orçamento (dados do cliente, serviços e valores): enquanto for necessário para a relação comercial e para as obrigações legais da XPLENDOR.",
+          ],
+        },
+        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 10 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+      ],
+    },
+    {
       id: "partilha",
-      title: "7. Partilha com terceiros",
+      title: "8. Partilha com terceiros",
       blocks: [
         "A XPLENDOR não vende dados pessoais. Os dados podem ser tratados pelos seguintes prestadores, apenas na medida do necessário para prestar o serviço:",
         {
@@ -174,14 +206,14 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "seguranca",
-      title: "8. Segurança",
+      title: "9. Segurança",
       blocks: [
         "Os tokens de acesso a plataformas externas são guardados cifrados. A chave secreta da aplicação Meta existe apenas no servidor. O acesso à Plataforma é feito com autenticação e cada pedido é verificado para garantir que um utilizador só acede aos dados da sua própria empresa. As comunicações são feitas por ligação cifrada (HTTPS).",
       ],
     },
     {
       id: "direitos",
-      title: "9. Os seus direitos (RGPD)",
+      title: "10. Os seus direitos (RGPD)",
       blocks: [
         "Nos termos do Regulamento Geral sobre a Proteção de Dados, pode exercer, a qualquer momento:",
         {
@@ -200,7 +232,7 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "alteracoes",
-      title: "10. Alterações a esta política",
+      title: "11. Alterações a esta política",
       blocks: [
         "Esta política pode ser atualizada para refletir alterações na Plataforma ou na lei. A data da última atualização está no topo da página. Alterações relevantes são comunicadas aos clientes por email ou na Plataforma.",
       ],
@@ -243,7 +275,8 @@ export const privacyEn: LegalContent = {
           list: [
             "visitors of this website;",
             "companies that are customers of the Platform and the users they authorise;",
-            "visitors of customer websites that installed the XPLENDOR measurement script (section 6).",
+            "visitors of customer websites that installed the XPLENDOR measurement script (section 6);",
+            "people and companies to whom XPLENDOR sends quotes (section 7).",
           ],
         },
       ],
@@ -356,8 +389,39 @@ export const privacyEn: LegalContent = {
       ],
     },
     {
+      id: "quotes",
+      title: "7. Quotes",
+      blocks: [
+        "When XPLENDOR sends a quote, it also sends a link to a page where the recipient can view it, download it as a PDF and respond: accept it, in full or in part, refuse it or ask for changes. Each link gives access to a single version of the quote, cannot be guessed and the page is not indexed by search engines.",
+        { h3: "7.1 Customer data in the quote" },
+        "Name, email, phone number and tax number of the person or company the quote is for, the proposed services and the amounts. They are used to prepare the proposal and, if it is accepted, to start the service. Legal basis: steps taken at the request of the data subject prior to entering into a contract.",
+        { h3: "7.2 Link opens" },
+        "We record when the link is opened, so that the team knows whether the proposal was seen and when a follow up makes sense. For each open we store only the date and time and the type of device (mobile or computer).",
+        {
+          list: [
+            "We do not store the IP address: it is used only at the moment of the request, to limit abusive requests, and it is not recorded.",
+            "So that reloading the page in the same browser counts as the same open, the page stores a random identifier in the browser. On the server, that identifier is kept only in irreversibly hashed form and does not identify the person.",
+            "Automatic link previews (for example from WhatsApp, social networks or email link checkers) and opens by the XPLENDOR team are not recorded.",
+            "The page does not use cookies or third party analytics tools. The Platform base font is loaded from Google Fonts, which receives the browser IP address in order to deliver that file.",
+          ],
+        },
+        "Legal basis: XPLENDOR's legitimate interest in following up the proposals it sends.",
+        { h3: "7.3 Record of the response" },
+        "When the quote is accepted, we store the name and email provided, the confirmation that the terms were read and accepted, the date and time, the accepted services and the resulting totals. When it is refused or changes are requested, we store the reason or message, if given, and the date and time. This record is the proof of acceptance and the basis for starting the service. Legal basis: pre-contractual steps, performance of the contract and compliance with legal obligations.",
+        { h3: "7.4 Retention" },
+        {
+          list: [
+            "opens: 12 months, then deleted automatically (only the total number of opens of the quote is kept);",
+            "acceptances, refusals and change requests: 10 years, the retention period for commercial records, then deleted automatically;",
+            "the quote itself (customer data, services and amounts): for as long as needed for the business relationship and XPLENDOR's legal obligations.",
+          ],
+        },
+        "You can request access to or deletion of this data as described in section 10 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+      ],
+    },
+    {
       id: "sharing",
-      title: "7. Sharing with third parties",
+      title: "8. Sharing with third parties",
       blocks: [
         "XPLENDOR does not sell personal data. Data may be processed by the following providers, only as needed to provide the service:",
         {
@@ -372,14 +436,14 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "security",
-      title: "8. Security",
+      title: "9. Security",
       blocks: [
         "Access tokens for external platforms are stored encrypted. The Meta app secret exists only on the server. Access to the Platform requires authentication and every request is checked so that a user can only access the data of their own company. Communications use an encrypted connection (HTTPS).",
       ],
     },
     {
       id: "rights",
-      title: "9. Your rights (GDPR)",
+      title: "10. Your rights (GDPR)",
       blocks: [
         "Under the General Data Protection Regulation you may, at any time, exercise:",
         {
@@ -398,7 +462,7 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "changes",
-      title: "10. Changes to this policy",
+      title: "11. Changes to this policy",
       blocks: [
         "This policy may be updated to reflect changes to the Platform or to the law. The date of the last update is shown at the top of the page. Relevant changes are communicated to customers by email or in the Platform.",
       ],

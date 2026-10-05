@@ -29,7 +29,8 @@ function App() {
     return (
         <React.Fragment>
             <Route />
-            <CookieBanner />
+            {/* A página pública dos orçamentos não usa cookies nem análise de terceiros. */}
+            {!/\/orcamento\//.test(window.location.pathname) && <CookieBanner />}
         </React.Fragment>
     );
 }

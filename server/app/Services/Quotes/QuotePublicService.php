@@ -110,7 +110,7 @@ class QuotePublicService
             'version' => (int) $version->version,
             'valid_until' => $version->valid_until?->toDateString(),
             'document' => $document,
-            'lines' => array_values(array_map(fn ($l) => $l + ['line_total' => $this->lineTotal($snapshot, $l['key'])], QuoteCalculator::keyedLines($snapshot))),
+            'lines' => array_values(array_map(fn ($l) => $l + $this->lineAmounts($snapshot, $l['key']), QuoteCalculator::keyedLines($snapshot))),
             'buckets' => $snapshot['buckets'] ?? null,
             'global_discount' => $snapshot['global_discount'] ?? null,
             'has_optional' => collect(QuoteCalculator::keyedLines($snapshot))->contains(fn ($l) => $l['is_optional']),
@@ -122,7 +122,7 @@ class QuotePublicService
                 'buckets' => $accepted->selection['buckets'] ?? null,
                 'discount' => $accepted->selection['discount'] ?? null,
             ] : null,
-            'contact' => ['brand' => $legal['brand'] ?? 'XPLENDOR', 'email' => $legal['email'] ?? null, 'website' => $legal['website'] ?? null],
+            'contact' => ['brand' => $legal['brand'] ?? 'XPLENDOR', 'email' => $legal['email'] ?? null, 'phone' => $legal['phone'] ?? null, 'website' => $legal['website'] ?? null],
         ];
     }
 
@@ -308,14 +308,19 @@ class QuotePublicService
         return [$quote, $version];
     }
 
-    private function lineTotal(array $snapshot, int $key): ?float
+    /** Subtotal, desconto e total da linha, tal como congelados na versão (os do PDF). */
+    private function lineAmounts(array $snapshot, int $key): array
     {
         foreach (array_values($snapshot['lines'] ?? []) as $i => $l) {
             if ((int) ($l['key'] ?? $i) === $key) {
-                return isset($l['line_total']) ? (float) $l['line_total'] : null;
+                return [
+                    'line_subtotal' => isset($l['line_subtotal']) ? (float) $l['line_subtotal'] : null,
+                    'line_discount' => isset($l['line_discount']) ? (float) $l['line_discount'] : 0.0,
+                    'line_total' => isset($l['line_total']) ? (float) $l['line_total'] : null,
+                ];
             }
         }
 
-        return null;
+        return ['line_subtotal' => null, 'line_discount' => 0.0, 'line_total' => null];
     }
 }

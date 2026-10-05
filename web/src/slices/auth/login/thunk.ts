@@ -7,6 +7,7 @@ import {
 } from "../../../helpers/laravel_helper";
 
 import { loginSuccess, logoutUserSuccess, apiError, reset_login_flag } from './reducer';
+import { clearTeamMarker, storeTeamMarker } from "helpers/teamMarker";
 
 export const registerByInvite =
     (payload: { token: string; password: string; password_confirmation: string }, navigate: any) =>
@@ -42,6 +43,10 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
         var data = await response;
 
         if (data) {
+            // Root: a marca da equipa vai para o localStorage (e não fica no authUser).
+            const { team_marker, ...authUser } = data.data ?? {};
+            storeTeamMarker(team_marker);
+            data.data = authUser;
             sessionStorage.setItem("authUser", JSON.stringify(data.data));
             setAuthorization(data.data.token);
             dispatch(loginSuccess(data.data));
@@ -59,6 +64,11 @@ export const logoutUser = () => async (dispatch: any) => {
         // ignora erro de token inválido / sessão expirada no logout
         console.warn("Logout API failed, clearing local session anyway.", error);
     } finally {
+        // O root termina a sessão: o browser deixa de ser marcado como da equipa.
+        try {
+            const current = JSON.parse(sessionStorage.getItem("authUser") || "null");
+            if (current?.role === "root" || sessionStorage.getItem("rootAuthUser")) clearTeamMarker();
+        } catch { /* sessão ilegível */ }
         sessionStorage.removeItem("authUser");
         localStorage.removeItem("authUser");
         setAuthorization(null);

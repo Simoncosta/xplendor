@@ -20,11 +20,18 @@
     });
   </script>
 
-  <!-- Google tag (gtag.js) — GA4 -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-KMK84KG99K"></script>
+  <!-- Google tag (gtag.js) — GA4. Nunca na página pública dos orçamentos (/orcamento/):
+       essa página não usa cookies nem análise de terceiros (política de privacidade, secção 7). -->
   <script>
-    gtag('js', new Date());
-    gtag('config', 'G-KMK84KG99K');
+    (function () {
+      if (/\/orcamento\//.test(window.location.pathname)) return;
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = 'https://www.googletagmanager.com/gtag/js?id=G-KMK84KG99K';
+      document.head.appendChild(s);
+      gtag('js', new Date());
+      gtag('config', 'G-KMK84KG99K');
+    })();
   </script>
 
   <title>XPLENDOR — Marketing digital para stands automóveis em Portugal</title>

@@ -51,6 +51,7 @@ import CollaboratorEditor from "pages/Collaborators/CollaboratorEditor";
 // raiz; ficheiros mantidos (órfãos), imports removidos por já não serem roteados.
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
+import QuotePublicPage from "pages/QuotePublic";
 import SatisfactionReport from "pages/SatisfactionReport";
 import UserUpdate from "pages/Users/User/UserUpdate";
 import BrandProfilePage from "pages/BrandProfile";
@@ -272,6 +273,8 @@ const publicRoutes = [
 
     // Pós-venda — relatório público de satisfação (aberto pelo cliente por link)
     { path: "/r/:token", component: <SatisfactionReport /> },
+    // Orçamento: link público de uma versão enviada (sem login, sem indexação).
+    { path: "/orcamento/:token", component: <QuotePublicPage /> },
 ];
 
 export { authProtectedRoutes, publicRoutes };
