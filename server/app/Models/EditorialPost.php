@@ -16,8 +16,11 @@ class EditorialPost extends Model
     /** Estados (definem o board futuro). */
     public const STATUSES = ['rascunho', 'revisao', 'publicada', 'otimizada'];
 
-    /** Canais suportados. */
-    public const CHANNELS = ['instagram', 'facebook'];
+    /** Canais suportados. "site" = artigo do blog (ligado por blog_id). */
+    public const CHANNELS = ['instagram', 'facebook', 'site'];
+
+    /** Formato único do canal "site". */
+    public const SITE_FORMAT = 'Artigo';
 
     /** Formatos Insta/FB (lista fixa por agora). */
     public const FORMATS = [
@@ -29,13 +32,14 @@ class EditorialPost extends Model
 
     protected $fillable = [
         'company_id', 'publish_date', 'title', 'format', 'status',
-        'channel', 'keyword', 'anchor_id', 'own_anchor_id',
+        'channel', 'keyword', 'anchor_id', 'own_anchor_id', 'blog_id',
     ];
 
     protected $casts = [
         'publish_date'  => 'date',
         'anchor_id'     => 'integer',
         'own_anchor_id' => 'integer',
+        'blog_id'       => 'integer',
     ];
 
     public function company(): BelongsTo
@@ -47,6 +51,12 @@ class EditorialPost extends Model
     public function anchor(): BelongsTo
     {
         return $this->belongsTo(ContentAnchor::class, 'anchor_id');
+    }
+
+    /** Artigo do blog ligado (canal "site") — opcional; o estado mostrado vem do artigo. */
+    public function blog(): BelongsTo
+    {
+        return $this->belongsTo(Blog::class);
     }
 
     /** Âncora própria ligada (editorial_own_anchors) — opcional. */

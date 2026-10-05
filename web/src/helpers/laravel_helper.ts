@@ -128,12 +128,24 @@ export const deleteCarAdCampaignApi = (companyId: number, carId: number | string
 export const toggleCarAdCampaignApi = (companyId: number, carId: number | string, id: number) =>
     api.update(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.GET_CAR_AD_CAMPAIGNS + `/${id}/toggle`, {});
 
-// BLOGS
-export const getBlogs = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS, { params });
-export const showBlog = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_BLOGS_APIS + "/" + params.id);
-export const createBlog = (companyId: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS, data, { headers: { "Content-Type": "multipart/form-data" } });
-export const updateBlog = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });
-export const deleteBlog = (companyId: number, id: number) => api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS + "/" + id);
+// BLOGS (Ticket 11): conteúdo em multipart (banner); fluxo e IA em JSON.
+const BLOG = (companyId: number) => url.GET_COMPANIES + `/${companyId}` + url.GET_BLOGS_APIS;
+const BLOG_JSON = { headers: { "Content-Type": "application/json" } };
+export const getBlogs = (companyId: number, params?: { status?: string; search?: string; perPage?: number; page?: number }) => api.get(BLOG(companyId), params);
+export const showBlog = (companyId: number, id: number) => api.get(`${BLOG(companyId)}/${id}`);
+export const createBlog = (companyId: number, data: FormData) => api.create(BLOG(companyId), data, { headers: { "Content-Type": "multipart/form-data" } });
+export const updateBlog = (companyId: number, id: number, data: FormData) => { data.append("_method", "PUT"); return api.create(`${BLOG(companyId)}/${id}`, data, { headers: { "Content-Type": "multipart/form-data" } }); };
+export const deleteBlog = (companyId: number, id: number) => api.delete(`${BLOG(companyId)}/${id}`);
+export const deleteBlogBanner = (companyId: number, id: number) => api.delete(`${BLOG(companyId)}/${id}/banner`);
+export const submitBlog = (companyId: number, id: number) => api.create(`${BLOG(companyId)}/${id}/submit`, {}, BLOG_JSON);
+export const approveBlog = (companyId: number, id: number, publishAt: string | null) => api.create(`${BLOG(companyId)}/${id}/approve`, { publish_at: publishAt }, BLOG_JSON);
+export const requestBlogChanges = (companyId: number, id: number, note: string) => api.create(`${BLOG(companyId)}/${id}/request-changes`, { note }, BLOG_JSON);
+export const blogBackToDraft = (companyId: number, id: number) => api.create(`${BLOG(companyId)}/${id}/back-to-draft`, {}, BLOG_JSON);
+export const getBlogAiContext = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/blog-ai/context`);
+export const createBlogAiDraft = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/blog-ai/drafts`, data, BLOG_JSON);
+export const getBlogAiDraft = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/blog-ai/drafts/${id}`);
+export const getBrandProfile = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/brand-profile`);
+export const updateBrandProfile = (companyId: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/brand-profile`, data);
 
 // SUPPLIERS (DMS 1c.1)
 export const getSuppliers = (companyId: number, params?: { perPage?: number; page?: number; search?: string; only_active?: number }) =>

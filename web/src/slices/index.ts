@@ -1,6 +1,5 @@
 import { combineReducers } from "redux";
 
-import BlogReducer from "./blogs/reducer";
 import CarReducer from "./cars/reducer";
 import CarAiAnalysesReducer from "./car-ai-analises/reducer";
 import CarBrandReducer from "./car-brands/reducer";
@@ -32,7 +31,6 @@ import AccountReducer from "./auth/register/reducer";
 import ProfileReducer from "./auth/profile/reducer";
 
 const rootReducer = combineReducers({
-    Blog: BlogReducer,
     Car: CarReducer,
     CarAiAnalyses: CarAiAnalysesReducer,
     CarSale: CarSaleReducer,

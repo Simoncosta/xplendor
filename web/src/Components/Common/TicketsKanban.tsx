@@ -150,7 +150,8 @@ const TicketsKanban: React.FC<Props> = ({
                                                                             <span className="avatar-xs flex-shrink-0">
                                                                                 <span className={"avatar-title rounded fs-16 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span>
                                                                             </span>
-                                                                            <h6 className="fs-14 mb-0 flex-grow-1 text-truncate">{t.title}</h6>
+                                                                            {/* Como no Trello: o título quebra a linha e aparece completo. */}
+                                                                            <h6 className="fs-14 mb-0 flex-grow-1 text-break lh-base" style={{ minWidth: 0, whiteSpace: "normal" }}>{t.title}</h6>
 
                                                                             {!readOnly && onTypeChange && (
                                                                                 <UncontrolledDropdown className="flex-shrink-0" onClick={stop}>
@@ -174,10 +175,16 @@ const TicketsKanban: React.FC<Props> = ({
                                                                             )}
                                                                         </div>
 
-                                                                        <p className="text-muted mb-2 fs-12 text-truncate">
-                                                                            {showCompany && <><span className="fw-semibold">{t.company_name ?? `Empresa #${t.company_id}`}</span>{" · "}</>}
-                                                                            {tm.label}
-                                                                        </p>
+                                                                        <div className="d-flex align-items-center gap-2 mb-2 fs-12 text-muted">
+                                                                            <span className="text-truncate flex-grow-1" style={{ minWidth: 0 }}>
+                                                                                {showCompany && <><span className="fw-semibold">{t.company_name ?? `Empresa #${t.company_id}`}</span>{" · "}</>}
+                                                                                {tm.label}
+                                                                            </span>
+                                                                            {/* Indicador de descrição (três linhas), como no Trello. */}
+                                                                            {!!t.description?.trim() && (
+                                                                                <i className="ri-align-left fs-14 flex-shrink-0" title="Tem descrição" aria-label="Tem descrição" />
+                                                                            )}
+                                                                        </div>
 
                                                                         {qm && (
                                                                             <Badge color={qm.color}>

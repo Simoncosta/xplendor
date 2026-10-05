@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Models\{
-    Blog,
     Car,
     CarExternalImage,
     CarImage,
@@ -13,7 +12,6 @@ use App\Models\{
     Company
 };
 use App\Observers\{
-    BlogObserver,
     CarObserver,
     CarImageObserver,
     CarPerformanceMetricObserver,
@@ -202,7 +200,6 @@ class AppServiceProvider extends ServiceProvider
         DB::prohibitDestructiveCommands(!$this->app->environment('testing'));
 
         Company::observe(CompanyObserver::class);
-        Blog::observe(BlogObserver::class);
         Car::observe(CarObserver::class);
         CarLead::observe(LeadObserver::class);
         CarPerformanceMetric::observe(CarPerformanceMetricObserver::class);

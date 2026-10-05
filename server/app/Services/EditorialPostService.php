@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Blog;
 use App\Models\Company;
 use App\Models\EditorialOwnAnchor;
 use App\Models\EditorialPost;
@@ -26,6 +27,7 @@ class EditorialPostService
     {
         $clean = $this->validateInput($data);
         $this->assertLinkable($company, $clean['anchor_id'] ?? null, $clean['own_anchor_id'] ?? null);
+        $this->assertBlogLinkable($company, $clean['blog_id']);
         $this->line->assertDateEditable($company, $clean['publish_date']);
 
         EditorialPost::create(array_merge($clean, ['company_id' => $company->id]));
@@ -43,6 +45,7 @@ class EditorialPostService
 
         $clean = $this->validateInput($data);
         $this->assertLinkable($company, $clean['anchor_id'] ?? null, $clean['own_anchor_id'] ?? null);
+        $this->assertBlogLinkable($company, $clean['blog_id']);
 
         $this->line->assertDateEditable($company, $post->publish_date->toDateString()); // data antiga
         $this->line->assertDateEditable($company, $clean['publish_date']);              // data nova
@@ -74,21 +77,41 @@ class EditorialPostService
         $validated = Validator::make($data, [
             'title'         => ['required', 'string', 'max:255'],
             'publish_date'  => ['required', 'date'],
-            'format'        => ['required', Rule::in(EditorialPost::FORMATS)],
+            'format'        => ['nullable', Rule::in([...EditorialPost::FORMATS, EditorialPost::SITE_FORMAT])],
             'status'        => ['required', Rule::in(EditorialPost::STATUSES)],
             'channel'       => ['required', Rule::in(EditorialPost::CHANNELS)],
             'keyword'       => ['nullable', 'string', 'max:255'],
             'anchor_id'     => ['nullable', 'integer'],
             'own_anchor_id' => ['nullable', 'integer'],
+            'blog_id'       => ['nullable', 'integer'],
         ])->validate();
+
+        // Canal "site": formato fixo e ligação opcional ao artigo. Restantes canais: formato
+        // das redes obrigatório e sem artigo.
+        if ($validated['channel'] === 'site') {
+            $validated['format'] = EditorialPost::SITE_FORMAT;
+        } else {
+            if (empty($validated['format']) || $validated['format'] === EditorialPost::SITE_FORMAT) {
+                throw ValidationException::withMessages(['format' => ['Escolha o formato da publicação.']]);
+            }
+            $validated['blog_id'] = null;
+        }
 
         // Normaliza a data para Y-m-d.
         $validated['publish_date'] = \Carbon\CarbonImmutable::parse($validated['publish_date'])->toDateString();
 
         return array_merge(
-            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null],
+            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null, 'blog_id' => null],
             $validated
         );
+    }
+
+    /** O artigo ligado tem de ser da empresa (tenancy). */
+    private function assertBlogLinkable(Company $company, ?int $blogId): void
+    {
+        if ($blogId !== null && ! Blog::where('company_id', $company->id)->whereKey($blogId)->exists()) {
+            throw ValidationException::withMessages(['blog_id' => ['Artigo inválido.']]);
+        }
     }
 
     /**

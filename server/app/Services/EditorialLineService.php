@@ -207,10 +207,10 @@ class EditorialLineService
     {
         return EditorialPost::where('company_id', $company->id)
             ->whereBetween('publish_date', [$start->toDateString(), $end->toDateString()])
-            ->with(['anchor:id,title', 'ownAnchor:id,title'])
+            ->with(['anchor:id,title', 'ownAnchor:id,title', 'blog:id,company_id,title,status,published_at'])
             ->orderBy('publish_date')
             ->get()
-            ->map(static fn (EditorialPost $p) => [
+            ->map(fn (EditorialPost $p) => [
                 'id'            => $p->id,
                 'publish_date'  => $p->publish_date->toDateString(),
                 'month_key'     => $p->publish_date->format('Y-m'),
@@ -222,6 +222,14 @@ class EditorialLineService
                 'anchor_id'     => $p->anchor_id,
                 'own_anchor_id' => $p->own_anchor_id,
                 'linked_title'  => $p->anchor?->title ?? $p->ownAnchor?->title,
+                'blog_id'       => $p->blog_id,
+                // Canal "site": o estado mostrado vem do artigo (só se for da mesma empresa).
+                'blog'          => $p->blog && (int) $p->blog->company_id === (int) $company->id ? [
+                    'id'           => $p->blog->id,
+                    'title'        => $p->blog->title,
+                    'status'       => $p->blog->status,
+                    'published_at' => optional($p->blog->published_at)->toIso8601String(),
+                ] : null,
             ])
             ->all();
     }

@@ -1,7 +1,5 @@
 // Dashboard
 export * from "./dashboards/thunk";
-// Blogs
-export * from "./blogs/thunk";
 // Leads
 export * from "./leads/thunk";
 // Cars

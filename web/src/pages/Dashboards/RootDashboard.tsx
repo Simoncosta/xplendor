@@ -164,8 +164,11 @@ export default function RootDashboard() {
                             value={num(platform?.users_total ?? 0)} sub="total da plataforma" />
                     </Col>
                     <Col md={4}>
-                        <Stat icon="ri-car-line" color="info" label="Carros"
-                            value={num(platform?.cars_total ?? 0)} sub="total da plataforma" />
+                        {/* Em stock (Car::IN_STOCK_STATUSES) de empresas ativas; o total geral fica como referência. */}
+                        <Stat icon="ri-car-line" color="info" label="Carros em stock"
+                            value={num(platform?.cars_in_stock ?? 0)}
+                            sub={`De empresas ativas · ${num(platform?.cars_total ?? 0)} no total da plataforma`}
+                            to="/admin/stock" />
                     </Col>
                 </Row>
 

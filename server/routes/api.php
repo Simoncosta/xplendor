@@ -337,7 +337,21 @@ Route::prefix('v1')->group(function () {
                 // ── Módulo COMERCIAL/CRM ──
                 Route::apiResource('/leads', CarLeadController::class)->only(['index', 'update'])->middleware('ensure_module:commercial_crm');
                 Route::apiResource('/carmine-connection', CarmineConnectionController::class)->except('index')->middleware(['ensure_module:stock', 'block_when_impersonating']);
-                Route::apiResource('/blogs', BlogController::class);
+                // Blog: conteúdo (empresa, root e impersonation) e fluxo de aprovação. Aprovar,
+                // devolver e voltar a rascunho: só o admin da própria empresa, fora de impersonation.
+                Route::apiResource('/blogs', BlogController::class)->where(['blog' => '[0-9]+']);
+                Route::delete('/blogs/{blog}/banner', [BlogController::class, 'destroyBanner'])->whereNumber('blog');
+                Route::post('/blogs/{blog}/submit', [BlogController::class, 'submit'])->whereNumber('blog');
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::post('/blogs/{blog}/approve', [BlogController::class, 'approve'])->whereNumber('blog');
+                    Route::post('/blogs/{blog}/request-changes', [BlogController::class, 'requestChanges'])->whereNumber('blog');
+                    Route::post('/blogs/{blog}/back-to-draft', [BlogController::class, 'backToDraft'])->whereNumber('blog');
+                });
+                Route::get('/blog-ai/context', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'context']);
+                Route::post('/blog-ai/drafts', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'store'])->middleware('throttle:10,1');
+                Route::get('/blog-ai/drafts/{draft}', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'show'])->whereNumber('draft');
+                Route::get('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'show']);
+                Route::put('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'update']);
                 // ── Módulo LINHA EDITORIAL (transversal) — escolha de ramo + calendário herdado ──
                 Route::middleware('ensure_module:linha_editorial')->group(function () {
                     Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);

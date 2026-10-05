@@ -1,11 +1,11 @@
 /**
  * XPLENDOR — Linha Editorial (Publicações P1). Enums FIXOS espelhados do backend
- * (EditorialPost.php): FORMATS (18), STATUSES (4), CHANNELS (2). Mapas *_META no padrão
+ * (EditorialPost.php): FORMATS (18), STATUSES (4), CHANNELS (3, "site" liga ao blog). Mapas *_META no padrão
  * do projeto (como TASK_STATUS_META) para badges/ícones consistentes.
  */
 
 export type PostStatus = "rascunho" | "revisao" | "publicada" | "otimizada";
-export type PostChannel = "instagram" | "facebook";
+export type PostChannel = "instagram" | "facebook" | "site";
 
 export type EditorialPost = {
     id: number;
@@ -19,6 +19,9 @@ export type EditorialPost = {
     anchor_id: number | null;
     own_anchor_id: number | null;
     linked_title: string | null;
+    blog_id: number | null;
+    // Canal "site": o artigo ligado; o estado mostrado vem dele.
+    blog: { id: number; title: string; status: "draft" | "in_review" | "approved" | "published"; published_at: string | null } | null;
 };
 
 // Estados — definem o board futuro. color = variante Bootstrap (bg-*-subtle text-*).
@@ -33,7 +36,11 @@ export const POST_STATUS_ORDER: PostStatus[] = ["rascunho", "revisao", "publicad
 export const POST_CHANNEL_META: Record<PostChannel, { label: string; icon: string }> = {
     instagram: { label: "Instagram", icon: "ri-instagram-line" },
     facebook:  { label: "Facebook",  icon: "ri-facebook-circle-line" },
+    site:      { label: "Site (blog)", icon: "ri-article-line" },
 };
+
+/** Formato fixo do canal "site" (EditorialPost::SITE_FORMAT). */
+export const SITE_FORMAT = "Artigo";
 
 // Formatos Insta/FB (têm de coincidir EXATAMENTE com EditorialPost::FORMATS no backend).
 export const POST_FORMATS: string[] = [

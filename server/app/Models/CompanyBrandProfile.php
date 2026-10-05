@@ -1,0 +1,39 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+/**
+ * Perfil de marca simples da empresa (1:1). Mesmos nomes de campos do brand_profiles do
+ * plano Social, para a passagem para as marcas ser uma cópia direta.
+ */
+class CompanyBrandProfile extends Model
+{
+    public const LIST_FIELDS = ['words_to_use', 'words_to_avoid', 'topics_to_avoid'];
+
+    protected $fillable = [
+        'company_id', 'tone_of_voice', 'audience', 'words_to_use', 'words_to_avoid',
+        'topics_to_avoid', 'language', 'updated_by_user_id',
+    ];
+
+    protected $casts = [
+        'words_to_use' => 'array',
+        'words_to_avoid' => 'array',
+        'topics_to_avoid' => 'array',
+    ];
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function isEmpty(): bool
+    {
+        return trim((string) $this->tone_of_voice) === '' && trim((string) $this->audience) === ''
+            && empty($this->words_to_use) && empty($this->words_to_avoid) && empty($this->topics_to_avoid);
+    }
+}

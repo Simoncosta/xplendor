@@ -67,8 +67,7 @@ import ExpenseCategoryList from "pages/ExpenseCategories/ExpenseCategoryList";
 import ExpenseList from "pages/Expenses/ExpenseList";
 // Blogs
 import BlogList from "pages/Blogs/BlogList";
-import BlogCreate from "pages/Blogs/Blog/BlogCreate";
-import BlogUpdate from "pages/Blogs/Blog/BlogUpdate";
+import BlogEditor from "pages/Blogs/Blog/BlogEditor";
 import BlogShow from "pages/Blogs/Blog/BlogShow";
 
 // Leads
@@ -187,8 +186,8 @@ const authProtectedRoutes = [
 
     // Blogs
     { path: "/blogs", component: <BlogList /> },
-    { path: "/blogs/create", component: <BlogCreate /> },
-    { path: "/blogs/:id", component: <BlogUpdate /> },
+    { path: "/blogs/create", component: <BlogEditor /> },
+    { path: "/blogs/:id", component: <BlogEditor /> },
     { path: "/blogs/:id/show", component: <BlogShow /> },
 
     // Suppliers — módulo FINANÇAS

@@ -36,17 +36,24 @@ class AdminController extends Controller
 
     /**
      * Contagens transversais da plataforma para o dashboard root (todas as empresas).
-     * users_total e cars_total são TOTAIS reais (sem filtro de empresa ativa) — rotular no
-     * frontend como "total da plataforma". Empresas vêm de /admin/companies; tickets/quotes
-     * dos seus próprios summaries. Root-only (defesa em profundidade além do middleware).
+     *  · cars_in_stock: viaturas EM STOCK (Car::IN_STOCK_STATUSES, a fonte única) de empresas
+     *    ATIVAS (Company::active, a mesma definição do guard de acesso e do Stock global).
+     *  · cars_total e users_total: totais reais, sem filtros (todos os estados e empresas),
+     *    mostrados como referência ("total da plataforma").
+     * Empresas vêm de /admin/companies; tickets/quotes dos seus próprios summaries.
+     * Root-only (defesa em profundidade além do middleware).
      */
     public function platformSummary()
     {
         abort_unless(Auth::user()?->role === 'root', 403);
 
         return ApiResponse::success([
-            'users_total' => User::count(),
-            'cars_total'  => Car::count(),
+            'users_total'   => User::count(),
+            'cars_total'    => Car::count(),
+            'cars_in_stock' => Car::query()
+                ->whereIn('status', Car::IN_STOCK_STATUSES)
+                ->whereHas('company', fn ($q) => $q->active())
+                ->count(),
         ], 'Resumo da plataforma.');
     }
 }

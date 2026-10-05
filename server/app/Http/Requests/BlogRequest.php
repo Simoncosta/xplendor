@@ -3,48 +3,78 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
+/**
+ * Conteúdo do artigo (criar e alterar). O estado NÃO vem daqui: muda só pelas ações do
+ * fluxo (enviar, aprovar, devolver). A unicidade do slug por empresa e o slug fixo depois
+ * de publicado são verificados no BlogService. O banner só é validado quando é um ficheiro
+ * (o formulário não reenvia o caminho atual).
+ */
 class BlogRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
-        // Se for update, pega o ID do blog para ignorar unique no slug
-        $blogId = $this->route('blog') ?? null;
-
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'subtitle' => ['nullable', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'unique:blogs,slug'],
-            'banner' => [$blogId ? 'nullable' : 'required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'excerpt' => ['nullable', 'string', 'max:500'],
-            'content' => ['required', 'string'],
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['string', 'max:50'],
-            'category' => ['nullable', 'string', 'max:100'],
-            'status' => ['required', Rule::in(['draft', 'published'])],
+            'title'               => ['required', 'string', 'max:255'],
+            'subtitle'            => ['nullable', 'string', 'max:255'],
+            'slug'                => ['nullable', 'string', 'max:180'],
+            'banner'              => ['nullable', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'excerpt'             => ['nullable', 'string', 'max:500'],
+            'content'             => ['nullable', 'string', 'max:200000'],
+            'tags'                => ['nullable', 'array', 'max:20'],
+            'tags.*'              => ['string', 'max:50'],
+            'category'            => ['nullable', 'string', 'max:100'],
+            'meta_title'          => ['nullable', 'string', 'max:255'],
+            'meta_description'    => ['nullable', 'string', 'max:255'],
+            'focus_keyword'       => ['nullable', 'string', 'max:100'],
+            'seo_answer_first_ok' => ['nullable', 'boolean'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'title.required' => 'O título é obrigatório.',
+            'banner.image'   => 'O banner tem de ser uma imagem (JPG, PNG ou WebP).',
+            'banner.max'     => 'O banner não pode ter mais de 4 MB.',
         ];
     }
 
     protected function prepareForValidation(): void
     {
+        $merge = [];
         if ($this->has('tags') && is_string($this->tags)) {
-            $this->merge([
-                'tags' => json_decode($this->tags, true),
-            ]);
+            $merge['tags'] = json_decode($this->tags, true) ?: [];
         }
+        // Um banner em texto (caminho atual) não é um envio: ignora.
+        if ($this->has('banner') && ! $this->hasFile('banner')) {
+            $this->request->remove('banner');
+        }
+        if ($this->has('slug')) {
+            $merge['slug'] = Str::slug((string) $this->input('slug'));
+        }
+        if ($this->has('seo_answer_first_ok')) {
+            $merge['seo_answer_first_ok'] = filter_var($this->input('seo_answer_first_ok'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if ($merge) {
+            $this->merge($merge);
+        }
+    }
+
+    /** Só os campos de conteúdo (o resto do pedido é ignorado). */
+    public function articleData(): array
+    {
+        $data = $this->validated();
+        if ($this->hasFile('banner')) {
+            $data['banner'] = $this->file('banner');
+        }
+
+        return $data;
     }
 }

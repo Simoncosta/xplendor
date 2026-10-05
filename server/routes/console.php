@@ -132,3 +132,13 @@ Schedule::job(new \App\Jobs\ExpireQuotesJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Quotes Expire] Job falhou no scheduler');
     });
+
+// A cada 5 minutos: publica os artigos do blog aprovados cuja data chegou.
+Schedule::job(new \App\Jobs\PublishScheduledBlogsJob())
+    ->everyFiveMinutes()
+    ->timezone('Europe/Lisbon')
+    ->name('blogs-publish-scheduled')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Blog Publish] Job falhou no scheduler');
+    });

@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
+import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, getAdminTicketsQuotePipeline } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType, QuoteStatus,
@@ -20,6 +22,24 @@ const PIPELINE_CARDS: { key: QuoteStatus; color: string; icon: string }[] = [
 ];
 
 type ViewMode = "list" | "kanban";
+
+type FilterOption = { value: string; label: string };
+
+/** Filtro com o react-select da app (segue o tema claro/escuro). "" = todos. */
+const FilterSelect = ({ value, onChange, options, label, searchable = false }: {
+    value: string; onChange: (v: string) => void; options: FilterOption[]; label: string; searchable?: boolean;
+}) => (
+    <Select
+        aria-label={label}
+        styles={reactSelectTheme}
+        menuPortalTarget={document.body}
+        isSearchable={searchable}
+        noOptionsMessage={() => "Sem resultados"}
+        options={options}
+        value={options.find((o) => o.value === value) ?? options[0]}
+        onChange={(o: any) => onChange(o?.value ?? "")}
+    />
+);
 
 interface Summary { open: number; in_review: number; pending: number; resolved: number; closed: number; total: number; }
 
@@ -252,23 +272,17 @@ const AdminTicketsList = () => {
                         <Row className="g-2 mb-3">
                             {view === "list" && (
                                 <Col md={4}>
-                                    <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
-                                        <option value="">Todos os estados</option>
-                                        {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
-                                    </Input>
+                                    <FilterSelect value={fStatus} onChange={setFStatus} label="Filtrar por estado"
+                                        options={[{ value: "", label: "Todos os estados" }, ...STATUS_OPTIONS.map((st) => ({ value: st, label: TICKET_STATUS_META[st].label }))]} />
                                 </Col>
                             )}
                             <Col md={4}>
-                                <Input type="select" value={fCompany} onChange={(e) => setFCompany(e.target.value)}>
-                                    <option value="">Todas as empresas</option>
-                                    {companyOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                </Input>
+                                <FilterSelect value={fCompany} onChange={setFCompany} label="Filtrar por empresa" searchable
+                                    options={[{ value: "", label: "Todas as empresas" }, ...companyOptions.map((c) => ({ value: String(c.id), label: c.name }))]} />
                             </Col>
                             <Col md={4}>
-                                <Input type="select" value={fType} onChange={(e) => setFType(e.target.value)}>
-                                    <option value="">Todos os tipos</option>
-                                    {TYPE_OPTIONS.map((t) => <option key={t} value={t}>{TICKET_TYPE_META[t].label}</option>)}
-                                </Input>
+                                <FilterSelect value={fType} onChange={setFType} label="Filtrar por tipo"
+                                    options={[{ value: "", label: "Todos os tipos" }, ...TYPE_OPTIONS.map((t) => ({ value: t, label: TICKET_TYPE_META[t].label }))]} />
                             </Col>
                         </Row>
 

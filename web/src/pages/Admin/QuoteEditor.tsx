@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Badge, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import Select from "react-select";
+import BreadCrumb from "Components/Common/BreadCrumb";
 import { ToastContainer, toast } from "react-toastify";
 import {
     createAdminQuote, updateAdminQuote, showAdminQuote, sendAdminQuote, decideAdminQuote, duplicateAdminQuote,
@@ -376,16 +377,16 @@ const QuoteEditor = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                {/* Cabeçalho e ações */}
+                {/* Cabeçalho (breadcrumbs, como nos Tickets) e ações */}
+                <BreadCrumb title={isNew ? "Novo orçamento" : "Orçamento"} pageTitle="Orçamentos" pageLink="/admin/quotes" />
                 <Row className="mb-3 align-items-center g-2">
                     <Col>
-                        <Link to="/admin/quotes" className="text-muted fs-13"><i className="ri-arrow-left-line me-1" />Orçamentos</Link>
-                        <h4 className="mb-0 mt-1 d-flex align-items-center gap-2 flex-wrap">
+                        <h5 className="mb-0 d-flex align-items-center gap-2 flex-wrap">
                             {quote ? quote.display_number : "Novo orçamento"}
                             {quote && <small className="text-muted fs-14 fw-normal">versão {quote.version}</small>}
                             <Badge color={sm.color} className="fs-12">{sm.label}</Badge>
                             {dirty && !readOnly && <small className="text-warning fs-12 fw-normal">Alterações por guardar</small>}
-                        </h4>
+                        </h5>
                         {quote?.sent_at && (
                             <small className="text-muted">
                                 Enviado a {longDate(quote.sent_at)}{quote.valid_until ? ` · válido até ${longDate(quote.valid_until)}` : ""}

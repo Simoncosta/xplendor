@@ -11,6 +11,7 @@
     "require": {
         "php": "^8.2",
         "barryvdh/laravel-dompdf": "^3.1",
+        "ezyang/htmlpurifier": "^4.19",
         "google/analytics-data": "^0.26.1",
         "intervention/image": "^3.11",
         "laravel/framework": "^12.0",

@@ -14,11 +14,13 @@ import BreadCrumb from "Components/Common/BreadCrumb";
 import {
     getEditorialCalendar, setEditorialSector, openEditorialMonth, closeEditorialMonth,
     hideEditorialAnchor, showEditorialAnchor, createEditorialOwnAnchor, deleteEditorialOwnAnchor,
-    createEditorialPost, updateEditorialPost, deleteEditorialPost,
+    createEditorialPost, updateEditorialPost, deleteEditorialPost, getBlogs,
 } from "helpers/laravel_helper";
 import {
-    EditorialPost, EDITORIAL_POST_STATUS_META, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus,
+    EditorialPost, EDITORIAL_POST_STATUS_META, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
 } from "common/models/editorialPost.model";
+import { BLOG_STATUS_META } from "common/models/blog.model";
+import { Link } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
 
 /**
@@ -60,8 +62,10 @@ const emptyForm = (month: number): CreateForm => ({
     start_month: month, start_day: 1, end_month: month, end_day: 28, easter_offset: 0,
 });
 
-type PostForm = { id?: number; publish_date: string; title: string; format: string; channel: string; keyword: string; status: PostStatus; link: string };
-const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], channel: "instagram", keyword: "", status: "rascunho", link: "" });
+type PostForm = { id?: number; publish_date: string; title: string; format: string; channel: string; keyword: string; status: PostStatus; link: string; blog_id: string };
+const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
+/** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
+const postStatusMeta = (p: EditorialPost) => (p.blog ? BLOG_STATUS_META[p.blog.status] : EDITORIAL_POST_STATUS_META[p.status]);
 
 export default function EditorialCalendarPage() {
     document.title = "Linha Editorial | Xplendor";
@@ -237,16 +241,24 @@ export default function EditorialCalendarPage() {
             id: p.id, publish_date: p.publish_date, title: p.title, format: p.format,
             channel: p.channel, keyword: p.keyword ?? "", status: p.status,
             link: p.anchor_id ? `a:${p.anchor_id}` : p.own_anchor_id ? `o:${p.own_anchor_id}` : "",
+            blog_id: p.blog_id ? String(p.blog_id) : "",
         });
         setPostOpen(true);
     };
     const setPF = (patch: Partial<PostForm>) => setPostForm((p) => ({ ...p, ...patch }));
+    // Artigos para ligar ao canal "site" (carregados quando o modal abre nesse canal).
+    const [siteBlogs, setSiteBlogs] = useState<{ id: number; title: string; status: string }[]>([]);
+    useEffect(() => {
+        if (!postOpen || postForm.channel !== "site" || !companyId) return;
+        getBlogs(companyId, { perPage: 100 }).then((r: any) => setSiteBlogs(r?.data?.page?.data ?? [])).catch(() => setSiteBlogs([]));
+    }, [postOpen, postForm.channel, companyId]);
     const submitPost = async () => {
         const f = postForm;
         if (!f.title.trim()) { toast.error("Dá um título à publicação."); return; }
         const payload: any = {
-            title: f.title.trim(), publish_date: f.publish_date, format: f.format,
+            title: f.title.trim(), publish_date: f.publish_date, format: f.channel === "site" ? SITE_FORMAT : f.format,
             channel: f.channel, status: f.status, keyword: f.keyword.trim() || null,
+            blog_id: f.channel === "site" && f.blog_id ? Number(f.blog_id) : null,
         };
         if (f.link.startsWith("a:")) payload.anchor_id = Number(f.link.slice(2));
         else if (f.link.startsWith("o:")) payload.own_anchor_id = Number(f.link.slice(2));
@@ -406,7 +418,7 @@ export default function EditorialCalendarPage() {
                                                 const ep = arg.event.extendedProps as any;
                                                 if (ep.kind === "post") {
                                                     const p = ep.post as EditorialPost;
-                                                    const meta = EDITORIAL_POST_STATUS_META[p.status];
+                                                    const meta = postStatusMeta(p);
                                                     return (
                                                         <div className={`w-100 px-1 rounded d-flex align-items-center gap-1 bg-${meta.color}-subtle text-${meta.color}`} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid var(--vz-${meta.color})` }}>
                                                             <i className={POST_CHANNEL_META[p.channel].icon} />
@@ -479,7 +491,7 @@ export default function EditorialCalendarPage() {
                     ) : (
                         <div className="vstack gap-2">
                             {panelPosts.map((p) => {
-                                const meta = EDITORIAL_POST_STATUS_META[p.status];
+                                const meta = postStatusMeta(p);
                                 return (
                                     <div key={p.id} className="border rounded p-2">
                                         <div className="d-flex align-items-start justify-content-between gap-2">
@@ -490,6 +502,7 @@ export default function EditorialCalendarPage() {
                                                     <span className="badge bg-light text-body">{p.format}</span>
                                                     {p.keyword && <span className="badge bg-primary-subtle text-primary">#{p.keyword}</span>}
                                                     {p.linked_title && <span className="badge bg-secondary-subtle text-secondary"><i className="ri-links-line me-1" />{p.linked_title}</span>}
+                                                    {p.blog && <Link to={`/blogs/${p.blog.id}`} className="badge bg-info-subtle text-info"><i className="ri-article-line me-1" />{p.blog.title}</Link>}
                                                 </div>
                                             </div>
                                             {panelMonthOpen && (
@@ -544,17 +557,34 @@ export default function EditorialCalendarPage() {
                                 <Input type="select" value={postForm.channel} onChange={(e) => setPF({ channel: e.target.value })}>
                                     <option value="instagram">Instagram</option>
                                     <option value="facebook">Facebook</option>
+                                    <option value="site">Site (blog)</option>
                                 </Input></FormGroup></Col>
                         </Row>
+                        {postForm.channel === "site" ? (
+                            <FormGroup>
+                                <Label>Artigo do blog</Label>
+                                <Input type="select" value={postForm.blog_id} onChange={(e) => setPF({ blog_id: e.target.value })}>
+                                    <option value="">Ainda sem artigo</option>
+                                    {siteBlogs.map((b) => <option key={b.id} value={b.id}>{b.title} ({BLOG_STATUS_META[b.status as keyof typeof BLOG_STATUS_META]?.label ?? b.status})</option>)}
+                                </Input>
+                                <div className="form-text">
+                                    {postForm.blog_id ? "O estado mostrado no calendário vem do artigo (rascunho, em revisão, agendado, publicado)." : <>Pode criar o artigo em <Link to="/blogs/create">Blog</Link> e ligá-lo depois.</>}
+                                </div>
+                            </FormGroup>
+                        ) : null}
                         <Row className="g-2">
-                            <Col xs={6}><FormGroup><Label>Formato</Label>
-                                <Input type="select" value={postForm.format} onChange={(e) => setPF({ format: e.target.value })}>
-                                    {POST_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-                                </Input></FormGroup></Col>
-                            <Col xs={6}><FormGroup><Label>Estado</Label>
-                                <Input type="select" value={postForm.status} onChange={(e) => setPF({ status: e.target.value as PostStatus })}>
-                                    {POST_STATUS_ORDER.map((s) => <option key={s} value={s}>{EDITORIAL_POST_STATUS_META[s].label}</option>)}
-                                </Input></FormGroup></Col>
+                            {postForm.channel !== "site" && (
+                                <Col xs={6}><FormGroup><Label>Formato</Label>
+                                    <Input type="select" value={postForm.format} onChange={(e) => setPF({ format: e.target.value })}>
+                                        {POST_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
+                                    </Input></FormGroup></Col>
+                            )}
+                            {!(postForm.channel === "site" && postForm.blog_id) && (
+                                <Col xs={6}><FormGroup><Label>Estado</Label>
+                                    <Input type="select" value={postForm.status} onChange={(e) => setPF({ status: e.target.value as PostStatus })}>
+                                        {POST_STATUS_ORDER.map((s) => <option key={s} value={s}>{EDITORIAL_POST_STATUS_META[s].label}</option>)}
+                                    </Input></FormGroup></Col>
+                            )}
                         </Row>
                         <FormGroup>
                             <Label>Palavra-chave</Label>

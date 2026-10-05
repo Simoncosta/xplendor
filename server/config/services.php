@@ -46,6 +46,9 @@ return [
         // OCR de faturas de fornecedor (Fase A).
         'ocr_disk' => env('OCR_INVOICE_DISK', 'local'),        // disco onde a imagem original é guardada
         'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
+        // Blog: "Ajudar a escrever" / "a partir de uma publicação".
+        'blog_ai_model' => env('BLOG_AI_MODEL', 'gpt-4o'),
+        'blog_ai_monthly_cap' => (int) env('BLOG_AI_MONTHLY_CAP', 30), // rascunhos com IA por empresa/mês
     ],
 
     // XPLENDOR — GA4 (Data API). Credencial única do SERVIDOR: uma Service
