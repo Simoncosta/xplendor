@@ -9,9 +9,12 @@ interface CounterProps {
 
 const Counter: React.FC<CounterProps> = ({ parentClass, min = 0, max }) => {
   const targetElement = useRef<HTMLSpanElement | null>(null);
-  const [counted, setCounted] = useState<number>(min);
+  // O HTML exportado leva o número final (lido por motores de pesquisa e sem JavaScript);
+  // no browser volta ao início e conta até ao fim quando o contador fica visível.
+  const [counted, setCounted] = useState<number>(max);
 
   useEffect(() => {
+    setCounted(min);
     const startCountup = () => {
       const intervalId = setInterval(() => {
         setCounted((prevCount) => {
@@ -53,7 +56,7 @@ const Counter: React.FC<CounterProps> = ({ parentClass, min = 0, max }) => {
         observer.unobserve(targetElement.current);
       }
     };
-  }, [max]);
+  }, [max, min]);
 
   return (
     <span ref={targetElement} className={parentClass}>

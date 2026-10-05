@@ -16,7 +16,7 @@ export const termsPt: LegalContent = {
       id: "identificacao",
       title: "1. Identificação",
       blocks: [
-        `O site xplendor.pt e a Plataforma XPLENDOR (a \"Plataforma\") são disponibilizados por ${COMPANY.legalName}, NIF ${COMPANY.nif}, com sede em ${COMPANY.address}. Contacto: ${COMPANY.email}.`,
+        `O site xplendor.tech e a Plataforma XPLENDOR (a \"Plataforma\") são disponibilizados por ${COMPANY.legalName}, NIF ${COMPANY.nif}, com sede em ${COMPANY.address}. Contacto: ${COMPANY.email}.`,
       ],
     },
     {
@@ -125,7 +125,7 @@ export const termsEn: LegalContent = {
       id: "identification",
       title: "1. Identification",
       blocks: [
-        `The xplendor.pt website and the XPLENDOR Platform (the \"Platform\") are provided by ${COMPANY.legalName}, tax number (NIF) ${COMPANY.nif}, registered at ${COMPANY.address}. Contact: ${COMPANY.email}.`,
+        `The xplendor.tech website and the XPLENDOR Platform (the \"Platform\") are provided by ${COMPANY.legalName}, tax number (NIF) ${COMPANY.nif}, registered at ${COMPANY.address}. Contact: ${COMPANY.email}.`,
       ],
     },
     {

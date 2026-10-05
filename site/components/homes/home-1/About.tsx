@@ -1,6 +1,7 @@
 import AnimatedButton from "@/components/animation/AnimatedButton";
 import RevealText from "@/components/animation/RevealText";
 import Link from "next/link";
+import { IDENTITY } from "@/data/seo";
 
 export default function About() {
   return (
@@ -48,6 +49,8 @@ export default function About() {
                       Somos uma equipa que junta marketing e tecnologia para
                       pôr o seu negócio a funcionar de verdade.
                     </RevealText>
+                    {/* Frase de identidade (a mesma do JSON-LD e do llms.txt): o que é, o que faz, para quem e onde. */}
+                    <p className="t-large t-bright xp-identity anim-uni-in-up">{IDENTITY}</p>
                     <div className="mxd-manifest__controls anim-uni-in-up">
                       <AnimatedButton
                         text="Fale connosco"

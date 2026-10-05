@@ -6,7 +6,7 @@
   "nif": "517343355",
   "address": "Rua Camilo de Oliveira, 101, 4.º Esq., Rio Tinto, Gondomar",
   "email": "xplendorcar@gmail.com",
-  "website": "xplendor.pt",
+  "website": "xplendor.tech",
   "socials": [
     {
       "title": "Facebook",
@@ -23,5 +23,6 @@
       "url": "https://www.linkedin.com/company/xplendorpt/",
       "label": "xplendorpt"
     }
-  ]
+  ],
+  "siteUrl": "https://xplendor.tech"
 }

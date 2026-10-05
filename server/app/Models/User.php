@@ -33,6 +33,8 @@ class User extends Authenticatable
         'mobile',
         'whatsapp',
         'company_id',
+        'accepted_at',
+        'deactivated_at',
     ];
 
     /**
@@ -55,6 +57,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'accepted_at' => 'datetime',
+            'deactivated_at' => 'datetime',
             'password' => 'hashed',
         ];
     }

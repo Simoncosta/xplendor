@@ -32,7 +32,7 @@ export const privacyPt: LegalContent = {
             `Contacto para questões de privacidade: ${COMPANY.email}`,
           ],
         },
-        "XPLENDOR é a plataforma de gestão e análise de marketing disponível em xplendor.pt e na aplicação web associada (a \"Plataforma\").",
+        "XPLENDOR é a plataforma de gestão e análise de marketing disponível em xplendor.tech e na aplicação web associada (a \"Plataforma\").",
       ],
     },
     {
@@ -203,7 +203,7 @@ export const privacyEn: LegalContent = {
             `Privacy contact: ${COMPANY.email}`,
           ],
         },
-        "XPLENDOR is the business management and marketing analytics platform available at xplendor.pt and in the related web application (the \"Platform\").",
+        "XPLENDOR is the business management and marketing analytics platform available at xplendor.tech and in the related web application (the \"Platform\").",
       ],
     },
     {

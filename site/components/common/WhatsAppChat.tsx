@@ -84,7 +84,9 @@ export default function WhatsAppChat() {
               {avatarOk ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src="/img/avatars/simon-costa.png"
+                  src="/img/avatars/simon-costa.webp"
+                  width={80}
+                  height={100}
                   alt="Simon Costa"
                   onError={() => setAvatarOk(false)}
                 />
@@ -114,7 +116,7 @@ export default function WhatsAppChat() {
             <div className="xp-chat__msg-avatar">
               {avatarOk ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/img/avatars/simon-costa.png" alt="" />
+                <img src="/img/avatars/simon-costa.webp" width={80} height={100} alt="" loading="lazy" />
               ) : (
                 <span className="xp-chat__avatar-initials">SC</span>
               )}
@@ -125,7 +127,7 @@ export default function WhatsAppChat() {
             <div className="xp-chat__msg-avatar">
               {avatarOk ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/img/avatars/simon-costa.png" alt="" />
+                <img src="/img/avatars/simon-costa.webp" width={80} height={100} alt="" loading="lazy" />
               ) : (
                 <span className="xp-chat__avatar-initials">SC</span>
               )}

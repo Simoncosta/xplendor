@@ -19,5 +19,16 @@ class UserInvite extends Model
         "mobile",
         "whatsapp",
         "company_id",
+        "collaborator_id",
     ];
+
+    protected $casts = [
+        'accepted_at' => 'datetime',
+        'expires_at'  => 'datetime',
+    ];
+
+    public function company(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
 }

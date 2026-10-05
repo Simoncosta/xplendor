@@ -12,8 +12,11 @@ export default function BrowserMockup({
   width = 1490,
   height = 845,
   emptyLabel = "Screenshot em breve",
+  avif = false,
 }: {
   src?: string;
+  /** Há uma versão .avif ao lado da .webp: o browser escolhe a mais leve que suportar. */
+  avif?: boolean;
   alt?: string;
   width?: number;
   height?: number;
@@ -27,7 +30,12 @@ export default function BrowserMockup({
         <span />
       </div>
       <div className="xp-mockup__screen">
-        {src ? (
+        {src && avif ? (
+          <picture>
+            <source type="image/avif" srcSet={src.replace(/\.webp$/, ".avif")} />
+            <Image src={src} alt={alt} width={width} height={height} />
+          </picture>
+        ) : src ? (
           <Image src={src} alt={alt} width={width} height={height} />
         ) : (
           <div className="xp-mockup__empty" aria-hidden="true">

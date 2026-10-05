@@ -25,18 +25,18 @@ export default function Header1() {
           {/* logo icon (X da XPLENDOR): versao clara/escura por tema */}
           <Image
             className="mxd-logo__image xplendor-x xplendor-x--dark"
-            src="/img/logo/xplendor-x-dark.png"
+            src="/img/logo/xplendor-x-dark.webp"
             alt="XPLENDOR"
-            width={458}
-            height={461}
+            width={112}
+            height={113}
             priority
           />
           <Image
             className="mxd-logo__image xplendor-x xplendor-x--light"
-            src="/img/logo/xplendor-x-light.png"
+            src="/img/logo/xplendor-x-light.webp"
             alt="XPLENDOR"
-            width={458}
-            height={461}
+            width={112}
+            height={113}
             priority
           />
           {/* logo text */}

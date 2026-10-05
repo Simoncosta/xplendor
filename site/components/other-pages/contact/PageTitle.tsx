@@ -43,7 +43,7 @@ export default function PageTitle() {
                 <div className="mxd-block__content">
                   <div className="mxd-block__inner-headline loading__item">
                     <h1 className="inner-headline__title">
-                      Vamos falar
+                      Vamos falar{" "}
                       <br />
                       do seu projeto!
                     </h1>

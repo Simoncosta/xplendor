@@ -458,6 +458,11 @@ html[color-scheme="dark"] .xplendor-x--light {
   width: 100%;
   background: rgba(128, 128, 128, 0.06);
 }
+.xp-mockup__screen picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .xp-mockup__screen img {
   width: 100%;
   height: 100%;
@@ -662,4 +667,66 @@ html[color-scheme="dark"] .xplendor-x--light {
 }
 .xp-legal__toc a:hover {
   text-decoration: underline;
+}
+
+/* Âncoras dos serviços: deixam espaço para o cabeçalho fixo ao saltar para #secção. */
+.xp-anchor {
+  scroll-margin-top: 12rem;
+}
+
+/* Perguntas frequentes (página Serviços). */
+.xp-faq__title {
+  font-size: 3.2rem;
+  margin-bottom: 3rem;
+}
+.xp-faq__item {
+  border-top: 1px solid var(--st-medium, rgba(128, 128, 128, 0.25));
+  padding: 2.2rem 0;
+}
+.xp-faq__item:last-child {
+  border-bottom: 1px solid var(--st-medium, rgba(128, 128, 128, 0.25));
+}
+.xp-faq__question {
+  cursor: pointer;
+  list-style: none;
+  font-size: 2rem;
+  font-weight: 500;
+  color: var(--t-bright);
+  display: flex;
+  justify-content: space-between;
+  gap: 2rem;
+}
+.xp-faq__question::-webkit-details-marker {
+  display: none;
+}
+.xp-faq__question::after {
+  content: "+";
+  flex-shrink: 0;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+.xp-faq__item[open] .xp-faq__question::after {
+  content: "−";
+}
+.xp-faq__answer {
+  margin-top: 1.4rem;
+  font-size: 1.7rem;
+  line-height: 1.65;
+  max-width: 72rem;
+}
+
+/* Texto decorativo vindo de data-deco: aparece no ecrã mas não faz parte do texto da página. */
+.xp-deco::before {
+  content: attr(data-deco);
+}
+
+/* Frase de identidade na home (Quem somos). */
+.xp-identity {
+  margin-top: 2.4rem;
+  max-width: 64rem;
+}
+
+/* Sem JavaScript o atributo color-scheme não é definido: mostra o X escuro (tema claro). */
+html:not([color-scheme]) .xplendor-x--dark {
+  display: block;
 }

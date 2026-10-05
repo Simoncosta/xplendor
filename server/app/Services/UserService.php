@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Mail\InviteToRegisterMail;
+use App\Models\Collaborator;
 use App\Models\User;
+use App\Models\UserInvite;
 use App\Repositories\Contracts\UserRepositoryInterface;
 use App\Repositories\Contracts\UserInviteRepositoryInterface;
 use Illuminate\Http\UploadedFile;
@@ -14,10 +16,13 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class UserService extends BaseService
 {
+    public const INVALID_INVITE = 'Este convite é inválido, já foi usado ou expirou. Peça um novo convite ao administrador da empresa.';
+
     public function __construct(
         protected UserRepositoryInterface $userRepository,
         protected UserInviteRepositoryInterface $userInviteRepository,
@@ -30,20 +35,36 @@ class UserService extends BaseService
         return $this->userRepository->findOrFail($id, 'id');
     }
 
+    /**
+     * Convida uma pessoa para criar conta na empresa (o perfil e a empresa vêm do
+     * chamador, já validados). Um convite ainda por aceitar para o mesmo email na mesma
+     * empresa é reaproveitado (novo token e nova validade) em vez de rebentar no índice
+     * único. Se vier de um colaborador, fica ligado a ele e a conta liga-se ao aceitar.
+     * O email vai em fila, com o link para a app (/app/register).
+     */
     public function store(array $data): mixed
     {
-        $invite = $this->userInviteRepository->store([
-            'email' => $data['email'],
-            'name' => $data['name'],
-            'company_id' => $data['company_id'],
-            'gender' => $data['gender'] ?? null,
-            'birthdate' => $data['birthdate'] ?? null,
-            'mobile' => $data['mobile'] ?? null,
-            'whatsapp' => $data['whatsapp'] ?? null,
-            'role' => $data['role'],
-            'token' => Str::uuid()->toString(),
-            'expires_at' => Carbon::now()->addDays(7),
-        ]);
+        $fields = [
+            'name'            => $data['name'],
+            'gender'          => $data['gender'] ?? null,
+            'birthdate'       => $data['birthdate'] ?? null,
+            'mobile'          => $data['mobile'] ?? null,
+            'whatsapp'        => $data['whatsapp'] ?? null,
+            'role'            => $data['role'],
+            'collaborator_id' => $data['collaborator_id'] ?? null,
+            'token'           => Str::uuid()->toString(),
+            'expires_at'      => Carbon::now()->addDays(7),
+        ];
+
+        $invite = UserInvite::where('company_id', $data['company_id'])->where('email', $data['email'])->first();
+        if ($invite && $invite->accepted_at !== null) {
+            throw ValidationException::withMessages(['email' => ['Esta pessoa já aceitou um convite e tem conta criada.']]);
+        }
+        if ($invite) {
+            $invite->update($fields);
+        } else {
+            $invite = $this->userInviteRepository->store($fields + ['email' => $data['email'], 'company_id' => $data['company_id']]);
+        }
 
         // Avatar (opcional)
         if (!empty($data['avatar']) && $data['avatar'] instanceof UploadedFile) {
@@ -54,19 +75,22 @@ class UserService extends BaseService
             ]);
         }
 
-        // Gera URL de convite
-        $inviteUrl = rtrim(config('app.url'), '/')
-            . '/register?token=' . $invite->token;
-
-        // Envia email
-        Mail::to($invite->email)->send(
-            new InviteToRegisterMail(
-                $data['fiscal_name'] ?? Auth::user()->company->fiscal_name,
-                $inviteUrl
-            )
-        );
+        $this->sendInvite($invite->refresh(), $data['fiscal_name'] ?? null);
 
         return $invite->refresh();
+    }
+
+    /** Envia (ou reenvia) o email do convite, em fila. */
+    public function sendInvite(UserInvite $invite, ?string $companyName = null): void
+    {
+        $companyName ??= $invite->company?->trade_name ?: $invite->company?->fiscal_name ?: (string) config('app.name');
+        Mail::to($invite->email)->queue(new InviteToRegisterMail($companyName, self::inviteUrl($invite)));
+    }
+
+    /** Link do convite: a página de registo da app, em /app/register. */
+    public static function inviteUrl(UserInvite $invite): string
+    {
+        return rtrim((string) config('app.frontend_url'), '/') . '/register?token=' . $invite->token;
     }
 
     public function update(int $id, array $data): mixed
@@ -141,6 +165,9 @@ class UserService extends BaseService
         if (! $user || ! Hash::check($password, $user->password)) {
             return null;
         }
+        if ($user->deactivated_at !== null) {
+            throw ValidationException::withMessages(['email' => ['O acesso desta conta foi retirado pela empresa. Fale com o administrador.']]);
+        }
 
         return $this->userRepository->findWithRelations($user->id, ['company']);
     }
@@ -171,12 +198,12 @@ class UserService extends BaseService
         $invite = $this->userInviteRepository->getExpiresAtNull($data['token']);
 
         if (! $invite) {
-            throw new \Exception('Convite inválido ou expirado');
+            throw ValidationException::withMessages(['token' => [self::INVALID_INVITE]]);
         }
 
         // evita duplicados
         if ($this->userRepository->findByEmail($invite->email)) {
-            throw new \Exception('Este e-mail já está registado.');
+            throw ValidationException::withMessages(['token' => ['Já existe uma conta com este email. Entre com a sua password ou peça uma nova.']]);
         }
 
         /** @var \App\Models\User $user */
@@ -202,6 +229,12 @@ class UserService extends BaseService
             $this->userInviteRepository->update($invite->id, [
                 'accepted_at' => now(),
             ]);
+
+            // Convite dado a um colaborador: a conta nova fica ligada a ele (mesma empresa).
+            if ($invite->collaborator_id) {
+                Collaborator::where('id', $invite->collaborator_id)->where('company_id', $invite->company_id)
+                    ->whereNull('user_id')->update(['user_id' => $user->id]);
+            }
         });
 
         // login automático (Sanctum)
@@ -210,8 +243,25 @@ class UserService extends BaseService
         return array_merge(['token' => $token], $user->toArray());
     }
 
-    public function getUserInviteByToken(string $token)
+    /**
+     * Dados mínimos para a página de registo (nome, email, empresa e validade). Nunca
+     * devolve o token, o perfil nem ids. Convite usado, expirado ou inexistente: 410/404.
+     */
+    public function getUserInviteByToken(string $token): array
     {
-        return $this->userInviteRepository->getAll(['*'], [], null, ['token' => $token])->first();
+        $invite = UserInvite::with('company:id,fiscal_name,trade_name')->where('token', $token)->first();
+        if (! $invite) {
+            abort(404, self::INVALID_INVITE);
+        }
+        if ($invite->accepted_at !== null || $invite->expires_at === null || $invite->expires_at->isPast()) {
+            abort(410, self::INVALID_INVITE);
+        }
+
+        return [
+            'name'         => $invite->name,
+            'email'        => $invite->email,
+            'company_name' => $invite->company?->trade_name ?: $invite->company?->fiscal_name,
+            'expires_at'   => $invite->expires_at->toIso8601String(),
+        ];
     }
 }

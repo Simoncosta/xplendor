@@ -12,7 +12,7 @@ class UserInviteRepository extends BaseRepository implements UserInviteRepositor
         parent::__construct($model);
     }
 
-    public function getExpiresAtNull(string $token): UserInvite
+    public function getExpiresAtNull(string $token): ?UserInvite
     {
         return $this->model->where('token', $token)
             ->whereNull('accepted_at')

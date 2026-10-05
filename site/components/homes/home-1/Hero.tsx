@@ -47,7 +47,8 @@ export default function Hero() {
                   </div>
                 </div>
                 {/* title marquee */}
-                <div className="mxd-hero-01__marquee loading__item">
+                {/* Faixa decorativa: o "tech" vem de data-deco (CSS), por isso não entra no texto da página. */}
+                <div className="mxd-hero-01__marquee loading__item" aria-hidden="true">
                   <VelocityMarquee className="marquee marquee-right--gsap">
                     {/* single item */}
                     {Array.from({ length: 6 }).map((_, index) => (
@@ -55,7 +56,7 @@ export default function Hero() {
                         key={index}
                         className="marquee__item item-regular text"
                       >
-                        <p>tech</p>
+                        <p className="xp-deco" data-deco="tech" />
                         <svg
                           version="1.1"
                           xmlns="http://www.w3.org/2000/svg"
@@ -80,15 +81,15 @@ export default function Hero() {
                   </VelocityMarquee>
                 </div>
                 {/* title text */}
+                {/* O título lê-se "Marketing e Tecnologia, juntos": os espaços entre os blocos não
+                    mudam o aspeto (as linhas são flex) e o bloco "tech" é só um espaçador visual. */}
                 <h1 className="hero-01-title">
                   <span className="hero-01-title__row loading__item">
-                    <em className="hero-01-title__item">Marketing</em>
-                    <em className="hero-01-title__item title-item-transparent">
-                      tech
-                    </em>
-                  </span>
+                    <em className="hero-01-title__item">Marketing</em>{" "}
+                    <em className="hero-01-title__item title-item-transparent xp-deco" data-deco="tech" aria-hidden="true" />
+                  </span>{" "}
                   <span className="hero-01-title__row loading__item">
-                    <em className="hero-01-title__item title-item-image">
+                    <em className="hero-01-title__item title-item-image" aria-hidden="true">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         version="1.1"
@@ -97,7 +98,7 @@ export default function Hero() {
                         <path d="M19.6,9.6h-3.9c-.4,0-1.8-.2-1.8-.2-.6,0-1.1-.2-1.6-.6-.5-.3-.9-.8-1.2-1.2-.3-.4-.4-.9-.5-1.4,0,0,0-1.1-.2-1.5V.4c0-.2-.2-.4-.4-.4s-.4.2-.4.4v4.4c0,.4-.2,1.5-.2,1.5,0,.5-.2,1-.5,1.4-.3.5-.7.9-1.2,1.2s-1,.5-1.6.6c0,0-1.2,0-1.7.2H.4c-.2,0-.4.2-.4.4s.2.4.4.4h4.1c.4,0,1.7.2,1.7.2.6,0,1.1.2,1.6.6.4.3.8.7,1.1,1.1.3.5.5,1,.6,1.6,0,0,0,1.3.2,1.7v4.1c0,.2.2.4.4.4s.4-.2.4-.4v-4.1c0-.4.2-1.7.2-1.7,0-.6.2-1.1.6-1.6.3-.4.7-.8,1.1-1.1.5-.3,1-.5,1.6-.6,0,0,1.3,0,1.8-.2h3.9c.2,0,.4-.2.4-.4s-.2-.4-.4-.4h0Z" />
                       </svg>
                       {/* <Image class="inject-me" src="/img/icons/20x20-rayo-star.svg" alt="Divider Icon"> */}
-                    </em>
+                    </em>{" "}
                     <em className="hero-01-title__item">e Tecnologia, juntos</em>
                   </span>
                 </h1>
@@ -111,6 +112,7 @@ export default function Hero() {
                   <a
                     href="#projects"
                     className="btn-rotating btn-rotating-120-160"
+                    aria-label="Ver mais"
                   >
                     {/* SVG rotating text */}
                     <AnimateRotation
@@ -124,6 +126,7 @@ export default function Hero() {
                       viewBox="0 0 160 160"
                       xmlSpace="preserve"
                       className="btn-rotating__text animate-rotation"
+                      aria-hidden="true"
                       value={360}
                     >
                       <defs>
@@ -137,8 +140,7 @@ export default function Hero() {
                         <text>
                           {/* button text here!!! */}
                           <textPath xlinkHref="#textPath">
-                            Scroll for More * Scroll for More * Scroll for More
-                            *
+                            Deslize para ver mais * Deslize para ver mais *
                           </textPath>
                         </text>
                       </g>

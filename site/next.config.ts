@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
   // Raiz do repositório: o site importa server/config/legal-company.json (dados legais
   // partilhados com o PDF dos orçamentos).
   turbopack: { root: path.join(__dirname, "..") },
+  // 404 global: necessário com dois layouts raiz (PT com lang pt-PT, EN com lang en).
+  experimental: { globalNotFound: true },
 };
 
 export default nextConfig;

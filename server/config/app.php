@@ -54,6 +54,10 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // Endereço da app (CRA) servida em /app: usado nos links enviados por email
+    // (ex.: convite para criar conta → /app/register?token=...).
+    'frontend_url' => env('FRONTEND_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/') . '/app'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
