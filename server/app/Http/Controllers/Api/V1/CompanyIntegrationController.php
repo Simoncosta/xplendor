@@ -53,9 +53,8 @@ class CompanyIntegrationController extends Controller
         $appToken  = config('services.meta.app_id') . '|' . config('services.meta.app_secret');
         $tokenInfo = $this->metaAds->debugToken($longToken, $appToken);
 
-        $expiresAt = isset($tokenInfo['expires_at'])
-            ? \Carbon\Carbon::createFromTimestamp($tokenInfo['expires_at'])
-            : now()->addDays(60);
+        // 0 ou ausente = sem data de expiração (NULL), nunca 1970.
+        $expiresAt = \App\Support\MetaTokenExpiry::fromDebug($tokenInfo);
 
         $previousAccount = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', 'meta')->value('account_id');

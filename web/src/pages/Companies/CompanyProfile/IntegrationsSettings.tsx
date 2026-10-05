@@ -439,7 +439,8 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         {infoRow("Conta", formatMetaAccountId(metaIntegration.account_id))}
                                         {infoRow("Campanhas ativas", metaIntegration.active_campaigns_count ?? 0)}
                                         {infoRow("Último sync", fmtDate(metaIntegration.last_synced_at))}
-                                        {infoRow("Token expira", fmtDate(metaIntegration.token_expires_at))}
+                                        {/* Sem data: a Meta não indicou expiração (não quer dizer expirado). */}
+                                        {infoRow("Token expira", metaIntegration.token_expires_at ? fmtDate(metaIntegration.token_expires_at) : "Sem data de expiração")}
 
                                         {/* Corrigir a conta (ex.: ID mal escrito → sincronização falha). */}
                                         {canManageMeta && metaIntegration.account_id && !editingMetaAccount && (

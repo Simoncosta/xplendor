@@ -88,7 +88,8 @@ class MetaSocialClient
 
         return [
             'token' => (string) $token,
-            'expires_at' => ! empty($data['expires_at']) ? now()->setTimestamp((int) $data['expires_at']) : now()->addDays(60),
+            // 0 ou ausente = sem data de expiração (NULL), nunca 1970 nem uma data inventada.
+            'expires_at' => \App\Support\MetaTokenExpiry::fromDebug($data),
             'user_id' => isset($data['user_id']) ? (string) $data['user_id'] : null,
             'scopes' => array_values(array_intersect(SocialConnection::SCOPES, (array) ($data['scopes'] ?? SocialConnection::SCOPES))),
         ];
