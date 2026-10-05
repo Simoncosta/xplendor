@@ -42,7 +42,6 @@ class Company extends Model
         'uses_vat',
         'facebook_page_id',
         'facebook_pixel_id',
-        'facebook_access_token',
         'website',
         'instagram',
         'youtube',
@@ -81,6 +80,12 @@ class Company extends Model
     // rótulo na lista, pela exclusão do stock (scopeActive) e pelo guard de acesso
     // (CheckCompanySubscription usa hasPlatformAccess). Evita critérios divergentes.
     protected $appends = ['is_active'];
+
+    /**
+     * Token antigo da Meta (coluna legada, sem uso). Nunca é gravável por pedido
+     * (fora do $fillable e da validação) nem sai nas respostas da API.
+     */
+    protected $hidden = ['facebook_access_token'];
 
     public function getIsActiveAttribute(): bool
     {

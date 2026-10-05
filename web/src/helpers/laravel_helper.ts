@@ -146,6 +146,10 @@ export const createBlogAiDraft = (companyId: number, data: any) => api.create(ur
 export const getBlogAiDraft = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/blog-ai/drafts/${id}`);
 export const getBrandProfile = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/brand-profile`);
 export const updateBrandProfile = (companyId: number, data: any) => api.put(url.GET_COMPANIES + `/${companyId}/brand-profile`, data);
+// Seguidores (Perfil da Marca): estado e crescimento; registo manual de hoje.
+export const getFollowers = (companyId: number, days = 90) => api.get(url.GET_COMPANIES + `/${companyId}/followers`, { days });
+export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
 
 // SUPPLIERS (DMS 1c.1)
 export const getSuppliers = (companyId: number, params?: { perPage?: number; page?: number; search?: string; only_active?: number }) =>

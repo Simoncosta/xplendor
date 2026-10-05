@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Models\BlogAiDraft;
+use App\Models\AiRequest;
 use App\Models\Car;
 use App\Models\CarSale;
 use App\Models\Company;
@@ -39,7 +39,7 @@ class BlogAiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.openai.key' => 'test-key', 'services.openai.blog_ai_monthly_cap' => 30]);
+        config(['services.openai.key' => 'test-key', 'services.openai.ai_monthly_caps.blog' => 30]);
 
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 999, 'created_at' => now(), 'updated_at' => now()]);
         $this->a = Company::create(['nipc' => '500020001', 'fiscal_name' => 'Quebom Lda', 'trade_name' => 'Quebom', 'plan_id' => $planId, 'subscription_status' => 'active']);
@@ -111,7 +111,8 @@ class BlogAiTest extends TestCase
         $this->assertSame(AudienceSummaryService::NO_DATA_WARNING, $draft['audience_warning']);
         $this->assertSame([1, 30], [$draft['used'], $draft['cap']]);
 
-        $row = BlogAiDraft::find($draft['id']);
+        $row = AiRequest::find($draft['id']);
+        $this->assertSame(['blog', 'topic'], [$row->mode, $row->variant]);
         $this->assertSame(['blog-v1', 'gpt-4o', 812, 1430, 2242], [$row->prompt_version, $row->model, $row->prompt_tokens, $row->completion_tokens, $row->total_tokens]);
 
         $prompt = $this->sentUserPrompt();
@@ -143,7 +144,7 @@ class BlogAiTest extends TestCase
 
         $id = $this->as($this->userA)->postJson($this->url($this->a, '/blog-ai/drafts'), ['mode' => 'topic', 'topic' => 'Inverno'])->assertStatus(202)->json('data.id');
 
-        $draft = BlogAiDraft::find($id);
+        $draft = AiRequest::find($id);
         $this->assertSame('error', $draft->status);
         $this->assertNotNull($draft->error_message);
         $this->as($this->userA)->getJson($this->url($this->a, '/blog-ai/context'))->assertOk()->assertJsonPath('data.used', 0);
@@ -155,8 +156,8 @@ class BlogAiTest extends TestCase
     public function test_monthly_limit_of_thirty_drafts_per_company(): void
     {
         $this->fakeOpenAi();
-        $row = fn (Company $c, string $status, $when) => DB::table('blog_ai_drafts')->insert([
-            'company_id' => $c->id, 'mode' => 'topic', 'status' => $status, 'input' => '{}', 'model' => 'gpt-4o', 'prompt_version' => 'blog-v1',
+        $row = fn (Company $c, string $status, $when) => DB::table('ai_requests')->insert([
+            'company_id' => $c->id, 'mode' => 'blog', 'variant' => 'topic', 'status' => $status, 'input' => '{}', 'model' => 'gpt-4o', 'prompt_version' => 'blog-v1',
             'created_at' => $when, 'updated_at' => $when,
         ]);
         for ($i = 0; $i < 29; $i++) {
@@ -168,7 +169,7 @@ class BlogAiTest extends TestCase
         $this->as($this->userA)->postJson($this->url($this->a, '/blog-ai/drafts'), ['mode' => 'topic', 'topic' => 'Trigésimo'])->assertStatus(202);
         $this->as($this->userA)->postJson($this->url($this->a, '/blog-ai/drafts'), ['mode' => 'topic', 'topic' => 'Trigésimo primeiro'])
             ->assertStatus(429)->assertJsonPath('message', fn ($m) => str_contains($m, '30'));
-        $this->assertSame(32, BlogAiDraft::where('company_id', $this->a->id)->count(), 'o pedido recusado não fica registado');
+        $this->assertSame(32, AiRequest::where('company_id', $this->a->id)->count(), 'o pedido recusado não fica registado');
 
         // Outra empresa não é afetada.
         $adminB = User::factory()->create(['company_id' => $this->b->id, 'role' => 'admin']);

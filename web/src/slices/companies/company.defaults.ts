@@ -26,7 +26,6 @@ export const COMPANY_CREATE_DEFAULTS: ICompanyUpdatePayload = {
     uses_vat: false,
     facebook_page_id: null,
     facebook_pixel_id: null,
-    facebook_access_token: null,
     website: null,
     instagram: null,
     youtube: null,

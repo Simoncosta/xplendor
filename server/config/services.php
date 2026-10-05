@@ -48,7 +48,12 @@ return [
         'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
         // Blog: "Ajudar a escrever" / "a partir de uma publicação".
         'blog_ai_model' => env('BLOG_AI_MODEL', 'gpt-4o'),
-        'blog_ai_monthly_cap' => (int) env('BLOG_AI_MONTHLY_CAP', 30), // rascunhos com IA por empresa/mês
+        // Limite mensal de pedidos à IA por empresa, POR MODO (um modo não gasta o de outro).
+        'ai_monthly_caps' => [
+            'blog'          => (int) env('BLOG_AI_MONTHLY_CAP', 30),           // rascunhos de artigos
+            'brand_profile' => (int) env('BRAND_PROFILE_AI_MONTHLY_CAP', 10),  // "Sugerir perfil"
+            'creative'      => (int) env('CREATIVE_AI_MONTHLY_CAP', 60),       // "Sugerir criativo"
+        ],
     ],
 
     // XPLENDOR — GA4 (Data API). Credencial única do SERVIDOR: uma Service

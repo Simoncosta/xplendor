@@ -163,12 +163,27 @@ export const AUDIENCE_REASON: Record<string, string> = {
     error: "indisponível",
 };
 
+export type EmojiPolicy = "none" | "light" | "free";
+
+export interface BrandPillar {
+    name: string;
+    description: string | null;
+}
+
+/** Perfil da Marca (campos com os nomes previstos para brand_profiles na F1). */
 export interface IBrandProfile {
     tone_of_voice: string | null;
     audience: string | null;
     words_to_use: string[];
     words_to_avoid: string[];
     topics_to_avoid: string[];
+    pillars: BrandPillar[];
+    hashtags_default: string[];
+    cta_default: string | null;
+    emoji_policy: EmojiPolicy | null;
+    notes: string | null;
     language: string;
     updated_at: string | null;
+    is_empty?: boolean;
+    can_edit?: boolean;
 }

@@ -3,9 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import Pagination from "Components/Common/Pagination";
-import { getBlogs } from "helpers/laravel_helper";
+import { getBlogs, getBrandProfile } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, BLOG_STATUS_ORDER, BlogStatus, IBlogListItem, blogImage, fmtDateTime } from "common/models/blog.model";
-import BrandProfileModal from "./BrandProfileModal";
 
 /**
  * Artigos do blog da empresa. Os que estão em revisão aparecem primeiro; o administrador
@@ -29,7 +28,13 @@ const BlogList = () => {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [profileOpen, setProfileOpen] = useState(false);
+    // Perfil da marca (página própria): só para o aviso de perfil por preencher.
+    const [profileEmpty, setProfileEmpty] = useState(false);
+
+    useEffect(() => {
+        if (!companyId) return;
+        getBrandProfile(companyId).then((r: any) => setProfileEmpty(!!r?.data?.is_empty)).catch(() => setProfileEmpty(false));
+    }, [companyId]);
 
     const load = useCallback(() => {
         if (!companyId) return;
@@ -64,14 +69,24 @@ const BlogList = () => {
                             <p className="text-muted mb-0">Artigos do site: rascunho, revisão, aprovação e publicação.</p>
                         </div>
                         <div className="d-flex gap-2">
-                            <button type="button" className="btn btn-soft-secondary" onClick={() => setProfileOpen(true)}>
-                                <i className="ri-user-voice-line me-1" />Perfil da marca
-                            </button>
+                            <Link to="/brand-profile" className="btn btn-soft-secondary">
+                                <i className="ri-user-voice-line me-1" />Perfil da Marca
+                            </Link>
                             <Link to="/blogs/create" className="btn btn-success">
                                 <i className="ri-add-line me-1" />Novo artigo
                             </Link>
                         </div>
                     </div>
+
+                    {profileEmpty && (
+                        <div className="alert alert-info d-flex flex-wrap align-items-center gap-2" role="alert">
+                            <i className="ri-user-voice-line fs-5" />
+                            <div className="flex-grow-1">
+                                O perfil da marca ainda não está preenchido. Com ele, os rascunhos feitos com IA seguem o tom e o público da marca.
+                            </div>
+                            <Link to="/brand-profile" className="btn btn-sm btn-info">Preencher o Perfil da Marca</Link>
+                        </div>
+                    )}
 
                     {canApprove && inReview > 0 && (
                         <div className="alert alert-warning d-flex align-items-center gap-2" role="alert">
@@ -171,7 +186,6 @@ const BlogList = () => {
                     </Card>
                 </Container>
             </div>
-            <BrandProfileModal isOpen={profileOpen} toggle={() => setProfileOpen(false)} companyId={companyId} />
         </React.Fragment>
     );
 };

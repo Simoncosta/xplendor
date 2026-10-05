@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Models\BlogAiDraft;
+use App\Models\AiRequest;
 use App\Models\Company;
 use App\Services\Blog\BlogAiService;
 use App\Services\BlogWorkflowService;
@@ -38,7 +38,7 @@ class BlogAiController extends Controller
         }
 
         $data = $request->validate([
-            'mode'                 => ['required', Rule::in([BlogAiDraft::MODE_TOPIC, BlogAiDraft::MODE_FROM_POST])],
+            'mode'                 => ['required', Rule::in([AiRequest::VARIANT_TOPIC, AiRequest::VARIANT_FROM_POST])],
             'topic'                => ['required_if:mode,topic', 'nullable', 'string', 'max:300'],
             'source_text'          => ['required_if:mode,from_post', 'nullable', 'string', 'max:5000'],
             'keyword'              => ['nullable', 'string', 'max:100'],
@@ -59,7 +59,7 @@ class BlogAiController extends Controller
 
     public function show(Request $request, int $companyId, int $draftId)
     {
-        $draft = BlogAiDraft::where('company_id', $companyId)->find($draftId);
+        $draft = AiRequest::where('company_id', $companyId)->where('mode', AiRequest::MODE_BLOG)->find($draftId);
         if (! $draft) {
             return ApiResponse::error('Pedido não encontrado.', 404);
         }
@@ -67,13 +67,14 @@ class BlogAiController extends Controller
         return ApiResponse::success($this->present($draft), 'Pedido carregado.');
     }
 
-    private function present(BlogAiDraft $d): array
+    private function present(AiRequest $d): array
     {
         return [
             'id'            => $d->id,
-            'mode'          => $d->mode,
+            // A API do blog continua a chamar "mode" ao subtipo (topic | from_post).
+            'mode'          => $d->variant,
             'status'        => $d->status,
-            'result'        => $d->status === BlogAiDraft::DONE ? $d->result : null,
+            'result'        => $d->status === AiRequest::DONE ? $d->result : null,
             'audience_warning' => $d->context['audience']['warning'] ?? null,
             'error_message' => $d->error_message,
             'used'          => BlogAiService::usedThisMonth((int) $d->company_id),

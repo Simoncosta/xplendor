@@ -13,17 +13,23 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class CompanyBrandProfile extends Model
 {
-    public const LIST_FIELDS = ['words_to_use', 'words_to_avoid', 'topics_to_avoid'];
+    public const LIST_FIELDS = ['words_to_use', 'words_to_avoid', 'topics_to_avoid', 'hashtags_default'];
+
+    /** Política de emojis (mesmos valores previstos para brand_profiles na F1). */
+    public const EMOJI_POLICIES = ['none', 'light', 'free'];
 
     protected $fillable = [
         'company_id', 'tone_of_voice', 'audience', 'words_to_use', 'words_to_avoid',
-        'topics_to_avoid', 'language', 'updated_by_user_id',
+        'topics_to_avoid', 'pillars', 'hashtags_default', 'cta_default', 'emoji_policy', 'notes',
+        'language', 'updated_by_user_id',
     ];
 
     protected $casts = [
         'words_to_use' => 'array',
         'words_to_avoid' => 'array',
         'topics_to_avoid' => 'array',
+        'pillars' => 'array',
+        'hashtags_default' => 'array',
     ];
 
     public function company(): BelongsTo
@@ -34,6 +40,8 @@ class CompanyBrandProfile extends Model
     public function isEmpty(): bool
     {
         return trim((string) $this->tone_of_voice) === '' && trim((string) $this->audience) === ''
-            && empty($this->words_to_use) && empty($this->words_to_avoid) && empty($this->topics_to_avoid);
+            && empty($this->words_to_use) && empty($this->words_to_avoid) && empty($this->topics_to_avoid)
+            && empty($this->pillars) && empty($this->hashtags_default)
+            && trim((string) $this->cta_default) === '' && trim((string) $this->notes) === '';
     }
 }

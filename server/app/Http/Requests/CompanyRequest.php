@@ -77,7 +77,6 @@ class CompanyRequest extends FormRequest
             'uses_vat' => ['nullable', 'boolean'],
             'facebook_page_id' => ['nullable', 'string', 'max:255'],
             'facebook_pixel_id' => ['nullable', 'string', 'max:255'],
-            'facebook_access_token' => ['nullable', 'string'],
             'website' => ['nullable', 'string', 'max:255'],
             'instagram' => ['nullable', 'string', 'max:255'],
             'facebook' => ['nullable', 'string', 'max:255'],

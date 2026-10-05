@@ -51,18 +51,24 @@ const ProfileDropdown = () => {
                 </DropdownToggle>
                 <DropdownMenu className="dropdown-menu-end">
                     <h6 className="dropdown-header">Bem vindo(a) {userName}!</h6>
+                    <DropdownItem className='p-0'>
+                        <Link to={`/companies/${companyId}`} className="dropdown-item">
+                            <i className="bx bx-buildings text-muted fs-16 align-middle me-1"></i>
+                            <span className="align-middle">Perfil da Empresa</span>
+                        </Link>
+                    </DropdownItem>
                     {userId !== 0 && (
                         <DropdownItem className='p-0'>
                             <Link to={`/users/${userId}`} className="dropdown-item">
                                 <i className="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i>
-                                <span className="align-middle">Meu perfil</span>
+                                <span className="align-middle">Perfil do Utilizador</span>
                             </Link>
                         </DropdownItem>
                     )}
                     <DropdownItem className='p-0'>
-                        <Link to={`/companies/${companyId}`} className="dropdown-item">
-                            <i className="bx bx-buildings text-muted fs-16 align-middle me-1"></i>
-                            <span className="align-middle">Perfil da empresa</span>
+                        <Link to="/brand-profile" className="dropdown-item">
+                            <i className="ri-user-voice-line text-muted fs-16 align-middle me-1"></i>
+                            <span className="align-middle">Perfil da Marca</span>
                         </Link>
                     </DropdownItem>
                     <div className="dropdown-divider"></div>

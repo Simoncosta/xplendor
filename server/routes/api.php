@@ -352,6 +352,9 @@ Route::prefix('v1')->group(function () {
                 Route::get('/blog-ai/drafts/{draft}', [\App\Http\Controllers\Api\V1\BlogAiController::class, 'show'])->whereNumber('draft');
                 Route::get('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'show']);
                 Route::put('/brand-profile', [\App\Http\Controllers\Api\V1\BrandProfileController::class, 'update']);
+                // Seguidores (Perfil da Marca): estado, crescimento e registo manual de hoje.
+                Route::get('/followers', [\App\Http\Controllers\Api\V1\FollowerSnapshotController::class, 'index']);
+                Route::post('/followers', [\App\Http\Controllers\Api\V1\FollowerSnapshotController::class, 'store']);
                 // ── Módulo LINHA EDITORIAL (transversal) — escolha de ramo + calendário herdado ──
                 Route::middleware('ensure_module:linha_editorial')->group(function () {
                     Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);

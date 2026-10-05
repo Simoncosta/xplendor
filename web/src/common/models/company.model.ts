@@ -44,7 +44,6 @@ export interface ICompany {
 
     facebook_page_id: string | null;
     facebook_pixel_id: string | null;
-    facebook_access_token: string | null;
 
     website: string | null;
     instagram: string | null;

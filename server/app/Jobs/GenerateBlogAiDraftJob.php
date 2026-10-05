@@ -12,7 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Blog — gera o rascunho pedido à IA (blog_ai_drafts). O editor consulta o estado até
+ * Blog — gera o rascunho pedido à IA (ai_requests, modo blog). O editor consulta o estado até
  * ficar pronto. Uma tentativa só: o serviço já repete a chamada à OpenAI e grava o erro.
  */
 class GenerateBlogAiDraftJob implements ShouldQueue

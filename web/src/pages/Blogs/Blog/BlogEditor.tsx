@@ -11,7 +11,6 @@ import {
 import { BLOG_STATUS_META, IBlogAiResult, IBlogPost, blogImage, fmtDateTime, hasMarker, slugify } from "common/models/blog.model";
 import BlogSeoPanel from "./BlogSeoPanel";
 import BlogAiModal from "./BlogAiModal";
-import BrandProfileModal from "../BrandProfileModal";
 
 /**
  * Criar e editar um artigo do blog. Conteúdo (o HTML é limpo no servidor ao gravar e ao
@@ -72,7 +71,6 @@ const BlogEditor = () => {
     const [bannerPreview, setBannerPreview] = useState<string | null>(null);
     const [slugTouched, setSlugTouched] = useState(false);
     const [aiOpen, setAiOpen] = useState(false);
-    const [profileOpen, setProfileOpen] = useState(false);
     const [approveOpen, setApproveOpen] = useState(false);
     const [publishMode, setPublishMode] = useState<"now" | "schedule">("now");
     const [publishAt, setPublishAt] = useState(toLocalInput(new Date(Date.now() + 24 * 3600 * 1000)));
@@ -467,9 +465,9 @@ const BlogEditor = () => {
                 blogId={blog?.id ?? null}
                 defaultKeyword={v.focus_keyword}
                 onApply={applyAi}
-                onOpenBrandProfile={() => setProfileOpen(true)}
+                // Abre o Perfil da Marca num separador novo, para não perder o artigo em edição.
+                onOpenBrandProfile={() => window.open(`${process.env.PUBLIC_URL}/brand-profile`, "_blank", "noopener")}
             />
-            <BrandProfileModal isOpen={profileOpen} toggle={() => setProfileOpen(false)} companyId={companyId} />
         </React.Fragment>
     );
 };

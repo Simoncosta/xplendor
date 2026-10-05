@@ -53,6 +53,7 @@ import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import SatisfactionReport from "pages/SatisfactionReport";
 import UserUpdate from "pages/Users/User/UserUpdate";
+import BrandProfilePage from "pages/BrandProfile";
 
 // Suppliers (DMS 1c.1)
 import SupplierList from "pages/Suppliers/SupplierList";
@@ -183,6 +184,8 @@ const authProtectedRoutes = [
     { path: "/users/collaborators/new", component: <CollaboratorEditor /> },
     { path: "/users/collaborators/:id", component: <CollaboratorEditor /> },
     { path: "/users/:id", component: <UserUpdate /> },
+    // Perfil da Marca (página própria; antes era um modal no Blog).
+    { path: "/brand-profile", component: <BrandProfilePage /> },
 
     // Blogs
     { path: "/blogs", component: <BlogList /> },

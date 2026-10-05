@@ -6,7 +6,8 @@ namespace App\Services\Blog;
 
 use App\Jobs\GenerateBlogAiDraftJob;
 use App\Models\Blog;
-use App\Models\BlogAiDraft;
+use App\Models\AiRequest;
+use App\Services\Ai\AiRequestQuota;
 use App\Models\Company;
 use App\Models\CompanyBrandProfile;
 use App\Models\District;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 /**
  * "Ajudar a escrever" e "a partir de uma publicação" (colar o texto). OpenAI gpt-4o em JSON
  * mode, em fila (como o OCR), com limite mensal por empresa e registo da versão do prompt,
- * do modelo e dos tokens em blog_ai_drafts.
+ * do modelo e dos tokens em ai_requests (modo blog; limite próprio do modo).
  *
  * O prompt leva o perfil da marca, o ramo, a zona, o público MEDIDO (só acima dos mínimos;
  * abaixo disso diz que não há dados) e as palavras-chave. Regras: português de Portugal,
@@ -50,18 +51,16 @@ class BlogAiService
         return (string) config('services.openai.blog_ai_model', 'gpt-4o');
     }
 
+    /** Limite mensal do modo blog (cada modo de IA tem o seu: ver AiRequestQuota). */
     public static function monthlyCap(): int
     {
-        return (int) config('services.openai.blog_ai_monthly_cap', 30);
+        return AiRequestQuota::cap(AiRequest::MODE_BLOG);
     }
 
-    /** Pedidos deste mês que contam para o limite (os que falharam não contam). */
+    /** Pedidos de blog deste mês que contam para o limite (os que falharam não contam). */
     public static function usedThisMonth(int $companyId): int
     {
-        return BlogAiDraft::where('company_id', $companyId)
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->where('status', '!=', BlogAiDraft::ERROR)
-            ->count();
+        return AiRequestQuota::used($companyId, AiRequest::MODE_BLOG);
     }
 
     /** Contexto para o ecrã: uso do mês, público (com aviso) e se há perfil de marca. */
@@ -79,24 +78,25 @@ class BlogAiService
     }
 
     /** Valida o limite, regista o pedido e põe-no na fila. */
-    public function request(Company $company, User $actor, string $mode, array $input, ?int $blogId): BlogAiDraft
+    public function request(Company $company, User $actor, string $variant, array $input, ?int $blogId): AiRequest
     {
         if ($blogId !== null && ! Blog::where('company_id', $company->id)->whereKey($blogId)->exists()) {
             throw new HttpException(404, 'Artigo não encontrado.');
         }
 
-        $draft = DB::transaction(function () use ($company, $actor, $mode, $input, $blogId) {
+        $draft = DB::transaction(function () use ($company, $actor, $variant, $input, $blogId) {
             Company::whereKey($company->id)->lockForUpdate()->first(); // serializa a contagem por empresa
             if (self::usedThisMonth($company->id) >= self::monthlyCap()) {
                 throw new HttpException(429, 'Limite mensal de rascunhos com IA atingido (' . self::monthlyCap() . '). Volta a estar disponível no início do próximo mês.');
             }
 
-            return BlogAiDraft::create([
+            return AiRequest::create([
                 'company_id'     => $company->id,
                 'blog_id'        => $blogId,
                 'user_id'        => $actor->id,
-                'mode'           => $mode,
-                'status'         => BlogAiDraft::QUEUED,
+                'mode'           => AiRequest::MODE_BLOG,
+                'variant'        => $variant,
+                'status'         => AiRequest::QUEUED,
                 'input'          => $input,
                 'model'          => self::model(),
                 'prompt_version' => self::PROMPT_VERSION,
@@ -111,22 +111,22 @@ class BlogAiService
     /** Corre na fila: monta o prompt, chama a OpenAI, limpa e guarda o resultado. */
     public function process(int $draftId): void
     {
-        $draft = BlogAiDraft::find($draftId);
-        if (! $draft || $draft->status !== BlogAiDraft::QUEUED) {
+        $draft = AiRequest::where('mode', AiRequest::MODE_BLOG)->find($draftId);
+        if (! $draft || $draft->status !== AiRequest::QUEUED) {
             return;
         }
-        $draft->update(['status' => BlogAiDraft::PROCESSING]);
+        $draft->update(['status' => AiRequest::PROCESSING]);
 
         try {
             $company = Company::with('contentSector')->findOrFail($draft->company_id);
             $context = $this->buildContext($company);
-            $messages = $this->messages($draft->mode, $draft->input ?? [], $context);
+            $messages = $this->messages((string) $draft->variant, $draft->input ?? [], $context);
 
             $response = $this->callOpenAi($messages);
             $result = $this->sanitizeResult($this->decodeJson((string) $response['content']));
 
             $draft->update([
-                'status'            => BlogAiDraft::DONE,
+                'status'            => AiRequest::DONE,
                 'context'           => $context,
                 'result'            => $result,
                 'prompt_tokens'     => $response['usage']['prompt_tokens'] ?? null,
@@ -136,7 +136,7 @@ class BlogAiService
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Blog IA] Falhou', ['draft_id' => $draftId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
-            $draft->update(['status' => BlogAiDraft::ERROR, 'error_message' => 'Não foi possível gerar o rascunho. Tente novamente dentro de alguns minutos.']);
+            $draft->update(['status' => AiRequest::ERROR, 'error_message' => 'Não foi possível gerar o rascunho. Tente novamente dentro de alguns minutos.']);
         }
     }
 
@@ -198,7 +198,7 @@ class BlogAiService
         if (! empty($context['location'])) {
             $lines[] = 'Zona: ' . $this->clean($context['location'], 120);
         }
-        $lines[] = $mode === BlogAiDraft::MODE_FROM_POST
+        $lines[] = $mode === AiRequest::VARIANT_FROM_POST
             ? 'Pedido: adaptar a publicação das redes sociais abaixo para um artigo de blog completo, mais desenvolvido e útil, sem acrescentar factos que não estejam na publicação.'
             : 'Pedido: escrever um artigo de blog sobre o tema indicado.';
 
