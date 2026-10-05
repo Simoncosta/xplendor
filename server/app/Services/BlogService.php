@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Blog;
+use App\Models\EditorialPost;
 use App\Models\User;
 use App\Repositories\Contracts\BlogRepositoryInterface;
 use App\Support\BlogHtml;
@@ -36,9 +37,23 @@ class BlogService extends BaseService
     public function createArticle(int $companyId, User $author, array $data): Blog
     {
         $blog = DB::transaction(function () use ($companyId, $author, $data) {
+            // Ponte da Linha Editorial: a publicação tem de ser da empresa, do canal "Site" e
+            // ainda sem artigo (bloqueada para não ligar dois artigos ao mesmo tempo).
+            $post = null;
+            if (! empty($data['editorial_post_id'])) {
+                $post = EditorialPost::where('company_id', $companyId)->lockForUpdate()->find((int) $data['editorial_post_id']);
+                if (! $post || $post->channel !== 'site') {
+                    throw ValidationException::withMessages(['editorial_post_id' => ['Publicação do canal Site não encontrada.']]);
+                }
+                if ($post->blog_id && Blog::whereKey($post->blog_id)->exists()) {
+                    throw ValidationException::withMessages(['editorial_post_id' => ['Esta publicação já tem um artigo ligado.']]);
+                }
+            }
+
             $blog = new Blog(['company_id' => $companyId, 'user_id' => $author->id, 'status' => Blog::DRAFT]);
             $this->fill($blog, $data);
             $blog->save();
+            $post?->update(['blog_id' => $blog->id]);
 
             return $blog;
         });

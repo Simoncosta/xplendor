@@ -56,6 +56,7 @@ return [
             'blog'          => (int) env('BLOG_AI_MONTHLY_CAP', 30),           // rascunhos de artigos
             'brand_profile' => (int) env('BRAND_PROFILE_AI_MONTHLY_CAP', 10),  // "Sugerir perfil"
             'creative'      => (int) env('CREATIVE_AI_MONTHLY_CAP', 60),       // "Sugerir criativo"
+            'ideas'         => (int) env('IDEAS_AI_MONTHLY_CAP', 10),          // "Gerar ideias do mês"
         ],
     ],
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormikProvider, useFormik } from "formik";
 import CreatableSelect from "react-select/creatable";
 import { Badge, Card, CardBody, CardHeader, Col, Container, Input, InputGroup, InputGroupText, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
@@ -60,6 +60,11 @@ const BlogEditor = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const isNew = !id;
+    // Ponte da Linha Editorial ("Escrever artigo" numa publicação do canal Site).
+    const [searchParams] = useSearchParams();
+    const fromPostId = isNew ? Number(searchParams.get("editorial_post_id") || 0) || null : null;
+    const fromTitle = searchParams.get("title") ?? "";
+    const fromKeyword = searchParams.get("keyword") ?? "";
     const auth = useMemo(readAuth, []);
     const companyId = Number(auth.company_id || 0);
 
@@ -92,6 +97,14 @@ const BlogEditor = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [companyId, id, isNew]);
 
+    // Vindo da Linha Editorial: título e tema preenchidos e o "Ajudar a escrever" aberto, pronto a usar.
+    useEffect(() => {
+        if (!fromPostId) return;
+        formik.setValues({ ...EMPTY, title: fromTitle, slug: slugify(fromTitle), focus_keyword: fromKeyword });
+        setAiOpen(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fromPostId]);
+
     useEffect(() => () => { if (bannerPreview) URL.revokeObjectURL(bannerPreview); }, [bannerPreview]);
 
     const perms = blog?.permissions;
@@ -117,6 +130,7 @@ const BlogEditor = () => {
         fd.append("seo_answer_first_ok", v.seo_answer_first_ok ? "1" : "0");
         v.tags.forEach((t, i) => fd.append(`tags[${i}]`, t));
         if (bannerFile) fd.append("banner", bannerFile);
+        if (isNew && fromPostId) fd.append("editorial_post_id", String(fromPostId));
         return fd;
     };
 
@@ -253,6 +267,17 @@ const BlogEditor = () => {
                         {blog?.review_note && status === "draft" && (
                             <div className="alert alert-warning">
                                 <i className="ri-chat-1-line me-1" /><strong>Alterações pedidas pelo administrador:</strong> {blog.review_note}
+                            </div>
+                        )}
+                        {isNew && fromPostId && (
+                            <div className="alert alert-info">
+                                <i className="ri-links-line me-1" />Artigo para a publicação <strong>{fromTitle}</strong> da Linha Editorial. Fica ligado a ela ao guardar.
+                            </div>
+                        )}
+                        {!isNew && blog?.editorial_post && (
+                            <div className="alert alert-light border py-2 fs-13">
+                                <i className="ri-links-line me-1" />Ligado à publicação <strong>{blog.editorial_post.title}</strong> de{" "}
+                                {new Date(blog.editorial_post.publish_date + "T00:00:00").toLocaleDateString("pt-PT")} da <Link to="/editorial">Linha Editorial</Link>.
                             </div>
                         )}
                         {!isNew && !canEdit && (
@@ -464,6 +489,7 @@ const BlogEditor = () => {
                 companyId={companyId}
                 blogId={blog?.id ?? null}
                 defaultKeyword={v.focus_keyword}
+                defaultTopic={fromTitle}
                 onApply={applyAi}
                 // Abre o Perfil da Marca num separador novo, para não perder o artigo em edição.
                 onOpenBrandProfile={() => window.open(`${process.env.PUBLIC_URL}/brand-profile`, "_blank", "noopener")}

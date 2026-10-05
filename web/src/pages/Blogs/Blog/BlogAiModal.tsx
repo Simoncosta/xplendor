@@ -15,6 +15,8 @@ type Props = {
     companyId: number;
     blogId: number | null;
     defaultKeyword: string;
+    /** Tema já conhecido (ex.: publicação da Linha Editorial). */
+    defaultTopic?: string;
     onApply: (result: IBlogAiResult) => void;
     onOpenBrandProfile: () => void;
 };
@@ -28,7 +30,7 @@ const SOURCE_LABEL: Record<string, string> = { ga4: "GA4", meta: "Meta", sales: 
 const POLL_MS = 2500;
 const POLL_LIMIT = 72; // cerca de 3 minutos
 
-const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, onApply, onOpenBrandProfile }: Props) => {
+const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaultTopic = "", onApply, onOpenBrandProfile }: Props) => {
     const [mode, setMode] = useState<"topic" | "from_post">("topic");
     const [context, setContext] = useState<IBlogAiContext | null>(null);
     const [topic, setTopic] = useState("");
@@ -43,8 +45,9 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, onAppl
     useEffect(() => {
         if (!isOpen || !companyId) return;
         setKeyword((k) => k || defaultKeyword);
+        setTopic((t) => t || defaultTopic);
         getBlogAiContext(companyId).then((r: any) => setContext(r.data)).catch(() => setContext(null));
-    }, [isOpen, companyId, defaultKeyword]);
+    }, [isOpen, companyId, defaultKeyword, defaultTopic]);
 
     useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 

@@ -29,7 +29,7 @@ class EditorialLineService
      * mas a janela deslizante tem de seguir Portugal: senão, à meia-noite de fim de mês,
      * UTC desalinha o mês corrente por um dia face a Lisboa.
      */
-    private const REF_TZ = 'Europe/Lisbon';
+    public const REF_TZ = 'Europe/Lisbon';
 
     /** Nº de meses da janela ativa (corrente + 11). */
     private const WINDOW = 12;

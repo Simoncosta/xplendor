@@ -25,14 +25,20 @@ class EditorialPostService
     /** Cria uma publicação (Modelo C: âncora opcional). Devolve o calendar() atualizado. */
     public function createPost(Company $company, array $data): array
     {
+        $this->createPostRecord($company, $data);
+
+        return $this->line->calendar($company);
+    }
+
+    /** Cria uma publicação com as mesmas validações e devolve-a (usado também pelas ideias aceites). */
+    public function createPostRecord(Company $company, array $data): EditorialPost
+    {
         $clean = $this->validateInput($data);
         $this->assertLinkable($company, $clean['anchor_id'] ?? null, $clean['own_anchor_id'] ?? null);
         $this->assertBlogLinkable($company, $clean['blog_id']);
         $this->line->assertDateEditable($company, $clean['publish_date']);
 
-        EditorialPost::create(array_merge($clean, ['company_id' => $company->id]));
-
-        return $this->line->calendar($company);
+        return EditorialPost::create(array_merge($clean, ['company_id' => $company->id]));
     }
 
     /** Edita uma publicação. Mês aberto exigido na data ANTIGA E na NOVA (se mudar de mês). */

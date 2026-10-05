@@ -34,6 +34,8 @@ class BlogRequest extends FormRequest
             'meta_description'    => ['nullable', 'string', 'max:255'],
             'focus_keyword'       => ['nullable', 'string', 'max:100'],
             'seo_answer_first_ok' => ['nullable', 'boolean'],
+            // Ponte da Linha Editorial: o artigo novo fica ligado à publicação do canal "Site".
+            'editorial_post_id'   => ['nullable', 'integer'],
         ];
     }
 

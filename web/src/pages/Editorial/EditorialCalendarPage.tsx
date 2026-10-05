@@ -14,15 +14,16 @@ import BreadCrumb from "Components/Common/BreadCrumb";
 import {
     getEditorialCalendar, setEditorialSector, openEditorialMonth, closeEditorialMonth,
     hideEditorialAnchor, showEditorialAnchor, createEditorialOwnAnchor, deleteEditorialOwnAnchor,
-    createEditorialPost, updateEditorialPost, deleteEditorialPost, getBlogs,
+    createEditorialPost, updateEditorialPost, deleteEditorialPost, getBrandProfile, getBlogs,
 } from "helpers/laravel_helper";
 import {
     EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
 } from "common/models/editorialPost.model";
 import { BLOG_STATUS_META } from "common/models/blog.model";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
 import CreativeModal from "./CreativeModal";
+import IdeasModal from "./IdeasModal";
 
 /**
  * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
@@ -104,6 +105,10 @@ export default function EditorialCalendarPage() {
     const [postOpen, setPostOpen] = useState(false);               // modal criar/editar publicação
     const [postForm, setPostForm] = useState<PostForm>(emptyPost(""));
     const [creativeOpen, setCreativeOpen] = useState(false);
+    // "Gerar ideias do mês" e guia de descoberta (Perfil da Marca preenchido?).
+    const [ideasOpen, setIdeasOpen] = useState(false);
+    const [profileFilled, setProfileFilled] = useState<boolean | null>(null);
+    const navigate = useNavigate();
 
     const applyCalendar = useCallback((d: any) => {
         setHasSector(!!d.has_sector);
@@ -129,6 +134,10 @@ export default function EditorialCalendarPage() {
     }, [companyId, applyCalendar]);
 
     useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        if (!companyId) return;
+        getBrandProfile(companyId).then((r: any) => setProfileFilled(!r?.data?.is_empty)).catch(() => setProfileFilled(null));
+    }, [companyId, ideasOpen]);
 
     const chooseSector = async (sectorId: number) => {
         setSaving(true);
@@ -138,6 +147,13 @@ export default function EditorialCalendarPage() {
     };
 
     const selected = useMemo(() => months.find((m) => m.month_key === selectedKey) ?? null, [months, selectedKey]);
+    const monthIsEmpty = useMemo(() => !posts.some((p) => p.month_key === selectedKey), [posts, selectedKey]);
+    /** Editor do blog com o título e o tema da publicação; o artigo fica ligado a ela ao guardar. */
+    const writeArticleUrl = (p: EditorialPost) => {
+        const q = new URLSearchParams({ editorial_post_id: String(p.id), title: p.title });
+        if (p.keyword) q.set("keyword", p.keyword);
+        return `/blogs/create?${q.toString()}`;
+    };
     const firstKey = months[0]?.month_key;
     const lastKey = months[months.length - 1]?.month_key;
 
@@ -373,6 +389,9 @@ export default function EditorialCalendarPage() {
                                                 <div className="d-flex align-items-center gap-2">
                                                     {selected.state === "open" && (
                                                         <>
+                                                            <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
+                                                                <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
+                                                            </Button>
                                                             <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
                                                                 <i className="ri-image-add-line me-1" />Publicação
                                                             </Button>
@@ -390,6 +409,44 @@ export default function EditorialCalendarPage() {
                                                     ) : null}
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
+
+                                    {/* DESCOBERTA: mês da tira sem publicações → guia em 3 passos. */}
+                                    {selected && monthIsEmpty && (
+                                        <div className="border border-dashed rounded p-3 mb-3 bg-light-subtle">
+                                            <div className="fw-semibold mb-2"><i className="ri-route-line me-1 text-primary" />Como começar {monthLabel(selectedKey)}</div>
+                                            <div className="row g-2 fs-13">
+                                                <div className="col-md-4">
+                                                    <div className="d-flex gap-2">
+                                                        <span className={`badge rounded-pill ${profileFilled ? "bg-success" : "bg-primary"} align-self-start`}>{profileFilled ? <i className="ri-check-line" /> : "1"}</span>
+                                                        <div>
+                                                            <Link to="/brand-profile" className="fw-medium">Perfil da Marca</Link>
+                                                            <div className="text-muted">{profileFilled ? "Preenchido. Pode rever quando quiser." : "Tom, público e pilares: dão contexto às ideias."}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <div className="d-flex gap-2">
+                                                        <span className="badge rounded-pill bg-primary align-self-start">2</span>
+                                                        <div>
+                                                            {selected.state === "open"
+                                                                ? <button type="button" className="btn btn-link p-0 fw-medium fs-13 align-baseline" onClick={() => setIdeasOpen(true)}>Gerar ideias</button>
+                                                                : <span className="fw-medium">Gerar ideias</span>}
+                                                            <div className="text-muted">{selected.state === "open" ? "A IA propõe ideias para o mês; aceita as que quiser." : "Abra o mês para gerar ideias."}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="col-md-4">
+                                                    <div className="d-flex gap-2">
+                                                        <span className="badge rounded-pill bg-primary align-self-start">3</span>
+                                                        <div>
+                                                            <span className="fw-medium">Criativo ou artigo</span>
+                                                            <div className="text-muted">Em cada publicação: "Sugerir criativo" (Instagram e Facebook) ou "Escrever artigo" (Site).</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
@@ -511,6 +568,12 @@ export default function EditorialCalendarPage() {
                                                     {p.linked_title && <span className="badge bg-secondary-subtle text-secondary"><i className="ri-links-line me-1" />{p.linked_title}</span>}
                                                     {p.blog && <Link to={`/blogs/${p.blog.id}`} className="badge bg-info-subtle text-info"><i className="ri-article-line me-1" />{p.blog.title}</Link>}
                                                 </div>
+                                                {/* Ponte para o Blog: o artigo novo fica ligado a esta publicação. */}
+                                                {p.channel === "site" && !p.blog && (
+                                                    <Button color="soft-info" size="sm" className="mt-2" onClick={() => navigate(writeArticleUrl(p))}>
+                                                        <i className="ri-quill-pen-line me-1" />Escrever artigo
+                                                    </Button>
+                                                )}
                                             </div>
                                             {panelMonthOpen && (
                                                 <div className="d-flex flex-shrink-0 gap-1">
@@ -631,6 +694,19 @@ export default function EditorialCalendarPage() {
                     <Button color="primary" disabled={working} onClick={submitPost}>{working ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />{postForm.id ? "Guardar" : "Criar"}</>}</Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Modal: "Gerar ideias do mês" (aceitação ideia a ideia) */}
+            {selected && (
+                <IdeasModal
+                    isOpen={ideasOpen}
+                    toggle={() => setIdeasOpen(false)}
+                    companyId={companyId}
+                    year={selected.year}
+                    month={selected.month}
+                    monthLabel={monthLabel(selectedKey)}
+                    onAccepted={(cal) => applyCalendar(cal)}
+                />
+            )}
 
             {/* Modal: criativo da publicação (Sugerir criativo e criativo aceite) */}
             {postForm.id && postForm.channel !== "site" && (

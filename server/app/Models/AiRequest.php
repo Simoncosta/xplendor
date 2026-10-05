@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Pedido à IA (fila, registo e contador do limite mensal POR MODO). Nunca grava no
  * destino: o resultado é proposto no ecrã e o humano decide o que usa.
- *  · mode:    blog | brand_profile | creative;
+ *  · mode:    blog | brand_profile | creative | ideas;
  *  · variant: subtipo do modo (no blog: topic | from_post).
  * Guarda a versão do prompt, o modelo e os tokens de cada pedido.
  */
@@ -21,7 +21,8 @@ class AiRequest extends Model
     public const MODE_BLOG = 'blog';
     public const MODE_BRAND_PROFILE = 'brand_profile';
     public const MODE_CREATIVE = 'creative';
-    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE];
+    public const MODE_IDEAS = 'ideas';
+    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS];
 
     /** Subtipos do modo blog. */
     public const VARIANT_TOPIC = 'topic';

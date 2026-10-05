@@ -47,6 +47,10 @@ class BlogResource extends JsonResource
             'submitted_by_name'   => $this->submitter?->name,
             'approved_by_name'    => $this->approver?->name,
             'site_url'            => $this->company?->website,
+            // Publicação da Linha Editorial ligada (canal "Site"), se houver.
+            'editorial_post'      => ($post = \App\Models\EditorialPost::where('company_id', $this->company_id)->where('blog_id', $this->id)->first(['id', 'title', 'publish_date']))
+                ? ['id' => $post->id, 'title' => $post->title, 'publish_date' => $post->publish_date->toDateString()]
+                : null,
             'unresolved_markers'  => BlogWorkflowService::unresolvedMarkers($this->resource),
             'permissions'         => $user ? BlogWorkflowService::permissions($user, $this->resource) : null,
             'created_at'          => optional($this->created_at)->toIso8601String(),

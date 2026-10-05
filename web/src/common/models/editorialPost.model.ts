@@ -74,3 +74,30 @@ export const POST_FORMATS: string[] = [
     "Bastidores", "Enquete/Interativo", "Depoimento", "Dica de expert",
     "Notícia", "Institucional", "Sazonal",
 ];
+
+/** "Gerar ideias do mês": uma ideia proposta pela IA (nada é criado até ser aceite). */
+export interface EditorialIdea {
+    title: string;
+    channel: PostChannel;
+    content_type: string;
+    media_format: string | null;
+    date: string;            // YYYY-MM-DD
+    keyword: string | null;
+    why: string;
+    anchor_title: string | null;
+    anchor_id: number | null;
+    own_anchor_id: number | null;
+    pillar: string | null;
+    accepted_post_id: number | null;
+}
+
+export interface EditorialIdeasRequest {
+    id: number;
+    status: "queued" | "processing" | "done" | "error";
+    year: number;
+    month: number;
+    result: { ideas: EditorialIdea[]; skipped_duplicates: number; has_profile: boolean } | null;
+    error_message: string | null;
+    used: number;
+    cap: number;
+}

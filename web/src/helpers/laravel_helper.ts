@@ -449,6 +449,12 @@ export const updateEditorialPost = (companyId: number, postId: number, payload: 
     api.put(ED(companyId) + `/posts/${postId}`, payload);
 export const deleteEditorialPost = (companyId: number, postId: number) =>
     api.delete(ED(companyId) + `/posts/${postId}`);
+// "Gerar ideias do mês" (IA) e aceitação ideia a ideia (cada uma vira uma publicação em rascunho).
+export const requestEditorialIdeas = (companyId: number, year: number, month: number) =>
+    api.create(ED(companyId) + `/ideas`, { year, month }, { headers: { "Content-Type": "application/json" } });
+export const getEditorialIdeas = (companyId: number, id: number) => api.get(ED(companyId) + `/ideas/${id}`);
+export const acceptEditorialIdea = (companyId: number, id: number, payload: { index: number; publish_date?: string; channel?: string }) =>
+    api.create(ED(companyId) + `/ideas/${id}/accept`, payload, { headers: { "Content-Type": "application/json" } });
 
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);

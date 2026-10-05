@@ -407,6 +407,10 @@ Route::prefix('v1')->group(function () {
                         ->whereNumber('postId');
                     Route::put('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'accept'])
                         ->whereNumber('postId');
+                    // "Gerar ideias do mês" (IA) e aceitação ideia a ideia.
+                    Route::post('/editorial/ideas', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'store'])->middleware('throttle:10,1');
+                    Route::get('/editorial/ideas/{requestId}', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'show'])->whereNumber('requestId');
+                    Route::post('/editorial/ideas/{requestId}/accept', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'accept'])->whereNumber('requestId');
                 });
 
                 // ── Módulo FINANÇAS ──

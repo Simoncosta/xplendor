@@ -44,6 +44,8 @@ export interface IBlogPost {
     submitted_by_name: string | null;
     approved_by_name: string | null;
     site_url: string | null;
+    /** Publicação da Linha Editorial ligada (canal "Site"). */
+    editorial_post: { id: number; title: string; publish_date: string } | null;
     unresolved_markers: string[];
     permissions: IBlogPermissions | null;
     created_at: string;
