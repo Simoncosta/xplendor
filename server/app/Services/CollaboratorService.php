@@ -41,9 +41,16 @@ class CollaboratorService
             || ((int) $actor->company_id === $companyId && ($actor->role === 'admin' || ImpersonationSession::activeFor($actor)));
     }
 
+    /**
+     * Ações "só admin" (acessos de colaboradores, ligar e desligar as redes sociais e
+     * os anúncios): administrador da própria empresa; o root conta como admin da SUA
+     * empresa (nunca de outras). Nunca em impersonation.
+     */
     public static function canManageAccess(User $actor, int $companyId): bool
     {
-        return $actor->role === 'admin' && (int) $actor->company_id === $companyId && ! ImpersonationSession::activeFor($actor);
+        return in_array($actor->role, ['admin', 'root'], true)
+            && (int) $actor->company_id === $companyId
+            && ! ImpersonationSession::activeFor($actor);
     }
 
     // ── Conteúdo ─────────────────────────────────────────────────────────────

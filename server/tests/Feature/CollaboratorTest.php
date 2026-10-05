@@ -200,9 +200,11 @@ class CollaboratorTest extends TestCase
     public function test_only_own_company_admin_grants_access(): void
     {
         $c = $this->collaborator($this->a);
+        // O root de OUTRA empresa não gere acessos aqui (o $this->root é da empresa A).
+        $otherRoot = User::factory()->create(['company_id' => $this->b->id, 'role' => 'root']);
 
         $this->actingAs($this->userA, 'sanctum')->postJson($this->url($this->a, "/{$c->id}/access"), ['email' => 'ana@exemplo.pt'])->assertStatus(403);
-        $this->actingAs($this->root, 'sanctum')->postJson($this->url($this->a, "/{$c->id}/access"), ['email' => 'ana@exemplo.pt'])->assertStatus(403);
+        $this->actingAs($otherRoot, 'sanctum')->postJson($this->url($this->a, "/{$c->id}/access"), ['email' => 'ana@exemplo.pt'])->assertStatus(403);
         $this->assertSame(0, UserInvite::count());
     }
 

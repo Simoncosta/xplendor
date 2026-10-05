@@ -115,6 +115,9 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     const { has } = useModules();
     const [searchParams, setSearchParams] = useSearchParams();
     const [companyId, setCompanyId] = useState<number>(0);
+    // Ligar e desligar os anúncios: admin da própria empresa (o root na sua), nunca em
+    // impersonation. O backend decide; aqui só se escondem os botões.
+    const [canManageMeta, setCanManageMeta] = useState(false);
     // Escolha da conta de anúncios após o OAuth (callback no backend não a pede).
     const [metaAccountInput, setMetaAccountInput] = useState("");
     const [savingMetaAccount, setSavingMetaAccount] = useState(false);
@@ -228,8 +231,9 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
-        const { company_id } = JSON.parse(authUser);
+        const { company_id, role, impersonating } = JSON.parse(authUser);
         setCompanyId(Number(company_id));
+        setCanManageMeta((role === "admin" || role === "root") && !impersonating);
         fetchIntegrations(Number(company_id));
         fetchPingwin(Number(company_id));
         fetchCover(Number(company_id));
@@ -285,7 +289,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
             const res: any = await dispatch(disconnectMetaAds({ companyId, platform: "meta", purge, confirmation })).unwrap();
             toast.success(purge ? "Dados da Meta apagados." : "Meta desligada. O histórico foi mantido.");
             if (mode === "disconnect" && !res?.data?.permissions_revoked) {
-                toast.warning("Não foi possível retirar a autorização na Meta (a sessão pode ter expirado). Pode removê-la no Facebook, em Definições, Integrações empresariais.");
+                toast.warning("Não foi possível retirar a permissão dos anúncios na Meta (a sessão pode ter expirado). Pode removê-la no Facebook, em Definições, Integrações empresariais.");
             }
             await fetchIntegrations(companyId);
         } catch (e: any) {
@@ -438,7 +442,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         {infoRow("Token expira", fmtDate(metaIntegration.token_expires_at))}
 
                                         {/* Corrigir a conta (ex.: ID mal escrito → sincronização falha). */}
-                                        {metaIntegration.account_id && !editingMetaAccount && (
+                                        {canManageMeta && metaIntegration.account_id && !editingMetaAccount && (
                                             <button type="button" className="btn btn-link btn-sm p-0 text-start fs-12" onClick={() => setEditingMetaAccount(true)}>
                                                 <i className="ri-edit-line me-1" />Alterar conta de anúncios
                                             </button>
@@ -446,7 +450,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
 
                                         {/* Conta por definir (logo após o OAuth) ou a corrigir: o token já
                                             está guardado; falta escolher/corrigir a conta de anúncios. */}
-                                        {(!metaIntegration.account_id || editingMetaAccount) && (
+                                        {canManageMeta && (!metaIntegration.account_id || editingMetaAccount) && (
                                             <div className="border rounded p-2 mt-1" style={{ background: "var(--vz-tertiary-bg)" }}>
                                                 <p className="fs-12 text-body mb-2">
                                                     Introduz o ID da tua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
@@ -469,7 +473,9 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                             </div>
                                         )}
 
-                                        {metaIntegration.status === "active" ? (
+                                        {!canManageMeta ? (
+                                            <p className="text-muted fs-12 mb-0 mt-1">Só o administrador da empresa pode ligar ou desligar os anúncios da Meta.</p>
+                                        ) : metaIntegration.status === "active" ? (
                                             <button
                                                 className="btn btn-soft-danger btn-sm mt-1"
                                                 onClick={() => setMetaModalMode("disconnect")}
@@ -500,6 +506,8 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                             </>
                                         )}
                                     </div>
+                                ) : !canManageMeta ? (
+                                    <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode ligar os anúncios da Meta.</p>
                                 ) : (
                                     <button
                                         className="btn btn-primary w-100"

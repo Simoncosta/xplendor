@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
+use App\Services\CollaboratorService;
 use App\Services\CompanyIntegrationService;
 use App\Services\Meta\MetaDataPurger;
 use App\Services\MetaAdsService;
@@ -31,6 +32,7 @@ class CompanyIntegrationController extends Controller
     // Body: { short_lived_token: string, account_id: string }
     public function connectMeta(Request $request, int $companyId): JsonResponse
     {
+        $this->assertCanManage($request, $companyId);
         $request->validate([
             'short_lived_token' => 'required|string',
             'account_id'        => 'required|string',
@@ -80,6 +82,7 @@ class CompanyIntegrationController extends Controller
     // token mas não pode perguntar o account_id). Body: { account_id: string }
     public function setMetaAccount(Request $request, int $companyId): JsonResponse
     {
+        $this->assertCanManage($request, $companyId);
         $request->validate(['account_id' => 'required|string']);
 
         $integration = CompanyIntegration::where('company_id', $companyId)
@@ -108,13 +111,15 @@ class CompanyIntegrationController extends Controller
 
     // DELETE /companies/{id}/integrations/meta
     // Body (opcional): { purge: bool, confirmation: "APAGAR" }
-    //   1. Retira a autorização da app na Meta (DELETE /me/permissions) com o token,
-    //      ANTES de o apagar. Se falhar (token expirado, já revogado), continua e regista.
+    //   1. Retira na Meta SÓ a permissão ads_read (DELETE /me/permissions/ads_read) com
+    //      o token, ANTES de o apagar; a ligação das redes sociais mantém-se. Se falhar
+    //      (token expirado, já revogado), continua e regista.
     //   2. Por omissão mantém o histórico (só apaga o token). Com purge + confirmação,
     //      apaga todos os dados da Meta da empresa (MetaDataPurger), mantendo as vendas.
     //   Também serve para apagar o histórico de uma integração já desligada.
     public function disconnectMeta(Request $request, int $companyId): JsonResponse
     {
+        $this->assertCanManage($request, $companyId);
         $data = $request->validate([
             'purge'        => 'sometimes|boolean',
             'confirmation' => 'nullable|string',
@@ -133,7 +138,7 @@ class CompanyIntegrationController extends Controller
             $result = $this->metaAds->revokePermissions($token);
             $revoked = $result['revoked'];
             if (! $revoked) {
-                Log::warning('Meta: não foi possível retirar a autorização da app ao desligar; desligado na mesma.', [
+                Log::warning('Meta: não foi possível retirar a permissão ads_read ao desligar; desligado na mesma.', [
                     'company_id' => $companyId,
                     'status'     => $integration->status,
                     'error'      => $result['error'],
@@ -159,6 +164,14 @@ class CompanyIntegrationController extends Controller
             ['permissions_revoked' => $revoked, 'purged' => false, 'deleted' => null],
             'Meta Ads desconectado.'
         );
+    }
+
+    /** Ligar e desligar os anúncios: admin da própria empresa (o root na sua), fora de impersonation. */
+    private function assertCanManage(Request $request, int $companyId): void
+    {
+        if (! CollaboratorService::canManageAccess($request->user(), $companyId)) {
+            abort(403, 'Só o administrador da empresa pode ligar ou desligar os anúncios da Meta.');
+        }
     }
 
     // GET /companies/{id}/integrations/meta/adsets

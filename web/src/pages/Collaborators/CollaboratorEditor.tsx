@@ -50,7 +50,8 @@ const CollaboratorEditor = () => {
     const companyId = Number(auth.company_id || 0);
     const impersonating = !!auth.impersonating;
     const canEdit = auth.role === "admin" || auth.role === "root" || impersonating;
-    const canManageAccess = auth.role === "admin" && !impersonating;
+    // Admin da própria empresa; o root conta como admin da SUA empresa. Nunca em impersonation.
+    const canManageAccess = (auth.role === "admin" || auth.role === "root") && !impersonating;
 
     const [collaborator, setCollaborator] = useState<ICollaborator | null>(null);
     const [form, setForm] = useState<Form>(EMPTY);

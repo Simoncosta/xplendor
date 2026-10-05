@@ -127,7 +127,7 @@ export const privacyPt: LegalContent = {
         "Quando o cliente desliga a integração na Plataforma:",
         {
           list: [
-            "a XPLENDOR pede à Meta que retire a autorização da aplicação na conta do cliente e, em seguida, apaga o token de acesso; a integração deixa de pedir dados à Meta;",
+            "a XPLENDOR pede à Meta que retire apenas a permissão ads_read na conta do cliente e, em seguida, apaga o token de acesso; a integração deixa de pedir dados dos anúncios à Meta; a ligação das redes sociais, se existir, mantém-se;",
             "se a Meta não aceitar o pedido (por exemplo, porque o token já expirou), o desligar conclui-se na mesma e o cliente pode remover a XPLENDOR nas definições do Facebook (Definições e privacidade, Integrações empresariais);",
             "o cliente escolhe o que acontece aos dados já recebidos: por omissão, o histórico (métricas, estrutura das campanhas, metadados de públicos e despesas calculadas) mantém-se na conta para consulta; em alternativa, pode apagar de imediato todos os dados recebidos da Meta, mediante confirmação explícita;",
             "ao apagar, as vendas registadas pelo cliente mantêm-se, sem ligação a campanhas ou anúncios.",
@@ -141,8 +141,7 @@ export const privacyPt: LegalContent = {
             "o cliente escolhe o que acontece ao histórico de seguidores: por omissão mantém-se para consulta; em alternativa, pode apagar de imediato os números lidos automaticamente da Meta, mediante confirmação explícita. Os valores que o próprio cliente registou à mão mantêm-se.",
           ],
         },
-        "Desligar os anúncios retira a autorização da aplicação por completo. Se a mesma conta Facebook autorizou também as redes sociais, essa ligação deixa igualmente de funcionar e a Plataforma indica que é preciso voltar a ligar; o histórico de seguidores mantém-se.",
-        "O histórico de seguidores é conservado enquanto a conta do cliente na Plataforma estiver ativa, salvo se o cliente o apagar antes.",
+                "O histórico de seguidores é conservado enquanto a conta do cliente na Plataforma estiver ativa, salvo se o cliente o apagar antes.",
         "Quando o cliente muda de conta de anúncios, as métricas e os anúncios da conta anterior são eliminados.",
         "Quando a conta do cliente na Plataforma é encerrada, todos os dados da empresa, incluindo os dados recebidos da Meta, são eliminados da base de dados.",
         "Eliminação posterior: se tiver mantido o histórico, o cliente pode apagá-lo mais tarde na Plataforma (Integrações) ou pedir a eliminação por email, sem encerrar a conta. As instruções e o prazo estão na página Eliminação de Dados (/eliminacao-de-dados/).",
@@ -326,7 +325,7 @@ export const privacyEn: LegalContent = {
         "When the customer disconnects the integration in the Platform:",
         {
           list: [
-            "XPLENDOR asks Meta to remove the app authorisation from the customer's account and then deletes the access token; the integration stops requesting data from Meta;",
+            "XPLENDOR asks Meta to remove only the ads_read permission from the customer's account and then deletes the access token; the integration stops requesting advertising data from Meta; the social media connection, if any, is kept;",
             "if Meta does not accept the request (for example because the token has already expired), the disconnection still completes and the customer can remove XPLENDOR in their Facebook settings (Settings and privacy, Business integrations);",
             "the customer chooses what happens to the data already received: by default, the history (metrics, campaign structure, audience metadata and calculated expenses) is kept in the account for reference; alternatively, the customer can immediately delete all data received from Meta, after explicit confirmation;",
             "when deleting, the sales recorded by the customer are kept, without any link to campaigns or ads.",
@@ -340,8 +339,7 @@ export const privacyEn: LegalContent = {
             "the customer chooses what happens to the follower history: by default it is kept for reference; alternatively, the customer can immediately delete the counts read automatically from Meta, after explicit confirmation. Values the customer entered manually are kept.",
           ],
         },
-        "Disconnecting the advertising connection removes the app authorisation completely. If the same Facebook account also authorised the social media connection, that connection also stops working and the Platform shows that it must be connected again; the follower history is kept.",
-        "The follower history is kept while the customer's Platform account is active, unless the customer deletes it earlier.",
+                "The follower history is kept while the customer's Platform account is active, unless the customer deletes it earlier.",
         "When the customer switches to a different ad account, the metrics and ads of the previous account are deleted.",
         "When the customer's Platform account is closed, all company data, including the data received from Meta, is deleted from the database.",
         "Later deletion: if the history was kept, the customer can delete it later in the Platform (Integrations) or request deletion by email, without closing the account. Instructions and timeframes are on the Data Deletion page (/en/data-deletion/).",

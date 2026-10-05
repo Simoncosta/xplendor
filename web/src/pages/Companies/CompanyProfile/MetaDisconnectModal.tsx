@@ -42,8 +42,8 @@ export default function MetaDisconnectModal({ isOpen, mode, loading = false, onC
                 {mode === "disconnect" && (
                     <>
                         <p className="text-muted fs-14">
-                            A XPLENDOR deixa de receber dados da Meta e a autorização da aplicação é retirada na sua conta Meta.
-                            Escolha o que acontece aos dados já recebidos:
+                            A XPLENDOR deixa de receber os dados dos anúncios e retira na sua conta Meta só a permissão de leitura dos
+                            anúncios. A ligação das redes sociais (Instagram e Facebook) não é afetada. Escolha o que acontece aos dados já recebidos:
                         </p>
                         <div className="form-check mb-2">
                             <Input className="form-check-input" type="radio" name="meta-disconnect" id="meta-keep"

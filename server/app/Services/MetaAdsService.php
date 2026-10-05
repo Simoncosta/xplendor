@@ -16,6 +16,8 @@ use RuntimeException;
 class MetaAdsService
 {
     private const GRAPH_URL = 'https://graph.facebook.com/v25.0';
+    /** A única permissão da ligação dos anúncios (a das redes sociais é outra ligação). */
+    public const ADS_PERMISSION = 'ads_read';
     private const GRAPH_ACTIONS_URL = 'https://graph.facebook.com/v18.0';
 
     // Robustez das chamadas à Graph API (a 30min × N clientes × M campanhas).
@@ -107,10 +109,12 @@ class MetaAdsService
     }
 
     /**
-     * Retira a autorização da app XPLENDOR na conta Meta do cliente
-     * (DELETE /me/permissions), usada ao desligar a integração, ANTES de apagar o
-     * token. Nunca lança: com o token já expirado ou revogado a Meta responde com
-     * erro e o chamador continua o desligar. O token nunca vai para os registos.
+     * Retira SÓ a permissão ads_read da app XPLENDOR na conta Meta do cliente
+     * (DELETE /me/permissions/ads_read), usada ao desligar os anúncios, ANTES de apagar
+     * o token. Nunca o DELETE /me/permissions sem nome: retiraria todas as permissões
+     * da app e desligaria também as redes sociais. Nunca lança: com o token já expirado
+     * ou revogado a Meta responde com erro e o chamador continua o desligar. O token
+     * nunca vai para os registos.
      *
      * @return array{revoked: bool, error: ?string}
      */
@@ -122,7 +126,7 @@ class MetaAdsService
 
         $response = $this->sendWithRetry(fn () => Http::timeout(self::HTTP_TIMEOUT)
             ->connectTimeout(self::HTTP_CONNECT_TIMEOUT)
-            ->delete(self::GRAPH_URL . '/me/permissions?' . http_build_query(['access_token' => $accessToken])));
+            ->delete(self::GRAPH_URL . '/me/permissions/' . self::ADS_PERMISSION . '?' . http_build_query(['access_token' => $accessToken])));
 
         if ($response->successful() && $response->json('success') === true) {
             return ['revoked' => true, 'error' => null];

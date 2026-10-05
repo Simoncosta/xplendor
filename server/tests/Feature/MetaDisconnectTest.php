@@ -176,7 +176,7 @@ class MetaDisconnectTest extends TestCase
             ->assertJsonPath('data.permissions_revoked', false);
 
         $this->assertSame('revoked', CompanyIntegration::where('company_id', $this->companyA->id)->value('status'));
-        Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context = []) => str_contains($message, 'retirar a autorização')
+        Log::shouldHaveReceived('warning')->withArgs(fn (string $message, array $context = []) => str_contains($message, 'retirar a permissão ads_read')
             && $context['company_id'] === $this->companyA->id
             && str_contains($context['error'], 'Session has expired')
             && ! str_contains(json_encode($context), 'tok-A'))->once();

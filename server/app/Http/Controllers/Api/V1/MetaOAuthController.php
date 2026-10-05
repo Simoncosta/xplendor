@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
+use App\Services\CollaboratorService;
 use App\Services\MetaAdsService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -20,8 +21,13 @@ class MetaOAuthController extends Controller
     // GET /companies/{id}/integrations/meta/oauth-url
     // O frontend abre esta URL numa popup ou redirect
 
-    public function getAuthUrl(int $companyId): JsonResponse
+    public function getAuthUrl(Request $request, int $companyId): JsonResponse
     {
+        // Ligar os anúncios: admin da própria empresa (o root na sua), fora de impersonation.
+        if (! CollaboratorService::canManageAccess($request->user(), $companyId)) {
+            return ApiResponse::error('Só o administrador da empresa pode ligar os anúncios da Meta.', 403);
+        }
+
         // CSRF/state correcto: um nonce aleatório, guardado server-side (cache)
         // ligado a este company_id e de uso único. Substitui o base64 com
         // company_id+csrf_token() — em API stateless o csrf_token() vinha vazio
@@ -181,7 +187,7 @@ class MetaOAuthController extends Controller
         }
 
         $user = $request->user();
-        if (!$user || ((int) $user->company_id !== (int) $companyId && $user->role !== 'root')) {
+        if (!$user || ! CollaboratorService::canManageAccess($user, (int) $companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

@@ -3,8 +3,8 @@ import { COMPANY } from "./company";
 
 /**
  * Eliminação de dados (PT e EN). URL para indicar à Meta em "Data Deletion
- * Instructions URL". Descreve o comportamento atual: ao desligar, a autorização é
- * retirada na Meta e o token apagado; o histórico mantém-se por omissão e pode ser
+ * Instructions URL". Descreve o comportamento atual: ao desligar os anúncios, só a
+ * permissão ads_read é retirada na Meta e o token apagado; o histórico mantém-se por omissão e pode ser
  * apagado por opção (ao desligar ou depois, na Plataforma) ou a pedido por email.
  * Nas redes sociais (Instagram e Facebook) retiram-se só as três permissões delas.
  */
@@ -72,13 +72,13 @@ export const dataDeletionPt: LegalContent = {
         "Na Plataforma, em Integrações, o cliente pode desligar a Meta a qualquer momento. Ao fazê-lo:",
         {
           list: [
-            "a XPLENDOR pede à Meta que retire a autorização da aplicação na conta do cliente;",
+            "a XPLENDOR pede à Meta que retire apenas a permissão dos anúncios (ads_read) na conta do cliente; a ligação das redes sociais, se existir, mantém-se;",
             "o token de acesso é apagado e a XPLENDOR deixa de pedir dados à Meta;",
             "o cliente escolhe entre \"Manter o histórico\" (opção por omissão), para continuar a consultar os resultados passados, e \"Apagar todos os dados da Meta\", que elimina de imediato os dados indicados na secção 3, depois de o cliente escrever APAGAR para confirmar.",
           ],
         },
         "Se tiver mantido o histórico, pode apagá-lo mais tarde no mesmo ecrã (\"Apagar os dados da Meta guardados\") ou pedir a eliminação por email, como descrito na secção 1.",
-        "Se a Meta não aceitar o pedido de retirada da autorização (por exemplo, porque o token já expirou), o desligar conclui-se na mesma; nesse caso, remova a XPLENDOR nas definições do Facebook, como descrito na secção 5.",
+        "Se a Meta não aceitar o pedido de retirada da permissão (por exemplo, porque o token já expirou), o desligar conclui-se na mesma; nesse caso, remova a XPLENDOR nas definições do Facebook, como descrito na secção 5.",
         { h3: "Redes sociais (Instagram e Facebook)" },
         "No cartão \"Redes sociais (Instagram e Facebook)\", em Integrações, o administrador pode desligar a ligação das redes sociais a qualquer momento. Ao fazê-lo:",
         {
@@ -180,13 +180,13 @@ export const dataDeletionEn: LegalContent = {
         "In the Platform, under Integrations, the customer can disconnect Meta at any time. When doing so:",
         {
           list: [
-            "XPLENDOR asks Meta to remove the app authorisation from the customer's account;",
+            "XPLENDOR asks Meta to remove only the advertising permission (ads_read) from the customer's account; the social media connection, if any, is kept;",
             "the access token is deleted and XPLENDOR stops requesting data from Meta;",
             "the customer chooses between \"Manter o histórico\" (keep the history, the default), to keep viewing past results, and \"Apagar todos os dados da Meta\" (delete all Meta data), which immediately deletes the data listed in section 3, after the customer types APAGAR to confirm.",
           ],
         },
         "If the history was kept, it can be deleted later on the same screen (\"Apagar os dados da Meta guardados\", delete stored Meta data) or by email request, as described in section 1.",
-        "If Meta does not accept the authorisation removal request (for example because the token has already expired), the disconnection still completes; in that case, remove XPLENDOR in your Facebook settings, as described in section 5.",
+        "If Meta does not accept the permission removal request (for example because the token has already expired), the disconnection still completes; in that case, remove XPLENDOR in your Facebook settings, as described in section 5.",
         { h3: "Social media (Instagram and Facebook)" },
         "In the \"Redes sociais (Instagram e Facebook)\" card (social media), under Integrations, the administrator can disconnect the social media connection at any time. When doing so:",
         {
