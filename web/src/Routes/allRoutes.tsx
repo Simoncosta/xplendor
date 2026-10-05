@@ -99,6 +99,7 @@ import AdminQuotesList from "pages/Admin/AdminQuotesList";
 import QuoteEditor from "pages/Admin/QuoteEditor";
 import ServiceCatalogPage from "pages/Admin/ServiceCatalogPage";
 import AdminStockList from "pages/Admin/AdminStockList";
+import CreativeFormatRulesPage from "pages/Admin/CreativeFormatRulesPage";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 import RequireModule from "./RequireModule";
 
@@ -237,6 +238,8 @@ const authProtectedRoutes = [
     { path: "/admin/service-catalog", component: <RequireSuperAdmin><ServiceCatalogPage /></RequireSuperAdmin> },
     // 3ª consola — 1ª vista de DADOS transversais: stock global (todas as empresas ativas).
     { path: "/admin/stock", component: <RequireSuperAdmin><AdminStockList /></RequireSuperAdmin> },
+    // Regras de formato (referência de mercado) do "Sugerir criativo": só o root.
+    { path: "/admin/creative-format-rules", component: <RequireSuperAdmin><CreativeFormatRulesPage /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

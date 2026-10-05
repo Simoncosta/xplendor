@@ -150,6 +150,22 @@ export const updateBrandProfile = (companyId: number, data: any) => api.put(url.
 export const getFollowers = (companyId: number, days = 90) => api.get(url.GET_COMPANIES + `/${companyId}/followers`, { days });
 export const recordFollowers = (companyId: number, data: { platform: "instagram" | "facebook"; followers_count: number }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/followers`, data);
+// "Sugerir perfil" (IA): pedir e consultar. Nunca grava o perfil.
+export const requestBrandProfileSuggestion = (companyId: number) => api.create(url.GET_COMPANIES + `/${companyId}/brand-profile/suggestions`, {});
+export const getBrandProfileSuggestion = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/brand-profile/suggestions/${id}`);
+// "Sugerir criativo" (Linha Editorial) e criativo aceite campo a campo.
+export const requestCreativeSuggestion = (companyId: number, postId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative-suggestions`, {});
+export const getCreativeSuggestion = (companyId: number, postId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative-suggestions/${id}`);
+export const getPostCreative = (companyId: number, postId: number) => api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`);
+export const acceptPostCreative = (companyId: number, postId: number, data: any) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`, data);
+// Regras de formato (referência de mercado): só root.
+export const getCreativeFormatRules = () => api.get(`/admin/creative-format-rules`);
+export const createCreativeFormatRule = (data: any) => api.create(`/admin/creative-format-rules`, data);
+export const updateCreativeFormatRule = (id: number, data: any) => api.put(`/admin/creative-format-rules/${id}`, data);
+export const deleteCreativeFormatRule = (id: number) => api.delete(`/admin/creative-format-rules/${id}`);
 
 // SUPPLIERS (DMS 1c.1)
 export const getSuppliers = (companyId: number, params?: { perPage?: number; page?: number; search?: string; only_active?: number }) =>

@@ -44,6 +44,10 @@ class EditorialPostService
         }
 
         $clean = $this->validateInput($data);
+        // Quem não envia o formato (ecrãs antigos) não o apaga, se a rede não mudou.
+        if (! array_key_exists('media_format', $data) && $clean['channel'] === $post->channel) {
+            $clean['media_format'] = $post->media_format;
+        }
         $this->assertLinkable($company, $clean['anchor_id'] ?? null, $clean['own_anchor_id'] ?? null);
         $this->assertBlogLinkable($company, $clean['blog_id']);
 
@@ -77,7 +81,8 @@ class EditorialPostService
         $validated = Validator::make($data, [
             'title'         => ['required', 'string', 'max:255'],
             'publish_date'  => ['required', 'date'],
-            'format'        => ['nullable', Rule::in([...EditorialPost::FORMATS, EditorialPost::SITE_FORMAT])],
+            'format'        => ['nullable', Rule::in([...EditorialPost::FORMATS, EditorialPost::SITE_FORMAT])],   // tipo de conteúdo
+            'media_format'  => ['nullable', 'string', 'max:30'],                                                 // formato (F2)
             'status'        => ['required', Rule::in(EditorialPost::STATUSES)],
             'channel'       => ['required', Rule::in(EditorialPost::CHANNELS)],
             'keyword'       => ['nullable', 'string', 'max:255'],
@@ -90,9 +95,14 @@ class EditorialPostService
         // das redes obrigatório e sem artigo.
         if ($validated['channel'] === 'site') {
             $validated['format'] = EditorialPost::SITE_FORMAT;
+            $validated['media_format'] = null;
         } else {
             if (empty($validated['format']) || $validated['format'] === EditorialPost::SITE_FORMAT) {
-                throw ValidationException::withMessages(['format' => ['Escolha o formato da publicação.']]);
+                throw ValidationException::withMessages(['format' => ['Escolha o tipo de conteúdo da publicação.']]);
+            }
+            // O formato tem de ser da rede escolhida (vocabulário do publicador F2).
+            if (! empty($validated['media_format']) && ! in_array($validated['media_format'], EditorialPost::MEDIA_FORMATS[$validated['channel']] ?? [], true)) {
+                throw ValidationException::withMessages(['media_format' => ['Escolha um formato válido para esta rede.']]);
             }
             $validated['blog_id'] = null;
         }
@@ -101,7 +111,7 @@ class EditorialPostService
         $validated['publish_date'] = \Carbon\CarbonImmutable::parse($validated['publish_date'])->toDateString();
 
         return array_merge(
-            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null, 'blog_id' => null],
+            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null, 'blog_id' => null, 'media_format' => null],
             $validated
         );
     }

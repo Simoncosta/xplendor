@@ -355,6 +355,9 @@ Route::prefix('v1')->group(function () {
                 // Seguidores (Perfil da Marca): estado, crescimento e registo manual de hoje.
                 Route::get('/followers', [\App\Http\Controllers\Api\V1\FollowerSnapshotController::class, 'index']);
                 Route::post('/followers', [\App\Http\Controllers\Api\V1\FollowerSnapshotController::class, 'store']);
+                // "Sugerir perfil" (IA): pede e consulta; nunca grava o perfil.
+                Route::post('/brand-profile/suggestions', [\App\Http\Controllers\Api\V1\BrandProfileSuggestionController::class, 'store'])->middleware('throttle:10,1');
+                Route::get('/brand-profile/suggestions/{suggestionId}', [\App\Http\Controllers\Api\V1\BrandProfileSuggestionController::class, 'show'])->whereNumber('suggestionId');
                 // ── Módulo LINHA EDITORIAL (transversal) — escolha de ramo + calendário herdado ──
                 Route::middleware('ensure_module:linha_editorial')->group(function () {
                     Route::get('/editorial/sectors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'sectors']);
@@ -381,6 +384,15 @@ Route::prefix('v1')->group(function () {
                     Route::put('/editorial/posts/{postId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'updatePost'])
                         ->whereNumber('postId');
                     Route::delete('/editorial/posts/{postId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'deletePost'])
+                        ->whereNumber('postId');
+                    // "Sugerir criativo" (IA) e criativo aceite campo a campo.
+                    Route::post('/editorial/posts/{postId}/creative-suggestions', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'suggest'])
+                        ->whereNumber('postId')->middleware('throttle:20,1');
+                    Route::get('/editorial/posts/{postId}/creative-suggestions/{suggestionId}', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'suggestion'])
+                        ->whereNumber('postId')->whereNumber('suggestionId');
+                    Route::get('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'show'])
+                        ->whereNumber('postId');
+                    Route::put('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'accept'])
                         ->whereNumber('postId');
                 });
 
@@ -481,6 +493,11 @@ Route::prefix('v1')->group(function () {
         // que for transversal (tickets, consolas futuras) vive aqui dentro.
         Route::middleware('ensure_super_admin')->prefix('admin')->group(function () {
             Route::get('/ping', [AdminController::class, 'ping']);
+            // Regras de formato (referência de mercado) do "Sugerir criativo": só o root.
+            Route::get('/creative-format-rules', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'index']);
+            Route::post('/creative-format-rules', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'store']);
+            Route::put('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'update'])->whereNumber('ruleId');
+            Route::delete('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'destroy'])->whereNumber('ruleId');
             // Contagens transversais para o dashboard root (users + carros da plataforma).
             Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
 

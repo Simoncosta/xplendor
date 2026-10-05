@@ -6,6 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import { getBrandProfile, updateBrandProfile } from "helpers/laravel_helper";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { BrandPillar, EmojiPolicy, IBrandProfile } from "common/models/blog.model";
+import BrandProfileSuggestModal from "./BrandProfileSuggestModal";
 import FollowersCard from "./FollowersCard";
 
 /**
@@ -61,6 +62,7 @@ export default function BrandProfilePage() {
     const [canEdit, setCanEdit] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [suggestOpen, setSuggestOpen] = useState(false);
 
     useEffect(() => {
         if (!companyId) return;
@@ -120,9 +122,14 @@ export default function BrandProfilePage() {
                                 <p className="text-muted fs-13 mb-0 mt-1">Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA.</p>
                             </div>
                             {canEdit && (
-                                <button type="button" className="btn btn-primary mt-2 mt-sm-0" onClick={save} disabled={saving || loading}>
-                                    {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-3-line me-1" />}Guardar
-                                </button>
+                                <div className="d-flex flex-wrap gap-2 mt-2 mt-sm-0">
+                                    <button type="button" className="btn btn-soft-primary" onClick={() => setSuggestOpen(true)} disabled={loading}>
+                                        <i className="ri-magic-line me-1" />Sugerir perfil
+                                    </button>
+                                    <button type="button" className="btn btn-primary" onClick={save} disabled={saving || loading}>
+                                        {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-3-line me-1" />}Guardar
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </Col>
@@ -260,6 +267,15 @@ export default function BrandProfilePage() {
                         </Row>
 
                         {companyId > 0 && <FollowersCard companyId={companyId} />}
+                        {canEdit && companyId > 0 && (
+                            <BrandProfileSuggestModal
+                                isOpen={suggestOpen}
+                                toggle={() => setSuggestOpen(false)}
+                                companyId={companyId}
+                                current={form}
+                                onApply={(patch) => setForm((f) => ({ ...f, ...patch }))}
+                            />
+                        )}
                         <div className="pb-5" />
                     </>
                 )}

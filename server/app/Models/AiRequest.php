@@ -33,7 +33,7 @@ class AiRequest extends Model
     public const ERROR = 'error';
 
     protected $fillable = [
-        'company_id', 'blog_id', 'user_id', 'mode', 'variant', 'status', 'input', 'context', 'result',
+        'company_id', 'blog_id', 'editorial_post_id', 'user_id', 'mode', 'variant', 'status', 'input', 'context', 'result',
         'model', 'prompt_version', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'error_message',
     ];
 

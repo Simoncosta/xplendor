@@ -8,15 +8,14 @@ use App\Jobs\GenerateBlogAiDraftJob;
 use App\Models\Blog;
 use App\Models\AiRequest;
 use App\Services\Ai\AiRequestQuota;
+use App\Services\Ai\OpenAiChat;
 use App\Models\Company;
 use App\Models\CompanyBrandProfile;
 use App\Models\District;
 use App\Models\Municipality;
 use App\Models\User;
 use App\Support\BlogHtml;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -35,11 +34,6 @@ class BlogAiService
 {
     public const PROMPT_VERSION = 'blog-v1';
 
-    private const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-    private const OPENAI_TIMEOUT = 120;
-    private const OPENAI_CONNECT_TIMEOUT = 15;
-    private const OPENAI_MAX_ATTEMPTS = 3;
-    private const OPENAI_BACKOFF_MS = [500, 1500];
 
     private const DATA_OPEN = '<<<DADOS';
     private const DATA_CLOSE = 'DADOS>>>';
@@ -275,54 +269,10 @@ class BlogAiService
     // ── OpenAI ───────────────────────────────────────────────────────────────
 
     /** @return array{content: string, usage: array} */
+    /** A chamada à OpenAI é partilhada pelos modos de IA (ver OpenAiChat). */
     protected function callOpenAi(array $messages): array
     {
-        $apiKey = (string) config('services.openai.key');
-        if ($apiKey === '') {
-            throw new \RuntimeException('OPENAI_KEY não configurada.');
-        }
-
-        $last = null;
-        for ($attempt = 1; $attempt <= self::OPENAI_MAX_ATTEMPTS; $attempt++) {
-            try {
-                $response = Http::withToken($apiKey)
-                    ->connectTimeout(self::OPENAI_CONNECT_TIMEOUT)
-                    ->timeout(self::OPENAI_TIMEOUT)
-                    ->acceptJson()
-                    ->post(self::OPENAI_URL, [
-                        'model'           => self::model(),
-                        'temperature'     => 0.4,
-                        'max_tokens'      => 4000,
-                        'response_format' => ['type' => 'json_object'],
-                        'messages'        => $messages,
-                    ]);
-
-                if ($response->failed()) {
-                    // Só vale a pena repetir em limite de pedidos ou falha do lado da OpenAI.
-                    if (in_array($response->status(), [429, 500, 502, 503, 504], true) && $attempt < self::OPENAI_MAX_ATTEMPTS) {
-                        usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
-                        continue;
-                    }
-                    $response->throw();
-                }
-
-                $content = $response->json('choices.0.message.content');
-                if (! is_string($content) || trim($content) === '') {
-                    throw new \RuntimeException('OpenAI devolveu conteúdo vazio.');
-                }
-
-                return ['content' => $content, 'usage' => (array) $response->json('usage', [])];
-            } catch (RequestException $e) {
-                throw $e; // 4xx: não repetir
-            } catch (\Throwable $e) {
-                $last = $e;
-                if ($attempt < self::OPENAI_MAX_ATTEMPTS) {
-                    usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
-                }
-            }
-        }
-
-        throw new \RuntimeException('OpenAI indisponível.', previous: $last);
+        return app(OpenAiChat::class)->call($messages, self::model());
     }
 
     private function decodeJson(string $raw): array

@@ -17,11 +17,12 @@ import {
     createEditorialPost, updateEditorialPost, deleteEditorialPost, getBlogs,
 } from "helpers/laravel_helper";
 import {
-    EditorialPost, EDITORIAL_POST_STATUS_META, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
+    EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
 } from "common/models/editorialPost.model";
 import { BLOG_STATUS_META } from "common/models/blog.model";
 import { Link } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
+import CreativeModal from "./CreativeModal";
 
 /**
  * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
@@ -62,8 +63,10 @@ const emptyForm = (month: number): CreateForm => ({
     start_month: month, start_day: 1, end_month: month, end_day: 28, easter_offset: 0,
 });
 
-type PostForm = { id?: number; publish_date: string; title: string; format: string; channel: string; keyword: string; status: PostStatus; link: string; blog_id: string };
-const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
+// format = tipo de conteúdo (18 valores); media_format = formato da rede (vocabulário F2).
+type PostForm = { id?: number; publish_date: string; title: string; format: string; media_format: string; channel: string; keyword: string; status: PostStatus; link: string; blog_id: string };
+const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
+const formatsFor = (channel: string) => (channel === "instagram" || channel === "facebook" ? MEDIA_FORMATS[channel] : []);
 /** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
 const postStatusMeta = (p: EditorialPost) => (p.blog ? BLOG_STATUS_META[p.blog.status] : EDITORIAL_POST_STATUS_META[p.status]);
 
@@ -100,6 +103,7 @@ export default function EditorialCalendarPage() {
     const [form, setForm] = useState<CreateForm>(emptyForm(1));
     const [postOpen, setPostOpen] = useState(false);               // modal criar/editar publicação
     const [postForm, setPostForm] = useState<PostForm>(emptyPost(""));
+    const [creativeOpen, setCreativeOpen] = useState(false);
 
     const applyCalendar = useCallback((d: any) => {
         setHasSector(!!d.has_sector);
@@ -238,7 +242,7 @@ export default function EditorialCalendarPage() {
     const openCreatePost = (date: string) => { setPostForm(emptyPost(date)); setPostOpen(true); };
     const openEditPost = (p: EditorialPost) => {
         setPostForm({
-            id: p.id, publish_date: p.publish_date, title: p.title, format: p.format,
+            id: p.id, publish_date: p.publish_date, title: p.title, format: p.format, media_format: p.media_format ?? "",
             channel: p.channel, keyword: p.keyword ?? "", status: p.status,
             link: p.anchor_id ? `a:${p.anchor_id}` : p.own_anchor_id ? `o:${p.own_anchor_id}` : "",
             blog_id: p.blog_id ? String(p.blog_id) : "",
@@ -257,6 +261,7 @@ export default function EditorialCalendarPage() {
         if (!f.title.trim()) { toast.error("Dá um título à publicação."); return; }
         const payload: any = {
             title: f.title.trim(), publish_date: f.publish_date, format: f.channel === "site" ? SITE_FORMAT : f.format,
+            media_format: f.channel === "site" ? null : (f.media_format || null),
             channel: f.channel, status: f.status, keyword: f.keyword.trim() || null,
             blog_id: f.channel === "site" && f.blog_id ? Number(f.blog_id) : null,
         };
@@ -499,7 +504,9 @@ export default function EditorialCalendarPage() {
                                                 <div className="fw-semibold"><i className={`${POST_CHANNEL_META[p.channel].icon} me-1`} />{p.title}</div>
                                                 <div className="d-flex flex-wrap gap-1 mt-1">
                                                     <span className={`badge bg-${meta.color}-subtle text-${meta.color}`}><i className={`${meta.icon} me-1`} />{meta.label}</span>
-                                                    <span className="badge bg-light text-body">{p.format}</span>
+                                                    {p.media_format && <span className="badge bg-dark-subtle text-body" title="Formato"><i className="ri-layout-grid-line me-1" />{mediaFormatLabel(p.media_format)}</span>}
+                                                    <span className="badge bg-light text-body" title="Tipo de conteúdo">{p.format}</span>
+                                                    {p.has_creative && <span className="badge bg-success-subtle text-success" title="Criativo guardado"><i className="ri-magic-line me-1" />Criativo</span>}
                                                     {p.keyword && <span className="badge bg-primary-subtle text-primary">#{p.keyword}</span>}
                                                     {p.linked_title && <span className="badge bg-secondary-subtle text-secondary"><i className="ri-links-line me-1" />{p.linked_title}</span>}
                                                     {p.blog && <Link to={`/blogs/${p.blog.id}`} className="badge bg-info-subtle text-info"><i className="ri-article-line me-1" />{p.blog.title}</Link>}
@@ -519,7 +526,7 @@ export default function EditorialCalendarPage() {
                     )}
 
                     <hr className="my-4" />
-                    <p className="text-muted fs-13 mb-0">Tema, formato, estado, funil e palavra-chave por publicação — mais detalhe chega na próxima fase.</p>
+                    <p className="text-muted fs-13 mb-0">Cada publicação tem formato, tipo de conteúdo, estado e palavra-chave. O criativo abre-se ao editar a publicação.</p>
                 </OffcanvasBody>
             </Offcanvas>
 
@@ -554,7 +561,11 @@ export default function EditorialCalendarPage() {
                             <Col xs={6}><FormGroup><Label>Data</Label>
                                 <Input type="date" value={postForm.publish_date} min={range?.from} max={range?.to} onChange={(e) => setPF({ publish_date: e.target.value })} /></FormGroup></Col>
                             <Col xs={6}><FormGroup><Label>Canal</Label>
-                                <Input type="select" value={postForm.channel} onChange={(e) => setPF({ channel: e.target.value })}>
+                                <Input type="select" value={postForm.channel} onChange={(e) => {
+                                    const channel = e.target.value;
+                                    // O formato é de cada rede: ao mudar de rede, só fica se existir na nova.
+                                    setPF({ channel, media_format: formatsFor(channel).some((f) => f.value === postForm.media_format) ? postForm.media_format : "" });
+                                }}>
                                     <option value="instagram">Instagram</option>
                                     <option value="facebook">Facebook</option>
                                     <option value="site">Site (blog)</option>
@@ -572,13 +583,20 @@ export default function EditorialCalendarPage() {
                                 </div>
                             </FormGroup>
                         ) : null}
-                        <Row className="g-2">
-                            {postForm.channel !== "site" && (
+                        {postForm.channel !== "site" && (
+                            <Row className="g-2">
                                 <Col xs={6}><FormGroup><Label>Formato</Label>
+                                    <Input type="select" value={postForm.media_format} onChange={(e) => setPF({ media_format: e.target.value })}>
+                                        <option value="">Por definir</option>
+                                        {formatsFor(postForm.channel).map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                                    </Input></FormGroup></Col>
+                                <Col xs={6}><FormGroup><Label>Tipo de conteúdo</Label>
                                     <Input type="select" value={postForm.format} onChange={(e) => setPF({ format: e.target.value })}>
                                         {POST_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
                                     </Input></FormGroup></Col>
-                            )}
+                            </Row>
+                        )}
+                        <Row className="g-2">
                             {!(postForm.channel === "site" && postForm.blog_id) && (
                                 <Col xs={6}><FormGroup><Label>Estado</Label>
                                     <Input type="select" value={postForm.status} onChange={(e) => setPF({ status: e.target.value as PostStatus })}>
@@ -604,10 +622,27 @@ export default function EditorialCalendarPage() {
                     </Form>
                 </ModalBody>
                 <ModalFooter>
+                    {postForm.id && postForm.channel !== "site" && (
+                        <Button color="soft-primary" className="me-auto" onClick={() => setCreativeOpen(true)}>
+                            <i className="ri-magic-line me-1" />Criativo
+                        </Button>
+                    )}
                     <Button color="light" onClick={() => setPostOpen(false)}>Cancelar</Button>
                     <Button color="primary" disabled={working} onClick={submitPost}>{working ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />{postForm.id ? "Guardar" : "Criar"}</>}</Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Modal: criativo da publicação (Sugerir criativo e criativo aceite) */}
+            {postForm.id && postForm.channel !== "site" && (
+                <CreativeModal
+                    isOpen={creativeOpen}
+                    toggle={() => setCreativeOpen(false)}
+                    companyId={companyId}
+                    postId={postForm.id}
+                    postTitle={postForm.title}
+                    onSaved={(mediaFormat) => { setPF({ media_format: mediaFormat ?? "" }); void load(); }}
+                />
+            )}
 
             {/* Modal — criar âncora própria (B3a) */}
             <Modal isOpen={createOpen} toggle={() => setCreateOpen(false)} centered>

@@ -12,7 +12,12 @@ export type EditorialPost = {
     publish_date: string;   // YYYY-MM-DD
     month_key: string;      // YYYY-MM
     title: string;
+    /** Tipo de conteúdo (os 18 valores de POST_FORMATS). */
     format: string;
+    /** Formato (vocabulário do publicador F2), por rede. */
+    media_format: string | null;
+    /** Há criativo aceite (Sugerir criativo). */
+    has_creative: boolean;
     status: PostStatus;
     channel: PostChannel;
     keyword: string | null;
@@ -42,7 +47,27 @@ export const POST_CHANNEL_META: Record<PostChannel, { label: string; icon: strin
 /** Formato fixo do canal "site" (EditorialPost::SITE_FORMAT). */
 export const SITE_FORMAT = "Artigo";
 
-// Formatos Insta/FB (têm de coincidir EXATAMENTE com EditorialPost::FORMATS no backend).
+// FORMATO da publicação por rede (vocabulário do publicador F2; espelha
+// EditorialPost::MEDIA_FORMATS e MEDIA_FORMAT_LABELS no backend).
+export const MEDIA_FORMATS: Record<"instagram" | "facebook", { value: string; label: string }[]> = {
+    instagram: [
+        { value: "ig_feed_image", label: "Imagem (feed)" },
+        { value: "ig_carousel", label: "Carrossel" },
+        { value: "ig_reel", label: "Reel (vídeo)" },
+        { value: "ig_story", label: "Story" },
+    ],
+    facebook: [
+        { value: "fb_post", label: "Publicação (texto ou ligação)" },
+        { value: "fb_photos", label: "Fotografias" },
+        { value: "fb_video", label: "Vídeo" },
+        { value: "fb_reel", label: "Reel" },
+        { value: "fb_story", label: "Story" },
+    ],
+};
+export const mediaFormatLabel = (key: string | null | undefined): string =>
+    Object.values(MEDIA_FORMATS).flat().find((f) => f.value === key)?.label ?? (key ?? "");
+
+// Tipos de conteúdo Insta/FB (antes chamados "formatos"; têm de coincidir EXATAMENTE com EditorialPost::FORMATS no backend).
 export const POST_FORMATS: string[] = [
     "Carrossel", "Imagem única", "Reels", "Stories", "Vídeo", "Live",
     "Infográfico", "Citação", "Checklist", "Tutorial", "Antes e depois",
