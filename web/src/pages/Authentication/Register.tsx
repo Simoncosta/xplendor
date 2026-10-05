@@ -40,7 +40,13 @@ const Register = () => {
 
     const [loader] = useState<boolean>(false);
 
-    const { data } = useSelector(selectRegisterInviteViewModel);
+    const { data, error } = useSelector(selectRegisterInviteViewModel);
+    // Convite inválido, usado ou expirado: o servidor devolve uma mensagem clara (404/410).
+    const inviteError: string | null = !token
+        ? "Falta o código do convite no endereço. Abra o link que recebeu por email."
+        : error
+            ? (typeof error === "string" ? error : error?.message) || "Este convite é inválido, já foi usado ou expirou. Peça um novo convite ao administrador da empresa."
+            : null;
 
     useEffect(() => {
         if (!token) return;
@@ -108,6 +114,8 @@ const Register = () => {
                         Defina a sua palavra-passe para concluir o registo.
                     </p>
 
+                    {inviteError && <div className="alert alert-danger fs-13" role="alert">{inviteError}</div>}
+                    {data?.company_name && !inviteError && <p className="text-muted fs-13 mb-3">Convite para {data.company_name}.</p>}
                     <FormikProvider value={formik}>
                         <form onSubmit={formik.handleSubmit} className="needs-validation">
                             <XInput

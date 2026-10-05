@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\MarketSnapshotController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
+use App\Http\Controllers\Api\V1\CollaboratorController;
+use App\Http\Controllers\Api\V1\CompanyDepartmentController;
+use App\Http\Controllers\Api\Public\TeamController as PublicTeamController;
 use App\Http\Controllers\Api\V1\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Api\V1\Admin\QuoteController as AdminQuoteController;
 use App\Http\Controllers\Api\V1\Admin\ServiceCatalogController as AdminServiceCatalogController;
@@ -297,8 +300,37 @@ Route::prefix('v1')->group(function () {
                     Route::patch('/integrations/covermanager/settings', [CompanyPingwinController::class, 'updateCoverManagerSettings']);
                 });
 
-                // Gestão de utilizadores/password — SENSÍVEL: bloqueado em impersonation.
-                Route::apiResource('/users', UserController::class)->middleware('block_when_impersonating');
+                // Utilizadores: listar e ver funcionam em impersonation (ex.: seletor "Vendedor" da
+                // ficha da viatura); criar e alterar contas/password ficam bloqueados. Sem DELETE:
+                // retirar o acesso faz-se no colaborador (/collaborators/{id}/access/revoke).
+                Route::get('/users', [UserController::class, 'index']);
+                Route::get('/users/{user}', [UserController::class, 'show']);
+                Route::post('/users', [UserController::class, 'store'])->middleware('block_when_impersonating');
+                Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->middleware('block_when_impersonating');
+
+                // Colaboradores (equipa) e departamentos. Conteúdo: permitido em impersonation.
+                // Acessos à plataforma: só o admin da própria empresa, bloqueado em impersonation.
+                Route::get('/collaborators', [CollaboratorController::class, 'index']);
+                Route::post('/collaborators', [CollaboratorController::class, 'store']);
+                Route::get('/collaborators/{collaborator}', [CollaboratorController::class, 'show'])->whereNumber('collaborator');
+                Route::match(['put', 'patch'], '/collaborators/{collaborator}', [CollaboratorController::class, 'update'])->whereNumber('collaborator');
+                Route::delete('/collaborators/{collaborator}', [CollaboratorController::class, 'destroy'])->whereNumber('collaborator');
+                Route::post('/collaborators/{collaborator}/photo', [CollaboratorController::class, 'storePhoto'])->whereNumber('collaborator');
+                Route::delete('/collaborators/{collaborator}/photo', [CollaboratorController::class, 'deletePhoto'])->whereNumber('collaborator');
+                Route::post('/collaborators/{collaborator}/deactivate', [CollaboratorController::class, 'deactivate'])->whereNumber('collaborator');
+                Route::post('/collaborators/{collaborator}/activate', [CollaboratorController::class, 'activate'])->whereNumber('collaborator');
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::post('/collaborators/{collaborator}/access', [CollaboratorController::class, 'grantAccess'])->whereNumber('collaborator');
+                    Route::post('/collaborators/{collaborator}/access/resend', [CollaboratorController::class, 'resendInvite'])->whereNumber('collaborator');
+                    Route::delete('/collaborators/{collaborator}/access/invite', [CollaboratorController::class, 'cancelInvite'])->whereNumber('collaborator');
+                    Route::post('/collaborators/{collaborator}/access/revoke', [CollaboratorController::class, 'revokeAccess'])->whereNumber('collaborator');
+                    Route::post('/collaborators/{collaborator}/access/restore', [CollaboratorController::class, 'restoreAccess'])->whereNumber('collaborator');
+                });
+                Route::get('/departments', [CompanyDepartmentController::class, 'index']);
+                Route::post('/departments', [CompanyDepartmentController::class, 'store']);
+                Route::post('/departments/suggested', [CompanyDepartmentController::class, 'suggested']);
+                Route::match(['put', 'patch'], '/departments/{department}', [CompanyDepartmentController::class, 'update'])->whereNumber('department');
+                Route::delete('/departments/{department}', [CompanyDepartmentController::class, 'destroy'])->whereNumber('department');
                 // ── Módulo STOCK (Fase 3: recusa 403 se não ativo) ──
                 Route::post('/cars/generate-description', [CarController::class, 'generateDescription'])->middleware('ensure_module:stock');
                 Route::apiResource('/cars', CarController::class)->middleware('ensure_module:stock');
@@ -505,6 +537,9 @@ Route::middleware(['check_company_api_token'])->prefix('public')->group(function
 
     Route::get('blogs', [PublicBlogController::class, 'index']);
     Route::get('blogs/{slug}', [PublicBlogController::class, 'show']);
+
+    // Equipa (secção Equipa dos sites): só colaboradores ativos, autorizados e marcados para o site.
+    Route::get('team', [PublicTeamController::class, 'index'])->middleware('throttle:60,1');
 
     Route::post('track', [TrackController::class, 'store']);
     Route::post('track/carmine', [TrackController::class, 'storeCarmine']);

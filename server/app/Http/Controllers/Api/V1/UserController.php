@@ -33,25 +33,14 @@ class UserController extends Controller
             ? ApiPaginate::perPage($request)
             : null;
 
-        $users = $this->userService->getAll(
-            [
-                "id",
-                "name",
-                "avatar",
-                "signature",
-                "email",
-                "gender",
-                "birthdate",
-                "mobile",
-                "whatsapp",
-                "email_verified_at",
-                "role",
-                "company_id"
-            ],
-            [],
-            $paginate,
-            ['company_id' => $companyId]
-        );
+        // Contas com o acesso retirado não aparecem (ex.: seletor "Vendedor"), salvo pedido explícito.
+        $query = \App\Models\User::query()
+            ->select(['id', 'name', 'avatar', 'signature', 'email', 'gender', 'birthdate', 'mobile', 'whatsapp', 'email_verified_at', 'role', 'company_id', 'deactivated_at'])
+            ->where('company_id', $companyId);
+        if (! $request->boolean('include_deactivated')) {
+            $query->whereNull('deactivated_at');
+        }
+        $users = $paginate ? $query->paginate($paginate) : $query->get();
 
         return ApiResponse::success($users, 'Utilizadores encontrado com sucesso.');
     }

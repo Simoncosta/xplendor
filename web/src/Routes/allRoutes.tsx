@@ -43,7 +43,8 @@ import SaleDocumentPrint from "pages/Cars/Car/documents/SaleDocumentPrint";
 import ActionCenterPage from "pages/Actions/ActionCenterPage";
 
 // Users
-import UsersList from "pages/Users/UsersList";
+import CollaboratorsList from "pages/Collaborators/CollaboratorsList";
+import CollaboratorEditor from "pages/Collaborators/CollaboratorEditor";
 
 // Landing
 // Landings antigas do CRA (LandingX/LandingMotorhomes) foram substituídas pelo Rayo na
@@ -51,7 +52,6 @@ import UsersList from "pages/Users/UsersList";
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import SatisfactionReport from "pages/SatisfactionReport";
-import UserCreate from "pages/Users/User/UserCreate";
 import UserUpdate from "pages/Users/User/UserUpdate";
 
 // Suppliers (DMS 1c.1)
@@ -178,8 +178,11 @@ const authProtectedRoutes = [
     { path: "/quotes", component: <CompanyQuotesList /> },
 
     // Users
-    { path: "/users", component: <UsersList /> },
-    { path: "/users/create", component: <UserCreate /> },
+    // Colaboradores (equipa) e departamentos. /users/:id continua a ser a conta do utilizador (perfil).
+    { path: "/users", component: <CollaboratorsList /> },
+    { path: "/users/create", component: <CollaboratorEditor /> },
+    { path: "/users/collaborators/new", component: <CollaboratorEditor /> },
+    { path: "/users/collaborators/:id", component: <CollaboratorEditor /> },
     { path: "/users/:id", component: <UserUpdate /> },
 
     // Blogs

@@ -21,6 +21,7 @@ class CollaboratorResource extends JsonResource
             'name'          => $this->name,
             'role_title'    => $this->role_title,
             'bio'           => $this->bio,
+            'photo_path'    => $this->photo_path,
             'photo_url'     => $this->photo_path ? Storage::disk('public')->url($this->photo_path) : null,
             'whatsapp'      => $this->whatsapp,
             'phone'         => $this->phone,

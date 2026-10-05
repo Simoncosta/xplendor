@@ -667,6 +667,35 @@ export const postCarAnalysisRegenerate = (companyId: number, carId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_CARS + `/${carId}` + url.POST_CAR_ANALYSIS_REGENERATE, {});
 
 // USERS
+// Colaboradores (equipa) e departamentos. As ações de acesso só funcionam para o admin
+// da própria empresa e fora da sessão como cliente (o servidor recusa com 403).
+const COL = (companyId: number) => url.GET_COMPANIES + `/${companyId}/collaborators`;
+// Os POST da app vão por omissão como multipart (os booleanos chegariam como texto): estes vão em JSON.
+const JSON_HEADERS = { headers: { "Content-Type": "application/json" } };
+export const getCollaborators = (companyId: number, params?: { search?: string; status?: string; department_id?: number }) => api.get(COL(companyId), params);
+export const getCollaborator = (companyId: number, id: number) => api.get(`${COL(companyId)}/${id}`);
+export const createCollaborator = (companyId: number, data: any) => api.create(COL(companyId), data, JSON_HEADERS);
+export const updateCollaborator = (companyId: number, id: number, data: any) => api.update(`${COL(companyId)}/${id}`, data);
+export const deleteCollaborator = (companyId: number, id: number) => api.delete(`${COL(companyId)}/${id}`);
+export const uploadCollaboratorPhoto = (companyId: number, id: number, file: File) => {
+    const fd = new FormData();
+    fd.append("photo", file);
+    return api.create(`${COL(companyId)}/${id}/photo`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+};
+export const deleteCollaboratorPhoto = (companyId: number, id: number) => api.delete(`${COL(companyId)}/${id}/photo`);
+export const setCollaboratorActive = (companyId: number, id: number, active: boolean) => api.create(`${COL(companyId)}/${id}/${active ? "activate" : "deactivate"}`, {});
+export const grantCollaboratorAccess = (companyId: number, id: number, email: string) => api.create(`${COL(companyId)}/${id}/access`, { email }, JSON_HEADERS);
+export const resendCollaboratorInvite = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/resend`, {});
+export const cancelCollaboratorInvite = (companyId: number, id: number) => api.delete(`${COL(companyId)}/${id}/access/invite`);
+export const revokeCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/revoke`, {});
+export const restoreCollaboratorAccess = (companyId: number, id: number) => api.create(`${COL(companyId)}/${id}/access/restore`, {});
+const DEP = (companyId: number) => url.GET_COMPANIES + `/${companyId}/departments`;
+export const getDepartments = (companyId: number) => api.get(DEP(companyId));
+export const createDepartment = (companyId: number, data: any) => api.create(DEP(companyId), data, JSON_HEADERS);
+export const updateDepartment = (companyId: number, id: number, data: any) => api.update(`${DEP(companyId)}/${id}`, data);
+export const deleteDepartment = (companyId: number, id: number) => api.delete(`${DEP(companyId)}/${id}`);
+export const createSuggestedDepartments = (companyId: number) => api.create(`${DEP(companyId)}/suggested`, {});
+
 export const getUsersPaginate = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_USERS_APIS, { params });
 export const showUser = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_USERS_APIS + "/" + params.id);
 export const updateUser = (companyId: number, id: number, data: FormData | any) => api.create(url.GET_COMPANIES + `/${companyId}` + url.GET_USERS_APIS + "/" + id, data, { headers: { "Content-Type": "multipart/form-data" } });

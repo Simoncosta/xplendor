@@ -8,7 +8,6 @@ use App\Models\Collaborator;
 use App\Models\CompanyDepartment;
 use App\Support\PhoneNumber;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * Equipa para os sites dos clientes (GET /api/public/team?token=). Só a empresa do
@@ -41,7 +40,9 @@ class TeamController extends Controller
                 'first_name'     => strtok($m->name, ' ') ?: $m->name,
                 'role_title'     => $m->role_title,
                 'bio'            => $m->bio,
-                'photo_url'      => $m->photo_path ? Storage::disk('public')->url($m->photo_path) : null,
+                // Caminho relativo (/storage/...), como as imagens das viaturas e do blog nesta API:
+                // o site junta-lhe o endereço da API.
+                'photo_url'      => $m->photo_path ? '/storage/' . ltrim($m->photo_path, '/') : null,
                 'contact_source' => $personal ? 'personal' : ($dept ? 'department' : null),
                 'contact'        => $personal
                     ? $this->contact($m->whatsapp, $m->phone, $m->phone_type, $m->email)
