@@ -213,5 +213,14 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('ensure_module', \App\Http\Middleware\EnsureModuleActive::class);
         Route::aliasMiddleware('block_when_impersonating', \App\Http\Middleware\BlockWhenImpersonating::class);
         Route::aliasMiddleware('tenant', \App\Http\Middleware\EnsureTenantAccess::class);
+
+        // Página pública dos orçamentos: limites por IP (o IP só é usado aqui, de passagem,
+        // e nunca é guardado). Respostas do cliente: também por token.
+        \Illuminate\Support\Facades\RateLimiter::for('quote-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('qr|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('quote-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('qo|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('quote-public-action', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('qa|' . $r->ip()),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(20)->by('qt|' . (string) $r->route('token')),
+        ]);
     }
 }

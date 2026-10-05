@@ -48,6 +48,15 @@ class QuoteResource extends JsonResource
             'valid_until'    => optional($this->valid_until)->toDateString(),
             'decided_at'     => optional($this->decided_at)->toIso8601String(),
             'expired_at'     => optional($this->expired_at)->toIso8601String(),
+            // Aceitação parcial pelo link (null: aceite por inteiro ou ainda por decidir).
+            'accepted_total_monthly' => $this->accepted_total_monthly !== null ? (float) $this->accepted_total_monthly : null,
+            'accepted_total_one_off' => $this->accepted_total_one_off !== null ? (float) $this->accepted_total_one_off : null,
+            // Aberturas do link público e respostas do cliente (só para a equipa).
+            'open_count'           => $this->when($admin, (int) $this->open_count),
+            'first_opened_at'      => $this->when($admin, optional($this->first_opened_at)->toIso8601String()),
+            'last_opened_at'       => $this->when($admin, optional($this->last_opened_at)->toIso8601String()),
+            'changes_requested_at' => $this->when($admin, optional($this->changes_requested_at)->toIso8601String()),
+            'onboarding_ticket_id' => $this->when($admin, $this->onboarding_ticket_id),
             'notes'          => $this->when($admin, $this->notes),
             'lines'          => $this->whenLoaded('lines', fn () => $this->lines->map(fn ($l) => [
                 'id'              => $l->id,
@@ -61,6 +70,8 @@ class QuoteResource extends JsonResource
                 'discount_type'   => $l->discount_type,
                 'discount_value'  => $l->discount_value !== null ? (float) $l->discount_value : null,
                 'line_total'      => (float) $l->line_total,
+                'is_optional'     => (bool) $l->is_optional,
+                'in_package'      => (bool) $l->in_package,
             ])->values()->all()),
             // Subtotal, desconto de pacote e total de cada um (mensal e valor único).
             'buckets'        => $this->whenLoaded('lines', fn () => QuoteCalculator::compute(

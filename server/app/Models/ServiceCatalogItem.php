@@ -9,11 +9,13 @@ use Illuminate\Database\Eloquent\Model;
 /** Serviço da tabela padrão dos orçamentos (preço SEM IVA). Gerido pela equipa XPLENDOR. */
 class ServiceCatalogItem extends Model
 {
-    protected $fillable = ['name', 'description', 'unit_price', 'unit', 'billing_type', 'active', 'sort'];
+    protected $fillable = ['name', 'description', 'unit_price', 'unit', 'billing_type', 'active', 'sort', 'onboarding_checklist'];
 
     protected $casts = [
         'unit_price' => 'decimal:2',
         'active'     => 'boolean',
         'sort'       => 'integer',
+        // Lista de arranque: tarefas copiadas para o ticket de arranque quando um orçamento é aceite.
+        'onboarding_checklist' => 'array',
     ];
 }

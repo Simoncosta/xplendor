@@ -153,3 +153,14 @@ Schedule::job(new \App\Jobs\ReadSocialFollowersJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Redes sociais] Job de seguidores falhou no scheduler');
     });
+
+// 03:10 (Lisboa): retenção dos links públicos dos orçamentos (aberturas 12 meses,
+// respostas do cliente 10 anos).
+Schedule::job(new \App\Jobs\PruneQuoteActivityJob())
+    ->dailyAt('03:10')
+    ->timezone('Europe/Lisbon')
+    ->name('quotes-prune-activity')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Orçamentos] Job de retenção falhou no scheduler');
+    });

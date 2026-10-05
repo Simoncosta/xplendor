@@ -22,6 +22,10 @@ class SupportTicket extends Model implements AuditableContract
     public const TYPES = ['idea', 'improvement', 'bug', 'suggestion', 'site_change'];
     public const STATUSES = ['open', 'in_review', 'resolved', 'closed'];
 
+    // Tipo de SISTEMA (nunca escolhido pelo cliente nem na reclassificação): o ticket de
+    // arranque criado quando um orçamento é aceite, com a lista de tarefas dos serviços.
+    public const TYPE_ONBOARDING = 'onboarding';
+
     // Fluxo de orçamento — só para tickets 'site_change' (null nos grátis).
     public const QUOTE_STATUSES = ['awaiting_quote', 'quoted', 'approved', 'paid', 'completed', 'rejected'];
 
@@ -58,6 +62,7 @@ class SupportTicket extends Model implements AuditableContract
         'bug'         => 'Bug',
         'suggestion'  => 'Sugestão',
         'site_change' => 'Alteração ao site',
+        'onboarding'  => 'Arranque',
     ];
 
     public static function typeLabel(string $type): string
@@ -90,5 +95,10 @@ class SupportTicket extends Model implements AuditableContract
     public function typeChanges(): HasMany
     {
         return $this->hasMany(SupportTicketTypeChange::class)->orderByDesc('id');
+    }
+
+    public function tasks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SupportTicketTask::class)->orderBy('position')->orderBy('id');
     }
 }

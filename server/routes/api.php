@@ -524,6 +524,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/tickets', [AdminSupportTicketController::class, 'index']);
             Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
             Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);
+            // Tarefas do ticket de arranque (orçamento aceite): marcar e desmarcar.
+            Route::patch('/tickets/{ticket}/tasks/{task}', [AdminSupportTicketController::class, 'updateTask'])->whereNumber(['ticket', 'task']);
             Route::patch('/tickets/{ticket}/type', [AdminSupportTicketController::class, 'reclassify'])->middleware('block_when_impersonating');
             Route::post('/tickets/{ticket}/messages', [AdminSupportTicketController::class, 'storeMessage']);
             // Site_change (pago): orçar, marcar pago (+ fatura PDF), concluir.
@@ -547,6 +549,9 @@ Route::prefix('v1')->group(function () {
             Route::get('/quotes/{quote}/pdf', [AdminQuoteController::class, 'previewPdf'])->whereNumber('quote');
             Route::get('/quotes/{quote}/versions/{version}/pdf', [AdminQuoteController::class, 'versionPdf'])->whereNumber(['quote', 'version']);
             Route::delete('/quotes/{quote}', [AdminQuoteController::class, 'destroy'])->whereNumber('quote');
+            // Link público, aberturas e respostas; pré-visualização da página pública (não conta).
+            Route::get('/quotes/{quote}/activity', [AdminQuoteController::class, 'activity'])->whereNumber('quote');
+            Route::get('/quotes/{quote}/versions/{version}/public-preview', [AdminQuoteController::class, 'publicPreview'])->whereNumber(['quote', 'version']);
             // Catálogo de serviços (tabela padrão dos orçamentos).
             Route::get('/service-catalog', [AdminServiceCatalogController::class, 'index']);
             Route::post('/service-catalog', [AdminServiceCatalogController::class, 'store']);
@@ -604,6 +609,18 @@ Route::middleware(['resolve_report_token'])->prefix('public')->group(function ()
         ->middleware('throttle:10,1');
     Route::delete('report/{token}/photos/{photo}', [PublicSatisfactionReportController::class, 'destroyPhoto'])
         ->middleware('throttle:20,1');
+});
+
+// Orçamentos: página pública de uma versão enviada (sem login). O token (64 caracteres
+// aleatórios) só dá acesso àquela versão. Limites com nome (AppServiceProvider):
+// leitura, sinal de abertura e respostas do cliente.
+Route::prefix('public/quotes/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'show'])->middleware('throttle:quote-public-read');
+    Route::get('/pdf', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'pdf'])->middleware('throttle:quote-public-read');
+    Route::post('/open', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'open'])->middleware('throttle:quote-public-open');
+    Route::post('/accept', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'accept'])->middleware('throttle:quote-public-action');
+    Route::post('/refuse', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'refuse'])->middleware('throttle:quote-public-action');
+    Route::post('/request-changes', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'requestChanges'])->middleware('throttle:quote-public-action');
 });
 
 Route::get('/user', function (Request $request) {

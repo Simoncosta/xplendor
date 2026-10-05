@@ -83,6 +83,115 @@ class QuoteCalculator
         return ['lines' => $lines, 'buckets' => $buckets];
     }
 
+    /**
+     * Aceitação total ou parcial de uma versão congelada. O cliente só pode deixar de
+     * fora linhas OPCIONAIS; as restantes entram sempre. O desconto de pacote:
+     *  · se alguma linha do pacote ficar de fora, deixa de se aplicar (com o motivo);
+     *  · em % aplica-se ao que ficou; em € só se o total a que se aplica ainda tiver
+     *    linhas e não ficar abaixo do desconto (senão sai, com o motivo).
+     * Fonte única: o servidor recalcula sempre; o browser só mostra.
+     *
+     * @param  array  $snapshot  QuoteSnapshot congelado da versão
+     * @param  array<int|string>  $includedOptionalKeys  chaves das linhas opcionais que o cliente manteve
+     * @return array{lines: array, accepted_keys: array<int>, excluded_keys: array<int>, buckets: array, discount: array}
+     */
+    public static function computeSelection(array $snapshot, array $includedOptionalKeys): array
+    {
+        $lines = self::keyedLines($snapshot);
+        $optionalKeys = array_keys(array_filter($lines, fn ($l) => $l['is_optional']));
+        $included = array_values(array_unique(array_map('intval', $includedOptionalKeys)));
+        if (array_diff($included, $optionalKeys) !== []) {
+            throw ValidationException::withMessages(['lines' => ['Só as linhas opcionais podem ser escolhidas.']]);
+        }
+
+        $selected = array_filter($lines, fn ($l) => ! $l['is_optional'] || in_array($l['key'], $included, true));
+        $excluded = array_diff_key($lines, $selected);
+        if ($selected === []) {
+            throw ValidationException::withMessages(['lines' => ['Escolha pelo menos um serviço.']]);
+        }
+
+        $calc = self::compute(array_values($selected));
+        $buckets = $calc['buckets'];
+
+        $g = $snapshot['global_discount'] ?? [];
+        $label = ($g['label'] ?? null) ?: 'Desconto de pacote';
+        $discount = ['label' => $label, 'type' => $g['type'] ?? null, 'value' => $g['value'] ?? null, 'target' => $g['target'] ?? null,
+            'applies' => false, 'reason' => null];
+        $type = $g['type'] ?? null;
+        $value = (float) ($g['value'] ?? 0);
+        if ($type !== null && $value > 0) {
+            $missing = array_values(array_filter($excluded, fn ($l) => $l['in_package']));
+            if ($missing !== []) {
+                $names = array_map(fn ($l) => $l['name'], $missing);
+                $discount['reason'] = count($names) === 1
+                    ? "{$label}: deixa de se aplicar porque o serviço {$names[0]} não foi incluído."
+                    : "{$label}: deixa de se aplicar porque os serviços " . self::joinNames($names) . ' não foram incluídos.';
+            } elseif ($type === 'percent') {
+                foreach ($buckets as $key => $b) {
+                    $buckets[$key]['discount'] = round($b['subtotal'] * min($value, 100) / 100, 2);
+                }
+                $discount['applies'] = true;
+            } elseif ($type === 'amount') {
+                $target = in_array($g['target'] ?? null, ['monthly', 'one_off'], true) ? $g['target'] : null;
+                $targetLabel = $target === 'monthly' ? 'serviços mensais' : 'serviços de valor único';
+                if ($target === null || $buckets[$target]['count'] === 0) {
+                    $discount['reason'] = "{$label}: aplica-se aos {$targetLabel}, que não foram incluídos.";
+                } elseif ($value > $buckets[$target]['subtotal']) {
+                    $discount['reason'] = "{$label}: deixa de se aplicar porque o total dos {$targetLabel} ficou abaixo do valor do desconto.";
+                } else {
+                    $buckets[$target]['discount'] = round($value, 2);
+                    $discount['applies'] = true;
+                }
+            }
+        }
+        foreach ($buckets as $key => $b) {
+            $buckets[$key]['total'] = max(0.0, round($b['subtotal'] - $b['discount'], 2));
+        }
+
+        return [
+            'lines' => $calc['lines'],
+            'accepted_keys' => array_values(array_map(fn ($l) => $l['key'], $selected)),
+            'excluded_keys' => array_values(array_map(fn ($l) => $l['key'], $excluded)),
+            'buckets' => $buckets,
+            'discount' => $discount,
+        ];
+    }
+
+    /**
+     * Linhas da versão congelada indexadas pela chave. Versões antigas (sem chave nem
+     * marcas) ficam com a posição como chave e todas as linhas obrigatórias.
+     */
+    public static function keyedLines(array $snapshot): array
+    {
+        $out = [];
+        foreach (array_values($snapshot['lines'] ?? []) as $i => $l) {
+            $key = (int) ($l['key'] ?? $i);
+            $out[$key] = [
+                'key' => $key,
+                'name' => $l['name'],
+                'description' => $l['description'] ?? null,
+                'unit' => $l['unit'],
+                'billing_type' => $l['billing_type'],
+                'quantity' => $l['quantity'],
+                'unit_price' => $l['unit_price'],
+                'discount_type' => $l['discount_type'] ?? null,
+                'discount_value' => $l['discount_value'] ?? null,
+                'catalog_item_id' => $l['catalog_item_id'] ?? null,
+                'is_optional' => (bool) ($l['is_optional'] ?? false),
+                'in_package' => (bool) ($l['in_package'] ?? false),
+            ];
+        }
+
+        return $out;
+    }
+
+    private static function joinNames(array $names): string
+    {
+        $last = array_pop($names);
+
+        return implode(', ', $names) . ' e ' . $last;
+    }
+
     private static function discount(?string $type, mixed $value, float $subtotal, string $field, array &$errors): float
     {
         if ($type === null || $value === null || (float) $value <= 0) {

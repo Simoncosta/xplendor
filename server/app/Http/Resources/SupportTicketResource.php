@@ -45,6 +45,15 @@ class SupportTicketResource extends JsonResource
                 'changed_by_name'          => $c->changedBy?->name,
                 'created_at'               => optional($c->created_at)->toIso8601String(),
             ])->values()->all()),
+            // Lista de tarefas (ticket de arranque de um orçamento aceite).
+            'tasks'          => $this->whenLoaded('tasks', fn () => $this->tasks->map(fn ($t) => [
+                'id'           => $t->id,
+                'group_label'  => $t->group_label,
+                'title'        => $t->title,
+                'done'         => $t->done_at !== null,
+                'done_at'      => optional($t->done_at)->toIso8601String(),
+                'done_by_name' => $t->doneBy?->name,
+            ])->values()->all()),
             'created_at'     => optional($this->created_at)->toIso8601String(),
             'updated_at'     => optional($this->updated_at)->toIso8601String(),
         ];

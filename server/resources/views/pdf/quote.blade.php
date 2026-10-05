@@ -52,6 +52,7 @@
     .lines td { padding: 2.6mm 2mm; border-bottom: 0.6pt solid #e4e6ea; vertical-align: top; }
     .lines .num { text-align: right; white-space: nowrap; }
     .lines .item-name { font-weight: 600; }
+    .lines .item-optional { font-weight: normal; color: #6b717c; font-size: 0.85em; }
     .lines .item-desc { color: #6b717c; font-size: 8.5pt; margin-top: 0.5mm; }
     .lines .discount { color: #1a7f4b; }
     .lines tr.subtotal td { border-bottom: none; padding-top: 2.4mm; padding-bottom: 1mm; color: #6b717c; }
@@ -159,7 +160,7 @@
             @foreach ($section['lines'] as $line)
                 <tr>
                     <td>
-                        <div class="item-name">{{ $line['name'] }}</div>
+                        <div class="item-name">{{ $line['name'] }}@if(!empty($line['optional'])) <span class="item-optional">(opcional)</span>@endif</div>
                         @if ($line['description'])<div class="item-desc">{{ $line['description'] }}</div>@endif
                     </td>
                     <td class="num">{{ $line['quantity'] }}</td>

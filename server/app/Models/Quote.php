@@ -38,7 +38,8 @@ class Quote extends Model implements AuditableContract
         'client_name', 'client_contact', 'client_email', 'client_phone',
         'title', 'intro', 'description', 'amount',
         'global_discount_type', 'global_discount_value', 'global_discount_target', 'global_discount_label',
-        'total_monthly', 'total_one_off',
+        'total_monthly', 'total_one_off', 'accepted_total_monthly', 'accepted_total_one_off',
+        'open_count', 'first_opened_at', 'last_opened_at', 'last_open_alert_at', 'changes_requested_at', 'onboarding_ticket_id',
         'minimum_contract_months', 'payment_terms', 'monthly_start_terms', 'payment_terms_monthly', 'payment_terms_one_off',
         'status', 'sent_at', 'valid_until', 'decided_at', 'expired_at', 'legacy_status',
         'notes', 'created_by_user_id',
@@ -53,6 +54,13 @@ class Quote extends Model implements AuditableContract
         'valid_until'           => 'date',
         'decided_at'            => 'datetime',
         'expired_at'            => 'datetime',
+        'accepted_total_monthly' => 'decimal:2',
+        'accepted_total_one_off' => 'decimal:2',
+        'open_count'            => 'integer',
+        'first_opened_at'       => 'datetime',
+        'last_opened_at'        => 'datetime',
+        'last_open_alert_at'    => 'datetime',
+        'changes_requested_at'  => 'datetime',
     ];
 
     protected $attributes = [
@@ -79,6 +87,21 @@ class Quote extends Model implements AuditableContract
     public function versions(): HasMany
     {
         return $this->hasMany(QuoteVersion::class)->orderByDesc('version');
+    }
+
+    public function publicLinks(): HasMany
+    {
+        return $this->hasMany(QuotePublicLink::class);
+    }
+
+    public function opens(): HasMany
+    {
+        return $this->hasMany(QuoteOpen::class)->orderByDesc('opened_at');
+    }
+
+    public function responses(): HasMany
+    {
+        return $this->hasMany(QuoteResponse::class)->orderByDesc('created_at')->orderByDesc('id');
     }
 
     public function isLinkedToCompany(): bool

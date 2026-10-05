@@ -16,7 +16,12 @@ class QuoteSnapshot
     public static function fromQuote(Quote $quote): array
     {
         $quote->loadMissing(['lines', 'customer']);
-        $lines = $quote->lines->map(fn ($l) => [
+        $lines = $quote->lines->values()->map(fn ($l, $i) => [
+            // Chave estável dentro da versão (a aceitação parcial refere as linhas por ela).
+            'key'            => $i,
+            'catalog_item_id' => $l->catalog_item_id,
+            'is_optional'    => (bool) $l->is_optional,
+            'in_package'     => (bool) $l->in_package,
             'name'           => $l->name,
             'description'    => $l->description,
             'unit'           => $l->unit,

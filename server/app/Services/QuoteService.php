@@ -9,11 +9,13 @@ use App\Mail\QuoteDecisionMail;
 use App\Models\Company;
 use App\Models\Customer;
 use App\Models\Quote;
+use App\Models\QuotePublicLink;
 use App\Models\QuoteVersion;
 use App\Models\User;
 use App\Repositories\Contracts\QuoteRepositoryInterface;
 use App\Services\Quotes\QuoteCalculator;
 use App\Services\Quotes\QuoteNumberAllocator;
+use App\Services\Quotes\QuoteOnboardingService;
 use App\Services\Quotes\QuotePdfRenderer;
 use App\Services\Quotes\QuoteSnapshot;
 use Carbon\CarbonImmutable;
@@ -47,6 +49,7 @@ class QuoteService extends BaseService
         protected QuoteRepositoryInterface $quoteRepository,
         private readonly QuoteNumberAllocator $numbers,
         private readonly QuotePdfRenderer $pdf,
+        private readonly QuoteOnboardingService $onboarding,
     ) {
         parent::__construct($quoteRepository);
     }
@@ -141,12 +144,15 @@ class QuoteService extends BaseService
             $source->loadMissing('lines');
             $copy = $source->replicate([
                 'number', 'number_year', 'number_seq', 'sent_at', 'valid_until', 'decided_at', 'expired_at', 'legacy_status',
+                'accepted_total_monthly', 'accepted_total_one_off', 'open_count', 'first_opened_at', 'last_opened_at',
+                'last_open_alert_at', 'changes_requested_at', 'onboarding_ticket_id',
             ]);
             $copy->fill(['status' => 'draft', 'version' => 1, 'created_by_user_id' => $actor->id]);
             $copy->save();
             foreach ($source->lines as $line) {
                 $copy->lines()->create($line->only([
                     'position', 'catalog_item_id', 'name', 'description', 'unit', 'billing_type', 'quantity', 'unit_price', 'discount_type', 'discount_value', 'line_total',
+                    'is_optional', 'in_package',
                 ]));
             }
 
@@ -206,7 +212,7 @@ class QuoteService extends BaseService
 
         $lines = array_key_exists('lines', $data)
             ? array_values($data['lines'])
-            : ($quote->exists ? $quote->lines()->get()->map->only(['catalog_item_id', 'name', 'description', 'unit', 'billing_type', 'quantity', 'unit_price', 'discount_type', 'discount_value'])->all() : []);
+            : ($quote->exists ? $quote->lines()->get()->map->only(['catalog_item_id', 'name', 'description', 'unit', 'billing_type', 'quantity', 'unit_price', 'discount_type', 'discount_value', 'is_optional', 'in_package'])->all() : []);
         $calc = QuoteCalculator::compute($lines, [
             'type' => $quote->global_discount_type, 'value' => $quote->global_discount_value, 'target' => $quote->global_discount_target,
         ]);
@@ -232,6 +238,8 @@ class QuoteService extends BaseService
                     'discount_type'   => ($line['discount_value'] ?? null) ? ($line['discount_type'] ?? null) : null,
                     'discount_value'  => ($line['discount_value'] ?? null) ?: null,
                     'line_total'      => $line['line_total'],
+                    'is_optional'     => (bool) ($line['is_optional'] ?? false),
+                    'in_package'      => (bool) ($line['in_package'] ?? false),
                 ]);
             }
         }
@@ -267,7 +275,8 @@ class QuoteService extends BaseService
             ]);
             $quote->save();
 
-            $this->freezeVersion($quote, $actor);
+            // Versão congelada e o seu link público (token longo e aleatório).
+            QuotePublicLink::forVersion($this->freezeVersion($quote, $actor));
 
             return $quote;
         });
@@ -317,7 +326,9 @@ class QuoteService extends BaseService
             if ($quote->status !== 'sent') {
                 $this->reject('status', 'Só se aceita ou recusa um orçamento enviado e em aberto.');
             }
-            $quote->update(['status' => $accepted ? 'accepted' : 'refused', 'decided_at' => now()]);
+            // Aceite fora do link público: aceita todas as linhas (os totais aceites são os totais).
+            $quote->update(['status' => $accepted ? 'accepted' : 'refused', 'decided_at' => now()]
+                + ($accepted ? ['accepted_total_monthly' => $quote->total_monthly, 'accepted_total_one_off' => $quote->total_one_off] : []));
 
             return $quote;
         });
@@ -325,8 +336,21 @@ class QuoteService extends BaseService
         if ($byCompany) {
             $this->notifyDecision($quote, $accepted);
         }
+        if ($accepted) {
+            $this->startOnboardingForFullAcceptance($quote);
+        }
 
         return $quote->fresh(['lines', 'versions']);
+    }
+
+    /** Arranque de uma aceitação total (painel da empresa ou registo pela equipa): todas as linhas da versão em vigor. */
+    private function startOnboardingForFullAcceptance(Quote $quote): void
+    {
+        $version = $quote->versions()->where('version', $quote->version)->first();
+        $lines = $version
+            ? array_values($version->snapshot['lines'] ?? [])
+            : $quote->lines()->get()->map(fn ($l) => ['name' => $l->name, 'catalog_item_id' => $l->catalog_item_id, 'billing_type' => $l->billing_type, 'line_total' => (float) $l->line_total])->all();
+        $this->onboarding->onAccepted($quote, $lines, ['monthly' => (float) $quote->total_monthly, 'one_off' => (float) $quote->total_one_off], false, count($lines));
     }
 
     /** Expira os enviados cuja validade já passou (dia de Lisboa). Rascunhos nunca expiram. */
@@ -383,6 +407,12 @@ class QuoteService extends BaseService
             'monthly' => round((float) (clone $q)->sum('total_monthly'), 2),
             'one_off' => round((float) (clone $q)->sum('total_one_off'), 2),
         ];
+        // Aceites: só as linhas aceites (aceitação parcial pelo link); os antigos, o total.
+        $sumAccepted = fn ($q) => [
+            'count'   => (int) (clone $q)->count(),
+            'monthly' => round((float) (clone $q)->sum(DB::raw('COALESCE(accepted_total_monthly, total_monthly)')), 2),
+            'one_off' => round((float) (clone $q)->sum(DB::raw('COALESCE(accepted_total_one_off, total_one_off)')), 2),
+        ];
         $yearStart = $now->startOfYear()->utc();
         $yearEnd = $now->endOfYear()->utc();
         $counts = Quote::selectRaw('status, COUNT(*) as c')->groupBy('status')->pluck('c', 'status');
@@ -392,8 +422,8 @@ class QuoteService extends BaseService
                 'expiring_7d' => Quote::where('status', 'sent')->whereNotNull('valid_until')
                     ->whereDate('valid_until', '<=', $now->addDays(7)->toDateString())->count(),
             ],
-            'accepted_year' => $sum(Quote::where('status', 'accepted')->whereBetween('decided_at', [$yearStart, $yearEnd])) + ['year' => (int) $now->format('Y')],
-            'accepted_all'  => $sum(Quote::where('status', 'accepted')),
+            'accepted_year' => $sumAccepted(Quote::where('status', 'accepted')->whereBetween('decided_at', [$yearStart, $yearEnd])) + ['year' => (int) $now->format('Y')],
+            'accepted_all'  => $sumAccepted(Quote::where('status', 'accepted')),
             'by_status'     => collect(Quote::STATUSES)->mapWithKeys(fn ($s) => [$s => (int) ($counts[$s] ?? 0)])->all(),
             'total'         => (int) $counts->sum(),
         ];

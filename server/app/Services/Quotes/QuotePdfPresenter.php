@@ -48,6 +48,7 @@ class QuotePdfPresenter
                 'subtitle' => $monthly ? '(cobrados todos os meses)' : '(pagos uma só vez)',
                 'lines'    => array_map(fn ($l) => [
                     'name'        => $l['name'],
+                    'optional'    => (bool) ($l['is_optional'] ?? false),
                     'description' => $l['description'],
                     'quantity'    => self::number($l['quantity']) . ($l['unit'] === 'hour' ? ' h' : ''),
                     'unit_price'  => self::money($l['unit_price']) . (self::UNIT_SUFFIX[$l['unit']] ?? ''),
@@ -123,7 +124,9 @@ class QuotePdfPresenter
             'totals'           => $totals,
             'vat_note'         => $texts['vat_note'],
             'conditions'       => $conditions,
-            'acceptance_note'  => 'Para aceitar este orçamento, responda ao email em que o recebeu ou contacte-nos através de ' . $legal['email'] . '.',
+            'acceptance_note'  => 'Para aceitar este orçamento, use o link que recebeu com ele'
+                . (collect($s['lines'])->contains(fn ($l) => ! empty($l['is_optional'])) ? ' (os serviços marcados como opcionais podem ficar de fora)' : '')
+                . ', responda ao email em que o recebeu ou contacte-nos através de ' . $legal['email'] . '.',
         ];
     }
 

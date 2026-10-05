@@ -76,8 +76,12 @@ class UserController extends Controller
 
         $token = $this->userService->createToken($user, $user['name']);
 
+        // Equipa XPLENDOR: marca assinada do browser (as aberturas dos orçamentos feitas
+        // neste browser não contam). O frontend apaga-a quando o root termina a sessão.
+        $extra = $user->role === 'root' ? ['team_marker' => \App\Support\TeamDeviceMarker::issue($user)] : [];
+
         return ApiResponse::success(
-            array_merge(['token' => $token], $user->toArray()),
+            array_merge(['token' => $token], $user->toArray(), $extra),
             'User created successfully.'
         );
     }

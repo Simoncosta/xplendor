@@ -101,7 +101,7 @@ class SupportTicketController extends Controller
     {
         $this->ensureRoot();
 
-        $ticket = SupportTicket::with(['company', 'user', 'messages.user', 'typeChanges.changedBy'])->find($ticketId);
+        $ticket = SupportTicket::with(['company', 'user', 'messages.user', 'typeChanges.changedBy', 'tasks.doneBy'])->find($ticketId);
         if (! $ticket) {
             return ApiResponse::error('Ticket não encontrado.', 404);
         }
@@ -110,6 +110,23 @@ class SupportTicketController extends Controller
             (new SupportTicketResource($ticket))->resolve(),
             'Admin ticket fetched successfully.'
         );
+    }
+
+    // PATCH /admin/tickets/{ticket}/tasks/{task}   { done: bool }  (equipa XPLENDOR)
+    public function updateTask(Request $request, int $ticketId, int $taskId)
+    {
+        $this->ensureRoot();
+        $data = $request->validate(['done' => ['required', 'boolean']]);
+        $task = \App\Models\SupportTicketTask::where('support_ticket_id', $ticketId)->find($taskId);
+        if (! $task) {
+            return ApiResponse::error('Tarefa não encontrada.', 404);
+        }
+        $task->update($data['done']
+            ? ['done_at' => $task->done_at ?? now(), 'done_by_user_id' => $task->done_by_user_id ?? $request->user()->id]
+            : ['done_at' => null, 'done_by_user_id' => null]);
+        $ticket = SupportTicket::with(['company', 'user', 'messages.user', 'typeChanges.changedBy', 'tasks.doneBy'])->find($ticketId);
+
+        return ApiResponse::success((new SupportTicketResource($ticket))->resolve(), $data['done'] ? 'Tarefa concluída.' : 'Tarefa reaberta.');
     }
 
     public function updateStatus(Request $request, int $ticketId)

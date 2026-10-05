@@ -35,6 +35,9 @@ class ServiceCatalogController extends Controller
             'billing_type' => [$req, Rule::in(QuoteLine::BILLING_TYPES)],
             'active'       => ['sometimes', 'boolean'],
             'sort'         => ['sometimes', 'integer', 'min:0', 'max:100000'],
+            // Lista de arranque: tarefas copiadas para o ticket quando um orçamento com o serviço é aceite.
+            'onboarding_checklist'   => ['sometimes', 'nullable', 'array', 'max:30'],
+            'onboarding_checklist.*' => ['string', 'max:200'],
         ];
     }
 

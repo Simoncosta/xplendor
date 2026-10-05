@@ -92,7 +92,8 @@ class SupportTicketController extends Controller
             return ApiResponse::error('Ticket não encontrado.', 404);
         }
 
-        $ticket->load(['user', 'messages.user']);
+        // O cliente acompanha o arranque (lista de tarefas, só leitura).
+        $ticket->load(['user', 'messages.user', 'tasks.doneBy']);
 
         return ApiResponse::success(
             (new SupportTicketResource($ticket))->resolve(),

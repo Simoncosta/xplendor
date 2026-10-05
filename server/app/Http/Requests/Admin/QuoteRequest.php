@@ -50,6 +50,8 @@ class QuoteRequest extends FormRequest
             'lines.*.unit_price'     => ['required', 'numeric', 'min:0', 'max:9999999'],
             'lines.*.discount_type'  => ['nullable', Rule::in(['percent', 'amount'])],
             'lines.*.discount_value' => ['nullable', 'numeric', 'min:0', 'max:9999999'],
+            'lines.*.is_optional'    => ['sometimes', 'boolean'],
+            'lines.*.in_package'     => ['sometimes', 'boolean'],
         ];
     }
 

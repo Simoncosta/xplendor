@@ -15,7 +15,7 @@ class QuoteLine extends Model
 
     protected $fillable = [
         'quote_id', 'position', 'catalog_item_id', 'name', 'description', 'unit', 'billing_type',
-        'quantity', 'unit_price', 'discount_type', 'discount_value', 'line_total',
+        'quantity', 'unit_price', 'discount_type', 'discount_value', 'line_total', 'is_optional', 'in_package',
     ];
 
     protected $casts = [
@@ -23,6 +23,8 @@ class QuoteLine extends Model
         'unit_price'     => 'decimal:2',
         'discount_value' => 'decimal:2',
         'line_total'     => 'decimal:2',
+        'is_optional'    => 'boolean',   // o cliente pode desmarcá-la no link público
+        'in_package'     => 'boolean',   // se sair, o desconto de pacote deixa de se aplicar
     ];
 
     public function quote(): BelongsTo
