@@ -13,15 +13,11 @@ use App\Models\Quote;
 use App\Services\QuoteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
 
 /**
- * XPLENDOR — Orçamentos avulsos, LADO ADMIN (super-admin / root). TRANSVERSAL:
- * não filtra por company. Vive no grupo /api/v1/admin, atrás do EnsureSuperAdmin
- * — não há endpoint de stand para orçamentos (os stands nunca veem isto).
- *
- * Defesa em profundidade: reconfirma role 'root' mesmo atrás do middleware
- * (mesmo padrão do AdminSupportTicketController).
+ * XPLENDOR — Orçamentos de serviços, LADO ADMIN (só a equipa XPLENDOR: root fora de
+ * impersonation; em impersonation o token é do cliente). Vive no grupo /api/v1/admin
+ * atrás do EnsureSuperAdmin; reconfirma root aqui (defesa em profundidade).
  */
 class QuoteController extends Controller
 {
@@ -32,7 +28,22 @@ class QuoteController extends Controller
         abort_unless(Auth::user()?->role === 'root', 403);
     }
 
-    /** Empresas ativas para o campo creatable (selecionar empresa cadastrada). */
+    private function find(int $quoteId): Quote
+    {
+        $quote = Quote::find($quoteId);
+        abort_unless($quote, 404, 'Orçamento não encontrado.');
+
+        return $quote;
+    }
+
+    private function respond(Quote $quote, string $message)
+    {
+        $quote->loadMissing(['company:id,fiscal_name,trade_name', 'lines', 'versions']);
+
+        return ApiResponse::success((new QuoteResource($quote))->resolve(), $message);
+    }
+
+    /** Empresas ativas da plataforma (ligação opcional para decidirem no painel delas). */
     public function companies()
     {
         $this->ensureRoot();
@@ -45,167 +56,145 @@ class QuoteController extends Controller
         return ApiResponse::success($companies, 'Companies fetched successfully.');
     }
 
-    /** Listagem transversal + filtro opcional por estado. Recentes no topo. */
+    /** Clientes da XPLENDOR (módulo Clientes da empresa da equipa). */
+    public function customers(Request $request)
+    {
+        $this->ensureRoot();
+
+        return ApiResponse::success($this->service->searchCustomers($request->user(), $request->input('search')), 'Customers fetched successfully.');
+    }
+
+    /** Cria um cliente da XPLENDOR (grava no módulo Clientes). */
+    public function storeCustomer(Request $request)
+    {
+        $this->ensureRoot();
+        $data = $request->validate([
+            'name'  => ['required', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+        ]);
+        $customer = $this->service->createCustomer($request->user(), $data);
+
+        return ApiResponse::success($customer->only(['id', 'name', 'email', 'phone', 'nif']), 'Cliente criado.', 201);
+    }
+
     public function index(Request $request)
     {
         $this->ensureRoot();
 
         $query = Quote::query()->with('company:id,fiscal_name,trade_name');
-
         if ($status = $request->input('status')) {
             $query->where('status', $status);
         }
         if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('client_name', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
+            $query->where(fn ($q) => $q->where('client_name', 'like', "%{$search}%")
+                ->orWhere('title', 'like', "%{$search}%")
+                ->orWhere('number', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%"));
         }
 
-        $query->orderByDesc('id');
-
-        return ApiResponse::success(
-            QuoteResource::collection($query->get())->resolve(),
-            'Quotes fetched successfully.'
-        );
+        return ApiResponse::success(QuoteResource::collection($query->orderByDesc('id')->get())->resolve(), 'Quotes fetched successfully.');
     }
 
-    /** Contagens/valores para o topo da consola (embrião de estatísticas). */
+    /** Condições por omissão de um orçamento novo (contrato mínimo, forma de pagamento, texto do desconto). */
+    public function defaults()
+    {
+        $this->ensureRoot();
+
+        return ApiResponse::success($this->service->defaults(), 'Quote defaults fetched successfully.');
+    }
+
+    /** Dashboard root: em aberto, aceites no ano e desde sempre (mensal e único separados). */
     public function summary()
     {
         $this->ensureRoot();
 
-        $byStatus = Quote::selectRaw('status, COUNT(*) as c, COALESCE(SUM(amount),0) as total')
-            ->groupBy('status')->get()->keyBy('status');
-
-        return ApiResponse::success([
-            'pending'        => (int) ($byStatus['pending']->c ?? 0),
-            'approved'       => (int) ($byStatus['approved']->c ?? 0),
-            'rejected'       => (int) ($byStatus['rejected']->c ?? 0),
-            'total'          => (int) Quote::count(),
-            'approved_value' => (float) ($byStatus['approved']->total ?? 0),
-        ], 'Quotes summary fetched successfully.');
+        return ApiResponse::success($this->service->summary(), 'Quotes summary fetched successfully.');
     }
 
     public function store(QuoteRequest $request)
     {
         $this->ensureRoot();
+        $quote = $this->service->createQuote($request->validated(), $request->user());
 
-        // create() resolve o nome a partir da empresa (se ligado) e notifica-a.
-        $quote = $this->service->create($request->validated());
-        $quote->load('company:id,fiscal_name,trade_name');
-
-        return ApiResponse::success(
-            (new QuoteResource($quote))->resolve(),
-            'Quote created successfully.'
-        );
+        return $this->respond($quote, 'Orçamento criado.')->setStatusCode(201);
     }
 
     public function show(int $quoteId)
     {
         $this->ensureRoot();
 
-        $quote = Quote::with('company:id,fiscal_name,trade_name')->find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
-
-        return ApiResponse::success(
-            (new QuoteResource($quote))->resolve(),
-            'Quote fetched successfully.'
-        );
+        return $this->respond($this->find($quoteId), 'Quote fetched successfully.');
     }
 
+    /** Rascunho: altera. Enviado, recusado ou expirado: nova versão em rascunho. Aceite: 422. */
     public function update(QuoteRequest $request, int $quoteId)
     {
         $this->ensureRoot();
+        $quote = $this->service->updateQuote($this->find($quoteId), $request->validated(), $request->user());
 
-        $quote = Quote::find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
-
-        $quote = $this->service->update($quote->id, $request->validated());
-
-        return ApiResponse::success(
-            (new QuoteResource($quote))->resolve(),
-            'Quote updated successfully.'
-        );
+        return $this->respond($quote, 'Orçamento guardado.');
     }
 
-    /**
-     * Mudar o estado (para orçamentos de NOME LIVRE — sem painel de empresa, o
-     * Simon marca tudo à mão). Nos orçamentos ligados a uma empresa, aprovar/
-     * rejeitar é decisão DELA (endpoint de stand) — o Simon não aprova por ela.
-     */
-    public function updateStatus(Request $request, int $quoteId)
+    /** Marca como enviado (o PDF foi enviado ao cliente por fora). */
+    public function send(Request $request, int $quoteId)
     {
         $this->ensureRoot();
+        $quote = $this->service->send($this->find($quoteId), $request->user());
 
-        $quote = Quote::find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
-
-        $data = $request->validate([
-            'status' => ['required', Rule::in(Quote::STATUSES)],
-        ]);
-
-        if ($quote->isLinkedToCompany() && in_array($data['status'], ['approved', 'rejected'], true)) {
-            return ApiResponse::error('Este orçamento está ligado a uma empresa — a aprovação/rejeição é feita por ela no painel dela.', 422);
-        }
-
-        $quote = $this->service->update($quote->id, ['status' => $data['status']]);
-
-        return ApiResponse::success(
-            (new QuoteResource($quote))->resolve(),
-            'Quote status updated successfully.'
-        );
+        return $this->respond($quote, 'Orçamento marcado como enviado.');
     }
 
-    /** ADMIN — marca pago (fora do software). Só a partir de 'approved'. */
-    public function markPaid(int $quoteId)
+    /** Regista a resposta do cliente (orçamentos não ligados a uma empresa). */
+    public function decision(Request $request, int $quoteId)
     {
         $this->ensureRoot();
+        $data = $request->validate(['decision' => ['required', 'in:accept,refuse']]);
+        $quote = $this->service->decide($this->find($quoteId), $data['decision'] === 'accept', byCompany: false);
 
-        $quote = Quote::find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
-
-        $quote = $this->service->markPaid($quote);
-        $quote->load('company:id,fiscal_name,trade_name');
-
-        return ApiResponse::success((new QuoteResource($quote))->resolve(), 'Quote marked as paid.');
+        return $this->respond($quote, $data['decision'] === 'accept' ? 'Orçamento aceite.' : 'Orçamento recusado.');
     }
 
-    /** ADMIN — marca concluído. Só a partir de 'paid'. */
-    public function markCompleted(int $quoteId)
+    public function duplicate(Request $request, int $quoteId)
     {
         $this->ensureRoot();
+        $copy = $this->service->duplicate($this->find($quoteId), $request->user());
 
-        $quote = Quote::find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
+        return $this->respond($copy, 'Orçamento duplicado.')->setStatusCode(201);
+    }
 
-        $quote = $this->service->markCompleted($quote);
-        $quote->load('company:id,fiscal_name,trade_name');
+    /** Pré-visualização do estado atual (rascunho incluído), sem guardar. */
+    public function previewPdf(int $quoteId)
+    {
+        $this->ensureRoot();
+        $quote = $this->find($quoteId);
 
-        return ApiResponse::success((new QuoteResource($quote))->resolve(), 'Quote marked as completed.');
+        return $this->pdfResponse($this->service->previewPdf($quote), $quote->displayNumber() . '-v' . $quote->version . '-previsualizacao.pdf');
+    }
+
+    /** O PDF congelado de uma versão enviada (o que o cliente recebeu). */
+    public function versionPdf(int $quoteId, int $version)
+    {
+        $this->ensureRoot();
+        $v = $this->find($quoteId)->versions()->where('version', $version)->first();
+        abort_unless($v, 404, 'Versão não encontrada.');
+
+        return $this->pdfResponse($this->service->versionPdf($v), "{$v->number}-v{$v->version}.pdf");
     }
 
     public function destroy(int $quoteId)
     {
         $this->ensureRoot();
+        $this->service->deleteQuote($this->find($quoteId));
 
-        $quote = Quote::find($quoteId);
-        if (! $quote) {
-            return ApiResponse::error('Orçamento não encontrado.', 404);
-        }
+        return ApiResponse::success(null, 'Orçamento apagado.');
+    }
 
-        $this->service->destroy($quote->id);
-
-        return ApiResponse::success(null, 'Quote deleted successfully.');
+    private function pdfResponse(string $bytes, string $filename)
+    {
+        return response($bytes, 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 }

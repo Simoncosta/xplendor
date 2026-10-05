@@ -1,14 +1,17 @@
 /**
  * Dados da entidade responsável, usados nas páginas legais (PT e EN) e no rodapé.
- * Os valores entre parênteses retos estão por confirmar: trocar aqui e todas as
- * páginas ficam atualizadas.
+ * Fonte única: server/config/legal-company.json, partilhado com o servidor (PDF dos
+ * orçamentos). Corrigir lá chega aos dois. O site é compilado no repositório, onde
+ * a pasta server/ existe.
  */
+import legal from "../../../server/config/legal-company.json";
+
 export const COMPANY = {
-  legalName: "SIMON COSTA, UNIPESSOAL LDA",
-  brand: "XPLENDOR",
-  nif: "[517343355]",
-  address: "[Rua Camilo de Oliveira, 101, Rio Tinto, Gondomar]",
-  // PLACEHOLDER: email provisório até existir o email da empresa. Sem parênteses
-  // retos porque também é usado como ligação mailto no rodapé.
-  email: "xplendorcar@gmail.com",
+  legalName: legal.legalName,
+  brandOwnerName: legal.brandOwnerName,
+  brand: legal.brand,
+  nif: legal.nif,
+  address: legal.address,
+  // Email provisório até existir o email da empresa (também usado como mailto no rodapé).
+  email: legal.email,
 };

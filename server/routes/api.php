@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\MarketSnapshotController;
 use App\Http\Controllers\Api\V1\Admin\AdminController;
 use App\Http\Controllers\Api\V1\Admin\SupportTicketController as AdminSupportTicketController;
 use App\Http\Controllers\Api\V1\Admin\QuoteController as AdminQuoteController;
+use App\Http\Controllers\Api\V1\Admin\ServiceCatalogController as AdminServiceCatalogController;
 use App\Http\Controllers\Api\V1\Admin\StockController as AdminStockController;
 use App\Http\Controllers\Api\V1\Admin\CompanyController as AdminCompanyController;
 use App\Http\Controllers\Api\Public\{
@@ -365,9 +366,10 @@ Route::prefix('v1')->group(function () {
                 // Site_change (pago): o stand só aprova/rejeita o orçamento.
                 Route::patch('/support-tickets/{ticket}/quote-decision', [SupportTicketController::class, 'quoteDecision']);
 
-                // Orçamentos avulsos ligados a esta empresa — ela vê e decide.
+                // Orçamentos da XPLENDOR ligados a esta empresa: vê os enviados, decide e descarrega o PDF.
                 Route::get('/quotes', [QuoteController::class, 'index']);
                 Route::patch('/quotes/{quote}/decision', [QuoteController::class, 'decision']);
+                Route::get('/quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->whereNumber('quote');
 
                 // Tarefas internas do cliente (Kanban do stand). Partilhadas por
                 // company_id; toda a equipa vê/edita. Colunas fixas todo|doing|done.
@@ -443,24 +445,33 @@ Route::prefix('v1')->group(function () {
             Route::get('/tickets', [AdminSupportTicketController::class, 'index']);
             Route::get('/tickets/{ticket}', [AdminSupportTicketController::class, 'show']);
             Route::patch('/tickets/{ticket}/status', [AdminSupportTicketController::class, 'updateStatus']);
-            Route::patch('/tickets/{ticket}/type', [AdminSupportTicketController::class, 'reclassify']);
+            Route::patch('/tickets/{ticket}/type', [AdminSupportTicketController::class, 'reclassify'])->middleware('block_when_impersonating');
             Route::post('/tickets/{ticket}/messages', [AdminSupportTicketController::class, 'storeMessage']);
             // Site_change (pago): orçar, marcar pago (+ fatura PDF), concluir.
             Route::patch('/tickets/{ticket}/quote', [AdminSupportTicketController::class, 'setQuote']);
             Route::post('/tickets/{ticket}/mark-paid', [AdminSupportTicketController::class, 'markPaid']);
             Route::patch('/tickets/{ticket}/complete', [AdminSupportTicketController::class, 'markCompleted']);
 
-            // Orçamentos avulsos — gestão comercial (2ª consola da área /admin).
+            // Orçamentos de serviços da XPLENDOR (só a equipa). Rotas fixas antes de /{quote}.
             Route::get('/quotes/summary', [AdminQuoteController::class, 'summary']);
+            Route::get('/quotes/defaults', [AdminQuoteController::class, 'defaults']);
             Route::get('/quotes/companies', [AdminQuoteController::class, 'companies']);
+            Route::get('/quotes/customers', [AdminQuoteController::class, 'customers']);
+            Route::post('/quotes/customers', [AdminQuoteController::class, 'storeCustomer']);
             Route::get('/quotes', [AdminQuoteController::class, 'index']);
             Route::post('/quotes', [AdminQuoteController::class, 'store']);
-            Route::get('/quotes/{quote}', [AdminQuoteController::class, 'show']);
-            Route::match(['put', 'patch'], '/quotes/{quote}', [AdminQuoteController::class, 'update']);
-            Route::patch('/quotes/{quote}/status', [AdminQuoteController::class, 'updateStatus']);
-            Route::patch('/quotes/{quote}/mark-paid', [AdminQuoteController::class, 'markPaid']);
-            Route::patch('/quotes/{quote}/complete', [AdminQuoteController::class, 'markCompleted']);
-            Route::delete('/quotes/{quote}', [AdminQuoteController::class, 'destroy']);
+            Route::get('/quotes/{quote}', [AdminQuoteController::class, 'show'])->whereNumber('quote');
+            Route::match(['put', 'patch'], '/quotes/{quote}', [AdminQuoteController::class, 'update'])->whereNumber('quote');
+            Route::post('/quotes/{quote}/send', [AdminQuoteController::class, 'send'])->whereNumber('quote');
+            Route::patch('/quotes/{quote}/decision', [AdminQuoteController::class, 'decision'])->whereNumber('quote');
+            Route::post('/quotes/{quote}/duplicate', [AdminQuoteController::class, 'duplicate'])->whereNumber('quote');
+            Route::get('/quotes/{quote}/pdf', [AdminQuoteController::class, 'previewPdf'])->whereNumber('quote');
+            Route::get('/quotes/{quote}/versions/{version}/pdf', [AdminQuoteController::class, 'versionPdf'])->whereNumber(['quote', 'version']);
+            Route::delete('/quotes/{quote}', [AdminQuoteController::class, 'destroy'])->whereNumber('quote');
+            // Catálogo de serviços (tabela padrão dos orçamentos).
+            Route::get('/service-catalog', [AdminServiceCatalogController::class, 'index']);
+            Route::post('/service-catalog', [AdminServiceCatalogController::class, 'store']);
+            Route::match(['put', 'patch'], '/service-catalog/{id}', [AdminServiceCatalogController::class, 'update'])->whereNumber('id');
 
             // Stock GLOBAL — 1ª vista de dados transversais (veículos de todas
             // as empresas ATIVAS). Só leitura; não toca nos endpoints de stand.

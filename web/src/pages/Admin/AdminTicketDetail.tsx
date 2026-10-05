@@ -8,17 +8,21 @@ import {
     setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted,
 } from "helpers/laravel_helper";
 import {
-    ISupportTicket, SupportTicketStatus, TICKET_TYPE_META, TICKET_STATUS_META,
+    ISupportTicket, SupportTicketStatus, SupportTicketType, TICKET_TYPE_META, TICKET_STATUS_META,
     QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
+import { useTicketTypeChange } from "Components/Common/useTicketTypeChange";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
 const STATUSES: SupportTicketStatus[] = ["open", "in_review", "resolved", "closed"];
+const TYPES: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", "site_change"];
+const fmtDateTime = (s: string | null | undefined) =>
+    s ? new Date(s).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
 const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "—");
 
 const AdminTicketDetail = () => {
-    document.title = "Administração — Ticket | Xplendor";
+    document.title = "Administração: ticket | Xplendor";
     const { id } = useParams();
     const navigate = useNavigate();
 
@@ -33,6 +37,14 @@ const AdminTicketDetail = () => {
     const [hours, setHours] = useState("");
     const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
     const [quoteBusy, setQuoteBusy] = useState(false);
+
+    // As ações (estado, mensagem, orçamento) devolvem o ticket sem o histórico de tipo:
+    // mantém o que já estava carregado.
+    const applyTicket = (next: ISupportTicket | null | undefined) =>
+        setTicket((prev) => (next ? { ...next, type_changes: next.type_changes ?? prev?.type_changes } : prev));
+
+    // Mudança de tipo (só a equipa XPLENDOR): confirmação quando anula um orçamento.
+    const { requestTypeChange, modal: typeChangeModal, busy: typeBusy } = useTicketTypeChange((updated) => setTicket(updated));
 
     useEffect(() => {
         if (!id) return;
@@ -50,7 +62,7 @@ const AdminTicketDetail = () => {
         setSavingStatus(true);
         try {
             const r: any = await updateAdminTicketStatus(Number(id), status);
-            setTicket(r?.data ?? ticket);
+            applyTicket(r?.data);
             toast.success("Estado atualizado.");
         } catch {
             toast.error("Não foi possível mudar o estado.");
@@ -64,7 +76,7 @@ const AdminTicketDetail = () => {
         setSending(true);
         try {
             const r: any = await addAdminTicketMessage(Number(id), body.trim());
-            setTicket(r?.data ?? ticket);
+            applyTicket(r?.data);
             setBody("");
         } catch {
             toast.error("Não foi possível enviar a resposta.");
@@ -80,7 +92,7 @@ const AdminTicketDetail = () => {
         setQuoteBusy(true);
         try {
             const r: any = await setAdminTicketQuote(Number(id), h);
-            setTicket(r?.data ?? ticket);
+            applyTicket(r?.data);
             setHours("");
             toast.success("Orçamento enviado ao stand.");
         } catch (err: any) {
@@ -97,7 +109,7 @@ const AdminTicketDetail = () => {
             const fd = new FormData();
             if (invoiceFile) fd.append("invoice", invoiceFile);
             const r: any = await markAdminTicketPaid(Number(id), fd);
-            setTicket(r?.data ?? ticket);
+            applyTicket(r?.data);
             setInvoiceFile(null);
             toast.success("Marcado como pago.");
         } catch (err: any) {
@@ -112,7 +124,7 @@ const AdminTicketDetail = () => {
         setQuoteBusy(true);
         try {
             const r: any = await markAdminTicketCompleted(Number(id));
-            setTicket(r?.data ?? ticket);
+            applyTicket(r?.data);
             toast.success("Pedido concluído.");
         } catch (err: any) {
             toast.error(err?.response?.data?.message || "Não foi possível concluir.");
@@ -142,6 +154,7 @@ const AdminTicketDetail = () => {
     return (
         <div className="page-content">
             <ToastContainer />
+            {typeChangeModal}
             <Container fluid>
                 <BreadCrumb title="Ticket" pageTitle="Tickets" pageLink="/admin" />
                 <Row>
@@ -156,6 +169,14 @@ const AdminTicketDetail = () => {
                                         {STATUSES.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
                                     </select>
                                     {savingStatus && <small className="text-muted d-block mt-1"><Spinner size="sm" /> A guardar…</small>}
+                                </div>
+                                {/* Tipo: com orçamento orçado ou rejeitado pede confirmação; aprovado, pago ou concluído fica bloqueado. */}
+                                <div className="mb-4">
+                                    <Label className="form-label">Tipo</Label>
+                                    <select className="form-control" value={ticket.type} disabled={typeBusy}
+                                        onChange={(e) => requestTypeChange(ticket, e.target.value as SupportTicketType)}>
+                                        {TYPES.map((t) => <option key={t} value={t}>{TICKET_TYPE_META[t].label}</option>)}
+                                    </select>
                                 </div>
                                 <div className="table-card">
                                     <table className="table mb-0">
@@ -238,6 +259,36 @@ const AdminTicketDetail = () => {
                                             <i className="ri-file-pdf-line me-1" />Ver fatura anexada
                                         </a>
                                     )}
+                                </CardBody>
+                            </Card>
+                        )}
+
+                        {/* Histórico das mudanças de tipo (o orçamento anulado fica aqui registado). */}
+                        {(ticket.type_changes?.length ?? 0) > 0 && (
+                            <Card className="mb-3">
+                                <CardBody>
+                                    <h6 className="card-title mb-3"><i className="ri-history-line text-primary me-1" />Histórico do tipo</h6>
+                                    <ul className="list-unstyled mb-0 vstack gap-3">
+                                        {ticket.type_changes!.map((c) => (
+                                            <li key={c.id} className="fs-13">
+                                                <div className="fw-medium">
+                                                    {TICKET_TYPE_META[c.from_type]?.label ?? c.from_type}
+                                                    <i className="ri-arrow-right-line mx-1 text-muted" />
+                                                    {TICKET_TYPE_META[c.to_type]?.label ?? c.to_type}
+                                                </div>
+                                                {c.previous_quoted_amount != null ? (
+                                                    <div className="text-warning">
+                                                        Orçamento anulado: {formatEuro(c.previous_quoted_amount)}
+                                                        {c.previous_estimated_hours != null ? ` · ${String(c.previous_estimated_hours).replace(".", ",")} h` : ""}
+                                                        {c.previous_quote_status ? ` (${QUOTE_STATUS_META[c.previous_quote_status].label})` : ""}
+                                                    </div>
+                                                ) : c.previous_quote_status ? (
+                                                    <div className="text-muted">Estava: {QUOTE_STATUS_META[c.previous_quote_status].label}</div>
+                                                ) : null}
+                                                <div className="text-muted fs-12">{fmtDateTime(c.created_at)}{c.changed_by_name ? ` · ${c.changed_by_name}` : ""}</div>
+                                            </li>
+                                        ))}
+                                    </ul>
                                 </CardBody>
                             </Card>
                         )}

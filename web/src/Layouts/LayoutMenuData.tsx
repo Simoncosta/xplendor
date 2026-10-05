@@ -327,7 +327,8 @@ const Navdata = () => {
                     // Empresas — gestão cross-tenant (era o root misturado no Configurações).
                     { id: "company", label: "Empresas", link: "/companies", parentId: "admin" },
                     { id: "admin-tickets", label: "Tickets", link: "/admin", parentId: "admin" },
-                    { id: "admin-quotes", label: "Orçamentos (global)", link: "/admin/quotes", parentId: "admin" },
+                    { id: "admin-quotes", label: "Orçamentos", link: "/admin/quotes", parentId: "admin" },
+                    { id: "admin-service-catalog", label: "Catálogo de serviços", link: "/admin/service-catalog", parentId: "admin" },
                     { id: "admin-stock", label: "Stock global", link: "/admin/stock", parentId: "admin" },
                 ],
             },

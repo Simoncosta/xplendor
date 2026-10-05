@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\TicketTypeChangeNeedsConfirmation;
 use App\Mail\SiteChangeDecisionMail;
 use App\Mail\SiteChangeQuotedMail;
 use App\Mail\SupportTicketCreatedMail;
 use App\Mail\SupportTicketMessageMail;
 use App\Models\SupportTicket;
 use App\Models\SupportTicketMessage;
+use App\Models\SupportTicketTypeChange;
 use App\Models\User;
 use App\Repositories\Contracts\SupportTicketRepositoryInterface;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -63,56 +66,105 @@ class SupportTicketService extends BaseService
     }
 
     /**
-     * ADMIN — reclassifica o TIPO de um ticket (o cliente classificou mal).
-     *
-     * Ligação à camada de orçamento:
-     *  · → site_change: ATIVA a camada (quote_status 'awaiting_quote' se ainda
-     *    não tiver), passando o ticket a poder ser orçado.
-     *  · site_change → outro tipo: SÓ é permitido se NÃO houver dados de
-     *    orçamento (option (a) — nunca apagar dados de dinheiro em silêncio).
-     *    Se já há valor/fatura/orçamento em curso, BLOQUEIA (422) e pede para
-     *    resolver o orçamento primeiro. Sem dados (só 'awaiting_quote'), desativa
-     *    a camada limpando quote_status. Nunca deixa dados órfãos.
+     * EQUIPA XPLENDOR (root, fora de impersonation; validado no controller) muda o
+     * TIPO de um ticket. Regras do orçamento (só site_change o tem):
+     *  · sem orçamento ou a aguardar orçamento: mudança livre;
+     *  · orçado ou rejeitado: só com $confirmReset (senão TicketTypeChangeNeedsConfirmation);
+     *    estado, valor e horas do orçamento passam a null;
+     *  · aprovado, pago ou concluído: BLOQUEADO (422), primeiro anula-se o orçamento;
+     *  · para site_change: entra em "a aguardar orçamento".
+     * Cada mudança fica em support_ticket_type_changes (com o orçamento anterior) e o
+     * cliente recebe uma mensagem da equipa quando um orçamento é anulado ou quando o
+     * pedido passa a ser pago. Corre com a linha bloqueada (concorrência com a
+     * aprovação pelo cliente).
      */
-    public function reclassifyType(SupportTicket $ticket, string $newType): SupportTicket
+    public function reclassifyType(SupportTicket $ticket, string $newType, User $actor, bool $confirmReset = false): SupportTicket
     {
-        if ($ticket->type === $newType) {
-            return $ticket->fresh();
-        }
-
-        $wasSiteChange  = $ticket->type === 'site_change';
-        $willBeSiteChange = $newType === 'site_change';
-
-        if ($wasSiteChange && ! $willBeSiteChange) {
-            // Há dados de orçamento? (qualquer valor/fatura, ou fluxo já iniciado)
-            $hasQuoteData = $ticket->quoted_amount !== null
-                || $ticket->invoice_path !== null
-                || in_array($ticket->quote_status, ['quoted', 'approved', 'paid', 'completed', 'rejected'], true);
-
-            if ($hasQuoteData) {
-                $this->reject('Este ticket tem um orçamento associado. Rejeita ou conclui o orçamento antes de reclassificar o tipo.');
+        DB::transaction(function () use ($ticket, $newType, $actor, $confirmReset): void {
+            $locked = $this->lockFresh($ticket);
+            $fromType = $locked->type;
+            if ($fromType === $newType) {
+                return;
             }
 
-            // Só 'awaiting_quote' (ou null) — sem dados a perder. Desativa a camada.
-            $ticket->update(['type' => $newType, 'quote_status' => null]);
+            $previous = [
+                'quote_status'    => $locked->quote_status,
+                'quoted_amount'   => $locked->quoted_amount !== null ? (float) $locked->quoted_amount : null,
+                'estimated_hours' => $locked->estimated_hours !== null ? (float) $locked->estimated_hours : null,
+            ];
+            $wasSiteChange = $fromType === 'site_change';
+            $willBeSiteChange = $newType === 'site_change';
+            $resetQuote = false;
 
-            return $ticket->fresh();
-        }
+            if ($wasSiteChange && ! $willBeSiteChange) {
+                if (in_array($locked->quote_status, SupportTicket::QUOTE_LOCKED_STATUSES, true) || $locked->invoice_path !== null) {
+                    $this->reject('Este pedido tem um orçamento aprovado, pago ou concluído, por isso o tipo não pode ser alterado. Anule primeiro o orçamento.');
+                }
+                if (in_array($locked->quote_status, SupportTicket::QUOTE_RESETTABLE_STATUSES, true) || $locked->quoted_amount !== null) {
+                    if (! $confirmReset) {
+                        throw new TicketTypeChangeNeedsConfirmation(
+                            (string) $locked->quote_status, $previous['quoted_amount'], $previous['estimated_hours']
+                        );
+                    }
+                    $resetQuote = true;
+                }
+                $locked->update(['type' => $newType, 'quote_status' => null, 'quoted_amount' => null, 'estimated_hours' => null]);
+            } elseif ($willBeSiteChange) {
+                $locked->update(['type' => $newType, 'quote_status' => 'awaiting_quote', 'quoted_amount' => null, 'estimated_hours' => null]);
+            } else {
+                $locked->update(['type' => $newType]);
+            }
 
-        if (! $wasSiteChange && $willBeSiteChange) {
-            // Ativa a camada de orçamento (a aguardar orçamento) se ainda não a tem.
-            $ticket->update([
-                'type'         => $newType,
-                'quote_status' => $ticket->quote_status ?? 'awaiting_quote',
+            SupportTicketTypeChange::create([
+                'support_ticket_id'        => $locked->id,
+                'company_id'               => $locked->company_id,
+                'from_type'                => $fromType,
+                'to_type'                  => $newType,
+                'previous_quote_status'    => $previous['quote_status'],
+                'previous_quoted_amount'   => $previous['quoted_amount'],
+                'previous_estimated_hours' => $previous['estimated_hours'],
+                'changed_by_user_id'       => $actor->id,
             ]);
 
-            return $ticket->fresh();
-        }
-
-        // Entre tipos grátis (ex.: bug ↔ melhoria) — só muda o tipo.
-        $ticket->update(['type' => $newType]);
+            $message = match (true) {
+                $resetQuote => $this->quoteResetMessage($fromType, $newType, $previous),
+                ! $wasSiteChange && $willBeSiteChange => sprintf(
+                    'A equipa XPLENDOR alterou o tipo deste pedido de «%s» para «%s». Este tipo de pedido é pago: vai receber um orçamento antes de qualquer custo e o trabalho só avança depois da sua aprovação.',
+                    SupportTicket::typeLabel($fromType), SupportTicket::typeLabel($newType)
+                ),
+                default => null,
+            };
+            if ($message !== null) {
+                $this->addMessage($locked, $actor->id, $message, true);
+            }
+        });
 
         return $ticket->fresh();
+    }
+
+    /** Mensagem ao cliente quando a mudança de tipo anula um orçamento orçado ou rejeitado. */
+    private function quoteResetMessage(string $fromType, string $toType, array $previous): string
+    {
+        $value = $previous['quoted_amount'] !== null
+            ? number_format($previous['quoted_amount'], 2, ',', '.') . ' €'
+            : 'sem valor';
+        $hours = $previous['estimated_hours'] !== null
+            ? ', ' . rtrim(rtrim(number_format($previous['estimated_hours'], 2, ',', ''), '0'), ',') . ' h'
+            : '';
+        $tail = $previous['quote_status'] === 'quoted'
+            ? 'foi anulado e deixou de estar pendente de aprovação.'
+            : 'foi anulado.';
+
+        return sprintf(
+            'A equipa XPLENDOR alterou o tipo deste pedido de «%s» para «%s». O orçamento anterior (%s%s) %s',
+            SupportTicket::typeLabel($fromType), SupportTicket::typeLabel($toType), $value, $hours, $tail
+        );
+    }
+
+    /** Relê o ticket com a linha bloqueada até ao fim da transação (estado sempre atual). */
+    private function lockFresh(SupportTicket $ticket): SupportTicket
+    {
+        return SupportTicket::whereKey($ticket->id)->lockForUpdate()->firstOrFail();
     }
 
     /**
@@ -122,20 +174,24 @@ class SupportTicketService extends BaseService
      */
     public function setQuote(SupportTicket $ticket, float $hours): SupportTicket
     {
-        $this->assertSiteChange($ticket);
-        if (! in_array($ticket->quote_status, ['awaiting_quote', 'quoted'], true)) {
-            $this->reject('Só é possível orçar um pedido que aguarda orçamento.');
-        }
-
         $rate   = (float) config('tickets.site_change_hourly_rate');
         $amount = round($hours * $rate, 2);
 
-        $ticket->update([
-            'estimated_hours' => $hours,
-            'quoted_amount'   => $amount,
-            'quote_status'    => 'quoted',
-            'status'          => 'in_review',   // mantém coerência com o painel admin
-        ]);
+        $ticket = DB::transaction(function () use ($ticket, $hours, $amount) {
+            $locked = $this->lockFresh($ticket);
+            $this->assertSiteChange($locked);
+            if (! in_array($locked->quote_status, ['awaiting_quote', 'quoted'], true)) {
+                $this->reject('Só é possível orçar um pedido que aguarda orçamento.');
+            }
+            $locked->update([
+                'estimated_hours' => $hours,
+                'quoted_amount'   => $amount,
+                'quote_status'    => 'quoted',
+                'status'          => 'in_review',   // mantém coerência com o painel admin
+            ]);
+
+            return $locked;
+        });
 
         $this->notifyQuoted($ticket);
 
@@ -188,12 +244,17 @@ class SupportTicketService extends BaseService
      */
     public function approveQuote(SupportTicket $ticket): SupportTicket
     {
-        $this->assertSiteChange($ticket);
-        if ($ticket->quote_status !== 'quoted') {
-            $this->reject('Este orçamento não está pendente de aprovação.');
-        }
+        // Linha bloqueada e relida: se a equipa mudou o tipo entretanto, o estado já não é 'quoted'.
+        $ticket = DB::transaction(function () use ($ticket) {
+            $locked = $this->lockFresh($ticket);
+            $this->assertSiteChange($locked);
+            if ($locked->quote_status !== 'quoted') {
+                $this->reject('Este orçamento não está pendente de aprovação.');
+            }
+            $locked->update(['quote_status' => 'approved']);
 
-        $ticket->update(['quote_status' => 'approved']);
+            return $locked;
+        });
         $this->notifyDecision($ticket, approved: true);
 
         return $ticket->fresh();
@@ -205,15 +266,19 @@ class SupportTicketService extends BaseService
      */
     public function rejectQuote(SupportTicket $ticket): SupportTicket
     {
-        $this->assertSiteChange($ticket);
-        if ($ticket->quote_status !== 'quoted') {
-            $this->reject('Este orçamento não está pendente de aprovação.');
-        }
+        $ticket = DB::transaction(function () use ($ticket) {
+            $locked = $this->lockFresh($ticket);
+            $this->assertSiteChange($locked);
+            if ($locked->quote_status !== 'quoted') {
+                $this->reject('Este orçamento não está pendente de aprovação.');
+            }
+            $locked->update([
+                'quote_status' => 'rejected',
+                'status'       => 'closed',   // fecha, sem renegociar para baixo
+            ]);
 
-        $ticket->update([
-            'quote_status' => 'rejected',
-            'status'       => 'closed',   // fecha, sem renegociar para baixo
-        ]);
+            return $locked;
+        });
         $this->notifyDecision($ticket, approved: false);
 
         return $ticket->fresh();

@@ -1,0 +1,27 @@
+{
+  "_comment": "Dados da entidade responsavel pela marca XPLENDOR. Fonte unica: usada pelo servidor (PDF dos orcamentos) e pelo site (paginas legais e rodape). O email ainda e provisorio.",
+  "legalName": "SIMON COSTA, UNIPESSOAL LDA",
+  "brandOwnerName": "Simon Costa, Unipessoal, Lda",
+  "brand": "XPLENDOR",
+  "nif": "517343355",
+  "address": "Rua Camilo de Oliveira, 101, 4.º Esq., Rio Tinto, Gondomar",
+  "email": "xplendorcar@gmail.com",
+  "website": "xplendor.pt",
+  "socials": [
+    {
+      "title": "Facebook",
+      "url": "https://www.facebook.com/profile.php?id=61582035491235",
+      "label": "XPLENDOR"
+    },
+    {
+      "title": "Instagram",
+      "url": "https://www.instagram.com/xplendor.pt/",
+      "label": "@xplendor.pt"
+    },
+    {
+      "title": "LinkedIn",
+      "url": "https://www.linkedin.com/company/xplendorpt/",
+      "label": "xplendorpt"
+    }
+  ]
+}

@@ -121,3 +121,14 @@ Schedule::job(new ScheduledRestaurantSyncJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Restaurant Daily Sync] Job falhou no scheduler');
     });
+
+// 00:15 (Lisboa): expira os orçamentos enviados com a validade de 30 dias ultrapassada.
+// Rascunhos nunca expiram.
+Schedule::job(new \App\Jobs\ExpireQuotesJob())
+    ->dailyAt('00:15')
+    ->timezone('Europe/Lisbon')
+    ->name('quotes-expire')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Quotes Expire] Job falhou no scheduler');
+    });

@@ -34,6 +34,17 @@ class SupportTicketResource extends JsonResource
             'author_name'    => $this->whenLoaded('user', fn () => $this->user?->name),
             'messages_count' => $this->whenCounted('messages'),
             'messages'       => SupportTicketMessageResource::collection($this->whenLoaded('messages')),
+            // Histórico das mudanças de tipo: só o lado admin o carrega (o cliente recebe a mensagem na thread).
+            'type_changes'   => $this->whenLoaded('typeChanges', fn () => $this->typeChanges->map(fn ($c) => [
+                'id'                       => $c->id,
+                'from_type'                => $c->from_type,
+                'to_type'                  => $c->to_type,
+                'previous_quote_status'    => $c->previous_quote_status,
+                'previous_quoted_amount'   => $c->previous_quoted_amount !== null ? (float) $c->previous_quoted_amount : null,
+                'previous_estimated_hours' => $c->previous_estimated_hours !== null ? (float) $c->previous_estimated_hours : null,
+                'changed_by_name'          => $c->changedBy?->name,
+                'created_at'               => optional($c->created_at)->toIso8601String(),
+            ])->values()->all()),
             'created_at'     => optional($this->created_at)->toIso8601String(),
             'updated_at'     => optional($this->updated_at)->toIso8601String(),
         ];

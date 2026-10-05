@@ -188,8 +188,9 @@ export const getAdminTicketsSummary = () => api.get(url.GET_ADMIN + `/tickets/su
 export const showAdminTicket = (id: number) => api.get(url.GET_ADMIN + `/tickets/${id}`);
 export const updateAdminTicketStatus = (id: number, status: string) =>
     api.update(url.GET_ADMIN + `/tickets/${id}/status`, { status });
-export const reclassifyAdminTicketType = (id: number, type: string) =>
-    api.update(url.GET_ADMIN + `/tickets/${id}/type`, { type });
+// confirmReset: obrigatório quando a mudança anula um orçamento orçado ou rejeitado (sem ele: 409).
+export const reclassifyAdminTicketType = (id: number, type: string, confirmReset = false) =>
+    api.update(url.GET_ADMIN + `/tickets/${id}/type`, confirmReset ? { type, confirm_reset: true } : { type });
 export const addAdminTicketMessage = (id: number, body: string) =>
     api.create(url.GET_ADMIN + `/tickets/${id}/messages`, { body }, { headers: { "Content-Type": "application/json" } });
 
@@ -205,21 +206,33 @@ export const markAdminTicketCompleted = (id: number) =>
 export const getAdminQuotes = (params?: { status?: string; search?: string }) =>
     api.get(url.GET_ADMIN + `/quotes`, params);
 export const getAdminQuotesSummary = () => api.get(url.GET_ADMIN + `/quotes/summary`);
+export const getAdminQuoteDefaults = () => api.get(url.GET_ADMIN + `/quotes/defaults`);
 // Dashboard root: contagens transversais da plataforma (users + carros).
 export const getAdminPlatformSummary = () => api.get(url.GET_ADMIN + `/platform/summary`);
 export const showAdminQuote = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}`);
 export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data);
 export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_ADMIN + `/quotes/${id}`, data);
-export const updateAdminQuoteStatus = (id: number, status: string) =>
-    api.update(url.GET_ADMIN + `/quotes/${id}/status`, { status });
+export const sendAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/send`, {});
+export const decideAdminQuote = (id: number, decision: "accept" | "refuse") =>
+    api.update(url.GET_ADMIN + `/quotes/${id}/decision`, { decision });
+export const duplicateAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/duplicate`, {});
 export const deleteAdminQuote = (id: number) => api.delete(url.GET_ADMIN + `/quotes/${id}`);
 export const getAdminQuoteCompanies = () => api.get(url.GET_ADMIN + `/quotes/companies`);
-export const markAdminQuotePaid = (id: number) => api.update(url.GET_ADMIN + `/quotes/${id}/mark-paid`, {});
-export const markAdminQuoteCompleted = (id: number) => api.update(url.GET_ADMIN + `/quotes/${id}/complete`, {});
+export const searchAdminQuoteCustomers = (search?: string) => api.get(url.GET_ADMIN + `/quotes/customers`, search ? { search } : undefined);
+export const createAdminQuoteCustomer = (data: { name: string; phone?: string; email?: string }) =>
+    api.create(url.GET_ADMIN + `/quotes/customers`, data);
+// PDFs (blob, via download_helper): pré-visualização do estado atual e versões congeladas.
+export const adminQuotePdfPath = (id: number) => url.GET_ADMIN + `/quotes/${id}/pdf`;
+export const adminQuoteVersionPdfPath = (id: number, version: number) => url.GET_ADMIN + `/quotes/${id}/versions/${version}/pdf`;
+// Catálogo de serviços (tabela padrão).
+export const getServiceCatalog = (activeOnly = false) => api.get(url.GET_ADMIN + `/service-catalog`, activeOnly ? { active_only: 1 } : undefined);
+export const createServiceCatalogItem = (data: any) => api.create(url.GET_ADMIN + `/service-catalog`, data);
+export const updateServiceCatalogItem = (id: number, data: any) => api.update(url.GET_ADMIN + `/service-catalog/${id}`, data);
 
-// XPLENDOR — Orçamentos no painel do STAND (empresa vê/aprova os seus).
 export const getCompanyQuotes = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/quotes`);
+// XPLENDOR — Orçamentos no painel da empresa ligada (vê os enviados, decide, abre o PDF).
+export const companyQuotePdfPath = (companyId: number, id: number) => url.GET_COMPANIES + `/${companyId}/quotes/${id}/pdf`;
 export const decideCompanyQuote = (companyId: number, id: number, decision: "approve" | "reject") =>
     api.update(url.GET_COMPANIES + `/${companyId}/quotes/${id}/decision`, { decision });
 

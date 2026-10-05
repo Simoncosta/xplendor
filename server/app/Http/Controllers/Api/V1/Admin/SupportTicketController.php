@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Exceptions\TicketTypeChangeNeedsConfirmation;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\SupportTicketResource;
+use App\Models\ImpersonationSession;
 use App\Models\SupportTicket;
 use App\Services\SupportTicketService;
 use Illuminate\Http\Request;
@@ -99,7 +101,7 @@ class SupportTicketController extends Controller
     {
         $this->ensureRoot();
 
-        $ticket = SupportTicket::with(['company', 'user', 'messages.user'])->find($ticketId);
+        $ticket = SupportTicket::with(['company', 'user', 'messages.user', 'typeChanges.changedBy'])->find($ticketId);
         if (! $ticket) {
             return ApiResponse::error('Ticket não encontrado.', 404);
         }
@@ -132,10 +134,16 @@ class SupportTicketController extends Controller
         );
     }
 
-    /** ADMIN — reclassifica o TIPO (ativa/desativa a camada de orçamento). */
+    /**
+     * EQUIPA XPLENDOR muda o TIPO. Só root fora de impersonation (em impersonation o
+     * token é do cliente; a rota também tem block_when_impersonating).
+     * Body: { type, confirm_reset?: bool }. Orçado ou rejeitado sem confirm_reset → 409
+     * com o orçamento a anular; aprovado, pago ou concluído → 422 com a razão.
+     */
     public function reclassify(Request $request, int $ticketId)
     {
         $this->ensureRoot();
+        abort_if(ImpersonationSession::activeFor($request->user()), 403, 'Indisponível durante a sessão como cliente.');
 
         $ticket = SupportTicket::find($ticketId);
         if (! $ticket) {
@@ -143,15 +151,20 @@ class SupportTicketController extends Controller
         }
 
         $data = $request->validate([
-            'type' => ['required', Rule::in(SupportTicket::TYPES)],
+            'type'          => ['required', Rule::in(SupportTicket::TYPES)],
+            'confirm_reset' => ['sometimes', 'boolean'],
         ]);
 
-        $ticket = $this->service->reclassifyType($ticket, $data['type']);
-        $ticket->load(['company', 'user', 'messages.user']);
+        try {
+            $ticket = $this->service->reclassifyType($ticket, $data['type'], $request->user(), (bool) ($data['confirm_reset'] ?? false));
+        } catch (TicketTypeChangeNeedsConfirmation $e) {
+            return ApiResponse::error($e->getMessage(), 409, $e->payload());
+        }
+        $ticket->load(['company', 'user', 'messages.user', 'typeChanges.changedBy']);
 
         return ApiResponse::success(
             (new SupportTicketResource($ticket))->resolve(),
-            'Ticket reclassificado com sucesso.'
+            'Tipo do ticket alterado.'
         );
     }
 

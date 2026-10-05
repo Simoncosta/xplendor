@@ -80,7 +80,10 @@ export default function RootDashboard() {
     }, [companies]);
 
     const pendentesTickets = Number(tickets?.pending ?? 0); // open + in_review
-    const approvedValue = quotes?.approved_value ?? 0;
+    // Orçamentos de serviços: mensal e valor único sempre separados (nunca somados), sem IVA.
+    const qOpen = quotes?.open ?? { count: 0, monthly: 0, one_off: 0, expiring_7d: 0 };
+    const qYear = quotes?.accepted_year ?? { count: 0, monthly: 0, one_off: 0, year: new Date().getFullYear() };
+    const qAll = quotes?.accepted_all ?? { count: 0, monthly: 0, one_off: 0 };
     const pipelineTotal = pipeline?.total ?? { count: 0, amount: 0, hours: 0 };
 
     if (loading) {
@@ -110,9 +113,9 @@ export default function RootDashboard() {
                             to="/admin" />
                     </Col>
                     <Col md={4}>
-                        <Stat icon="ri-file-list-3-line" color="info" label="Orçamentos pendentes"
-                            value={num(quotes?.pending ?? 0)}
-                            sub={`${num(quotes?.approved ?? 0)} aprovados · ${num(quotes?.rejected ?? 0)} rejeitados`}
+                        <Stat icon="ri-file-list-3-line" color="info" label="Orçamentos em aberto"
+                            value={`${num(qOpen.count)} enviados`}
+                            sub={`${euro(qOpen.monthly)}/mês · ${euro(qOpen.one_off)} único · ${num(qOpen.expiring_7d)} expiram em 7 dias`}
                             to="/admin/quotes" />
                     </Col>
                     <Col md={4}>
@@ -166,11 +169,17 @@ export default function RootDashboard() {
                     </Col>
                 </Row>
 
-                {/* Orçamentos aprovados (€) — pipeline comercial, rotulado. */}
+                {/* Orçamentos aceites: recorrente e único em cartões separados (pipeline comercial, não é faturação). */}
                 <Row className="g-3 mb-5">
                     <Col md={4}>
-                        <Stat icon="ri-money-euro-circle-line" color="success" label="Orçamentos aprovados (€)"
-                            value={euro(approvedValue)} sub="pipeline comercial (não é faturação)" to="/admin/quotes" />
+                        <Stat icon="ri-repeat-line" color="success" label={`Recorrente aceite em ${qYear.year}`}
+                            value={`${euro(qYear.monthly)}/mês`}
+                            sub={`Desde sempre: ${euro(qAll.monthly)}/mês · pipeline comercial, não é faturação`} to="/admin/quotes" />
+                    </Col>
+                    <Col md={4}>
+                        <Stat icon="ri-money-euro-circle-line" color="primary" label={`Único aceite em ${qYear.year}`}
+                            value={euro(qYear.one_off)}
+                            sub={`Desde sempre: ${euro(qAll.one_off)} · ${num(qAll.count)} orçamentos aceites`} to="/admin/quotes" />
                     </Col>
                 </Row>
             </Container>

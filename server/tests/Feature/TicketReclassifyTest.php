@@ -16,7 +16,7 @@ use Tests\TestCase;
  * Reclassificação de TIPO de ticket (admin) + ligação à camada de orçamento:
  *  · → site_change ativa o quote_status;
  *  · site_change → outro sem orçamento limpa o quote_status (sem órfãos);
- *  · site_change → outro COM orçamento é BLOQUEADO (não apaga dados);
+ *  · site_change → outro COM orçamento orçado pede confirmação (409);
  *  · só root reclassifica.
  */
 class TicketReclassifyTest extends TestCase
@@ -79,17 +79,17 @@ class TicketReclassifyTest extends TestCase
         $this->assertNull($t->fresh()->quote_status);
     }
 
-    public function test_reclassify_site_change_with_quote_is_blocked(): void
+    public function test_reclassify_site_change_with_quote_needs_confirmation(): void
     {
-        // Já há orçamento (valor definido) → NÃO apagar dados; bloquear (422).
+        // Orçado: sem confirmação não muda nada (409); a anulação está em TicketTypeChangeTest.
         $t = $this->ticket([
             'type' => 'site_change', 'quote_status' => 'quoted',
             'estimated_hours' => 2, 'quoted_amount' => 50, 'status' => 'in_review',
         ]);
 
-        $this->reclassify($t->id, 'bug')->assertStatus(422);
+        $this->reclassify($t->id, 'bug')->assertStatus(409);
 
-        // Nada mudou — dados de orçamento intactos.
+        // Nada mudou: dados de orçamento intactos.
         $fresh = $t->fresh();
         $this->assertSame('site_change', $fresh->type);
         $this->assertSame('quoted', $fresh->quote_status);

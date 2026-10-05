@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import SimpleBar from "simplebar-react";
@@ -12,7 +12,7 @@ import {
 } from "common/models/supportTicket.model";
 
 /**
- * Kanban de tickets — VISUAL do template Velzon (.tasks-board / .tasks-list /
+ * Kanban de tickets: VISUAL do template Velzon (.tasks-board / .tasks-list /
  * .tasks-wrapper / .task-box, SimpleBar). Partilhado por dois usos:
  *  · ADMIN (transversal): editável — arrastar muda estado, dropdown reclassifica
  *    tipo, mostra a empresa de cada ticket.
@@ -20,7 +20,12 @@ import {
  *    de tipo, sem coluna de empresa (é uma empresa só). Clicar abre o detalhe.
  *
  * Colunas = os 4 estados genéricos. O fluxo de orçamento fica no detalhe.
+ * Altura: as colunas ocupam o resto do ecrã a partir da posição real onde começam
+ * (o CSS do template usa um valor fixo, que não conta com o que está por cima).
  */
+
+const BOTTOM_GAP = 24;      // espaço livre por baixo das colunas
+const MIN_COLUMN_H = 320;   // nunca mais baixas do que isto (ecrãs muito pequenos)
 
 const COLUMNS: SupportTicketStatus[] = ["open", "in_review", "resolved", "closed"];
 const TYPE_KEYS: SupportTicketType[] = ["idea", "improvement", "bug", "suggestion", "site_change"];
@@ -53,8 +58,29 @@ const TicketsKanban: React.FC<Props> = ({
 }) => {
     const navigate = useNavigate();
     const [board, setBoard] = useState<Board>(() => buildBoard(tickets));
+    const boardRef = useRef<HTMLDivElement>(null);
+    const [columnMaxH, setColumnMaxH] = useState<number | undefined>(undefined);
 
     useEffect(() => { setBoard(buildBoard(tickets)); }, [tickets]);
+
+    // Altura máxima das colunas = do topo real da primeira coluna até ao fundo do ecrã.
+    // Recalcula quando a janela muda ou quando o que está por cima muda de altura.
+    useLayoutEffect(() => {
+        const calc = () => {
+            const wrapper = boardRef.current?.querySelector(".tasks-wrapper") as HTMLElement | null;
+            if (!wrapper) return;
+            const top = wrapper.getBoundingClientRect().top + window.scrollY;
+            setColumnMaxH(Math.max(MIN_COLUMN_H, Math.round(window.innerHeight - top - BOTTOM_GAP)));
+        };
+        calc();
+        window.addEventListener("resize", calc);
+        const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(calc) : null;
+        observer?.observe(document.body);
+        return () => {
+            window.removeEventListener("resize", calc);
+            observer?.disconnect();
+        };
+    }, []);
 
     const handleDragEnd = async (result: DropResult) => {
         if (readOnly || !onStatusChange) return; // vista de leitura: drag não persiste
@@ -86,7 +112,7 @@ const TicketsKanban: React.FC<Props> = ({
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="tasks-board mb-3 d-flex" id="kanbanboard">
+            <div className="tasks-board mb-3 d-flex" id="kanbanboard" ref={boardRef}>
                 {COLUMNS.map((col) => {
                     const meta = TICKET_STATUS_META[col];
                     const items = board[col];
@@ -101,7 +127,7 @@ const TicketsKanban: React.FC<Props> = ({
                                 </div>
                             </div>
 
-                            <SimpleBar className="tasks-wrapper px-3 mx-n3">
+                            <SimpleBar className="tasks-wrapper px-3 mx-n3" style={columnMaxH ? { maxHeight: columnMaxH } : undefined}>
                                 <Droppable droppableId={col} isDropDisabled={readOnly}>
                                     {(dropProvided) => (
                                         <div ref={dropProvided.innerRef} {...dropProvided.droppableProps} className={items.length ? "tasks" : "tasks noTask"}>

@@ -12,8 +12,9 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * XPLENDOR — Avisa a EMPRESA (stand) que tem um orçamento novo para aprovar no
- * painel dela. Via QUEUE, fail-safe. Escalares apenas (serialização segura).
+ * XPLENDOR — Avisa a EMPRESA ligada de que tem um orçamento para decidir no painel
+ * dela. Só é enviado quando o orçamento é ENVIADO (nunca ao criar ou editar um
+ * rascunho). Via queue, fail-safe. Escalares apenas.
  */
 class QuoteCreatedForCompanyMail extends Mailable implements ShouldQueue
 {
@@ -21,13 +22,16 @@ class QuoteCreatedForCompanyMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public int $quoteId,
-        public string $description,
-        public float $amount,
+        public string $number,
+        public string $title,
+        public float $totalMonthly,
+        public float $totalOneOff,
+        public string $validUntil,
     ) {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Tens um orçamento novo para aprovar — XPLENDOR');
+        return new Envelope(subject: "Orçamento {$this->number} da XPLENDOR para decidir");
     }
 
     public function content(): Content
@@ -35,9 +39,11 @@ class QuoteCreatedForCompanyMail extends Mailable implements ShouldQueue
         return new Content(
             markdown: 'emails.quotes.created_for_company',
             with: [
-                'quoteId'     => $this->quoteId,
-                'description' => $this->description,
-                'amount'      => $this->amount,
+                'number'       => $this->number,
+                'title'        => $this->title,
+                'totalMonthly' => $this->totalMonthly,
+                'totalOneOff'  => $this->totalOneOff,
+                'validUntil'   => $this->validUntil,
             ],
         );
     }

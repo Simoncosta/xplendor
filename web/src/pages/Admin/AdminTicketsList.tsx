@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, reclassifyAdminTicketType, getAdminTicketsQuotePipeline } from "helpers/laravel_helper";
+import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, getAdminTicketsQuotePipeline } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType, QuoteStatus,
     TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro, ITicketQuotePipeline,
 } from "common/models/supportTicket.model";
 import AdminTicketsKanban from "./AdminTicketsKanban";
+import { useTicketTypeChange } from "Components/Common/useTicketTypeChange";
 
 // Estados de pipeline mostrados como cards (valor "em cima da mesa" por estado).
 const PIPELINE_CARDS: { key: QuoteStatus; color: string; icon: string }[] = [
@@ -32,7 +33,7 @@ const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "sugges
  * como páginas irmãs em /admin, mesmo portão (RequireSuperAdmin + EnsureSuperAdmin).
  */
 const AdminTicketsList = () => {
-    document.title = "Administração — Suporte | Xplendor";
+    document.title = "Administração do suporte | Xplendor";
 
     const [summary, setSummary] = useState<Summary | null>(null);
     const [tickets, setTickets] = useState<ISupportTicket[]>([]);
@@ -55,18 +56,17 @@ const AdminTicketsList = () => {
         }
     };
 
-    // Reclassifica o tipo. Atualiza a lista com o ticket devolvido (traz o
-    // quote_status já ativado/desativado). Erro (ex.: tirar site_change com
-    // orçamento) → toast com a mensagem do servidor.
+    // Muda o tipo (menu do cartão no Kanban). Com orçamento orçado ou rejeitado, o hook
+    // pede confirmação; aprovado, pago ou concluído chega bloqueado com a razão.
+    // Atualiza a lista e o pipeline com o ticket devolvido.
+    const [pipelineTick, setPipelineTick] = useState(0);
+    const { requestTypeChange, modal: typeChangeModal } = useTicketTypeChange((updated) => {
+        setTickets((prev) => prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t)));
+        setPipelineTick((n) => n + 1);
+    });
     const changeTicketType = async (id: number, type: SupportTicketType) => {
-        try {
-            const r: any = await reclassifyAdminTicketType(id, type);
-            const updated = r?.data;
-            if (updated) setTickets((prev) => prev.map((t) => (t.id === id ? { ...t, ...updated } : t)));
-            toast.success("Tipo do ticket atualizado.");
-        } catch (e: any) {
-            toast.error(e?.response?.data?.message || "Não foi possível reclassificar o ticket.");
-        }
+        const ticket = tickets.find((t) => t.id === id);
+        if (ticket) requestTypeChange(ticket, type);
     };
 
     // Opções de empresa derivadas dos tickets carregados (sem endpoint extra).
@@ -86,7 +86,10 @@ const AdminTicketsList = () => {
         const params: any = {};
         if (fCompany) params.company_id = Number(fCompany);
         getAdminTicketsQuotePipeline(params).then((r: any) => setPipeline(r?.data ?? null)).catch(() => setPipeline(null));
-    }, [fCompany]);
+    }, [fCompany, pipelineTick]);
+
+    // Kanban: no telemóvel o resumo dos orçamentos começa recolhido.
+    const [stripOpen, setStripOpen] = useState(false);
 
     // Ao mudar filtros, limpa a seleção (evita somar linhas que já não se veem).
     useEffect(() => { setSelected(new Set()); }, [fStatus, fCompany, fType, view]);
@@ -145,7 +148,7 @@ const AdminTicketsList = () => {
             <Container fluid>
                 <Row className="mb-3 align-items-center">
                     <Col>
-                        <h4 className="mb-1"><i className="ri-shield-star-line text-primary me-2" />Administração — Suporte</h4>
+                        <h4 className="mb-1"><i className="ri-shield-star-line text-primary me-2" />Administração do suporte</h4>
                         <p className="text-muted mb-0">Tickets de todas as empresas. Por tratar primeiro.</p>
                     </Col>
                     <Col xs="auto">
@@ -169,7 +172,10 @@ const AdminTicketsList = () => {
                     </Col>
                 </Row>
 
-                {/* Cartões do topo — base do futuro dashboard admin. */}
+                {typeChangeModal}
+
+                {/* Cartões do topo (só na Lista; no Kanban os contadores estão no cabeçalho de cada coluna). */}
+                {view === "list" && (
                 <Row className="g-3 mb-3">
                     {cards.map((c) => (
                         <Col key={c.label} xs={6} lg={3}>
@@ -187,10 +193,39 @@ const AdminTicketsList = () => {
                         </Col>
                     ))}
                 </Row>
+                )}
 
-                {/* Pipeline de ORÇAMENTOS (site_change) — "quanto tenho em cima da mesa"
+                {/* Kanban: pipeline de orçamentos numa faixa compacta (uma linha; desliza na
+                    horizontal; no telemóvel fica recolhida atrás de "Resumo dos orçamentos"). */}
+                {view === "kanban" && pipeline && pipeline.total.count > 0 && (
+                    <Card className="mb-3">
+                        <CardBody className="py-2 px-3">
+                            <button type="button" className="btn btn-link btn-sm p-0 text-reset d-md-none d-flex align-items-center gap-1"
+                                onClick={() => setStripOpen((o) => !o)} aria-expanded={stripOpen}>
+                                <i className={stripOpen ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"} />
+                                Resumo dos orçamentos · {formatEuro(pipeline.total.amount)}
+                            </button>
+                            <div className={`${stripOpen ? "d-flex mt-2" : "d-none"} d-md-flex align-items-center gap-4 overflow-auto text-nowrap`}>
+                                <span className="text-muted fs-12 text-uppercase fw-semibold d-none d-md-inline">Orçamentos</span>
+                                {PIPELINE_CARDS.map((c) => {
+                                    const b = pipeline.by_status[c.key];
+                                    return (
+                                        <span key={c.key} className="d-inline-flex align-items-center gap-2 fs-13">
+                                            <i className={`${c.icon} text-${c.color}`} />
+                                            <span className="text-muted">{QUOTE_STATUS_META[c.key].label}</span>
+                                            <span className="fw-semibold">{formatEuro(b.amount)}</span>
+                                            <span className="text-muted">({b.count} · {b.hours} h)</span>
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        </CardBody>
+                    </Card>
+                )}
+
+                {/* Pipeline de ORÇAMENTOS (site_change), na Lista: "quanto tenho em cima da mesa"
                     por estado. Segue o filtro de empresa. Valor SEM IVA. */}
-                {pipeline && pipeline.total.count > 0 && (
+                {view === "list" && pipeline && pipeline.total.count > 0 && (
                     <Row className="g-2 mb-3">
                         {PIPELINE_CARDS.map((c) => {
                             const b = pipeline.by_status[c.key];

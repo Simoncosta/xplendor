@@ -20,6 +20,18 @@ export interface ISupportTicketMessage {
     created_at?: string;
 }
 
+// Uma mudança de tipo (só no lado admin): tipo anterior e novo e o orçamento que tinha.
+export interface ISupportTicketTypeChange {
+    id: number;
+    from_type: SupportTicketType;
+    to_type: SupportTicketType;
+    previous_quote_status: QuoteStatus | null;
+    previous_quoted_amount: number | null;
+    previous_estimated_hours: number | null;
+    changed_by_name: string | null;
+    created_at: string | null;
+}
+
 export interface ISupportTicket {
     id: number;
     company_id: number;
@@ -41,6 +53,7 @@ export interface ISupportTicket {
     quoted_amount?: number | null;
     invoice_url?: string | null;
     hourly_rate?: number | null;
+    type_changes?: ISupportTicketTypeChange[]; // só no lado admin
 }
 
 // Rótulos + ícones por tipo (pt-PT).
@@ -63,9 +76,9 @@ export const TICKET_STATUS_META: Record<SupportTicketStatus, { label: string; co
 // Rótulos + cor por estado de ORÇAMENTO (só site_change).
 export const QUOTE_STATUS_META: Record<QuoteStatus, { label: string; color: string }> = {
     awaiting_quote: { label: "A aguardar orçamento",        color: "secondary" },
-    quoted:         { label: "Orçado — a aguardar aprovação", color: "warning" },
-    approved:       { label: "Aprovado — a aguardar pagamento", color: "info" },
-    paid:           { label: "Pago — em execução",          color: "primary" },
+    quoted:         { label: "Orçado, a aguardar aprovação", color: "warning" },
+    approved:       { label: "Aprovado, a aguardar pagamento", color: "info" },
+    paid:           { label: "Pago, em execução",            color: "primary" },
     completed:      { label: "Concluído",                   color: "success" },
     rejected:       { label: "Rejeitado",                   color: "danger" },
 };

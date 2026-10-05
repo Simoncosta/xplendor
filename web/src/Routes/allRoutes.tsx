@@ -96,6 +96,8 @@ import MetaAds from "pages/Analytics/MetaAds";
 import AdminTicketsList from "pages/Admin/AdminTicketsList";
 import AdminTicketDetail from "pages/Admin/AdminTicketDetail";
 import AdminQuotesList from "pages/Admin/AdminQuotesList";
+import QuoteEditor from "pages/Admin/QuoteEditor";
+import ServiceCatalogPage from "pages/Admin/ServiceCatalogPage";
 import AdminStockList from "pages/Admin/AdminStockList";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 import RequireModule from "./RequireModule";
@@ -225,6 +227,9 @@ const authProtectedRoutes = [
     { path: "/admin/tickets/:id", component: <RequireSuperAdmin><AdminTicketDetail /></RequireSuperAdmin> },
     // 2ª consola da área /admin — gestão comercial (orçamentos avulsos).
     { path: "/admin/quotes", component: <RequireSuperAdmin><AdminQuotesList /></RequireSuperAdmin> },
+    { path: "/admin/quotes/new", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
+    { path: "/admin/quotes/:id", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
+    { path: "/admin/service-catalog", component: <RequireSuperAdmin><ServiceCatalogPage /></RequireSuperAdmin> },
     // 3ª consola — 1ª vista de DADOS transversais: stock global (todas as empresas ativas).
     { path: "/admin/stock", component: <RequireSuperAdmin><AdminStockList /></RequireSuperAdmin> },
 

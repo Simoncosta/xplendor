@@ -89,3 +89,29 @@ export async function postDocx(path: string, payload: any = {}, fallbackName = "
         return { ok: false, status, body };
     }
 }
+
+/**
+ * Abre um PDF da API autenticada num separador novo. O separador abre logo (antes
+ * do pedido) para não ser bloqueado como pop-up; recebe o ficheiro quando chega.
+ */
+export async function openPdfGet(path: string): Promise<DownloadResult> {
+    const tab = window.open("", "_blank");
+    const client = axios.create({ baseURL: API_URL });
+    try {
+        const res = await client.get(path, { responseType: "blob", headers: authHeaders() });
+        const href = URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+        if (tab) tab.location.href = href;
+        else window.location.href = href;
+        setTimeout(() => URL.revokeObjectURL(href), 60_000);
+        return { ok: true };
+    } catch (err: any) {
+        tab?.close();
+        const status = err?.response?.status ?? 0;
+        let body: any = null;
+        const blob = err?.response?.data;
+        if (blob && typeof blob.text === "function") {
+            try { body = JSON.parse(await blob.text()); } catch { /* not json */ }
+        }
+        return { ok: false, status, body };
+    }
+}

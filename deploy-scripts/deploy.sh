@@ -56,6 +56,3 @@ echo "Migrations (prod)"
 docker exec -it xplendor-php php artisan migrate --force
 
 echo "✅ Deploy OK"
-
-No server/.env, mudar LOG_STACK=single para LOG_STACK=daily e acrescentar LOG_DAILY_DAYS=14.
-Depois correr php artisan config:clear, ou config:cache se usarem cache de configuração.

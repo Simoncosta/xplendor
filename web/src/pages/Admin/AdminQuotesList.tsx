@@ -1,366 +1,159 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
+import { ToastContainer } from "react-toastify";
+import { getAdminQuotes, getAdminQuotesSummary } from "helpers/laravel_helper";
 import {
-    Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Label,
-    Modal, ModalHeader, ModalBody, ModalFooter,
-} from "reactstrap";
-import CreatableSelect from "react-select/creatable";
-import { ToastContainer, toast } from "react-toastify";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
-import {
-    getAdminQuotes, getAdminQuotesSummary, getAdminQuoteCompanies, createAdminQuote, updateAdminQuote,
-    updateAdminQuoteStatus, markAdminQuotePaid, markAdminQuoteCompleted, deleteAdminQuote,
-} from "helpers/laravel_helper";
-import {
-    IQuote, IQuoteSummary, IQuoteCompanyOption, QuoteStatus, QUOTE_STATUS_META, QUOTE_STATUSES, formatQuoteEuro,
+    IQuote, IQuoteSummary, QUOTE_STATUSES, QUOTE_STATUS_META, formatQuoteEuro, longDate,
 } from "common/models/quote.model";
 
-type FormState = {
-    companyId: number | null;   // preenchido quando escolhe uma empresa cadastrada
-    client_name: string;        // nome livre (ou nome da empresa, para exibição)
-    client_contact: string;
-    description: string;
-    amount: string;
-    notes: string;
-};
-
-const EMPTY_FORM: FormState = { companyId: null, client_name: "", client_contact: "", description: "", amount: "", notes: "" };
-
-const fmtDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "—");
-
 /**
- * XPLENDOR — Consola de ORÇAMENTOS AVULSOS (gestão comercial, área /admin,
- * só root). Segunda consola da área /admin, ao lado dos tickets. Base do
- * futuro mini-CRM comercial (criar + lista + estados hoje).
+ * XPLENDOR — Orçamentos de serviços (só a equipa XPLENDOR). Lista com os totais
+ * MENSAL e VALOR ÚNICO sempre em colunas separadas (nunca somados), sem IVA.
+ * Abrir um orçamento leva ao editor (/admin/quotes/:id).
  */
+const Stat = ({ icon, color, label, value, sub }: { icon: string; color: string; label: string; value: React.ReactNode; sub?: React.ReactNode }) => (
+    <Card className="mb-0 h-100">
+        <CardBody className="d-flex align-items-center gap-3">
+            <span className="avatar-sm flex-shrink-0">
+                <span className={`avatar-title bg-${color}-subtle text-${color} rounded fs-20`}><i className={icon} /></span>
+            </span>
+            <div className="min-w-0">
+                <div className="fs-18 fw-semibold text-truncate">{value}</div>
+                <small className="text-muted d-block">{label}</small>
+                {sub && <small className="text-muted d-block text-truncate">{sub}</small>}
+            </div>
+        </CardBody>
+    </Card>
+);
+
 const AdminQuotesList = () => {
-    document.title = "Administração — Orçamentos | Xplendor";
+    document.title = "Orçamentos | Xplendor";
+    const navigate = useNavigate();
 
     const [quotes, setQuotes] = useState<IQuote[]>([]);
     const [summary, setSummary] = useState<IQuoteSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [fStatus, setFStatus] = useState("");
-
-    const [modalOpen, setModalOpen] = useState(false);
-    const [editing, setEditing] = useState<IQuote | null>(null);
-    const [form, setForm] = useState<FormState>(EMPTY_FORM);
-    const [saving, setSaving] = useState(false);
-    const [busyId, setBusyId] = useState<number | null>(null);
-    const [companies, setCompanies] = useState<IQuoteCompanyOption[]>([]);
+    const [search, setSearch] = useState("");
 
     useEffect(() => {
-        getAdminQuoteCompanies().then((r: any) => setCompanies(r?.data ?? [])).catch(() => setCompanies([]));
-    }, []);
-
-    const companyOptions = useMemo(
-        () => companies.map((c) => ({ value: c.id, label: c.name })),
-        [companies],
-    );
-
-    const loadSummary = useCallback(() => {
         getAdminQuotesSummary().then((r: any) => setSummary(r?.data ?? null)).catch(() => setSummary(null));
     }, []);
 
-    const loadQuotes = useCallback(() => {
+    useEffect(() => {
+        let alive = true;
         setLoading(true);
-        const params: { status?: string } = {};
-        if (fStatus) params.status = fStatus;
-        getAdminQuotes(params)
-            .then((r: any) => setQuotes(r?.data ?? []))
-            .catch(() => setQuotes([]))
-            .finally(() => setLoading(false));
-    }, [fStatus]);
+        const t = setTimeout(() => {
+            getAdminQuotes({ status: fStatus || undefined, search: search.trim() || undefined })
+                .then((r: any) => { if (alive) setQuotes(r?.data ?? []); })
+                .catch(() => { if (alive) setQuotes([]); })
+                .finally(() => { if (alive) setLoading(false); });
+        }, 250);
+        return () => { alive = false; clearTimeout(t); };
+    }, [fStatus, search]);
 
-    useEffect(() => { loadQuotes(); }, [loadQuotes]);
-    useEffect(() => { loadSummary(); }, [loadSummary]);
-
-    const cards = useMemo(() => ([
-        { label: "Em validação", value: summary?.pending ?? 0, color: "warning", icon: "ri-hourglass-line" },
-        { label: "Aprovados", value: summary?.approved ?? 0, color: "success", icon: "ri-checkbox-circle-line" },
-        { label: "Rejeitados", value: summary?.rejected ?? 0, color: "danger", icon: "ri-close-circle-line" },
-        { label: "Valor ganho", value: formatQuoteEuro(summary?.approved_value ?? 0), color: "primary", icon: "ri-money-euro-circle-line" },
-    ]), [summary]);
-
-    const openCreate = () => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); };
-    const openEdit = (q: IQuote) => {
-        setEditing(q);
-        setForm({
-            companyId: q.company_id ?? null,
-            client_name: q.client_name,
-            client_contact: q.client_contact ?? "",
-            description: q.description,
-            amount: String(q.amount),
-            notes: q.notes ?? "",
-        });
-        setModalOpen(true);
-    };
-
-    const save = async () => {
-        // Campo creatable: OU empresa (companyId) OU nome livre (client_name).
-        if (!form.companyId && !form.client_name.trim()) { toast.error("Escolhe uma empresa ou escreve um nome de cliente."); return; }
-        if (!form.description.trim()) { toast.error("Descreve o orçamento."); return; }
-        const amount = Number(form.amount.replace(",", "."));
-        if (!amount || amount < 0) { toast.error("Indica um valor válido."); return; }
-
-        const payload: any = {
-            client_contact: form.client_contact.trim() || null,
-            description: form.description.trim(),
-            amount,
-            notes: form.notes.trim() || null,
-        };
-        if (form.companyId) {
-            payload.company_id = form.companyId;   // ligado a empresa (o nome vem dela)
-        } else {
-            payload.company_id = null;
-            payload.client_name = form.client_name.trim();  // nome livre
-        }
-
-        setSaving(true);
-        try {
-            if (editing) {
-                await updateAdminQuote(editing.id, payload);
-                toast.success("Orçamento atualizado.");
-            } else {
-                await createAdminQuote(payload);
-                toast.success(form.companyId ? "Orçamento criado e enviado à empresa." : "Orçamento criado (em validação).");
-            }
-            setModalOpen(false);
-            loadQuotes(); loadSummary();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || "Não foi possível guardar.");
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const changeStatus = async (q: IQuote, status: QuoteStatus) => {
-        setBusyId(q.id);
-        try {
-            await updateAdminQuoteStatus(q.id, status);
-            loadQuotes(); loadSummary();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || "Não foi possível mudar o estado.");
-        } finally {
-            setBusyId(null);
-        }
-    };
-
-    const doPaid = async (q: IQuote) => {
-        setBusyId(q.id);
-        try { await markAdminQuotePaid(q.id); loadQuotes(); loadSummary(); }
-        catch (err: any) { toast.error(err?.response?.data?.message || "Não foi possível marcar pago."); }
-        finally { setBusyId(null); }
-    };
-    const doComplete = async (q: IQuote) => {
-        setBusyId(q.id);
-        try { await markAdminQuoteCompleted(q.id); loadQuotes(); loadSummary(); }
-        catch (err: any) { toast.error(err?.response?.data?.message || "Não foi possível concluir."); }
-        finally { setBusyId(null); }
-    };
-
-    const remove = async (q: IQuote) => {
-        if (!window.confirm(`Eliminar o orçamento de "${q.client_name}"?`)) return;
-        setBusyId(q.id);
-        try {
-            await deleteAdminQuote(q.id);
-            loadQuotes(); loadSummary();
-        } catch {
-            toast.error("Não foi possível eliminar.");
-        } finally {
-            setBusyId(null);
-        }
-    };
+    const year = summary?.accepted_year.year ?? new Date().getFullYear();
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center">
+                <Row className="mb-3 align-items-center g-2">
                     <Col>
-                        <h4 className="mb-1"><i className="ri-file-list-3-line text-primary me-2" />Administração — Orçamentos</h4>
-                        <p className="text-muted mb-0">Gestão comercial da agência. Orçamentos avulsos, incluindo clientes fora da plataforma.</p>
+                        <h4 className="mb-1"><i className="ri-file-list-3-line text-primary me-2" />Orçamentos</h4>
+                        <p className="text-muted mb-0">Orçamentos de serviços da XPLENDOR. Valores sem IVA.</p>
                     </Col>
-                    <Col xs="auto">
-                        <button type="button" className="btn btn-primary" onClick={openCreate}>
-                            <i className="ri-add-line me-1" />Novo orçamento
-                        </button>
+                    <Col xs="auto" className="d-flex gap-2">
+                        <Link to="/admin/service-catalog" className="btn btn-soft-secondary btn-sm"><i className="ri-price-tag-3-line me-1" />Catálogo de serviços</Link>
+                        <Link to="/admin/quotes/new" className="btn btn-primary btn-sm"><i className="ri-add-line me-1" />Novo orçamento</Link>
                     </Col>
                 </Row>
 
-                {/* Cartões do topo */}
-                <Row className="g-3 mb-3">
-                    {cards.map((c) => (
-                        <Col key={c.label} xs={6} lg={3}>
-                            <Card className="mb-0">
-                                <CardBody className="d-flex align-items-center gap-3">
-                                    <span className="avatar-sm flex-shrink-0">
-                                        <span className={`avatar-title bg-${c.color}-subtle text-${c.color} rounded fs-20`}><i className={c.icon} /></span>
-                                    </span>
-                                    <div className="min-w-0">
-                                        <div className="fs-18 fw-semibold text-truncate">{c.value}</div>
-                                        <small className="text-muted">{c.label}</small>
-                                    </div>
-                                </CardBody>
-                            </Card>
+                {summary && (
+                    <Row className="g-3 mb-3">
+                        <Col xs={12} sm={6} xl={3}>
+                            <Stat icon="ri-send-plane-line" color="warning" label="Em aberto (enviados)"
+                                value={`${summary.open.count} · ${formatQuoteEuro(summary.open.monthly)}/mês`}
+                                sub={`${formatQuoteEuro(summary.open.one_off)} de valor único`} />
                         </Col>
-                    ))}
-                </Row>
+                        <Col xs={12} sm={6} xl={3}>
+                            <Stat icon="ri-repeat-line" color="success" label={`Recorrente aceite em ${year}`}
+                                value={`${formatQuoteEuro(summary.accepted_year.monthly)}/mês`}
+                                sub={`Desde sempre: ${formatQuoteEuro(summary.accepted_all.monthly)}/mês`} />
+                        </Col>
+                        <Col xs={12} sm={6} xl={3}>
+                            <Stat icon="ri-money-euro-circle-line" color="primary" label={`Único aceite em ${year}`}
+                                value={formatQuoteEuro(summary.accepted_year.one_off)}
+                                sub={`Desde sempre: ${formatQuoteEuro(summary.accepted_all.one_off)}`} />
+                        </Col>
+                        <Col xs={12} sm={6} xl={3}>
+                            <Stat icon="ri-timer-line" color="danger" label="Expiram nos próximos 7 dias"
+                                value={summary.open.expiring_7d}
+                                sub={`${summary.by_status.draft} em rascunho`} />
+                        </Col>
+                    </Row>
+                )}
 
                 <Card>
                     <CardBody>
                         <Row className="g-2 mb-3">
                             <Col md={4}>
-                                <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+                                <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)} aria-label="Estado">
                                     <option value="">Todos os estados</option>
                                     {QUOTE_STATUSES.map((s) => <option key={s} value={s}>{QUOTE_STATUS_META[s].label}</option>)}
                                 </Input>
+                            </Col>
+                            <Col md={8}>
+                                <Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por cliente, título ou número" />
                             </Col>
                         </Row>
 
                         {loading ? (
                             <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
                         ) : quotes.length === 0 ? (
-                            <p className="text-muted mb-0">Sem orçamentos para os filtros escolhidos. Cria o primeiro em "Novo orçamento".</p>
+                            <p className="text-muted mb-0">Sem orçamentos para os filtros escolhidos.</p>
                         ) : (
-                            <div className="d-flex flex-column gap-2">
-                                {quotes.map((q) => {
-                                    const sm = QUOTE_STATUS_META[q.status];
-                                    const busy = busyId === q.id;
-                                    return (
-                                        <div key={q.id} className="border rounded p-3">
-                                            <div className="d-flex align-items-start gap-3 flex-wrap">
-                                                <div className="flex-grow-1 min-w-0">
-                                                    <div className="d-flex align-items-center gap-2 flex-wrap">
-                                                        <span className="fw-semibold">{q.company_name || q.client_name}</span>
-                                                        <Badge color={sm.color}>{sm.label}</Badge>
-                                                        {q.is_linked
-                                                            ? <span className="badge bg-info-subtle text-info"><i className="ri-building-line me-1" />Empresa</span>
-                                                            : <span className="badge bg-light text-body"><i className="ri-user-line me-1" />Externo</span>}
-                                                    </div>
-                                                    <div className="text-muted fs-13 text-truncate">{q.description}</div>
-                                                    <small className="text-muted">
-                                                        {q.client_contact ? `${q.client_contact} · ` : ""}{fmtDate(q.created_at)}
-                                                    </small>
-                                                </div>
-                                                <div className="text-end flex-shrink-0">
-                                                    <div className="fs-16 fw-semibold">{formatQuoteEuro(q.amount)}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="d-flex flex-wrap gap-2 mt-2 align-items-center">
-                                                {/* Aprovar/rejeitar: nos ligados a empresa é ELA que decide (no painel dela). */}
-                                                {q.is_linked ? (
-                                                    q.status === "pending" && (
-                                                        <span className="text-muted fs-12"><i className="ri-time-line me-1" />A aguardar decisão da empresa</span>
-                                                    )
-                                                ) : (
-                                                    <>
-                                                        {q.status === "pending" && (
-                                                            <button type="button" className="btn btn-soft-success btn-sm" disabled={busy} onClick={() => changeStatus(q, "approved")}>
-                                                                {busy ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar</>}
-                                                            </button>
-                                                        )}
-                                                        {(q.status === "pending" || q.status === "approved") && (
-                                                            <button type="button" className="btn btn-soft-danger btn-sm" disabled={busy} onClick={() => changeStatus(q, "rejected")}>
-                                                                <i className="ri-close-line me-1" />Rejeitar
-                                                            </button>
-                                                        )}
-                                                    </>
-                                                )}
-
-                                                {/* Pago/concluído: sempre do Simon (fora do software). */}
-                                                {q.status === "approved" && (
-                                                    <button type="button" className="btn btn-soft-primary btn-sm" disabled={busy} onClick={() => doPaid(q)}>
-                                                        <i className="ri-bank-card-line me-1" />Marcar pago
-                                                    </button>
-                                                )}
-                                                {q.status === "paid" && (
-                                                    <button type="button" className="btn btn-soft-success btn-sm" disabled={busy} onClick={() => doComplete(q)}>
-                                                        <i className="ri-check-double-line me-1" />Concluir
-                                                    </button>
-                                                )}
-
-                                                <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => openEdit(q)}>
-                                                    <i className="ri-pencil-line me-1" />Editar
-                                                </button>
-                                                <button type="button" className="btn btn-soft-secondary btn-sm" disabled={busy} onClick={() => remove(q)}>
-                                                    <i className="ri-delete-bin-line" />
-                                                </button>
-                                            </div>
-
-                                            {q.notes && <div className="text-muted fs-12 mt-2 fst-italic">{q.notes}</div>}
-                                        </div>
-                                    );
-                                })}
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle mb-0">
+                                    <thead className="table-light text-muted">
+                                        <tr>
+                                            <th>Número</th>
+                                            <th>Cliente</th>
+                                            <th>Estado</th>
+                                            <th className="text-end">Mensal</th>
+                                            <th className="text-end">Valor único</th>
+                                            <th>Válido até</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {quotes.map((q) => {
+                                            const sm = QUOTE_STATUS_META[q.status];
+                                            return (
+                                                <tr key={q.id} role="button" onClick={() => navigate(`/admin/quotes/${q.id}`)}>
+                                                    <td className="text-nowrap">
+                                                        <span className="fw-semibold">{q.display_number}</span>
+                                                        {q.version > 1 && <small className="text-muted ms-1">v{q.version}</small>}
+                                                    </td>
+                                                    <td style={{ minWidth: 180 }}>
+                                                        <div className="fw-medium">{q.client_name}</div>
+                                                        <small className="text-muted">{q.title || q.description}{q.company_name ? ` · ligado a ${q.company_name}` : ""}</small>
+                                                    </td>
+                                                    <td><Badge color={sm.color}>{sm.label}</Badge></td>
+                                                    <td className="text-end text-nowrap">{q.total_monthly > 0 ? `${formatQuoteEuro(q.total_monthly)}/mês` : <span className="text-muted">0,00 €</span>}</td>
+                                                    <td className="text-end text-nowrap">{formatQuoteEuro(q.total_one_off)}</td>
+                                                    <td className="text-nowrap">{q.valid_until ? longDate(q.valid_until) : <span className="text-muted">Sem data</span>}</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
+                        <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Os totais mensal e de valor único nunca se somam. Acresce IVA à taxa legal em vigor.</p>
                     </CardBody>
                 </Card>
             </Container>
-
-            {/* Modal criar / editar */}
-            <Modal isOpen={modalOpen} toggle={() => setModalOpen(false)} centered scrollable>
-                <ModalHeader toggle={() => setModalOpen(false)}>{editing ? "Editar orçamento" : "Novo orçamento"}</ModalHeader>
-                <ModalBody>
-                    <div className="mb-3">
-                        <Label className="form-label">Cliente</Label>
-                        <CreatableSelect
-                            styles={reactSelectTheme}
-                            isClearable
-                            placeholder="Escolhe uma empresa ou escreve um nome…"
-                            formatCreateLabel={(input: string) => `Usar nome livre: "${input}"`}
-                            options={companyOptions}
-                            value={
-                                form.companyId
-                                    ? (companyOptions.find((o) => o.value === form.companyId) ?? null)
-                                    : (form.client_name ? { value: -1, label: form.client_name } : null)
-                            }
-                            onChange={(opt: any) => {
-                                if (opt && typeof opt.value === "number" && opt.value > 0) {
-                                    // Empresa cadastrada selecionada → liga por company_id.
-                                    setForm({ ...form, companyId: opt.value, client_name: opt.label });
-                                } else if (opt) {
-                                    // Opção criada (nome livre digitado sem criar) → texto.
-                                    setForm({ ...form, companyId: null, client_name: opt.label });
-                                } else {
-                                    setForm({ ...form, companyId: null, client_name: "" });
-                                }
-                            }}
-                            onCreateOption={(input: string) => {
-                                // Nome livre (cliente fora da plataforma) → só texto, sem criar empresa.
-                                setForm({ ...form, companyId: null, client_name: input });
-                            }}
-                        />
-                        <small className="text-muted">
-                            {form.companyId
-                                ? "Ligado a uma empresa — vai aparecer no painel dela para aprovar."
-                                : "Nome livre — fica só na tua área /admin (sem painel)."}
-                        </small>
-                    </div>
-                    <div className="mb-3">
-                        <Label className="form-label">Contacto</Label>
-                        <Input type="text" value={form.client_contact} onChange={(e) => setForm({ ...form, client_contact: e.target.value })} placeholder="email ou telefone (opcional)" />
-                    </div>
-                    <div className="mb-3">
-                        <Label className="form-label">Descrição</Label>
-                        <Input type="textarea" rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="ex.: Tráfego pago 3 meses" />
-                    </div>
-                    <div className="mb-3">
-                        <Label className="form-label">Valor (€)</Label>
-                        <Input type="number" min={0} step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="ex.: 1500" />
-                    </div>
-                    <div className="mb-1">
-                        <Label className="form-label">Notas</Label>
-                        <Input type="textarea" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Observações (opcional)" />
-                    </div>
-                    {!editing && <small className="text-muted">O orçamento começa em <strong>Em validação</strong>. Marcas aprovado/rejeitado quando o cliente responder.</small>}
-                </ModalBody>
-                <ModalFooter>
-                    <button type="button" className="btn btn-light" onClick={() => setModalOpen(false)}>Cancelar</button>
-                    <button type="button" className="btn btn-primary" onClick={save} disabled={saving}>
-                        {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : (editing ? "Guardar" : "Criar orçamento")}
-                    </button>
-                </ModalFooter>
-            </Modal>
         </div>
     );
 };

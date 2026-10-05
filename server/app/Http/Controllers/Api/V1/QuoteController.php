@@ -13,13 +13,14 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * XPLENDOR — Orçamentos, LADO DO STAND. Uma empresa vê APENAS os orçamentos
- * ligados a ela (company_id) e pode APROVAR/REJEITAR os que estão em validação.
+ * XPLENDOR — Orçamentos, LADO DA EMPRESA. Uma empresa vê APENAS os orçamentos
+ * ligados a ela (company_id) que já lhe foram enviados, pode aceitar ou recusar os
+ * que estão em aberto e descarregar o PDF da versão que recebeu.
  * Guard tenant de 2 camadas (padrão do projeto): o utilizador pertence à empresa
  * da rota (ou é root); o orçamento pertence mesmo a essa empresa (findScoped).
  *
  * O stand NUNCA vê orçamentos de nome livre (sem company_id) nem de outras
- * empresas. Marcar pago/concluído é exclusivo do super-admin (lado /admin).
+ * empresas, nem rascunhos.
  */
 class QuoteController extends Controller
 {
@@ -34,7 +35,7 @@ class QuoteController extends Controller
 
     private function findScoped(int $companyId, int $id): ?Quote
     {
-        return Quote::where('company_id', $companyId)->find($id);
+        return Quote::where('company_id', $companyId)->where('status', '!=', 'draft')->find($id);
     }
 
     public function index(int $companyId)
@@ -43,7 +44,8 @@ class QuoteController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $quotes = Quote::where('company_id', $companyId)->orderByDesc('id')->get();
+        // Rascunhos nunca chegam à empresa: só vê o que lhe foi enviado.
+        $quotes = Quote::where('company_id', $companyId)->where('status', '!=', 'draft')->orderByDesc('id')->get();
 
         return ApiResponse::success(
             QuoteResource::collection($quotes)->resolve(),
@@ -67,11 +69,29 @@ class QuoteController extends Controller
             'decision' => ['required', 'in:approve,reject'],
         ]);
 
-        $quote = $this->service->companyDecision($quote, $data['decision'] === 'approve');
+        $quote = $this->service->decide($quote, $data['decision'] === 'approve', byCompany: true);
 
         return ApiResponse::success(
             (new QuoteResource($quote))->resolve(),
             'Quote decision saved successfully.'
         );
+    }
+
+    /** PDF da última versão enviada (a que a empresa recebeu). */
+    public function pdf(int $companyId, int $id)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $quote = $this->findScoped($companyId, $id);
+        $version = $quote?->versions()->first();
+        if (! $version) {
+            return ApiResponse::error('Orçamento não encontrado.', 404);
+        }
+
+        return response($this->service->versionPdf($version), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $version->number . '-v' . $version->version . '.pdf"',
+        ]);
     }
 }

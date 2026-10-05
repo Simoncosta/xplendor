@@ -1,16 +1,17 @@
 @component('mail::message')
-# Orçamento {{ $approved ? 'aprovado' : 'rejeitado' }}
+# Orçamento {{ $number }} {{ $accepted ? 'aceite' : 'recusado' }}
 
-@if($approved)
-A empresa **aprovou** o orçamento — podes faturar e marcar como pago.
-@else
-A empresa **rejeitou** o orçamento.
+A empresa **{{ $companyName }}** {{ $accepted ? 'aceitou' : 'recusou' }} o orçamento.
+
+- **Orçamento:** {{ $title }}
+@if($totalMonthly > 0)
+- **Total mensal:** {{ number_format($totalMonthly, 2, ',', '.') }} €/mês
+@endif
+@if($totalOneOff > 0)
+- **Total valor único:** {{ number_format($totalOneOff, 2, ',', '.') }} €
 @endif
 
-- **Empresa:** {{ $companyName }}
-- **Descrição:** {{ $description }}
-- **Valor:** {{ number_format($amount, 2, ',', '.') }}€ _(acresce IVA à taxa legal)_
+Valores sem IVA.
 
-Obrigado,
 {{ config('app.name') }}
 @endcomponent

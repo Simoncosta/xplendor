@@ -12,9 +12,8 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * XPLENDOR — Avisa o SUPER-ADMIN (Simon) da decisão da empresa sobre um
- * orçamento avulso ligado a ela: APROVADO (para faturar) ou REJEITADO.
- * Via QUEUE, fail-safe. Escalares apenas.
+ * XPLENDOR — Avisa a equipa de que a empresa ligada aceitou ou recusou um
+ * orçamento. Via queue, fail-safe. Escalares apenas.
  */
 class QuoteDecisionMail extends Mailable implements ShouldQueue
 {
@@ -22,17 +21,19 @@ class QuoteDecisionMail extends Mailable implements ShouldQueue
 
     public function __construct(
         public int $quoteId,
+        public string $number,
         public string $companyName,
-        public string $description,
-        public bool $approved,
-        public float $amount,
+        public string $title,
+        public bool $accepted,
+        public float $totalMonthly,
+        public float $totalOneOff,
     ) {}
 
     public function envelope(): Envelope
     {
-        $verb = $this->approved ? 'aprovado' : 'rejeitado';
+        $verb = $this->accepted ? 'aceite' : 'recusado';
 
-        return new Envelope(subject: "Orçamento {$verb} — {$this->companyName}");
+        return new Envelope(subject: "Orçamento {$this->number} {$verb} por {$this->companyName}");
     }
 
     public function content(): Content
@@ -40,11 +41,12 @@ class QuoteDecisionMail extends Mailable implements ShouldQueue
         return new Content(
             markdown: 'emails.quotes.decision',
             with: [
-                'quoteId'     => $this->quoteId,
-                'companyName' => $this->companyName,
-                'description' => $this->description,
-                'approved'    => $this->approved,
-                'amount'      => $this->amount,
+                'number'       => $this->number,
+                'companyName'  => $this->companyName,
+                'title'        => $this->title,
+                'accepted'     => $this->accepted,
+                'totalMonthly' => $this->totalMonthly,
+                'totalOneOff'  => $this->totalOneOff,
             ],
         );
     }

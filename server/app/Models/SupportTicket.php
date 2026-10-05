@@ -25,6 +25,11 @@ class SupportTicket extends Model implements AuditableContract
     // Fluxo de orçamento — só para tickets 'site_change' (null nos grátis).
     public const QUOTE_STATUSES = ['awaiting_quote', 'quoted', 'approved', 'paid', 'completed', 'rejected'];
 
+    // Mudança de tipo: com orçamento nestes estados é bloqueada (há dinheiro aprovado);
+    // nestes, é permitida com confirmação e o orçamento fica a null (rasto no histórico).
+    public const QUOTE_LOCKED_STATUSES = ['approved', 'paid', 'completed'];
+    public const QUOTE_RESETTABLE_STATUSES = ['quoted', 'rejected'];
+
     protected $fillable = [
         'company_id',
         'user_id',
@@ -46,6 +51,20 @@ class SupportTicket extends Model implements AuditableContract
         'quoted_amount'   => 'decimal:2',
     ];
 
+    /** Rótulos dos tipos (iguais aos do ecrã), para mensagens ao cliente. */
+    public const TYPE_LABELS = [
+        'idea'        => 'Ideia',
+        'improvement' => 'Melhoria',
+        'bug'         => 'Bug',
+        'suggestion'  => 'Sugestão',
+        'site_change' => 'Alteração ao site',
+    ];
+
+    public static function typeLabel(string $type): string
+    {
+        return self::TYPE_LABELS[$type] ?? $type;
+    }
+
     /** Este ticket é do tipo pago (com camada de orçamento)? */
     public function isSiteChange(): bool
     {
@@ -65,5 +84,11 @@ class SupportTicket extends Model implements AuditableContract
     public function messages(): HasMany
     {
         return $this->hasMany(SupportTicketMessage::class)->orderBy('id');
+    }
+
+    /** Histórico das mudanças de tipo (mais recente primeiro). */
+    public function typeChanges(): HasMany
+    {
+        return $this->hasMany(SupportTicketTypeChange::class)->orderByDesc('id');
     }
 }
