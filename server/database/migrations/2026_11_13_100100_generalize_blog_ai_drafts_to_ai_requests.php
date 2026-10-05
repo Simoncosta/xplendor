@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -32,6 +33,9 @@ return new class extends Migration
 
     public function down(): void
     {
+        // A tabela antiga só conhecia o blog: os pedidos dos outros modos não cabem nela.
+        DB::table('ai_requests')->where('mode', '!=', 'blog')->delete();
+
         Schema::table('ai_requests', function (Blueprint $table) {
             $table->dropIndex('ai_requests_company_mode_created_idx');
             $table->dropColumn('mode');
@@ -39,6 +43,10 @@ return new class extends Migration
 
         Schema::table('ai_requests', function (Blueprint $table) {
             $table->renameColumn('variant', 'mode');
+        });
+
+        Schema::table('ai_requests', function (Blueprint $table) {
+            $table->string('mode', 20)->nullable(false)->change();
         });
 
         Schema::rename('ai_requests', 'blog_ai_drafts');
