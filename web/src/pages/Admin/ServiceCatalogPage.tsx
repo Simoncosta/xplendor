@@ -4,6 +4,7 @@ import { Badge, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, 
 import { ToastContainer, toast } from "react-toastify";
 import { createServiceCatalogItem, getServiceCatalog, updateServiceCatalogItem } from "helpers/laravel_helper";
 import { BILLING_LABEL, ICatalogItem, QuoteBilling, QuoteUnit, UNIT_LABEL, formatQuoteEuro } from "common/models/quote.model";
+import QuoteSelect from "./QuoteSelect";
 
 /**
  * XPLENDOR — Catálogo de serviços (tabela padrão dos orçamentos). Só a equipa.
@@ -139,17 +140,16 @@ const ServiceCatalogPage = () => {
                                     </div>
                                 </Col>
                                 <Col xs={6}>
-                                    <Label className="form-label">Unidade</Label>
-                                    <Input type="select" value={editing.unit} onChange={(e) => setEditing({ ...editing, unit: e.target.value as QuoteUnit })}>
-                                        {(Object.keys(UNIT_LABEL) as QuoteUnit[]).map((u) => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
-                                    </Input>
+                                    <Label className="form-label" for="catalog-unit">Unidade</Label>
+                                    <QuoteSelect<QuoteUnit> inputId="catalog-unit" value={editing.unit}
+                                        options={(Object.keys(UNIT_LABEL) as QuoteUnit[]).map((u) => ({ value: u, label: UNIT_LABEL[u] }))}
+                                        onChange={(u) => u && setEditing({ ...editing, unit: u })} />
                                 </Col>
                                 <Col xs={12}>
-                                    <Label className="form-label">Tipo de cobrança</Label>
-                                    <Input type="select" value={editing.billing_type} onChange={(e) => setEditing({ ...editing, billing_type: e.target.value as QuoteBilling })}>
-                                        <option value="monthly">Mensal</option>
-                                        <option value="one_off">Valor único</option>
-                                    </Input>
+                                    <Label className="form-label" for="catalog-billing">Tipo de cobrança</Label>
+                                    <QuoteSelect<QuoteBilling> inputId="catalog-billing" value={editing.billing_type}
+                                        options={[{ value: "monthly", label: "Mensal" }, { value: "one_off", label: "Valor único" }]}
+                                        onChange={(b) => b && setEditing({ ...editing, billing_type: b })} />
                                 </Col>
                             </Row>
 

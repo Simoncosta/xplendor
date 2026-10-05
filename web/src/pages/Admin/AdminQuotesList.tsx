@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import { getAdminQuotes, getAdminQuotesSummary } from "helpers/laravel_helper";
+import QuoteSelect from "./QuoteSelect";
 import {
     IQuote, IQuoteSummary, QUOTE_STATUSES, QUOTE_STATUS_META, formatQuoteEuro, longDate,
 } from "common/models/quote.model";
@@ -99,10 +100,8 @@ const AdminQuotesList = () => {
                     <CardBody>
                         <Row className="g-2 mb-3">
                             <Col md={4}>
-                                <Input type="select" value={fStatus} onChange={(e) => setFStatus(e.target.value)} aria-label="Estado">
-                                    <option value="">Todos os estados</option>
-                                    {QUOTE_STATUSES.map((s) => <option key={s} value={s}>{QUOTE_STATUS_META[s].label}</option>)}
-                                </Input>
+                                <QuoteSelect<string> ariaLabel="Estado" value={fStatus} onChange={(v) => setFStatus(v ?? "")}
+                                    options={[{ value: "", label: "Todos os estados" }, ...QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_META[s].label }))]} />
                             </Col>
                             <Col md={8}>
                                 <Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por cliente, título ou número" />

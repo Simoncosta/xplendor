@@ -11,6 +11,8 @@ import {
 } from "helpers/laravel_helper";
 import { openPdfGet } from "helpers/download_helper";
 import QuoteActivityCard from "./QuoteActivityCard";
+import QuoteSelect from "./QuoteSelect";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { confirmAction } from "helpers/swal";
 import {
     IQuote, IQuoteActivity, IQuoteLine, IQuoteCustomer, IQuoteCompanyOption, ICatalogItem, QuoteBilling, QuoteDiscountType, QuoteUnit,
@@ -98,6 +100,14 @@ const toPayload = (f: FormState) => ({
     payment_terms_monthly: f.payment_terms_monthly,
     payment_terms_one_off: f.payment_terms_one_off,
 });
+
+// Opções dos seletores (sempre o react-select da app, com o tema de claro e escuro).
+const BILLING_OPTIONS: { value: QuoteBilling; label: string }[] = [{ value: "monthly", label: "Mensal" }, { value: "one_off", label: "Valor único" }];
+const UNIT_OPTIONS: { value: QuoteUnit; label: string }[] = (Object.keys(UNIT_LABEL) as QuoteUnit[]).map((u) => ({ value: u, label: UNIT_LABEL[u] }));
+const LINE_DISCOUNT_OPTIONS: { value: QuoteDiscountType; label: string }[] = [{ value: "percent", label: "%" }, { value: "amount", label: "€" }];
+const PACKAGE_TYPE_OPTIONS: { value: string; label: string }[] = [
+    { value: "", label: "Sem desconto" }, { value: "percent", label: "Percentagem (nos dois totais)" }, { value: "amount", label: "Valor em euros" },
+];
 
 const firstError = (e: any, fallback: string) => {
     const errs = e?.errors;
@@ -478,6 +488,8 @@ const QuoteEditor = () => {
                                     {form.customerMode === "existing" ? (
                                         <Select
                                             classNamePrefix="react-select"
+                                            styles={reactSelectTheme}
+                                            menuPortalTarget={document.body}
                                             placeholder="Pesquisar nos Clientes da XPLENDOR"
                                             isDisabled={readOnly}
                                             value={form.customer ? { value: form.customer.id, label: form.customer.name, c: form.customer } : null}
@@ -495,11 +507,11 @@ const QuoteEditor = () => {
                                         </Row>
                                     )}
                                     <div className="mt-3">
-                                        <Label className="form-label">Ligar a uma empresa da plataforma (opcional)</Label>
-                                        <Input type="select" value={form.company_id ?? ""} onChange={(e) => set("company_id", e.target.value ? Number(e.target.value) : null)}>
-                                            <option value="">Sem ligação</option>
-                                            {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </Input>
+                                        <Label className="form-label" for="quote-company">Ligar a uma empresa da plataforma (opcional)</Label>
+                                        <QuoteSelect<number> inputId="quote-company" isSearchable isClearable isDisabled={readOnly}
+                                            placeholder="Sem ligação (pesquisar por nome)"
+                                            options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                                            value={form.company_id} onChange={(v) => set("company_id", v)} />
                                         <small className="text-muted">Com ligação, a empresa recebe um email quando o orçamento é enviado e decide no painel dela.</small>
                                     </div>
                                 </CardBody>
@@ -525,8 +537,8 @@ const QuoteEditor = () => {
                                     {!readOnly && (
                                         <div className="d-flex gap-2 flex-wrap" style={{ minWidth: 0 }}>
                                             <div style={{ minWidth: 260 }}>
-                                                <Select classNamePrefix="react-select" placeholder="Adicionar do catálogo" value={null}
-                                                    options={catalogOptions} onChange={(opt: any) => opt && addFromCatalog(opt.item)} />
+                                                <Select classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} placeholder="Adicionar do catálogo" value={null}
+                                                    noOptionsMessage={() => "Sem resultados"} options={catalogOptions} onChange={(opt: any) => opt && addFromCatalog(opt.item)} />
                                             </div>
                                             <button type="button" className="btn btn-soft-primary btn-sm" onClick={addCustom}><i className="ri-add-line me-1" />Linha personalizada</button>
                                         </div>
@@ -545,17 +557,14 @@ const QuoteEditor = () => {
                                                             <Input value={l.name} onChange={(e) => setLine(i, { name: e.target.value })} />
                                                         </Col>
                                                         <Col xs={6} md={2}>
-                                                            <Label className="form-label fs-12 text-muted mb-1">Cobrança</Label>
-                                                            <Input type="select" value={l.billing_type} onChange={(e) => { const b = e.target.value as QuoteBilling; setLine(i, { billing_type: b, unit: l.catalog_item_id ? l.unit : DEFAULT_UNIT[b] }); }}>
-                                                                <option value="monthly">Mensal</option>
-                                                                <option value="one_off">Valor único</option>
-                                                            </Input>
+                                                            <Label className="form-label fs-12 text-muted mb-1" for={`billing-${i}`}>Cobrança</Label>
+                                                            <QuoteSelect<QuoteBilling> inputId={`billing-${i}`} isDisabled={readOnly} options={BILLING_OPTIONS} value={l.billing_type}
+                                                                onChange={(b) => b && setLine(i, { billing_type: b, unit: l.catalog_item_id ? l.unit : DEFAULT_UNIT[b] })} />
                                                         </Col>
                                                         <Col xs={6} md={2}>
-                                                            <Label className="form-label fs-12 text-muted mb-1">Unidade</Label>
-                                                            <Input type="select" value={l.unit} onChange={(e) => setLine(i, { unit: e.target.value as QuoteUnit })}>
-                                                                {(Object.keys(UNIT_LABEL) as QuoteUnit[]).map((u) => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
-                                                            </Input>
+                                                            <Label className="form-label fs-12 text-muted mb-1" for={`unit-${i}`}>Unidade</Label>
+                                                            <QuoteSelect<QuoteUnit> inputId={`unit-${i}`} isDisabled={readOnly} options={UNIT_OPTIONS} value={l.unit}
+                                                                onChange={(u) => u && setLine(i, { unit: u })} />
                                                         </Col>
                                                         <Col xs={12} md={3} className="text-md-end">
                                                             <div className="fs-12 text-muted">Total da linha</div>
@@ -577,12 +586,12 @@ const QuoteEditor = () => {
                                                         </Col>
                                                         <Col xs={8} md={4}>
                                                             <Label className="form-label fs-12 text-muted mb-1">Desconto da linha</Label>
-                                                            <div className="input-group">
+                                                            <div className="d-flex gap-2">
                                                                 <Input type="number" min={0} step="0.01" value={l.discount_value ?? ""} placeholder="0" onChange={(e) => setLine(i, { discount_value: e.target.value === "" ? null : (e.target.value as any) })} />
-                                                                <Input type="select" style={{ maxWidth: 80 }} value={l.discount_type ?? "percent"} onChange={(e) => setLine(i, { discount_type: e.target.value as QuoteDiscountType })}>
-                                                                    <option value="percent">%</option>
-                                                                    <option value="amount">€</option>
-                                                                </Input>
+                                                                <div style={{ width: 92, flexShrink: 0 }}>
+                                                                    <QuoteSelect<QuoteDiscountType> ariaLabel="Tipo de desconto da linha" isDisabled={readOnly} options={LINE_DISCOUNT_OPTIONS}
+                                                                        value={l.discount_type ?? "percent"} onChange={(t) => t && setLine(i, { discount_type: t })} />
+                                                                </div>
                                                             </div>
                                                         </Col>
                                                         <Col xs={4} md={3} className="d-flex gap-1 justify-content-end">
@@ -619,13 +628,10 @@ const QuoteEditor = () => {
                                 <CardHeader><h6 className="mb-0">Desconto de pacote (opcional)</h6></CardHeader>
                                 <CardBody>
                                     <Row className="g-2 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label">Tipo</Label>
-                                            <Input type="select" value={form.global_discount_type} onChange={(e) => set("global_discount_type", e.target.value as any)}>
-                                                <option value="">Sem desconto</option>
-                                                <option value="percent">Percentagem (nos dois totais)</option>
-                                                <option value="amount">Valor em euros</option>
-                                            </Input>
+                                        <Col md={4}>
+                                            <Label className="form-label" for="package-type">Tipo</Label>
+                                            <QuoteSelect<string> inputId="package-type" isDisabled={readOnly} options={PACKAGE_TYPE_OPTIONS}
+                                                value={form.global_discount_type} onChange={(v) => set("global_discount_type", (v ?? "") as any)} />
                                         </Col>
                                         {form.global_discount_type && (
                                             <>
@@ -635,15 +641,12 @@ const QuoteEditor = () => {
                                                 </Col>
                                                 {form.global_discount_type === "amount" && (
                                                     <Col md={3}>
-                                                        <Label className="form-label">Aplica-se ao total</Label>
-                                                        <Input type="select" value={form.global_discount_target} onChange={(e) => set("global_discount_target", e.target.value as any)}>
-                                                            <option value="">Escolher</option>
-                                                            <option value="monthly">Mensal</option>
-                                                            <option value="one_off">Valor único</option>
-                                                        </Input>
+                                                        <Label className="form-label" for="package-target">Aplica-se ao total</Label>
+                                                        <QuoteSelect<QuoteBilling> inputId="package-target" isDisabled={readOnly} options={BILLING_OPTIONS} placeholder="Escolher"
+                                                            value={form.global_discount_target || null} onChange={(v) => set("global_discount_target", (v ?? "") as any)} />
                                                     </Col>
                                                 )}
-                                                <Col md={form.global_discount_type === "amount" ? 4 : 7}>
+                                                <Col md={form.global_discount_type === "amount" ? 3 : 6}>
                                                     <Label className="form-label">Texto no PDF</Label>
                                                     <Input value={form.global_discount_label} onChange={(e) => set("global_discount_label", e.target.value)} />
                                                 </Col>
