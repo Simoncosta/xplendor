@@ -54,6 +54,7 @@ class ServiceCatalogController extends Controller
     public function store(Request $request)
     {
         $this->ensureRoot();
+        $this->normalizeActive($request);
         $data = $request->validate($this->rules(true));
         // Sem ordem indicada, vai para o fim da lista.
         $data['sort'] ??= ((int) ServiceCatalogItem::max('sort')) + 10;
@@ -67,8 +68,20 @@ class ServiceCatalogController extends Controller
         $this->ensureRoot();
         $item = ServiceCatalogItem::find($id);
         abort_unless($item, 404, 'Serviço não encontrado.');
+        $this->normalizeActive($request);
         $item->update($request->validate($this->rules(false)));
 
         return ApiResponse::success($item->fresh(), 'Serviço guardado.');
+    }
+
+    /**
+     * Pedidos multipart enviam os booleanos como "true"/"false": converte-os. Só quando o
+     * campo vem no pedido (ausente nunca desativa o serviço).
+     */
+    private function normalizeActive(Request $request): void
+    {
+        if ($request->has('active') && $request->input('active') !== null) {
+            $request->merge(['active' => \App\Http\Requests\Admin\QuoteRequest::toBool($request->input('active'))]);
+        }
     }
 }

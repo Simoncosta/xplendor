@@ -250,7 +250,9 @@ export const getAdminQuoteDefaults = () => api.get(url.GET_ADMIN + `/quotes/defa
 // Dashboard root: contagens transversais da plataforma (users + carros).
 export const getAdminPlatformSummary = () => api.get(url.GET_ADMIN + `/platform/summary`);
 export const showAdminQuote = (id: number) => api.get(url.GET_ADMIN + `/quotes/${id}`);
-export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data);
+// JSON (e não o multipart por omissão dos POST): os booleanos das linhas ("Opcional", "Do pacote") chegam como booleanos.
+const JSON_BODY = { headers: { "Content-Type": "application/json" } };
+export const createAdminQuote = (data: any) => api.create(url.GET_ADMIN + `/quotes`, data, JSON_BODY);
 export const updateAdminQuote = (id: number, data: any) => api.update(url.GET_ADMIN + `/quotes/${id}`, data);
 export const sendAdminQuote = (id: number) => api.create(url.GET_ADMIN + `/quotes/${id}/send`, {});
 export const decideAdminQuote = (id: number, decision: "accept" | "refuse") =>
@@ -272,7 +274,7 @@ export const updateAdminTicketTask = (ticketId: number, taskId: number, done: bo
     api.update(url.GET_ADMIN + `/tickets/${ticketId}/tasks/${taskId}`, { done });
 // Catálogo de serviços (tabela padrão).
 export const getServiceCatalog = (activeOnly = false) => api.get(url.GET_ADMIN + `/service-catalog`, activeOnly ? { active_only: 1 } : undefined);
-export const createServiceCatalogItem = (data: any) => api.create(url.GET_ADMIN + `/service-catalog`, data);
+export const createServiceCatalogItem = (data: any) => api.create(url.GET_ADMIN + `/service-catalog`, data, JSON_BODY);
 export const updateServiceCatalogItem = (id: number, data: any) => api.update(url.GET_ADMIN + `/service-catalog/${id}`, data);
 
 export const getCompanyQuotes = (companyId: number) =>

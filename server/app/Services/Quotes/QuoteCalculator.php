@@ -199,7 +199,7 @@ class QuoteCalculator
         }
         if ($type === 'percent') {
             if ((float) $value > 100) {
-                $errors[$field] = 'O desconto em percentagem não pode passar 100%.';
+                $errors[$field] = self::linePrefix($field) . 'O desconto em percentagem não pode passar 100%.';
 
                 return 0.0;
             }
@@ -208,15 +208,21 @@ class QuoteCalculator
         }
         if ($type === 'amount') {
             if ((float) $value > $subtotal) {
-                $errors[$field] = 'O desconto da linha não pode ser maior do que o valor da linha.';
+                $errors[$field] = self::linePrefix($field) . 'O desconto da linha não pode ser maior do que o valor da linha.';
 
                 return 0.0;
             }
 
             return round((float) $value, 2);
         }
-        $errors[$field] = 'Tipo de desconto inválido.';
+        $errors[$field] = self::linePrefix($field) . 'Tipo de desconto inválido.';
 
         return 0.0;
+    }
+
+    /** "lines.0.discount_value" → "Linha 1: " (os outros campos não levam prefixo). */
+    private static function linePrefix(string $field): string
+    {
+        return preg_match('/^lines\.(\d+)\./', $field, $m) ? 'Linha ' . ((int) $m[1] + 1) . ': ' : '';
     }
 }
