@@ -49,6 +49,8 @@ class EditorialIdeasTest extends TestCase
         foreach ([$this->a, $this->b] as $c) {
             CompanyModule::create(['company_id' => $c->id, 'module_key' => 'linha_editorial']);
             EditorialMonth::create(['company_id' => $c->id, 'year' => 2026, 'month' => 12, 'state' => EditorialMonth::OPEN]);
+            // O mínimo do Perfil da Marca para gerar ideias.
+            CompanyBrandProfile::create(['company_id' => $c->id, 'tone_of_voice' => 'Próximo', 'audience' => 'Famílias do bairro', 'pillars' => [['name' => 'Produtos da época', 'description' => 'x']]]);
         }
         $this->userA = User::factory()->create(['company_id' => $this->a->id, 'role' => 'user']);
         $this->adminB = User::factory()->create(['company_id' => $this->b->id, 'role' => 'admin']);
@@ -119,8 +121,6 @@ class EditorialIdeasTest extends TestCase
 
         $this->generate($this->a, $this->userA, 1, 2027)->assertStatus(422)->assertJsonPath('message', 'Só pode gerar ideias para um mês aberto.');
         $this->generate($this->a, $this->userA, 11, 2026)->assertStatus(422);
-        $this->a->update(['content_sector_id' => null]);
-        $this->generate($this->a, $this->userA)->assertStatus(422);
         Http::assertNothingSent();
         $this->assertSame(0, AiRequest::count());
     }
@@ -129,7 +129,7 @@ class EditorialIdeasTest extends TestCase
     {
         $this->fakeIdeas();
         EditorialOwnAnchor::create(['company_id' => $this->a->id, 'title' => 'Aniversário da casa', 'rule_type' => 'fixa', 'month' => 12, 'day' => 12, 'suggestion' => 'jantar com o chefe']);
-        CompanyBrandProfile::create(['company_id' => $this->a->id, 'tone_of_voice' => 'Caloroso', 'pillars' => [['name' => 'Produtos da época', 'description' => 'x'], ['name' => 'Saber à mesa', 'description' => 'y']]]);
+        CompanyBrandProfile::where('company_id', $this->a->id)->sole()->update(['tone_of_voice' => 'Caloroso', 'pillars' => [['name' => 'Produtos da época', 'description' => 'x'], ['name' => 'Saber à mesa', 'description' => 'y']]]);
         EditorialPost::create(['company_id' => $this->a->id, 'publish_date' => '2026-12-24', 'title' => 'Menu de Natal', 'format' => 'Imagem única', 'status' => 'rascunho', 'channel' => 'instagram']);
 
         $res = $this->generate($this->a, $this->userA)->assertStatus(202)->assertJsonPath('data.status', 'done');
@@ -166,14 +166,35 @@ class EditorialIdeasTest extends TestCase
         $this->assertSame(1, EditorialPost::where('company_id', $this->a->id)->count(), 'Nada é criado sozinho.');
     }
 
-    public function test_without_brand_profile_generates_anyway_from_sector_and_anchors(): void
+    public function test_refuses_without_the_minimum_profile_and_accepts_with_it(): void
     {
         $this->fakeIdeas();
+        $profile = CompanyBrandProfile::where('company_id', $this->a->id)->sole();
+        $profile->delete();
 
-        $res = $this->generate($this->a, $this->userA)->assertStatus(202)->assertJsonPath('data.status', 'done');
-        $this->assertFalse($res->json('data.result.has_profile'));
-        $this->assertNull(collect($res->json('data.result.ideas'))->firstWhere('title', 'Menu de Passagem de Ano em preço fechado')['pillar']);
-        $this->assertStringContainsString('Perfil da marca por preencher', $this->sentPrompt());
+        $all = 'Para gerar ideias, preencha no Perfil da Marca o tom de voz, o público e pelo menos um pilar.';
+        $this->generate($this->a, $this->userA)->assertStatus(422)->assertJsonPath('message', $all);
+        $this->as($this->userA)->getJson($this->url($this->a, '/brand-profile'))
+            ->assertOk()->assertJsonPath('data.ideas_ready', false)->assertJsonPath('data.ideas_blocked_reason', $all);
+
+        // Pilar sem nome não conta.
+        CompanyBrandProfile::create(['company_id' => $this->a->id, 'tone_of_voice' => 'Caloroso', 'audience' => '  ', 'pillars' => [['name' => ' ', 'description' => 'x']]]);
+        $this->generate($this->a, $this->userA)->assertStatus(422)
+            ->assertJsonPath('message', 'Para gerar ideias, preencha no Perfil da Marca o público e pelo menos um pilar.');
+        Http::assertNothingSent();
+        $this->assertSame(0, AiRequest::count());
+
+        // Com o mínimo, gera; o ramo deixou de ser condição.
+        CompanyBrandProfile::where('company_id', $this->a->id)->sole()->update(['audience' => 'Famílias', 'pillars' => [['name' => 'Saber à mesa', 'description' => '']]]);
+        $this->a->update(['content_sector_id' => null]);
+        $this->as($this->userA)->getJson($this->url($this->a, '/brand-profile'))
+            ->assertOk()->assertJsonPath('data.ideas_ready', true)->assertJsonPath('data.ideas_blocked_reason', null);
+        $this->generate($this->a, $this->userA)->assertStatus(202)->assertJsonPath('data.status', 'done')->assertJsonPath('data.result.has_profile', true);
+
+        // Mantém-se: no modo "Produção pela equipa", o cliente gerido não gera ideias.
+        $this->a->forceFill(['content_production_mode' => 'team'])->save();
+        $this->generate($this->a, $this->userA)->assertStatus(403);
+        $this->assertSame(1, AiRequest::count());
     }
 
     // ── Aceitar ──────────────────────────────────────────────────────────────

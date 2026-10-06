@@ -37,6 +37,42 @@ class CompanyBrandProfile extends Model
         return $this->belongsTo(Company::class);
     }
 
+    /**
+     * O mínimo para gerar ideias: tom de voz, público e pelo menos um pilar com nome.
+     * Devolve o que falta (vazio = pronto). Sem perfil, falta tudo.
+     *
+     * @return string[]
+     */
+    public static function missingForIdeas(?self $profile): array
+    {
+        $missing = [];
+        if (trim((string) $profile?->tone_of_voice) === '') {
+            $missing[] = 'o tom de voz';
+        }
+        if (trim((string) $profile?->audience) === '') {
+            $missing[] = 'o público';
+        }
+        $pillars = array_filter((array) ($profile?->pillars ?? []), fn ($p) => trim((string) (is_array($p) ? ($p['name'] ?? '') : $p)) !== '');
+        if (! $pillars) {
+            $missing[] = 'pelo menos um pilar';
+        }
+
+        return $missing;
+    }
+
+    /** Frase para o ecrã e para a recusa do servidor; null quando o mínimo está preenchido. */
+    public static function ideasBlockedReason(?self $profile): ?string
+    {
+        $missing = self::missingForIdeas($profile);
+        if (! $missing) {
+            return null;
+        }
+        $last = array_pop($missing);
+        $list = $missing ? implode(', ', $missing) . ' e ' . $last : $last;
+
+        return "Para gerar ideias, preencha no Perfil da Marca {$list}.";
+    }
+
     public function isEmpty(): bool
     {
         return trim((string) $this->tone_of_voice) === '' && trim((string) $this->audience) === ''

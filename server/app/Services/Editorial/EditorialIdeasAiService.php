@@ -61,8 +61,9 @@ class EditorialIdeasAiService
 
     public function request(Company $company, User $actor, int $year, int $month): AiRequest
     {
-        if (! $company->content_sector_id) {
-            throw new HttpException(422, 'Escolha primeiro o ramo da Linha Editorial.');
+        // O mínimo do Perfil da Marca (tom de voz, público e um pilar) dá contexto às ideias.
+        if ($reason = CompanyBrandProfile::ideasBlockedReason(CompanyBrandProfile::where('company_id', $company->id)->first())) {
+            throw new HttpException(422, $reason);
         }
         $this->assertMonthOpen($company, $year, $month);
 

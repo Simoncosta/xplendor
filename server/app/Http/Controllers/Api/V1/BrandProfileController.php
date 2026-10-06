@@ -104,6 +104,9 @@ class BrandProfileController extends Controller
             'emoji_policy'     => $p?->emoji_policy,
             'notes'            => $p?->notes,
             'is_empty'         => $p === null || $p->isEmpty(),
+            // Mínimo para "Gerar ideias" (o servidor recusa sem ele).
+            'ideas_ready'      => CompanyBrandProfile::missingForIdeas($p) === [],
+            'ideas_blocked_reason' => CompanyBrandProfile::ideasBlockedReason($p),
             'language'        => $p?->language ?? 'pt-PT',
             'updated_at'      => optional($p?->updated_at)->toIso8601String(),
         ];

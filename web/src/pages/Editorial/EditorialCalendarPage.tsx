@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Card, CardBody, CardHeader, Container, Row, Col, Spinner, Button,
     Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGroup, Label, Input,
-    Offcanvas, OffcanvasHeader, OffcanvasBody,
+    Offcanvas, OffcanvasHeader, OffcanvasBody, Tooltip,
 } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -27,7 +27,11 @@ import IdeasModal from "./IdeasModal";
 import EditorialBoard from "./EditorialBoard";
 import InstagramGrid from "./InstagramGrid";
 import PostWorkflowModal from "./PostWorkflowModal";
-import { BLOG_STATUS_STAGE, STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
+import StageLegendModal from "./StageLegendModal";
+import { BLOG_STATUS_STAGE, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
+
+// O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
+const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
 
 /**
  * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
@@ -89,6 +93,8 @@ const initialView = (): View => {
     if (fromUrl) return fromUrl;
     try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "grid" ? v : "calendar"; } catch { return "calendar"; }
 };
+/** "Como funciona" já aberto sozinho para este utilizador (abre uma só vez). */
+const howToKey = () => viewKey().replace("xp-editorial-view:", "xp-editorial-howto:");
 const initialMonth = () => {
     const m = new URLSearchParams(window.location.search).get("mes");
     return m && /^\d{4}-\d{2}$/.test(m) ? m : "";
@@ -144,9 +150,14 @@ export default function EditorialCalendarPage() {
     // F3a: produção e aprovação (Kanban e janela de produção de cada publicação).
     const [workflowPostId, setWorkflowPostId] = useState<number | null>(null);
     const [boardReload, setBoardReload] = useState(0);
-    // "Gerar ideias do mês" e guia de descoberta (Perfil da Marca preenchido?).
+    // "Gerar ideias do mês": só com o mínimo do Perfil da Marca (o servidor também recusa).
     const [ideasOpen, setIdeasOpen] = useState(false);
-    const [profileFilled, setProfileFilled] = useState<boolean | null>(null);
+    const [ideasGate, setIdeasGate] = useState<{ ready: boolean; reason: string | null } | null>(null);
+    const [howOpen, setHowOpen] = useState(false);
+    const [legendOpen, setLegendOpen] = useState(false);
+    // Razão do "Gerar ideias" desativado: ao passar o rato, no foco e ao tocar.
+    const [reasonOpen, setReasonOpen] = useState(false);
+    const touchRef = useRef(false); // no toque, o "sair com o rato" simulado não fecha a razão
     const navigate = useNavigate();
 
     const applyCalendar = useCallback((d: any) => {
@@ -178,8 +189,21 @@ export default function EditorialCalendarPage() {
     useEffect(() => { load(); }, [load]);
     useEffect(() => {
         if (!companyId) return;
-        getBrandProfile(companyId).then((r: any) => setProfileFilled(!r?.data?.is_empty)).catch(() => setProfileFilled(null));
+        getBrandProfile(companyId)
+            .then((r: any) => setIdeasGate({ ready: !!r?.data?.ideas_ready, reason: r?.data?.ideas_blocked_reason ?? null }))
+            // Sem resposta, não bloqueia no ecrã: o servidor recusa com a explicação se faltar o mínimo.
+            .catch(() => setIdeasGate({ ready: true, reason: null }));
     }, [companyId, ideasOpen]);
+
+    // Abre sozinho uma vez por utilizador, na primeira visita com o perfil incompleto.
+    useEffect(() => {
+        if (!hasSector || !ideasGate || ideasGate.ready) return;
+        try {
+            if (localStorage.getItem(howToKey())) return;
+            localStorage.setItem(howToKey(), "1");
+        } catch { return; /* sem armazenamento: não abre sozinho, para não abrir em todas as visitas */ }
+        setHowOpen(true);
+    }, [hasSector, ideasGate]);
 
     const chooseSector = async (sectorId: number) => {
         setSaving(true);
@@ -189,7 +213,6 @@ export default function EditorialCalendarPage() {
     };
 
     const selected = useMemo(() => months.find((m) => m.month_key === selectedKey) ?? null, [months, selectedKey]);
-    const monthIsEmpty = useMemo(() => !posts.some((p) => p.month_key === selectedKey), [posts, selectedKey]);
     /** Editor do blog com o título e o tema da publicação; o artigo fica ligado a ela ao guardar. */
     const writeArticleUrl = (p: EditorialPost) => {
         const q = new URLSearchParams({ editorial_post_id: String(p.id), title: p.title });
@@ -405,7 +428,12 @@ export default function EditorialCalendarPage() {
                     <Card>
                         <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div>
-                                <h5 className="mb-0">Linha Editorial</h5>
+                                <h5 className="mb-0 d-flex align-items-center gap-1">
+                                    Linha Editorial
+                                    <button type="button" className="btn btn-link btn-sm p-0 lh-1 text-muted" aria-label="Como funciona" title="Como funciona" onClick={() => setHowOpen(true)}>
+                                        <i className="ri-question-line fs-18" />
+                                    </button>
+                                </h5>
                                 <small className="text-muted">Ramo: <strong>{sectorName}</strong></small>
                             </div>
                             <div className="btn-group flex-wrap" role="group" aria-label="Vista">
@@ -471,7 +499,7 @@ export default function EditorialCalendarPage() {
                                         (consulta), não só nos da tira. Navegação até 12 meses atrás. */}
                                     {range && selectedKey && (
                                         <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                                            <div className="d-flex align-items-center gap-2">
+                                            <div className="d-flex flex-wrap align-items-center gap-2">
                                                 <Button color="light" size="sm" disabled={!!minKey && selectedKey <= minKey} onClick={() => calRef.current?.getApi().prev()}><i className="ri-arrow-left-s-line" /></Button>
                                                 <h5 className="mb-0" style={{ minWidth: 150, textAlign: "center" }}>{monthLabel(selectedKey)}</h5>
                                                 <Button color="light" size="sm" disabled={!!maxKey && selectedKey >= maxKey} onClick={() => calRef.current?.getApi().next()}><i className="ri-arrow-right-s-line" /></Button>
@@ -482,15 +510,36 @@ export default function EditorialCalendarPage() {
                                                 ) : isPastView ? (
                                                     <span className="badge bg-warning-subtle text-warning ms-1" title="Mês passado: só consulta, não editável."><i className="ri-archive-line me-1" />Mês arquivado · só consulta</span>
                                                 ) : null}
+                                                <button type="button" className="btn btn-link btn-sm p-0 ms-1 text-muted fs-12 text-nowrap" onClick={() => setLegendOpen(true)}>
+                                                    <i className="ri-question-line me-1" />Legenda
+                                                </button>
                                             </div>
                                             {/* Ações de ESCRITA só nos meses da tira (presente+futuro). No passado não há. */}
                                             {selected && (
-                                                <div className="d-flex align-items-center gap-2">
+                                                <div className="d-flex flex-wrap align-items-center gap-2">
                                                     {selected.state === "open" && (
                                                         <>
-                                                            {canProduce && <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
-                                                                <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
-                                                            </Button>}
+                                                            {canProduce && (ideasGate && !ideasGate.ready ? (
+                                                                <>
+                                                                    {/* Desativado, mas com a razão ao passar o rato e ao tocar. */}
+                                                                    <span id="ideas-blocked" tabIndex={0} className="d-inline-block" role="button" aria-describedby="ideas-blocked-reason"
+                                                                        onPointerDown={(e) => { touchRef.current = e.pointerType !== "mouse"; }}
+                                                                        onMouseEnter={() => setReasonOpen(true)} onMouseLeave={() => { if (!touchRef.current) setReasonOpen(false); }}
+                                                                        onFocus={() => setReasonOpen(true)} onBlur={() => setReasonOpen(false)} onClick={() => setReasonOpen(true)}>
+                                                                        <Button color="primary" size="sm" disabled className="text-nowrap" style={{ pointerEvents: "none" }}>
+                                                                            <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
+                                                                        </Button>
+                                                                    </span>
+                                                                    <Tooltip target="ideas-blocked" isOpen={reasonOpen} trigger="manual" placement="bottom">
+                                                                        <span id="ideas-blocked-reason">{ideasGate.reason}</span>
+                                                                    </Tooltip>
+                                                                    <Link to="/brand-profile" className="fs-12"><i className="ri-user-star-line me-1" />Preencher o Perfil da Marca</Link>
+                                                                </>
+                                                            ) : (
+                                                                <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
+                                                                    <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
+                                                                </Button>
+                                                            ))}
                                                             {canProduce && <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
                                                                 <i className="ri-image-add-line me-1" />Publicação
                                                             </Button>}
@@ -510,55 +559,6 @@ export default function EditorialCalendarPage() {
                                             )}
                                         </div>
                                     )}
-
-                                    {/* DESCOBERTA: mês da tira sem publicações → guia em 3 passos. */}
-                                    {selected && monthIsEmpty && (
-                                        <div className="border border-dashed rounded p-3 mb-3 bg-light-subtle">
-                                            <div className="fw-semibold mb-2"><i className="ri-route-line me-1 text-primary" />Como começar {monthLabel(selectedKey)}</div>
-                                            <div className="row g-2 fs-13">
-                                                <div className="col-md-4">
-                                                    <div className="d-flex gap-2">
-                                                        <span className={`badge rounded-pill ${profileFilled ? "bg-success" : "bg-primary"} align-self-start`}>{profileFilled ? <i className="ri-check-line" /> : "1"}</span>
-                                                        <div>
-                                                            <Link to="/brand-profile" className="fw-medium">Perfil da Marca</Link>
-                                                            <div className="text-muted">{profileFilled ? "Preenchido. Pode rever quando quiser." : "Tom, público e pilares: dão contexto às ideias."}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <div className="d-flex gap-2">
-                                                        <span className="badge rounded-pill bg-primary align-self-start">2</span>
-                                                        <div>
-                                                            {selected.state === "open" && canProduce
-                                                                ? <button type="button" className="btn btn-link p-0 fw-medium fs-13 align-baseline" onClick={() => setIdeasOpen(true)}>Gerar ideias</button>
-                                                                : <span className="fw-medium">Gerar ideias</span>}
-                                                            <div className="text-muted">{!canProduce ? "A equipa XPLENDOR prepara as ideias e as publicações; aprova-as aqui." : selected.state === "open" ? "A IA propõe ideias para o mês; aceita as que quiser." : "Abra o mês para gerar ideias."}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="col-md-4">
-                                                    <div className="d-flex gap-2">
-                                                        <span className="badge rounded-pill bg-primary align-self-start">3</span>
-                                                        <div>
-                                                            <span className="fw-medium">Criativo ou artigo</span>
-                                                            <div className="text-muted">Em cada publicação: "Sugerir criativo" (Instagram e Facebook) ou "Escrever artigo" (Site).</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* LEGENDA DAS ETAPAS */}
-                                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2 fs-12" aria-label="Legenda das etapas">
-                                        {STAGE_ORDER.map((st) => (
-                                            <span key={st} className="d-inline-flex align-items-center gap-1">
-                                                <span className="rounded px-1 fw-semibold" title={STAGE_META[st].label} style={{ background: STAGE_META[st].hex, color: stageTextColor(st), fontSize: "0.62rem" }}>{STAGE_META[st].short}</span>
-                                                <span className="text-muted">{STAGE_META[st].label}</span>
-                                            </span>
-                                        ))}
-                                        <span className="text-muted"><i className="ri-article-line me-1" />Site: etapa do artigo do blog</span>
-                                    </div>
 
                                     {/* GRELHA */}
                                     {range && (
@@ -812,6 +812,15 @@ export default function EditorialCalendarPage() {
                     <Button color="primary" disabled={working} onClick={submitPost}>{working ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />{postForm.id ? "Guardar" : "Criar"}</>}</Button>
                 </ModalFooter>
             </Modal>
+
+            {/* "Como funciona" (diagrama carregado só ao abrir) e legenda das etapas. */}
+            {howOpen && (
+                <Suspense fallback={<Modal isOpen centered><ModalBody className="text-center py-5"><Spinner /></ModalBody></Modal>}>
+                    <HowItWorksModal isOpen={howOpen} toggle={() => setHowOpen(false)} profileReady={ideasGate ? ideasGate.ready : null}
+                        blockedReason={ideasGate?.reason ?? null} canProduce={canProduce} />
+                </Suspense>
+            )}
+            <StageLegendModal isOpen={legendOpen} toggle={() => setLegendOpen(false)} />
 
             {/* Modal: produção e aprovação da publicação (F3a) */}
             <PostWorkflowModal
