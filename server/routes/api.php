@@ -619,9 +619,10 @@ Route::middleware(['resolve_report_token'])->prefix('public')->group(function ()
 });
 
 // Orçamentos: página pública de uma versão enviada (sem login). O token (64 caracteres
-// aleatórios) só dá acesso àquela versão. Limites com nome (AppServiceProvider):
+// aleatórios) só dá acesso àquela versão e vem no cabeçalho X-Quote-Token, nunca no
+// caminho (o link é /orcamento#<token>). Limites com nome (AppServiceProvider):
 // leitura, sinal de abertura e respostas do cliente.
-Route::prefix('public/quotes/{token}')->where(['token' => '[A-Za-z0-9]{64}'])->group(function () {
+Route::prefix('public/quote')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'show'])->middleware('throttle:quote-public-read');
     Route::get('/pdf', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'pdf'])->middleware('throttle:quote-public-read');
     Route::post('/open', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'open'])->middleware('throttle:quote-public-open');

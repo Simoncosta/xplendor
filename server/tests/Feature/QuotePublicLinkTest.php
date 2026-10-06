@@ -97,6 +97,12 @@ class QuotePublicLinkTest extends TestCase
         return $this->withHeaders(['User-Agent' => $userAgent]);
     }
 
+    /** Pedido à página pública com o token no cabeçalho (nunca no caminho). */
+    private function pub(string $token, string $userAgent = self::BROWSER): self
+    {
+        return $this->anon($userAgent)->withHeaders(['X-Quote-Token' => $token]);
+    }
+
     private function catalogId(string $name): int
     {
         return (int) ServiceCatalogItem::where('name', $name)->value('id');
@@ -130,17 +136,17 @@ class QuotePublicLinkTest extends TestCase
         $links = $this->asRoot()->getJson("/api/v1/admin/quotes/{$quoteId}/activity")->assertOk()->json('data.links');
         $link = $version ? collect($links)->firstWhere('version', $version) : collect($links)->firstWhere('is_latest', true);
 
-        return substr($link['url'], strrpos($link['url'], '/') + 1);
+        return substr($link['url'], strrpos($link['url'], '#') + 1);
     }
 
     private function open(string $token, string $visitor = 'visitante-aaaaaaaaaaaa', string $ua = self::BROWSER, array $extra = [])
     {
-        return $this->anon($ua)->postJson("/api/public/quotes/{$token}/open", ['visitor_id' => $visitor] + $extra);
+        return $this->pub($token, $ua)->postJson("/api/public/quote/open", ['visitor_id' => $visitor] + $extra);
     }
 
     private function accept(string $token, array $optionalKeys, array $extra = [])
     {
-        return $this->anon()->postJson("/api/public/quotes/{$token}/accept", array_merge([
+        return $this->pub($token)->postJson("/api/public/quote/accept", array_merge([
             'name' => 'Ana Ribeiro', 'email' => 'Ana@Exemplo.pt', 'terms_accepted' => true, 'optional_keys' => $optionalKeys,
         ], $extra));
     }
@@ -161,7 +167,7 @@ class QuotePublicLinkTest extends TestCase
         $link = QuotePublicLink::where('quote_id', $id)->sole();
         $this->assertSame(hash('sha256', $token), $link->token_hash);
         $this->assertStringNotContainsString($token, (string) DB::table('quote_public_links')->where('id', $link->id)->value('token_encrypted'));
-        $this->assertSame("https://app.exemplo.pt/app/orcamento/{$token}", $link->url());
+        $this->assertSame("https://app.exemplo.pt/app/orcamento#{$token}", $link->url());
         // Só a equipa vê os links e a atividade.
         $this->app['auth']->forgetGuards();
         $this->actingAs($this->clientAdmin, 'sanctum')->getJson("/api/v1/admin/quotes/{$id}/activity")->assertForbidden();
@@ -174,7 +180,7 @@ class QuotePublicLinkTest extends TestCase
         ['token' => $token] = $this->sentQuote();
         $this->sentQuote(['new_customer' => ['name' => 'Outro Cliente Lda', 'email' => 'outro@exemplo.pt']]);
 
-        $r = $this->anon()->getJson("/api/public/quotes/{$token}")->assertOk();
+        $r = $this->pub($token)->getJson("/api/public/quote")->assertOk();
         $r->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
         $this->assertSame('open', $r->json('data.state'));
         $this->assertTrue($r->json('data.can_respond'));
@@ -186,13 +192,17 @@ class QuotePublicLinkTest extends TestCase
         $this->assertStringNotContainsString('NOTA INTERNA', $body);
         $this->assertStringNotContainsString('Outro Cliente', $body);
 
-        $pdf = $this->anon()->get("/api/public/quotes/{$token}/pdf")->assertOk();
+        $pdf = $this->pub($token)->get("/api/public/quote/pdf")->assertOk();
         $this->assertSame('application/pdf', $pdf->headers->get('Content-Type'));
         $pdf->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
 
         // Token desconhecido ou mal formado: 404, sem distinguir.
-        $this->anon()->getJson('/api/public/quotes/' . str_repeat('a', 64))->assertNotFound();
-        $this->anon()->getJson('/api/public/quotes/curto')->assertNotFound();
+        $this->pub(str_repeat('a', 64))->getJson('/api/public/quote')->assertNotFound();
+        $this->pub('curto')->getJson('/api/public/quote')->assertNotFound();
+        $this->anon()->getJson('/api/public/quote')->assertNotFound();
+        // O token nunca vai no caminho; a página e a API não enviam Referer.
+        $this->anon()->getJson("/api/public/quotes/{$token}")->assertNotFound();
+        $r->assertHeader('Referrer-Policy', 'no-referrer');
     }
 
     // ── 3. Aberturas ─────────────────────────────────────────────────────────
@@ -209,8 +219,8 @@ class QuotePublicLinkTest extends TestCase
         $this->open($token, 'equipa-ccccccccccccccc', self::BROWSER, ['team_marker' => TeamDeviceMarker::issue($this->root)])
             ->assertJsonPath('data.reason', 'team');
         $this->app['auth']->forgetGuards();
-        $this->actingAs($this->root, 'sanctum')->withHeaders(['User-Agent' => self::BROWSER])
-            ->postJson("/api/public/quotes/{$token}/open", ['visitor_id' => 'equipa-dddddddddddddd'])->assertJsonPath('data.reason', 'team');
+        $this->actingAs($this->root, 'sanctum')->withHeaders(['User-Agent' => self::BROWSER, 'X-Quote-Token' => $token])
+            ->postJson('/api/public/quote/open', ['visitor_id' => 'equipa-dddddddddddddd'])->assertJsonPath('data.reason', 'team');
         // A pré-visualização da equipa nunca conta nem permite responder.
         $p = $this->asRoot()->getJson("/api/v1/admin/quotes/{$id}/versions/1/public-preview")->assertOk();
         $this->assertTrue($p->json('data.preview'));
@@ -332,8 +342,8 @@ class QuotePublicLinkTest extends TestCase
 
         $this->accept($token, [1, 2])->assertOk();
         $this->accept($token, [1])->assertStatus(409)->assertJsonPath('message', 'Este orçamento já foi aceite.');
-        $this->anon()->postJson("/api/public/quotes/{$token}/refuse", ['reason' => 'Mudei de ideias'])->assertStatus(409);
-        $this->anon()->postJson("/api/public/quotes/{$token}/request-changes", ['message' => 'Quero mudar'])->assertStatus(409);
+        $this->pub($token)->postJson("/api/public/quote/refuse", ['reason' => 'Mudei de ideias'])->assertStatus(409);
+        $this->pub($token)->postJson("/api/public/quote/request-changes", ['message' => 'Quero mudar'])->assertStatus(409);
 
         $this->assertSame(1, QuoteResponse::count());
         $this->assertSame([0, 1, 2], QuoteResponse::first()->accepted_line_keys);
@@ -345,7 +355,7 @@ class QuotePublicLinkTest extends TestCase
     {
         ['id' => $id, 'token' => $token] = $this->sentQuote();
 
-        $this->anon()->postJson("/api/public/quotes/{$token}/refuse", ['reason' => 'Fora do orçamento'])->assertOk()->assertJsonPath('data.state', 'refused');
+        $this->pub($token)->postJson("/api/public/quote/refuse", ['reason' => 'Fora do orçamento'])->assertOk()->assertJsonPath('data.state', 'refused');
         $this->assertSame('refused', Quote::find($id)->status);
         $alert = $this->teamAlerts()->last();
         $this->assertSame('Orçamento recusado: ORC-2026-001', $alert->title);
@@ -357,8 +367,8 @@ class QuotePublicLinkTest extends TestCase
     {
         ['id' => $id, 'token' => $token] = $this->sentQuote();
 
-        $this->anon()->postJson("/api/public/quotes/{$token}/request-changes", ['message' => ''])->assertStatus(422);
-        $r = $this->anon()->postJson("/api/public/quotes/{$token}/request-changes", ['message' => 'Podem incluir LinkedIn?'])->assertOk();
+        $this->pub($token)->postJson("/api/public/quote/request-changes", ['message' => ''])->assertStatus(422);
+        $r = $this->pub($token)->postJson("/api/public/quote/request-changes", ['message' => 'Podem incluir LinkedIn?'])->assertOk();
         $this->assertTrue($r->json('data.changes_requested'));
         $this->assertTrue($r->json('data.can_respond'), 'Pode ainda aceitar a mesma versão.');
         $this->assertNotNull(Quote::find($id)->changes_requested_at);
@@ -379,7 +389,7 @@ class QuotePublicLinkTest extends TestCase
         ['token' => $token] = $this->sentQuote();
 
         $this->travelToLisbon('2026-11-05 09:00:00'); // validade até 4 de novembro
-        $this->anon()->getJson("/api/public/quotes/{$token}")->assertOk()
+        $this->pub($token)->getJson("/api/public/quote")->assertOk()
             ->assertJsonPath('data.state', 'expired')->assertJsonPath('data.state_message', 'Este orçamento expirou.')->assertJsonPath('data.can_respond', false);
         $this->accept($token, [1, 2])->assertStatus(409)->assertJsonPath('message', 'Este orçamento expirou.');
         $this->assertSame(0, QuoteResponse::count());
@@ -390,13 +400,13 @@ class QuotePublicLinkTest extends TestCase
         ['id' => $id, 'token' => $v1] = $this->sentQuote();
 
         $this->asRoot()->putJson("/api/v1/admin/quotes/{$id}", ['title' => 'Presença digital, revisto'])->assertOk(); // versão 2 em rascunho
-        $this->anon()->getJson("/api/public/quotes/{$v1}")->assertJsonPath('data.state', 'under_revision');
+        $this->pub($v1)->getJson("/api/public/quote")->assertJsonPath('data.state', 'under_revision');
         $this->accept($v1, [1, 2])->assertStatus(409);
 
         $this->asRoot()->postJson("/api/v1/admin/quotes/{$id}/send")->assertOk();
         $v2 = $this->tokenOf($id);
         $this->assertNotSame($v1, $v2);
-        $this->anon()->getJson("/api/public/quotes/{$v1}")->assertJsonPath('data.state', 'superseded')
+        $this->pub($v1)->getJson("/api/public/quote")->assertJsonPath('data.state', 'superseded')
             ->assertJsonPath('data.state_message', 'Existe uma versão mais recente deste orçamento.')
             ->assertJsonPath('data.version', 1);
         $this->accept($v1, [1, 2])->assertStatus(409);

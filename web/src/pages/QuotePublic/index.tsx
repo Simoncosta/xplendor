@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
 import QuotePublicView, { AcceptInput, ActionResult } from "./QuotePublicView";
 import logo from "./xplendor-x.png";
 import "./quote-public.css";
@@ -7,10 +6,12 @@ import type { QuotePublicData } from "common/models/quotePublic.model";
 import { readTeamMarker } from "helpers/teamMarker";
 
 /**
- * /app/orcamento/:token (sem login). Carrega a versão do link, envia o sinal de abertura
- * depois de a página carregar e estar visível (os robôs de pré-visualização não correm
- * isto), e regista as respostas do cliente. Sem indexação (meta robots e o cabeçalho
- * X-Robots-Tag da API).
+ * /app/orcamento#<token> (sem login). O token vem no fragmento do URL (nunca chega ao
+ * servidor, aos registos de acesso nem ao Referer) e é enviado à API no cabeçalho
+ * X-Quote-Token. Carrega a versão do link, envia o sinal de abertura depois de a página
+ * carregar e estar visível (os robôs de pré-visualização não correm isto), e regista as
+ * respostas do cliente. Sem indexação e sem Referer (meta robots e referrer, e os
+ * cabeçalhos da API).
  */
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
@@ -35,10 +36,14 @@ function visitorId(): string {
     }
 }
 
+/** O token do fragmento (#), sem o "#". */
+const tokenFromHash = () => window.location.hash.replace(/^#/, "").trim();
+
 async function call(token: string, path: string, body?: unknown): Promise<{ status: number; json: any }> {
-    const r = await fetch(`${PUBLIC_URL}/api/public/quotes/${token}${path}`, {
+    const r = await fetch(`${PUBLIC_URL}/api/public/quote${path}`, {
         method: body === undefined ? "GET" : "POST",
-        headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+        referrerPolicy: "no-referrer",
+        headers: { Accept: "application/json", "X-Quote-Token": token, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
         body: body === undefined ? undefined : JSON.stringify(body),
     });
     let json: any = null;
@@ -56,18 +61,21 @@ function failure(status: number, json: any): ActionResult {
 }
 
 export default function QuotePublicPage() {
-    const { token = "" } = useParams();
+    const [token] = useState(tokenFromHash);
     const [data, setData] = useState<QuotePublicData | null>(null);
     const [status, setStatus] = useState<"loading" | "ready" | "notfound" | "error">("loading");
     const openSent = useRef(false);
 
-    // Sem indexação.
+    // Sem indexação e sem Referer (o link nunca passa para outros sites).
     useEffect(() => {
-        const meta = document.createElement("meta");
-        meta.name = "robots";
-        meta.content = "noindex, nofollow, noarchive";
-        document.head.appendChild(meta);
-        return () => { document.head.removeChild(meta); };
+        const metas = [["robots", "noindex, nofollow, noarchive"], ["referrer", "no-referrer"]].map(([name, content]) => {
+            const meta = document.createElement("meta");
+            meta.name = name;
+            meta.content = content;
+            document.head.appendChild(meta);
+            return meta;
+        });
+        return () => { metas.forEach((m) => document.head.removeChild(m)); };
     }, []);
 
     const load = useCallback(async () => {
@@ -95,9 +103,10 @@ export default function QuotePublicPage() {
         const send = () => {
             if (openSent.current) return;
             openSent.current = true;
-            fetch(`${PUBLIC_URL}/api/public/quotes/${token}/open`, {
+            fetch(`${PUBLIC_URL}/api/public/quote/open`, {
                 method: "POST",
-                headers: { Accept: "application/json", "Content-Type": "application/json" },
+                referrerPolicy: "no-referrer",
+                headers: { Accept: "application/json", "Content-Type": "application/json", "X-Quote-Token": token },
                 body: JSON.stringify({ visitor_id: visitorId(), team_marker: readTeamMarker() }),
                 keepalive: true,
             }).catch(() => { /* a abertura não é crítica */ });
@@ -113,6 +122,24 @@ export default function QuotePublicPage() {
             document.removeEventListener("visibilitychange", schedule);
         };
     }, [status, token]);
+
+    /** O PDF também pede o token no cabeçalho: descarrega-se por fetch e abre-se localmente. */
+    const downloadPdf = async () => {
+        try {
+            const r = await fetch(`${PUBLIC_URL}/api/public/quote/pdf`, { referrerPolicy: "no-referrer", headers: { "X-Quote-Token": token } });
+            if (!r.ok) throw new Error();
+            const url = URL.createObjectURL(await r.blob());
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `orcamento-${data?.number ?? ""}.pdf`.replace(/-\.pdf$/, ".pdf");
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch {
+            alert("Não foi possível descarregar o PDF. Tente de novo dentro de momentos.");
+        }
+    };
 
     const respond = async (path: string, body: unknown): Promise<ActionResult> => {
         try {
@@ -152,7 +179,7 @@ export default function QuotePublicPage() {
     return (
         <QuotePublicView
             data={data}
-            pdfHref={`${PUBLIC_URL}/api/public/quotes/${token}/pdf`}
+            onDownloadPdf={downloadPdf}
             onAccept={(input: AcceptInput) => respond("/accept", input)}
             onRefuse={(reason: string) => respond("/refuse", { reason: reason || null })}
             onRequestChanges={(message: string) => respond("/request-changes", { message })}

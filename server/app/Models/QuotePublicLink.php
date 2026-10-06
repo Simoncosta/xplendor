@@ -62,7 +62,8 @@ class QuotePublicLink extends Model
 
     public function url(): string
     {
-        return rtrim((string) config('app.frontend_url'), '/') . '/orcamento/' . $this->token();
+        // Token no fragmento (#): não chega ao servidor, aos registos de acesso nem ao Referer.
+        return rtrim((string) config('app.frontend_url'), '/') . '/orcamento#' . $this->token();
     }
 
     public function quote(): BelongsTo

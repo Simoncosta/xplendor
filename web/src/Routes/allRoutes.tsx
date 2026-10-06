@@ -275,7 +275,8 @@ const publicRoutes = [
     // Pós-venda — relatório público de satisfação (aberto pelo cliente por link)
     { path: "/r/:token", component: <SatisfactionReport /> },
     // Orçamento: link público de uma versão enviada (sem login, sem indexação).
-    { path: "/orcamento/:token", component: <QuotePublicPage /> },
+    // O token vem no fragmento (#): /orcamento#<token>.
+    { path: "/orcamento", component: <QuotePublicPage /> },
     // A mesma página vista pela equipa (não conta como abertura; mesma aba, para manter a sessão).
     { path: "/admin/quotes/:id/preview/:version", component: <RequireSuperAdmin><QuotePublicPreview /></RequireSuperAdmin> },
 ];
