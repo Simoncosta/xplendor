@@ -176,3 +176,18 @@
 .qp h1, .qp h2, .qp h3, .qp-sheet h1, .qp-sheet h2, .qp button, .qp input, .qp textarea, .qp-sheet button, .qp-sheet input, .qp-sheet textarea { font-family: inherit; color: inherit; }
 .qp h1, .qp h2, .qp-sheet h2 { letter-spacing: normal; }
 .qp strong, .qp-sheet strong { font-weight: 700; }
+
+/*
+ * Campos sempre legíveis: o orçamento é sempre claro (data-bs-theme="light" no contentor),
+ * mas o tema da app ou do telemóvel não pode escurecer os campos. Texto escuro sobre branco,
+ * placeholder com contraste suficiente e o preenchimento automático do browser também.
+ */
+.qp[data-bs-theme="light"] { --vz-input-bg-custom: #fff; --vz-input-border-custom: #ced4da; }
+.qp .qp-field input, .qp .qp-field textarea {
+    color: var(--qp-ink); -webkit-text-fill-color: var(--qp-ink); caret-color: var(--qp-ink);
+    background-color: #fff; color-scheme: light;
+}
+.qp .qp-field input::placeholder, .qp .qp-field textarea::placeholder { color: var(--qp-muted); -webkit-text-fill-color: var(--qp-muted); opacity: 1; }
+.qp .qp-field input:-webkit-autofill, .qp .qp-field input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 40px #fff inset; box-shadow: 0 0 0 40px #fff inset; -webkit-text-fill-color: var(--qp-ink);
+}

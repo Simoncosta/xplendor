@@ -28,8 +28,8 @@ export default function QuotePublicPreview() {
         </Link>
     );
 
-    if (failed) return <div className="qp">{back}<div className="qp-paper"><div className="qp-loading">Não foi possível abrir a pré-visualização.</div></div></div>;
-    if (!data) return <div className="qp"><div className="qp-paper"><div className="qp-loading">A carregar…</div></div></div>;
+    if (failed) return <div className="qp" data-bs-theme="light">{back}<div className="qp-paper"><div className="qp-loading">Não foi possível abrir a pré-visualização.</div></div></div>;
+    if (!data) return <div className="qp" data-bs-theme="light"><div className="qp-paper"><div className="qp-loading">A carregar…</div></div></div>;
 
     return (
         <div style={{ background: "#eceef1", paddingTop: 44 }}>

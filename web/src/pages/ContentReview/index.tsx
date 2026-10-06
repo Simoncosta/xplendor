@@ -9,7 +9,7 @@ import "./content-review.css";
  * padrão do orçamento: o token vem no fragmento do URL (nunca chega ao servidor, aos
  * registos de acesso nem ao Referer) e vai à API no cabeçalho X-Review-Token; sinal de
  * abertura só depois de a página carregar e estar visível; sem indexação e sem Referer.
- * Segue o tema claro ou escuro do telemóvel.
+ * Segue o tema claro ou escuro do telemóvel, fixo no contentor da página.
  */
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
@@ -63,6 +63,7 @@ export default function ContentReviewPage() {
     const [status, setStatus] = useState<"loading" | "ready" | "notfound" | "error">("loading");
     const [name, setName] = useState(() => { try { return localStorage.getItem(NAME_KEY) ?? ""; } catch { return ""; } });
     const openSent = useRef(false);
+    const [theme, setTheme] = useState<"light" | "dark">(() => (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
 
     // Sem indexação, sem Referer e com o tema do telemóvel (repostos ao sair).
     useEffect(() => {
@@ -73,16 +74,14 @@ export default function ContentReviewPage() {
             document.head.appendChild(meta);
             return meta;
         });
-        const html = document.documentElement;
-        const previous = html.getAttribute("data-bs-theme");
+        // O tema vai no contentor da página (data-bs-theme), não no <html> nem no <body>: o
+        // layout das páginas públicas põe no <body> o tema da app, e os dois não podem chocar.
         const mq = window.matchMedia("(prefers-color-scheme: dark)");
-        const apply = () => html.setAttribute("data-bs-theme", mq.matches ? "dark" : "light");
-        apply();
+        const apply = () => setTheme(mq.matches ? "dark" : "light");
         mq.addEventListener("change", apply);
         return () => {
             metas.forEach((m) => document.head.removeChild(m));
             mq.removeEventListener("change", apply);
-            if (previous) html.setAttribute("data-bs-theme", previous); else html.removeAttribute("data-bs-theme");
         };
     }, []);
 
@@ -152,7 +151,7 @@ export default function ContentReviewPage() {
 
     if (status !== "ready" || !data) {
         return (
-            <div className="cr-page">
+            <div className="cr-page" data-bs-theme={theme}>
                 <div className="cr-wrap text-center pt-5">
                     {status === "loading" ? <p className="text-muted">A carregar…</p> : (
                         <>
@@ -166,7 +165,7 @@ export default function ContentReviewPage() {
     }
 
     return (
-        <ContentReviewView data={data} name={name} onName={onName} actions={{
+        <ContentReviewView data={data} name={name} onName={onName} theme={theme} actions={{
             approve: (id) => respond(`/items/${id}/approve`, {}),
             requestChanges: (id, message) => respond(`/items/${id}/request-changes`, { message }),
             comment: (id, body) => respond(`/items/${id}/comments`, { body }),

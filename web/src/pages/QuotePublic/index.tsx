@@ -156,12 +156,12 @@ export default function QuotePublicPage() {
     };
 
     if (status === "loading") {
-        return <div className="qp"><div className="qp-paper"><div className="qp-loading">A carregar o orçamento…</div></div></div>;
+        return <div className="qp" data-bs-theme="light"><div className="qp-paper"><div className="qp-loading">A carregar o orçamento…</div></div></div>;
     }
     if (status !== "ready" || !data) {
         const notFound = status === "notfound";
         return (
-            <div className="qp">
+            <div className="qp" data-bs-theme="light">
                 <div className="qp-paper">
                     <div className="qp-head"><div className="qp-brand"><img src={logo} alt="" /><span>XPLENDOR</span></div></div>
                     <div className="qp-result">

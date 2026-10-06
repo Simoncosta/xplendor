@@ -117,7 +117,7 @@ export default function QuotePublicView({ data, pdfHref, onDownloadPdf, onAccept
     // ── Expirado: mensagem, contacto e PDF ─────────────────────────────────
     if (data.state === "expired") {
         return (
-            <div className="qp">
+            <div className="qp" data-bs-theme="light">
                 <div className="qp-paper">
                     <QuoteHeader data={data} />
                     <div className="qp-result">
@@ -138,7 +138,7 @@ export default function QuotePublicView({ data, pdfHref, onDownloadPdf, onAccept
         const a = data.acceptance;
         const totals = a.buckets ?? selection.buckets;
         return (
-            <div className="qp">
+            <div className="qp" data-bs-theme="light">
                 <div className="qp-paper">
                     <QuoteHeader data={data} />
                     <div className="qp-result">
@@ -181,7 +181,7 @@ export default function QuotePublicView({ data, pdfHref, onDownloadPdf, onAccept
     const chosenLines = selection.selected;
 
     return (
-        <div className="qp">
+        <div className="qp" data-bs-theme="light">
             <div className="qp-paper">
                 <QuoteHeader data={data} />
                 {data.preview && <span className="qp-preview-badge">Pré-visualização da equipa: não conta como abertura</span>}

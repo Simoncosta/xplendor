@@ -61,9 +61,13 @@ function NetworkPreviews({ data, item }: { data: ReviewPayload; item: ReviewItem
     );
 }
 
-type Props = { data: ReviewPayload; name: string; onName: (v: string) => void; actions?: ReviewActions };
+type Props = {
+    data: ReviewPayload; name: string; onName: (v: string) => void; actions?: ReviewActions;
+    /** Tema fixo no contentor (página pública: o do telemóvel). Sem ele, segue o da app ("Ver como o cliente"). */
+    theme?: "light" | "dark";
+};
 
-export default function ContentReviewView({ data, name, onName, actions }: Props) {
+export default function ContentReviewView({ data, name, onName, actions, theme }: Props) {
     const [tab, setTab] = useState<"posts" | "grid">("posts");
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState<{ key: string; message: string } | null>(null);
@@ -88,7 +92,7 @@ export default function ContentReviewView({ data, name, onName, actions }: Props
     const err = (key: string) => (error?.key === key ? <div className="text-danger fs-13 mt-2" role="alert">{error.message}</div> : null);
 
     return (
-        <div className="cr-page">
+        <div className="cr-page" data-bs-theme={theme}>
             <div className="cr-wrap">
                 <header className="d-flex align-items-center gap-2 mb-3">
                     {data.company.logo_url

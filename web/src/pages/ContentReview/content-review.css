@@ -2,3 +2,16 @@
 .cr-page { min-height: 100vh; background: var(--vz-body-bg); color: var(--vz-body-color); padding: 16px 16px 48px; }
 .cr-wrap { max-width: 520px; margin: 0 auto; }
 .cr-page .min-w-0 { min-width: 0; }
+
+/*
+ * Campos sempre legíveis nos dois modos: as cores vêm do tema do próprio contentor
+ * (data-bs-theme), com placeholder e preenchimento automático com contraste suficiente.
+ */
+/* O Velzon só define as variáveis dos campos no :root e em [data-bs-theme=dark]: um contentor
+   claro dentro da app escura (ou o contrário) tem de as repor. */
+.cr-page[data-bs-theme="light"] { color-scheme: light; --vz-input-bg-custom: #fff; --vz-input-border-custom: #ced4da; }
+.cr-page[data-bs-theme="dark"] { color-scheme: dark; --vz-input-bg-custom: #262a2f; --vz-input-border-custom: #2a2f34; }
+.cr-page .form-control { color: var(--vz-body-color); -webkit-text-fill-color: var(--vz-body-color); background-color: var(--vz-input-bg-custom); caret-color: var(--vz-body-color); }
+.cr-page .form-control::placeholder { color: #6b717c; -webkit-text-fill-color: #6b717c; opacity: 1; }
+.cr-page[data-bs-theme="dark"] .form-control::placeholder { color: #a3a8b8; -webkit-text-fill-color: #a3a8b8; }
+.cr-page .form-control:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--vz-input-bg-custom) inset; -webkit-text-fill-color: var(--vz-body-color); }
