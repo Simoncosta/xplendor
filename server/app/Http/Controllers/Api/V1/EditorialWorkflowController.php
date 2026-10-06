@@ -45,6 +45,9 @@ class EditorialWorkflowController extends Controller
             ->withCount(['comments as comments_count' => fn ($q) => EditorialWorkflowService::isTeam($user) ? $q : $q->where('visibility', EditorialPostComment::SHARED)])
             ->orderBy('publish_date')->orderBy('id')
             ->get();
+        // F3d: na Análise (e em Publicada), o alcance e a taxa de envolvimento no cartão.
+        $metrics = \App\Models\EditorialPostMetric::whereIn('editorial_post_id', $posts->whereIn('stage', [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS])->pluck('id'))
+            ->get()->groupBy('editorial_post_id');
 
         return ApiResponse::success([
             'month' => $data['month'],
@@ -59,6 +62,12 @@ class EditorialWorkflowController extends Controller
             'posts' => $posts->map(fn (EditorialPost $p) => [
                 'id' => $p->id, 'title' => $p->title, 'channel' => $p->channel, 'publish_date' => $p->publish_date->toDateString(),
                 'stage' => $p->stage, 'format' => $p->format, 'media_format' => $p->media_format,
+                'publish_time' => $p->publish_time, 'overdue' => $p->isOverdue(),
+                'results' => isset($metrics[$p->id]) ? (function () use ($p, $metrics) {
+                    $m = \App\Services\Editorial\EditorialPublishingService::metrics($p, $metrics[$p->id]);
+
+                    return ['reach' => $m['values']['reach']['value'] ?? null, 'engagement_rate' => $m['engagement_rate']];
+                })() : null,
                 'version' => $p->currentVersion ? ['number' => $p->currentVersion->number, 'status' => $p->currentVersion->status] : null,
                 'changes_requested' => $p->changes_requested_at !== null,
                 'comments_count' => (int) $p->comments_count,

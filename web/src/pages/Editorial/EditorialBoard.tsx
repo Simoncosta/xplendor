@@ -5,7 +5,7 @@ import { Badge, Button, Input, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { approveAllPosts, getEditorialBoard, movePostStage } from "helpers/laravel_helper";
 import { POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
-import { BoardData, BoardPost, STAGE_META, STAGE_ORDER, Stage } from "common/models/editorialWorkflow.model";
+import { BoardData, BoardPost, STAGE_META, STAGE_ORDER, Stage, fmtInt, fmtRate } from "common/models/editorialWorkflow.model";
 
 /**
  * Kanban da Linha Editorial (F3a): uma coluna por etapa, para o mês escolhido. Só se pode
@@ -147,7 +147,8 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
                                                                         <div className="fw-medium fs-13 text-break flex-grow-1 lh-sm">{p.title}</div>
                                                                     </div>
                                                                     <div className="d-flex flex-wrap align-items-center gap-1 mt-2 fs-11">
-                                                                        <Badge color="light" className="text-body fw-normal">{dm(p.publish_date)}</Badge>
+                                                                        <Badge color="light" className="text-body fw-normal">{dm(p.publish_date)}{p.publish_time ? ` ${p.publish_time}` : ""}</Badge>
+                                                                        {p.overdue && <Badge color="danger" className="fw-normal" title="A data e a hora passaram e ainda não foi marcada como publicada">Atrasada</Badge>}
                                                                         {p.version && <Badge color="light" className="text-body fw-normal">v{p.version.number}</Badge>}
                                                                         {p.media_format && <Badge color="light" className="text-body fw-normal">{mediaFormatLabel(p.media_format)}</Badge>}
                                                                         {p.changes_requested && p.stage === "production" && <Badge color="warning" className="fw-normal">Alterações pedidas</Badge>}
@@ -155,6 +156,13 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
                                                                         {p.channel === "site" && <Badge color="info-subtle" className="text-info fw-normal">Blog</Badge>}
                                                                         {p.comments_count > 0 && <span className="text-muted ms-auto"><i className="ri-chat-3-line" /> {p.comments_count}</span>}
                                                                     </div>
+                                                                    {/* F3d: na Análise, o alcance e a taxa de envolvimento. */}
+                                                                    {p.stage === "analysis" && p.channel !== "site" && (
+                                                                        <div className="d-flex gap-3 mt-2 pt-2 border-top fs-12">
+                                                                            <span title="Alcance"><i className="ri-eye-line me-1 text-muted" />{p.results?.reach != null ? fmtInt(p.results.reach) : <span className="text-muted">Sem alcance</span>}</span>
+                                                                            {p.results?.engagement_rate != null && <span title="Taxa de envolvimento (interações ÷ alcance)"><i className="ri-heart-pulse-line me-1 text-muted" />{fmtRate(p.results.engagement_rate)}</span>}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>

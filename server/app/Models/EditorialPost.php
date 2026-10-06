@@ -77,8 +77,8 @@ class EditorialPost extends Model
     ];
 
     protected $fillable = [
-        'company_id', 'publish_date', 'title', 'format', 'media_format', 'status',
-        'channel', 'keyword', 'anchor_id', 'own_anchor_id', 'blog_id',
+        'company_id', 'publish_date', 'publish_time', 'title', 'format', 'media_format', 'status',
+        'channel', 'keyword', 'pillar', 'anchor_id', 'own_anchor_id', 'blog_id',
         'stage', 'stage_changed_at', 'changes_requested_at', 'current_version_id', 'approved_version_id', 'assignee_user_id',
     ];
 
@@ -91,7 +91,35 @@ class EditorialPost extends Model
         'changes_requested_at' => 'datetime',
         'current_version_id' => 'integer',
         'approved_version_id' => 'integer',
+        'published_at' => 'datetime',
+        'overdue_alerted_at' => 'datetime',
     ];
+
+    public const TIMEZONE = 'Europe/Lisbon';
+
+    /**
+     * Quando devia estar publicada: a data e a hora prevista (Lisboa); sem hora, o fim do
+     * dia. Passado este momento, uma publicação Programada fica "Atrasada".
+     */
+    public function dueAt(): \Carbon\CarbonImmutable
+    {
+        $date = $this->publish_date->toDateString();
+
+        return $this->publish_time
+            ? \Carbon\CarbonImmutable::parse("{$date} {$this->publish_time}:00", self::TIMEZONE)
+            : \Carbon\CarbonImmutable::parse("{$date} 00:00:00", self::TIMEZONE)->addDay();
+    }
+
+    public function isOverdue(?\DateTimeInterface $now = null): bool
+    {
+        return $this->stage === self::STAGE_SCHEDULED && $this->channel !== 'site'
+            && $this->dueAt()->lt(\Carbon\CarbonImmutable::instance($now ?? now()));
+    }
+
+    public function metrics(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EditorialPostMetric::class);
+    }
 
     /** O estado antigo segue sempre a etapa. */
     protected static function booted(): void

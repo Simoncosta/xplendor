@@ -213,6 +213,10 @@ class EditorialLineService
             ->map(fn (EditorialPost $p) => [
                 'id'            => $p->id,
                 'publish_date'  => $p->publish_date->toDateString(),
+                'publish_time'  => $p->publish_time,
+                'pillar'        => $p->pillar,
+                // F3d: Programada cuja data e hora passaram sem ser marcada como publicada.
+                'overdue'       => $p->isOverdue(),
                 'month_key'     => $p->publish_date->format('Y-m'),
                 'title'         => $p->title,
                 'format'        => $p->format,          // tipo de conteúdo

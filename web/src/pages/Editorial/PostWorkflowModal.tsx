@@ -5,6 +5,8 @@ import { approvePost, commentOnPost, getPostWorkflow, movePostStage, requestPost
 import { MEDIA_FORMATS, POST_CHANNEL_META } from "common/models/editorialPost.model";
 import PostPreview from "./PostPreview";
 import VersionMediaEditor from "./VersionMediaEditor";
+import MarkPublishedModal from "./MarkPublishedModal";
+import PostResultsSection from "./PostResultsSection";
 import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt, mediaSrc } from "common/models/editorialWorkflow.model";
 
 /**
@@ -38,6 +40,7 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
     const [changesMsg, setChangesMsg] = useState("");
     const [viewVersion, setViewVersion] = useState<number | null>(null);
     const [tab, setTab] = useState<"edit" | "preview">("edit");
+    const [marking, setMarking] = useState(false);
 
     const apply = useCallback((d: PostWorkflow) => {
         setData(d);
@@ -119,7 +122,8 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                         <Badge color={`${STAGE_META[p.stage].color}-subtle`} className={`text-${STAGE_META[p.stage].color === "dark" ? "body" : STAGE_META[p.stage].color} fs-12`}>
                             <i className={`${STAGE_META[p.stage].icon} me-1`} />{STAGE_META[p.stage].label}
                         </Badge>
-                        <span className="text-muted fs-13 fw-normal">{dmy(p.publish_date)}</span>
+                        <span className="text-muted fs-13 fw-normal">{dmy(p.publish_date)}{p.publish_time ? ` · ${p.publish_time}` : ""}</span>
+                        {p.overdue && <Badge color="danger" className="fs-12">Atrasada</Badge>}
                     </span>
                 ) : "Produção"}
             </ModalHeader>
@@ -136,6 +140,11 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                                     {s === "client_review" ? "Enviar ao cliente" : s === "internal_review" ? "Enviar para revisão interna" : `Passar a ${STAGE_META[s].label}`}
                                 </Button>
                             ))}
+                            {p.stage === "scheduled" && data.publishing.can_mark && (
+                                <Button color="success" size="sm" disabled={busy} onClick={() => setMarking(true)}>
+                                    <i className="ri-checkbox-circle-line me-1" />Marcar como publicada
+                                </Button>
+                            )}
                             {data.permissions.can_approve && (
                                 <>
                                     <Button color="success" size="sm" disabled={busy} onClick={() => run(() => approvePost(companyId, p.id), "Publicação aprovada.")}>
@@ -165,6 +174,14 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                         )}
                         {p.stage === "client_review" && !data.permissions.can_approve && (
                             <div className="alert alert-warning fs-13 py-2">À espera da aprovação do cliente{data.permissions.is_team ? " (a aprovação não é possível em sessão como cliente)" : ""}.</div>
+                        )}
+                        {p.overdue && (
+                            <div className="alert alert-danger fs-13 py-2">
+                                <i className="ri-alarm-warning-line me-1" /><strong>Atrasada.</strong> Estava programada para {dmy(p.publish_date)}{p.publish_time ? ` às ${p.publish_time}` : ""} e ainda não foi marcada como publicada.
+                            </div>
+                        )}
+                        {data.results && (
+                            <PostResultsSection data={data} companyId={companyId} onChanged={(d) => { apply(d); onChanged(); }} onEditPublished={() => setMarking(true)} />
                         )}
                         {changesOpen && (
                             <div className="border rounded p-2 mb-3">
@@ -340,6 +357,11 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                     </>
                 )}
             </ModalBody>
+            {p && (
+                <MarkPublishedModal isOpen={marking} toggle={() => setMarking(false)} companyId={companyId} post={{ id: p.id, title: p.title, channel: p.channel }}
+                    initialUrl={data?.publishing.url} initialAt={data?.publishing.published_at}
+                    onDone={(d) => { apply(d); onChanged(); }} />
+            )}
         </Modal>
     );
 }

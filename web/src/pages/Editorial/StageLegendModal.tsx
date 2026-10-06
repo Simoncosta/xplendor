@@ -13,9 +13,9 @@ const LEGEND: Record<Stage, { meaning: string; who: string }> = {
     production: { meaning: "Legenda, ficheiros e formato em preparação, por versões.", who: "Quem produz envia-a para revisão interna, para aprovação do cliente ou, se a empresa não pede aprovação, para Programado." },
     internal_review: { meaning: "Revisão interna antes do cliente, quando a empresa a exige.", who: "Outra pessoa que não o autor envia-a ao cliente ou devolve-a a Produção." },
     client_review: { meaning: "À espera da decisão do cliente sobre a versão enviada.", who: "O administrador da empresa ou um aprovador de conteúdos aprova (passa a Programado) ou pede alterações (volta a Produção)." },
-    scheduled: { meaning: "Aprovada e com data; alterar o conteúdo volta a pedir aprovação.", who: "Quem produz marca-a como publicada." },
-    published: { meaning: "Já está na rede.", who: "Quem produz passa-a a Análise." },
-    analysis: { meaning: "Resultados e notas sobre a publicação; é a última etapa.", who: "Não avança mais." },
+    scheduled: { meaning: "Aprovada, com data e hora; alterar o conteúdo volta a pedir aprovação. Se a data e a hora passarem sem ser publicada, fica \"Atrasada\".", who: "Quem produz marca-a como publicada, com o link e a hora real." },
+    published: { meaning: "Já está na rede, com o link registado.", who: "Passa sozinha a Análise ao fim de 7 dias; quem produz pode passá-la antes." },
+    analysis: { meaning: "Resultados (alcance, interações e outros) e notas de aprendizagem; é a última etapa.", who: "Não avança mais." },
 };
 
 export default function StageLegendModal({ isOpen, toggle }: { isOpen: boolean; toggle: () => void }) {

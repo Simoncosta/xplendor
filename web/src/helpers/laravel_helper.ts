@@ -493,6 +493,12 @@ export const getMediaAsset = (companyId: number, assetId: number) => api.get(ED(
 export const setPostMedia = (companyId: number, postId: number, items: number[], coverId: number | null) =>
     api.put(ED(companyId) + `/posts/${postId}/media`, { items, cover_id: coverId });
 export const getEditorialGrid = (companyId: number) => api.get(ED(companyId) + `/grid`);
+// F3d: para publicar hoje, marcar como publicada, resultados à mão e resultados do mês.
+export const getEditorialToday = (companyId: number) => api.get(ED(companyId) + `/today`);
+export const markPostPublished = (companyId: number, postId: number, data: { url: string; published_at: string }) =>
+    api.create(ED(companyId) + `/posts/${postId}/published`, data, { headers: { "Content-Type": "application/json" } });
+export const savePostResults = (companyId: number, postId: number, data: Record<string, unknown>) => api.put(ED(companyId) + `/posts/${postId}/results`, data);
+export const getEditorialResults = (companyId: number, month: string) => api.get(ED(companyId) + `/results`, { month });
 // F3c: links de aprovação por lote (o link em si é público: /aprovar#<token>).
 const REVIEW_JSON = { headers: { "Content-Type": "application/json" } };
 export const getReviewLinks = (companyId: number) => api.get(ED(companyId) + `/review-links`);

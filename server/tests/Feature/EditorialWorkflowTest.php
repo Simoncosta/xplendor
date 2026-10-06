@@ -133,7 +133,9 @@ class EditorialWorkflowTest extends TestCase
         // O cliente aprova; depois só se avança para Publicado e Análise.
         $this->as($this->adminA)->postJson($this->url($this->a, "/posts/{$p->id}/approve"))->assertOk()->assertJsonPath('data.post.stage', 'scheduled');
         $this->move($this->userA, $p, 'production')->assertStatus(422);
-        $this->move($this->userA, $p, 'published')->assertOk();
+        // F3d: publicar exige o link e a hora (ação própria), não a passagem simples.
+        $this->move($this->userA, $p, 'published')->assertStatus(422)->assertJsonPath('message', \App\Services\Editorial\EditorialWorkflowService::MSG_MARK_PUBLISHED);
+        $this->as($this->userA)->postJson($this->url($this->a, "/posts/{$p->id}/published"), ['url' => 'https://www.instagram.com/p/ABC123/', 'published_at' => now('Europe/Lisbon')->format('Y-m-d H:i')])->assertOk();
         $this->move($this->userA, $p, 'analysis')->assertOk();
         $this->move($this->userA, $p, 'scheduled')->assertStatus(422);
         $this->write($this->userA, $p, 'Depois de publicado')->assertStatus(409);
@@ -339,8 +341,9 @@ class EditorialWorkflowTest extends TestCase
         $this->write($this->root, $p, 'Com outra foto')->assertOk();
         $this->move($this->root, $p, 'client_review')->assertOk();
         $this->as($this->approverA)->postJson($this->url($this->a, "/posts/{$p->id}/approve"))->assertOk()->assertJsonPath('data.post.stage', 'scheduled');
-        $this->move($this->adminA, $p, 'published')->assertStatus(403);
-        $this->move($this->root, $p, 'published')->assertOk();
+        $published = ['url' => 'https://www.instagram.com/reel/XYZ/', 'published_at' => now('Europe/Lisbon')->format('Y-m-d H:i')];
+        $this->as($this->adminA)->postJson($this->url($this->a, "/posts/{$p->id}/published"), $published)->assertStatus(403);
+        $this->as($this->root)->postJson($this->url($this->a, "/posts/{$p->id}/published"), $published)->assertOk();
     }
 
     public function test_own_production_is_the_default_and_unchanged(): void

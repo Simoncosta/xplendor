@@ -192,3 +192,21 @@ Schedule::job(new \App\Jobs\ContentReviewDigestJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Aprovação de conteúdos] Resumo por email falhou no scheduler');
     });
+
+// Linha Editorial (F3d): lista do dia às 08:30 (Lisboa); atrasadas e passagem a Análise a cada 15 minutos.
+Schedule::job(new \App\Jobs\EditorialTodayJob())
+    ->dailyAt('08:30')
+    ->timezone('Europe/Lisbon')
+    ->name('editorial-today')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Linha Editorial] Lista de hoje falhou no scheduler');
+    });
+
+Schedule::job(new \App\Jobs\EditorialPublishingWatchJob())
+    ->everyFifteenMinutes()
+    ->name('editorial-publishing-watch')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Linha Editorial] Vigia das publicações falhou no scheduler');
+    });

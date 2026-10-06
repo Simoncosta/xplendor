@@ -102,10 +102,12 @@ class EditorialPostService
             'stage'         => ['nullable', Rule::in([EditorialPost::STAGE_IDEA, EditorialPost::STAGE_PLANNING])], // etapa inicial
             'channel'       => ['required', Rule::in(EditorialPost::CHANNELS)],
             'keyword'       => ['nullable', 'string', 'max:255'],
+            'publish_time'  => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],                      // hora prevista (Lisboa)
+            'pillar'        => ['nullable', 'string', 'max:60'],                                          // pilar do Perfil da Marca
             'anchor_id'     => ['nullable', 'integer'],
             'own_anchor_id' => ['nullable', 'integer'],
             'blog_id'       => ['nullable', 'integer'],
-        ])->validate();
+        ], ['publish_time.regex' => 'Indique a hora no formato HH:MM.'])->validate();
 
         // Canal "site": formato fixo e ligação opcional ao artigo. Restantes canais: formato
         // das redes obrigatório e sem artigo.

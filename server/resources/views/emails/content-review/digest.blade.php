@@ -1,7 +1,7 @@
 @component('mail::message')
-# Aprovações de conteúdos
+# Linha Editorial
 
-Novidades nos links de aprovação desde o último resumo:
+Novidades desde o último resumo (aprovações, publicações e atrasos):
 
 @foreach ($lines as $line)
 - **{{ $line['company'] }}**{{ $line['severity'] === 'high' ? ' (urgente)' : '' }}: {{ $line['title'] }}. {{ $line['message'] }}

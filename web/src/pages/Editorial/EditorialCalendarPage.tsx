@@ -29,6 +29,8 @@ import InstagramGrid from "./InstagramGrid";
 import PostWorkflowModal from "./PostWorkflowModal";
 import StageLegendModal from "./StageLegendModal";
 import ReviewLinksModal from "./ReviewLinksModal";
+import TodayPanel from "./TodayPanel";
+import MonthResults from "./MonthResults";
 import { BLOG_STATUS_STAGE, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
@@ -58,6 +60,8 @@ const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta"
 const ORDINALS = [{ v: 1, l: "1.º" }, { v: 2, l: "2.º" }, { v: 3, l: "3.º" }, { v: 4, l: "4.º" }, { v: 5, l: "5.º" }, { v: -1, l: "Último" }];
 const RULE_LABEL: Record<string, string> = { fixa: "Data fixa", nth_weekday: "Dia da semana", periodo: "Período", relativa_pascoa: "Relativa à Páscoa" };
 
+/** Mês corrente (AAAA-MM) em Lisboa. */
+const currentMonthKey = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" }).slice(0, 7);
 const monthLabel = (key: string) => { const [y, m] = key.split("-"); return `${MONTHS_PT[Number(m) - 1]} ${y}`; };
 const shortLabel = (key: string) => { const [, m] = key.split("-"); return MONTHS_SHORT[Number(m) - 1]; };
 const fmtDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
@@ -74,8 +78,8 @@ const emptyForm = (month: number): CreateForm => ({
 });
 
 // format = tipo de conteúdo (18 valores); media_format = formato da rede (vocabulário F2).
-type PostForm = { id?: number; publish_date: string; title: string; format: string; media_format: string; channel: string; keyword: string; status: PostStatus; link: string; blog_id: string };
-const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
+type PostForm = { id?: number; publish_date: string; publish_time: string; title: string; format: string; media_format: string; channel: string; keyword: string; pillar: string; status: PostStatus; link: string; blog_id: string };
+const emptyPost = (date: string): PostForm => ({ publish_date: date, publish_time: "", title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", pillar: "", status: "rascunho", link: "", blog_id: "" });
 const formatsFor = (channel: string) => (channel === "instagram" || channel === "facebook" ? MEDIA_FORMATS[channel] : []);
 /** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
 /** Etapa a mostrar no calendário: a da publicação ou, no Site, a equivalente do artigo do blog. */
@@ -86,13 +90,13 @@ const VIEW_PARAM = "vista";
 const viewKey = () => {
     try { return `xp-editorial-view:${JSON.parse(sessionStorage.getItem("authUser") || "{}").id ?? "0"}`; } catch { return "xp-editorial-view:0"; }
 };
-type View = "calendar" | "board" | "grid";
-const VIEW_URL: Record<View, string> = { calendar: "calendario", board: "kanban", grid: "grelha" };
+type View = "calendar" | "board" | "grid" | "results";
+const VIEW_URL: Record<View, string> = { calendar: "calendario", board: "kanban", grid: "grelha", results: "resultados" };
 const initialView = (): View => {
     const q = new URLSearchParams(window.location.search).get(VIEW_PARAM);
     const fromUrl = (Object.keys(VIEW_URL) as View[]).find((v) => VIEW_URL[v] === q);
     if (fromUrl) return fromUrl;
-    try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "grid" ? v : "calendar"; } catch { return "calendar"; }
+    try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "grid" || v === "results" ? v : "calendar"; } catch { return "calendar"; }
 };
 /** "Como funciona" já aberto sozinho para este utilizador (abre uma só vez). */
 const howToKey = () => viewKey().replace("xp-editorial-view:", "xp-editorial-howto:");
@@ -153,6 +157,8 @@ export default function EditorialCalendarPage() {
     const [boardReload, setBoardReload] = useState(0);
     // "Gerar ideias do mês": só com o mínimo do Perfil da Marca (o servidor também recusa).
     const [ideasOpen, setIdeasOpen] = useState(false);
+    const [resultsMonth, setResultsMonth] = useState(() => initialMonth() || currentMonthKey());
+    const [pillars, setPillars] = useState<string[]>([]); // pilares do Perfil da Marca (F3d: pilar da publicação)
     const [ideasGate, setIdeasGate] = useState<{ ready: boolean; reason: string | null } | null>(null);
     const [howOpen, setHowOpen] = useState(false);
     const [legendOpen, setLegendOpen] = useState(false);
@@ -194,7 +200,10 @@ export default function EditorialCalendarPage() {
     useEffect(() => {
         if (!companyId) return;
         getBrandProfile(companyId)
-            .then((r: any) => setIdeasGate({ ready: !!r?.data?.ideas_ready, reason: r?.data?.ideas_blocked_reason ?? null }))
+            .then((r: any) => {
+                setIdeasGate({ ready: !!r?.data?.ideas_ready, reason: r?.data?.ideas_blocked_reason ?? null });
+                setPillars((r?.data?.pillars ?? []).map((x: any) => String(x?.name ?? "")).filter(Boolean));
+            })
             // Sem resposta, não bloqueia no ecrã: o servidor recusa com a explicação se faltar o mínimo.
             .catch(() => setIdeasGate({ ready: true, reason: null }));
     }, [companyId, ideasOpen]);
@@ -369,8 +378,8 @@ export default function EditorialCalendarPage() {
     const openCreatePost = (date: string) => { setPostForm(emptyPost(date)); setPostOpen(true); };
     const openEditPost = (p: EditorialPost) => {
         setPostForm({
-            id: p.id, publish_date: p.publish_date, title: p.title, format: p.format, media_format: p.media_format ?? "",
-            channel: p.channel, keyword: p.keyword ?? "", status: p.status,
+            id: p.id, publish_date: p.publish_date, publish_time: p.publish_time ?? "", title: p.title, format: p.format, media_format: p.media_format ?? "",
+            channel: p.channel, keyword: p.keyword ?? "", pillar: p.pillar ?? "", status: p.status,
             link: p.anchor_id ? `a:${p.anchor_id}` : p.own_anchor_id ? `o:${p.own_anchor_id}` : "",
             blog_id: p.blog_id ? String(p.blog_id) : "",
         });
@@ -390,6 +399,8 @@ export default function EditorialCalendarPage() {
             title: f.title.trim(), publish_date: f.publish_date, format: f.channel === "site" ? SITE_FORMAT : f.format,
             media_format: f.channel === "site" ? null : (f.media_format || null),
             channel: f.channel, keyword: f.keyword.trim() || null,
+            publish_time: f.channel === "site" ? null : (f.publish_time || null),
+            pillar: f.pillar || null,
             blog_id: f.channel === "site" && f.blog_id ? Number(f.blog_id) : null,
         };
         if (f.link.startsWith("a:")) payload.anchor_id = Number(f.link.slice(2));
@@ -454,15 +465,28 @@ export default function EditorialCalendarPage() {
                                 <Button color={view === "grid" ? "primary" : "light"} size="sm" onClick={() => setView("grid")}>
                                     <i className="ri-instagram-line me-1" />Grelha do Instagram
                                 </Button>
+                                <Button color={view === "results" ? "primary" : "light"} size="sm" onClick={() => setView("results")}>
+                                    <i className="ri-bar-chart-2-line me-1" />Resultados
+                                </Button>
                             </div>
                             </div>
                         </CardHeader>
 
                         <CardBody>
-                            {view === "grid" ? (
+                            {view === "results" ? (
+                                <>
+                                    <div className="d-flex align-items-center gap-2 mb-3">
+                                        <Label for="res-month" className="mb-0 fs-13">Mês</Label>
+                                        <Input id="res-month" type="month" bsSize="sm" style={{ width: 180 }} value={resultsMonth} max={currentMonthKey()}
+                                            onChange={(e) => e.target.value && setResultsMonth(e.target.value)} />
+                                    </div>
+                                    <MonthResults companyId={companyId} month={resultsMonth} monthLabel={monthLabel(resultsMonth)} onOpen={(id) => setWorkflowPostId(id)} />
+                                </>
+                            ) : view === "grid" ? (
                                 <InstagramGrid companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} />
                             ) : view === "board" ? (
                                 <>
+                                    <TodayPanel companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
                                     {/* TIRA DOS 12 MESES (também no Kanban) */}
                                     <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
                                         {months.map((mo) => {
@@ -486,6 +510,7 @@ export default function EditorialCalendarPage() {
                                 </>
                             ) : (
                                 <>
+                                    <TodayPanel companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
                                     {/* TIRA DOS 12 MESES */}
                                     <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
                                         {months.map((mo) => {
@@ -608,8 +633,9 @@ export default function EditorialCalendarPage() {
                                                     const stage = postStage(p);
                                                     const sm = STAGE_META[stage];
                                                     return (
-                                                        <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.title}`}
-                                                            style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
+                                                        <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${p.overdue ? "Atrasada · " : ""}${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.publish_time ? `${p.publish_time} ` : ""}${p.title}`}
+                                                            style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${p.overdue ? "var(--vz-danger)" : sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
+                                                            {p.overdue && <span className="rounded px-1 fw-semibold flex-shrink-0 bg-danger text-white" style={{ fontSize: "0.62rem" }}>Atrasada</span>}
                                                             <i className={POST_CHANNEL_META[p.channel].icon} />
                                                             <span className="rounded px-1 fw-semibold flex-shrink-0" title={sm.label} style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
                                                             <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
@@ -793,6 +819,15 @@ export default function EditorialCalendarPage() {
                             </Row>
                         )}
                         <Row className="g-2">
+                            {postForm.channel !== "site" && (
+                                <Col xs={6}><FormGroup><Label for="pf-time">Hora prevista <span className="text-muted fw-normal">(opcional)</span></Label>
+                                    <Input id="pf-time" type="time" value={postForm.publish_time} onChange={(e) => setPF({ publish_time: e.target.value })} /></FormGroup></Col>
+                            )}
+                            <Col xs={postForm.channel !== "site" ? 6 : 12}><FormGroup><Label for="pf-pillar">Pilar</Label>
+                                <Input id="pf-pillar" type="select" value={postForm.pillar} onChange={(e) => setPF({ pillar: e.target.value })}>
+                                    <option value="">Sem pilar</option>
+                                    {[...pillars, ...(postForm.pillar && !pillars.includes(postForm.pillar) ? [postForm.pillar] : [])].map((n) => <option key={n} value={n}>{n}</option>)}
+                                </Input></FormGroup></Col>
                         </Row>
                         <FormGroup>
                             <Label>Palavra-chave</Label>

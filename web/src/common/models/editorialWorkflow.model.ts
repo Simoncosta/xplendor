@@ -55,6 +55,10 @@ export interface BoardPost {
     blog: { id: number; status: string } | null;
     moves: Stage[];
     can_approve: boolean;
+    /** F3d */
+    publish_time: string | null;
+    overdue: boolean;
+    results: { reach: number | null; engagement_rate: number | null } | null;
 }
 
 export interface BoardData {
@@ -119,7 +123,11 @@ export interface PostWorkflow {
         id: number; title: string; channel: PostChannel; publish_date: string; stage: Stage; format: string;
         media_format: string | null; keyword: string | null; changes_requested_at: string | null;
         current_version_id: number | null; approved_version_id: number | null; account_name: string | null;
+        publish_time: string | null; pillar: string | null; overdue: boolean;
     };
+    /** F3d: publicação e resultados à mão. */
+    publishing: { url: string | null; published_at: string | null; by: string | null; due_at: string; can_mark: boolean };
+    results: PostResults | null;
     versions: PostVersion[];
     reviews: { id: number; version_number: number | null; decision: "approved" | "changes_requested"; via: string; reviewer: string | null; message: string | null; created_at: string | null }[];
     comments: { id: number; author: string | null; body: string; visibility: "internal" | "shared"; version_number: number | null; mine: boolean; created_at: string | null }[];
@@ -144,3 +152,47 @@ export interface WorkflowSettings {
 
 export const fmtDateTimePt = (iso: string | null | undefined) =>
     iso ? new Date(iso).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+
+// ── F3d: Publicado e Análise ─────────────────────────────────────────────────
+
+export type MetricKey = "reach" | "interactions" | "likes" | "comments" | "saves" | "shares" | "clicks" | "video_views";
+export const METRICS: { key: MetricKey; label: string }[] = [
+    { key: "reach", label: "Alcance" }, { key: "interactions", label: "Interações" }, { key: "likes", label: "Gostos" },
+    { key: "comments", label: "Comentários" }, { key: "saves", label: "Guardados" }, { key: "shares", label: "Partilhas" },
+    { key: "clicks", label: "Cliques" }, { key: "video_views", label: "Visualizações" },
+];
+export const METRIC_SOURCE_LABEL: Record<string, string> = { manual: "à mão", meta: "Meta" };
+
+export interface PostResults {
+    values: Record<MetricKey, { value: number; source: string; measured_on: string } | null>;
+    measured_on: string | null;
+    engagement_rate: number | null;
+    is_video: boolean;
+    worked: string | null;
+    change: string | null;
+    can_record: boolean;
+}
+
+export interface TodayPost { id: number; title: string; channel: PostChannel; media_format: string | null; publish_date: string; publish_time: string | null; overdue: boolean; can_mark: boolean }
+export interface TodayData { date: string; today: TodayPost[]; overdue: TodayPost[] }
+
+export interface ResultRow {
+    id: number; title: string; channel: PostChannel; stage: Stage; date: string; media_format: string | null; format: string;
+    pillar: string | null; reach: number | null; interactions: number | null; engagement_rate: number | null; published_url: string | null;
+}
+
+/**
+ * Taxa de envolvimento sem arredondamentos enganadores: corta (não arredonda para cima),
+ * mostra mais casas quando é pequena e nunca mostra 0% quando há interações.
+ */
+export function fmtRate(rate: number | null | undefined): string {
+    if (rate === null || rate === undefined) return "";
+    if (rate === 0) return "0%";
+    const cut = (v: number, d: number) => Math.floor(v * 10 ** d) / 10 ** d;
+    const fmt = (v: number, d: number) => v.toLocaleString("pt-PT", { minimumFractionDigits: d, maximumFractionDigits: d });
+    if (rate < 0.01) return "< 0,01%";
+    if (rate < 1) return `${fmt(cut(rate, 2), 2)}%`;
+    return `${fmt(cut(rate, 1), 1)}%`;
+}
+
+export const fmtInt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n.toLocaleString("pt-PT"));

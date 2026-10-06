@@ -13,7 +13,8 @@ use App\Services\Editorial\EditorialWorkflowService;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Avisos dos links de aprovação para quem produz: no sino (logo) e no resumo por email
+ * Avisos da Linha Editorial para quem produz (links de aprovação, F3c; publicação e
+ * análise, F3d): no sino (logo) e no resumo por email
  * (a cada 15 minutos). Quem produz é a equipa XPLENDOR no modo "Produção pela equipa"
  * (sino da empresa da equipa, emails da equipa) e a própria empresa no modo "Produção
  * própria" (sino da empresa, email de quem enviou o link).
@@ -25,21 +26,32 @@ class ContentReviewNotifier
     /** @param 'urgent'|'warning'|'opportunity' $type */
     public function notify(ContentReviewLink $link, string $type, string $title, string $message, string $severity = 'medium'): void
     {
+        $this->notifyCompany((int) $link->company_id, $type, $title, $message, $severity, "/editorial?aprovacoes={$link->id}", $link->id);
+    }
+
+    /**
+     * Aviso sobre uma empresa para quem produz (também usado pela publicação e análise,
+     * F3d): sino logo e resumo por email a cada 15 minutos. $path só vale no modo
+     * "Produção própria" (no da equipa, o sino é o da empresa da equipa).
+     *
+     * @param 'urgent'|'warning'|'opportunity' $type
+     */
+    public function notifyCompany(int $companyId, string $type, string $title, string $message, string $severity = 'medium', ?string $path = null, ?int $linkId = null): void
+    {
         try {
-            $company = Company::find($link->company_id);
+            $company = Company::find($companyId);
             $team = $company && EditorialWorkflowService::productionMode($company->id) === EditorialWorkflowService::MODE_TEAM;
-            $alertCompanyId = $team ? self::teamCompanyId() : $link->company_id;
+            $alertCompanyId = $team ? self::teamCompanyId() : $companyId;
             $name = $company ? (string) ($company->trade_name ?: $company->fiscal_name) : '';
             if ($alertCompanyId) {
-                $this->alerts->createSystemAlert($alertCompanyId, $type, $team ? "{$name}: {$title}" : $title, $message, $severity,
-                    $team ? null : "/editorial?aprovacoes={$link->id}");
+                $this->alerts->createSystemAlert($alertCompanyId, $type, $team ? "{$name}: {$title}" : $title, $message, $severity, $team ? null : $path);
             }
             ContentReviewNotification::create([
-                'company_id' => $link->company_id, 'content_review_link_id' => $link->id, 'severity' => $severity,
+                'company_id' => $companyId, 'content_review_link_id' => $linkId, 'severity' => $severity,
                 'title' => mb_substr($title, 0, 190), 'message' => mb_substr($message, 0, 1000), 'created_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('[Aprovação de conteúdos] Falha ao criar o aviso', ['link_id' => $link->id, 'error' => $e->getMessage()]);
+            Log::error('[Linha Editorial] Falha ao criar o aviso', ['company_id' => $companyId, 'link_id' => $linkId, 'error' => $e->getMessage()]);
         }
     }
 

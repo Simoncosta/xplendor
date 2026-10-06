@@ -27,7 +27,7 @@ class ContentReviewDigestMail extends Mailable
         $n = count($this->lines);
         $urgent = collect($this->lines)->contains(fn ($l) => $l['severity'] === 'high');
 
-        return new Envelope(subject: ($urgent ? 'Urgente: ' : '') . "Aprovações de conteúdos: {$n} " . ($n === 1 ? 'novidade' : 'novidades'));
+        return new Envelope(subject: ($urgent ? 'Urgente: ' : '') . "Linha Editorial: {$n} " . ($n === 1 ? 'novidade' : 'novidades'));
     }
 
     public function content(): Content

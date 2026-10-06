@@ -148,7 +148,8 @@ class EditorialWorkflowService
             ],
             // Retirar da aprovação (a equipa); o cliente usa "pedir alterações".
             EditorialPost::STAGE_CLIENT_REVIEW => [EditorialPost::STAGE_PRODUCTION => null],
-            EditorialPost::STAGE_SCHEDULED => [EditorialPost::STAGE_PUBLISHED => null],
+            // F3d: publicar exige o link e a hora real (ação "Marcar como publicada").
+            EditorialPost::STAGE_SCHEDULED => [EditorialPost::STAGE_PUBLISHED => self::MSG_MARK_PUBLISHED],
             EditorialPost::STAGE_PUBLISHED => [EditorialPost::STAGE_ANALYSIS => null],
             default => [],
         };
@@ -245,6 +246,8 @@ class EditorialWorkflowService
     }
 
     // ── Aprovação pelo link (F3c, sem conta) ─────────────────────────────────
+
+    public const MSG_MARK_PUBLISHED = 'Use "Marcar como publicada", com o link e a hora da publicação.';
 
     public const MSG_LINK_OUTDATED = 'A equipa atualizou esta publicação. Aguarde que a volte a enviar neste link.';
     public const MSG_LINK_DECIDED = 'Já foi registada uma decisão para esta versão.';
@@ -634,6 +637,7 @@ class EditorialWorkflowService
                 'changes_requested_at' => optional($post->changes_requested_at)->toIso8601String(),
                 'current_version_id' => $post->current_version_id, 'approved_version_id' => $post->approved_version_id,
                 'account_name' => $company->trade_name ?: $company->fiscal_name,
+                'publish_time' => $post->publish_time, 'pillar' => $post->pillar, 'overdue' => $post->isOverdue(),
             ],
             'versions' => $versions->map(fn (EditorialPostVersion $v) => [
                 'id' => $v->id, 'number' => $v->number, 'status' => $v->status, 'frozen' => $v->isFrozen(),
@@ -664,6 +668,21 @@ class EditorialWorkflowService
             'media_validation' => self::mediaValidation($versions->firstWhere('id', $post->current_version_id)),
             'creative' => $creative ? ['caption' => $creative->caption, 'hashtags' => $creative->hashtags ?? [], 'cta' => $creative->cta, 'media_format' => $creative->media_format] : null,
             'moves' => $this->moves($post, $user, $company),
+            // F3d: publicação (link, hora real e quem marcou) e resultados à mão.
+            'publishing' => [
+                'url' => $post->published_url,
+                'published_at' => optional($post->published_at)->toIso8601String(),
+                'by' => $post->published_by_user_id ? $this->label($people + User::whereIn('id', array_filter([$post->published_by_user_id, $post->published_by_impersonator_id]))->get(['id', 'name', 'role'])->keyBy('id')->all(),
+                    $post->published_by_user_id, $post->published_by_impersonator_id) : null,
+                'due_at' => $post->dueAt()->toIso8601String(),
+                'can_mark' => self::isProducer($user, (int) $post->company_id) && $post->channel !== 'site'
+                    && in_array($post->stage, [EditorialPost::STAGE_SCHEDULED, EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true),
+            ],
+            'results' => $post->channel !== 'site' && in_array($post->stage, [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true)
+                ? EditorialPublishingService::metrics($post) + [
+                    'worked' => $post->analysis_worked, 'change' => $post->analysis_change,
+                    'can_record' => self::isProducer($user, (int) $post->company_id),
+                ] : null,
             'permissions' => [
                 'can_edit_content' => self::isProducer($user, (int) $post->company_id) && $post->channel !== 'site' && ! in_array($post->stage, self::LOCKED_STAGES, true),
                 'can_approve' => self::isApprover($user, (int) $post->company_id) && $post->stage === EditorialPost::STAGE_CLIENT_REVIEW,

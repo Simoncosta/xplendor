@@ -28,6 +28,10 @@ export type EditorialPost = {
     stage: import("./editorialWorkflow.model").Stage;
     version: { number: number; status: string } | null;
     changes_requested: boolean;
+    /** F3d: hora prevista (HH:MM, Lisboa), pilar e "Atrasada". */
+    publish_time: string | null;
+    pillar: string | null;
+    overdue: boolean;
     blog_id: number | null;
     // Canal "site": o artigo ligado; o estado mostrado vem dele.
     blog: { id: number; title: string; status: "draft" | "in_review" | "approved" | "published"; published_at: string | null } | null;

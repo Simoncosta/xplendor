@@ -239,7 +239,10 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
     - Página para telemóvel com a pré-visualização da F3b (feed, carrossel que desliza, Reel e Story 9:16, Facebook), a foto e o nome reais da conta ligada (ou o logótipo e o nome da empresa), "Grelha do perfil", aprovar, pedir alterações (mensagem obrigatória), comentários e "Aprovar tudo" numa transação. Uma decisão por versão; item atualizado pela equipa sem ações até ao reenvio.
     - Ficheiros por URLs assinados limitados ao lote e à validade do link; vídeo por partes.
     - Aberturas pelo serviço partilhado com o orçamento (`PublicLinkOpens`). Avisos no sino e resumo por email a cada 15 minutos; lembretes às 09:00 (cliente aos 2 dias, equipa aos 4, urgente a menos de 48 horas). "Ver como o cliente" sem contar aberturas. Páginas legais atualizadas.
-- [ ]  F3d: Publicado com o link da publicação e Análise com notas manuais
+- [x]  F3d: Publicado com o link da publicação e Análise com notas manuais
+    - "Para publicar hoje" na Linha Editorial e aviso às 08:30 (Lisboa) a quem produz. Programadas cuja data e hora passaram ficam "Atrasada" (calendário, Kanban, janela) e geram um aviso, uma vez. Hora prevista e pilar na publicação.
+    - Marcar como publicada com o link (instagram.com ou facebook.com, conforme a rede) e a hora real; quem produz (no modo da equipa, só a equipa), com a pessoa real registada. A passagem simples para Publicado deixou de existir.
+    - Análise automática 7 dias depois de publicada, ou à mão. Números à mão com a data da medição e a origem (`editorial_post_metrics.source`: manual agora, meta na F6); taxa de envolvimento (interações ÷ alcance × 100) só com alcance; notas "O que funcionou" e "O que mudar"; alcance e taxa no cartão da Análise; vista "Resultados" do mês, ordenável.
 
 ### F4 · Vistas: calendário, kanban e lista
 

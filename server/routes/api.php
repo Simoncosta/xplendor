@@ -432,6 +432,11 @@ Route::prefix('v1')->group(function () {
                     Route::get('/editorial/media/{assetId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'asset'])->whereNumber('assetId');
                     Route::put('/editorial/posts/{postId}/media', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'setPostMedia'])->whereNumber('postId');
                     Route::get('/editorial/grid', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'grid']);
+                    // F3d: para publicar hoje, marcar como publicada, resultados à mão e do mês.
+                    Route::get('/editorial/today', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'today']);
+                    Route::get('/editorial/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'results']);
+                    Route::post('/editorial/posts/{postId}/published', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'markPublished'])->whereNumber('postId');
+                    Route::put('/editorial/posts/{postId}/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'saveResults'])->whereNumber('postId');
                     // F3c: links de aprovação por lote (rotas fixas antes de /{linkId}).
                     Route::get('/editorial/review-links', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'index']);
                     Route::get('/editorial/review-links/candidates', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'candidates']);
