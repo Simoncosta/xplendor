@@ -462,6 +462,20 @@ export const updateEditorialPost = (companyId: number, postId: number, payload: 
     api.put(ED(companyId) + `/posts/${postId}`, payload);
 export const deleteEditorialPost = (companyId: number, postId: number) =>
     api.delete(ED(companyId) + `/posts/${postId}`);
+// F3a: produção e aprovação (Kanban, versões, comentários, histórico, definições).
+const ED_JSON = { headers: { "Content-Type": "application/json" } };
+export const getEditorialBoard = (companyId: number, month: string) => api.get(ED(companyId) + `/board`, { month });
+export const getPostWorkflow = (companyId: number, postId: number) => api.get(ED(companyId) + `/posts/${postId}/workflow`);
+export const movePostStage = (companyId: number, postId: number, stage: string) => api.create(ED(companyId) + `/posts/${postId}/move`, { stage }, ED_JSON);
+export const savePostContent = (companyId: number, postId: number, data: any) => api.put(ED(companyId) + `/posts/${postId}/content`, data);
+export const commentOnPost = (companyId: number, postId: number, body: string, visibility: "internal" | "shared") =>
+    api.create(ED(companyId) + `/posts/${postId}/comments`, { body, visibility }, ED_JSON);
+export const approvePost = (companyId: number, postId: number, message?: string) => api.create(ED(companyId) + `/posts/${postId}/approve`, { message: message || null }, ED_JSON);
+export const requestPostChanges = (companyId: number, postId: number, message: string) => api.create(ED(companyId) + `/posts/${postId}/request-changes`, { message }, ED_JSON);
+export const approveAllPosts = (companyId: number, postIds: number[]) => api.create(ED(companyId) + `/approvals/approve-all`, { post_ids: postIds }, ED_JSON);
+export const getWorkflowSettings = (companyId: number) => api.get(ED(companyId) + `/workflow-settings`);
+export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean }) => api.put(ED(companyId) + `/workflow-settings`, data);
+export const setContentApprover = (companyId: number, userId: number, value: boolean) => api.put(ED(companyId) + `/approvers/${userId}`, { can_approve_content: value });
 // "Gerar ideias do mês" (IA) e aceitação ideia a ideia (cada uma vira uma publicação em rascunho).
 export const requestEditorialIdeas = (companyId: number, year: number, month: number) =>
     api.create(ED(companyId) + `/ideas`, { year, month }, { headers: { "Content-Type": "application/json" } });

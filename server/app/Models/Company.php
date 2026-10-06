@@ -72,6 +72,8 @@ class Company extends Model
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'uses_vat' => 'boolean',
+            'content_approval_required' => 'boolean',
+            'internal_review_required' => 'boolean',
             'cm_avg_ticket_enabled' => 'boolean',
         ];
     }

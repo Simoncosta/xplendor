@@ -1,0 +1,97 @@
+/**
+ * Linha Editorial, F3a: etapas do fluxo de produção e aprovação, versões, decisões,
+ * comentários e histórico. Espelha EditorialWorkflowService / EditorialWorkflowController.
+ */
+import type { PostChannel } from "./editorialPost.model";
+
+export type Stage = "idea" | "planning" | "production" | "internal_review" | "client_review" | "scheduled" | "published" | "analysis";
+
+export const STAGE_ORDER: Stage[] = ["idea", "planning", "production", "internal_review", "client_review", "scheduled", "published", "analysis"];
+
+export const STAGE_META: Record<Stage, { label: string; color: string; icon: string; hint: string }> = {
+    idea:            { label: "Ideia",       color: "secondary", icon: "ri-lightbulb-line",        hint: "Por confirmar." },
+    planning:        { label: "Planeamento", color: "info",      icon: "ri-calendar-todo-line",    hint: "Data, tema e formato." },
+    production:      { label: "Produção",    color: "primary",   icon: "ri-palette-line",          hint: "Legenda e materiais." },
+    internal_review: { label: "Revisão",     color: "dark",      icon: "ri-eye-line",              hint: "Revisão interna." },
+    client_review:   { label: "Aprovação",   color: "warning",   icon: "ri-user-follow-line",      hint: "À espera do cliente." },
+    scheduled:       { label: "Programado",  color: "success",   icon: "ri-calendar-check-line",   hint: "Aprovado, com data." },
+    published:       { label: "Publicado",   color: "success",   icon: "ri-checkbox-circle-line",  hint: "Já está na rede." },
+    analysis:        { label: "Análise",     color: "info",      icon: "ri-line-chart-line",       hint: "Resultados e notas." },
+};
+
+export type VersionStatus = "draft" | "sent" | "approved" | "changes_requested" | "superseded";
+
+export const VERSION_STATUS_LABEL: Record<VersionStatus, string> = {
+    draft: "Em edição",
+    sent: "Enviada ao cliente",
+    approved: "Aprovada",
+    changes_requested: "Alterações pedidas",
+    superseded: "Substituída",
+};
+
+export interface BoardPost {
+    id: number;
+    title: string;
+    channel: PostChannel;
+    publish_date: string;
+    stage: Stage;
+    format: string;
+    media_format: string | null;
+    version: { number: number; status: VersionStatus } | null;
+    changes_requested: boolean;
+    comments_count: number;
+    blog: { id: number; status: string } | null;
+    moves: Stage[];
+    can_approve: boolean;
+}
+
+export interface BoardData {
+    month: string;
+    is_approver: boolean;
+    is_team: boolean;
+    settings: { content_approval_required: boolean; internal_review_required: boolean };
+    posts: BoardPost[];
+}
+
+export interface PostVersion {
+    id: number;
+    number: number;
+    status: VersionStatus;
+    frozen: boolean;
+    caption: string | null;
+    hashtags: string[];
+    cta: string | null;
+    first_comment: string | null;
+    media_format: string | null;
+    author: string | null;
+    sent_at: string | null;
+    created_at: string | null;
+}
+
+export interface PostWorkflow {
+    post: {
+        id: number; title: string; channel: PostChannel; publish_date: string; stage: Stage; format: string;
+        media_format: string | null; keyword: string | null; changes_requested_at: string | null;
+        current_version_id: number | null; approved_version_id: number | null;
+    };
+    versions: PostVersion[];
+    reviews: { id: number; version_number: number | null; decision: "approved" | "changes_requested"; via: string; reviewer: string | null; message: string | null; created_at: string | null }[];
+    comments: { id: number; author: string | null; body: string; visibility: "internal" | "shared"; version_number: number | null; mine: boolean; created_at: string | null }[];
+    events: { type: string; from_stage: Stage | null; to_stage: Stage | null; message: string | null; who: string | null; created_at: string | null }[];
+    creative: { caption: string | null; hashtags: string[]; cta: string | null; media_format: string | null } | null;
+    /** etapa → motivo (null = permitido) */
+    moves: Partial<Record<Stage, string | null>>;
+    permissions: { can_edit_content: boolean; can_approve: boolean; is_approver: boolean; is_team: boolean };
+    settings: { content_approval_required: boolean; internal_review_required: boolean };
+}
+
+export interface WorkflowSettings {
+    content_approval_required: boolean;
+    internal_review_required: boolean;
+    can_edit: boolean;
+    can_manage_approvers: boolean;
+    users: { id: number; name: string; role: string; is_approver: boolean; by_role: boolean }[];
+}
+
+export const fmtDateTimePt = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";

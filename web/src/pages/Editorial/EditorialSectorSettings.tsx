@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Button, Input, Alert } from "reactstrap";
 import { toast } from "react-toastify";
 import { getEditorialCalendar, getEditorialSectors, changeEditorialSector } from "helpers/laravel_helper";
+import WorkflowSettingsCard from "./WorkflowSettingsCard";
 import SectorChooser from "./SectorChooser";
 
 /**
@@ -136,6 +137,8 @@ export default function EditorialSectorSettings({ companyId }: { companyId: numb
                     </Button>
                 </ModalFooter>
             </Modal>
+            {/* F3a: produção e aprovação (aprovação do cliente, revisão interna, aprovadores). */}
+            <WorkflowSettingsCard companyId={companyId} />
         </div>
     );
 }

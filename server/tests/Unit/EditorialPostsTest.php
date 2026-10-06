@@ -138,7 +138,9 @@ class EditorialPostsTest extends TestCase
 
         $cal = $this->posts->updatePost($this->company, $id, $this->base(['title' => 'Editado', 'status' => 'revisao']));
         $this->assertSame('Editado', $this->findPost($cal, $id)['title']);
-        $this->assertSame('revisao', $this->findPost($cal, $id)['status']);
+        // F3: o estado não muda pelo formulário da publicação, só pelo fluxo de produção e aprovação.
+        $this->assertSame('rascunho', $this->findPost($cal, $id)['status']);
+        $this->assertSame('planning', $this->findPost($cal, $id)['stage']);
 
         $cal = $this->posts->deletePost($this->company, $id);
         $this->assertNull($this->findPost($cal, $id));

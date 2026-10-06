@@ -162,7 +162,7 @@ class EditorialIdeasAiService
                 'channel'       => $channel,
                 'format'        => $type,
                 'media_format'  => $media,
-                'status'        => 'rascunho',
+                'stage'         => EditorialPost::STAGE_IDEA, // as ideias aceites entram em "Ideia"
                 'keyword'       => $idea['keyword'] ?: null,
                 'anchor_id'     => $idea['anchor_id'] ?? null,
                 'own_anchor_id' => $idea['own_anchor_id'] ?? null,

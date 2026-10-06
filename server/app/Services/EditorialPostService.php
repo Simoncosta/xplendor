@@ -38,7 +38,14 @@ class EditorialPostService
         $this->assertBlogLinkable($company, $clean['blog_id']);
         $this->line->assertDateEditable($company, $clean['publish_date']);
 
-        return EditorialPost::create(array_merge($clean, ['company_id' => $company->id]));
+        // Etapa inicial: Ideia ou Planeamento (por omissão); quem ainda envia o estado antigo
+        // fica com a etapa correspondente. Daí em diante a etapa só muda pelo fluxo (F3).
+        $stage = $clean['stage'] ?? EditorialPost::STATUS_TO_STAGE[$clean['status'] ?? ''] ?? EditorialPost::STAGE_PLANNING;
+        unset($clean['stage'], $clean['status']);
+        $post = EditorialPost::create(array_merge($clean, ['company_id' => $company->id, 'stage' => $stage, 'stage_changed_at' => now()]));
+        app(\App\Services\Editorial\EditorialWorkflowService::class)->event($post, null, 'created', null, $stage);
+
+        return $post;
     }
 
     /** Edita uma publicação. Mês aberto exigido na data ANTIGA E na NOVA (se mudar de mês). */
@@ -60,6 +67,8 @@ class EditorialPostService
         $this->line->assertDateEditable($company, $post->publish_date->toDateString()); // data antiga
         $this->line->assertDateEditable($company, $clean['publish_date']);              // data nova
 
+        // A etapa (e o estado antigo que a segue) só muda pelo fluxo de produção e aprovação.
+        unset($clean['stage'], $clean['status']);
         $post->update($clean);
 
         return $this->line->calendar($company);
@@ -89,7 +98,8 @@ class EditorialPostService
             'publish_date'  => ['required', 'date'],
             'format'        => ['nullable', Rule::in([...EditorialPost::FORMATS, EditorialPost::SITE_FORMAT])],   // tipo de conteúdo
             'media_format'  => ['nullable', 'string', 'max:30'],                                                 // formato (F2)
-            'status'        => ['required', Rule::in(EditorialPost::STATUSES)],
+            'status'        => ['nullable', Rule::in(EditorialPost::STATUSES)],            // estado antigo (compatibilidade)
+            'stage'         => ['nullable', Rule::in([EditorialPost::STAGE_IDEA, EditorialPost::STAGE_PLANNING])], // etapa inicial
             'channel'       => ['required', Rule::in(EditorialPost::CHANNELS)],
             'keyword'       => ['nullable', 'string', 'max:255'],
             'anchor_id'     => ['nullable', 'integer'],

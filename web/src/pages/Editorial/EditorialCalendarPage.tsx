@@ -17,13 +17,16 @@ import {
     createEditorialPost, updateEditorialPost, deleteEditorialPost, getBrandProfile, getBlogs,
 } from "helpers/laravel_helper";
 import {
-    EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, POST_STATUS_ORDER, PostStatus, SITE_FORMAT,
+    EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, PostStatus, SITE_FORMAT,
 } from "common/models/editorialPost.model";
 import { BLOG_STATUS_META } from "common/models/blog.model";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
 import CreativeModal from "./CreativeModal";
 import IdeasModal from "./IdeasModal";
+import EditorialBoard from "./EditorialBoard";
+import PostWorkflowModal from "./PostWorkflowModal";
+import { STAGE_META } from "common/models/editorialWorkflow.model";
 
 /**
  * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
@@ -69,7 +72,11 @@ type PostForm = { id?: number; publish_date: string; title: string; format: stri
 const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
 const formatsFor = (channel: string) => (channel === "instagram" || channel === "facebook" ? MEDIA_FORMATS[channel] : []);
 /** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
-const postStatusMeta = (p: EditorialPost) => (p.blog ? BLOG_STATUS_META[p.blog.status] : EDITORIAL_POST_STATUS_META[p.status]);
+const postStatusMeta = (p: EditorialPost) => {
+    if (p.blog) return BLOG_STATUS_META[p.blog.status];
+    const st = STAGE_META[p.stage] ?? null;
+    return st ? { label: st.label, color: st.color === "dark" ? "secondary" : st.color, icon: st.icon } : EDITORIAL_POST_STATUS_META[p.status];
+};
 
 export default function EditorialCalendarPage() {
     document.title = "Linha Editorial | Xplendor";
@@ -105,6 +112,9 @@ export default function EditorialCalendarPage() {
     const [postOpen, setPostOpen] = useState(false);               // modal criar/editar publicação
     const [postForm, setPostForm] = useState<PostForm>(emptyPost(""));
     const [creativeOpen, setCreativeOpen] = useState(false);
+    // F3a: produção e aprovação (Kanban e janela de produção de cada publicação).
+    const [workflowPostId, setWorkflowPostId] = useState<number | null>(null);
+    const [boardReload, setBoardReload] = useState(0);
     // "Gerar ideias do mês" e guia de descoberta (Perfil da Marca preenchido?).
     const [ideasOpen, setIdeasOpen] = useState(false);
     const [profileFilled, setProfileFilled] = useState<boolean | null>(null);
@@ -306,7 +316,7 @@ export default function EditorialCalendarPage() {
         const payload: any = {
             title: f.title.trim(), publish_date: f.publish_date, format: f.channel === "site" ? SITE_FORMAT : f.format,
             media_format: f.channel === "site" ? null : (f.media_format || null),
-            channel: f.channel, status: f.status, keyword: f.keyword.trim() || null,
+            channel: f.channel, keyword: f.keyword.trim() || null,
             blog_id: f.channel === "site" && f.blog_id ? Number(f.blog_id) : null,
         };
         if (f.link.startsWith("a:")) payload.anchor_id = Number(f.link.slice(2));
@@ -356,26 +366,36 @@ export default function EditorialCalendarPage() {
                                 <Button color={view === "calendar" ? "primary" : "light"} size="sm" onClick={() => setView("calendar")}>
                                     <i className="ri-calendar-2-line me-1" />Calendário
                                 </Button>
-                                {/* 
                                 <Button color={view === "board" ? "primary" : "light"} size="sm" onClick={() => setView("board")}>
-                                    <i className="ri-layout-column-line me-1" />Board
+                                    <i className="ri-layout-column-line me-1" />Kanban
                                 </Button>
-                                */}
                             </div>
                         </CardHeader>
 
                         <CardBody>
                             {view === "board" ? (
-                                <div className="text-center py-5">
-                                    <div className="avatar-lg mx-auto mb-4">
-                                        <span className="avatar-title bg-primary-subtle text-primary rounded-circle fs-1"><i className="ri-layout-column-line" /></span>
+                                <>
+                                    {/* TIRA DOS 12 MESES (também no Kanban) */}
+                                    <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
+                                        {months.map((mo) => {
+                                            const active = mo.month_key === selectedKey;
+                                            const open = mo.state === "open";
+                                            return (
+                                                <button key={mo.month_key} type="button" onClick={() => setSelectedKey(mo.month_key)}
+                                                    className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0"
+                                                    style={{ border: `1px solid ${active ? "var(--vz-primary)" : "var(--vz-border-color)"}`, background: active ? "var(--vz-primary-subtle)" : "var(--vz-card-bg)", color: active ? "var(--vz-primary)" : "var(--vz-body-color)", borderRadius: 8 }}
+                                                    title={monthLabel(mo.month_key)}>
+                                                    <i className={open ? "ri-check-line text-success" : "ri-lock-2-line text-muted"} />
+                                                    <span className="fw-semibold">{shortLabel(mo.month_key)}</span>
+                                                    {mo.is_current && <span className="badge bg-primary-subtle text-primary">agora</span>}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
-                                    <h5 className="mb-2">O quadro de publicações chega em breve</h5>
-                                    <p className="text-muted mb-0">
-                                        Vais poder organizar as publicações por estado (rascunho · revisão · publicada · otimizada)<br />
-                                        num quadro arrastável. Para já, planeia no <strong>Calendário</strong>.
-                                    </p>
-                                </div>
+
+                                    <EditorialBoard companyId={companyId} monthKey={selectedKey} reloadKey={boardReload}
+                                        onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); }} />
+                                </>
                             ) : (
                                 <>
                                     {/* TIRA DOS 12 MESES */}
@@ -603,6 +623,11 @@ export default function EditorialCalendarPage() {
                                                     </Button>
                                                 )}
                                             </div>
+                                            {p.channel !== "site" && (
+                                                <button type="button" className="btn btn-sm btn-soft-primary flex-shrink-0" title="Produção e aprovação" onClick={() => setWorkflowPostId(p.id)}>
+                                                    <i className="ri-palette-line me-1" />Produção
+                                                </button>
+                                            )}
                                             {panelMonthOpen && (
                                                 <div className="d-flex flex-shrink-0 gap-1">
                                                     <button type="button" className="btn btn-sm btn-ghost-secondary p-1" title="Editar" disabled={working} onClick={() => openEditPost(p)}><i className="ri-pencil-line" /></button>
@@ -688,12 +713,6 @@ export default function EditorialCalendarPage() {
                             </Row>
                         )}
                         <Row className="g-2">
-                            {!(postForm.channel === "site" && postForm.blog_id) && (
-                                <Col xs={6}><FormGroup><Label>Estado</Label>
-                                    <Input type="select" value={postForm.status} onChange={(e) => setPF({ status: e.target.value as PostStatus })}>
-                                        {POST_STATUS_ORDER.map((s) => <option key={s} value={s}>{EDITORIAL_POST_STATUS_META[s].label}</option>)}
-                                    </Input></FormGroup></Col>
-                            )}
                         </Row>
                         <FormGroup>
                             <Label>Palavra-chave</Label>
@@ -722,6 +741,15 @@ export default function EditorialCalendarPage() {
                     <Button color="primary" disabled={working} onClick={submitPost}>{working ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />{postForm.id ? "Guardar" : "Criar"}</>}</Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Modal: produção e aprovação da publicação (F3a) */}
+            <PostWorkflowModal
+                isOpen={!!workflowPostId}
+                toggle={() => setWorkflowPostId(null)}
+                companyId={companyId}
+                postId={workflowPostId}
+                onChanged={() => { void load(); setBoardReload((k) => k + 1); }}
+            />
 
             {/* Modal: "Gerar ideias do mês" (aceitação ideia a ideia) */}
             {selected && (

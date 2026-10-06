@@ -410,6 +410,21 @@ Route::prefix('v1')->group(function () {
                         ->whereNumber('postId');
                     Route::put('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'accept'])
                         ->whereNumber('postId');
+                    // F3a: produção e aprovação (Kanban, versões, comentários, histórico). Aprovar e
+                    // pedir alterações: aprovadores da empresa, nunca em impersonation.
+                    Route::get('/editorial/board', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'board']);
+                    Route::get('/editorial/posts/{postId}/workflow', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'show'])->whereNumber('postId');
+                    Route::post('/editorial/posts/{postId}/move', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'move'])->whereNumber('postId');
+                    Route::put('/editorial/posts/{postId}/content', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'content'])->whereNumber('postId');
+                    Route::post('/editorial/posts/{postId}/comments', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'comment'])->whereNumber('postId')->middleware('throttle:30,1');
+                    Route::middleware('block_when_impersonating')->group(function () {
+                        Route::post('/editorial/posts/{postId}/approve', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'approve'])->whereNumber('postId');
+                        Route::post('/editorial/posts/{postId}/request-changes', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'requestChanges'])->whereNumber('postId');
+                        Route::post('/editorial/approvals/approve-all', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'approveAll']);
+                        Route::put('/editorial/approvers/{userId}', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'setApprover'])->whereNumber('userId');
+                    });
+                    Route::get('/editorial/workflow-settings', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'settings']);
+                    Route::put('/editorial/workflow-settings', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'updateSettings']);
                     // "Gerar ideias do mês" (IA) e aceitação ideia a ideia.
                     Route::post('/editorial/ideas', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'store'])->middleware('throttle:10,1');
                     Route::get('/editorial/ideas/{requestId}', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'show'])->whereNumber('requestId');

@@ -24,6 +24,10 @@ export type EditorialPost = {
     anchor_id: number | null;
     own_anchor_id: number | null;
     linked_title: string | null;
+    /** F3: etapa do fluxo e versão atual. */
+    stage: import("./editorialWorkflow.model").Stage;
+    version: { number: number; status: string } | null;
+    changes_requested: boolean;
     blog_id: number | null;
     // Canal "site": o artigo ligado; o estado mostrado vem dele.
     blog: { id: number; title: string; status: "draft" | "in_review" | "approved" | "published"; published_at: string | null } | null;

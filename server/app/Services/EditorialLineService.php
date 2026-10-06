@@ -207,7 +207,7 @@ class EditorialLineService
     {
         return EditorialPost::where('company_id', $company->id)
             ->whereBetween('publish_date', [$start->toDateString(), $end->toDateString()])
-            ->with(['anchor:id,title', 'ownAnchor:id,title', 'blog:id,company_id,title,status,published_at', 'creative:id,editorial_post_id,accepted_at'])
+            ->with(['anchor:id,title', 'ownAnchor:id,title', 'blog:id,company_id,title,status,published_at', 'creative:id,editorial_post_id,accepted_at', 'currentVersion:id,number,status'])
             ->orderBy('publish_date')
             ->get()
             ->map(fn (EditorialPost $p) => [
@@ -219,6 +219,10 @@ class EditorialLineService
                 'media_format'  => $p->media_format,    // formato (vocabulário F2)
                 'has_creative'  => $p->creative !== null,
                 'status'        => $p->status,
+                // F3: etapa do fluxo de produção e aprovação, e a versão atual.
+                'stage'         => $p->stage,
+                'version'       => $p->currentVersion ? ['number' => $p->currentVersion->number, 'status' => $p->currentVersion->status] : null,
+                'changes_requested' => $p->changes_requested_at !== null,
                 'channel'       => $p->channel,
                 'keyword'       => $p->keyword,
                 'anchor_id'     => $p->anchor_id,

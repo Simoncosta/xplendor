@@ -58,6 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'accepted_at' => 'datetime',
             'deactivated_at' => 'datetime',
+            'can_approve_content' => 'boolean',
             'password' => 'hashed',
         ];
     }
