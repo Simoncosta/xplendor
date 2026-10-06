@@ -47,6 +47,16 @@ return [
             'report' => false,
         ],
 
+        // Media da Linha Editorial (F3b): privado, nunca servido diretamente pelo nginx.
+        // Os ficheiros saem só por URLs assinados de curta duração (MediaFileController).
+        'media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/media'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

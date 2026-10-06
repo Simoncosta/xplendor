@@ -383,18 +383,18 @@ Route::prefix('v1')->group(function () {
                     Route::get('/editorial/calendar', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'calendar']);
                     // B2 — máquina de estados dos meses (abrir/fechar em sequência, com cascata).
                     Route::post('/editorial/months/{year}/{month}/open', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'openMonth'])
-                        ->whereNumber('year')->whereNumber('month');
+                        ->whereNumber('year')->whereNumber('month')->middleware('editorial_producer');
                     Route::post('/editorial/months/{year}/{month}/close', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'closeMonth'])
-                        ->whereNumber('year')->whereNumber('month');
+                        ->whereNumber('year')->whereNumber('month')->middleware('editorial_producer');
                     // B3a — esconder/mostrar HERDADAS (id de content_anchors) por ocorrência.
                     Route::post('/editorial/anchors/{anchorId}/hide', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'hideAnchor'])
-                        ->whereNumber('anchorId');
+                        ->whereNumber('anchorId')->middleware('editorial_producer');
                     Route::post('/editorial/anchors/{anchorId}/show', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'showAnchor'])
-                        ->whereNumber('anchorId');
+                        ->whereNumber('anchorId')->middleware('editorial_producer');
                     // B3a — criar/apagar PRÓPRIAS (id de editorial_own_anchors — espaço distinto).
-                    Route::post('/editorial/anchors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createOwnAnchor']);
+                    Route::post('/editorial/anchors', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createOwnAnchor'])->middleware('editorial_producer');
                     Route::delete('/editorial/own-anchors/{ownAnchorId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'deleteOwnAnchor'])
-                        ->whereNumber('ownAnchorId');
+                        ->whereNumber('ownAnchorId')->middleware('editorial_producer');
                     // P1 — PUBLICAÇÕES (espaço de id distinto das âncoras).
                     Route::post('/editorial/posts', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'createPost']);
                     Route::put('/editorial/posts/{postId}', [\App\Http\Controllers\Api\V1\EditorialLineController::class, 'updatePost'])
@@ -425,6 +425,13 @@ Route::prefix('v1')->group(function () {
                     });
                     Route::get('/editorial/workflow-settings', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'settings']);
                     Route::put('/editorial/workflow-settings', [\App\Http\Controllers\Api\V1\EditorialWorkflowController::class, 'updateSettings']);
+                    // F3b: media (envio em partes de 8 MB, retomável), media da versão e grelha do Instagram.
+                    Route::post('/editorial/media/uploads', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'startUpload'])->middleware('throttle:60,1');
+                    Route::get('/editorial/media/uploads/{uploadId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'uploadStatus'])->whereUuid('uploadId');
+                    Route::post('/editorial/media/uploads/{uploadId}/chunk', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'chunk'])->whereUuid('uploadId')->middleware('throttle:240,1');
+                    Route::get('/editorial/media/{assetId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'asset'])->whereNumber('assetId');
+                    Route::put('/editorial/posts/{postId}/media', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'setPostMedia'])->whereNumber('postId');
+                    Route::get('/editorial/grid', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'grid']);
                     // "Gerar ideias do mês" (IA) e aceitação ideia a ideia.
                     Route::post('/editorial/ideas', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'store'])->middleware('throttle:10,1');
                     Route::get('/editorial/ideas/{requestId}', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'show'])->whereNumber('requestId');
@@ -645,6 +652,11 @@ Route::prefix('public/quote')->group(function () {
     Route::post('/refuse', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'refuse'])->middleware('throttle:quote-public-action');
     Route::post('/request-changes', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'requestChanges'])->middleware('throttle:quote-public-action');
 });
+
+// Media da Linha Editorial (disco privado): só por URL assinado de curta duração e relativo.
+Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileController::class, 'show'])
+    ->whereNumber('asset')->where('variant', 'original|thumb|preview|poster')
+    ->middleware(['signed:relative', 'throttle:600,1'])->name('media.file');
 
 Route::get('/user', function (Request $request) {
     return $request->user();

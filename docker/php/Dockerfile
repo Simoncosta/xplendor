@@ -4,9 +4,11 @@ FROM php:8.2-fpm
 COPY --from=docker:27 /usr/local/bin/docker /usr/local/bin/docker
 
 # Instala dependências necessárias
+# ffmpeg/ffprobe: media da Linha Editorial (capa do vídeo, duração, dimensões, codec).
+# Partilhado pelos contentores php, worker e scheduler: obriga a reconstruir as imagens.
 RUN apt-get update && apt-get install -y \
     zip unzip git curl libpng-dev libonig-dev libxml2-dev libzip-dev \
-    libjpeg-dev libfreetype6-dev libwebp-dev \
+    libjpeg-dev libfreetype6-dev libwebp-dev ffmpeg \
     && docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \

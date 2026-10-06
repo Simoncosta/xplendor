@@ -25,6 +25,7 @@ import SectorChooser from "./SectorChooser";
 import CreativeModal from "./CreativeModal";
 import IdeasModal from "./IdeasModal";
 import EditorialBoard from "./EditorialBoard";
+import InstagramGrid from "./InstagramGrid";
 import PostWorkflowModal from "./PostWorkflowModal";
 import { BLOG_STATUS_STAGE, STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 
@@ -80,11 +81,13 @@ const VIEW_PARAM = "vista";
 const viewKey = () => {
     try { return `xp-editorial-view:${JSON.parse(sessionStorage.getItem("authUser") || "{}").id ?? "0"}`; } catch { return "xp-editorial-view:0"; }
 };
-const initialView = (): "calendar" | "board" => {
+type View = "calendar" | "board" | "grid";
+const VIEW_URL: Record<View, string> = { calendar: "calendario", board: "kanban", grid: "grelha" };
+const initialView = (): View => {
     const q = new URLSearchParams(window.location.search).get(VIEW_PARAM);
-    if (q === "kanban") return "board";
-    if (q === "calendario") return "calendar";
-    try { return localStorage.getItem(viewKey()) === "board" ? "board" : "calendar"; } catch { return "calendar"; }
+    const fromUrl = (Object.keys(VIEW_URL) as View[]).find((v) => VIEW_URL[v] === q);
+    if (fromUrl) return fromUrl;
+    try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "grid" ? v : "calendar"; } catch { return "calendar"; }
 };
 const initialMonth = () => {
     const m = new URLSearchParams(window.location.search).get("mes");
@@ -116,8 +119,8 @@ export default function EditorialCalendarPage() {
     const [posts, setPosts] = useState<EditorialPost[]>([]);
     const [months, setMonths] = useState<MonthState[]>([]);
 
-    const [view, setViewState] = useState<"calendar" | "board">(initialView);
-    const setView = (v: "calendar" | "board") => {
+    const [view, setViewState] = useState<View>(initialView);
+    const setView = (v: View) => {
         setViewState(v);
         try { localStorage.setItem(viewKey(), v); } catch { /* sem armazenamento: só o URL */ }
     };
@@ -211,11 +214,11 @@ export default function EditorialCalendarPage() {
         calRef.current?.getApi().gotoDate(new Date(y, m - 1, 1));
     };
 
-    // Vista e mês no URL (?vista=calendario|kanban&mes=AAAA-MM), sem criar entradas no histórico.
+    // Vista e mês no URL (?vista=calendario|kanban|grelha&mes=AAAA-MM), sem criar entradas no histórico.
     useEffect(() => {
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
-            next.set(VIEW_PARAM, view === "board" ? "kanban" : "calendario");
+            next.set(VIEW_PARAM, VIEW_URL[view]);
             if (selectedKey) next.set("mes", selectedKey);
             return next;
         }, { replace: true });
@@ -405,18 +408,23 @@ export default function EditorialCalendarPage() {
                                 <h5 className="mb-0">Linha Editorial</h5>
                                 <small className="text-muted">Ramo: <strong>{sectorName}</strong></small>
                             </div>
-                            <div className="btn-group" role="group">
+                            <div className="btn-group flex-wrap" role="group" aria-label="Vista">
                                 <Button color={view === "calendar" ? "primary" : "light"} size="sm" onClick={() => setView("calendar")}>
                                     <i className="ri-calendar-2-line me-1" />Calendário
                                 </Button>
                                 <Button color={view === "board" ? "primary" : "light"} size="sm" onClick={() => setView("board")}>
                                     <i className="ri-layout-column-line me-1" />Kanban
                                 </Button>
+                                <Button color={view === "grid" ? "primary" : "light"} size="sm" onClick={() => setView("grid")}>
+                                    <i className="ri-instagram-line me-1" />Grelha do Instagram
+                                </Button>
                             </div>
                         </CardHeader>
 
                         <CardBody>
-                            {view === "board" ? (
+                            {view === "grid" ? (
+                                <InstagramGrid companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} />
+                            ) : view === "board" ? (
                                 <>
                                     {/* TIRA DOS 12 MESES (também no Kanban) */}
                                     <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
@@ -545,7 +553,7 @@ export default function EditorialCalendarPage() {
                                     <div className="d-flex flex-wrap align-items-center gap-2 mb-2 fs-12" aria-label="Legenda das etapas">
                                         {STAGE_ORDER.map((st) => (
                                             <span key={st} className="d-inline-flex align-items-center gap-1">
-                                                <span className="rounded px-1 fw-semibold" style={{ background: STAGE_META[st].hex, color: stageTextColor(st), fontSize: "0.62rem" }}>{STAGE_META[st].short}</span>
+                                                <span className="rounded px-1 fw-semibold" title={STAGE_META[st].label} style={{ background: STAGE_META[st].hex, color: stageTextColor(st), fontSize: "0.62rem" }}>{STAGE_META[st].short}</span>
                                                 <span className="text-muted">{STAGE_META[st].label}</span>
                                             </span>
                                         ))}
@@ -594,7 +602,7 @@ export default function EditorialCalendarPage() {
                                                         <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.title}`}
                                                             style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
                                                             <i className={POST_CHANNEL_META[p.channel].icon} />
-                                                            <span className="rounded px-1 fw-semibold flex-shrink-0" style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
+                                                            <span className="rounded px-1 fw-semibold flex-shrink-0" title={sm.label} style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
                                                             <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
                                                         </div>
                                                     );

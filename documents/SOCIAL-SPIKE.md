@@ -135,7 +135,7 @@ Tom de voz, público, pilares, palavras a usar e a evitar, exemplos de publicaç
 
 ### 5.4 Media
 
-- Ficheiros num armazenamento com URL pública acessível pela Meta.
+- Ficheiros num disco privado com URLs assinados de curta duração (F3b); a cópia com URL pública acessível pela Meta só no momento de publicar (F2).
 - Validação antes de agendar: proporções, tamanhos, duração, formatos por tipo (feed, reel, story).
 - Pré-visualização por rede antes de agendar.
 
@@ -227,7 +227,12 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
 **Fatias:**
 - [x]  F3a: etapas, Kanban, versões, comentários (internos e partilhados), aprovação na app, histórico
 - [x]  Vistas: calendário com a etapa por cor e legenda, Kanban, a mesma janela de produção nas duas, vista lembrada por utilizador e no URL
-- [ ]  F3b: media (imagem, carrossel, vídeo, capa), miniaturas, pré-visualização como na rede e a vista "Grelha do Instagram" (as próximas publicações como a grelha do perfil)
+- [x]  F3b: media (imagem, carrossel, vídeo, capa), miniaturas, pré-visualização como na rede e a vista "Grelha do Instagram" (as próximas publicações como a grelha do perfil)
+    - Disco privado "media", URLs assinados de 30 minutos, vídeo servido por partes (Range). Envio em partes de 8 MB, retomável; imagens até 30 MB, vídeos até 300 MB; tipo confirmado pelo conteúdo.
+    - Fila: miniatura 320 e pré-visualização 1080 em WebP, capa e dados técnicos do vídeo (ffmpeg e ffprobe na imagem do PHP). Deduplicação por SHA-256 na empresa; quota por empresa (`MEDIA_COMPANY_QUOTA_MB`, 5 GB por omissão).
+    - Regras por formato (proporção, número de ficheiros, duração); os erros impedem o envio para revisão ou aprovação.
+    - Retenção diária às 03:40: ficheiros de versões substituídas aos 30 dias, originais publicados aos 12 meses (ficam as miniaturas), ficheiros sem uso aos 7 dias; aviso à equipa quando o disco passa dos 70%.
+    - No modo "Produção pela equipa", abrir e fechar meses e as âncoras próprias também passam a ser só da equipa.
 - [ ]  F3c: link por lote, aberturas, avisos e lembretes
 - [ ]  F3d: Publicado com o link da publicação e Análise com notas manuais
 

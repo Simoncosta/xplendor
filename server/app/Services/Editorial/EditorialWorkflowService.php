@@ -12,6 +12,7 @@ use App\Models\EditorialPostEvent;
 use App\Models\EditorialPostReview;
 use App\Models\EditorialPostVersion;
 use App\Models\ImpersonationSession;
+use App\Models\MediaAsset;
 use App\Models\User;
 use App\Services\Ai\AiText;
 use Illuminate\Database\QueryException;
@@ -182,6 +183,9 @@ class EditorialWorkflowService
             if (in_array($to, self::SEND_STAGES, true) && (! $version || trim((string) $version->caption) === '')) {
                 throw new HttpException(422, 'Escreva a legenda antes de enviar.');
             }
+            if (in_array($to, self::SEND_STAGES, true) && ($mediaErrors = self::mediaValidation($version)['errors'])) {
+                throw new HttpException(422, 'Corrija os ficheiros antes de enviar: ' . $mediaErrors[0]);
+            }
 
             $now = now();
             if ($to === EditorialPost::STAGE_CLIENT_REVIEW) {
@@ -292,49 +296,210 @@ class EditorialWorkflowService
         $data = $this->validateContent($post, $data);
 
         return DB::transaction(function () use ($post, $user, $data) {
-            $post = EditorialPost::lockForUpdate()->findOrFail($post->id);
-            if (in_array($post->stage, self::LOCKED_STAGES, true)) {
-                throw new HttpException(409, 'Uma publicação já publicada não se altera.');
+            $version = $this->draftVersion($post, $user, $data);
+            $version->forceFill($data + $this->actorFields($user))->save();
+
+            return $version->fresh();
+        });
+    }
+
+    /**
+     * Media da versão em edição: os itens por ordem (carrossel: 2 a 10, imagens e vídeos) e
+     * a capa do vídeo. Os media têm de ser da empresa. Numa versão congelada, cria a seguinte.
+     */
+    public function setMedia(EditorialPost $post, User $user, array $itemIds, ?int $coverId): EditorialPostVersion
+    {
+        $this->assertNotSite($post);
+        self::assertProducer($user, (int) $post->company_id);
+        $itemIds = array_values(array_map('intval', $itemIds));
+        if (count($itemIds) > 10) {
+            throw ValidationException::withMessages(['items' => ['No máximo 10 ficheiros por publicação.']]);
+        }
+        if (count($itemIds) !== count(array_unique($itemIds))) {
+            throw ValidationException::withMessages(['items' => ['O mesmo ficheiro aparece duas vezes.']]);
+        }
+        $ids = array_filter([...$itemIds, $coverId]);
+        $assets = MediaAsset::where('company_id', $post->company_id)->whereIn('id', $ids)->get()->keyBy('id');
+        if ($assets->count() !== count(array_unique($ids))) {
+            throw ValidationException::withMessages(['items' => ['Ficheiro não encontrado.']]);
+        }
+        if ($coverId && $assets[$coverId]->kind !== MediaAsset::IMAGE) {
+            throw ValidationException::withMessages(['cover' => ['A capa tem de ser uma imagem.']]);
+        }
+
+        return DB::transaction(function () use ($post, $user, $itemIds, $coverId) {
+            $version = $this->draftVersion($post, $user);
+            DB::table('editorial_post_version_media')->where('version_id', $version->id)->delete();
+            $now = now();
+            $rows = array_map(fn ($id, $i) => ['version_id' => $version->id, 'media_asset_id' => $id, 'position' => $i, 'role' => 'item', 'created_at' => $now, 'updated_at' => $now], $itemIds, array_keys($itemIds));
+            if ($coverId) {
+                $rows[] = ['version_id' => $version->id, 'media_asset_id' => $coverId, 'position' => 0, 'role' => 'cover', 'created_at' => $now, 'updated_at' => $now];
             }
-
-            $current = $post->currentVersion;
-            $impersonator = self::impersonatorId($user);
-            $actor = ['updated_by_user_id' => $user->id, 'updated_by_impersonator_id' => $impersonator];
-
-            if ($current && ! $current->isFrozen()) {
-                $current->forceFill($data + $actor)->save();
-
-                return $current->fresh();
+            if ($rows) {
+                DB::table('editorial_post_version_media')->insert($rows);
             }
+            $version->forceFill($this->actorFields($user))->save();
 
-            // Primeira versão (a partir do criativo aceite) ou a seguinte a uma congelada.
-            $base = $current ? $current->only(EditorialPostVersion::CONTENT_FIELDS) : $this->fromCreative($post);
-            $version = EditorialPostVersion::create($data + $base + $actor + [
-                'company_id' => $post->company_id, 'editorial_post_id' => $post->id,
-                'number' => (int) EditorialPostVersion::where('editorial_post_id', $post->id)->max('number') + 1,
-                'status' => EditorialPostVersion::DRAFT,
-                'created_by_user_id' => $user->id, 'impersonator_user_id' => $impersonator,
-            ]);
-            if ($current && in_array($current->status, [EditorialPostVersion::SENT, EditorialPostVersion::CHANGES_REQUESTED], true)) {
+            return $version->fresh();
+        });
+    }
+
+    /**
+     * A versão em edição (dentro da transação, com a publicação bloqueada): a atual se ainda
+     * não está congelada; senão a seguinte, com o texto e os media copiados. Se estava em
+     * Aprovação ou Programado, a publicação volta a Produção (nova aprovação).
+     */
+    private function draftVersion(EditorialPost $post, User $user, array $data = []): EditorialPostVersion
+    {
+        $post = EditorialPost::lockForUpdate()->findOrFail($post->id);
+        if (in_array($post->stage, self::LOCKED_STAGES, true)) {
+            throw new HttpException(409, 'Uma publicação já publicada não se altera.');
+        }
+
+        $current = $post->currentVersion;
+        if ($current && ! $current->isFrozen()) {
+            return $current;
+        }
+
+        // Primeira versão (a partir do criativo aceite) ou a seguinte a uma congelada.
+        $base = $current ? $current->only(EditorialPostVersion::CONTENT_FIELDS) : $this->fromCreative($post);
+        $impersonator = self::impersonatorId($user);
+        $version = EditorialPostVersion::create($data + $base + $this->actorFields($user) + [
+            'company_id' => $post->company_id, 'editorial_post_id' => $post->id,
+            'number' => (int) EditorialPostVersion::where('editorial_post_id', $post->id)->max('number') + 1,
+            'status' => EditorialPostVersion::DRAFT,
+            'created_by_user_id' => $user->id, 'impersonator_user_id' => $impersonator,
+        ]);
+        if ($current) {
+            $now = now();
+            $copy = DB::table('editorial_post_version_media')->where('version_id', $current->id)->get()
+                ->map(fn ($r) => ['version_id' => $version->id, 'media_asset_id' => $r->media_asset_id, 'position' => $r->position, 'role' => $r->role, 'created_at' => $now, 'updated_at' => $now])->all();
+            if ($copy) {
+                DB::table('editorial_post_version_media')->insert($copy);
+            }
+            if (in_array($current->status, [EditorialPostVersion::SENT, EditorialPostVersion::CHANGES_REQUESTED], true)) {
                 $current->forceFill(['status' => EditorialPostVersion::SUPERSEDED])->save();
             }
+        }
 
-            $post->current_version_id = $version->id;
-            $from = $post->stage;
-            if (in_array($from, [EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_SCHEDULED], true)) {
-                // Conteúdo alterado depois de enviado ou aprovado: volta a pedir aprovação.
-                $post->stage = EditorialPost::STAGE_PRODUCTION;
-                $post->stage_changed_at = now();
+        $post->current_version_id = $version->id;
+        $from = $post->stage;
+        if (in_array($from, [EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_SCHEDULED], true)) {
+            // Conteúdo alterado depois de enviado ou aprovado: volta a pedir aprovação.
+            $post->stage = EditorialPost::STAGE_PRODUCTION;
+            $post->stage_changed_at = now();
+        }
+        $post->save();
+
+        $this->event($post, $user, 'version', null, null, $version->id, 'Versão ' . $version->number . ' criada.');
+        if ($from !== $post->stage) {
+            $this->event($post, $user, 'stage', $from, $post->stage, $version->id, 'Conteúdo alterado depois de enviado: volta a Produção.');
+        }
+
+        return $version;
+    }
+
+    private function actorFields(User $user): array
+    {
+        return ['updated_by_user_id' => $user->id, 'updated_by_impersonator_id' => self::impersonatorId($user)];
+    }
+
+    // ── Validação dos media por formato ──────────────────────────────────────
+
+    /**
+     * Erros (bloqueiam o envio) e avisos dos media de uma versão, pelo formato escolhido.
+     * Sem formato escolhido, só avisa. Limites da Meta conhecidos; os contraditórios na
+     * documentação ficam pelo valor mais conservador.
+     *
+     * @return array{errors: string[], warnings: string[]}
+     */
+    public static function mediaValidation(?EditorialPostVersion $version): array
+    {
+        if (! $version) {
+            return ['errors' => [], 'warnings' => []];
+        }
+        $rows = DB::table('editorial_post_version_media')->where('version_id', $version->id)->orderBy('position')->get();
+        $assets = MediaAsset::whereIn('id', $rows->pluck('media_asset_id'))->get()->keyBy('id');
+        $items = $rows->where('role', 'item')->map(fn ($r) => $assets[$r->media_asset_id] ?? null)->filter()->values();
+        $cover = $rows->firstWhere('role', 'cover');
+        $errors = [];
+        $warnings = [];
+
+        foreach ($items as $i => $a) {
+            if ($a->status === MediaAsset::PROCESSING) {
+                $errors[] = 'O ficheiro ' . ($i + 1) . ' ainda está a ser processado.';
+            } elseif ($a->status === MediaAsset::REJECTED) {
+                $errors[] = 'O ficheiro ' . ($i + 1) . ' não é válido: ' . $a->error;
             }
-            $post->save();
+        }
 
-            $this->event($post, $user, 'version', null, null, $version->id, 'Versão ' . $version->number . ' criada.');
-            if ($from !== $post->stage) {
-                $this->event($post, $user, 'stage', $from, $post->stage, $version->id, 'Conteúdo alterado depois de enviado: volta a Produção.');
+        $format = $version->media_format;
+        if (! $format) {
+            if ($items->isNotEmpty()) {
+                $warnings[] = 'Escolha o formato para validar os ficheiros.';
             }
 
-            return $version;
-        });
+            return ['errors' => $errors, 'warnings' => $warnings];
+        }
+
+        $n = $items->count();
+        $images = $items->where('kind', MediaAsset::IMAGE)->count();
+        $videos = $items->where('kind', MediaAsset::VIDEO)->count();
+        $video = $items->firstWhere('kind', MediaAsset::VIDEO);
+        $sec = $video ? $video->duration_ms / 1000 : 0;
+        $isVertical = fn (MediaAsset $a) => $a->ratio() !== null && abs($a->ratio() - 9 / 16) < 0.02;
+        $one = fn (string $what) => $n !== 1 ? "Este formato leva {$what}." : null;
+
+        $rules = match ($format) {
+            'ig_feed_image' => [$one('uma imagem'), $videos ? 'Este formato leva uma imagem, não vídeo.' : null,
+                $n === 1 && $images && ($items[0]->ratio() < 0.8 || $items[0]->ratio() > 1.91) ? 'A proporção tem de estar entre 4:5 (vertical) e 1,91:1 (horizontal).' : null],
+            'ig_carousel' => [$n < 2 || $n > 10 ? 'O carrossel leva entre 2 e 10 ficheiros.' : null,
+                $items->first(fn ($a) => $a->kind === MediaAsset::VIDEO && $a->duration_ms > 60000) ? 'Os vídeos do carrossel podem ter até 60 segundos.' : null],
+            'ig_reel' => [$one('um vídeo'), $images ? 'Um Reel leva um vídeo.' : null,
+                $video && ($sec < 3 || $sec > 900) ? 'Um Reel tem de ter entre 3 segundos e 15 minutos.' : null],
+            'ig_story', 'fb_story' => [$one('uma imagem ou um vídeo'),
+                $video && $sec > 60 ? 'Os vídeos das Stories podem ter até 60 segundos.' : null],
+            'fb_post' => [$n > 1 ? 'Uma publicação de texto ou ligação leva no máximo uma imagem.' : null,
+                $videos ? 'Para vídeo, escolha "Vídeo" ou "Reel".' : null],
+            'fb_photos' => [$n < 1 || $n > 10 ? 'Leva entre 1 e 10 fotografias.' : null, $videos ? 'Só fotografias neste formato.' : null],
+            'fb_video' => [$one('um vídeo'), $images ? 'Este formato leva um vídeo.' : null],
+            'fb_reel' => [$one('um vídeo'), $images ? 'Um Reel leva um vídeo.' : null,
+                $video && ($sec < 3 || $sec > 90) ? 'Um Reel do Facebook tem de ter entre 3 e 90 segundos.' : null],
+            default => [],
+        };
+        $errors = array_merge($errors, array_values(array_filter($rules)));
+
+        // Avisos: proporções recomendadas e o recorte do carrossel.
+        if (in_array($format, ['ig_reel', 'ig_story', 'fb_reel', 'fb_story'], true) && $n === 1 && ! $isVertical($items[0])) {
+            $warnings[] = 'Recomendado 9:16 (vertical, 1080 x 1920). Fora disso a rede corta ou põe margens.';
+        }
+        if ($format === 'ig_carousel' && $n >= 2) {
+            $warnings[] = 'No carrossel, todos os ficheiros são cortados pela proporção do primeiro.';
+        }
+        if ($video && $video->codec && ! in_array($video->codec, ['h264', 'hevc'], true)) {
+            $warnings[] = "O vídeo usa o codec {$video->codec}; o recomendado é H.264.";
+        }
+        if ($cover && ! in_array($format, ['ig_reel', 'fb_reel', 'fb_video'], true)) {
+            $warnings[] = 'A capa só é usada em Reels e vídeos.';
+        }
+
+        return ['errors' => $errors, 'warnings' => $warnings];
+    }
+
+    /** Media de uma versão para os ecrãs (com URLs assinados). */
+    public static function presentMedia(?EditorialPostVersion $version): array
+    {
+        if (! $version) {
+            return ['items' => [], 'cover' => null];
+        }
+        $rows = DB::table('editorial_post_version_media')->where('version_id', $version->id)->orderBy('role')->orderBy('position')->get();
+        $assets = MediaAsset::whereIn('id', $rows->pluck('media_asset_id'))->get()->keyBy('id');
+        $cover = $rows->firstWhere('role', 'cover');
+
+        return [
+            'items' => $rows->where('role', 'item')->map(fn ($r) => isset($assets[$r->media_asset_id]) ? $assets[$r->media_asset_id]->present() : null)->filter()->values()->all(),
+            'cover' => $cover && isset($assets[$cover->media_asset_id]) ? $assets[$cover->media_asset_id]->present() : null,
+        ];
     }
 
     // ── Comentários ──────────────────────────────────────────────────────────
@@ -394,11 +559,13 @@ class EditorialWorkflowService
                 'stage' => $post->stage, 'format' => $post->format, 'media_format' => $post->media_format, 'keyword' => $post->keyword,
                 'changes_requested_at' => optional($post->changes_requested_at)->toIso8601String(),
                 'current_version_id' => $post->current_version_id, 'approved_version_id' => $post->approved_version_id,
+                'account_name' => $company->trade_name ?: $company->fiscal_name,
             ],
             'versions' => $versions->map(fn (EditorialPostVersion $v) => [
                 'id' => $v->id, 'number' => $v->number, 'status' => $v->status, 'frozen' => $v->isFrozen(),
                 'caption' => $v->caption, 'hashtags' => $v->hashtags ?? [], 'cta' => $v->cta, 'first_comment' => $v->first_comment,
                 'media_format' => $v->media_format,
+                'media' => self::presentMedia($v),
                 'author' => $this->label($people, $v->created_by_user_id, $v->impersonator_user_id),
                 'sent_at' => optional($v->sent_at)->toIso8601String(), 'created_at' => optional($v->created_at)->toIso8601String(),
             ])->all(),
@@ -420,6 +587,7 @@ class EditorialWorkflowService
                     'who' => $this->label($people, $e->user_id, $e->impersonator_user_id),
                     'created_at' => optional($e->created_at)->toIso8601String(),
                 ])->all(),
+            'media_validation' => self::mediaValidation($versions->firstWhere('id', $post->current_version_id)),
             'creative' => $creative ? ['caption' => $creative->caption, 'hashtags' => $creative->hashtags ?? [], 'cta' => $creative->cta, 'media_format' => $creative->media_format] : null,
             'moves' => $this->moves($post, $user, $company),
             'permissions' => [

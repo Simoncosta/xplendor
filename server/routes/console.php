@@ -164,3 +164,13 @@ Schedule::job(new \App\Jobs\PruneQuoteActivityJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Orçamentos] Job de retenção falhou no scheduler');
     });
+
+// Diário às 03:40 (Lisboa): retenção dos media da Linha Editorial e aviso de disco acima de 70%.
+Schedule::job(new \App\Jobs\MediaRetentionJob())
+    ->dailyAt('03:40')
+    ->timezone('Europe/Lisbon')
+    ->name('media-retention')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Media Retention] Job falhou no scheduler');
+    });

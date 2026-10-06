@@ -476,6 +476,23 @@ export const approveAllPosts = (companyId: number, postIds: number[]) => api.cre
 export const getWorkflowSettings = (companyId: number) => api.get(ED(companyId) + `/workflow-settings`);
 export const updateWorkflowSettings = (companyId: number, data: { content_approval_required: boolean; internal_review_required: boolean; production_mode?: "self" | "team" }) => api.put(ED(companyId) + `/workflow-settings`, data);
 export const setContentApprover = (companyId: number, userId: number, value: boolean) => api.put(ED(companyId) + `/approvers/${userId}`, { can_approve_content: value });
+// F3b: media (envio em partes de 8 MB, retomável), media da versão e grelha do Instagram.
+export const startMediaUpload = (companyId: number, file: { name: string; size: number; mime: string }) =>
+    api.create(ED(companyId) + `/media/uploads`, file, { headers: { "Content-Type": "application/json" } });
+export const getMediaUpload = (companyId: number, id: string) => api.get(ED(companyId) + `/media/uploads/${id}`);
+export const sendMediaChunk = (companyId: number, id: string, offset: number, chunk: Blob, onProgress?: (loaded: number) => void) => {
+    const fd = new FormData();
+    fd.append("offset", String(offset));
+    fd.append("chunk", chunk, "chunk");
+    return api.create(ED(companyId) + `/media/uploads/${id}/chunk`, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (e: any) => onProgress?.(e.loaded ?? 0),
+    });
+};
+export const getMediaAsset = (companyId: number, assetId: number) => api.get(ED(companyId) + `/media/${assetId}`);
+export const setPostMedia = (companyId: number, postId: number, items: number[], coverId: number | null) =>
+    api.put(ED(companyId) + `/posts/${postId}/media`, { items, cover_id: coverId });
+export const getEditorialGrid = (companyId: number) => api.get(ED(companyId) + `/grid`);
 // "Gerar ideias do mês" (IA) e aceitação ideia a ideia (cada uma vira uma publicação em rascunho).
 export const requestEditorialIdeas = (companyId: number, year: number, month: number) =>
     api.create(ED(companyId) + `/ideas`, { year, month }, { headers: { "Content-Type": "application/json" } });

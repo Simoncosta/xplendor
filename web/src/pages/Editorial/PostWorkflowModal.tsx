@@ -3,13 +3,16 @@ import { Badge, Button, Col, Input, Label, Modal, ModalBody, ModalHeader, Row, S
 import { toast } from "react-toastify";
 import { approvePost, commentOnPost, getPostWorkflow, movePostStage, requestPostChanges, savePostContent } from "helpers/laravel_helper";
 import { MEDIA_FORMATS, POST_CHANNEL_META } from "common/models/editorialPost.model";
-import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt } from "common/models/editorialWorkflow.model";
+import PostPreview from "./PostPreview";
+import VersionMediaEditor from "./VersionMediaEditor";
+import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt, mediaSrc } from "common/models/editorialWorkflow.model";
 
 /**
  * Produção de uma publicação (F3a): o conteúdo por versões, as passagens de etapa que o
  * utilizador pode fazer, aprovar ou pedir alterações (aprovadores da empresa, nunca em
  * sessão como cliente), comentários (internos só para a equipa) e o histórico com a pessoa
- * real. O servidor decide sempre o que é permitido; aqui só se mostra.
+ * real. Na F3b, os ficheiros da versão (imagem, carrossel, vídeo com capa) e a
+ * pré-visualização como na rede. O servidor decide sempre o que é permitido; aqui só se mostra.
  */
 
 const errorMessage = (e: any, fallback: string) => {
@@ -34,6 +37,7 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
     const [changesOpen, setChangesOpen] = useState(false);
     const [changesMsg, setChangesMsg] = useState("");
     const [viewVersion, setViewVersion] = useState<number | null>(null);
+    const [tab, setTab] = useState<"edit" | "preview">("edit");
 
     const apply = useCallback((d: PostWorkflow) => {
         setData(d);
@@ -57,7 +61,13 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
         }
     }, [companyId, postId, apply]);
 
-    useEffect(() => { if (isOpen) { setData(null); setComment(""); setChangesOpen(false); void load(); } }, [isOpen, load]);
+    useEffect(() => { if (isOpen) { setData(null); setComment(""); setChangesOpen(false); setTab("edit"); void load(); } }, [isOpen, load]);
+
+    // Mudar os ficheiros não deve apagar o texto por guardar.
+    const mediaChanged = (d: PostWorkflow) => {
+        if (dirty) setData(d); else apply(d);
+        onChanged();
+    };
 
     const run = async (fn: () => Promise<any>, ok: string) => {
         setBusy(true);
@@ -174,6 +184,18 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
 
                         <Row className="g-3">
                             <Col lg={7}>
+                                <div className="btn-group btn-group-sm mb-3" role="group" aria-label="Vista do conteúdo">
+                                    <Button color="primary" outline={tab !== "edit"} onClick={() => setTab("edit")}><i className="ri-edit-line me-1" />Conteúdo</Button>
+                                    <Button color="primary" outline={tab !== "preview"} onClick={() => setTab("preview")}><i className="ri-smartphone-line me-1" />Pré-visualização</Button>
+                                </div>
+                                {tab === "preview" ? (
+                                    <>
+                                        <PostPreview channel={p.channel} mediaFormat={draft.media_format || null} caption={draft.caption}
+                                            hashtags={draft.hashtags.split(/[\s,]+/).filter(Boolean)} items={current?.media.items ?? []} cover={current?.media.cover ?? null}
+                                            accountName={p.account_name || "conta"} />
+                                        <p className="text-muted fs-11 text-center mt-2 mb-0">Aproximação: a rede pode ajustar margens, cortes e o tamanho do texto.</p>
+                                    </>
+                                ) : (<>
                                 <div className="d-flex align-items-center justify-content-between mb-2">
                                     <h6 className="mb-0">
                                         Conteúdo {current ? <>· versão {current.number} <Badge color="light" className="text-body fw-normal">{VERSION_STATUS_LABEL[current.status]}</Badge></> : <span className="text-muted fw-normal">· ainda sem versão</span>}
@@ -217,6 +239,11 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                                         <Button color="success" size="sm" disabled={busy || !dirty} onClick={save}><i className="ri-save-line me-1" />Guardar</Button>
                                     </div>
                                 )}
+                                {(p.channel === "instagram" || p.channel === "facebook") && (
+                                    <VersionMediaEditor companyId={companyId} postId={p.id} media={current?.media ?? { items: [], cover: null }}
+                                        validation={data.media_validation} mediaFormat={current?.media_format ?? (draft.media_format || null)} canEdit={canEdit} onChanged={mediaChanged} />
+                                )}
+                                </>)}
 
                                 {data.versions.length > 1 && (
                                     <div className="mt-4">
@@ -235,6 +262,11 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                                                 <div style={{ whiteSpace: "pre-line" }}>{shown.caption || <em className="text-muted">Sem legenda</em>}</div>
                                                 {shown.hashtags.length > 0 && <div className="text-primary mt-1">{shown.hashtags.join(" ")}</div>}
                                                 {shown.cta && <div className="mt-1"><strong>Chamada à ação:</strong> {shown.cta}</div>}
+                                                {shown.media.items.length > 0 && (
+                                                    <div className="d-flex flex-wrap gap-1 mt-2">
+                                                        {shown.media.items.map((a) => <img key={a.id} src={mediaSrc(a.thumb_url)} alt="" className="rounded border" style={{ width: 48, height: 48, objectFit: "cover" }} />)}
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
