@@ -730,3 +730,24 @@ html[color-scheme="dark"] .xplendor-x--light {
 html:not([color-scheme]) .xplendor-x--dark {
   display: block;
 }
+
+/* Ligações legais numa linha (404): discretas, como o rodapé. */
+.xp-legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.5rem;
+  font-size: 1.3rem;
+  line-height: 1.4;
+}
+.xp-legal-links a {
+  color: var(--t-muted);
+  text-decoration: none;
+}
+.no-touch .xp-legal-links a:hover {
+  color: var(--t-bright);
+}
+.xp-legal-links--inline {
+  justify-content: flex-start;
+  margin-top: 2.4rem;
+}

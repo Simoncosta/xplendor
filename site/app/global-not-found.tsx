@@ -1,5 +1,6 @@
 import VelocityMarquee from "@/components/animation/VelocityMarquee";
 import RootDocument from "@/components/layout/RootDocument";
+import LegalLinks from "@/components/legal/LegalLinks";
 import Image from "next/image";
 import Link from "next/link";
 import { Metadata } from "next";
@@ -66,6 +67,8 @@ export default function GlobalNotFound() {
                           </span>
                           <i className="ph-bold ph-arrow-up-right" />
                         </Link>
+                        {/* Ligações legais (a 404 não tem o rodapé completo). */}
+                        <LegalLinks className="xp-legal-links--inline" />
                       </div>
                     </div>
                   </div>
@@ -113,7 +116,7 @@ export default function GlobalNotFound() {
           </div>
         </div>
         {/* Section - 404 Error End */}
-      </main>
+            </main>
       {/* Page Content End */}
     </RootDocument>
   );

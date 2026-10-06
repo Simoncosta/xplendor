@@ -120,7 +120,8 @@ export default function LegalPage({ content }: { content: LegalContent }) {
           </div>
         </div>
       </main>
-      <Footer2 />
+      {/* A versão PT aponta a alternativa para /en/…; a EN aponta para a página em português. */}
+      <Footer2 locale={content.alternate.href.startsWith("/en/") ? "pt" : "en"} />
     </>
   );
 }

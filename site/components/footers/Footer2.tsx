@@ -4,8 +4,10 @@ import socials from "@/data/socials.json";
 import AnimatedButton from "../animation/AnimatedButton";
 import SubscribeForm from "./SubscribeForm";
 import { COMPANY } from "@/data/legal/company";
+import { BRAND_LINE, LEGAL_LINKS, SiteLocale } from "@/components/legal/LegalLinks";
 
-export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
+// locale: as ligações legais e a linha da marca em português ou em inglês (páginas /en/).
+export default function Footer2({ locale = "pt" }: { text?: string; locale?: SiteLocale }) {
   return (
     <footer id="mxd-footer" className="mxd-footer">
       {/* Footer Block - Fullwidth Text Start */}
@@ -85,24 +87,20 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
                 )}
               </ul>
             </div>
-            {/* links */}
+            {/* ligações legais (todas as páginas) */}
             <div className="footer-blocks__links anim-uni-in-up">
-              <AnimatedButton
-                text="Política de Privacidade"
-                as={"a"}
-                className="btn btn-line-xsmall btn-muted slide-right anim-no-delay"
-                href="/politica-de-privacidade/"
-              >
-                <i className="ph ph-arrow-right" />
-              </AnimatedButton>
-              <AnimatedButton
-                text="Termos e condições"
-                as={"a"}
-                className="btn btn-line-xsmall btn-muted slide-right anim-no-delay"
-                href="/termos-e-condicoes/"
-              >
-                <i className="ph ph-arrow-right" />
-              </AnimatedButton>
+              {LEGAL_LINKS[locale].map((l) => (
+                <AnimatedButton
+                  key={l.href}
+                  text={l.label}
+                  as={"a"}
+                  className="btn btn-line-xsmall btn-muted slide-right anim-no-delay"
+                  href={l.href}
+                  {...(l.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  <i className={`ph ${l.external ? "ph-arrow-up-right" : "ph-arrow-right"}`} />
+                </AnimatedButton>
+              ))}
             </div>
           </div>
         </div>
@@ -222,9 +220,7 @@ export default function Footer2({ text = "rayosttudio" }: { text?: string }) {
                 <i className="ph-bold ph-copyright" />
                 {new Date().getFullYear()} XPLENDOR
               </p>
-              <p className="t-xsmall t-muted">
-                XPLENDOR é uma marca de Simon Costa, Unipessoal Lda.
-              </p>
+              <p className="t-xsmall t-muted">{BRAND_LINE[locale]}</p>
             </div>
           </div>
         </div>
