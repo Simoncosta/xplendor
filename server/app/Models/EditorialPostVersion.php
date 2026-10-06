@@ -20,20 +20,30 @@ class EditorialPostVersion extends Model
     public const CHANGES_REQUESTED = 'changes_requested';
     public const SUPERSEDED = 'superseded';
 
-    public const CONTENT_FIELDS = ['caption', 'hashtags', 'cta', 'first_comment', 'media_format'];
+    public const CONTENT_FIELDS = ['caption', 'network_captions', 'hashtags', 'cta', 'first_comment', 'media_formats'];
 
     protected $fillable = [
-        'company_id', 'editorial_post_id', 'number', 'caption', 'hashtags', 'cta', 'first_comment', 'media_format',
+        'company_id', 'editorial_post_id', 'number', 'caption', 'network_captions', 'hashtags', 'cta', 'first_comment', 'media_formats',
         'status', 'created_by_user_id', 'impersonator_user_id', 'updated_by_user_id', 'updated_by_impersonator_id',
         'sent_at', 'frozen_at',
     ];
 
     protected $casts = [
         'hashtags' => 'array',
+        'media_formats' => 'array',
+        'network_captions' => 'array',
         'number' => 'integer',
         'sent_at' => 'datetime',
         'frozen_at' => 'datetime',
     ];
+
+    /** A legenda numa rede: a própria, se houver; senão a mesma para todas. */
+    public function captionFor(string $network): ?string
+    {
+        $own = $this->network_captions[$network] ?? null;
+
+        return is_string($own) && trim($own) !== '' ? $own : $this->caption;
+    }
 
     public function post(): BelongsTo
     {

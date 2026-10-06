@@ -59,7 +59,7 @@ class EditorialIdeasController extends Controller
         $data = $request->validate([
             'index'        => ['required', 'integer', 'min:0', 'max:' . (EditorialIdeasAiService::MAX_IDEAS - 1)],
             'publish_date' => ['nullable', 'date'],
-            'channel'      => ['nullable', Rule::in(EditorialPost::CHANNELS)],
+            'channel'      => ['nullable', Rule::in([...EditorialPost::NETWORKS, EditorialPost::CHANNEL_SITE])],
         ]);
 
         $company = Company::with('contentSector')->findOrFail($companyId);

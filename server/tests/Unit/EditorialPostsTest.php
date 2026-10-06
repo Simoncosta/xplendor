@@ -84,7 +84,7 @@ class EditorialPostsTest extends TestCase
         $p = $cal['posts'][0];
         $this->assertSame('Post de Natal', $p['title']);
         $this->assertSame('Carrossel', $p['format']);
-        $this->assertSame('instagram', $p['channel']);
+        $this->assertSame(['social', ['instagram']], [$p['channel'], array_column($p['networks'], 'network')]);
         $this->assertSame('natal', $p['keyword']);
         $this->assertSame($this->anchorDez->id, $p['anchor_id']);
         $this->assertNull($p['own_anchor_id']);

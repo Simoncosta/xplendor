@@ -211,7 +211,7 @@ class EditorialIdeasTest extends TestCase
         // 1. Como veio, mas noutra data.
         $r = $accept(['index' => $idx('Menu de Passagem de Ano em preço fechado'), 'publish_date' => '2026-12-14'])->assertOk();
         $post = EditorialPost::findOrFail($r->json('data.post_id'));
-        $this->assertSame(['rascunho', 'instagram', '2026-12-14', 'ig_carousel', 'Carrossel'], [$post->status, $post->channel, $post->publish_date->toDateString(), $post->media_format, $post->format]);
+        $this->assertSame(['rascunho', 'social', ['instagram'], '2026-12-14', 'ig_carousel', 'Carrossel'], [$post->status, $post->channel, $post->networkNames(), $post->publish_date->toDateString(), $post->media_format, $post->format]);
         $this->assertNotNull($post->anchor_id);
         $this->assertSame($post->id, collect($r->json('data.ideas.result.ideas'))->firstWhere('title', 'Menu de Passagem de Ano em preço fechado')['accepted_post_id']);
 
@@ -220,7 +220,7 @@ class EditorialIdeasTest extends TestCase
 
         // 3. Site → Instagram: tipo por omissão; Instagram → Site: "Artigo" e sem formato.
         $toIg = EditorialPost::findOrFail($accept(['index' => $idx('Como escolher o vinho para a consoada'), 'channel' => 'instagram'])->assertOk()->json('data.post_id'));
-        $this->assertSame(['instagram', 'Dica de expert'], [$toIg->channel, $toIg->format]);
+        $this->assertSame(['social', ['instagram'], 'Dica de expert'], [$toIg->channel, $toIg->networkNames(), $toIg->format]);
         $toSite = EditorialPost::findOrFail($accept(['index' => $idx('Bastidores da cozinha no Natal'), 'channel' => 'site'])->assertOk()->json('data.post_id'));
         $this->assertSame(['site', 'Artigo', null], [$toSite->channel, $toSite->format, $toSite->media_format]);
 

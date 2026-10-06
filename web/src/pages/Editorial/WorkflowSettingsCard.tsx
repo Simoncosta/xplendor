@@ -3,6 +3,7 @@ import { Card, CardBody, CardHeader, Input, Label, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getWorkflowSettings, setContentApprover, updateWorkflowSettings } from "helpers/laravel_helper";
 import { PRODUCTION_MODE_LABEL, ProductionMode, WorkflowSettings } from "common/models/editorialWorkflow.model";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * Definições do fluxo de produção e aprovação da empresa (F3a): aprovação do cliente e
@@ -65,10 +66,9 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
             <CardBody>
                 <div className="mb-3">
                     <Label className="fw-semibold mb-1" for="wf-mode">Modo de produção</Label>
-                    <Input type="select" id="wf-mode" value={data.production_mode} disabled={!data.can_change_mode || busy}
-                        onChange={(e) => save({ production_mode: e.target.value as ProductionMode })}>
-                        {(Object.keys(PRODUCTION_MODE_LABEL) as ProductionMode[]).map((m) => <option key={m} value={m}>{PRODUCTION_MODE_LABEL[m]}</option>)}
-                    </Input>
+                    <XSelect id="wf-mode" value={data.production_mode} disabled={!data.can_change_mode || busy}
+                        onChange={(m) => save({ production_mode: m as ProductionMode })}
+                        options={(Object.keys(PRODUCTION_MODE_LABEL) as ProductionMode[]).map((m) => ({ value: m, label: PRODUCTION_MODE_LABEL[m] }))} />
                     <div className="form-text">
                         {data.production_mode === "team"
                             ? "A equipa XPLENDOR produz. Os utilizadores da empresa comentam, aprovam e pedem alterações, mas não editam o conteúdo nem mudam etapas."

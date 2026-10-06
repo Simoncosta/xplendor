@@ -28,7 +28,7 @@ class EditorialPublishingWatchJob implements ShouldQueue
         $alerted = 0;
         $today = now(EditorialPost::TIMEZONE)->toDateString();
         EditorialPost::where('stage', EditorialPost::STAGE_SCHEDULED)->where('channel', '!=', 'site')
-            ->whereNull('overdue_alerted_at')->whereDate('publish_date', '<=', $today)
+            ->whereNull('overdue_alerted_at')->whereDate('publish_date', '<=', $today)->with('networks')
             ->orderBy('id')->chunkById(200, function ($posts) use (&$alerted, $notifier) {
                 foreach ($posts as $post) {
                     if (! $post->isOverdue()) {
@@ -40,7 +40,8 @@ class EditorialPublishingWatchJob implements ShouldQueue
                     }
                     $when = $post->dueAt()->setTimezone(EditorialPost::TIMEZONE)->format('d/m/Y' . ($post->publish_time ? ' H:i' : ''));
                     $notifier->notifyCompany((int) $post->company_id, 'urgent', "Publicação atrasada: {$post->title}",
-                        "Estava programada para {$when} e ainda não foi marcada como publicada.", 'high',
+                        "Estava programada para {$when} e falta marcar como publicada em: "
+                            . $post->networks->filter(fn ($n) => $n->state() === 'pending')->map(fn ($n) => \App\Services\Editorial\NetworkFormats::NETWORK_LABELS[$n->network])->implode(' e ') . '.', 'high',
                         '/editorial?vista=kanban&mes=' . $post->publish_date->format('Y-m'));
                     $alerted++;
                 }

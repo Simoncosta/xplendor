@@ -9,9 +9,9 @@ import { ResultRow, STAGE_META, fmtInt, fmtRate } from "common/models/editorialW
  * para cruzar a estratégia (formato, pilar) com os resultados. Ordenável por coluna.
  */
 
-type Key = "date" | "channel" | "format" | "pillar" | "reach" | "engagement_rate";
+type Key = "date" | "network" | "format" | "pillar" | "reach" | "engagement_rate";
 const COLUMNS: { key: Key; label: string; numeric?: boolean }[] = [
-    { key: "date", label: "Data" }, { key: "channel", label: "Canal" }, { key: "format", label: "Formato" },
+    { key: "date", label: "Data" }, { key: "network", label: "Rede" }, { key: "format", label: "Formato" },
     { key: "pillar", label: "Pilar" }, { key: "reach", label: "Alcance", numeric: true }, { key: "engagement_rate", label: "Envolvimento", numeric: true },
 ];
 const formatLabel = (r: ResultRow) => {
@@ -66,13 +66,13 @@ export default function MonthResults({ companyId, month, monthLabel, onOpen }: {
                         <thead className="table-light"><tr><th scope="col">Publicação</th>{COLUMNS.map(head)}</tr></thead>
                         <tbody>
                             {sorted.map((r) => (
-                                <tr key={r.id}>
+                                <tr key={r.key}>
                                     <td>
                                         <button type="button" className="btn btn-link p-0 fs-13 text-start" onClick={() => onOpen(r.id)}>{r.title}</button>
                                         <div className="text-muted fs-11">{STAGE_META[r.stage].label}{r.published_url && <> · <a href={r.published_url} target="_blank" rel="noreferrer noopener">ver na rede</a></>}</div>
                                     </td>
                                     <td className="text-nowrap">{dmy(r.date)}</td>
-                                    <td><i className={`${POST_CHANNEL_META[r.channel].icon} me-1`} />{POST_CHANNEL_META[r.channel].label}</td>
+                                    <td><i className={`${POST_CHANNEL_META[r.network].icon} me-1`} />{POST_CHANNEL_META[r.network].label}</td>
                                     <td>{formatLabel(r)}</td>
                                     <td>{r.pillar ?? <span className="text-muted">Sem pilar</span>}</td>
                                     <td className="text-end">{r.reach === null ? <span className="text-muted">Por registar</span> : fmtInt(r.reach)}</td>

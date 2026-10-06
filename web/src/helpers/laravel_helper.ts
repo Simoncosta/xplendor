@@ -495,7 +495,10 @@ export const setPostMedia = (companyId: number, postId: number, items: number[],
 export const getEditorialGrid = (companyId: number) => api.get(ED(companyId) + `/grid`);
 // F3d: para publicar hoje, marcar como publicada, resultados à mão e resultados do mês.
 export const getEditorialToday = (companyId: number) => api.get(ED(companyId) + `/today`);
-export const markPostPublished = (companyId: number, postId: number, data: { url: string; published_at: string }) =>
+export const getEditorialFormats = (companyId: number) => api.get(ED(companyId) + `/formats`);
+export const skipPostNetwork = (companyId: number, postId: number, data: { network: string; reason: string }) =>
+    api.create(ED(companyId) + `/posts/${postId}/skip-network`, data, { headers: { "Content-Type": "application/json" } });
+export const markPostPublished = (companyId: number, postId: number, data: { network: string; url: string; published_at: string }) =>
     api.create(ED(companyId) + `/posts/${postId}/published`, data, { headers: { "Content-Type": "application/json" } });
 export const savePostResults = (companyId: number, postId: number, data: Record<string, unknown>) => api.put(ED(companyId) + `/posts/${postId}/results`, data);
 export const getEditorialResults = (companyId: number, month: string) => api.get(ED(companyId) + `/results`, { month });

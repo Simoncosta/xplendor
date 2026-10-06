@@ -139,6 +139,45 @@ Tom de voz, público, pilares, palavras a usar e a evitar, exemplos de publicaç
 - Validação antes de agendar: proporções, tamanhos, duração, formatos por tipo (feed, reel, story).
 - Pré-visualização por rede antes de agendar.
 
+### 5.6 Formatos por rede (regra única)
+
+Uma publicação pode ir para o Instagram e/ou o Facebook, com um só conteúdo e uma só aprovação; cada rede tem o seu formato. A regra vive num só sítio (`App\Services\Editorial\NetworkFormats`) e o ecrã recebe-a pela API (`GET /editorial/formats`), para mostrar os mesmos avisos e erros antes de gravar.
+
+**Formatos de cada rede.** Instagram: imagem (feed), carrossel, Reel, Story. Facebook: publicação (texto ou ligação), fotografias, vídeo, Reel, Story. Um formato que não existe na rede é **erro**.
+
+**Regras dos ficheiros por formato (erro quando falham):**
+
+| Formato | Ficheiros |
+|---|---|
+| Imagem (feed) do Instagram | uma imagem, proporção entre 4:5 e 1,91:1 |
+| Carrossel do Instagram | 2 a 10 ficheiros, imagens e **vídeos até 60 s** (vídeos como itens do carrossel, nunca Reels) |
+| Reel do Instagram | um vídeo, 3 s a 15 min |
+| Story (Instagram e Facebook) | uma imagem ou um vídeo até 60 s |
+| Publicação do Facebook | no máximo uma imagem; sem vídeo |
+| Fotografias do Facebook | 1 a 10 **só imagens** |
+| Vídeo do Facebook | um vídeo |
+| Reel do Facebook | um vídeo, 3 a 90 s |
+
+**Entre redes (Instagram com Facebook):**
+
+| Instagram | Facebook | Resultado |
+|---|---|---|
+| Carrossel de imagens | Fotografias | aviso: no Facebook sai como uma publicação com várias fotografias (não desliza) |
+| Carrossel com vídeos | Fotografias | **erro** (regra das fotografias): o Facebook não junta vídeos com fotografias |
+| Imagem (feed) | Publicação | aviso: a imagem acompanha uma publicação de texto |
+| Imagem (feed) | Fotografias | igual |
+| Reel | Reel | aviso: o Reel do Facebook tem até 90 s |
+| Reel | Vídeo | aviso: sai como vídeo normal, não como Reel |
+| Story | Story | igual |
+| Story | Publicação | **erro**: sem equivalente |
+| Carrossel | Vídeo ou Reel | **erro**: sem equivalente |
+| Reel | Fotografias | **erro**: sem equivalente |
+| Imagem (feed) | Vídeo ou Reel | **erro**: sem equivalente |
+
+Ao juntar uma rede, o ecrã sugere o formato mais próximo (por exemplo, carrossel para fotografias, Reel para Reel).
+
+**Contradição resolvida.** O desenho dizia "Reels não entram no carrossel" (F0, 1.9 e F2, 3.6) e o código aceitava vídeos no carrossel. As duas coisas são verdade: o carrossel do Instagram aceita **vídeos como itens** (até 60 s), mas não aceita Reels; e a publicação com várias fotografias do Facebook só aceita imagens. Por isso um carrossel com vídeos não tem equivalente no Facebook.
+
 ### 5.5 Segurança e RGPD
 
 - Tenancy com delegação (5.1), testada.
@@ -243,6 +282,11 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
     - "Para publicar hoje" na Linha Editorial e aviso às 08:30 (Lisboa) a quem produz. Programadas cuja data e hora passaram ficam "Atrasada" (calendário, Kanban, janela) e geram um aviso, uma vez. Hora prevista e pilar na publicação.
     - Marcar como publicada com o link (instagram.com ou facebook.com, conforme a rede) e a hora real; quem produz (no modo da equipa, só a equipa), com a pessoa real registada. A passagem simples para Publicado deixou de existir.
     - Análise automática 7 dias depois de publicada, ou à mão. Números à mão com a data da medição e a origem (`editorial_post_metrics.source`: manual agora, meta na F6); taxa de envolvimento (interações ÷ alcance × 100) só com alcance; notas "O que funcionou" e "O que mudar"; alcance e taxa no cartão da Análise; vista "Resultados" do mês, ordenável.
+
+- [x]  Multicanal e polish de UX (antes do deploy)
+    - Uma publicação vai para o Instagram e/ou o Facebook com um só conteúdo e uma só aprovação; legenda própria opcional no Facebook ("Usar uma legenda diferente no Facebook"). As redes ficam em `editorial_post_networks` (uma linha por rede: formato, link, hora real, quem marcou, ou "Não publicar nesta rede" com o motivo); cada versão congela os formatos (`media_formats`). Na F2, cada linha dá uma publicação na rede.
+    - "Publicado" só com as redes todas publicadas ou dispensadas ("1 de 2 publicadas"); "Não publicar nesta rede" não pede nova aprovação; a Análise conta 7 dias a partir da última rede. Números por rede; resultados com uma linha por rede.
+    - Um só painel da publicação em todas as vistas (Planeamento, Conteúdo, Aprovação, Publicação e Análise); ao criar, só o essencial. Uma ação principal ("Nova publicação"), "Gerar ideias" secundária e o resto em "Mais"; vistas em controlo segmentado (Calendário, Kanban, Feed, Resultados); seletor do mês; "Para publicar hoje" recolhível. Feed com a grelha do Instagram e a cronologia do Facebook. React-select em todos os campos de escolha. "Como funciona" redesenhado.
 
 ### F4 · Vistas: calendário, kanban e lista
 

@@ -10,6 +10,7 @@ use App\Models\EditorialPostComment;
 use App\Models\EditorialPostCreative;
 use App\Models\EditorialPostEvent;
 use App\Models\EditorialPostReview;
+use App\Models\EditorialPostNetwork;
 use App\Models\EditorialPostVersion;
 use App\Models\ImpersonationSession;
 use App\Models\MediaAsset;
@@ -184,19 +185,20 @@ class EditorialWorkflowService
             if (in_array($to, self::SEND_STAGES, true) && (! $version || trim((string) $version->caption) === '')) {
                 throw new HttpException(422, 'Escreva a legenda antes de enviar.');
             }
-            if (in_array($to, self::SEND_STAGES, true) && ($mediaErrors = self::mediaValidation($version)['errors'])) {
+            if (in_array($to, self::SEND_STAGES, true) && ($mediaErrors = self::mediaValidation($version, self::currentFormats($post))['errors'])) {
                 throw new HttpException(422, 'Corrija os ficheiros antes de enviar: ' . $mediaErrors[0]);
             }
 
             $now = now();
             if ($to === EditorialPost::STAGE_CLIENT_REVIEW) {
                 // Congelada no envio: o cliente aprova exatamente esta versão.
-                $version->forceFill(['status' => EditorialPostVersion::SENT, 'sent_at' => $now, 'frozen_at' => $version->frozen_at ?? $now])->save();
+                // As redes e os formatos ficam congelados com a versão: a aprovação cobre-os.
+                $version->forceFill(['status' => EditorialPostVersion::SENT, 'sent_at' => $now, 'frozen_at' => $version->frozen_at ?? $now, 'media_formats' => self::currentFormats($post)])->save();
                 $post->changes_requested_at = null;
             }
             if ($to === EditorialPost::STAGE_SCHEDULED) {
                 // Sem aprovação do cliente: a versão fica congelada e é a aprovada.
-                $version->forceFill(['status' => EditorialPostVersion::APPROVED, 'frozen_at' => $version->frozen_at ?? $now])->save();
+                $version->forceFill(['status' => EditorialPostVersion::APPROVED, 'frozen_at' => $version->frozen_at ?? $now, 'media_formats' => self::currentFormats($post)])->save();
                 $post->approved_version_id = $version->id;
             }
 
@@ -366,13 +368,104 @@ class EditorialWorkflowService
         $this->assertNotSite($post);
         self::assertProducer($user, (int) $post->company_id);
         $data = $this->validateContent($post, $data);
+        $formats = $data['_formats'] ?? null;
+        unset($data['_formats']);
 
-        return DB::transaction(function () use ($post, $user, $data) {
+        return DB::transaction(function () use ($post, $user, $data, $formats) {
             $version = $this->draftVersion($post, $user, $data);
             $version->forceFill($data + $this->actorFields($user))->save();
+            if ($formats !== null) {
+                foreach ($formats as $network => $format) {
+                    EditorialPostNetwork::where('editorial_post_id', $post->id)->where('network', $network)->update(['media_format' => $format]);
+                }
+            }
 
             return $version->fresh();
         });
+    }
+
+    /**
+     * Redes e formatos da publicação (planeamento): acrescenta, tira (as já publicadas
+     * ficam) e muda formatos. Numa versão congelada (enviada ou aprovada), a mudança é de
+     * conteúdo: nasce a versão seguinte e volta a pedir aprovação.
+     *
+     * @param  array<string, ?string>  $networks  rede → formato, pela ordem
+     */
+    public function setNetworks(EditorialPost $post, ?User $user, array $networks): void
+    {
+        $this->assertNotSite($post);
+        $networks = self::validNetworks($networks);
+        $current = EditorialPostNetwork::where('editorial_post_id', $post->id)->orderBy('position')->orderBy('id')->get()->keyBy('network');
+        $same = array_keys($networks) === $current->keys()->all()
+            && collect($networks)->every(fn ($f, $n) => ($current[$n]->media_format ?? null) === $f);
+        if ($same) {
+            return;
+        }
+        if (in_array($post->stage, self::LOCKED_STAGES, true)) {
+            throw new HttpException(409, 'Depois de publicada, as redes não mudam. Use "Não publicar nesta rede".');
+        }
+        if ($current->contains(fn ($n) => $n->published_at && ! array_key_exists($n->network, $networks))) {
+            throw new HttpException(409, 'Uma rede onde já foi publicada não se retira.');
+        }
+
+        DB::transaction(function () use ($post, $user, $networks, $current) {
+            $version = $post->currentVersion;
+            if ($user && $version && $version->isFrozen()) {
+                $this->draftVersion($post, $user); // mudar redes ou formatos depois de enviada pede nova aprovação
+            }
+            EditorialPostNetwork::where('editorial_post_id', $post->id)->whereNotIn('network', array_keys($networks))->delete();
+            $i = 0;
+            foreach ($networks as $network => $format) {
+                EditorialPostNetwork::updateOrCreate(['editorial_post_id' => $post->id, 'network' => $network],
+                    ['company_id' => $post->company_id, 'media_format' => $format, 'position' => $i++]);
+            }
+            $post->unsetRelation('networks');
+        });
+    }
+
+    /**
+     * Rede → formato, validado pela regra única (NetworkFormats): pelo menos uma rede, só as
+     * redes conhecidas, formatos da própria rede e pares impossíveis recusados.
+     *
+     * @return array<string, ?string>
+     */
+    public static function validNetworks(array $networks): array
+    {
+        $out = [];
+        foreach ($networks as $network => $format) {
+            if (is_int($network)) { // lista simples: ['instagram', 'facebook']
+                [$network, $format] = [$format, null];
+            }
+            if (! in_array($network, EditorialPost::NETWORKS, true)) {
+                throw ValidationException::withMessages(['networks' => ['Rede desconhecida.']]);
+            }
+            $format = $format ?: null;
+            if (! NetworkFormats::exists($network, $format)) {
+                throw ValidationException::withMessages(['networks' => [NetworkFormats::notInNetwork($network, (string) $format)]]);
+            }
+            $out[$network] = $format;
+        }
+        if ($out === []) {
+            throw ValidationException::withMessages(['networks' => ['Escolha pelo menos uma rede.']]);
+        }
+        if ($errors = NetworkFormats::crossCheck($out)['errors']) {
+            throw ValidationException::withMessages(['networks' => $errors]);
+        }
+
+        return $out;
+    }
+
+    /** Rede → formato das redes a publicar (as dispensadas ficam de fora). @return array<string, ?string> */
+    public static function currentFormats(EditorialPost $post): array
+    {
+        return EditorialPostNetwork::where('editorial_post_id', $post->id)->whereNull('skipped_at')->orderBy('position')->orderBy('id')
+            ->get()->mapWithKeys(fn ($n) => [$n->network => $n->media_format])->all();
+    }
+
+    /** Os formatos que valem para uma versão: os congelados com ela, ou os atuais (rascunho). */
+    public static function formatsFor(EditorialPost $post, ?EditorialPostVersion $version): array
+    {
+        return $version && $version->isFrozen() && ! empty($version->media_formats) ? $version->media_formats : self::currentFormats($post);
     }
 
     /**
@@ -485,10 +578,11 @@ class EditorialWorkflowService
      *
      * @return array{errors: string[], warnings: string[]}
      */
-    public static function mediaValidation(?EditorialPostVersion $version): array
+    public static function mediaValidation(?EditorialPostVersion $version, array $formats = []): array
     {
+        $empty = ['errors' => [], 'warnings' => [], 'by_network' => []];
         if (! $version) {
-            return ['errors' => [], 'warnings' => []];
+            return $empty;
         }
         $rows = DB::table('editorial_post_version_media')->where('version_id', $version->id)->orderBy('position')->get();
         $assets = MediaAsset::whereIn('id', $rows->pluck('media_asset_id'))->get()->keyBy('id');
@@ -504,61 +598,34 @@ class EditorialWorkflowService
                 $errors[] = 'O ficheiro ' . ($i + 1) . ' não é válido: ' . $a->error;
             }
         }
-
-        $format = $version->media_format;
-        if (! $format) {
-            if ($items->isNotEmpty()) {
-                $warnings[] = 'Escolha o formato para validar os ficheiros.';
-            }
-
-            return ['errors' => $errors, 'warnings' => $warnings];
-        }
-
-        $n = $items->count();
-        $images = $items->where('kind', MediaAsset::IMAGE)->count();
-        $videos = $items->where('kind', MediaAsset::VIDEO)->count();
         $video = $items->firstWhere('kind', MediaAsset::VIDEO);
-        $sec = $video ? $video->duration_ms / 1000 : 0;
-        $isVertical = fn (MediaAsset $a) => $a->ratio() !== null && abs($a->ratio() - 9 / 16) < 0.02;
-        $one = fn (string $what) => $n !== 1 ? "Este formato leva {$what}." : null;
-
-        $rules = match ($format) {
-            'ig_feed_image' => [$one('uma imagem'), $videos ? 'Este formato leva uma imagem, não vídeo.' : null,
-                $n === 1 && $images && ($items[0]->ratio() < 0.8 || $items[0]->ratio() > 1.91) ? 'A proporção tem de estar entre 4:5 (vertical) e 1,91:1 (horizontal).' : null],
-            'ig_carousel' => [$n < 2 || $n > 10 ? 'O carrossel leva entre 2 e 10 ficheiros.' : null,
-                $items->first(fn ($a) => $a->kind === MediaAsset::VIDEO && $a->duration_ms > 60000) ? 'Os vídeos do carrossel podem ter até 60 segundos.' : null],
-            'ig_reel' => [$one('um vídeo'), $images ? 'Um Reel leva um vídeo.' : null,
-                $video && ($sec < 3 || $sec > 900) ? 'Um Reel tem de ter entre 3 segundos e 15 minutos.' : null],
-            'ig_story', 'fb_story' => [$one('uma imagem ou um vídeo'),
-                $video && $sec > 60 ? 'Os vídeos das Stories podem ter até 60 segundos.' : null],
-            'fb_post' => [$n > 1 ? 'Uma publicação de texto ou ligação leva no máximo uma imagem.' : null,
-                $videos ? 'Para vídeo, escolha "Vídeo" ou "Reel".' : null],
-            'fb_photos' => [$n < 1 || $n > 10 ? 'Leva entre 1 e 10 fotografias.' : null, $videos ? 'Só fotografias neste formato.' : null],
-            'fb_video' => [$one('um vídeo'), $images ? 'Este formato leva um vídeo.' : null],
-            'fb_reel' => [$one('um vídeo'), $images ? 'Um Reel leva um vídeo.' : null,
-                $video && ($sec < 3 || $sec > 90) ? 'Um Reel do Facebook tem de ter entre 3 e 90 segundos.' : null],
-            default => [],
-        };
-        $errors = array_merge($errors, array_values(array_filter($rules)));
-
-        // Avisos: proporções recomendadas e o recorte do carrossel.
-        if (in_array($format, ['ig_reel', 'ig_story', 'fb_reel', 'fb_story'], true) && $n === 1 && ! $isVertical($items[0])) {
-            $warnings[] = 'Recomendado 9:16 (vertical, 1080 x 1920). Fora disso a rede corta ou põe margens.';
-        }
-        if ($format === 'ig_carousel' && $n >= 2) {
-            $warnings[] = 'No carrossel, todos os ficheiros são cortados pela proporção do primeiro.';
-        }
         if ($video && $video->codec && ! in_array($video->codec, ['h264', 'hevc'], true)) {
             $warnings[] = "O vídeo usa o codec {$video->codec}; o recomendado é H.264.";
         }
-        if ($cover && ! in_array($format, ['ig_reel', 'fb_reel', 'fb_video'], true)) {
-            $warnings[] = 'A capa só é usada em Reels e vídeos.';
-        }
 
-        return ['errors' => $errors, 'warnings' => $warnings];
+        // Cada rede pelo seu formato (regra única: NetworkFormats); com duas redes, o nome da rede à frente.
+        $byNetwork = [];
+        $many = count($formats) > 1;
+        foreach ($formats as $network => $format) {
+            $label = NetworkFormats::NETWORK_LABELS[$network] ?? $network;
+            if (! $format) {
+                $byNetwork[$network] = ['errors' => [], 'warnings' => $items->isNotEmpty() ? ["Escolha o formato no {$label} para validar os ficheiros."] : []];
+            } else {
+                $byNetwork[$network] = ['errors' => NetworkFormats::rules($format, $items), 'warnings' => NetworkFormats::warnings($format, $items, (bool) $cover)];
+            }
+            foreach (['errors', 'warnings'] as $k) {
+                foreach ($byNetwork[$network][$k] as $m) {
+                    ${$k}[] = $many ? "{$label}: {$m}" : $m;
+                }
+            }
+        }
+        $cross = NetworkFormats::crossCheck($formats);
+        $errors = array_merge($errors, $cross['errors']);
+        $warnings = array_merge($warnings, $cross['warnings']);
+
+        return ['errors' => array_values(array_unique($errors)), 'warnings' => array_values(array_unique($warnings)), 'by_network' => $byNetwork];
     }
 
-    /** Media de uma versão para os ecrãs (com URLs assinados). */
     public static function presentMedia(?EditorialPostVersion $version): array
     {
         if (! $version) {
@@ -634,6 +701,11 @@ class EditorialWorkflowService
             'post' => [
                 'id' => $post->id, 'title' => $post->title, 'channel' => $post->channel, 'publish_date' => $post->publish_date->toDateString(),
                 'stage' => $post->stage, 'format' => $post->format, 'media_format' => $post->media_format, 'keyword' => $post->keyword,
+                // Multicanal: as redes escolhidas, o formato e o estado de publicação de cada uma.
+                'networks' => $this->presentNetworks($post, $people),
+                'anchor_id' => $post->anchor_id, 'own_anchor_id' => $post->own_anchor_id, 'blog_id' => $post->blog_id,
+                'blog' => $post->blog && (int) $post->blog->company_id === (int) $post->company_id
+                    ? ['id' => $post->blog->id, 'title' => $post->blog->title, 'status' => $post->blog->status] : null,
                 'changes_requested_at' => optional($post->changes_requested_at)->toIso8601String(),
                 'current_version_id' => $post->current_version_id, 'approved_version_id' => $post->approved_version_id,
                 'account_name' => $company->trade_name ?: $company->fiscal_name,
@@ -642,7 +714,7 @@ class EditorialWorkflowService
             'versions' => $versions->map(fn (EditorialPostVersion $v) => [
                 'id' => $v->id, 'number' => $v->number, 'status' => $v->status, 'frozen' => $v->isFrozen(),
                 'caption' => $v->caption, 'hashtags' => $v->hashtags ?? [], 'cta' => $v->cta, 'first_comment' => $v->first_comment,
-                'media_format' => $v->media_format,
+                'media_formats' => $v->media_formats ?? [], 'network_captions' => $v->network_captions ?? [],
                 'media' => self::presentMedia($v),
                 'author' => $this->label($people, $v->created_by_user_id, $v->impersonator_user_id),
                 'sent_at' => optional($v->sent_at)->toIso8601String(), 'created_at' => optional($v->created_at)->toIso8601String(),
@@ -665,21 +737,22 @@ class EditorialWorkflowService
                     'who' => $this->label($people, $e->user_id, $e->impersonator_user_id),
                     'created_at' => optional($e->created_at)->toIso8601String(),
                 ])->all(),
-            'media_validation' => self::mediaValidation($versions->firstWhere('id', $post->current_version_id)),
+            'media_validation' => self::mediaValidation($cv = $versions->firstWhere('id', $post->current_version_id), self::formatsFor($post, $cv)),
             'creative' => $creative ? ['caption' => $creative->caption, 'hashtags' => $creative->hashtags ?? [], 'cta' => $creative->cta, 'media_format' => $creative->media_format] : null,
             'moves' => $this->moves($post, $user, $company),
             // F3d: publicação (link, hora real e quem marcou) e resultados à mão.
             'publishing' => [
-                'url' => $post->published_url,
-                'published_at' => optional($post->published_at)->toIso8601String(),
-                'by' => $post->published_by_user_id ? $this->label($people + User::whereIn('id', array_filter([$post->published_by_user_id, $post->published_by_impersonator_id]))->get(['id', 'name', 'role'])->keyBy('id')->all(),
-                    $post->published_by_user_id, $post->published_by_impersonator_id) : null,
                 'due_at' => $post->dueAt()->toIso8601String(),
+                'published_count' => $post->networks->filter(fn ($n) => $n->published_at)->count(),
+                'active_count' => $post->networks->filter(fn ($n) => ! $n->skipped_at)->count(),
                 'can_mark' => self::isProducer($user, (int) $post->company_id) && $post->channel !== 'site'
                     && in_array($post->stage, [EditorialPost::STAGE_SCHEDULED, EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true),
             ],
-            'results' => $post->channel !== 'site' && in_array($post->stage, [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true)
-                ? EditorialPublishingService::metrics($post) + [
+            // Resultados por rede publicada; as notas de aprendizagem são da publicação.
+            'results' => $post->channel !== 'site' && $post->networks->contains(fn ($n) => $n->published_at)
+                ? [
+                    'networks' => $post->networks->filter(fn ($n) => $n->published_at)
+                        ->mapWithKeys(fn ($n) => [$n->network => EditorialPublishingService::metrics($post, null, $n->network)])->all(),
                     'worked' => $post->analysis_worked, 'change' => $post->analysis_change,
                     'can_record' => self::isProducer($user, (int) $post->company_id),
                 ] : null,
@@ -753,8 +826,12 @@ class EditorialWorkflowService
             'hashtags.*'    => ['nullable', 'string', 'max:60'],
             'cta'           => ['nullable', 'string', 'max:300'],
             'first_comment' => ['nullable', 'string', 'max:2200'],
-            'media_format'  => ['nullable', Rule::in(EditorialPost::MEDIA_FORMATS[$post->channel] ?? [])],
-        ], ['media_format.in' => 'Escolha um formato válido para esta rede.'])->validate();
+            'media_format'  => ['nullable', 'string', 'max:30'],          // compatibilidade: a primeira rede
+            'media_formats' => ['nullable', 'array'],
+            'network_captions' => ['nullable', 'array'],
+            'network_captions.*' => ['nullable', 'string', 'max:2200'],
+        ])->validate();
+        $networks = $post->networks()->pluck('network')->all();
 
         $out = [];
         foreach (['caption', 'cta', 'first_comment'] as $f) {
@@ -765,8 +842,37 @@ class EditorialWorkflowService
         if (array_key_exists('hashtags', $clean)) {
             $out['hashtags'] = AiText::hashtags($clean['hashtags'] ?? []);
         }
-        if (array_key_exists('media_format', $clean)) {
-            $out['media_format'] = $clean['media_format'] ?: null;
+        $formats = null;
+        if (array_key_exists('media_format', $clean) && $networks) {
+            $formats = [$networks[0] => $clean['media_format'] ?: null];
+        }
+        if (! empty($clean['media_formats'])) {
+            $formats = array_merge($formats ?? [], $clean['media_formats']);
+        }
+        if ($formats !== null) {
+            foreach ($formats as $network => $format) {
+                if (! in_array($network, $networks, true)) {
+                    throw ValidationException::withMessages(['media_formats' => ['Esta publicação não vai para o ' . (NetworkFormats::NETWORK_LABELS[$network] ?? $network) . '.']]);
+                }
+                if (! NetworkFormats::exists($network, $format ?: null)) {
+                    throw ValidationException::withMessages(['media_format' => [NetworkFormats::notInNetwork($network, (string) $format)]]);
+                }
+            }
+            $all = array_merge(self::currentFormats($post), $formats);
+            if ($errors = NetworkFormats::crossCheck($all)['errors']) {
+                throw ValidationException::withMessages(['media_formats' => $errors]);
+            }
+            $out['_formats'] = array_map(fn ($f) => $f ?: null, $formats);
+        }
+        if (array_key_exists('network_captions', $clean)) {
+            $captions = [];
+            foreach ((array) ($clean['network_captions'] ?? []) as $network => $text) {
+                $text = AiText::plain((string) $text, 2200, true);
+                if (in_array($network, $networks, true) && $text !== '') {
+                    $captions[$network] = $text;
+                }
+            }
+            $out['network_captions'] = $captions ?: null;
         }
 
         return $out;
@@ -778,7 +884,7 @@ class EditorialWorkflowService
 
         return [
             'caption' => $c?->caption, 'hashtags' => $c?->hashtags, 'cta' => $c?->cta,
-            'first_comment' => null, 'media_format' => $c?->media_format ?? $post->media_format,
+            'first_comment' => null, 'network_captions' => null, 'media_formats' => null,
         ];
     }
 
@@ -790,6 +896,21 @@ class EditorialWorkflowService
         }
 
         return $user->role === 'root' ? "{$user->name} (equipa XPLENDOR)" : (string) $user->name;
+    }
+
+    /** As redes da publicação para os ecrãs: formato, estado, link, hora e quem marcou ou dispensou. */
+    private function presentNetworks(EditorialPost $post, array $people): array
+    {
+        $ids = $post->networks->flatMap(fn ($n) => [$n->published_by_user_id, $n->published_by_impersonator_id, $n->skipped_by_user_id, $n->skipped_by_impersonator_id])->filter()->unique()->diff(array_keys($people));
+        $people += User::whereIn('id', $ids)->get(['id', 'name', 'role'])->keyBy('id')->all();
+
+        return $post->networks->map(fn (EditorialPostNetwork $n) => [
+            'network' => $n->network, 'media_format' => $n->media_format, 'state' => $n->state(),
+            'published_url' => $n->published_url, 'published_at' => optional($n->published_at)->toIso8601String(),
+            'published_by' => $n->published_by_user_id ? $this->label($people, $n->published_by_user_id, $n->published_by_impersonator_id) : null,
+            'skipped_at' => optional($n->skipped_at)->toIso8601String(), 'skip_reason' => $n->skip_reason,
+            'skipped_by' => $n->skipped_by_user_id ? $this->label($people, $n->skipped_by_user_id, $n->skipped_by_impersonator_id) : null,
+        ])->values()->all();
     }
 
     private function peopleNames(EditorialPost $post): array

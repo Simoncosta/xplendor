@@ -3,7 +3,7 @@ import { Badge, Button, Input, Label, Modal, ModalBody, ModalHeader, Spinner } f
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { createReviewLink, extendReviewLink, getReviewCandidates, getReviewLinks, resendReviewLink, revokeReviewLink } from "helpers/laravel_helper";
-import { POST_CHANNEL_META } from "common/models/editorialPost.model";
+import { Network, POST_CHANNEL_META } from "common/models/editorialPost.model";
 import { mediaSrc } from "common/models/editorialWorkflow.model";
 import { ITEM_STATE_META, LINK_STATE_META, ReviewCandidate, ReviewLinkSummary, whatsappUrl } from "common/models/contentReview.model";
 
@@ -162,7 +162,7 @@ export default function ReviewLinksModal({ isOpen, toggle, companyId, canProduce
                                         ? <img src={mediaSrc(c.thumb_url)} alt="" className="rounded flex-shrink-0" style={{ width: 40, height: 40, objectFit: "cover" }} />
                                         : <span className="rounded bg-light flex-shrink-0" style={{ width: 40, height: 40 }} />}
                                     <span className="flex-grow-1 min-w-0">
-                                        <span className="d-block text-truncate fs-13"><i className={`${POST_CHANNEL_META[c.channel].icon} me-1`} />{c.title}</span>
+                                        <span className="d-block text-truncate fs-13">{Object.keys(c.networks).map((n) => <i key={n} className={`${POST_CHANNEL_META[n as Network].icon} me-1`} />)}{c.title}</span>
                                         <span className="text-muted fs-12">{dmy(c.publish_date)} · versão {c.version_number}{c.in_links.length > 0 ? ` · já em "${c.in_links.map((l) => l.title).join('", "')}"` : ""}</span>
                                     </span>
                                 </label>

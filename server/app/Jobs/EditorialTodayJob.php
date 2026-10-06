@@ -24,13 +24,14 @@ class EditorialTodayJob implements ShouldQueue
     public function handle(ContentReviewNotifier $notifier): array
     {
         $today = now(EditorialPost::TIMEZONE);
-        $posts = EditorialPost::where('stage', EditorialPost::STAGE_SCHEDULED)->where('channel', '!=', 'site')
+        $posts = EditorialPost::where('stage', EditorialPost::STAGE_SCHEDULED)->where('channel', '!=', 'site')->with('networks')
             ->whereDate('publish_date', $today->toDateString())
             ->get()->sortBy(fn (EditorialPost $p) => \App\Services\Editorial\EditorialPublishingService::sortKey($p))->groupBy('company_id');
 
         foreach ($posts as $companyId => $list) {
             $n = $list->count();
-            $lines = $list->map(fn (EditorialPost $p) => ($p->publish_time ? "{$p->publish_time} " : '') . "{$p->title} (" . ucfirst($p->channel) . ')')->implode('; ');
+            $lines = $list->map(fn (EditorialPost $p) => ($p->publish_time ? "{$p->publish_time} " : '') . "{$p->title} ("
+                . $p->networks->filter(fn ($n) => ! $n->skipped_at)->map(fn ($n) => \App\Services\Editorial\NetworkFormats::NETWORK_LABELS[$n->network])->implode(' e ') . ')')->implode('; ');
             $notifier->notifyCompany((int) $companyId, 'warning', "Para publicar hoje: {$n} " . ($n === 1 ? 'publicação' : 'publicações'),
                 mb_substr($lines, 0, 900) . '.', 'medium', '/editorial?vista=kanban&mes=' . $today->format('Y-m'));
         }

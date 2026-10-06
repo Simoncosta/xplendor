@@ -21,12 +21,14 @@ type Props = {
     toggle: () => void;
     companyId: number;
     post: { id: number; title: string; channel: PostChannel } | null;
+    /** A rede que se marca (numa publicação com duas redes, uma de cada vez). */
+    network: string;
     initialUrl?: string | null;
     initialAt?: string | null;
     onDone: (detail: PostWorkflow) => void;
 };
 
-export default function MarkPublishedModal({ isOpen, toggle, companyId, post, initialUrl, initialAt, onDone }: Props) {
+export default function MarkPublishedModal({ isOpen, toggle, companyId, post, network, initialUrl, initialAt, onDone }: Props) {
     const [url, setUrl] = useState("");
     const [at, setAt] = useState("");
     const [busy, setBusy] = useState(false);
@@ -40,13 +42,13 @@ export default function MarkPublishedModal({ isOpen, toggle, companyId, post, in
     }, [isOpen, initialUrl, initialAt]);
 
     if (!post) return null;
-    const fb = post.channel === "facebook";
+    const fb = network === "facebook";
 
     const submit = async () => {
         setBusy(true);
         setErrors({});
         try {
-            const r: any = await markPostPublished(companyId, post.id, { url: url.trim(), published_at: at.replace("T", " ") });
+            const r: any = await markPostPublished(companyId, post.id, { network, url: url.trim(), published_at: at.replace("T", " ") });
             toast.success(initialUrl ? "Publicação corrigida." : "Marcada como publicada.");
             onDone(r.data);
             toggle();
@@ -60,7 +62,7 @@ export default function MarkPublishedModal({ isOpen, toggle, companyId, post, in
 
     return (
         <Modal isOpen={isOpen} toggle={toggle} centered>
-            <ModalHeader toggle={toggle}>{initialUrl ? "Corrigir a publicação" : "Marcar como publicada"}</ModalHeader>
+            <ModalHeader toggle={toggle}>{initialUrl ? "Corrigir a publicação" : "Marcar como publicada"} no {fb ? "Facebook" : "Instagram"}</ModalHeader>
             <ModalBody>
                 <p className="fs-13 text-muted mb-3">{post.title}</p>
                 <Label for="mp-url" className="mb-1">Link da publicação {fb ? "no Facebook" : "no Instagram"}</Label>

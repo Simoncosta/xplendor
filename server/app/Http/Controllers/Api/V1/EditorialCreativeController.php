@@ -72,13 +72,13 @@ class EditorialCreativeController extends Controller
         if (! $post) {
             return ApiResponse::error('Publicação não encontrada.', 404);
         }
-        if (! in_array($post->channel, CreativeAiService::CHANNELS, true)) {
+        if (! in_array($post->primaryNetwork(), CreativeAiService::CHANNELS, true)) {
             return ApiResponse::error('Os criativos são para publicações do Instagram e do Facebook.', 422);
         }
 
         $data = $request->validate([
             'suggestion_id' => ['nullable', 'integer'],
-            'media_format'  => ['sometimes', 'nullable', Rule::in(EditorialPost::MEDIA_FORMATS[$post->channel])],
+            'media_format'  => ['sometimes', 'nullable', Rule::in(EditorialPost::MEDIA_FORMATS[$post->primaryNetwork()] ?? [])],
             'hook'          => ['sometimes', 'nullable', 'string', 'max:200'],
             'caption'       => ['sometimes', 'nullable', 'string', 'max:2200'],
             'hashtags'      => ['sometimes', 'nullable', 'array', 'max:30'],
@@ -164,9 +164,10 @@ class EditorialCreativeController extends Controller
 
         return [
             'post_id'      => $post->id,
-            'channel'      => $post->channel,
+            // O criativo sugerido é um por publicação, pensado para a primeira rede.
+            'channel'      => $post->primaryNetwork() ?? $post->channel,
             'media_format' => $post->media_format,
-            'formats'      => array_map(fn ($k) => ['value' => $k, 'label' => EditorialPost::MEDIA_FORMAT_LABELS[$k]], EditorialPost::MEDIA_FORMATS[$post->channel] ?? []),
+            'formats'      => array_map(fn ($k) => ['value' => $k, 'label' => EditorialPost::MEDIA_FORMAT_LABELS[$k]], EditorialPost::MEDIA_FORMATS[$post->primaryNetwork()] ?? []),
             'creative'     => $c ? [
                 'media_format' => $c->media_format,
                 'hook'         => $c->hook,

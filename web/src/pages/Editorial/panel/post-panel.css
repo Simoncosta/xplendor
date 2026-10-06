@@ -1,0 +1,5 @@
+/* Painel único da publicação: largo no computador, ecrã inteiro no telemóvel. */
+.offcanvas.xp-post-panel { width: min(1040px, 94vw); }
+@media (max-width: 767.98px) { .offcanvas.xp-post-panel { width: 100vw; } }
+.xp-post-panel .xp-panel-tabs { position: sticky; top: 0; z-index: 2; background: var(--vz-body-bg, var(--vz-card-bg)); }
+.xp-post-panel .xp-panel-tabs .nav-link { white-space: nowrap; font-size: 0.8125rem; }

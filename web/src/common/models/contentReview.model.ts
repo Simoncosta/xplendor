@@ -1,4 +1,4 @@
-import type { PostChannel } from "./editorialPost.model";
+import type { Network, PostChannel } from "./editorialPost.model";
 import type { MediaAssetDto } from "./editorialWorkflow.model";
 
 /** Link de aprovação por lote (F3c): página pública (/aprovar#token) e "Ver como o cliente". */
@@ -13,7 +13,8 @@ export interface ReviewItem {
     post_id: number;
     title: string;
     channel: PostChannel;
-    media_format: string | null;
+    /** Uma pré-visualização por rede: o formato e a legenda (própria ou a mesma) dessa rede. */
+    networks: { network: Network; media_format: string | null; caption: string }[];
     publish_date: string | null;
     version_number: number | null;
     caption: string;
@@ -64,7 +65,7 @@ export interface ReviewCandidate {
     title: string;
     channel: PostChannel;
     publish_date: string;
-    media_format: string | null;
+    networks: Partial<Record<Network, string | null>>;
     version_number: number | null;
     thumb_url: string | null;
     in_links: { id: number; title: string }[];

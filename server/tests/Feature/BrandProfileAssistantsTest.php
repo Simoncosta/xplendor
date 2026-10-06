@@ -339,7 +339,10 @@ class BrandProfileAssistantsTest extends TestCase
 
     public function test_migration_copies_legacy_media_formats_without_deleting_anything(): void
     {
-        // Só a migração da Parte B (há migrações mais recentes depois dela).
+        // Só a migração da Parte B (há migrações mais recentes depois dela). A multicanal
+        // (2026_11_23) tira editorial_posts.media_format: desfaz-se primeiro e volta no fim.
+        $multichannel = 'database/migrations/2026_11_23_100000_editorial_posts_multichannel.php';
+        $this->artisan('migrate:rollback', ['--path' => $multichannel])->assertSuccessful();
         $migration = 'database/migrations/2026_11_14_100000_create_creative_suggestions_foundation.php';
         $this->artisan('migrate:rollback', ['--path' => $migration])->assertSuccessful();
 
@@ -356,5 +359,11 @@ class BrandProfileAssistantsTest extends TestCase
             [['Carrossel', 'ig_carousel'], ['Vídeo', 'ig_reel'], ['Imagem única', 'fb_photos'], ['Stories', 'fb_story'], ['Tutorial', null], ['Artigo', null]],
             $rows->map(fn ($r) => [$r->format, $r->media_format])->all()
         );
+
+        // A multicanal converte o canal único na lista de redes, com o formato de cada uma.
+        $this->artisan('migrate', ['--path' => $multichannel])->assertSuccessful();
+        $this->assertSame(['social', 'social', 'social', 'social', 'social', 'site'], DB::table('editorial_posts')->whereIn('id', $ids)->orderBy('id')->pluck('channel')->all());
+        $this->assertSame([[$ids[0], 'instagram', 'ig_carousel'], [$ids[1], 'instagram', 'ig_reel'], [$ids[2], 'facebook', 'fb_photos'], [$ids[3], 'facebook', 'fb_story'], [$ids[4], 'instagram', null]],
+            DB::table('editorial_post_networks')->whereIn('editorial_post_id', $ids)->orderBy('editorial_post_id')->get()->map(fn ($n) => [$n->editorial_post_id, $n->network, $n->media_format])->all());
     }
 }

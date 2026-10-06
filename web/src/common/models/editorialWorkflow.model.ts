@@ -58,7 +58,9 @@ export interface BoardPost {
     /** F3d */
     publish_time: string | null;
     overdue: boolean;
-    results: { reach: number | null; engagement_rate: number | null } | null;
+    networks: import("./editorialPost.model").PostNetwork[];
+    /** Na Análise: por rede publicada. */
+    results: { network: import("./editorialPost.model").Network; reach: number | null; engagement_rate: number | null }[] | null;
 }
 
 export interface BoardData {
@@ -100,7 +102,14 @@ export const fmtDuration = (ms: number | null | undefined) => {
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export interface GridTile { id: number; title: string; publish_date: string; stage: Stage; media_format: string | null; items_count: number; image_url: string | null }
+export interface GridTile { id: number; title: string; publish_date: string; publish_time: string | null; stage: Stage; media_format: string | null; state: string | null; items_count: number; image_url: string | null }
+export interface FeedStory extends GridTile { caption: string; hashtags: string[]; media: VersionMedia }
+export interface FeedAccount { name: string; username: string | null; avatar_url: string | null }
+export interface FeedData {
+    accounts: { instagram: FeedAccount; facebook: FeedAccount };
+    upcoming: GridTile[]; published: GridTile[];
+    facebook: { upcoming: FeedStory[]; published: FeedStory[] };
+}
 
 export interface PostVersion {
     id: number;
@@ -111,7 +120,9 @@ export interface PostVersion {
     hashtags: string[];
     cta: string | null;
     first_comment: string | null;
-    media_format: string | null;
+    /** Formatos congelados com a versão (rede → formato) e a legenda própria opcional por rede. */
+    media_formats: Record<string, string | null>;
+    network_captions: Record<string, string>;
     media: VersionMedia;
     author: string | null;
     sent_at: string | null;
@@ -124,16 +135,19 @@ export interface PostWorkflow {
         media_format: string | null; keyword: string | null; changes_requested_at: string | null;
         current_version_id: number | null; approved_version_id: number | null; account_name: string | null;
         publish_time: string | null; pillar: string | null; overdue: boolean;
+        networks: PostNetworkDetail[];
+        anchor_id: number | null; own_anchor_id: number | null; blog_id: number | null;
+        blog: { id: number; title: string; status: string } | null;
     };
-    /** F3d: publicação e resultados à mão. */
-    publishing: { url: string | null; published_at: string | null; by: string | null; due_at: string; can_mark: boolean };
-    results: PostResults | null;
+    /** F3d: publicação por rede e resultados à mão por rede. */
+    publishing: { due_at: string; can_mark: boolean; published_count: number; active_count: number };
+    results: { networks: Partial<Record<import("./editorialPost.model").Network, PostResults>>; worked: string | null; change: string | null; can_record: boolean } | null;
     versions: PostVersion[];
     reviews: { id: number; version_number: number | null; decision: "approved" | "changes_requested"; via: string; reviewer: string | null; message: string | null; created_at: string | null }[];
     comments: { id: number; author: string | null; body: string; visibility: "internal" | "shared"; version_number: number | null; mine: boolean; created_at: string | null }[];
     events: { type: string; from_stage: Stage | null; to_stage: Stage | null; message: string | null; who: string | null; created_at: string | null }[];
     creative: { caption: string | null; hashtags: string[]; cta: string | null; media_format: string | null } | null;
-    media_validation: { errors: string[]; warnings: string[] };
+    media_validation: { errors: string[]; warnings: string[]; by_network: Partial<Record<import("./editorialPost.model").Network, { errors: string[]; warnings: string[] }>> };
     /** etapa → motivo (null = permitido) */
     moves: Partial<Record<Stage, string | null>>;
     permissions: { can_edit_content: boolean; can_approve: boolean; is_approver: boolean; is_team: boolean; can_produce: boolean };
@@ -168,16 +182,21 @@ export interface PostResults {
     measured_on: string | null;
     engagement_rate: number | null;
     is_video: boolean;
-    worked: string | null;
-    change: string | null;
-    can_record: boolean;
 }
 
-export interface TodayPost { id: number; title: string; channel: PostChannel; media_format: string | null; publish_date: string; publish_time: string | null; overdue: boolean; can_mark: boolean }
+export interface PostNetworkDetail {
+    network: import("./editorialPost.model").Network;
+    media_format: string | null;
+    state: import("./editorialPost.model").NetworkState;
+    published_url: string | null; published_at: string | null; published_by: string | null;
+    skipped_at: string | null; skip_reason: string | null; skipped_by: string | null;
+}
+
+export interface TodayPost { id: number; title: string; channel: PostChannel; networks: import("./editorialPost.model").PostNetwork[]; publish_date: string; publish_time: string | null; overdue: boolean; can_mark: boolean }
 export interface TodayData { date: string; today: TodayPost[]; overdue: TodayPost[] }
 
 export interface ResultRow {
-    id: number; title: string; channel: PostChannel; stage: Stage; date: string; media_format: string | null; format: string;
+    id: number; key: string; title: string; network: import("./editorialPost.model").Network; stage: Stage; date: string; media_format: string | null; format: string;
     pillar: string | null; reach: number | null; interactions: number | null; engagement_rate: number | null; published_url: string | null;
 }
 
@@ -196,3 +215,22 @@ export function fmtRate(rate: number | null | undefined): string {
 }
 
 export const fmtInt = (n: number | null | undefined) => (n === null || n === undefined ? "" : n.toLocaleString("pt-PT"));
+
+/** Regra única dos formatos por rede (vem do servidor: GET /editorial/formats). */
+export interface FormatTable {
+    networks: Record<string, string>;
+    formats: Record<string, { value: string; label: string }[]>;
+    suggest: Record<string, string>;
+    equivalents: Record<string, string>;
+    incompatible: Record<string, string>;
+}
+
+/** Os mesmos erros e avisos entre redes do servidor (NetworkFormats::crossCheck), para mostrar antes de gravar. */
+export function crossCheck(table: FormatTable | null, formats: Partial<Record<string, string | null>>): { errors: string[]; warnings: string[] } {
+    const ig = formats.instagram;
+    const fb = formats.facebook;
+    if (!table || !ig || !fb) return { errors: [], warnings: [] };
+    const key = `${ig}|${fb}`;
+    if (table.incompatible[key]) return { errors: [table.incompatible[key]], warnings: [] };
+    return { errors: [], warnings: table.equivalents[key] ? [table.equivalents[key]] : [] };
+}

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { DragDropContext, Draggable, Droppable, type DragStart, type DropResult } from "@hello-pangea/dnd";
-import { Badge, Button, Input, Spinner } from "reactstrap";
+import { Badge, Button, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { approveAllPosts, getEditorialBoard, movePostStage } from "helpers/laravel_helper";
-import { POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
+import { POST_CHANNEL_META, channelIcons, mediaFormatLabel } from "common/models/editorialPost.model";
+import XSelect from "./XSelect";
 import { BoardData, BoardPost, STAGE_META, STAGE_ORDER, Stage, fmtInt, fmtRate } from "common/models/editorialWorkflow.model";
 
 /**
@@ -29,7 +29,6 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
     const [channel, setChannel] = useState("");
     const [dragging, setDragging] = useState<BoardPost | null>(null);
     const [busy, setBusy] = useState(false);
-    const navigate = useNavigate();
 
     const load = useCallback(async () => {
         if (!companyId || !monthKey) return;
@@ -46,7 +45,8 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
 
     useEffect(() => { void load(); }, [load, reloadKey]);
 
-    const posts = useMemo(() => (data?.posts ?? []).filter((p) => !channel || p.channel === channel), [data, channel]);
+    // Filtro por rede (uma publicação nas duas redes aparece nas duas) ou Site.
+    const posts = useMemo(() => (data?.posts ?? []).filter((p) => !channel || (channel === "site" ? p.channel === "site" : p.networks.some((n) => n.network === channel))), [data, channel]);
     const columns = useMemo(() => {
         const by: Record<Stage, BoardPost[]> = Object.fromEntries(STAGE_ORDER.map((s) => [s, []])) as any;
         posts.forEach((p) => (by[p.stage] ?? by.planning).push(p));
@@ -99,12 +99,8 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
     return (
         <div>
             <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                <Input type="select" bsSize="sm" style={{ width: "auto" }} value={channel} onChange={(e) => setChannel(e.target.value)} aria-label="Canal">
-                    <option value="">Todos os canais</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="site">Site (blog)</option>
-                </Input>
+                <XSelect small width={190} ariaLabel="Canal" value={channel} onChange={setChannel}
+                    options={[{ value: "", label: "Todos os canais" }, { value: "instagram", label: "Instagram" }, { value: "facebook", label: "Facebook" }, { value: "site", label: "Site (blog)" }]} />
                 <div className="d-flex align-items-center gap-2 fs-12 text-muted">
                     {data?.settings.internal_review_required && <span><i className="ri-eye-line me-1" />Revisão interna obrigatória</span>}
                     {data && !data.settings.content_approval_required && <span><i className="ri-information-line me-1" />Sem aprovação do cliente</span>}
@@ -140,17 +136,20 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
                                                 <Draggable key={p.id} draggableId={String(p.id)} index={index} isDragDisabled={p.channel === "site" || p.moves.length === 0}>
                                                     {(drag) => (
                                                         <div ref={drag.innerRef} {...drag.draggableProps} {...drag.dragHandleProps} className="task-list">
-                                                            <div className="card task-box mb-0" role="button" onClick={() => (p.channel === "site" ? (p.blog ? navigate(`/blogs/${p.blog.id}`) : toast.info("Esta publicação do Site ainda não tem artigo. Use \"Escrever artigo\" no dia.")) : onOpen(p.id))}>
+                                                            <div className="card task-box mb-0" role="button" onClick={() => onOpen(p.id)}>
                                                                 <div className="card-body p-2">
                                                                     <div className="d-flex align-items-start gap-2">
-                                                                        <i className={`${POST_CHANNEL_META[p.channel].icon} fs-16 mt-1 flex-shrink-0`} />
+                                                                        <span className="d-flex gap-1 fs-16 mt-1 flex-shrink-0">{channelIcons(p).map((c) => <i key={c.icon} className={c.icon} title={c.label} />)}</span>
                                                                         <div className="fw-medium fs-13 text-break flex-grow-1 lh-sm">{p.title}</div>
                                                                     </div>
                                                                     <div className="d-flex flex-wrap align-items-center gap-1 mt-2 fs-11">
                                                                         <Badge color="light" className="text-body fw-normal">{dm(p.publish_date)}{p.publish_time ? ` ${p.publish_time}` : ""}</Badge>
                                                                         {p.overdue && <Badge color="danger" className="fw-normal" title="A data e a hora passaram e ainda não foi marcada como publicada">Atrasada</Badge>}
                                                                         {p.version && <Badge color="light" className="text-body fw-normal">v{p.version.number}</Badge>}
-                                                                        {p.media_format && <Badge color="light" className="text-body fw-normal">{mediaFormatLabel(p.media_format)}</Badge>}
+                                                                        {p.networks.filter((n) => n.media_format).map((n) => <Badge key={n.network} color="light" className="text-body fw-normal" title={POST_CHANNEL_META[n.network].label}>{mediaFormatLabel(n.media_format)}</Badge>)}
+                                                                        {p.networks.length > 1 && ["scheduled", "published"].includes(p.stage) && (
+                                                                            <Badge color="light" className="text-body fw-normal">{p.networks.filter((n) => n.state === "published").length} de {p.networks.filter((n) => n.state !== "skipped").length} publicadas</Badge>
+                                                                        )}
                                                                         {p.changes_requested && p.stage === "production" && <Badge color="warning" className="fw-normal">Alterações pedidas</Badge>}
                                                                         {p.can_approve && <Badge color="warning" className="fw-normal">Aprovar</Badge>}
                                                                         {p.channel === "site" && <Badge color="info-subtle" className="text-info fw-normal">Blog</Badge>}
@@ -158,9 +157,15 @@ export default function EditorialBoard({ companyId, monthKey, reloadKey, onOpen,
                                                                     </div>
                                                                     {/* F3d: na Análise, o alcance e a taxa de envolvimento. */}
                                                                     {p.stage === "analysis" && p.channel !== "site" && (
-                                                                        <div className="d-flex gap-3 mt-2 pt-2 border-top fs-12">
-                                                                            <span title="Alcance"><i className="ri-eye-line me-1 text-muted" />{p.results?.reach != null ? fmtInt(p.results.reach) : <span className="text-muted">Sem alcance</span>}</span>
-                                                                            {p.results?.engagement_rate != null && <span title="Taxa de envolvimento (interações ÷ alcance)"><i className="ri-heart-pulse-line me-1 text-muted" />{fmtRate(p.results.engagement_rate)}</span>}
+                                                                        <div className="vstack gap-1 mt-2 pt-2 border-top fs-12">
+                                                                            {(p.results ?? []).length === 0 && <span className="text-muted">Sem alcance registado</span>}
+                                                                            {(p.results ?? []).map((r) => (
+                                                                                <div key={r.network} className="d-flex gap-3">
+                                                                                    <i className={`${POST_CHANNEL_META[r.network].icon} text-muted`} title={POST_CHANNEL_META[r.network].label} />
+                                                                                    <span title="Alcance"><i className="ri-eye-line me-1 text-muted" />{r.reach != null ? fmtInt(r.reach) : <span className="text-muted">Sem alcance</span>}</span>
+                                                                                    {r.engagement_rate != null && <span title="Taxa de envolvimento (interações ÷ alcance)"><i className="ri-heart-pulse-line me-1 text-muted" />{fmtRate(r.engagement_rate)}</span>}
+                                                                                </div>
+                                                                            ))}
                                                                         </div>
                                                                     )}
                                                                 </div>

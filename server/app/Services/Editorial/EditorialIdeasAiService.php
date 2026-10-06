@@ -147,7 +147,7 @@ class EditorialIdeasAiService
             }
 
             $channel ??= $idea['channel'];
-            if (! in_array($channel, EditorialPost::CHANNELS, true)) {
+            if (! in_array($channel, [...EditorialPost::NETWORKS, EditorialPost::CHANNEL_SITE], true)) {
                 throw ValidationException::withMessages(['channel' => ['Canal inválido.']]);
             }
             $date = $date ? CarbonImmutable::parse($date)->toDateString() : $idea['date'];
@@ -208,7 +208,7 @@ class EditorialIdeasAiService
             ];
         }
 
-        $existing = array_values(array_map(fn ($p) => ['title' => $p['title'], 'channel' => $p['channel'], 'date' => $p['publish_date']],
+        $existing = array_values(array_map(fn ($p) => ['title' => $p['title'], 'channel' => $p['channel'] === 'site' ? 'site' : (implode('+', array_column($p['networks'] ?? [], 'network')) ?: 'redes'), 'date' => $p['publish_date']],
             array_filter($calendar['posts'] ?? [], fn ($p) => $p['month_key'] === $key)));
 
         $profile = CompanyBrandProfile::where('company_id', $company->id)->first();
@@ -337,7 +337,7 @@ class EditorialIdeasAiService
             }
             $title = AiText::plain($r['title'] ?? '', 255);
             $channel = is_string($r['channel'] ?? null) ? strtolower(trim($r['channel'])) : '';
-            if ($title === '' || ! in_array($channel, EditorialPost::CHANNELS, true)) {
+            if ($title === '' || ! in_array($channel, [...EditorialPost::NETWORKS, EditorialPost::CHANNEL_SITE], true)) {
                 continue;
             }
             $norm = self::normTitle($title);

@@ -41,8 +41,15 @@ class EditorialPost extends Model
         'publicada' => self::STAGE_PUBLISHED, 'otimizada' => self::STAGE_ANALYSIS,
     ];
 
-    /** Canais suportados. "site" = artigo do blog (ligado por blog_id). */
-    public const CHANNELS = ['instagram', 'facebook', 'site'];
+    /**
+     * Canal: "social" (Instagram e/ou Facebook, com as redes em editorial_post_networks) ou
+     * "site" (artigo do blog, ligado por blog_id). Por compatibilidade, criar ou editar com
+     * channel = instagram | facebook (e media_format) dá uma publicação "social" nessa rede.
+     */
+    public const CHANNEL_SOCIAL = 'social';
+    public const CHANNEL_SITE = 'site';
+    public const CHANNELS = [self::CHANNEL_SOCIAL, self::CHANNEL_SITE];
+    public const NETWORKS = ['instagram', 'facebook'];
 
     /** Formato único do canal "site". */
     public const SITE_FORMAT = 'Artigo';
@@ -51,10 +58,7 @@ class EditorialPost extends Model
      * FORMATO da publicação, no vocabulário do publicador (F2), por rede. O campo
      * "format" abaixo passou a ser o TIPO DE CONTEÚDO (os 18 valores mantêm-se).
      */
-    public const MEDIA_FORMATS = [
-        'instagram' => ['ig_feed_image', 'ig_carousel', 'ig_reel', 'ig_story'],
-        'facebook'  => ['fb_post', 'fb_photos', 'fb_video', 'fb_reel', 'fb_story'],
-    ];
+    public const MEDIA_FORMATS = \App\Services\Editorial\NetworkFormats::FORMATS;
 
     public const MEDIA_FORMAT_LABELS = [
         'ig_feed_image' => 'Imagem (feed)',
@@ -91,9 +95,46 @@ class EditorialPost extends Model
         'changes_requested_at' => 'datetime',
         'current_version_id' => 'integer',
         'approved_version_id' => 'integer',
-        'published_at' => 'datetime',
         'overdue_alerted_at' => 'datetime',
     ];
+
+    /** Compatibilidade (ver CHANNELS): rede indicada pelo canal antigo e formato pendente. */
+    private ?string $legacyNetwork = null;
+    private bool $formatSet = false;
+    private ?string $pendingFormat = null;
+
+    public function setMediaFormatAttribute(?string $value): void
+    {
+        $this->formatSet = true;
+        $this->pendingFormat = $value ?: null;
+    }
+
+    /** Formato na primeira rede (compatibilidade: criativo, ideias, ecrãs antigos). */
+    public function getMediaFormatAttribute(): ?string
+    {
+        if ($this->formatSet) {
+            return $this->pendingFormat;
+        }
+
+        return $this->exists ? $this->networks->first()?->media_format : null;
+    }
+
+    /** As redes escolhidas, pela ordem (a primeira é a principal). */
+    public function networks(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EditorialPostNetwork::class)->orderBy('position')->orderBy('id');
+    }
+
+    /** @return string[] */
+    public function networkNames(): array
+    {
+        return $this->networks->pluck('network')->all();
+    }
+
+    public function primaryNetwork(): ?string
+    {
+        return $this->networks->first()?->network;
+    }
 
     public const TIMEZONE = 'Europe/Lisbon';
 
@@ -110,10 +151,12 @@ class EditorialPost extends Model
             : \Carbon\CarbonImmutable::parse("{$date} 00:00:00", self::TIMEZONE)->addDay();
     }
 
+    /** Programada, com a data e a hora passadas e alguma rede ainda por publicar (e não dispensada). */
     public function isOverdue(?\DateTimeInterface $now = null): bool
     {
-        return $this->stage === self::STAGE_SCHEDULED && $this->channel !== 'site'
-            && $this->dueAt()->lt(\Carbon\CarbonImmutable::instance($now ?? now()));
+        return $this->stage === self::STAGE_SCHEDULED && $this->channel !== self::CHANNEL_SITE
+            && $this->dueAt()->lt(\Carbon\CarbonImmutable::instance($now ?? now()))
+            && $this->networks->contains(fn (EditorialPostNetwork $n) => $n->state() === EditorialPostNetwork::STATE_PENDING);
     }
 
     public function metrics(): \Illuminate\Database\Eloquent\Relations\HasMany
@@ -127,6 +170,28 @@ class EditorialPost extends Model
         static::saving(function (EditorialPost $post) {
             $post->stage ??= self::STAGE_PLANNING;
             $post->status = self::STAGE_TO_STATUS[$post->stage] ?? 'rascunho';
+            if (in_array($post->getAttributes()['channel'] ?? null, self::NETWORKS, true)) {
+                $post->legacyNetwork = $post->getAttributes()['channel'];
+                $post->attributes['channel'] = self::CHANNEL_SOCIAL;
+            }
+        });
+        static::saved(function (EditorialPost $post) {
+            if (! $post->legacyNetwork && ! $post->formatSet) {
+                return;
+            }
+            $current = EditorialPostNetwork::where('editorial_post_id', $post->id)->orderBy('position')->orderBy('id')->get();
+            if ($post->legacyNetwork && $current->pluck('network')->all() !== [$post->legacyNetwork]) {
+                // Canal antigo: uma só rede.
+                EditorialPostNetwork::where('editorial_post_id', $post->id)->where('network', '!=', $post->legacyNetwork)->delete();
+                EditorialPostNetwork::updateOrCreate(['editorial_post_id' => $post->id, 'network' => $post->legacyNetwork],
+                    ['company_id' => $post->company_id, 'position' => 0, 'media_format' => $post->formatSet ? $post->pendingFormat : $current->firstWhere('network', $post->legacyNetwork)?->media_format]);
+            } elseif ($post->formatSet && ($first = $current->first())) {
+                $first->update(['media_format' => $post->pendingFormat]);
+            }
+            $post->legacyNetwork = null;
+            $post->formatSet = false;
+            $post->pendingFormat = null;
+            $post->unsetRelation('networks');
         });
     }
 

@@ -47,7 +47,7 @@ class ContentReviewService
 
             return [
                 'id' => $p->id, 'title' => $p->title, 'channel' => $p->channel, 'publish_date' => $p->publish_date->toDateString(),
-                'media_format' => $p->currentVersion?->media_format ?? $p->media_format, 'version_number' => $p->currentVersion?->number,
+                'networks' => EditorialWorkflowService::currentFormats($p), 'version_number' => $p->currentVersion?->number,
                 'thumb_url' => $first['thumb_url'] ?? null,
                 'in_links' => ($inLinks[$p->id] ?? collect())->map(fn ($i) => ['id' => $i->link->id, 'title' => $i->link->title])->unique('id')->values()->all(),
             ];

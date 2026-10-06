@@ -1,6 +1,6 @@
 import { useState } from "react";
 import PostPreview from "pages/Editorial/PostPreview";
-import { POST_CHANNEL_META } from "common/models/editorialPost.model";
+import { Network, POST_CHANNEL_META, channelIcons } from "common/models/editorialPost.model";
 import { mediaSrc } from "common/models/editorialWorkflow.model";
 import { ITEM_STATE_META, ReviewAccount, ReviewItem, ReviewPayload } from "common/models/contentReview.model";
 
@@ -28,13 +28,37 @@ const dmyhm = (iso: string | null) => {
 };
 
 /** A conta ligada da rede; sem ligação, o logótipo e o nome da empresa. */
-function identity(data: ReviewPayload, item: ReviewItem): { name: string; username: string | null; avatar: string | null } {
-    const acc: ReviewAccount | null = item.channel === "facebook" ? data.accounts.facebook : data.accounts.instagram;
+function identity(data: ReviewPayload, network: Network): { name: string; username: string | null; avatar: string | null } {
+    const acc: ReviewAccount | null = network === "facebook" ? data.accounts.facebook : data.accounts.instagram;
     return {
         name: acc?.name || data.company.name,
-        username: item.channel === "instagram" ? acc?.username ?? null : null,
+        username: network === "instagram" ? acc?.username ?? null : null,
         avatar: acc?.avatar_url || data.company.logo_url,
     };
+}
+
+/** As pré-visualizações de uma publicação, uma por rede (com duas redes, escolhe-se qual ver). */
+function NetworkPreviews({ data, item }: { data: ReviewPayload; item: ReviewItem }) {
+    const [shown, setShown] = useState<Network>(item.networks[0]?.network ?? "instagram");
+    const n = item.networks.find((x) => x.network === shown) ?? item.networks[0];
+    if (!n) return null;
+    const who = identity(data, n.network);
+    return (
+        <div>
+            {item.networks.length > 1 && (
+                <div className="btn-group btn-group-sm w-100 mb-2" role="tablist" aria-label="Rede">
+                    {item.networks.map((x) => (
+                        <button key={x.network} type="button" role="tab" aria-selected={shown === x.network} className={`btn ${shown === x.network ? "btn-primary" : "btn-outline-primary"}`} onClick={() => setShown(x.network)}>
+                            <i className={`${POST_CHANNEL_META[x.network].icon} me-1`} />{POST_CHANNEL_META[x.network].label}
+                        </button>
+                    ))}
+                </div>
+            )}
+            <div className="text-muted fs-11 text-center mb-1">Pré-visualização aproximada{item.networks.length > 1 ? ` no ${POST_CHANNEL_META[n.network].label}` : ""}</div>
+            <PostPreview channel={n.network} mediaFormat={n.media_format} caption={n.caption} hashtags={item.hashtags}
+                items={item.media.items} cover={item.media.cover} accountName={who.name} avatarUrl={who.avatar} username={who.username} />
+        </div>
+    );
 }
 
 type Props = { data: ReviewPayload; name: string; onName: (v: string) => void; actions?: ReviewActions };
@@ -48,7 +72,7 @@ export default function ContentReviewView({ data, name, onName, actions }: Props
     const [commentFor, setCommentFor] = useState<Record<number, string>>({});
     const [confirmAll, setConfirmAll] = useState(false);
     const nameOk = name.trim().length > 0;
-    const igItems = data.items.filter((i) => i.channel === "instagram");
+    const igItems = data.items.filter((i) => i.networks.some((n) => n.network === "instagram"));
     const pending = data.counts.pending;
 
     const run = async (key: string, fn: () => Promise<ActionResult>, after?: () => void) => {
@@ -131,23 +155,20 @@ export default function ContentReviewView({ data, name, onName, actions }: Props
                     <ProfileGrid data={data} onOpen={(id) => { setTab("posts"); setTimeout(() => document.getElementById(`cr-item-${id}`)?.scrollIntoView({ behavior: "smooth" }), 50); }} />
                 ) : data.items.map((item) => {
                     const meta = ITEM_STATE_META[item.state];
-                    const who = identity(data, item);
                     const k = (s: string) => `${s}-${item.id}`;
                     return (
                         <article key={item.id} id={`cr-item-${item.id}`} className="card mb-3">
                             <div className="card-body p-3">
                                 <div className="d-flex align-items-start justify-content-between gap-2 mb-2">
                                     <div className="min-w-0">
-                                        <div className="fw-semibold"><i className={`${POST_CHANNEL_META[item.channel]?.icon ?? ""} me-1`} />{item.title}</div>
+                                        <div className="fw-semibold">{channelIcons(item).map((c) => <i key={c.icon} className={`${c.icon} me-1`} title={c.label} />)}{item.title}</div>
                                         <div className="text-muted fs-12">{dmy(item.publish_date)}{item.version_number ? ` · versão ${item.version_number}` : ""}</div>
                                     </div>
                                     <span className={`badge bg-${meta.color}-subtle text-${meta.color} text-wrap text-end`}><i className={`${meta.icon} me-1`} />{meta.label}</span>
                                 </div>
 
-                                <div className="text-muted fs-11 text-center mb-1">Pré-visualização aproximada</div>
                                 {item.media_available ? (
-                                    <PostPreview channel={item.channel} mediaFormat={item.media_format} caption={item.caption} hashtags={item.hashtags}
-                                        items={item.media.items} cover={item.media.cover} accountName={who.name} avatarUrl={who.avatar} username={who.username} />
+                                    <NetworkPreviews data={data} item={item} />
                                 ) : (
                                     <div className="border rounded p-3 fs-13">
                                         <div className="text-muted mb-2"><i className="ri-image-line me-1" />Os ficheiros deixaram de estar disponíveis neste link.</div>
@@ -241,7 +262,7 @@ export default function ContentReviewView({ data, name, onName, actions }: Props
 
 /** As publicações de Instagram do lote como ficam no perfil (da mais recente para a mais antiga). */
 function ProfileGrid({ data, onOpen }: { data: ReviewPayload; onOpen: (itemId: number) => void }) {
-    const items = data.items.filter((i) => i.channel === "instagram").sort((a, b) => (b.publish_date ?? "").localeCompare(a.publish_date ?? ""));
+    const items = data.items.filter((i) => i.networks.some((n) => n.network === "instagram")).sort((a, b) => (b.publish_date ?? "").localeCompare(a.publish_date ?? ""));
     const ig = data.accounts.instagram;
     return (
         <div>
@@ -261,8 +282,8 @@ function ProfileGrid({ data, onOpen }: { data: ReviewPayload; onOpen: (itemId: n
                             {first?.preview_url
                                 ? <img src={mediaSrc(first.preview_url)} alt="" className="w-100 h-100" style={{ objectFit: "cover" }} />
                                 : <span className="w-100 h-100 d-flex align-items-center justify-content-center text-muted fs-12 p-2 text-center">{i.title}</span>}
-                            {(i.media_format === "ig_reel" || i.media.items.length > 1) && (
-                                <i className={`${i.media_format === "ig_reel" ? "ri-film-line" : "ri-stack-line"} position-absolute top-0 end-0 m-1 text-white fs-16`} style={{ textShadow: "0 0 3px #000" }} />
+                            {(i.networks.find((n) => n.network === "instagram")?.media_format === "ig_reel" || i.media.items.length > 1) && (
+                                <i className={`${i.networks.find((n) => n.network === "instagram")?.media_format === "ig_reel" ? "ri-film-line" : "ri-stack-line"} position-absolute top-0 end-0 m-1 text-white fs-16`} style={{ textShadow: "0 0 3px #000" }} />
                             )}
                             <span className={`position-absolute bottom-0 start-0 m-1 badge bg-${meta.color}`} style={{ fontSize: "0.6rem" }}>{dmy(i.publish_date).slice(0, 5)}</span>
                         </button>

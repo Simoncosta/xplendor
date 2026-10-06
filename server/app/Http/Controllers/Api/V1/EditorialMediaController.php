@@ -88,34 +88,64 @@ class EditorialMediaController extends Controller
     }
 
     /**
-     * Grelha do Instagram: as próximas publicações (da mais distante para a mais próxima,
-     * como no perfil) e, por baixo, as últimas já publicadas. Cada mosaico usa a capa ou o
-     * primeiro ficheiro da versão atual.
+     * Feed (substitui a grelha): como o perfil vai ficar em cada rede.
+     *  · Instagram: grelha do perfil, as próximas (da mais distante para a mais próxima) por
+     *    cima das últimas publicadas; cada mosaico usa a capa ou o primeiro ficheiro.
+     *  · Facebook: cronologia da Página, uma publicação por baixo da outra (a mais recente
+     *    primeiro), com a legenda da rede e os ficheiros.
      */
     public function grid(int $companyId)
     {
         $today = now('Europe/Lisbon')->toDateString();
-        $base = fn () => EditorialPost::where('company_id', $companyId)->where('channel', 'instagram')
-            ->with('currentVersion:id,number,status,media_format');
-        $upcoming = $base()->where('publish_date', '>=', $today)
+        $base = fn (string $network) => EditorialPost::where('company_id', $companyId)
+            ->whereHas('networks', fn ($q) => $q->where('network', $network)->whereNull('skipped_at'))
+            ->with(['currentVersion', 'networks']);
+        $upcoming = fn (string $network, int $limit) => $base($network)->whereDate('publish_date', '>=', $today)
             ->whereNotIn('stage', [EditorialPost::STAGE_IDEA, EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS])
-            ->orderByDesc('publish_date')->orderByDesc('id')->limit(30)->get();
-        $published = $base()->whereIn('stage', [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS])
-            ->orderByDesc('publish_date')->orderByDesc('id')->limit(12)->get();
+            ->orderByDesc('publish_date')->orderByDesc('id')->limit($limit)->get();
+        $published = fn (string $network, int $limit) => $base($network)->whereIn('stage', [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS])
+            ->orderByDesc('publish_date')->orderByDesc('id')->limit($limit)->get();
 
-        $tile = function (EditorialPost $p) {
+        $tile = function (EditorialPost $p, string $network) {
             $media = EditorialWorkflowService::presentMedia($p->currentVersion);
             $first = $media['cover'] ?? ($media['items'][0] ?? null);
+            $net = $p->networks->firstWhere('network', $network);
 
             return [
-                'id' => $p->id, 'title' => $p->title, 'publish_date' => $p->publish_date->toDateString(), 'stage' => $p->stage,
-                'media_format' => $p->currentVersion?->media_format ?? $p->media_format,
+                'id' => $p->id, 'title' => $p->title, 'publish_date' => $p->publish_date->toDateString(), 'publish_time' => $p->publish_time,
+                'stage' => $p->stage, 'media_format' => $net?->media_format, 'state' => $net?->state(),
                 'items_count' => count($media['items']),
                 'image_url' => $first['preview_url'] ?? null,
             ];
         };
+        $story = fn (EditorialPost $p) => $tile($p, 'facebook') + [
+            'caption' => $p->currentVersion?->captionFor('facebook') ?? '',
+            'hashtags' => $p->currentVersion?->hashtags ?? [],
+            'media' => EditorialWorkflowService::presentMedia($p->currentVersion),
+        ];
 
-        return ApiResponse::success(['upcoming' => $upcoming->map($tile)->all(), 'published' => $published->map($tile)->all()], 'Grelha.');
+        // Nome e foto reais das contas ligadas (ou o nome da empresa).
+        $company = \App\Models\Company::find($companyId);
+        $accounts = \App\Models\SocialConnectionAccount::where('company_id', $companyId)->orderByDesc('is_primary')->orderBy('id')->get();
+        $account = function (string $platform) use ($accounts, $company) {
+            $a = $accounts->firstWhere('platform', $platform);
+
+            return [
+                'name' => $a?->name ?: (string) ($company?->trade_name ?: $company?->fiscal_name),
+                'username' => $a?->username,
+                'avatar_url' => $a?->profile_picture_path ? \Illuminate\Support\Facades\URL::temporarySignedRoute('social.avatar', now()->addMinutes(30), ['account' => $a->id], absolute: false) : null,
+            ];
+        };
+
+        return ApiResponse::success([
+            'accounts' => ['instagram' => $account('instagram'), 'facebook' => $account('facebook')],
+            'upcoming' => $upcoming('instagram', 30)->map(fn ($p) => $tile($p, 'instagram'))->all(),
+            'published' => $published('instagram', 12)->map(fn ($p) => $tile($p, 'instagram'))->all(),
+            'facebook' => [
+                'upcoming' => $upcoming('facebook', 15)->map($story)->all(),
+                'published' => $published('facebook', 10)->map($story)->all(),
+            ],
+        ], 'Feed.');
     }
 
     private function upload(int $companyId, string $uploadId): MediaUpload

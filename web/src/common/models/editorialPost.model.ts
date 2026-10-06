@@ -5,7 +5,13 @@
  */
 
 export type PostStatus = "rascunho" | "revisao" | "publicada" | "otimizada";
-export type PostChannel = "instagram" | "facebook" | "site";
+/** Redes de uma publicação "social" (multicanal). */
+export type Network = "instagram" | "facebook";
+export const NETWORKS: Network[] = ["instagram", "facebook"];
+/** Canal: "social" (Instagram e/ou Facebook) ou "site". instagram e facebook ficam para as vistas por rede. */
+export type PostChannel = Network | "site" | "social";
+export type NetworkState = "pending" | "published" | "skipped";
+export interface PostNetwork { network: Network; media_format: string | null; state: NetworkState }
 
 export type EditorialPost = {
     id: number;
@@ -28,6 +34,8 @@ export type EditorialPost = {
     stage: import("./editorialWorkflow.model").Stage;
     version: { number: number; status: string } | null;
     changes_requested: boolean;
+    /** Multicanal: as redes escolhidas (vazio no Site). */
+    networks: PostNetwork[];
     /** F3d: hora prevista (HH:MM, Lisboa), pilar e "Atrasada". */
     publish_time: string | null;
     pillar: string | null;
@@ -50,7 +58,14 @@ export const POST_CHANNEL_META: Record<PostChannel, { label: string; icon: strin
     instagram: { label: "Instagram", icon: "ri-instagram-line" },
     facebook:  { label: "Facebook",  icon: "ri-facebook-circle-line" },
     site:      { label: "Site (blog)", icon: "ri-article-line" },
+    social:    { label: "Redes sociais", icon: "ri-share-line" },
 };
+
+/** Ícones de uma publicação: as redes escolhidas, ou o artigo no Site. */
+export const channelIcons = (p: { channel: PostChannel; networks?: { network: Network }[] }): { icon: string; label: string }[] =>
+    p.channel === "site" || !p.networks?.length
+        ? [POST_CHANNEL_META[p.channel] ?? POST_CHANNEL_META.social]
+        : p.networks.map((n) => POST_CHANNEL_META[n.network]);
 
 /** Formato fixo do canal "site" (EditorialPost::SITE_FORMAT). */
 export const SITE_FORMAT = "Artigo";

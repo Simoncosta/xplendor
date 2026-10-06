@@ -436,6 +436,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/editorial/today', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'today']);
                     Route::get('/editorial/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'results']);
                     Route::post('/editorial/posts/{postId}/published', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'markPublished'])->whereNumber('postId');
+                    Route::post('/editorial/posts/{postId}/skip-network', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'skipNetwork'])->whereNumber('postId');
+                    Route::get('/editorial/formats', fn () => \App\Helpers\ApiResponse::success(\App\Services\Editorial\NetworkFormats::table(), 'Formatos por rede.'));
                     Route::put('/editorial/posts/{postId}/results', [\App\Http\Controllers\Api\V1\EditorialPublishingController::class, 'saveResults'])->whereNumber('postId');
                     // F3c: links de aprovação por lote (rotas fixas antes de /{linkId}).
                     Route::get('/editorial/review-links', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'index']);

@@ -20,7 +20,7 @@ class EditorialPostMetric extends Model
 
     public const VIDEO_FORMATS = ['ig_reel', 'fb_video', 'fb_reel'];
 
-    protected $fillable = ['company_id', 'editorial_post_id', 'metric', 'source', 'value', 'measured_on', 'recorded_by_user_id', 'impersonator_user_id'];
+    protected $fillable = ['company_id', 'editorial_post_id', 'network', 'metric', 'source', 'value', 'measured_on', 'recorded_by_user_id', 'impersonator_user_id'];
 
     protected $casts = ['value' => 'integer', 'measured_on' => 'date'];
 }

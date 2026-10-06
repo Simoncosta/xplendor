@@ -41,7 +41,7 @@ class EditorialWorkflowController extends Controller
         $start = \Carbon\CarbonImmutable::parse($data['month'] . '-01');
         $posts = EditorialPost::where('company_id', $companyId)
             ->whereBetween('publish_date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
-            ->with(['currentVersion:id,number,status', 'blog:id,company_id,title,status'])
+            ->with(['currentVersion:id,number,status', 'blog:id,company_id,title,status', 'networks'])
             ->withCount(['comments as comments_count' => fn ($q) => EditorialWorkflowService::isTeam($user) ? $q : $q->where('visibility', EditorialPostComment::SHARED)])
             ->orderBy('publish_date')->orderBy('id')
             ->get();
@@ -63,11 +63,13 @@ class EditorialWorkflowController extends Controller
                 'id' => $p->id, 'title' => $p->title, 'channel' => $p->channel, 'publish_date' => $p->publish_date->toDateString(),
                 'stage' => $p->stage, 'format' => $p->format, 'media_format' => $p->media_format,
                 'publish_time' => $p->publish_time, 'overdue' => $p->isOverdue(),
-                'results' => isset($metrics[$p->id]) ? (function () use ($p, $metrics) {
-                    $m = \App\Services\Editorial\EditorialPublishingService::metrics($p, $metrics[$p->id]);
+                'networks' => $p->networks->map(fn ($n) => ['network' => $n->network, 'media_format' => $n->media_format, 'state' => $n->state()])->values()->all(),
+                // Na Análise: alcance e taxa de envolvimento por rede publicada.
+                'results' => isset($metrics[$p->id]) ? $p->networks->filter(fn ($n) => $n->published_at)->map(function ($n) use ($p, $metrics) {
+                    $m = \App\Services\Editorial\EditorialPublishingService::metrics($p, $metrics[$p->id], $n->network);
 
-                    return ['reach' => $m['values']['reach']['value'] ?? null, 'engagement_rate' => $m['engagement_rate']];
-                })() : null,
+                    return ['network' => $n->network, 'reach' => $m['values']['reach']['value'] ?? null, 'engagement_rate' => $m['engagement_rate']];
+                })->values()->all() : null,
                 'version' => $p->currentVersion ? ['number' => $p->currentVersion->number, 'status' => $p->currentVersion->status] : null,
                 'changes_requested' => $p->changes_requested_at !== null,
                 'comments_count' => (int) $p->comments_count,
@@ -94,7 +96,7 @@ class EditorialWorkflowController extends Controller
     public function content(Request $request, int $companyId, int $postId)
     {
         $post = $this->post($companyId, $postId);
-        $this->workflow->saveContent($post, $request->user(), $request->only(['caption', 'hashtags', 'cta', 'first_comment', 'media_format']));
+        $this->workflow->saveContent($post, $request->user(), $request->only(['caption', 'hashtags', 'cta', 'first_comment', 'media_format', 'media_formats', 'network_captions']));
 
         return ApiResponse::success($this->workflow->detail($post->fresh(), $request->user()), 'Conteúdo guardado.');
     }

@@ -71,10 +71,21 @@ class EditorialPublishingTest extends TestCase
 
     private function makePost(Company $c, array $extra = []): EditorialPost
     {
-        return EditorialPost::create(array_merge([
+        $p = EditorialPost::create(array_merge([
             'company_id' => $c->id, 'publish_date' => '2026-11-10', 'title' => 'Menu de Natal', 'format' => 'Imagem única',
             'media_format' => 'ig_feed_image', 'channel' => 'instagram', 'stage' => EditorialPost::STAGE_SCHEDULED,
         ], $extra));
+        // Já publicada (ou em Análise): a rede fica publicada no dia previsto, às 10:00.
+        if (in_array($p->stage, [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true) && $p->channel !== 'site') {
+            $p->networks()->update(['published_at' => CarbonImmutable::parse($p->publish_date->toDateString() . ' 10:00', 'Europe/Lisbon')->utc(), 'published_url' => 'https://www.instagram.com/p/X/']);
+        }
+
+        return $p->fresh();
+    }
+
+    private function network(EditorialPost $p, string $network = 'instagram'): \App\Models\EditorialPostNetwork
+    {
+        return $p->networks()->where('network', $network)->sole();
     }
 
     private function mark(User $u, EditorialPost $p, string $url, ?string $at = '2026-11-10 09:45')
@@ -166,9 +177,11 @@ class EditorialPublishingTest extends TestCase
 
         $res = $this->mark($this->userA, $ig, 'https://www.instagram.com/p/ABC123/', '2026-11-10 09:45')->assertOk();
         $ig->refresh();
+        $n = $this->network($ig);
         $this->assertSame([EditorialPost::STAGE_PUBLISHED, 'https://www.instagram.com/p/ABC123/', '2026-11-10 09:45', $this->userA->id, null],
-            [$ig->stage, $ig->published_url, $ig->published_at->setTimezone('Europe/Lisbon')->format('Y-m-d H:i'), $ig->published_by_user_id, $ig->published_by_impersonator_id]);
-        $this->assertSame([$this->userA->name, 'https://www.instagram.com/p/ABC123/'], [$res->json('data.publishing.by'), $res->json('data.publishing.url')]);
+            [$ig->stage, $n->published_url, $n->published_at->setTimezone('Europe/Lisbon')->format('Y-m-d H:i'), $n->published_by_user_id, $n->published_by_impersonator_id]);
+        $this->assertSame([$this->userA->name, 'https://www.instagram.com/p/ABC123/', 'published'],
+            [$res->json('data.post.networks.0.published_by'), $res->json('data.post.networks.0.published_url'), $res->json('data.post.networks.0.state')]);
         $this->assertSame('publicada', $ig->status);
         $this->mark($this->userA, $fb, 'https://m.facebook.com/quebom/posts/123', '2026-11-10 09:00')->assertOk();
 
@@ -195,9 +208,9 @@ class EditorialPublishingTest extends TestCase
             'token_id' => $nt->accessToken->getKey(), 'ip' => '127.0.0.1', 'user_agent' => 'test', 'started_at' => now()]);
         $res = $this->withHeaders(['Authorization' => 'Bearer ' . $nt->plainTextToken, 'Accept' => 'application/json'])
             ->postJson($this->url($this->a, "/posts/{$p->id}/published"), ['url' => 'https://www.instagram.com/p/ABC/', 'published_at' => '2026-11-10 09:45'])->assertOk();
-        $p->refresh();
-        $this->assertSame([$this->userA->id, $this->root->id], [$p->published_by_user_id, $p->published_by_impersonator_id]);
-        $this->assertSame('Ana Equipa (equipa XPLENDOR)', $res->json('data.publishing.by'));
+        $n = $this->network($p);
+        $this->assertSame([$this->userA->id, $this->root->id], [$n->published_by_user_id, $n->published_by_impersonator_id]);
+        $this->assertSame('Ana Equipa (equipa XPLENDOR)', $res->json('data.post.networks.0.published_by'));
     }
 
     // ── Análise ──────────────────────────────────────────────────────────────
@@ -231,33 +244,33 @@ class EditorialPublishingTest extends TestCase
 
         $res = $save(['measured_on' => '2026-11-10', 'reach' => 3000, 'interactions' => 1, 'likes' => 1, 'video_views' => 999, 'worked' => 'A foto do prato.', 'change' => ''])->assertOk();
         // 1 ÷ 3000 × 100 = 0,0333…: guardada com precisão, não arredondada para 0.
-        $this->assertSame(0.0333, $res->json('data.results.engagement_rate'));
-        $this->assertSame(['value' => 3000, 'source' => 'manual', 'measured_on' => '2026-11-10'], $res->json('data.results.values.reach'));
-        $this->assertNull($res->json('data.results.values.video_views'), 'Visualizações só nos vídeos.');
+        $this->assertSame(0.0333, $res->json('data.results.networks.instagram.engagement_rate'));
+        $this->assertSame(['value' => 3000, 'source' => 'manual', 'measured_on' => '2026-11-10'], $res->json('data.results.networks.instagram.values.reach'));
+        $this->assertNull($res->json('data.results.networks.instagram.values.video_views'), 'Visualizações só nos vídeos.');
         $this->assertSame(['A foto do prato.', null], [$res->json('data.results.worked'), $res->json('data.results.change')]);
 
         // Sem alcance (zero ou vazio): sem taxa.
-        $this->assertNull($save(['measured_on' => '2026-11-10', 'reach' => 0, 'interactions' => 5])->assertOk()->json('data.results.engagement_rate'));
-        $this->assertNull($save(['measured_on' => '2026-11-10', 'reach' => null, 'interactions' => 5])->assertOk()->json('data.results.engagement_rate'));
+        $this->assertNull($save(['measured_on' => '2026-11-10', 'reach' => 0, 'interactions' => 5])->assertOk()->json('data.results.networks.instagram.engagement_rate'));
+        $this->assertNull($save(['measured_on' => '2026-11-10', 'reach' => null, 'interactions' => 5])->assertOk()->json('data.results.networks.instagram.engagement_rate'));
         $this->assertSame(0, EditorialPostMetric::where('editorial_post_id', $p->id)->where('metric', 'reach')->count());
-        $this->assertEquals(3, $save(['measured_on' => '2026-11-10', 'reach' => 400, 'interactions' => 12])->json('data.results.engagement_rate'));
+        $this->assertEquals(3, $save(['measured_on' => '2026-11-10', 'reach' => 400, 'interactions' => 12])->json('data.results.networks.instagram.engagement_rate'));
         $this->assertNull(EditorialPublishingService::engagementRate(null, 400));
         $this->assertSame(150.0, EditorialPublishingService::engagementRate(600, 400));
 
         // Origem: um número lido da Meta (F6) fica ao lado do manual, sem o apagar.
-        EditorialPostMetric::create(['company_id' => $this->a->id, 'editorial_post_id' => $p->id, 'metric' => 'reach', 'source' => 'meta', 'value' => 410, 'measured_on' => '2026-11-11']);
+        EditorialPostMetric::create(['company_id' => $this->a->id, 'editorial_post_id' => $p->id, 'network' => 'instagram', 'metric' => 'reach', 'source' => 'meta', 'value' => 410, 'measured_on' => '2026-11-11']);
         $detail = $this->as($this->userA)->getJson($this->url($this->a, "/posts/{$p->id}/workflow"))->assertOk();
-        $this->assertSame(['value' => 410, 'source' => 'meta', 'measured_on' => '2026-11-11'], $detail->json('data.results.values.reach'));
+        $this->assertSame(['value' => 410, 'source' => 'meta', 'measured_on' => '2026-11-11'], $detail->json('data.results.networks.instagram.values.reach'));
         $this->assertSame(400, (int) EditorialPostMetric::where('editorial_post_id', $p->id)->where('metric', 'reach')->where('source', 'manual')->value('value'));
 
         // Vídeo: as visualizações contam.
         $reel = $this->makePost($this->a, ['title' => 'Reel', 'media_format' => 'ig_reel', 'stage' => EditorialPost::STAGE_ANALYSIS]);
         $this->as($this->userA)->putJson($this->url($this->a, "/posts/{$reel->id}/results"), ['measured_on' => '2026-11-10', 'reach' => 200, 'interactions' => 30, 'video_views' => 900])
-            ->assertOk()->assertJsonPath('data.results.values.video_views.value', 900)->assertJsonPath('data.results.is_video', true);
+            ->assertOk()->assertJsonPath('data.results.networks.instagram.values.video_views.value', 900)->assertJsonPath('data.results.networks.instagram.is_video', true);
 
         // Kanban: alcance e taxa no cartão; Programadas não aceitam resultados.
         $card = collect($this->as($this->userA)->getJson($this->url($this->a, '/board') . '?month=2026-11')->json('data.posts'))->firstWhere('id', $reel->id);
-        $this->assertEquals(['reach' => 200, 'engagement_rate' => 15], $card['results']);
+        $this->assertEquals([['network' => 'instagram', 'reach' => 200, 'engagement_rate' => 15]], $card['results']);
         $scheduled = $this->makePost($this->a, ['title' => 'Ainda programada']);
         $this->as($this->userA)->putJson($this->url($this->a, "/posts/{$scheduled->id}/results"), ['measured_on' => '2026-11-10', 'reach' => 1])->assertStatus(422);
 
@@ -274,12 +287,12 @@ class EditorialPublishingTest extends TestCase
         $this->makePost($this->a, ['title' => 'Outubro', 'publish_date' => '2026-10-30', 'stage' => EditorialPost::STAGE_ANALYSIS]);
         $this->makePost($this->a, ['title' => 'Site', 'channel' => 'site', 'format' => 'Artigo', 'media_format' => null, 'stage' => EditorialPost::STAGE_PUBLISHED, 'publish_date' => '2026-11-04']);
         foreach ([['reach', 500], ['interactions', 25]] as [$m, $v]) {
-            EditorialPostMetric::create(['company_id' => $this->a->id, 'editorial_post_id' => $one->id, 'metric' => $m, 'source' => 'manual', 'value' => $v, 'measured_on' => '2026-11-09']);
+            EditorialPostMetric::create(['company_id' => $this->a->id, 'editorial_post_id' => $one->id, 'network' => 'instagram', 'metric' => $m, 'source' => 'manual', 'value' => $v, 'measured_on' => '2026-11-09']);
         }
 
         $rows = $this->as($this->userA)->getJson($this->url($this->a, '/results') . '?month=2026-11')->assertOk()->json('data.rows');
         $this->assertSame(['Um', 'Dois'], array_column($rows, 'title'));
-        $this->assertSame(['2026-11-03', 'instagram', 'ig_feed_image', 'Bastidores', 500], [$rows[0]['date'], $rows[0]['channel'], $rows[0]['media_format'], $rows[0]['pillar'], $rows[0]['reach']]);
+        $this->assertSame(['2026-11-03', 'instagram', 'ig_feed_image', 'Bastidores', 500], [$rows[0]['date'], $rows[0]['network'], $rows[0]['media_format'], $rows[0]['pillar'], $rows[0]['reach']]);
         $this->assertEquals(5, $rows[0]['engagement_rate']);
         $this->assertSame([null, null], [$rows[1]['reach'], $rows[1]['engagement_rate']]);
         $this->as($this->userA)->getJson($this->url($this->a, '/results') . '?month=novembro')->assertStatus(422);

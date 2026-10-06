@@ -46,7 +46,7 @@ class CreativeAiService
         if (! $post) {
             throw new HttpException(404, 'Publicação não encontrada.');
         }
-        if (! in_array($post->channel, self::CHANNELS, true)) {
+        if (! in_array($post->primaryNetwork(), self::CHANNELS, true)) {
             throw new HttpException(422, 'As sugestões de criativos são para publicações do Instagram e do Facebook.');
         }
 
@@ -90,7 +90,7 @@ class CreativeAiService
 
             $context = $this->buildContext($company, $post);
             $response = $this->openAi->call($this->messages($context), (string) $request->model, 2500, 0.6);
-            $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']), $post->channel, $context['format']);
+            $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']), (string) $post->primaryNetwork(), $context['format']);
 
             app(AiRequestLifecycle::class)->complete($request, [
                 'status'            => AiRequest::DONE,
@@ -119,7 +119,7 @@ class CreativeAiService
                 'id'           => $post->id,
                 'date'         => $post->publish_date->toDateString(),
                 'theme'        => $post->title,
-                'channel'      => $post->channel,
+                'channel'      => $post->primaryNetwork(), // o criativo é pensado para a primeira rede
                 'content_type' => $post->format,
                 'media_format' => $post->media_format,
                 'keyword'      => $post->keyword,
@@ -129,7 +129,7 @@ class CreativeAiService
             'profile' => $profile && ! $profile->isEmpty()
                 ? array_intersect_key($profile->toArray(), array_flip(['tone_of_voice', 'audience', 'pillars', 'words_to_use', 'words_to_avoid', 'topics_to_avoid', 'hashtags_default', 'cta_default', 'emoji_policy']))
                 : null,
-            'format'  => $this->advisor->recommend($company->id, $post->channel),
+            'format'  => $this->advisor->recommend($company->id, (string) $post->primaryNetwork()),
         ];
     }
 

@@ -6,6 +6,7 @@ import { acceptEditorialIdea, dismissAiRequest, getBrandProfile, getEditorialIde
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
 import AiRequestState from "Components/Common/AiRequestState";
 import { EditorialIdea, EditorialIdeasRequest, POST_CHANNEL_META, PostChannel, mediaFormatLabel } from "common/models/editorialPost.model";
+import XSelect from "./XSelect";
 
 /**
  * "Gerar ideias do mês": a IA propõe 8 a 12 ideias para o mês aberto (âncoras com o gancho
@@ -173,9 +174,8 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
                                         {!done && (
                                             <div className="row g-2 align-items-center">
                                                 <div className="col-6 col-md-4">
-                                                    <Input type="select" bsSize="sm" aria-label="Canal" value={e.channel} onChange={(ev) => setEdit(idx, { channel: ev.target.value as PostChannel })}>
-                                                        {CHANNELS.map((c) => <option key={c} value={c}>{POST_CHANNEL_META[c].label}</option>)}
-                                                    </Input>
+                                                    <XSelect small ariaLabel="Canal" value={e.channel} onChange={(c) => setEdit(idx, { channel: c as PostChannel })}
+                                                        options={CHANNELS.map((c) => ({ value: c, label: POST_CHANNEL_META[c].label }))} />
                                                 </div>
                                                 <div className="col-6 col-md-4">
                                                     <Input type="date" bsSize="sm" aria-label="Data" value={e.date} min={minDate} max={maxDate} onChange={(ev) => setEdit(idx, { date: ev.target.value })} />

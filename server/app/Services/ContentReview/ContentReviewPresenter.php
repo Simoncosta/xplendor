@@ -106,7 +106,9 @@ class ContentReviewPresenter
                     'post_id' => $item->editorial_post_id,
                     'title' => (string) $item->post?->title,
                     'channel' => $item->post?->channel,
-                    'media_format' => $v?->media_format ?? $item->post?->media_format,
+                    // Uma pré-visualização por rede: o formato e a legenda (própria ou a mesma) dessa rede.
+                    'networks' => collect($v && ! empty($v->media_formats) ? $v->media_formats : ($item->post ? \App\Services\Editorial\EditorialWorkflowService::currentFormats($item->post) : []))
+                        ->map(fn ($format, $network) => ['network' => $network, 'media_format' => $format, 'caption' => (string) ($v?->captionFor($network) ?? '')])->values()->all(),
                     'publish_date' => $item->post?->publish_date?->toDateString(),
                     'version_number' => $v?->number,
                     'caption' => (string) ($v?->caption ?? ''),

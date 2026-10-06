@@ -25,9 +25,10 @@ class EditorialPostService
     /** Cria uma publicação (Modelo C: âncora opcional). Devolve o calendar() atualizado. */
     public function createPost(Company $company, array $data): array
     {
-        $this->createPostRecord($company, $data);
+        $post = $this->createPostRecord($company, $data);
 
-        return $this->line->calendar($company);
+        // O painel da publicação continua na publicação acabada de criar.
+        return $this->line->calendar($company) + ['created_post_id' => $post->id];
     }
 
     /** Cria uma publicação com as mesmas validações e devolve-a (usado também pelas ideias aceites). */
@@ -41,8 +42,16 @@ class EditorialPostService
         // Etapa inicial: Ideia ou Planeamento (por omissão); quem ainda envia o estado antigo
         // fica com a etapa correspondente. Daí em diante a etapa só muda pelo fluxo (F3).
         $stage = $clean['stage'] ?? EditorialPost::STATUS_TO_STAGE[$clean['status'] ?? ''] ?? EditorialPost::STAGE_PLANNING;
-        unset($clean['stage'], $clean['status']);
-        $post = EditorialPost::create(array_merge($clean, ['company_id' => $company->id, 'stage' => $stage, 'stage_changed_at' => now()]));
+        $networks = $clean['_networks'];
+        unset($clean['stage'], $clean['status'], $clean['_networks']);
+        $post = \Illuminate\Support\Facades\DB::transaction(function () use ($clean, $company, $stage, $networks) {
+            $post = EditorialPost::create(array_merge($clean, ['company_id' => $company->id, 'stage' => $stage, 'stage_changed_at' => now()]));
+            if ($networks) {
+                app(\App\Services\Editorial\EditorialWorkflowService::class)->setNetworks($post, null, $networks);
+            }
+
+            return $post;
+        });
         app(\App\Services\Editorial\EditorialWorkflowService::class)->event($post, null, 'created', null, $stage);
 
         return $post;
@@ -56,11 +65,7 @@ class EditorialPostService
             throw ValidationException::withMessages(['post' => ['Publicação não encontrada.']]);
         }
 
-        $clean = $this->validateInput($data);
-        // Quem não envia o formato (ecrãs antigos) não o apaga, se a rede não mudou.
-        if (! array_key_exists('media_format', $data) && $clean['channel'] === $post->channel) {
-            $clean['media_format'] = $post->media_format;
-        }
+        $clean = $this->validateInput($data, $post);
         $this->assertLinkable($company, $clean['anchor_id'] ?? null, $clean['own_anchor_id'] ?? null);
         $this->assertBlogLinkable($company, $clean['blog_id']);
 
@@ -68,8 +73,20 @@ class EditorialPostService
         $this->line->assertDateEditable($company, $clean['publish_date']);              // data nova
 
         // A etapa (e o estado antigo que a segue) só muda pelo fluxo de produção e aprovação.
-        unset($clean['stage'], $clean['status']);
-        $post->update($clean);
+        // As redes e os formatos mudam por setNetworks (numa versão enviada, pede nova aprovação).
+        $networks = $clean['_networks'];
+        unset($clean['stage'], $clean['status'], $clean['_networks']);
+        if ($post->channel !== $clean['channel'] && in_array($post->stage, [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS], true)) {
+            throw ValidationException::withMessages(['channel' => ['Depois de publicada, o canal não muda.']]);
+        }
+        \Illuminate\Support\Facades\DB::transaction(function () use ($post, $clean, $networks) {
+            $post->update($clean);
+            if ($clean['channel'] === EditorialPost::CHANNEL_SITE) {
+                \App\Models\EditorialPostNetwork::where('editorial_post_id', $post->id)->delete();
+            } elseif ($networks !== null) {
+                app(\App\Services\Editorial\EditorialWorkflowService::class)->setNetworks($post->fresh(), \Illuminate\Support\Facades\Auth::user(), $networks);
+            }
+        });
 
         return $this->line->calendar($company);
     }
@@ -91,16 +108,17 @@ class EditorialPostService
     // ── helpers ──
 
     /** Valida campos por enum + formato; devolve só as chaves relevantes (com links nulos por omissão). */
-    private function validateInput(array $data): array
+    private function validateInput(array $data, ?EditorialPost $post = null): array
     {
         $validated = Validator::make($data, [
             'title'         => ['required', 'string', 'max:255'],
             'publish_date'  => ['required', 'date'],
             'format'        => ['nullable', Rule::in([...EditorialPost::FORMATS, EditorialPost::SITE_FORMAT])],   // tipo de conteúdo
-            'media_format'  => ['nullable', 'string', 'max:30'],                                                 // formato (F2)
+            'media_format'  => ['nullable', 'string', 'max:30'],                                                 // compatibilidade: formato da rede única
+            'networks'      => ['nullable', 'array', 'max:2'],                                                   // redes: lista ou rede → formato
             'status'        => ['nullable', Rule::in(EditorialPost::STATUSES)],            // estado antigo (compatibilidade)
             'stage'         => ['nullable', Rule::in([EditorialPost::STAGE_IDEA, EditorialPost::STAGE_PLANNING])], // etapa inicial
-            'channel'       => ['required', Rule::in(EditorialPost::CHANNELS)],
+            'channel'       => ['required', Rule::in([...EditorialPost::CHANNELS, ...EditorialPost::NETWORKS])],     // instagram | facebook: compatibilidade
             'keyword'       => ['nullable', 'string', 'max:255'],
             'publish_time'  => ['nullable', 'regex:/^([01]\d|2[0-3]):[0-5]\d$/'],                      // hora prevista (Lisboa)
             'pillar'        => ['nullable', 'string', 'max:60'],                                          // pilar do Perfil da Marca
@@ -111,25 +129,41 @@ class EditorialPostService
 
         // Canal "site": formato fixo e ligação opcional ao artigo. Restantes canais: formato
         // das redes obrigatório e sem artigo.
+        // Redes: "social" com a lista de redes (e o formato de cada uma); o canal antigo
+        // (instagram ou facebook, com media_format) é uma lista com essa rede.
+        $networks = null;
+        if (in_array($validated['channel'], EditorialPost::NETWORKS, true)) {
+            $keep = $post && $post->channel === EditorialPost::CHANNEL_SOCIAL && ! array_key_exists('media_format', $data)
+                ? $post->networks()->where('network', $validated['channel'])->value('media_format') : null;
+            $networks = [$validated['channel'] => array_key_exists('media_format', $data) ? ($validated['media_format'] ?? null) : $keep];
+            $validated['channel'] = EditorialPost::CHANNEL_SOCIAL;
+        } elseif ($validated['channel'] === EditorialPost::CHANNEL_SOCIAL) {
+            if (array_key_exists('networks', $validated)) {
+                $networks = (array) ($validated['networks'] ?? []);
+            } elseif (! $post) {
+                throw ValidationException::withMessages(['networks' => ['Escolha pelo menos uma rede.']]);
+            }
+        }
+        unset($validated['media_format'], $validated['networks']);
+        if ($networks !== null) {
+            $networks = \App\Services\Editorial\EditorialWorkflowService::validNetworks($networks);
+        }
+
         if ($validated['channel'] === 'site') {
             $validated['format'] = EditorialPost::SITE_FORMAT;
-            $validated['media_format'] = null;
         } else {
             if (empty($validated['format']) || $validated['format'] === EditorialPost::SITE_FORMAT) {
                 throw ValidationException::withMessages(['format' => ['Escolha o tipo de conteúdo da publicação.']]);
             }
-            // O formato tem de ser da rede escolhida (vocabulário do publicador F2).
-            if (! empty($validated['media_format']) && ! in_array($validated['media_format'], EditorialPost::MEDIA_FORMATS[$validated['channel']] ?? [], true)) {
-                throw ValidationException::withMessages(['media_format' => ['Escolha um formato válido para esta rede.']]);
-            }
             $validated['blog_id'] = null;
         }
+        $validated['_networks'] = $networks;
 
         // Normaliza a data para Y-m-d.
         $validated['publish_date'] = \Carbon\CarbonImmutable::parse($validated['publish_date'])->toDateString();
 
         return array_merge(
-            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null, 'blog_id' => null, 'media_format' => null],
+            ['keyword' => null, 'anchor_id' => null, 'own_anchor_id' => null, 'blog_id' => null],
             $validated
         );
     }

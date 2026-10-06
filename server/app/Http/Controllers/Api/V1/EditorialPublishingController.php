@@ -28,15 +28,23 @@ class EditorialPublishingController extends Controller
         return ApiResponse::success($this->publishing->today($companyId, $request->user()), 'Para publicar hoje.');
     }
 
-    // POST { url, published_at }
+    // POST { network, url, published_at }
     public function markPublished(Request $request, int $companyId, int $postId)
     {
-        $post = $this->publishing->markPublished($this->post($companyId, $postId), $request->user(), $request->only(['url', 'published_at']));
+        $post = $this->publishing->markPublished($this->post($companyId, $postId), $request->user(), $request->only(['network', 'url', 'published_at']));
 
-        return ApiResponse::success($this->workflow->detail($post, $request->user()), 'Publicação marcada como publicada.');
+        return ApiResponse::success($this->workflow->detail($post, $request->user()), 'Marcada como publicada.');
     }
 
-    // PUT { measured_on, reach, interactions, likes, comments, saves, shares, clicks, video_views, worked, change }
+    // POST { network, reason }  "Não publicar nesta rede"
+    public function skipNetwork(Request $request, int $companyId, int $postId)
+    {
+        $post = $this->publishing->skipNetwork($this->post($companyId, $postId), $request->user(), $request->only(['network', 'reason']));
+
+        return ApiResponse::success($this->workflow->detail($post, $request->user()), 'Registado: não publicar nesta rede.');
+    }
+
+    // PUT { network, measured_on, reach, interactions, likes, comments, saves, shares, clicks, video_views, worked, change }
     public function saveResults(Request $request, int $companyId, int $postId)
     {
         $post = $this->publishing->saveMetrics($this->post($companyId, $postId), $request->user(), $request->all());

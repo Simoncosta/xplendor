@@ -3,44 +3,43 @@ import {
     Card, CardBody, CardHeader, Container, Row, Col, Spinner, Button,
     Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGroup, Label, Input,
     Offcanvas, OffcanvasHeader, OffcanvasBody, Tooltip,
+    UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem,
 } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import listPlugin from "@fullcalendar/list";
 import ptLocale from "@fullcalendar/core/locales/pt";
-import Select from "react-select";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { toast, ToastContainer } from "react-toastify";
 import BreadCrumb from "Components/Common/BreadCrumb";
 import {
     getEditorialCalendar, setEditorialSector, openEditorialMonth, closeEditorialMonth,
     hideEditorialAnchor, showEditorialAnchor, createEditorialOwnAnchor, deleteEditorialOwnAnchor,
-    createEditorialPost, updateEditorialPost, deleteEditorialPost, getBrandProfile, getBlogs,
+    getBrandProfile, getEditorialFormats,
 } from "helpers/laravel_helper";
-import {
-    EditorialPost, EDITORIAL_POST_STATUS_META, MEDIA_FORMATS, mediaFormatLabel, POST_CHANNEL_META, POST_FORMATS, PostStatus, SITE_FORMAT,
-} from "common/models/editorialPost.model";
-import { BLOG_STATUS_META } from "common/models/blog.model";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { EditorialPost, channelIcons } from "common/models/editorialPost.model";
+import { useSearchParams } from "react-router-dom";
 import SectorChooser from "./SectorChooser";
-import CreativeModal from "./CreativeModal";
 import IdeasModal from "./IdeasModal";
 import EditorialBoard from "./EditorialBoard";
-import InstagramGrid from "./InstagramGrid";
-import PostWorkflowModal from "./PostWorkflowModal";
+import FeedView from "./FeedView";
+import PostPanel, { PanelTarget } from "./PostPanel";
+import XSelect, { XOption } from "./XSelect";
 import StageLegendModal from "./StageLegendModal";
 import ReviewLinksModal from "./ReviewLinksModal";
 import TodayPanel from "./TodayPanel";
 import MonthResults from "./MonthResults";
-import { BLOG_STATUS_STAGE, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
+import "./editorial.css";
+import { BLOG_STATUS_STAGE, FormatTable, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
 const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
 
 /**
- * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
- * calendar() e os MESMOS endpoints. Âncoras = ocasiões (chips subtis); Publicações = trabalho
- * (chips com ícone do canal + estado). Offcanvas por dia: detalhe da âncora + posts do dia
- * (editar/apagar em mês aberto). O Board é Camada 3 → placeholder. ZERO backend.
+ * Linha Editorial: uma ação principal ("Nova publicação"), "Gerar ideias" como secundária e
+ * o resto no menu "Mais"; as vistas (Calendário, Kanban, Feed, Resultados) num controlo
+ * segmentado; o seletor do mês. Qualquer publicação, em qualquer vista, abre o MESMO painel
+ * (PostPanel). Âncoras = ocasiões (chips subtis); publicações = trabalho (ícones das redes e
+ * etapa). No telemóvel, o calendário passa a lista por dias.
  */
 
 type BaseItem = { title: string; origin: string; rule_type: string; anchor_id: number; owned: boolean; hidden: boolean; occ_year: number; month_key: string; suggestion: string | null };
@@ -55,15 +54,11 @@ type MonthState = {
 };
 
 const MONTHS_PT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const WEEKDAYS_PT = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const ORDINALS = [{ v: 1, l: "1.º" }, { v: 2, l: "2.º" }, { v: 3, l: "3.º" }, { v: 4, l: "4.º" }, { v: 5, l: "5.º" }, { v: -1, l: "Último" }];
 const RULE_LABEL: Record<string, string> = { fixa: "Data fixa", nth_weekday: "Dia da semana", periodo: "Período", relativa_pascoa: "Relativa à Páscoa" };
 
-/** Mês corrente (AAAA-MM) em Lisboa. */
-const currentMonthKey = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" }).slice(0, 7);
 const monthLabel = (key: string) => { const [y, m] = key.split("-"); return `${MONTHS_PT[Number(m) - 1]} ${y}`; };
-const shortLabel = (key: string) => { const [, m] = key.split("-"); return MONTHS_SHORT[Number(m) - 1]; };
 const fmtDate = (iso: string) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
 const nextDay = (iso: string) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
@@ -77,11 +72,6 @@ const emptyForm = (month: number): CreateForm => ({
     start_month: month, start_day: 1, end_month: month, end_day: 28, easter_offset: 0,
 });
 
-// format = tipo de conteúdo (18 valores); media_format = formato da rede (vocabulário F2).
-type PostForm = { id?: number; publish_date: string; publish_time: string; title: string; format: string; media_format: string; channel: string; keyword: string; pillar: string; status: PostStatus; link: string; blog_id: string };
-const emptyPost = (date: string): PostForm => ({ publish_date: date, publish_time: "", title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", pillar: "", status: "rascunho", link: "", blog_id: "" });
-const formatsFor = (channel: string) => (channel === "instagram" || channel === "facebook" ? MEDIA_FORMATS[channel] : []);
-/** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
 /** Etapa a mostrar no calendário: a da publicação ou, no Site, a equivalente do artigo do blog. */
 const postStage = (p: EditorialPost): Stage => (p.blog ? BLOG_STATUS_STAGE[p.blog.status] ?? "production" : p.stage ?? "planning");
 
@@ -90,25 +80,27 @@ const VIEW_PARAM = "vista";
 const viewKey = () => {
     try { return `xp-editorial-view:${JSON.parse(sessionStorage.getItem("authUser") || "{}").id ?? "0"}`; } catch { return "xp-editorial-view:0"; }
 };
-type View = "calendar" | "board" | "grid" | "results";
-const VIEW_URL: Record<View, string> = { calendar: "calendario", board: "kanban", grid: "grelha", results: "resultados" };
+type View = "calendar" | "board" | "feed" | "results";
+const VIEW_URL: Record<View, string> = { calendar: "calendario", board: "kanban", feed: "feed", results: "resultados" };
+const VIEWS: { key: View; label: string; icon: string }[] = [
+    { key: "calendar", label: "Calendário", icon: "ri-calendar-2-line" }, { key: "board", label: "Kanban", icon: "ri-layout-column-line" },
+    { key: "feed", label: "Feed", icon: "ri-smartphone-line" }, { key: "results", label: "Resultados", icon: "ri-bar-chart-2-line" },
+];
 const initialView = (): View => {
     const q = new URLSearchParams(window.location.search).get(VIEW_PARAM);
+    if (q === "grelha") return "feed"; // a antiga "Grelha do Instagram"
     const fromUrl = (Object.keys(VIEW_URL) as View[]).find((v) => VIEW_URL[v] === q);
     if (fromUrl) return fromUrl;
-    try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "grid" || v === "results" ? v : "calendar"; } catch { return "calendar"; }
+    try { const v = localStorage.getItem(viewKey()); return v === "board" || v === "feed" || v === "results" ? v : "calendar"; } catch { return "calendar"; }
 };
+/** Mês seguinte e anterior (AAAA-MM). */
+const shiftKey = (key: string, delta: number) => { const [y, m] = key.split("-").map(Number); const d = new Date(y, m - 1 + delta, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+const isPhone = () => window.matchMedia("(max-width: 767.98px)").matches;
 /** "Como funciona" já aberto sozinho para este utilizador (abre uma só vez). */
 const howToKey = () => viewKey().replace("xp-editorial-view:", "xp-editorial-howto:");
 const initialMonth = () => {
     const m = new URLSearchParams(window.location.search).get("mes");
     return m && /^\d{4}-\d{2}$/.test(m) ? m : "";
-};
-
-const postStatusMeta = (p: EditorialPost) => {
-    if (p.blog) return BLOG_STATUS_META[p.blog.status];
-    const st = STAGE_META[p.stage] ?? null;
-    return st ? { label: st.label, color: st.color === "dark" ? "secondary" : st.color, icon: st.icon } : EDITORIAL_POST_STATUS_META[p.status];
 };
 
 export default function EditorialCalendarPage() {
@@ -120,6 +112,7 @@ export default function EditorialCalendarPage() {
     }, []);
 
     const calRef = useRef<FullCalendar | null>(null);
+    const [phone] = useState(isPhone);
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -143,32 +136,26 @@ export default function EditorialCalendarPage() {
     const [working, setWorking] = useState(false);
     const [cascade, setCascade] = useState<MonthState | null>(null);
 
-    // Offcanvas por DIA: a data + a âncora clicada (se foi âncora).
-    const [panelDate, setPanelDate] = useState<string | null>(null);
+    // Âncora clicada no calendário (ocasião): detalhe num painel lateral.
     const [panelAnchor, setPanelAnchor] = useState<Item | null>(null);
-
     const [createOpen, setCreateOpen] = useState(false);           // modal criar âncora própria
     const [form, setForm] = useState<CreateForm>(emptyForm(1));
-    const [postOpen, setPostOpen] = useState(false);               // modal criar/editar publicação
-    const [postForm, setPostForm] = useState<PostForm>(emptyPost(""));
-    const [creativeOpen, setCreativeOpen] = useState(false);
-    // F3a: produção e aprovação (Kanban e janela de produção de cada publicação).
-    const [workflowPostId, setWorkflowPostId] = useState<number | null>(null);
-    const [boardReload, setBoardReload] = useState(0);
+    // O painel único da publicação (criar e editar, em todas as vistas).
+    const [panel, setPanel] = useState<PanelTarget | null>(null);
+    const [reload, setReload] = useState(0);
+    const [formats, setFormats] = useState<FormatTable | null>(null);
     // "Gerar ideias do mês": só com o mínimo do Perfil da Marca (o servidor também recusa).
     const [ideasOpen, setIdeasOpen] = useState(false);
-    const [resultsMonth, setResultsMonth] = useState(() => initialMonth() || currentMonthKey());
-    const [pillars, setPillars] = useState<string[]>([]); // pilares do Perfil da Marca (F3d: pilar da publicação)
+    const [pillars, setPillars] = useState<string[]>([]);
     const [ideasGate, setIdeasGate] = useState<{ ready: boolean; reason: string | null } | null>(null);
     const [howOpen, setHowOpen] = useState(false);
     const [legendOpen, setLegendOpen] = useState(false);
     // F3c: links de aprovação por lote; ?aprovacoes=ID (aviso do sino) abre-os nesse link.
     const [reviewOpen, setReviewOpen] = useState(() => new URLSearchParams(window.location.search).has("aprovacoes"));
     const [reviewFocus] = useState(() => Number(new URLSearchParams(window.location.search).get("aprovacoes") || 0) || null);
-    // Razão do "Gerar ideias" desativado: ao passar o rato, no foco e ao tocar.
-    const [reasonOpen, setReasonOpen] = useState(false);
+    // Razão de um botão desativado: ao passar o rato, no foco e ao tocar.
+    const [reasonOpen, setReasonOpen] = useState<string | null>(null);
     const touchRef = useRef(false); // no toque, o "sair com o rato" simulado não fecha a razão
-    const navigate = useNavigate();
 
     const applyCalendar = useCallback((d: any) => {
         setHasSector(!!d.has_sector);
@@ -181,13 +168,13 @@ export default function EditorialCalendarPage() {
             setCanProduce(d.can_produce !== false);
             // Mês do URL (?mes=) se estiver na janela; senão o corrente.
             const inWindow = urlMonth && d.from && d.to && `${urlMonth}-01` >= d.from.slice(0, 8) + "01" && `${urlMonth}-01` <= d.to;
-            setSelectedKey((prev) => prev || (inWindow ? urlMonth : d.months?.[0]?.month_key ?? ""));
+            setSelectedKey((prev) => prev || (inWindow ? urlMonth : d.months?.find((m: MonthState) => m.is_current)?.month_key ?? d.months?.[0]?.month_key ?? ""));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const load = useCallback(async () => {
         if (!companyId) { setLoading(false); return; }
-        setLoading(true);
         try {
             const r: any = await getEditorialCalendar(companyId);
             applyCalendar(r?.data ?? {});
@@ -195,8 +182,13 @@ export default function EditorialCalendarPage() {
             toast.error(e?.message ?? "Não foi possível carregar a linha editorial.");
         } finally { setLoading(false); }
     }, [companyId, applyCalendar]);
+    const refresh = () => { void load(); setReload((k) => k + 1); };
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => { void load(); }, [load]);
+    useEffect(() => {
+        if (!companyId) return;
+        getEditorialFormats(companyId).then((r: any) => setFormats(r.data)).catch(() => setFormats(null));
+    }, [companyId]);
     useEffect(() => {
         if (!companyId) return;
         getBrandProfile(companyId)
@@ -208,13 +200,13 @@ export default function EditorialCalendarPage() {
             .catch(() => setIdeasGate({ ready: true, reason: null }));
     }, [companyId, ideasOpen]);
 
-    // Abre sozinho uma vez por utilizador, na primeira visita com o perfil incompleto.
+    // "Como funciona" abre sozinho uma vez por utilizador, na primeira visita com o perfil incompleto.
     useEffect(() => {
         if (!hasSector || !ideasGate || ideasGate.ready) return;
         try {
             if (localStorage.getItem(howToKey())) return;
             localStorage.setItem(howToKey(), "1");
-        } catch { return; /* sem armazenamento: não abre sozinho, para não abrir em todas as visitas */ }
+        } catch { return; }
         setHowOpen(true);
     }, [hasSector, ideasGate]);
 
@@ -226,31 +218,35 @@ export default function EditorialCalendarPage() {
     };
 
     const selected = useMemo(() => months.find((m) => m.month_key === selectedKey) ?? null, [months, selectedKey]);
-    /** Editor do blog com o título e o tema da publicação; o artigo fica ligado a ela ao guardar. */
-    const writeArticleUrl = (p: EditorialPost) => {
-        const q = new URLSearchParams({ editorial_post_id: String(p.id), title: p.title });
-        if (p.keyword) q.set("keyword", p.keyword);
-        return `/blogs/create?${q.toString()}`;
-    };
-    const firstKey = months[0]?.month_key;
-    const lastKey = months[months.length - 1]?.month_key;
-
-    // Limites de NAVEGAÇÃO (ler): a janela de leitura vai 12 meses para trás
-    // (range.from) até +11 à frente (range.to). O passado é só consulta.
-    const minKey = range ? range.from.slice(0, 7) : firstKey;       // 12 meses atrás
-    const maxKey = range ? range.to.slice(0, 7) : lastKey;          // +11 à frente
-    const currentKey = useMemo(() => months.find((m) => m.is_current)?.month_key ?? firstKey, [months, firstKey]);
-    // Mês em consulta (navegado para trás): fora da tira e anterior ao corrente.
+    const minKey = range ? range.from.slice(0, 7) : months[0]?.month_key;       // 12 meses atrás (consulta)
+    const maxKey = range ? range.to.slice(0, 7) : months[months.length - 1]?.month_key;
+    const currentKey = useMemo(() => months.find((m) => m.is_current)?.month_key ?? months[0]?.month_key, [months]);
     const isPastView = !!selectedKey && !!currentKey && selectedKey < currentKey;
+    // Publicações do mês por etapa (o "Como funciona" destaca a etapa atual).
+    const stageCounts = useMemo(() => posts.filter((p) => p.month_key === selectedKey && p.channel !== "site")
+        .reduce((acc, p) => ({ ...acc, [p.stage]: (acc[p.stage] ?? 0) + 1 }), {} as Partial<Record<Stage, number>>), [posts, selectedKey]);
+    const monthOpen = useCallback((date: string) => months.find((m) => m.month_key === date.slice(0, 7))?.state === "open", [months]);
 
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const gotoKey = (key: string) => {
+    /** Mudar de mês (também move o calendário). */
+    const goMonth = (key: string) => {
+        if (!key) return;
+        setSelectedKey(key);
         const [y, m] = key.split("-").map(Number);
         calRef.current?.getApi().gotoDate(new Date(y, m - 1, 1));
     };
+    const monthOptions: XOption[] = useMemo(() => {
+        if (!minKey || !maxKey) return [];
+        const out: XOption[] = [];
+        for (let k = minKey; k <= maxKey; k = shiftKey(k, 1)) {
+            const st = months.find((m) => m.month_key === k);
+            out.push({ value: k, label: `${monthLabel(k)}${st ? (st.state === "open" ? "" : " (fechado)") : " (só consulta)"}` });
+        }
+        return out;
+    }, [minKey, maxKey, months]);
 
-    // Vista e mês no URL (?vista=calendario|kanban|grelha&mes=AAAA-MM), sem criar entradas no histórico.
+    // Vista e mês no URL (?vista=calendario|kanban|feed|resultados&mes=AAAA-MM), sem criar entradas no histórico.
     useEffect(() => {
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
@@ -261,30 +257,22 @@ export default function EditorialCalendarPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [view, selectedKey]);
 
-    // Ligações do sino: ?ideas=AAAA-MM abre as ideias desse mês; ?creative=ID abre o
-    // criativo da publicação. O resultado à espera é retomado pelo próprio modal.
+    // Ligações do sino: ?ideas=AAAA-MM abre as ideias desse mês; ?creative=ID ou ?publicacao=ID abre o painel.
     const handledLink = useRef(false);
     useEffect(() => {
         if (handledLink.current || !range) return;
         const ideasKey = searchParams.get("ideas");
-        const creativeId = Number(searchParams.get("creative") || 0);
-        if (!ideasKey && !creativeId) return;
+        const postId = Number(searchParams.get("creative") || searchParams.get("publicacao") || 0);
+        if (!ideasKey && !postId) return;
         handledLink.current = true;
         if (ideasKey && months.some((mo) => mo.month_key === ideasKey)) {
-            setSelectedKey(ideasKey);
-            gotoKey(ideasKey);
+            goMonth(ideasKey);
             setIdeasOpen(true);
         }
-        const post = creativeId ? posts.find((p) => p.id === creativeId) : null;
-        if (post) {
-            gotoKey(post.month_key);
-            openEditPost(post);
-            setCreativeOpen(true);
-        }
+        if (postId) setPanel({ mode: "edit", postId, tab: searchParams.get("creative") ? "content" : undefined });
         setSearchParams((prev) => {
             const next = new URLSearchParams(prev);
-            next.delete("ideas");
-            next.delete("creative");
+            ["ideas", "creative", "publicacao"].forEach((k) => next.delete(k));
             return next;
         }, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,13 +283,13 @@ export default function EditorialCalendarPage() {
         const anchorEvents = items.map((it) => ({
             start: it.type === "range" ? (it as RangeItem).start : (it as DayItem).date,
             end: it.type === "range" ? nextDay((it as RangeItem).end) : undefined,
-            allDay: true, display: "block",
+            allDay: true, display: "block", title: it.title,
             backgroundColor: "transparent", borderColor: "transparent",
             classNames: ["bg-transparent", "border-0", "shadow-none", "p-0"],
             extendedProps: { kind: "anchor", item: it } as any,
         }));
         const postEvents = posts.map((p) => ({
-            start: p.publish_date, allDay: true, display: "block",
+            start: p.publish_date, allDay: true, display: "block", title: p.title,
             backgroundColor: "transparent", borderColor: "transparent",
             classNames: ["bg-transparent", "border-0", "shadow-none", "p-0"],
             extendedProps: { kind: "post", post: p } as any,
@@ -314,7 +302,7 @@ export default function EditorialCalendarPage() {
             : it.owned ? "bg-success-subtle text-success"
                 : "bg-secondary-subtle text-secondary";
 
-    // ── B2 ──
+    // ── Meses ──
     const doOpen = async (mo: MonthState) => {
         setActing(true);
         try { const r: any = await openEditorialMonth(companyId, mo.year, mo.month); setMonths(r?.data?.months ?? []); toast.success(`${monthLabel(mo.month_key)} aberto.`); }
@@ -329,7 +317,7 @@ export default function EditorialCalendarPage() {
     };
     const doClose = (mo: MonthState) => { mo.closes_also.length > 0 ? setCascade(mo) : performClose(mo); };
 
-    // ── B3a: âncoras ──
+    // ── Âncoras ──
     const runAnchor = async (fn: () => Promise<any>, okMsg: string, ref: Item) => {
         setWorking(true);
         try {
@@ -344,7 +332,6 @@ export default function EditorialCalendarPage() {
     const onShow = (it: Item) => runAnchor(() => showEditorialAnchor(companyId, it.anchor_id, it.occ_year), "Âncora mostrada.", it);
     const onDeleteAnchor = (it: Item) => runAnchor(async () => { const r = await deleteEditorialOwnAnchor(companyId, it.anchor_id); setPanelAnchor(null); return r; }, "Âncora própria apagada.", it);
 
-    // ── B3a: criar âncora própria ──
     const openCreate = () => { if (selected) { setForm(emptyForm(selected.month)); setCreateOpen(true); } };
     const setF = (patch: Partial<CreateForm>) => setForm((p) => ({ ...p, ...patch }));
     const submitCreate = async () => {
@@ -354,18 +341,17 @@ export default function EditorialCalendarPage() {
         else if (f.rule_type === "nth_weekday") { payload.month = f.month; payload.ordinal = f.ordinal; payload.weekday = f.weekday; }
         else if (f.rule_type === "periodo") { payload.start_month = f.start_month; payload.start_day = f.start_day; payload.end_month = f.end_month; payload.end_day = f.end_day; }
         else if (f.rule_type === "relativa_pascoa") { payload.easter_offset = f.easter_offset; }
-        if (!payload.title) { toast.error("Dá um título à âncora."); return; }
+        if (!payload.title) { toast.error("Dê um título à âncora."); return; }
         setWorking(true);
         try { const r: any = await createEditorialOwnAnchor(companyId, payload); applyCalendar(r?.data ?? {}); toast.success("Âncora própria criada."); setCreateOpen(false); }
         catch (e: any) { toast.error(e?.message ?? "Não foi possível criar a âncora."); }
         finally { setWorking(false); }
     };
 
-    // ── P1: publicações ──
     // Opções de ligação a âncora (herdada 'a:' / própria 'o:') — distintas por espaço de id.
     const anchorLinkOptions = useMemo(() => {
         const seen = new Set<string>();
-        const opts: { value: string; label: string }[] = [{ value: "", label: "— Sem âncora —" }];
+        const opts: XOption[] = [{ value: "", label: "Sem âncora" }];
         for (const it of items) {
             const key = `${it.owned ? "o" : "a"}:${it.anchor_id}`;
             if (seen.has(key)) continue;
@@ -375,57 +361,30 @@ export default function EditorialCalendarPage() {
         return opts;
     }, [items]);
 
-    const openCreatePost = (date: string) => { setPostForm(emptyPost(date)); setPostOpen(true); };
-    const openEditPost = (p: EditorialPost) => {
-        setPostForm({
-            id: p.id, publish_date: p.publish_date, publish_time: p.publish_time ?? "", title: p.title, format: p.format, media_format: p.media_format ?? "",
-            channel: p.channel, keyword: p.keyword ?? "", pillar: p.pillar ?? "", status: p.status,
-            link: p.anchor_id ? `a:${p.anchor_id}` : p.own_anchor_id ? `o:${p.own_anchor_id}` : "",
-            blog_id: p.blog_id ? String(p.blog_id) : "",
-        });
-        setPostOpen(true);
+    /** Nova publicação: hoje, se estiver no mês escolhido; senão o dia 1 desse mês. */
+    const newPost = (date?: string) => {
+        const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Lisbon" });
+        setPanel({ mode: "create", date: date ?? (today.startsWith(selectedKey) ? today : `${selectedKey}-01`) });
     };
-    const setPF = (patch: Partial<PostForm>) => setPostForm((p) => ({ ...p, ...patch }));
-    // Artigos para ligar ao canal "site" (carregados quando o modal abre nesse canal).
-    const [siteBlogs, setSiteBlogs] = useState<{ id: number; title: string; status: string }[]>([]);
-    useEffect(() => {
-        if (!postOpen || postForm.channel !== "site" || !companyId) return;
-        getBlogs(companyId, { perPage: 100 }).then((r: any) => setSiteBlogs(r?.data?.page?.data ?? [])).catch(() => setSiteBlogs([]));
-    }, [postOpen, postForm.channel, companyId]);
-    const submitPost = async () => {
-        const f = postForm;
-        if (!f.title.trim()) { toast.error("Dá um título à publicação."); return; }
-        const payload: any = {
-            title: f.title.trim(), publish_date: f.publish_date, format: f.channel === "site" ? SITE_FORMAT : f.format,
-            media_format: f.channel === "site" ? null : (f.media_format || null),
-            channel: f.channel, keyword: f.keyword.trim() || null,
-            publish_time: f.channel === "site" ? null : (f.publish_time || null),
-            pillar: f.pillar || null,
-            blog_id: f.channel === "site" && f.blog_id ? Number(f.blog_id) : null,
-        };
-        if (f.link.startsWith("a:")) payload.anchor_id = Number(f.link.slice(2));
-        else if (f.link.startsWith("o:")) payload.own_anchor_id = Number(f.link.slice(2));
-        setWorking(true);
-        try {
-            const r: any = f.id ? await updateEditorialPost(companyId, f.id, payload) : await createEditorialPost(companyId, payload);
-            applyCalendar(r?.data ?? {});
-            toast.success(f.id ? "Publicação atualizada." : "Publicação criada.");
-            setPostOpen(false);
-        } catch (e: any) { toast.error(e?.message ?? "Não foi possível guardar a publicação."); }
-        finally { setWorking(false); }
-    };
-    const onDeletePost = async (p: EditorialPost) => {
-        setWorking(true);
-        try { const r: any = await deleteEditorialPost(companyId, p.id); applyCalendar(r?.data ?? {}); toast.success("Publicação apagada."); }
-        catch (e: any) { toast.error(e?.message ?? "Não foi possível apagar a publicação."); await load(); }
-        finally { setWorking(false); }
-    };
+    const openPost = (id: number, toPublish = false) => setPanel({ mode: "edit", postId: id, tab: toPublish ? "publish" : undefined });
 
-    // Estado do offcanvas: posts do dia + se o mês está aberto.
-    const panelPosts = useMemo(() => (panelDate ? posts.filter((p) => p.publish_date === panelDate) : []), [posts, panelDate]);
-    const panelMonthOpen = panelDate ? (months.find((m) => m.month_key === panelDate.slice(0, 7))?.state === "open") : false;
-
-    const openPanel = (date: string, anchor: Item | null) => { setPanelDate(date); setPanelAnchor(anchor); };
+    // Razões de botões desativados (nunca um botão desativado sem explicação).
+    const monthIsOpen = selected?.state === "open";
+    const ideasReason = !canProduce ? null : !monthIsOpen ? "Abra o mês para gerar ideias." : ideasGate && !ideasGate.ready ? ideasGate.reason : null;
+    const newPostReason = !canProduce ? null : !monthIsOpen ? (isPastView ? "Mês passado: só consulta." : "Abra o mês para criar publicações.") : null;
+    const reasonButton = (key: string, reason: string, children: React.ReactNode, color: string) => (
+        <>
+            <span id={`why-${key}`} tabIndex={0} className="d-inline-block" role="button" aria-describedby={`why-${key}-text`}
+                onPointerDown={(e) => { touchRef.current = e.pointerType !== "mouse"; }}
+                onMouseEnter={() => setReasonOpen(key)} onMouseLeave={() => { if (!touchRef.current) setReasonOpen(null); }}
+                onFocus={() => setReasonOpen(key)} onBlur={() => setReasonOpen(null)} onClick={() => setReasonOpen(key)}>
+                <Button color={color} size="sm" disabled className="text-nowrap" style={{ pointerEvents: "none" }}>{children}</Button>
+            </span>
+            <Tooltip target={`why-${key}`} isOpen={reasonOpen === key} trigger="manual" placement="bottom">
+                <span id={`why-${key}-text`}>{reason}</span>
+            </Tooltip>
+        </>
+    );
 
     return (
         <div className="page-content">
@@ -442,7 +401,7 @@ export default function EditorialCalendarPage() {
                 ) : (
                     <Card>
                         <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div>
+                            <div className="me-auto">
                                 <h5 className="mb-0 d-flex align-items-center gap-1">
                                     Linha Editorial
                                     <button type="button" className="btn btn-link btn-sm p-0 lh-1 text-muted" aria-label="Como funciona" title="Como funciona" onClick={() => setHowOpen(true)}>
@@ -451,308 +410,154 @@ export default function EditorialCalendarPage() {
                                 </h5>
                                 <small className="text-muted">Ramo: <strong>{sectorName}</strong></small>
                             </div>
+                            {/* Uma ação principal; "Gerar ideias" secundária; o resto em "Mais". */}
                             <div className="d-flex flex-wrap align-items-center gap-2">
-                            <Button color="soft-success" size="sm" onClick={() => setReviewOpen(true)}>
-                                <i className="ri-links-line me-1" />Aprovação por link
-                            </Button>
-                            <div className="btn-group flex-wrap" role="group" aria-label="Vista">
-                                <Button color={view === "calendar" ? "primary" : "light"} size="sm" onClick={() => setView("calendar")}>
-                                    <i className="ri-calendar-2-line me-1" />Calendário
-                                </Button>
-                                <Button color={view === "board" ? "primary" : "light"} size="sm" onClick={() => setView("board")}>
-                                    <i className="ri-layout-column-line me-1" />Kanban
-                                </Button>
-                                <Button color={view === "grid" ? "primary" : "light"} size="sm" onClick={() => setView("grid")}>
-                                    <i className="ri-instagram-line me-1" />Grelha do Instagram
-                                </Button>
-                                <Button color={view === "results" ? "primary" : "light"} size="sm" onClick={() => setView("results")}>
-                                    <i className="ri-bar-chart-2-line me-1" />Resultados
-                                </Button>
-                            </div>
+                                {canProduce && (ideasReason
+                                    ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
+                                    : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
+                                {canProduce && (newPostReason
+                                    ? reasonButton("new", newPostReason, <><i className="ri-add-line me-1" />Nova publicação</>, "primary")
+                                    : <Button color="primary" size="sm" onClick={() => newPost()}><i className="ri-add-line me-1" />Nova publicação</Button>)}
+                                <UncontrolledDropdown>
+                                    <DropdownToggle color="light" size="sm" aria-label="Mais ações"><i className="ri-more-2-fill me-1" />Mais</DropdownToggle>
+                                    <DropdownMenu end>
+                                        <DropdownItem onClick={() => setReviewOpen(true)}><i className="ri-links-line me-2" />Aprovação por link</DropdownItem>
+                                        {selected && monthIsOpen && <DropdownItem onClick={openCreate}><i className="ri-calendar-event-line me-2" />Âncora própria</DropdownItem>}
+                                        {selected?.can_close && <DropdownItem disabled={acting} onClick={() => doClose(selected)}><i className="ri-lock-2-line me-2" />Fechar {monthLabel(selected.month_key)}</DropdownItem>}
+                                        <DropdownItem divider />
+                                        <DropdownItem onClick={() => setLegendOpen(true)}><i className="ri-palette-line me-2" />Legenda das etapas</DropdownItem>
+                                        <DropdownItem onClick={() => setHowOpen(true)}><i className="ri-question-line me-2" />Como funciona</DropdownItem>
+                                    </DropdownMenu>
+                                </UncontrolledDropdown>
                             </div>
                         </CardHeader>
 
                         <CardBody>
+                            {/* Vistas (controlo segmentado) e o mês */}
+                            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
+                                <div className="xp-seg" role="tablist" aria-label="Vista">
+                                    {VIEWS.map((v) => (
+                                        <button key={v.key} type="button" role="tab" aria-selected={view === v.key} className={view === v.key ? "on" : ""} onClick={() => setView(v.key)}>
+                                            <i className={`${v.icon} me-1`} />{v.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {selectedKey && (
+                                    <div className="d-flex flex-wrap align-items-center gap-1 ms-md-auto" style={{ maxWidth: "100%" }}>
+                                        <Button color="light" size="sm" aria-label="Mês anterior" disabled={!!minKey && selectedKey <= minKey} onClick={() => goMonth(shiftKey(selectedKey, -1))}><i className="ri-arrow-left-s-line" /></Button>
+                                        <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={selectedKey} onChange={goMonth} /></div>
+                                        <Button color="light" size="sm" aria-label="Mês seguinte" disabled={!!maxKey && selectedKey >= maxKey} onClick={() => goMonth(shiftKey(selectedKey, 1))}><i className="ri-arrow-right-s-line" /></Button>
+                                        {selected ? (monthIsOpen
+                                            ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
+                                            : selected.can_open && canProduce
+                                                ? <Button color="success" size="sm" className="ms-1" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
+                                                : <span className="badge bg-body-secondary text-muted ms-1" title={selected.state === "closed" ? "Abra primeiro o mês anterior." : undefined}><i className="ri-lock-2-line me-1" />Fechado</span>)
+                                            : isPastView ? <span className="badge bg-warning-subtle text-warning ms-1"><i className="ri-archive-line me-1" />Só consulta</span> : null}
+                                    </div>
+                                )}
+                            </div>
+
+                            {(view === "calendar" || view === "board") && <TodayPanel companyId={companyId} reloadKey={reload} onOpen={openPost} />}
+
                             {view === "results" ? (
-                                <>
-                                    <div className="d-flex align-items-center gap-2 mb-3">
-                                        <Label for="res-month" className="mb-0 fs-13">Mês</Label>
-                                        <Input id="res-month" type="month" bsSize="sm" style={{ width: 180 }} value={resultsMonth} max={currentMonthKey()}
-                                            onChange={(e) => e.target.value && setResultsMonth(e.target.value)} />
-                                    </div>
-                                    <MonthResults companyId={companyId} month={resultsMonth} monthLabel={monthLabel(resultsMonth)} onOpen={(id) => setWorkflowPostId(id)} />
-                                </>
-                            ) : view === "grid" ? (
-                                <InstagramGrid companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} />
+                                selectedKey && <MonthResults companyId={companyId} month={selectedKey} monthLabel={monthLabel(selectedKey)} onOpen={(id) => openPost(id)} />
+                            ) : view === "feed" ? (
+                                <FeedView companyId={companyId} reloadKey={reload} onOpen={(id) => openPost(id)} />
                             ) : view === "board" ? (
-                                <>
-                                    <TodayPanel companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
-                                    {/* TIRA DOS 12 MESES (também no Kanban) */}
-                                    <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
-                                        {months.map((mo) => {
-                                            const active = mo.month_key === selectedKey;
-                                            const open = mo.state === "open";
+                                <EditorialBoard companyId={companyId} monthKey={selectedKey} reloadKey={reload} onOpen={(id) => openPost(id)} onChanged={() => void load()} />
+                            ) : range && (
+                                <FullCalendar
+                                    ref={calRef as any}
+                                    plugins={[dayGridPlugin, listPlugin]}
+                                    // No telemóvel, uma lista por dias (a grelha de 7 colunas não cabe).
+                                    initialView={phone ? "listMonth" : "dayGridMonth"}
+                                    initialDate={selectedKey ? `${selectedKey}-01` : currentKey ? `${currentKey}-01` : range.from}
+                                    locale={ptLocale}
+                                    firstDay={1}
+                                    height="auto"
+                                    headerToolbar={false}
+                                    noEventsContent="Sem publicações nem ocasiões neste mês."
+                                    validRange={{ start: range.from, end: nextDay(range.to) }}
+                                    editable={false} selectable={false} droppable={false} dayMaxEvents={false}
+                                    events={events}
+                                    datesSet={(arg) => {
+                                        const d = arg.view.currentStart;
+                                        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+                                        setSelectedKey((prev) => (prev === key ? prev : key));
+                                    }}
+                                    eventClick={(arg) => {
+                                        const ep = arg.event.extendedProps as any;
+                                        if (ep.kind === "post") openPost((ep.post as EditorialPost).id);
+                                        else setPanelAnchor(ep.item as Item);
+                                    }}
+                                    eventContent={(arg) => {
+                                        const ep = arg.event.extendedProps as any;
+                                        if (ep.kind === "post") {
+                                            const p = ep.post as EditorialPost;
+                                            const stage = postStage(p);
+                                            const sm = STAGE_META[stage];
                                             return (
-                                                <button key={mo.month_key} type="button" onClick={() => setSelectedKey(mo.month_key)}
-                                                    className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0"
-                                                    style={{ border: `1px solid ${active ? "var(--vz-primary)" : "var(--vz-border-color)"}`, background: active ? "var(--vz-primary-subtle)" : "var(--vz-card-bg)", color: active ? "var(--vz-primary)" : "var(--vz-body-color)", borderRadius: 8 }}
-                                                    title={monthLabel(mo.month_key)}>
-                                                    <i className={open ? "ri-check-line text-success" : "ri-lock-2-line text-muted"} />
-                                                    <span className="fw-semibold">{shortLabel(mo.month_key)}</span>
-                                                    {mo.is_current && <span className="badge bg-primary-subtle text-primary">agora</span>}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <EditorialBoard companyId={companyId} monthKey={selectedKey} reloadKey={boardReload}
-                                        onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); }} />
-                                </>
-                            ) : (
-                                <>
-                                    <TodayPanel companyId={companyId} reloadKey={boardReload} onOpen={(id) => setWorkflowPostId(id)} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
-                                    {/* TIRA DOS 12 MESES */}
-                                    <div className="d-flex gap-2 overflow-auto pb-2 mb-3">
-                                        {months.map((mo) => {
-                                            const active = mo.month_key === selectedKey;
-                                            const open = mo.state === "open";
-                                            return (
-                                                <button key={mo.month_key} type="button" onClick={() => gotoKey(mo.month_key)}
-                                                    className="btn btn-sm d-flex align-items-center gap-1 flex-shrink-0"
-                                                    style={{ border: `1px solid ${active ? "var(--vz-primary)" : "var(--vz-border-color)"}`, background: active ? "var(--vz-primary-subtle)" : "var(--vz-card-bg)", color: active ? "var(--vz-primary)" : "var(--vz-body-color)", borderRadius: 8 }}
-                                                    title={monthLabel(mo.month_key)}>
-                                                    <i className={open ? "ri-check-line text-success" : "ri-lock-2-line text-muted"} />
-                                                    <span className="fw-semibold">{shortLabel(mo.month_key)}</span>
-                                                    {mo.is_current && <span className="badge bg-primary-subtle text-primary">agora</span>}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* CABEÇALHO DA GRELHA — renderiza também em meses PASSADOS
-                                        (consulta), não só nos da tira. Navegação até 12 meses atrás. */}
-                                    {range && selectedKey && (
-                                        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-                                            <div className="d-flex flex-wrap align-items-center gap-2">
-                                                <Button color="light" size="sm" disabled={!!minKey && selectedKey <= minKey} onClick={() => calRef.current?.getApi().prev()}><i className="ri-arrow-left-s-line" /></Button>
-                                                <h5 className="mb-0" style={{ minWidth: 150, textAlign: "center" }}>{monthLabel(selectedKey)}</h5>
-                                                <Button color="light" size="sm" disabled={!!maxKey && selectedKey >= maxKey} onClick={() => calRef.current?.getApi().next()}><i className="ri-arrow-right-s-line" /></Button>
-                                                {selected ? (
-                                                    selected.state === "open"
-                                                        ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
-                                                        : <span className="badge bg-body-secondary text-muted ms-1"><i className="ri-lock-2-line me-1" />Bloqueado</span>
-                                                ) : isPastView ? (
-                                                    <span className="badge bg-warning-subtle text-warning ms-1" title="Mês passado: só consulta, não editável."><i className="ri-archive-line me-1" />Mês arquivado · só consulta</span>
-                                                ) : null}
-                                                <button type="button" className="btn btn-link btn-sm p-0 ms-1 text-muted fs-12 text-nowrap" onClick={() => setLegendOpen(true)}>
-                                                    <i className="ri-question-line me-1" />Legenda
-                                                </button>
-                                            </div>
-                                            {/* Ações de ESCRITA só nos meses da tira (presente+futuro). No passado não há. */}
-                                            {selected && (
-                                                <div className="d-flex flex-wrap align-items-center gap-2">
-                                                    {selected.state === "open" && (
-                                                        <>
-                                                            {canProduce && (ideasGate && !ideasGate.ready ? (
-                                                                <>
-                                                                    {/* Desativado, mas com a razão ao passar o rato e ao tocar. */}
-                                                                    <span id="ideas-blocked" tabIndex={0} className="d-inline-block" role="button" aria-describedby="ideas-blocked-reason"
-                                                                        onPointerDown={(e) => { touchRef.current = e.pointerType !== "mouse"; }}
-                                                                        onMouseEnter={() => setReasonOpen(true)} onMouseLeave={() => { if (!touchRef.current) setReasonOpen(false); }}
-                                                                        onFocus={() => setReasonOpen(true)} onBlur={() => setReasonOpen(false)} onClick={() => setReasonOpen(true)}>
-                                                                        <Button color="primary" size="sm" disabled className="text-nowrap" style={{ pointerEvents: "none" }}>
-                                                                            <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
-                                                                        </Button>
-                                                                    </span>
-                                                                    <Tooltip target="ideas-blocked" isOpen={reasonOpen} trigger="manual" placement="bottom">
-                                                                        <span id="ideas-blocked-reason">{ideasGate.reason}</span>
-                                                                    </Tooltip>
-                                                                    <Link to="/brand-profile" className="fs-12"><i className="ri-user-star-line me-1" />Preencher o Perfil da Marca</Link>
-                                                                </>
-                                                            ) : (
-                                                                <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
-                                                                    <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
-                                                                </Button>
-                                                            ))}
-                                                            {canProduce && <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
-                                                                <i className="ri-image-add-line me-1" />Publicação
-                                                            </Button>}
-                                                            <Button color="soft-secondary" size="sm" disabled={working} onClick={openCreate}>
-                                                                <i className="ri-calendar-event-line me-1" />Âncora própria
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                    {selected.can_open ? (
-                                                        <Button color="success" size="sm" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
-                                                    ) : selected.can_close ? (
-                                                        <Button color="light" size="sm" disabled={acting} onClick={() => doClose(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-2-line me-1" />Fechar mês</>}</Button>
-                                                    ) : selected.state === "closed" ? (
-                                                        <span className="text-muted fs-12"><i className="ri-lock-2-line me-1" />Abre o mês anterior primeiro</span>
-                                                    ) : null}
+                                                <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${p.overdue ? "Atrasada · " : ""}${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.publish_time ? `${p.publish_time} ` : ""}${p.title}`}
+                                                    style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${p.overdue ? "var(--vz-danger)" : sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
+                                                    {p.overdue && <span className="rounded px-1 fw-semibold flex-shrink-0 bg-danger text-white" style={{ fontSize: "0.62rem" }}>Atrasada</span>}
+                                                    {channelIcons(p).map((c) => <i key={c.icon} className={c.icon} />)}
+                                                    <span className="rounded px-1 fw-semibold flex-shrink-0" title={sm.label} style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
+                                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
                                                 </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* GRELHA */}
-                                    {range && (
-                                        <FullCalendar
-                                            ref={calRef as any}
-                                            plugins={[dayGridPlugin]}
-                                            initialView="dayGridMonth"
-                                            // Abrir no mês CORRENTE (não em range.from, que agora é 12
-                                            // meses atrás — isso é só a fronteira de consulta).
-                                            initialDate={selectedKey ? `${selectedKey}-01` : currentKey ? `${currentKey}-01` : range.from}
-                                            locale={ptLocale}
-                                            firstDay={1}
-                                            height="auto"
-                                            headerToolbar={false}
-                                            validRange={{ start: range.from, end: nextDay(range.to) }}
-                                            editable={false} selectable={false} droppable={false} dayMaxEvents={false}
-                                            events={events}
-                                            datesSet={(arg) => {
-                                                const d = arg.view.currentStart;
-                                                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-                                                setSelectedKey((prev) => (prev === key ? prev : key));
-                                            }}
-                                            eventClick={(arg) => {
-                                                const ep = arg.event.extendedProps as any;
-                                                if (ep.kind === "post") {
-                                                    const p = ep.post as EditorialPost;
-                                                    // A mesma janela de produção do Kanban; o Site abre o artigo do blog.
-                                                    if (p.channel !== "site") setWorkflowPostId(p.id);
-                                                    else if (p.blog) navigate(`/blogs/${p.blog.id}`);
-                                                    else openPanel(p.publish_date, null);
-                                                }
-                                                else openPanel(arg.event.startStr, ep.item as Item);
-                                            }}
-                                            eventContent={(arg) => {
-                                                const ep = arg.event.extendedProps as any;
-                                                if (ep.kind === "post") {
-                                                    const p = ep.post as EditorialPost;
-                                                    const stage = postStage(p);
-                                                    const sm = STAGE_META[stage];
-                                                    return (
-                                                        <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${p.overdue ? "Atrasada · " : ""}${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.publish_time ? `${p.publish_time} ` : ""}${p.title}`}
-                                                            style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${p.overdue ? "var(--vz-danger)" : sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
-                                                            {p.overdue && <span className="rounded px-1 fw-semibold flex-shrink-0 bg-danger text-white" style={{ fontSize: "0.62rem" }}>Atrasada</span>}
-                                                            <i className={POST_CHANNEL_META[p.channel].icon} />
-                                                            <span className="rounded px-1 fw-semibold flex-shrink-0" title={sm.label} style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
-                                                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
-                                                        </div>
-                                                    );
-                                                }
-                                                const it = ep.item as Item;
-                                                return (
-                                                    <div className={`w-100 px-1 rounded ${anchorChip(it)}`} style={{ whiteSpace: "normal", lineHeight: 1.2, cursor: "pointer", fontSize: "0.7rem", opacity: it.hidden ? 0.7 : 1 }}>
-                                                        <i className="ri-calendar-event-line me-1" />
-                                                        <span className={it.hidden ? "text-decoration-line-through" : ""}>{it.title}</span>
-                                                        {it.type === "range" && <i className="ri-time-line ms-1" title="período" />}
-                                                    </div>
-                                                );
-                                            }}
-                                        />
-                                    )}
-                                </>
+                                            );
+                                        }
+                                        const it = ep.item as Item;
+                                        return (
+                                            <div className={`w-100 px-1 rounded ${anchorChip(it)}`} style={{ whiteSpace: "normal", lineHeight: 1.2, cursor: "pointer", fontSize: "0.7rem", opacity: it.hidden ? 0.7 : 1 }}>
+                                                <i className="ri-calendar-event-line me-1" />
+                                                <span className={it.hidden ? "text-decoration-line-through" : ""}>{it.title}</span>
+                                                {it.type === "range" && <i className="ri-time-line ms-1" title="período" />}
+                                            </div>
+                                        );
+                                    }}
+                                />
                             )}
                         </CardBody>
                     </Card>
                 )}
             </Container>
 
-            {/* OFFCANVAS — dia: detalhe da âncora + publicações do dia (Camada 3 preenche mais) */}
-            <Offcanvas isOpen={!!panelDate} toggle={() => setPanelDate(null)} direction="end">
-                <OffcanvasHeader toggle={() => setPanelDate(null)}>{panelDate ? fmtDate(panelDate) : ""}</OffcanvasHeader>
+            {/* Ocasião (âncora): detalhe, esconder/mostrar/apagar e criar uma publicação nessa data. */}
+            <Offcanvas isOpen={!!panelAnchor} toggle={() => setPanelAnchor(null)} direction="end">
+                <OffcanvasHeader toggle={() => setPanelAnchor(null)}>Ocasião</OffcanvasHeader>
                 <OffcanvasBody>
-                    {/* Detalhe da âncora clicada (ocasião) */}
-                    {panelAnchor && (
-                        <div className="mb-4">
-                            <div className="d-flex align-items-center gap-2 mb-2">
-                                <span className={`badge ${anchorChip(panelAnchor)}`}>{panelAnchor.owned ? "própria" : "herdada"}</span>
-                                {panelAnchor.hidden && <span className="badge bg-warning-subtle text-warning">escondida</span>}
-                                {panelAnchor.type === "range" && <span className="badge bg-info-subtle text-info">período</span>}
-                            </div>
-                            <h5 className={`mb-2 ${panelAnchor.hidden ? "text-decoration-line-through text-muted" : ""}`}>{panelAnchor.title}</h5>
-                            <p className="text-muted fs-13 mb-2">{RULE_LABEL[panelAnchor.rule_type] ?? panelAnchor.rule_type}</p>
-                            {panelAnchor.suggestion && (
-                                <div className="bg-primary-subtle text-body rounded p-2 mb-3 fs-13">
-                                    <i className="ri-lightbulb-flash-line text-primary me-1" />{panelAnchor.suggestion}
+                    {panelAnchor && (() => {
+                        const date = panelAnchor.type === "range" ? (panelAnchor as RangeItem).start : (panelAnchor as DayItem).date;
+                        const open = monthOpen(date);
+                        return (
+                            <div>
+                                <div className="d-flex align-items-center gap-2 mb-2">
+                                    <span className={`badge ${anchorChip(panelAnchor)}`}>{panelAnchor.owned ? "própria" : "herdada"}</span>
+                                    {panelAnchor.hidden && <span className="badge bg-warning-subtle text-warning">escondida</span>}
+                                    {panelAnchor.type === "range" && <span className="badge bg-info-subtle text-info">período</span>}
                                 </div>
-                            )}
-                            {panelMonthOpen ? (
-                                panelAnchor.owned ? (
-                                    <Button color="soft-danger" size="sm" disabled={working} onClick={() => onDeleteAnchor(panelAnchor)}><i className="ri-delete-bin-line me-1" />Apagar âncora</Button>
-                                ) : panelAnchor.hidden ? (
-                                    <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onShow(panelAnchor)}><i className="ri-eye-line me-1" />Mostrar</Button>
-                                ) : (
-                                    <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onHide(panelAnchor)}><i className="ri-eye-off-line me-1" />Esconder</Button>
-                                )
-                            ) : (
-                                <span className="text-muted fs-13"><i className="ri-lock-2-line me-1" />Mês bloqueado</span>
-                            )}
-                            <hr className="my-4" />
-                        </div>
-                    )}
-
-                    {/* Publicações do dia */}
-                    <div className="d-flex align-items-center justify-content-between mb-3">
-                        <h6 className="text-uppercase text-muted fs-11 mb-0" style={{ letterSpacing: "0.05em" }}>Publicações</h6>
-                        {canProduce && panelMonthOpen && panelDate && (
-                            <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(panelDate)}><i className="ri-add-line me-1" />Adicionar</Button>
-                        )}
-                    </div>
-
-                    {panelPosts.length === 0 ? (
-                        <p className="text-muted fs-13">Sem publicações neste dia.</p>
-                    ) : (
-                        <div className="vstack gap-2">
-                            {panelPosts.map((p) => {
-                                const meta = postStatusMeta(p);
-                                return (
-                                    <div key={p.id} className="border rounded p-2">
-                                        <div className="d-flex align-items-start justify-content-between gap-2">
-                                            <div className="flex-grow-1">
-                                                <div className="fw-semibold"><i className={`${POST_CHANNEL_META[p.channel].icon} me-1`} />{p.title}</div>
-                                                <div className="d-flex flex-wrap gap-1 mt-1">
-                                                    <span className={`badge bg-${meta.color}-subtle text-${meta.color}`}><i className={`${meta.icon} me-1`} />{meta.label}</span>
-                                                    {p.media_format && <span className="badge bg-dark-subtle text-body" title="Formato"><i className="ri-layout-grid-line me-1" />{mediaFormatLabel(p.media_format)}</span>}
-                                                    <span className="badge bg-light text-body" title="Tipo de conteúdo">{p.format}</span>
-                                                    {p.has_creative && <span className="badge bg-success-subtle text-success" title="Criativo guardado"><i className="ri-magic-line me-1" />Criativo</span>}
-                                                    {p.keyword && <span className="badge bg-primary-subtle text-primary">#{p.keyword}</span>}
-                                                    {p.linked_title && <span className="badge bg-secondary-subtle text-secondary"><i className="ri-links-line me-1" />{p.linked_title}</span>}
-                                                    {p.blog && <Link to={`/blogs/${p.blog.id}`} className="badge bg-info-subtle text-info"><i className="ri-article-line me-1" />{p.blog.title}</Link>}
-                                                </div>
-                                                {/* Ponte para o Blog: o artigo novo fica ligado a esta publicação. */}
-                                                {p.channel === "site" && !p.blog && (
-                                                    <Button color="soft-info" size="sm" className="mt-2" onClick={() => navigate(writeArticleUrl(p))}>
-                                                        <i className="ri-quill-pen-line me-1" />Escrever artigo
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            {p.channel !== "site" && (
-                                                <button type="button" className="btn btn-sm btn-soft-primary flex-shrink-0" title="Produção e aprovação" onClick={() => setWorkflowPostId(p.id)}>
-                                                    <i className="ri-palette-line me-1" />Produção
-                                                </button>
-                                            )}
-                                            {canProduce && panelMonthOpen && (
-                                                <div className="d-flex flex-shrink-0 gap-1">
-                                                    <button type="button" className="btn btn-sm btn-ghost-secondary p-1" title="Editar" disabled={working} onClick={() => openEditPost(p)}><i className="ri-pencil-line" /></button>
-                                                    <button type="button" className="btn btn-sm btn-ghost-danger p-1" title="Apagar" disabled={working} onClick={() => onDeletePost(p)}><i className="ri-delete-bin-line" /></button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <hr className="my-4" />
-                    <p className="text-muted fs-13 mb-0">Cada publicação tem formato, tipo de conteúdo, estado e palavra-chave. O criativo abre-se ao editar a publicação.</p>
+                                <h5 className={`mb-1 ${panelAnchor.hidden ? "text-decoration-line-through text-muted" : ""}`}>{panelAnchor.title}</h5>
+                                <p className="text-muted fs-13 mb-2">{fmtDate(date)} · {RULE_LABEL[panelAnchor.rule_type] ?? panelAnchor.rule_type}</p>
+                                {panelAnchor.suggestion && <div className="bg-primary-subtle text-body rounded p-2 mb-3 fs-13"><i className="ri-lightbulb-flash-line text-primary me-1" />{panelAnchor.suggestion}</div>}
+                                <div className="d-flex flex-wrap gap-2">
+                                    {canProduce && open && <Button color="primary" size="sm" onClick={() => { setPanelAnchor(null); newPost(date); }}><i className="ri-add-line me-1" />Publicação nesta data</Button>}
+                                    {open ? (
+                                        panelAnchor.owned ? <Button color="soft-danger" size="sm" disabled={working} onClick={() => onDeleteAnchor(panelAnchor)}><i className="ri-delete-bin-line me-1" />Apagar âncora</Button>
+                                            : panelAnchor.hidden ? <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onShow(panelAnchor)}><i className="ri-eye-line me-1" />Mostrar</Button>
+                                                : <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onHide(panelAnchor)}><i className="ri-eye-off-line me-1" />Esconder</Button>
+                                    ) : <span className="text-muted fs-13"><i className="ri-lock-2-line me-1" />Mês fechado</span>}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </OffcanvasBody>
             </Offcanvas>
 
-            {/* Modal — fecho em cascata (B2) */}
+            {/* O painel único da publicação */}
+            <PostPanel target={panel} onClose={() => setPanel(null)} companyId={companyId} anchors={anchorLinkOptions} pillars={pillars} range={range}
+                canProduce={canProduce} formats={formats} monthOpen={monthOpen} onCalendar={(cal) => { applyCalendar(cal); setReload((k) => k + 1); }} onChanged={refresh} />
+
+            {/* Modal — fecho em cascata */}
             <Modal isOpen={!!cascade} toggle={() => setCascade(null)} centered>
                 <ModalHeader toggle={() => setCascade(null)}>Fechar em cascata</ModalHeader>
                 <ModalBody>
@@ -760,7 +565,7 @@ export default function EditorialCalendarPage() {
                         <>
                             <p className="mb-2">Fechar <strong>{monthLabel(cascade.month_key)}</strong> vai fechar também os meses seguintes:</p>
                             <ul className="mb-2">{cascade.closes_also.map((k) => <li key={k}>{monthLabel(k)}</li>)}</ul>
-                            <p className="text-muted mb-0 fs-13">O trabalho fica guardado e reaparece quando voltares a abrir.</p>
+                            <p className="text-muted mb-0 fs-13">O trabalho fica guardado e reaparece quando voltar a abrir.</p>
                         </>
                     )}
                 </ModalBody>
@@ -770,202 +575,75 @@ export default function EditorialCalendarPage() {
                 </ModalFooter>
             </Modal>
 
-            {/* Modal — criar/editar publicação (P1) */}
-            <Modal isOpen={postOpen} toggle={() => setPostOpen(false)} centered>
-                <ModalHeader toggle={() => setPostOpen(false)}>{postForm.id ? "Editar publicação" : "Nova publicação"}</ModalHeader>
-                <ModalBody>
-                    <Form onSubmit={(e) => { e.preventDefault(); submitPost(); }}>
-                        <FormGroup>
-                            <Label>Título / tema</Label>
-                            <Input value={postForm.title} onChange={(e) => setPF({ title: e.target.value })} placeholder="Ex.: Menu especial de Natal" autoFocus />
-                        </FormGroup>
-                        <Row className="g-2">
-                            <Col xs={6}><FormGroup><Label>Data</Label>
-                                <Input type="date" value={postForm.publish_date} min={range?.from} max={range?.to} onChange={(e) => setPF({ publish_date: e.target.value })} /></FormGroup></Col>
-                            <Col xs={6}><FormGroup><Label>Canal</Label>
-                                <Input type="select" value={postForm.channel} onChange={(e) => {
-                                    const channel = e.target.value;
-                                    // O formato é de cada rede: ao mudar de rede, só fica se existir na nova.
-                                    setPF({ channel, media_format: formatsFor(channel).some((f) => f.value === postForm.media_format) ? postForm.media_format : "" });
-                                }}>
-                                    <option value="instagram">Instagram</option>
-                                    <option value="facebook">Facebook</option>
-                                    <option value="site">Site (blog)</option>
-                                </Input></FormGroup></Col>
-                        </Row>
-                        {postForm.channel === "site" ? (
-                            <FormGroup>
-                                <Label>Artigo do blog</Label>
-                                <Input type="select" value={postForm.blog_id} onChange={(e) => setPF({ blog_id: e.target.value })}>
-                                    <option value="">Ainda sem artigo</option>
-                                    {siteBlogs.map((b) => <option key={b.id} value={b.id}>{b.title} ({BLOG_STATUS_META[b.status as keyof typeof BLOG_STATUS_META]?.label ?? b.status})</option>)}
-                                </Input>
-                                <div className="form-text">
-                                    {postForm.blog_id ? "O estado mostrado no calendário vem do artigo (rascunho, em revisão, agendado, publicado)." : <>Pode criar o artigo em <Link to="/blogs/create">Blog</Link> e ligá-lo depois.</>}
-                                </div>
-                            </FormGroup>
-                        ) : null}
-                        {postForm.channel !== "site" && (
-                            <Row className="g-2">
-                                <Col xs={6}><FormGroup><Label>Formato</Label>
-                                    <Input type="select" value={postForm.media_format} onChange={(e) => setPF({ media_format: e.target.value })}>
-                                        <option value="">Por definir</option>
-                                        {formatsFor(postForm.channel).map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
-                                    </Input></FormGroup></Col>
-                                <Col xs={6}><FormGroup><Label>Tipo de conteúdo</Label>
-                                    <Input type="select" value={postForm.format} onChange={(e) => setPF({ format: e.target.value })}>
-                                        {POST_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-                                    </Input></FormGroup></Col>
-                            </Row>
-                        )}
-                        <Row className="g-2">
-                            {postForm.channel !== "site" && (
-                                <Col xs={6}><FormGroup><Label for="pf-time">Hora prevista <span className="text-muted fw-normal">(opcional)</span></Label>
-                                    <Input id="pf-time" type="time" value={postForm.publish_time} onChange={(e) => setPF({ publish_time: e.target.value })} /></FormGroup></Col>
-                            )}
-                            <Col xs={postForm.channel !== "site" ? 6 : 12}><FormGroup><Label for="pf-pillar">Pilar</Label>
-                                <Input id="pf-pillar" type="select" value={postForm.pillar} onChange={(e) => setPF({ pillar: e.target.value })}>
-                                    <option value="">Sem pilar</option>
-                                    {[...pillars, ...(postForm.pillar && !pillars.includes(postForm.pillar) ? [postForm.pillar] : [])].map((n) => <option key={n} value={n}>{n}</option>)}
-                                </Input></FormGroup></Col>
-                        </Row>
-                        <FormGroup>
-                            <Label>Palavra-chave</Label>
-                            <Input value={postForm.keyword} onChange={(e) => setPF({ keyword: e.target.value })} placeholder="Ex.: natal" />
-                        </FormGroup>
-                        <FormGroup>
-                            <Label>Ligar a âncora (opcional)</Label>
-                            <Select
-                                styles={reactSelectTheme}
-                                menuPortalTarget={document.body}
-                                options={anchorLinkOptions}
-                                value={anchorLinkOptions.find((o) => o.value === postForm.link) ?? anchorLinkOptions[0]}
-                                onChange={(o: any) => setPF({ link: o?.value ?? "" })}
-                                isSearchable
-                            />
-                        </FormGroup>
-                    </Form>
-                </ModalBody>
-                <ModalFooter>
-                    {postForm.id && postForm.channel !== "site" && (
-                        <Button color="soft-primary" className="me-auto" onClick={() => setCreativeOpen(true)}>
-                            <i className="ri-magic-line me-1" />Criativo
-                        </Button>
-                    )}
-                    <Button color="light" onClick={() => setPostOpen(false)}>Cancelar</Button>
-                    <Button color="primary" disabled={working} onClick={submitPost}>{working ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />{postForm.id ? "Guardar" : "Criar"}</>}</Button>
-                </ModalFooter>
-            </Modal>
-
             {/* "Como funciona" (diagrama carregado só ao abrir) e legenda das etapas. */}
             {howOpen && (
                 <Suspense fallback={<Modal isOpen centered><ModalBody className="text-center py-5"><Spinner /></ModalBody></Modal>}>
                     <HowItWorksModal isOpen={howOpen} toggle={() => setHowOpen(false)} profileReady={ideasGate ? ideasGate.ready : null}
-                        blockedReason={ideasGate?.reason ?? null} canProduce={canProduce} />
+                        blockedReason={ideasGate?.reason ?? null} canProduce={canProduce} stageCounts={stageCounts} />
                 </Suspense>
             )}
             <StageLegendModal isOpen={legendOpen} toggle={() => setLegendOpen(false)} />
             {companyId > 0 && (
                 <ReviewLinksModal isOpen={reviewOpen} toggle={() => setReviewOpen(false)} companyId={companyId} canProduce={canProduce}
-                    focusLinkId={reviewFocus} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
+                    focusLinkId={reviewFocus} onChanged={refresh} />
             )}
 
-            {/* Modal: produção e aprovação da publicação (F3a) */}
-            <PostWorkflowModal
-                isOpen={!!workflowPostId}
-                toggle={() => setWorkflowPostId(null)}
-                companyId={companyId}
-                postId={workflowPostId}
-                onChanged={() => { void load(); setBoardReload((k) => k + 1); }}
-            />
-
-            {/* Modal: "Gerar ideias do mês" (aceitação ideia a ideia) */}
+            {/* "Gerar ideias do mês" (aceitação ideia a ideia) */}
             {selected && (
-                <IdeasModal
-                    isOpen={ideasOpen}
-                    toggle={() => setIdeasOpen(false)}
-                    companyId={companyId}
-                    year={selected.year}
-                    month={selected.month}
-                    monthLabel={monthLabel(selectedKey)}
-                    onAccepted={(cal) => applyCalendar(cal)}
-                />
+                <IdeasModal isOpen={ideasOpen} toggle={() => setIdeasOpen(false)} companyId={companyId} year={selected.year} month={selected.month}
+                    monthLabel={monthLabel(selectedKey)} onAccepted={(cal) => applyCalendar(cal)} />
             )}
 
-            {/* Modal: criativo da publicação (Sugerir criativo e criativo aceite) */}
-            {postForm.id && postForm.channel !== "site" && (
-                <CreativeModal
-                    isOpen={creativeOpen}
-                    toggle={() => setCreativeOpen(false)}
-                    companyId={companyId}
-                    postId={postForm.id}
-                    postTitle={postForm.title}
-                    onSaved={(mediaFormat) => { setPF({ media_format: mediaFormat ?? "" }); void load(); }}
-                />
-            )}
-
-            {/* Modal — criar âncora própria (B3a) */}
+            {/* Âncora própria */}
             <Modal isOpen={createOpen} toggle={() => setCreateOpen(false)} centered>
-                <ModalHeader toggle={() => setCreateOpen(false)}>Nova âncora própria{selected && <> — {monthLabel(selected.month_key)}</>}</ModalHeader>
+                <ModalHeader toggle={() => setCreateOpen(false)}>Nova âncora própria{selected && <>, {monthLabel(selected.month_key)}</>}</ModalHeader>
                 <ModalBody>
                     <Form onSubmit={(e) => { e.preventDefault(); submitCreate(); }}>
                         <FormGroup>
-                            <Label>Título</Label>
-                            <Input value={form.title} onChange={(e) => setF({ title: e.target.value })} placeholder="Ex.: Aniversário da Empresa" autoFocus />
+                            <Label for="an-title">Título</Label>
+                            <Input id="an-title" value={form.title} onChange={(e) => setF({ title: e.target.value })} placeholder="Por exemplo, Aniversário da Empresa" autoFocus />
                         </FormGroup>
                         <FormGroup>
-                            <Label>Tipo de regra</Label>
-                            <Input type="select" value={form.rule_type} onChange={(e) => setF({ rule_type: e.target.value })}>
-                                <option value="fixa">Data fixa (dia/mês)</option>
-                                <option value="nth_weekday">N-ésimo dia da semana</option>
-                                <option value="periodo">Período (intervalo)</option>
-                                <option value="relativa_pascoa">Relativa à Páscoa</option>
-                            </Input>
+                            <Label for="an-rule">Tipo de regra</Label>
+                            <XSelect id="an-rule" value={form.rule_type} onChange={(x) => setF({ rule_type: x })} options={[
+                                { value: "fixa", label: "Data fixa (dia e mês)" }, { value: "nth_weekday", label: "N-ésimo dia da semana" },
+                                { value: "periodo", label: "Período (intervalo)" }, { value: "relativa_pascoa", label: "Relativa à Páscoa" }]} />
                         </FormGroup>
                         {form.rule_type === "fixa" && (
                             <Row className="g-2">
-                                <Col xs={7}><FormGroup><Label>Mês</Label>
-                                    <Input type="select" value={form.month} onChange={(e) => setF({ month: Number(e.target.value) })}>{MONTHS_PT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}</Input></FormGroup></Col>
-                                <Col xs={5}><FormGroup><Label>Dia</Label>
-                                    <Input type="number" min={1} max={31} value={form.day} onChange={(e) => setF({ day: Number(e.target.value) })} /></FormGroup></Col>
+                                <Col xs={7}><FormGroup><Label for="an-m">Mês</Label><XSelect id="an-m" value={form.month} onChange={(x) => setF({ month: x })} options={MONTHS_PT.map((m, i) => ({ value: i + 1, label: m }))} /></FormGroup></Col>
+                                <Col xs={5}><FormGroup><Label for="an-d">Dia</Label><Input id="an-d" type="number" min={1} max={31} value={form.day} onChange={(e) => setF({ day: Number(e.target.value) })} /></FormGroup></Col>
                             </Row>
                         )}
                         {form.rule_type === "nth_weekday" && (
                             <Row className="g-2">
-                                <Col xs={4}><FormGroup><Label>Ordinal</Label>
-                                    <Input type="select" value={form.ordinal} onChange={(e) => setF({ ordinal: Number(e.target.value) })}>{ORDINALS.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}</Input></FormGroup></Col>
-                                <Col xs={4}><FormGroup><Label>Dia</Label>
-                                    <Input type="select" value={form.weekday} onChange={(e) => setF({ weekday: Number(e.target.value) })}>{WEEKDAYS_PT.map((w, i) => <option key={i} value={i}>{w}</option>)}</Input></FormGroup></Col>
-                                <Col xs={4}><FormGroup><Label>Mês</Label>
-                                    <Input type="select" value={form.month} onChange={(e) => setF({ month: Number(e.target.value) })}>{MONTHS_PT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}</Input></FormGroup></Col>
+                                <Col xs={4}><FormGroup><Label for="an-o">Ordinal</Label><XSelect id="an-o" value={form.ordinal} onChange={(x) => setF({ ordinal: x })} options={ORDINALS.map((o) => ({ value: o.v, label: o.l }))} /></FormGroup></Col>
+                                <Col xs={4}><FormGroup><Label for="an-w">Dia</Label><XSelect id="an-w" value={form.weekday} onChange={(x) => setF({ weekday: x })} options={WEEKDAYS_PT.map((w, i) => ({ value: i, label: w }))} /></FormGroup></Col>
+                                <Col xs={4}><FormGroup><Label for="an-m2">Mês</Label><XSelect id="an-m2" value={form.month} onChange={(x) => setF({ month: x })} options={MONTHS_PT.map((m, i) => ({ value: i + 1, label: m }))} /></FormGroup></Col>
                             </Row>
                         )}
                         {form.rule_type === "periodo" && (
                             <>
                                 <Row className="g-2">
-                                    <Col xs={7}><FormGroup><Label>Mês (início)</Label>
-                                        <Input type="select" value={form.start_month} onChange={(e) => setF({ start_month: Number(e.target.value) })}>{MONTHS_PT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}</Input></FormGroup></Col>
-                                    <Col xs={5}><FormGroup><Label>Dia (início)</Label>
-                                        <Input type="number" min={1} max={31} value={form.start_day} onChange={(e) => setF({ start_day: Number(e.target.value) })} /></FormGroup></Col>
+                                    <Col xs={7}><FormGroup><Label for="an-sm">Mês (início)</Label><XSelect id="an-sm" value={form.start_month} onChange={(x) => setF({ start_month: x })} options={MONTHS_PT.map((m, i) => ({ value: i + 1, label: m }))} /></FormGroup></Col>
+                                    <Col xs={5}><FormGroup><Label for="an-sd">Dia (início)</Label><Input id="an-sd" type="number" min={1} max={31} value={form.start_day} onChange={(e) => setF({ start_day: Number(e.target.value) })} /></FormGroup></Col>
                                 </Row>
                                 <Row className="g-2">
-                                    <Col xs={7}><FormGroup><Label>Mês (fim)</Label>
-                                        <Input type="select" value={form.end_month} onChange={(e) => setF({ end_month: Number(e.target.value) })}>{MONTHS_PT.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}</Input></FormGroup></Col>
-                                    <Col xs={5}><FormGroup><Label>Dia (fim)</Label>
-                                        <Input type="number" min={1} max={31} value={form.end_day} onChange={(e) => setF({ end_day: Number(e.target.value) })} /></FormGroup></Col>
+                                    <Col xs={7}><FormGroup><Label for="an-em">Mês (fim)</Label><XSelect id="an-em" value={form.end_month} onChange={(x) => setF({ end_month: x })} options={MONTHS_PT.map((m, i) => ({ value: i + 1, label: m }))} /></FormGroup></Col>
+                                    <Col xs={5}><FormGroup><Label for="an-ed">Dia (fim)</Label><Input id="an-ed" type="number" min={1} max={31} value={form.end_day} onChange={(e) => setF({ end_day: Number(e.target.value) })} /></FormGroup></Col>
                                 </Row>
                             </>
                         )}
                         {form.rule_type === "relativa_pascoa" && (
                             <FormGroup>
-                                <Label>Dias face à Páscoa (± inteiro)</Label>
-                                <Input type="number" value={form.easter_offset} onChange={(e) => setF({ easter_offset: Number(e.target.value) })} />
-                                <small className="text-muted">Ex.: −2 = Sexta-feira Santa · +60 = Corpo de Deus · 0 = Páscoa.</small>
+                                <Label for="an-e">Dias face à Páscoa (mais ou menos)</Label>
+                                <Input id="an-e" type="number" value={form.easter_offset} onChange={(e) => setF({ easter_offset: Number(e.target.value) })} />
+                                <small className="text-muted">Por exemplo: -2 é a Sexta-feira Santa, 60 é o Corpo de Deus, 0 é a Páscoa.</small>
                             </FormGroup>
                         )}
                         <FormGroup className="mb-0">
-                            <Label>Gancho de conteúdo <span className="text-muted fw-normal">(opcional)</span></Label>
-                            <Input type="textarea" rows={3} value={form.suggestion} onChange={(e) => setF({ suggestion: e.target.value })} placeholder="Abordagem sugerida para esta ocasião…" />
+                            <Label for="an-s">Gancho de conteúdo <span className="text-muted fw-normal">(opcional)</span></Label>
+                            <Input id="an-s" type="textarea" rows={3} value={form.suggestion} onChange={(e) => setF({ suggestion: e.target.value })} placeholder="Abordagem sugerida para esta ocasião" />
                         </FormGroup>
                     </Form>
                 </ModalBody>
