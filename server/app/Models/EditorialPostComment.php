@@ -12,5 +12,5 @@ class EditorialPostComment extends Model
     public const INTERNAL = 'internal';
     public const SHARED = 'shared';
 
-    protected $fillable = ['company_id', 'editorial_post_id', 'version_id', 'user_id', 'impersonator_user_id', 'author_name', 'body', 'visibility'];
+    protected $fillable = ['company_id', 'editorial_post_id', 'version_id', 'user_id', 'impersonator_user_id', 'review_link_id', 'author_name', 'body', 'visibility'];
 }

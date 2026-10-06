@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SocialConnectionAccount extends Model
 {
     protected $fillable = [
-        'company_id', 'social_connection_id', 'platform', 'external_id', 'page_id', 'name', 'username',
+        'company_id', 'social_connection_id', 'platform', 'external_id', 'page_id', 'name', 'username', 'profile_picture_path', 'profile_picture_updated_at',
         'page_access_token', 'is_primary', 'last_followers_count', 'last_read_at', 'last_error_at', 'last_error_kind',
     ];
 
@@ -26,6 +26,7 @@ class SocialConnectionAccount extends Model
         'last_followers_count' => 'integer',
         'last_read_at' => 'datetime',
         'last_error_at' => 'datetime',
+        'profile_picture_updated_at' => 'datetime',
     ];
 
     public function connection(): BelongsTo

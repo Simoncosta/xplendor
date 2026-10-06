@@ -493,6 +493,17 @@ export const getMediaAsset = (companyId: number, assetId: number) => api.get(ED(
 export const setPostMedia = (companyId: number, postId: number, items: number[], coverId: number | null) =>
     api.put(ED(companyId) + `/posts/${postId}/media`, { items, cover_id: coverId });
 export const getEditorialGrid = (companyId: number) => api.get(ED(companyId) + `/grid`);
+// F3c: links de aprovação por lote (o link em si é público: /aprovar#<token>).
+const REVIEW_JSON = { headers: { "Content-Type": "application/json" } };
+export const getReviewLinks = (companyId: number) => api.get(ED(companyId) + `/review-links`);
+export const getReviewCandidates = (companyId: number) => api.get(ED(companyId) + `/review-links/candidates`);
+export const createReviewLink = (companyId: number, data: { title: string; post_ids: number[]; recipient_name?: string; recipient_email?: string }) =>
+    api.create(ED(companyId) + `/review-links`, data, REVIEW_JSON);
+export const resendReviewLink = (companyId: number, linkId: number, data: { title: string; post_ids: number[]; recipient_name?: string; recipient_email?: string }) =>
+    api.put(ED(companyId) + `/review-links/${linkId}`, data);
+export const extendReviewLink = (companyId: number, linkId: number) => api.create(ED(companyId) + `/review-links/${linkId}/extend`, {}, REVIEW_JSON);
+export const revokeReviewLink = (companyId: number, linkId: number) => api.create(ED(companyId) + `/review-links/${linkId}/revoke`, {}, REVIEW_JSON);
+export const getReviewLinkPreview = (companyId: number, linkId: number) => api.get(ED(companyId) + `/review-links/${linkId}/preview`);
 // "Gerar ideias do mês" (IA) e aceitação ideia a ideia (cada uma vira uma publicação em rascunho).
 export const requestEditorialIdeas = (companyId: number, year: number, month: number) =>
     api.create(ED(companyId) + `/ideas`, { year, month }, { headers: { "Content-Type": "application/json" } });

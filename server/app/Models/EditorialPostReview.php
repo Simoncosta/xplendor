@@ -14,7 +14,7 @@ class EditorialPostReview extends Model
 
     public const UPDATED_AT = null;
 
-    protected $fillable = ['company_id', 'editorial_post_id', 'version_id', 'decision', 'via', 'user_id', 'reviewer_name', 'message', 'approved_version_id', 'created_at'];
+    protected $fillable = ['company_id', 'editorial_post_id', 'version_id', 'decision', 'via', 'review_link_id', 'user_id', 'reviewer_name', 'message', 'device', 'approved_version_id', 'created_at'];
 
     protected $casts = ['created_at' => 'datetime'];
 }

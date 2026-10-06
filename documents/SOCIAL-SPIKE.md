@@ -233,7 +233,12 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
     - Regras por formato (proporção, número de ficheiros, duração); os erros impedem o envio para revisão ou aprovação.
     - Retenção diária às 03:40: ficheiros de versões substituídas aos 30 dias, originais publicados aos 12 meses (ficam as miniaturas), ficheiros sem uso aos 7 dias; aviso à equipa quando o disco passa dos 70%.
     - No modo "Produção pela equipa", abrir e fechar meses e as âncoras próprias também passam a ser só da equipa.
-- [ ]  F3c: link por lote, aberturas, avisos e lembretes
+- [x]  F3c: link por lote, aberturas, avisos e lembretes
+    - Lote de publicações em Aprovação com destinatário e email opcionais; email ao enviar; mensagem para o WhatsApp; reenviar atualiza os itens no mesmo link; prolongar 14 dias; revogar (só consulta).
+    - Token de 64 caracteres em hash e cifrado, no fragmento (`/aprovar#token`) e no cabeçalho `X-Review-Token`; `noindex`, `no-referrer`, limites de pedidos.
+    - Página para telemóvel com a pré-visualização da F3b (feed, carrossel que desliza, Reel e Story 9:16, Facebook), a foto e o nome reais da conta ligada (ou o logótipo e o nome da empresa), "Grelha do perfil", aprovar, pedir alterações (mensagem obrigatória), comentários e "Aprovar tudo" numa transação. Uma decisão por versão; item atualizado pela equipa sem ações até ao reenvio.
+    - Ficheiros por URLs assinados limitados ao lote e à validade do link; vídeo por partes.
+    - Aberturas pelo serviço partilhado com o orçamento (`PublicLinkOpens`). Avisos no sino e resumo por email a cada 15 minutos; lembretes às 09:00 (cliente aos 2 dias, equipa aos 4, urgente a menos de 48 horas). "Ver como o cliente" sem contar aberturas. Páginas legais atualizadas.
 - [ ]  F3d: Publicado com o link da publicação e Análise com notas manuais
 
 ### F4 · Vistas: calendário, kanban e lista

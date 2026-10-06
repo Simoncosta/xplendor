@@ -432,6 +432,14 @@ Route::prefix('v1')->group(function () {
                     Route::get('/editorial/media/{assetId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'asset'])->whereNumber('assetId');
                     Route::put('/editorial/posts/{postId}/media', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'setPostMedia'])->whereNumber('postId');
                     Route::get('/editorial/grid', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'grid']);
+                    // F3c: links de aprovação por lote (rotas fixas antes de /{linkId}).
+                    Route::get('/editorial/review-links', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'index']);
+                    Route::get('/editorial/review-links/candidates', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'candidates']);
+                    Route::post('/editorial/review-links', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'store'])->middleware('throttle:30,1');
+                    Route::put('/editorial/review-links/{linkId}', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'update'])->whereNumber('linkId')->middleware('throttle:30,1');
+                    Route::post('/editorial/review-links/{linkId}/extend', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'extend'])->whereNumber('linkId');
+                    Route::post('/editorial/review-links/{linkId}/revoke', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'revoke'])->whereNumber('linkId');
+                    Route::get('/editorial/review-links/{linkId}/preview', [\App\Http\Controllers\Api\V1\ContentReviewLinkController::class, 'preview'])->whereNumber('linkId');
                     // "Gerar ideias do mês" (IA) e aceitação ideia a ideia.
                     Route::post('/editorial/ideas', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'store'])->middleware('throttle:10,1');
                     Route::get('/editorial/ideas/{requestId}', [\App\Http\Controllers\Api\V1\EditorialIdeasController::class, 'show'])->whereNumber('requestId');
@@ -652,6 +660,24 @@ Route::prefix('public/quote')->group(function () {
     Route::post('/refuse', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'refuse'])->middleware('throttle:quote-public-action');
     Route::post('/request-changes', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'requestChanges'])->middleware('throttle:quote-public-action');
 });
+
+// Link de aprovação de conteúdos por lote (F3c), sem conta: o token vem no cabeçalho
+// X-Review-Token, nunca no caminho (o link é /aprovar#<token>). Os ficheiros só por URL
+// assinado, limitado ao lote e à validade do link.
+Route::prefix('public/review')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'show'])->middleware('throttle:review-public-read');
+    Route::post('/open', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'open'])->middleware('throttle:review-public-open');
+    Route::post('/items/{item}/approve', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'approve'])->whereNumber('item')->middleware('throttle:review-public-action');
+    Route::post('/items/{item}/request-changes', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'requestChanges'])->whereNumber('item')->middleware('throttle:review-public-action');
+    Route::post('/items/{item}/comments', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'comment'])->whereNumber('item')->middleware('throttle:review-public-action');
+    Route::post('/approve-all', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'approveAll'])->middleware('throttle:review-public-action');
+    Route::get('/media/{link}/{asset}/{variant}', [\App\Http\Controllers\Api\Public\ContentReviewPublicController::class, 'media'])
+        ->whereNumber('link')->whereNumber('asset')->where('variant', 'original|thumb|preview|poster')
+        ->middleware(['signed:relative', 'throttle:600,1'])->name('review.media');
+});
+// Foto de perfil das contas ligadas (pré-visualização como na rede): só por URL assinado.
+Route::get('social-avatar/{account}', [\App\Http\Controllers\Api\MediaFileController::class, 'avatar'])
+    ->whereNumber('account')->middleware(['signed:relative', 'throttle:600,1'])->name('social.avatar');
 
 // Media da Linha Editorial (disco privado): só por URL assinado de curta duração e relativo.
 Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileController::class, 'show'])

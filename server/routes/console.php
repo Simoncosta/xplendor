@@ -174,3 +174,21 @@ Schedule::job(new \App\Jobs\MediaRetentionJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Media Retention] Job falhou no scheduler');
     });
+
+// Links de aprovação de conteúdos (F3c): lembretes às 09:00 (Lisboa) e resumo por email a cada 15 minutos.
+Schedule::job(new \App\Jobs\ContentReviewRemindersJob())
+    ->dailyAt('09:00')
+    ->timezone('Europe/Lisbon')
+    ->name('content-review-reminders')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Aprovação de conteúdos] Lembretes falharam no scheduler');
+    });
+
+Schedule::job(new \App\Jobs\ContentReviewDigestJob())
+    ->everyFifteenMinutes()
+    ->name('content-review-digest')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Aprovação de conteúdos] Resumo por email falhou no scheduler');
+    });

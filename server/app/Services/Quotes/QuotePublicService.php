@@ -9,8 +9,8 @@ use App\Models\QuoteOpen;
 use App\Models\QuotePublicLink;
 use App\Models\QuoteResponse;
 use App\Models\QuoteVersion;
+use App\Services\PublicLinks\PublicLinkOpens;
 use App\Support\BotUserAgent;
-use App\Support\TeamDeviceMarker;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
@@ -51,6 +51,7 @@ class QuotePublicService
     public function __construct(
         private readonly QuotePdfPresenter $presenter,
         private readonly QuoteOnboardingService $onboarding,
+        private readonly PublicLinkOpens $opens,
     ) {}
 
     /** O link do token, ou 404 (sem distinguir inexistente de revogado). */
@@ -140,60 +141,21 @@ class QuotePublicService
      */
     public function recordOpen(QuotePublicLink $link, Request $request): array
     {
-        $data = $request->validate([
-            'visitor_id' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,64}$/'],
-            'team_marker' => ['nullable', 'string', 'max:300'],
-        ]);
-        $userAgent = (string) $request->userAgent();
-        if (BotUserAgent::isBot($userAgent)) {
-            return ['counted' => false, 'reason' => 'bot'];
-        }
-        $viewer = auth('sanctum')->user();
-        if (TeamDeviceMarker::verify($data['team_marker'] ?? null) || ($viewer && $viewer->role === 'root')) {
-            return ['counted' => false, 'reason' => 'team'];
-        }
+        // Mecanismo partilhado com o link de aprovação de conteúdos (PublicLinkOpens).
+        $open = $this->opens->record($request, (string) $link->id, Quote::findOrFail($link->quote_id), QuoteOpen::class,
+            ['quote_public_link_id' => $link->id], ['quote_id' => $link->quote_id, 'quote_version_id' => $link->quote_version_id],
+            self::ALERT_EVERY_HOURS);
 
-        $visitorHash = hash('sha256', $link->id . '|' . $data['visitor_id']);
-        $device = BotUserAgent::device($userAgent);
-
-        [$counted, $alert, $first] = DB::transaction(function () use ($link, $visitorHash, $device) {
-            $quote = Quote::whereKey($link->quote_id)->lockForUpdate()->firstOrFail();
-            $now = now();
-            $same = QuoteOpen::where('quote_public_link_id', $link->id)->where('visitor_hash', $visitorHash)
-                ->where('last_seen_at', '>=', $now->copy()->subMinutes(QuoteOpen::SAME_VISIT_MINUTES))
-                ->orderByDesc('last_seen_at')->first();
-            if ($same) {
-                $same->update(['last_seen_at' => $now]);
-
-                return [false, false, false];
-            }
-
-            QuoteOpen::create([
-                'quote_id' => $quote->id, 'quote_version_id' => $link->quote_version_id, 'quote_public_link_id' => $link->id,
-                'visitor_hash' => $visitorHash, 'device' => $device, 'opened_at' => $now, 'last_seen_at' => $now,
-            ]);
-            $first = $quote->open_count === 0;
-            $alert = ! $quote->last_open_alert_at || $quote->last_open_alert_at->lte($now->copy()->subHours(self::ALERT_EVERY_HOURS));
-            $quote->forceFill([
-                'open_count' => $quote->open_count + 1,
-                'first_opened_at' => $quote->first_opened_at ?? $now,
-                'last_opened_at' => $now,
-                'last_open_alert_at' => $alert ? $now : $quote->last_open_alert_at,
-            ])->save();
-
-            return [true, $alert, $first];
-        });
-
-        if ($alert) {
+        if ($open['alert']) {
             $quote = $link->quote->fresh();
-            $device = $device === QuoteOpen::DEVICE_MOBILE ? 'num telemóvel' : 'num computador';
+            $device = $open['device'] === QuoteOpen::DEVICE_MOBILE ? 'num telemóvel' : 'num computador';
             $this->onboarding->alertTeam($quote, 'opportunity',
-                $first ? "Orçamento aberto pela primeira vez: {$quote->displayNumber()}" : "Orçamento aberto de novo: {$quote->displayNumber()}",
+                $open['first'] ? "Orçamento aberto pela primeira vez: {$quote->displayNumber()}" : "Orçamento aberto de novo: {$quote->displayNumber()}",
                 "{$quote->client_name} abriu o orçamento {$device}. Aberto {$quote->open_count} " . ($quote->open_count === 1 ? 'vez' : 'vezes') . '.',
                 'low');
         }
 
-        return ['counted' => $counted, 'reason' => $counted ? null : 'same_visit'];
+        return ['counted' => $open['counted'], 'reason' => $open['reason']];
     }
 
     // ── Respostas do cliente ───────────────────────────────────────────────

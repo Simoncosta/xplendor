@@ -1,0 +1,4 @@
+/* Página do link de aprovação: pensada para telemóvel, com as cores do tema (claro ou escuro). */
+.cr-page { min-height: 100vh; background: var(--vz-body-bg); color: var(--vz-body-color); padding: 16px 16px 48px; }
+.cr-wrap { max-width: 520px; margin: 0 auto; }
+.cr-page .min-w-0 { min-width: 0; }

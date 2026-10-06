@@ -88,7 +88,7 @@ export interface MediaAssetDto {
 export interface VersionMedia { items: MediaAssetDto[]; cover: MediaAssetDto | null }
 
 /** Os URLs assinados vêm relativos ("/api/media/..."): junta o endereço da API. */
-export const mediaSrc = (url: string | null | undefined) => (url ? `${process.env.REACT_APP_PUBLIC_URL ?? ""}${url}` : undefined);
+export const mediaSrc = (url: string | null | undefined) => (url ? (/^https?:\/\//.test(url) ? url : `${process.env.REACT_APP_PUBLIC_URL ?? ""}${url}`) : undefined);
 
 export const fmtDuration = (ms: number | null | undefined) => {
     if (!ms) return "";

@@ -313,7 +313,7 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                                             {data.reviews.map((r) => (
                                                 <li key={r.id} className="mb-1">
                                                     <i className={r.decision === "approved" ? "ri-check-double-line text-success me-1" : "ri-chat-1-line text-warning me-1"} />
-                                                    {r.decision === "approved" ? "Aprovou" : "Pediu alterações"} a versão {r.version_number} · {r.reviewer}
+                                                    {r.decision === "approved" ? "Aprovou" : "Pediu alterações"} a versão {r.version_number} · {r.reviewer}{r.via === "link" ? " (link de aprovação)" : ""}
                                                     <span className="text-muted"> · {fmtDateTimePt(r.created_at)}</span>
                                                     {r.message && <div className="text-muted ms-3">{r.message}</div>}
                                                 </li>

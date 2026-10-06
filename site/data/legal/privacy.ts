@@ -16,7 +16,7 @@ export const privacyPt: LegalContent = {
   intro:
     "Como a XPLENDOR trata os dados pessoais e os dados de publicidade dos seus clientes, incluindo os dados recebidos da Meta (Facebook e Instagram).",
   updatedLabel: "Última atualização",
-  updated: "5 de outubro de 2026",
+  updated: "6 de outubro de 2026",
   tocLabel: "Nesta página",
   alternate: { href: "/en/privacy-policy/", label: "Read in English" },
   sections: [
@@ -46,7 +46,8 @@ export const privacyPt: LegalContent = {
             "visitantes deste site;",
             "empresas clientes da Plataforma e aos utilizadores que estas autorizam;",
             "visitantes dos sites dos clientes que instalaram o script de medição da XPLENDOR (secção 6);",
-            "pessoas e empresas a quem a XPLENDOR envia orçamentos (secção 7).",
+            "pessoas e empresas a quem a XPLENDOR envia orçamentos (secção 7);",
+            "pessoas a quem é enviado um link de aprovação de conteúdos (secção 8).",
           ],
         },
       ],
@@ -100,11 +101,11 @@ export const privacyPt: LegalContent = {
         {
           list: [
             "Tokens de acesso: o token de longa duração emitido pela Meta para esta ligação, a respetiva data de expiração e o identificador numérico que a Meta atribui à conta Facebook que autorizou; e o token de cada Página escolhida. São guardados cifrados (AES-256-CBC) na base de dados e nunca são mostrados no navegador.",
-            "Páginas de Facebook: identificador e nome. Contas de Instagram profissionais: identificador, nome e nome de utilizador. Guardamos apenas as que o cliente escolhe e qual é a principal de cada rede.",
+            "Páginas de Facebook: identificador, nome e fotografia de perfil. Contas de Instagram profissionais: identificador, nome, nome de utilizador e fotografia de perfil. Guardamos apenas as que o cliente escolhe e qual é a principal de cada rede. A fotografia de perfil é copiada no máximo uma vez por semana e é apagada ao desligar.",
             "Número de seguidores, lido uma vez por dia, de cada Página e conta escolhida; na conta de Instagram, também o número de contas seguidas e de publicações. Fica um histórico diário por empresa.",
           ],
         },
-        "Finalidade (redes sociais): mostrar ao cliente, no Perfil da Marca, os seguidores atuais e o crescimento ao longo do tempo, e adequar as sugestões de formato das publicações à dimensão da audiência.",
+        "Finalidade (redes sociais): mostrar ao cliente, no Perfil da Marca, os seguidores atuais e o crescimento ao longo do tempo, adequar as sugestões de formato das publicações à dimensão da audiência e mostrar, na pré-visualização das publicações, o nome e a fotografia de perfil reais da conta.",
         "Fundamento: execução do contrato com o cliente, que autoriza expressamente a ligação.",
         { h3: "4.3 O que não recolhemos" },
         {
@@ -186,12 +187,35 @@ export const privacyPt: LegalContent = {
             "o orçamento (dados do cliente, serviços e valores): enquanto for necessário para a relação comercial e para as obrigações legais da XPLENDOR.",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 10 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 11 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+      ],
+    },
+    {
+      id: "aprovacao-conteudos",
+      title: "8. Aprovação de conteúdos por link",
+      blocks: [
+        "Os clientes da Plataforma podem enviar a quem aprova os seus conteúdos (por exemplo, o responsável pela marca) um link para uma página onde vê as publicações preparadas, com uma pré-visualização aproximada de como ficam nas redes, e as aprova, pede alterações ou comenta, sem precisar de conta. Cada link dá acesso apenas às publicações desse lote, não pode ser adivinhado, expira ao fim de 14 dias (quem o enviou pode prolongá-lo ou revogá-lo) e a página não é indexada por motores de pesquisa. Os ficheiros das publicações só se abrem por endereços temporários, válidos apenas para esse lote e enquanto o link estiver ativo.",
+        "Quando é a empresa cliente a enviar o link, é ela a responsável por estes dados e a XPLENDOR trata-os por sua conta, como prestadora da Plataforma.",
+        { h3: "8.1 Dados de quem recebe o link" },
+        "O nome e o email do destinatário, se quem envia os indicar, para enviar o link e um único lembrete se as publicações continuarem à espera. Fundamento: execução do contrato com o cliente da Plataforma e interesse legítimo em obter a aprovação a tempo.",
+        { h3: "8.2 Aberturas do link" },
+        "Registamos as aberturas como nos orçamentos (secção 7.2): apenas a data e a hora e o tipo de dispositivo. Não guardamos o endereço IP; o identificador aleatório que a página guarda no browser fica no servidor só em hash; as pré-visualizações automáticas de links e as aberturas da equipa não são registadas; a página não usa cookies nem ferramentas de análise de terceiros. Servem para quem enviou saber se o lote foi visto e quando faz sentido lembrar. Fundamento: interesse legítimo.",
+        { h3: "8.3 Registo das decisões e dos comentários" },
+        "Quando uma publicação é aprovada ou são pedidas alterações, guardamos o nome indicado por quem decide, a decisão, a mensagem (se houver), a versão da publicação, a data e a hora e o tipo de dispositivo. Cada versão só admite uma decisão. Os comentários ficam com o nome indicado e a data. Este registo faz parte do histórico da publicação e é a prova da aprovação. Fundamento: execução do contrato com o cliente da Plataforma.",
+        { h3: "8.4 Conservação" },
+        {
+          list: [
+            "aberturas: 12 meses, depois são apagadas automaticamente (fica apenas o número total de aberturas do link);",
+            "decisões, comentários e o nome e o email do destinatário: enquanto a conta do cliente estiver ativa, como parte do histórico das publicações; são eliminados com a conta ou a pedido do cliente;",
+            "ficheiros das publicações: segundo as regras da Plataforma (os das versões substituídas são apagados aos 30 dias; os originais das publicações publicadas são guardados 12 meses).",
+          ],
+        },
+        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 11.",
       ],
     },
     {
       id: "partilha",
-      title: "8. Partilha com terceiros",
+      title: "9. Partilha com terceiros",
       blocks: [
         "A XPLENDOR não vende dados pessoais. Os dados podem ser tratados pelos seguintes prestadores, apenas na medida do necessário para prestar o serviço:",
         {
@@ -206,14 +230,14 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "seguranca",
-      title: "9. Segurança",
+      title: "10. Segurança",
       blocks: [
         "Os tokens de acesso a plataformas externas são guardados cifrados. A chave secreta da aplicação Meta existe apenas no servidor. O acesso à Plataforma é feito com autenticação e cada pedido é verificado para garantir que um utilizador só acede aos dados da sua própria empresa. As comunicações são feitas por ligação cifrada (HTTPS).",
       ],
     },
     {
       id: "direitos",
-      title: "10. Os seus direitos (RGPD)",
+      title: "11. Os seus direitos (RGPD)",
       blocks: [
         "Nos termos do Regulamento Geral sobre a Proteção de Dados, pode exercer, a qualquer momento:",
         {
@@ -232,7 +256,7 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "alteracoes",
-      title: "11. Alterações a esta política",
+      title: "12. Alterações a esta política",
       blocks: [
         "Esta política pode ser atualizada para refletir alterações na Plataforma ou na lei. A data da última atualização está no topo da página. Alterações relevantes são comunicadas aos clientes por email ou na Plataforma.",
       ],
@@ -246,7 +270,7 @@ export const privacyEn: LegalContent = {
   intro:
     "How XPLENDOR handles personal data and advertising data of its customers, including the data received from Meta (Facebook and Instagram).",
   updatedLabel: "Last updated",
-  updated: "5 October 2026",
+  updated: "6 October 2026",
   tocLabel: "On this page",
   alternate: { href: "/politica-de-privacidade/", label: "Ler em português" },
   sections: [
@@ -276,7 +300,8 @@ export const privacyEn: LegalContent = {
             "visitors of this website;",
             "companies that are customers of the Platform and the users they authorise;",
             "visitors of customer websites that installed the XPLENDOR measurement script (section 6);",
-            "people and companies to whom XPLENDOR sends quotes (section 7).",
+            "people and companies to whom XPLENDOR sends quotes (section 7);",
+            "people who receive a content approval link (section 8).",
           ],
         },
       ],
@@ -330,11 +355,11 @@ export const privacyEn: LegalContent = {
         {
           list: [
             "Access tokens: the long-lived token issued by Meta for this connection, its expiry date and the numeric ID Meta assigns to the Facebook account that authorised it; and the token of each chosen Page. They are stored encrypted (AES-256-CBC) in the database and are never shown in the browser.",
-            "Facebook Pages: ID and name. Instagram professional accounts: ID, name and username. We store only the ones the customer chooses, and which one is the main account of each network.",
+            "Facebook Pages: ID, name and profile picture. Instagram professional accounts: ID, name, username and profile picture. We store only the ones the customer chooses, and which one is the main account of each network. The profile picture is copied at most once a week and is deleted on disconnection.",
             "Follower count, read once a day, of each chosen Page and account; for the Instagram account, also the number of accounts followed and of posts. A daily history is kept per company.",
           ],
         },
-        "Purpose (social media): to show the customer, in the Brand Profile, the current followers and their growth over time, and to adapt the post format suggestions to the size of the audience.",
+        "Purpose (social media): to show the customer, in the Brand Profile, the current followers and their growth over time, to adapt the post format suggestions to the size of the audience and to show the account's real name and profile picture in the post previews.",
         "Legal basis: performance of the contract with the customer, who expressly authorises the connection.",
         { h3: "4.3 What we do not collect" },
         {
@@ -416,12 +441,35 @@ export const privacyEn: LegalContent = {
             "the quote itself (customer data, services and amounts): for as long as needed for the business relationship and XPLENDOR's legal obligations.",
           ],
         },
-        "You can request access to or deletion of this data as described in section 10 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to or deletion of this data as described in section 11 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+      ],
+    },
+    {
+      id: "content-approval",
+      title: "8. Content approval by link",
+      blocks: [
+        "Platform customers can send the person who approves their content (for example, the brand manager) a link to a page where they see the prepared posts, with an approximate preview of how they will look on the networks, and approve them, ask for changes or comment, without needing an account. Each link only gives access to the posts in that batch, cannot be guessed, expires after 14 days (the sender can extend or revoke it) and the page is not indexed by search engines. Post files only open through temporary addresses, valid only for that batch and while the link is active.",
+        "When the customer company sends the link, it is the controller of this data and XPLENDOR processes it on its behalf, as the Platform provider.",
+        { h3: "8.1 Data about the link recipient" },
+        "The recipient's name and email, if the sender provides them, to send the link and a single reminder if the posts are still waiting. Legal basis: performance of the contract with the Platform customer and legitimate interest in getting the approval in time.",
+        { h3: "8.2 Link opens" },
+        "We record opens as for quotes (section 7.2): only the date and time and the device type. We do not store the IP address; the random identifier the page stores in the browser is kept on the server only as a hash; automatic link previews and opens by the team are not recorded; the page does not use cookies or third party analytics. They let the sender know whether the batch was seen and when a reminder makes sense. Legal basis: legitimate interest.",
+        { h3: "8.3 Record of decisions and comments" },
+        "When a post is approved or changes are requested, we store the name given by the person deciding, the decision, the message (if any), the post version, the date and time and the device type. Each version accepts only one decision. Comments are stored with the given name and the date. This record is part of the post history and is the proof of approval. Legal basis: performance of the contract with the Platform customer.",
+        { h3: "8.4 Retention" },
+        {
+          list: [
+            "opens: 12 months, then deleted automatically (only the total number of opens of the link is kept);",
+            "decisions, comments and the recipient's name and email: while the customer's account is active, as part of the post history; they are deleted with the account or at the customer's request;",
+            "post files: according to the Platform rules (files of replaced versions are deleted after 30 days; originals of published posts are kept for 12 months).",
+          ],
+        },
+        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 11.",
       ],
     },
     {
       id: "sharing",
-      title: "8. Sharing with third parties",
+      title: "9. Sharing with third parties",
       blocks: [
         "XPLENDOR does not sell personal data. Data may be processed by the following providers, only as needed to provide the service:",
         {
@@ -436,14 +484,14 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "security",
-      title: "9. Security",
+      title: "10. Security",
       blocks: [
         "Access tokens for external platforms are stored encrypted. The Meta app secret exists only on the server. Access to the Platform requires authentication and every request is checked so that a user can only access the data of their own company. Communications use an encrypted connection (HTTPS).",
       ],
     },
     {
       id: "rights",
-      title: "10. Your rights (GDPR)",
+      title: "11. Your rights (GDPR)",
       blocks: [
         "Under the General Data Protection Regulation you may, at any time, exercise:",
         {
@@ -462,7 +510,7 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "changes",
-      title: "11. Changes to this policy",
+      title: "12. Changes to this policy",
       blocks: [
         "This policy may be updated to reflect changes to the Platform or to the law. The date of the last update is shown at the top of the page. Relevant changes are communicated to customers by email or in the Platform.",
       ],

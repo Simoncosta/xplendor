@@ -29,8 +29,8 @@ function App() {
     return (
         <React.Fragment>
             <Route />
-            {/* A página pública dos orçamentos não usa cookies nem análise de terceiros. */}
-            {!/\/orcamento\/?$/.test(window.location.pathname) && <CookieBanner />}
+            {/* As páginas públicas do orçamento e da aprovação de conteúdos não usam cookies nem análise de terceiros. */}
+            {!/\/(orcamento|aprovar)\/?$/.test(window.location.pathname) && <CookieBanner />}
         </React.Fragment>
     );
 }

@@ -15,7 +15,7 @@ export const dataDeletionPt: LegalContent = {
   intro:
     "Como pedir a eliminação dos dados guardados pela XPLENDOR, incluindo os dados recebidos da Meta (Facebook e Instagram), e em que prazo.",
   updatedLabel: "Última atualização",
-  updated: "5 de outubro de 2026",
+  updated: "6 de outubro de 2026",
   tocLabel: "Nesta página",
   alternate: { href: "/en/data-deletion/", label: "Read in English" },
   sections: [
@@ -57,13 +57,14 @@ export const dataDeletionPt: LegalContent = {
             "os nomes e identificadores de campanhas, conjuntos de anúncios e anúncios, e as associações entre anúncios e produtos;",
             "os metadados de públicos personalizados e as configurações de segmentação;",
             "as despesas de marketing calculadas a partir do investimento na Meta;",
-            "na ligação das redes sociais: os tokens de acesso, as Páginas e contas de Instagram escolhidas (identificador, nome e nome de utilizador) e o histórico de seguidores lido automaticamente.",
+            "na ligação das redes sociais: os tokens de acesso, as Páginas e contas de Instagram escolhidas (identificador, nome, nome de utilizador e fotografia de perfil) e o histórico de seguidores lido automaticamente.",
           ],
         },
         "Os números de seguidores que o próprio cliente registou à mão não vêm da Meta; mantêm-se, salvo num pedido de eliminação de todos os dados.",
         "As vendas e restantes dados de negócio que o cliente introduziu mantêm-se, mas deixam de estar associadas a campanhas ou anúncios da Meta.",
         "Num pedido de eliminação de todos os dados, a conta da empresa é encerrada e todos os dados associados são eliminados, salvo os que a lei obrigue a conservar (por exemplo, documentos de faturação).",
         "Quem recebeu um orçamento da XPLENDOR pode pedir, pelo mesmo email, a eliminação dos registos de abertura do link e dos seus dados de contacto. Os registos de aceitação, recusa ou pedido de alterações são conservados enquanto a lei o exigir (até 10 anos) e eliminados depois; as aberturas são apagadas automaticamente ao fim de 12 meses.",
+        "Quem recebeu um link de aprovação de conteúdos pode pedir à empresa que o enviou, ou à XPLENDOR pelo mesmo email, a eliminação do seu nome e email e dos registos de abertura. As aberturas são apagadas automaticamente ao fim de 12 meses; as decisões e os comentários fazem parte do histórico das publicações do cliente e são eliminados com a conta ou a pedido dele.",
       ],
     },
     {
@@ -124,7 +125,7 @@ export const dataDeletionEn: LegalContent = {
   intro:
     "How to request deletion of the data stored by XPLENDOR, including the data received from Meta (Facebook and Instagram), and within what timeframe.",
   updatedLabel: "Last updated",
-  updated: "5 October 2026",
+  updated: "6 October 2026",
   tocLabel: "On this page",
   alternate: { href: "/eliminacao-de-dados/", label: "Ler em português" },
   sections: [
@@ -166,13 +167,14 @@ export const dataDeletionEn: LegalContent = {
             "names and IDs of campaigns, ad sets and ads, and the links between ads and products;",
             "custom audience metadata and targeting settings;",
             "marketing expenses calculated from Meta spend;",
-            "for the social media connection: the access tokens, the chosen Pages and Instagram accounts (ID, name and username) and the follower history read automatically.",
+            "for the social media connection: the access tokens, the chosen Pages and Instagram accounts (ID, name, username and profile picture) and the follower history read automatically.",
           ],
         },
         "Follower counts entered manually by the customer do not come from Meta; they are kept, except in a request to delete all data.",
         "Sales and other business data entered by the customer are kept, but are no longer linked to Meta campaigns or ads.",
         "For a request to delete all data, the company account is closed and all associated data is deleted, except data that the law requires to be kept (for example invoicing documents).",
         "Anyone who received a quote from XPLENDOR can request, by the same email, deletion of the link open records and of their contact details. Records of acceptance, refusal or change requests are kept for as long as the law requires (up to 10 years) and deleted afterwards; opens are deleted automatically after 12 months.",
+        "Anyone who received a content approval link can ask the company that sent it, or XPLENDOR by the same email, to delete their name and email and the open records. Opens are deleted automatically after 12 months; decisions and comments are part of the customer's post history and are deleted with the account or at the customer's request.",
       ],
     },
     {

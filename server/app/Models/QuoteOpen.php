@@ -16,7 +16,7 @@ class QuoteOpen extends Model
 {
     public const DEVICE_MOBILE = 'mobile';
     public const DEVICE_DESKTOP = 'desktop';
-    public const SAME_VISIT_MINUTES = 30;
+    public const SAME_VISIT_MINUTES = \App\Services\PublicLinks\PublicLinkOpens::SAME_VISIT_MINUTES;
 
     public $timestamps = false;
 

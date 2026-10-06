@@ -52,6 +52,8 @@ import CollaboratorEditor from "pages/Collaborators/CollaboratorEditor";
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import QuotePublicPage from "pages/QuotePublic";
+import ContentReviewPage from "pages/ContentReview";
+import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
 import SatisfactionReport from "pages/SatisfactionReport";
 import UserUpdate from "pages/Users/User/UserUpdate";
@@ -135,6 +137,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
     { path: "/editorial", component: <RequireModule module="linha_editorial"><EditorialCalendarPage /></RequireModule> },
+    // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
+    { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial"><ContentReviewPreview /></RequireModule> },
     { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
@@ -277,6 +281,8 @@ const publicRoutes = [
     // Orçamento: link público de uma versão enviada (sem login, sem indexação).
     // O token vem no fragmento (#): /orcamento#<token>.
     { path: "/orcamento", component: <QuotePublicPage /> },
+    // Aprovação de conteúdos por lote (sem conta, sem indexação). Token no fragmento: /aprovar#<token>.
+    { path: "/aprovar", component: <ContentReviewPage /> },
     // A mesma página vista pela equipa (não conta como abertura; mesma aba, para manter a sessão).
     { path: "/admin/quotes/:id/preview/:version", component: <RequireSuperAdmin><QuotePublicPreview /></RequireSuperAdmin> },
 ];

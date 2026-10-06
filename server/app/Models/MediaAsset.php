@@ -64,15 +64,22 @@ class MediaAsset extends Model
         return $this->width && $this->height ? $this->width / $this->height : null;
     }
 
-    /** Para os ecrãs: dados técnicos e URLs assinados das variantes. */
-    public function present(): array
+    /**
+     * Para os ecrãs: dados técnicos e URLs assinados das variantes. Com $sign, os URLs
+     * são outros (por exemplo, os do link de aprovação, limitados ao lote).
+     *
+     * @param  ?\Closure(self, string): ?string  $sign
+     */
+    public function present(?\Closure $sign = null): array
     {
+        $url = fn (string $variant) => $sign ? ($this->pathFor($variant) ? $sign($this, $variant) : null) : $this->signedUrl($variant);
+
         return [
             'id' => $this->id, 'kind' => $this->kind, 'status' => $this->status, 'error' => $this->error,
             'original_name' => $this->original_name, 'size_bytes' => $this->size_bytes,
             'width' => $this->width, 'height' => $this->height, 'duration_ms' => $this->duration_ms, 'codec' => $this->codec,
-            'thumb_url' => $this->signedUrl('thumb'), 'preview_url' => $this->signedUrl('preview'),
-            'poster_url' => $this->signedUrl('poster'), 'original_url' => $this->signedUrl('original'),
+            'thumb_url' => $url('thumb'), 'preview_url' => $url('preview'),
+            'poster_url' => $url('poster'), 'original_url' => $url('original'),
             'original_available' => $this->original_deleted_at === null,
         ];
     }

@@ -101,7 +101,7 @@ class SocialConnectionService
                 'last_error_message' => null,
             ])->save();
             // Nova autorização: os tokens das Páginas escolhidas antes deixam de valer.
-            $connection->accounts()->delete();
+            $this->deleteAccounts($connection);
         });
 
         return [$companyId, 'choose'];
@@ -166,7 +166,7 @@ class SocialConnectionService
         $primaryInstagram = in_array($primaryInstagram, $instagramIds, true) ? $primaryInstagram : ($instagramIds[0] ?? null);
 
         DB::transaction(function () use ($connection, $companyId, $facebookIds, $instagramIds, $byPage, $byInstagram, $primaryFacebook, $primaryInstagram) {
-            $connection->accounts()->delete();
+            $this->deleteAccounts($connection);
             foreach ($facebookIds as $id) {
                 $p = $byPage[$id];
                 SocialConnectionAccount::create([
@@ -219,6 +219,7 @@ class SocialConnectionService
             if ($result['ok']) {
                 $read++;
                 $account->update(['last_followers_count' => $result['followers'], 'last_read_at' => now(), 'last_error_at' => null, 'last_error_kind' => null]);
+                $this->refreshProfile($account, $result['picture_url'] ?? null, $result['username'] ?? null);
                 if ($account->is_primary) {
                     $this->followers->recordAutomatic($companyId, $account->platform, $result['followers'], $result['follows'], $result['media']);
                 }
@@ -244,6 +245,50 @@ class SocialConnectionService
         }
 
         return ['read' => $read, 'failed' => count($failures), 'skipped' => false];
+    }
+
+    /** Apaga as contas escolhidas e as fotos de perfil copiadas. */
+    private function deleteAccounts(SocialConnection $connection): void
+    {
+        $paths = $connection->accounts()->whereNotNull('profile_picture_path')->pluck('profile_picture_path')->all();
+        $connection->accounts()->delete();
+        if ($paths) {
+            \App\Services\Media\MediaService::disk()->delete($paths);
+        }
+    }
+
+    /**
+     * Foto de perfil e nome de utilizador reais (para a pré-visualização como na rede).
+     * A Meta dá um URL temporário: a foto é copiada para o disco privado "media", no
+     * máximo uma vez por semana. Falhar aqui nunca afeta a leitura dos seguidores.
+     */
+    private function refreshProfile(SocialConnectionAccount $account, ?string $pictureUrl, ?string $username): void
+    {
+        try {
+            if ($username && $username !== $account->username) {
+                $account->update(['username' => mb_substr($username, 0, 190)]);
+            }
+            $fresh = $account->profile_picture_updated_at && $account->profile_picture_updated_at->gt(now()->subDays(7));
+            if (! $pictureUrl || ! str_starts_with($pictureUrl, 'https://') || ($fresh && $account->profile_picture_path)) {
+                return;
+            }
+            $r = \Illuminate\Support\Facades\Http::timeout(10)->get($pictureUrl);
+            $type = strtolower(trim(explode(';', (string) $r->header('Content-Type'))[0]));
+            $ext = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'][$type] ?? null;
+            $body = $r->body();
+            if (! $r->successful() || ! $ext || strlen($body) === 0 || strlen($body) > 2 * 1024 * 1024) {
+                return;
+            }
+            $disk = \App\Services\Media\MediaService::disk();
+            $path = "social/company_{$account->company_id}/account_{$account->id}.{$ext}";
+            if ($account->profile_picture_path && $account->profile_picture_path !== $path) {
+                $disk->delete($account->profile_picture_path);
+            }
+            $disk->put($path, $body);
+            $account->update(['profile_picture_path' => $path, 'profile_picture_updated_at' => now()]);
+        } catch (\Throwable $e) {
+            Log::warning('[Redes sociais] Foto de perfil não atualizada', ['account_id' => $account->id, 'error' => mb_substr($e->getMessage(), 0, 200)]);
+        }
     }
 
     // ── 5. Desligar ────────────────────────────────────────────────────────────
@@ -275,7 +320,7 @@ class SocialConnectionService
         $deleted = null;
         DB::transaction(function () use ($connection, $companyId, $purge, &$deleted) {
             if ($connection) {
-                $connection->accounts()->delete();
+                $this->deleteAccounts($connection);
             }
             if ($purge) {
                 $deleted = SocialFollowerSnapshot::where('company_id', $companyId)

@@ -28,6 +28,7 @@ import EditorialBoard from "./EditorialBoard";
 import InstagramGrid from "./InstagramGrid";
 import PostWorkflowModal from "./PostWorkflowModal";
 import StageLegendModal from "./StageLegendModal";
+import ReviewLinksModal from "./ReviewLinksModal";
 import { BLOG_STATUS_STAGE, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
@@ -155,6 +156,9 @@ export default function EditorialCalendarPage() {
     const [ideasGate, setIdeasGate] = useState<{ ready: boolean; reason: string | null } | null>(null);
     const [howOpen, setHowOpen] = useState(false);
     const [legendOpen, setLegendOpen] = useState(false);
+    // F3c: links de aprovação por lote; ?aprovacoes=ID (aviso do sino) abre-os nesse link.
+    const [reviewOpen, setReviewOpen] = useState(() => new URLSearchParams(window.location.search).has("aprovacoes"));
+    const [reviewFocus] = useState(() => Number(new URLSearchParams(window.location.search).get("aprovacoes") || 0) || null);
     // Razão do "Gerar ideias" desativado: ao passar o rato, no foco e ao tocar.
     const [reasonOpen, setReasonOpen] = useState(false);
     const touchRef = useRef(false); // no toque, o "sair com o rato" simulado não fecha a razão
@@ -436,6 +440,10 @@ export default function EditorialCalendarPage() {
                                 </h5>
                                 <small className="text-muted">Ramo: <strong>{sectorName}</strong></small>
                             </div>
+                            <div className="d-flex flex-wrap align-items-center gap-2">
+                            <Button color="soft-success" size="sm" onClick={() => setReviewOpen(true)}>
+                                <i className="ri-links-line me-1" />Aprovação por link
+                            </Button>
                             <div className="btn-group flex-wrap" role="group" aria-label="Vista">
                                 <Button color={view === "calendar" ? "primary" : "light"} size="sm" onClick={() => setView("calendar")}>
                                     <i className="ri-calendar-2-line me-1" />Calendário
@@ -446,6 +454,7 @@ export default function EditorialCalendarPage() {
                                 <Button color={view === "grid" ? "primary" : "light"} size="sm" onClick={() => setView("grid")}>
                                     <i className="ri-instagram-line me-1" />Grelha do Instagram
                                 </Button>
+                            </div>
                             </div>
                         </CardHeader>
 
@@ -821,6 +830,10 @@ export default function EditorialCalendarPage() {
                 </Suspense>
             )}
             <StageLegendModal isOpen={legendOpen} toggle={() => setLegendOpen(false)} />
+            {companyId > 0 && (
+                <ReviewLinksModal isOpen={reviewOpen} toggle={() => setReviewOpen(false)} companyId={companyId} canProduce={canProduce}
+                    focusLinkId={reviewFocus} onChanged={() => { void load(); setBoardReload((k) => k + 1); }} />
+            )}
 
             {/* Modal: produção e aprovação da publicação (F3a) */}
             <PostWorkflowModal

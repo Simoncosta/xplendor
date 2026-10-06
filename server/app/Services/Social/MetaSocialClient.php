@@ -134,7 +134,7 @@ class MetaSocialClient
     public function pageFollowers(string $pageId, string $pageToken): array
     {
         $r = $this->send(fn () => Http::timeout(self::TIMEOUT)->get(self::GRAPH_URL . '/' . $pageId, [
-            'fields' => 'followers_count',
+            'fields' => 'followers_count,picture.type(large){url}',
             'access_token' => $pageToken,
         ]));
         if (! $r || ! $r->successful()) {
@@ -143,7 +143,7 @@ class MetaSocialClient
         $count = $r->json('followers_count');
 
         return is_numeric($count)
-            ? ['ok' => true, 'followers' => (int) $count, 'follows' => null, 'media' => null]
+            ? ['ok' => true, 'followers' => (int) $count, 'follows' => null, 'media' => null, 'picture_url' => $r->json('picture.data.url'), 'username' => null]
             : ['ok' => false, 'kind' => self::ERR_FAILED, 'message' => 'A Meta não devolveu o número de seguidores.'];
     }
 
@@ -151,7 +151,7 @@ class MetaSocialClient
     public function instagramFollowers(string $igId, string $pageToken): array
     {
         $r = $this->send(fn () => Http::timeout(self::TIMEOUT)->get(self::GRAPH_URL . '/' . $igId, [
-            'fields' => 'followers_count,follows_count,media_count',
+            'fields' => 'followers_count,follows_count,media_count,profile_picture_url,username',
             'access_token' => $pageToken,
         ]));
         if (! $r || ! $r->successful()) {
@@ -160,7 +160,8 @@ class MetaSocialClient
         $count = $r->json('followers_count');
 
         return is_numeric($count)
-            ? ['ok' => true, 'followers' => (int) $count, 'follows' => self::intOrNull($r->json('follows_count')), 'media' => self::intOrNull($r->json('media_count'))]
+            ? ['ok' => true, 'followers' => (int) $count, 'follows' => self::intOrNull($r->json('follows_count')), 'media' => self::intOrNull($r->json('media_count')),
+                'picture_url' => $r->json('profile_picture_url'), 'username' => $r->json('username')]
             : ['ok' => false, 'kind' => self::ERR_FAILED, 'message' => 'A Meta não devolveu o número de seguidores.'];
     }
 

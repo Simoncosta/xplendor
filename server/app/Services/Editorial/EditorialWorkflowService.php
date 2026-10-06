@@ -217,25 +217,10 @@ class EditorialWorkflowService
             if (EditorialPostReview::where('approved_version_id', $version->id)->exists()) {
                 throw new HttpException(409, 'Esta versão já foi aprovada.');
             }
-
-            try {
-                EditorialPostReview::create([
-                    'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'version_id' => $version->id,
-                    'decision' => EditorialPostReview::APPROVED, 'via' => 'app', 'user_id' => $user->id,
-                    'reviewer_name' => $user->name, 'message' => $message ? trim($message) : null,
-                    'approved_version_id' => $version->id, 'created_at' => now(),
-                ]);
-            } catch (QueryException) {
-                throw new HttpException(409, 'Esta versão já foi aprovada.');
-            }
-
-            $version->forceFill(['status' => EditorialPostVersion::APPROVED])->save();
-            $post->forceFill([
-                'stage' => EditorialPost::STAGE_SCHEDULED, 'stage_changed_at' => now(),
-                'approved_version_id' => $version->id, 'changes_requested_at' => null,
-            ])->save();
-            $this->event($post, $user, 'review', EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_SCHEDULED, $version->id,
-                'Aprovada a versão ' . $version->number . ($message ? ': ' . trim($message) : '.'));
+            $message = $message ? trim($message) : null;
+            $this->applyDecision($post, $version, EditorialPostReview::APPROVED, $message,
+                ['via' => 'app', 'user_id' => $user->id, 'reviewer_name' => $user->name], $user,
+                'Aprovada a versão ' . $version->number . ($message ? ': ' . $message : '.'));
 
             return $post->fresh();
         });
@@ -251,19 +236,103 @@ class EditorialWorkflowService
 
         return DB::transaction(function () use ($post, $user, $message) {
             [$post, $version] = $this->lockForReview($post);
-
-            EditorialPostReview::create([
-                'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'version_id' => $version->id,
-                'decision' => EditorialPostReview::CHANGES_REQUESTED, 'via' => 'app', 'user_id' => $user->id,
-                'reviewer_name' => $user->name, 'message' => $message, 'created_at' => now(),
-            ]);
-            $version->forceFill(['status' => EditorialPostVersion::CHANGES_REQUESTED])->save();
-            $post->forceFill(['stage' => EditorialPost::STAGE_PRODUCTION, 'stage_changed_at' => now(), 'changes_requested_at' => now()])->save();
-            $this->event($post, $user, 'review', EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_PRODUCTION, $version->id,
+            $this->applyDecision($post, $version, EditorialPostReview::CHANGES_REQUESTED, $message,
+                ['via' => 'app', 'user_id' => $user->id, 'reviewer_name' => $user->name], $user,
                 'Alterações pedidas na versão ' . $version->number . ': ' . $message);
 
             return $post->fresh();
         });
+    }
+
+    // ── Aprovação pelo link (F3c, sem conta) ─────────────────────────────────
+
+    public const MSG_LINK_OUTDATED = 'A equipa atualizou esta publicação. Aguarde que a volte a enviar neste link.';
+    public const MSG_LINK_DECIDED = 'Já foi registada uma decisão para esta versão.';
+
+    /**
+     * Aprovar ou pedir alterações pelo link de aprovação, sobre a versão enviada no lote.
+     * Uma decisão por versão; se a equipa mudou a publicação depois do envio, 409.
+     * Chamar dentro de uma transação (o "Aprovar tudo" junta várias numa só).
+     */
+    public function decideViaLink(EditorialPost $post, int $versionId, int $linkId, string $decision, string $name, ?string $message, ?string $device): EditorialPost
+    {
+        $name = trim($name);
+        $message = $message !== null ? trim($message) : null;
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => ['Indique o seu nome.']]);
+        }
+        if ($decision === EditorialPostReview::CHANGES_REQUESTED && ($message === null || $message === '')) {
+            throw ValidationException::withMessages(['message' => ['Escreva o que deve ser alterado.']]);
+        }
+
+        return DB::transaction(function () use ($post, $versionId, $linkId, $decision, $name, $message, $device) {
+            $post = EditorialPost::lockForUpdate()->findOrFail($post->id);
+            if (EditorialPostReview::where('version_id', $versionId)->exists()) {
+                throw new HttpException(409, self::MSG_LINK_DECIDED);
+            }
+            $version = $post->currentVersion;
+            if ($post->stage !== EditorialPost::STAGE_CLIENT_REVIEW || ! $version || $version->id !== $versionId || $version->status !== EditorialPostVersion::SENT) {
+                throw new HttpException(409, self::MSG_LINK_OUTDATED);
+            }
+
+            $approved = $decision === EditorialPostReview::APPROVED;
+            $this->applyDecision($post, $version, $decision, $message ?: null,
+                ['via' => 'link', 'review_link_id' => $linkId, 'user_id' => null, 'reviewer_name' => mb_substr($name, 0, 120), 'device' => $device], null,
+                ($approved ? 'Aprovada a versão ' : 'Alterações pedidas na versão ') . $version->number . " no link de aprovação, por {$name}"
+                    . ($message ? ': ' . $message : '.'));
+
+            return $post->fresh();
+        });
+    }
+
+    /** Comentário partilhado escrito no link de aprovação (sem conta). */
+    public function commentViaLink(EditorialPost $post, int $versionId, int $linkId, string $name, string $body): EditorialPostComment
+    {
+        $name = trim($name);
+        $body = trim($body);
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => ['Indique o seu nome.']]);
+        }
+        if ($body === '') {
+            throw ValidationException::withMessages(['body' => ['Escreva o comentário.']]);
+        }
+        $comment = EditorialPostComment::create([
+            'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'version_id' => $versionId,
+            'user_id' => null, 'impersonator_user_id' => null, 'review_link_id' => $linkId,
+            'author_name' => mb_substr($name, 0, 120), 'body' => mb_substr($body, 0, 3000), 'visibility' => EditorialPostComment::SHARED,
+        ]);
+        $this->recordEvent($post, null, 'comment', null, null, $versionId, "Comentário no link de aprovação, por {$name}.");
+
+        return $comment;
+    }
+
+    /** Grava a decisão e muda a versão e a etapa (aprovada: Programado; alterações: Produção). */
+    private function applyDecision(EditorialPost $post, EditorialPostVersion $version, string $decision, ?string $message, array $who, ?User $eventUser, string $eventMessage): void
+    {
+        $approved = $decision === EditorialPostReview::APPROVED;
+        try {
+            EditorialPostReview::create($who + [
+                'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'version_id' => $version->id,
+                'decision' => $decision, 'message' => $message,
+                'approved_version_id' => $approved ? $version->id : null, 'created_at' => now(),
+            ]);
+        } catch (QueryException) {
+            throw new HttpException(409, 'Esta versão já foi aprovada.');
+        }
+
+        if ($approved) {
+            $version->forceFill(['status' => EditorialPostVersion::APPROVED])->save();
+            $post->forceFill([
+                'stage' => EditorialPost::STAGE_SCHEDULED, 'stage_changed_at' => now(),
+                'approved_version_id' => $version->id, 'changes_requested_at' => null,
+            ])->save();
+        } else {
+            $version->forceFill(['status' => EditorialPostVersion::CHANGES_REQUESTED])->save();
+            $post->forceFill(['stage' => EditorialPost::STAGE_PRODUCTION, 'stage_changed_at' => now(), 'changes_requested_at' => now()])->save();
+        }
+        // Sem utilizador (link): o histórico não deve cair no utilizador autenticado.
+        $this->recordEvent($post, $eventUser, 'review', EditorialPost::STAGE_CLIENT_REVIEW,
+            $approved ? EditorialPost::STAGE_SCHEDULED : EditorialPost::STAGE_PRODUCTION, $version->id, $eventMessage);
     }
 
     /** "Aprovar tudo": aprova as publicações indicadas que estão à espera; ignora as outras. */
@@ -533,7 +602,12 @@ class EditorialWorkflowService
 
     public function event(EditorialPost $post, ?User $user, string $type, ?string $from = null, ?string $to = null, ?int $versionId = null, ?string $message = null): void
     {
-        $user ??= Auth::user();
+        $this->recordEvent($post, $user ?? Auth::user(), $type, $from, $to, $versionId, $message);
+    }
+
+    /** Como event(), mas sem utilizador quando não há (ações do link de aprovação). */
+    private function recordEvent(EditorialPost $post, ?User $user, string $type, ?string $from, ?string $to, ?int $versionId, ?string $message): void
+    {
         EditorialPostEvent::create([
             'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'type' => $type,
             'from_stage' => $from, 'to_stage' => $to, 'version_id' => $versionId,

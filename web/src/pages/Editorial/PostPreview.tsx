@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { PostChannel } from "common/models/editorialPost.model";
 import { MediaAssetDto, fmtDuration, mediaSrc } from "common/models/editorialWorkflow.model";
 
@@ -17,6 +17,10 @@ type Props = {
     items: MediaAssetDto[];
     cover: MediaAssetDto | null;
     accountName: string;
+    /** Foto de perfil real da conta ligada (URL já completo ou relativo à API). */
+    avatarUrl?: string | null;
+    /** Nome de utilizador real (Instagram); sem ele, deriva do nome. */
+    username?: string | null;
 };
 
 const clampRatio = (r: number | null) => (r ? Math.min(1.91, Math.max(0.8, r)) : 1);
@@ -46,7 +50,9 @@ function Caption({ name, text, tags }: { name: string; text: string; tags: strin
     );
 }
 
-const Avatar = ({ name }: { name: string }) => (
+const Avatar = ({ name, url }: { name: string; url?: string | null }) => url ? (
+    <img src={mediaSrc(url)} alt="" className="rounded-circle flex-shrink-0" style={{ width: 30, height: 30, objectFit: "cover" }} />
+) : (
     <span className="rounded-circle d-inline-flex align-items-center justify-content-center fw-semibold text-white flex-shrink-0"
         style={{ width: 30, height: 30, fontSize: 12, background: "linear-gradient(45deg,#f58529,#dd2a7b,#8134af)" }}>
         {name.slice(0, 1).toUpperCase()}
@@ -63,10 +69,11 @@ function SafeZones({ top, bottom }: { top: number; bottom: number }) {
     return <>{zone("top", top)}{zone("bottom", bottom)}</>;
 }
 
-export default function PostPreview({ channel, mediaFormat, caption, hashtags, items, cover, accountName }: Props) {
+export default function PostPreview({ channel, mediaFormat, caption, hashtags, items, cover, accountName, avatarUrl, username }: Props) {
     const [index, setIndex] = useState(0);
+    const touchX = useRef<number | null>(null);
     const ready = items.filter((a) => a.status === "ready");
-    const name = accountName.toLowerCase().replace(/\s+/g, "");
+    const name = username || accountName.toLowerCase().replace(/\s+/g, "");
 
     if (ready.length === 0 && mediaFormat !== "fb_post") {
         return <div className="text-muted fs-13 text-center py-4 border rounded">Acrescente ficheiros para ver a pré-visualização.</div>;
@@ -79,10 +86,15 @@ export default function PostPreview({ channel, mediaFormat, caption, hashtags, i
             <div className="mx-auto position-relative rounded overflow-hidden bg-black" style={{ width: 270, aspectRatio: "9 / 16" }}>
                 {ready[0] && <Media asset={ready[0]} poster={cover} vertical />}
                 <SafeZones top={story ? 14 : 8} bottom={story ? 20 : 30} />
+                {story && (
+                    <div className="position-absolute start-0 d-flex align-items-center gap-1 px-2 text-white fs-12" style={{ top: "3%", textShadow: "0 1px 2px #000", pointerEvents: "none" }}>
+                        <Avatar name={accountName} url={avatarUrl} /><strong>{name}</strong>
+                    </div>
+                )}
                 <div className="position-absolute start-0 end-0 px-2 text-white fs-12" style={{ bottom: story ? "4%" : "8%", textShadow: "0 1px 2px #000", pointerEvents: "none" }}>
-                    {!story && <><strong>{name}</strong><div className="text-truncate">{caption}</div></>}
+                    {!story && <><div className="d-flex align-items-center gap-1 mb-1"><Avatar name={accountName} url={avatarUrl} /><strong>{name}</strong></div><div className="text-truncate">{caption}</div></>}
                 </div>
-                {ready[0]?.kind === "video" && <span className="position-absolute top-0 start-0 m-2 badge bg-dark">{fmtDuration(ready[0].duration_ms)}</span>}
+                {ready[0]?.kind === "video" && <span className="position-absolute top-0 end-0 m-2 badge bg-dark">{fmtDuration(ready[0].duration_ms)}</span>}
             </div>
         );
     }
@@ -91,7 +103,7 @@ export default function PostPreview({ channel, mediaFormat, caption, hashtags, i
     if (channel === "facebook") {
         return (
             <div className="border rounded mx-auto bg-body" style={{ maxWidth: 420 }}>
-                <div className="d-flex align-items-center gap-2 p-2"><Avatar name={accountName} /><div><div className="fw-semibold fs-13">{accountName}</div><div className="text-muted fs-11">Agora · Público</div></div></div>
+                <div className="d-flex align-items-center gap-2 p-2"><Avatar name={accountName} url={avatarUrl} /><div><div className="fw-semibold fs-13">{accountName}</div><div className="text-muted fs-11">Agora · Público</div></div></div>
                 <div className="fs-13 px-2 pb-2" style={{ whiteSpace: "pre-line" }}>{[caption, hashtags.join(" ")].filter(Boolean).join("\n\n")}</div>
                 {ready.length > 0 && (
                     <div className="d-grid gap-1" style={{ gridTemplateColumns: ready.length > 1 ? "1fr 1fr" : "1fr" }}>
@@ -114,8 +126,17 @@ export default function PostPreview({ channel, mediaFormat, caption, hashtags, i
     const current = ready[Math.min(index, ready.length - 1)];
     return (
         <div className="border rounded mx-auto bg-body" style={{ maxWidth: 380 }}>
-            <div className="d-flex align-items-center gap-2 p-2"><Avatar name={accountName} /><strong className="fs-13">{name}</strong></div>
-            <div className="position-relative bg-black" style={{ aspectRatio: `${ratio}` }}>
+            <div className="d-flex align-items-center gap-2 p-2"><Avatar name={accountName} url={avatarUrl} /><strong className="fs-13">{name}</strong></div>
+            {/* O carrossel desliza com o dedo, como na rede. */}
+            <div className="position-relative bg-black" style={{ aspectRatio: `${ratio}`, touchAction: "pan-y" }}
+                onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+                onTouchEnd={(e) => {
+                    if (touchX.current === null) return;
+                    const dx = e.changedTouches[0].clientX - touchX.current;
+                    touchX.current = null;
+                    if (dx < -40 && index < ready.length - 1) setIndex(index + 1);
+                    if (dx > 40 && index > 0) setIndex(index - 1);
+                }}>
                 {current && <Media asset={current} poster={cover} />}
                 {ready.length > 1 && (
                     <>
