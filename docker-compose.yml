@@ -63,6 +63,14 @@ services:
     environment:
       PHP_IDE_CONFIG: "serverName=xplendorDevServer"
       COMPOSER_CACHE_DIR: /tmp/composer
+      # Desenvolvimento: os emails vão para o Mailpit (http://localhost:8025), nunca para
+      # destinatários reais. Estas variáveis prevalecem sobre o server/.env. Produção: docker-compose.prod.yml.
+      MAIL_MAILER: smtp
+      MAIL_SCHEME: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -74,6 +82,17 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - xplendor
+
+  # Carteiro de testes (só no desenvolvimento): recebe todos os emails da app.
+  # Caixa em http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: xplendor-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
     networks:
       - xplendor
 
@@ -96,6 +115,15 @@ services:
     working_dir: /var/www/html
     entrypoint: []
     command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    environment:
+      # Desenvolvimento: os emails vão para o Mailpit (http://localhost:8025), nunca para
+      # destinatários reais. Estas variáveis prevalecem sobre o server/.env. Produção: docker-compose.prod.yml.
+      MAIL_MAILER: smtp
+      MAIL_SCHEME: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
@@ -114,6 +142,15 @@ services:
     working_dir: /var/www/html
     entrypoint: []
     command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    environment:
+      # Desenvolvimento: os emails vão para o Mailpit (http://localhost:8025), nunca para
+      # destinatários reais. Estas variáveis prevalecem sobre o server/.env. Produção: docker-compose.prod.yml.
+      MAIL_MAILER: smtp
+      MAIL_SCHEME: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
     volumes:
       - ./server:/var/www/html:delegated
       - xplendor_vendor:/var/www/html/vendor
