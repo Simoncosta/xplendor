@@ -26,8 +26,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  *
  * Etapas: Ideia → Planeamento → Produção → Revisão (interna) → Aprovação (cliente) →
  * Programado → Publicado → Análise. O servidor decide sempre o que é permitido:
- *  · Produção (mover, editar, comentar): os utilizadores da empresa e a equipa XPLENDOR
- *    (root ou em sessão como cliente).
+ *  · Produção (mover, editar): a equipa XPLENDOR (root ou em sessão como cliente) e, em
+ *    "Produção própria" (por omissão), os utilizadores da empresa. Em "Produção pela equipa
+ *    XPLENDOR" os utilizadores do cliente só comentam, aprovam e pedem alterações.
+ *  · Comentar: os utilizadores da empresa e a equipa.
  *  · Aprovação: o administrador da empresa e os utilizadores marcados como aprovadores;
  *    nunca o root e nunca em impersonation.
  *  · A revisão interna, quando a empresa a exige, é feita por outra pessoa (a pessoa
@@ -39,6 +41,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
  */
 class EditorialWorkflowService
 {
+    public const MODE_SELF = 'self';
+    public const MODE_TEAM = 'team';
+    public const MODES = [self::MODE_SELF, self::MODE_TEAM];
+
+    public const MSG_TEAM_PRODUCES = 'Nesta empresa a produção é feita pela equipa XPLENDOR: pode comentar, aprovar ou pedir alterações.';
+
     private const LOCKED_STAGES = [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS];
     private const SEND_STAGES = [EditorialPost::STAGE_INTERNAL_REVIEW, EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_SCHEDULED];
 
@@ -55,9 +63,36 @@ class EditorialWorkflowService
         return self::impersonatorId($user) ?? (int) $user->id;
     }
 
-    public static function isProducer(User $user, int $companyId): bool
+    /** Utilizador da empresa ou equipa XPLENDOR (ver e comentar). */
+    public static function isMember(User $user, int $companyId): bool
     {
         return $user->role === 'root' || (int) $user->company_id === $companyId;
+    }
+
+    /** Pode produzir (editar conteúdo, mudar etapas, planear): a equipa sempre; o cliente só em "Produção própria". */
+    public static function isProducer(User $user, int $companyId): bool
+    {
+        if (! self::isMember($user, $companyId)) {
+            return false;
+        }
+
+        return self::isTeam($user) || self::productionMode($companyId) === self::MODE_SELF;
+    }
+
+    public static function productionMode(int $companyId): string
+    {
+        $mode = (string) (Company::whereKey($companyId)->value('content_production_mode') ?? self::MODE_SELF);
+
+        return in_array($mode, self::MODES, true) ? $mode : self::MODE_SELF;
+    }
+
+    /** 403 com a explicação quando o cliente gerido pela equipa tenta produzir. */
+    public static function assertProducer(User $user, int $companyId): void
+    {
+        if (self::isProducer($user, $companyId)) {
+            return;
+        }
+        throw new HttpException(403, self::isMember($user, $companyId) ? self::MSG_TEAM_PRODUCES : 'Acesso negado.');
     }
 
     /** Equipa XPLENDOR: root ou em sessão como cliente. */
@@ -84,10 +119,13 @@ class EditorialWorkflowService
      */
     public function moves(EditorialPost $post, User $user, ?Company $company = null): array
     {
-        if ($post->channel === 'site' || ! self::isProducer($user, (int) $post->company_id)) {
+        if ($post->channel === 'site' || ! self::isMember($user, (int) $post->company_id)) {
             return [];
         }
         $company ??= Company::findOrFail($post->company_id);
+        if ($company->content_production_mode === self::MODE_TEAM && ! self::isTeam($user)) {
+            return []; // cliente gerido pela equipa: não muda etapas
+        }
         $approval = (bool) $company->content_approval_required;
         $internal = (bool) $company->internal_review_required;
         $reviewOk = $this->internalReviewBlocker($post, $user, $internal);
@@ -127,9 +165,7 @@ class EditorialWorkflowService
             throw ValidationException::withMessages(['stage' => ['Etapa inválida.']]);
         }
         $this->assertNotSite($post);
-        if (! self::isProducer($user, (int) $post->company_id)) {
-            throw new HttpException(403, 'Acesso negado.');
-        }
+        self::assertProducer($user, (int) $post->company_id);
 
         return DB::transaction(function () use ($post, $user, $to) {
             $post = EditorialPost::lockForUpdate()->findOrFail($post->id);
@@ -252,9 +288,7 @@ class EditorialWorkflowService
     public function saveContent(EditorialPost $post, User $user, array $data): EditorialPostVersion
     {
         $this->assertNotSite($post);
-        if (! self::isProducer($user, (int) $post->company_id)) {
-            throw new HttpException(403, 'Acesso negado.');
-        }
+        self::assertProducer($user, (int) $post->company_id);
         $data = $this->validateContent($post, $data);
 
         return DB::transaction(function () use ($post, $user, $data) {
@@ -307,7 +341,7 @@ class EditorialWorkflowService
 
     public function addComment(EditorialPost $post, User $user, string $body, string $visibility): EditorialPostComment
     {
-        if (! self::isProducer($user, (int) $post->company_id)) {
+        if (! self::isMember($user, (int) $post->company_id)) {
             throw new HttpException(403, 'Acesso negado.');
         }
         $body = trim($body);
@@ -393,10 +427,12 @@ class EditorialWorkflowService
                 'can_approve' => self::isApprover($user, (int) $post->company_id) && $post->stage === EditorialPost::STAGE_CLIENT_REVIEW,
                 'is_approver' => self::isApprover($user, (int) $post->company_id),
                 'is_team' => $team,
+                'can_produce' => self::isProducer($user, (int) $post->company_id),
             ],
             'settings' => [
                 'content_approval_required' => (bool) $company->content_approval_required,
                 'internal_review_required' => (bool) $company->internal_review_required,
+                'production_mode' => self::productionMode($company->id),
             ],
         ];
     }

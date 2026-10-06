@@ -99,7 +99,13 @@ class EditorialLineController extends Controller
             return ApiResponse::error('Empresa não encontrada.', 404);
         }
 
-        return ApiResponse::success($this->service->calendar($company), 'Calendário editorial.');
+        // Modo de produção: o ecrã esconde as ações de produção a quem não as pode fazer.
+        $user = Auth::user();
+
+        return ApiResponse::success($this->service->calendar($company) + [
+            'production_mode' => \App\Services\Editorial\EditorialWorkflowService::productionMode($company->id),
+            'can_produce' => \App\Services\Editorial\EditorialWorkflowService::isProducer($user, $company->id),
+        ], 'Calendário editorial.');
     }
 
     /** B2 — abre um mês (sequência estrita validada no service). */
@@ -229,6 +235,10 @@ class EditorialLineController extends Controller
         $company = Company::find($companyId);
         if (! $company) {
             return ApiResponse::error('Empresa não encontrada.', 404);
+        }
+        // Planear (criar, editar, apagar publicações) é produção: o cliente gerido pela equipa não planeia.
+        if (! \App\Services\Editorial\EditorialWorkflowService::isProducer(Auth::user(), $company->id)) {
+            return ApiResponse::error(\App\Services\Editorial\EditorialWorkflowService::MSG_TEAM_PRODUCES, 403);
         }
 
         try {

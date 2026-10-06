@@ -26,7 +26,7 @@ import CreativeModal from "./CreativeModal";
 import IdeasModal from "./IdeasModal";
 import EditorialBoard from "./EditorialBoard";
 import PostWorkflowModal from "./PostWorkflowModal";
-import { STAGE_META } from "common/models/editorialWorkflow.model";
+import { BLOG_STATUS_STAGE, STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 
 /**
  * XPLENDOR — Linha Editorial (Camada 2 redesenhada + Publicações P1). Mesmos dados do
@@ -72,6 +72,25 @@ type PostForm = { id?: number; publish_date: string; title: string; format: stri
 const emptyPost = (date: string): PostForm => ({ publish_date: date, title: "", format: POST_FORMATS[0], media_format: "", channel: "instagram", keyword: "", status: "rascunho", link: "", blog_id: "" });
 const formatsFor = (channel: string) => (channel === "instagram" || channel === "facebook" ? MEDIA_FORMATS[channel] : []);
 /** Estado a mostrar: num post do canal "site" ligado a um artigo, o do artigo. */
+/** Etapa a mostrar no calendário: a da publicação ou, no Site, a equivalente do artigo do blog. */
+const postStage = (p: EditorialPost): Stage => (p.blog ? BLOG_STATUS_STAGE[p.blog.status] ?? "production" : p.stage ?? "planning");
+
+/** Vista lembrada por utilizador; o URL (?vista=) tem prioridade. */
+const VIEW_PARAM = "vista";
+const viewKey = () => {
+    try { return `xp-editorial-view:${JSON.parse(sessionStorage.getItem("authUser") || "{}").id ?? "0"}`; } catch { return "xp-editorial-view:0"; }
+};
+const initialView = (): "calendar" | "board" => {
+    const q = new URLSearchParams(window.location.search).get(VIEW_PARAM);
+    if (q === "kanban") return "board";
+    if (q === "calendario") return "calendar";
+    try { return localStorage.getItem(viewKey()) === "board" ? "board" : "calendar"; } catch { return "calendar"; }
+};
+const initialMonth = () => {
+    const m = new URLSearchParams(window.location.search).get("mes");
+    return m && /^\d{4}-\d{2}$/.test(m) ? m : "";
+};
+
 const postStatusMeta = (p: EditorialPost) => {
     if (p.blog) return BLOG_STATUS_META[p.blog.status];
     const st = STAGE_META[p.stage] ?? null;
@@ -97,7 +116,14 @@ export default function EditorialCalendarPage() {
     const [posts, setPosts] = useState<EditorialPost[]>([]);
     const [months, setMonths] = useState<MonthState[]>([]);
 
-    const [view, setView] = useState<"calendar" | "board">("calendar");
+    const [view, setViewState] = useState<"calendar" | "board">(initialView);
+    const setView = (v: "calendar" | "board") => {
+        setViewState(v);
+        try { localStorage.setItem(viewKey(), v); } catch { /* sem armazenamento: só o URL */ }
+    };
+    const [urlMonth] = useState(initialMonth);
+    // Modo de produção: quem não produz (cliente gerido pela equipa) não vê as ações de produção.
+    const [canProduce, setCanProduce] = useState(true);
     const [selectedKey, setSelectedKey] = useState<string>("");
     const [acting, setActing] = useState(false);
     const [working, setWorking] = useState(false);
@@ -128,7 +154,10 @@ export default function EditorialCalendarPage() {
             setItems(d.items ?? []);
             setPosts(d.posts ?? []);
             setMonths(d.months ?? []);
-            setSelectedKey((prev) => prev || (d.months?.[0]?.month_key ?? ""));
+            setCanProduce(d.can_produce !== false);
+            // Mês do URL (?mes=) se estiver na janela; senão o corrente.
+            const inWindow = urlMonth && d.from && d.to && `${urlMonth}-01` >= d.from.slice(0, 8) + "01" && `${urlMonth}-01` <= d.to;
+            setSelectedKey((prev) => prev || (inWindow ? urlMonth : d.months?.[0]?.month_key ?? ""));
         }
     }, []);
 
@@ -175,14 +204,26 @@ export default function EditorialCalendarPage() {
     // Mês em consulta (navegado para trás): fora da tira e anterior ao corrente.
     const isPastView = !!selectedKey && !!currentKey && selectedKey < currentKey;
 
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const gotoKey = (key: string) => {
         const [y, m] = key.split("-").map(Number);
         calRef.current?.getApi().gotoDate(new Date(y, m - 1, 1));
     };
 
+    // Vista e mês no URL (?vista=calendario|kanban&mes=AAAA-MM), sem criar entradas no histórico.
+    useEffect(() => {
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.set(VIEW_PARAM, view === "board" ? "kanban" : "calendario");
+            if (selectedKey) next.set("mes", selectedKey);
+            return next;
+        }, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [view, selectedKey]);
+
     // Ligações do sino: ?ideas=AAAA-MM abre as ideias desse mês; ?creative=ID abre o
     // criativo da publicação. O resultado à espera é retomado pelo próprio modal.
-    const [searchParams, setSearchParams] = useSearchParams();
     const handledLink = useRef(false);
     useEffect(() => {
         if (handledLink.current || !range) return;
@@ -201,10 +242,12 @@ export default function EditorialCalendarPage() {
             openEditPost(post);
             setCreativeOpen(true);
         }
-        const next = new URLSearchParams(searchParams);
-        next.delete("ideas");
-        next.delete("creative");
-        setSearchParams(next, { replace: true });
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete("ideas");
+            next.delete("creative");
+            return next;
+        }, { replace: true });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [range, months, posts]);
 
@@ -437,12 +480,12 @@ export default function EditorialCalendarPage() {
                                                 <div className="d-flex align-items-center gap-2">
                                                     {selected.state === "open" && (
                                                         <>
-                                                            <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
+                                                            {canProduce && <Button color="primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}>
                                                                 <i className="ri-lightbulb-flash-line me-1" />Gerar ideias
-                                                            </Button>
-                                                            <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
+                                                            </Button>}
+                                                            {canProduce && <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(`${selectedKey}-01`)}>
                                                                 <i className="ri-image-add-line me-1" />Publicação
-                                                            </Button>
+                                                            </Button>}
                                                             <Button color="soft-secondary" size="sm" disabled={working} onClick={openCreate}>
                                                                 <i className="ri-calendar-event-line me-1" />Âncora própria
                                                             </Button>
@@ -478,10 +521,10 @@ export default function EditorialCalendarPage() {
                                                     <div className="d-flex gap-2">
                                                         <span className="badge rounded-pill bg-primary align-self-start">2</span>
                                                         <div>
-                                                            {selected.state === "open"
+                                                            {selected.state === "open" && canProduce
                                                                 ? <button type="button" className="btn btn-link p-0 fw-medium fs-13 align-baseline" onClick={() => setIdeasOpen(true)}>Gerar ideias</button>
                                                                 : <span className="fw-medium">Gerar ideias</span>}
-                                                            <div className="text-muted">{selected.state === "open" ? "A IA propõe ideias para o mês; aceita as que quiser." : "Abra o mês para gerar ideias."}</div>
+                                                            <div className="text-muted">{!canProduce ? "A equipa XPLENDOR prepara as ideias e as publicações; aprova-as aqui." : selected.state === "open" ? "A IA propõe ideias para o mês; aceita as que quiser." : "Abra o mês para gerar ideias."}</div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -498,6 +541,17 @@ export default function EditorialCalendarPage() {
                                         </div>
                                     )}
 
+                                    {/* LEGENDA DAS ETAPAS */}
+                                    <div className="d-flex flex-wrap align-items-center gap-2 mb-2 fs-12" aria-label="Legenda das etapas">
+                                        {STAGE_ORDER.map((st) => (
+                                            <span key={st} className="d-inline-flex align-items-center gap-1">
+                                                <span className="rounded px-1 fw-semibold" style={{ background: STAGE_META[st].hex, color: stageTextColor(st), fontSize: "0.62rem" }}>{STAGE_META[st].short}</span>
+                                                <span className="text-muted">{STAGE_META[st].label}</span>
+                                            </span>
+                                        ))}
+                                        <span className="text-muted"><i className="ri-article-line me-1" />Site: etapa do artigo do blog</span>
+                                    </div>
+
                                     {/* GRELHA */}
                                     {range && (
                                         <FullCalendar
@@ -506,7 +560,7 @@ export default function EditorialCalendarPage() {
                                             initialView="dayGridMonth"
                                             // Abrir no mês CORRENTE (não em range.from, que agora é 12
                                             // meses atrás — isso é só a fronteira de consulta).
-                                            initialDate={currentKey ? `${currentKey}-01` : range.from}
+                                            initialDate={selectedKey ? `${selectedKey}-01` : currentKey ? `${currentKey}-01` : range.from}
                                             locale={ptLocale}
                                             firstDay={1}
                                             height="auto"
@@ -521,17 +575,26 @@ export default function EditorialCalendarPage() {
                                             }}
                                             eventClick={(arg) => {
                                                 const ep = arg.event.extendedProps as any;
-                                                if (ep.kind === "post") openPanel((ep.post as EditorialPost).publish_date, null);
+                                                if (ep.kind === "post") {
+                                                    const p = ep.post as EditorialPost;
+                                                    // A mesma janela de produção do Kanban; o Site abre o artigo do blog.
+                                                    if (p.channel !== "site") setWorkflowPostId(p.id);
+                                                    else if (p.blog) navigate(`/blogs/${p.blog.id}`);
+                                                    else openPanel(p.publish_date, null);
+                                                }
                                                 else openPanel(arg.event.startStr, ep.item as Item);
                                             }}
                                             eventContent={(arg) => {
                                                 const ep = arg.event.extendedProps as any;
                                                 if (ep.kind === "post") {
                                                     const p = ep.post as EditorialPost;
-                                                    const meta = postStatusMeta(p);
+                                                    const stage = postStage(p);
+                                                    const sm = STAGE_META[stage];
                                                     return (
-                                                        <div className={`w-100 px-1 rounded d-flex align-items-center gap-1 bg-${meta.color}-subtle text-${meta.color}`} style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid var(--vz-${meta.color})` }}>
+                                                        <div className="w-100 px-1 rounded d-flex align-items-center gap-1" title={`${sm.label}${p.blog ? " (artigo do blog)" : ""}: ${p.title}`}
+                                                            style={{ whiteSpace: "nowrap", overflow: "hidden", lineHeight: 1.3, cursor: "pointer", fontSize: "0.72rem", borderLeft: `3px solid ${sm.hex}`, background: `${sm.hex}26`, color: "var(--vz-body-color)" }}>
                                                             <i className={POST_CHANNEL_META[p.channel].icon} />
+                                                            <span className="rounded px-1 fw-semibold flex-shrink-0" style={{ background: sm.hex, color: stageTextColor(stage), fontSize: "0.62rem" }}>{sm.short}</span>
                                                             <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{p.title}</span>
                                                         </div>
                                                     );
@@ -591,7 +654,7 @@ export default function EditorialCalendarPage() {
                     {/* Publicações do dia */}
                     <div className="d-flex align-items-center justify-content-between mb-3">
                         <h6 className="text-uppercase text-muted fs-11 mb-0" style={{ letterSpacing: "0.05em" }}>Publicações</h6>
-                        {panelMonthOpen && panelDate && (
+                        {canProduce && panelMonthOpen && panelDate && (
                             <Button color="soft-primary" size="sm" disabled={working} onClick={() => openCreatePost(panelDate)}><i className="ri-add-line me-1" />Adicionar</Button>
                         )}
                     </div>
@@ -628,7 +691,7 @@ export default function EditorialCalendarPage() {
                                                     <i className="ri-palette-line me-1" />Produção
                                                 </button>
                                             )}
-                                            {panelMonthOpen && (
+                                            {canProduce && panelMonthOpen && (
                                                 <div className="d-flex flex-shrink-0 gap-1">
                                                     <button type="button" className="btn btn-sm btn-ghost-secondary p-1" title="Editar" disabled={working} onClick={() => openEditPost(p)}><i className="ri-pencil-line" /></button>
                                                     <button type="button" className="btn btn-sm btn-ghost-danger p-1" title="Apagar" disabled={working} onClick={() => onDeletePost(p)}><i className="ri-delete-bin-line" /></button>

@@ -31,6 +31,7 @@ class EditorialIdeasController extends Controller
 
     public function store(Request $request, int $companyId)
     {
+        \App\Services\Editorial\EditorialWorkflowService::assertProducer($request->user(), $companyId);
         $data = $request->validate([
             'year'  => ['required', 'integer', 'min:2000', 'max:2100'],
             'month' => ['required', 'integer', 'min:1', 'max:12'],
@@ -54,6 +55,7 @@ class EditorialIdeasController extends Controller
     /** Aceita UMA ideia (data e canal opcionais). Devolve o pedido atualizado e o calendário. */
     public function accept(Request $request, int $companyId, int $requestId)
     {
+        \App\Services\Editorial\EditorialWorkflowService::assertProducer($request->user(), $companyId);
         $data = $request->validate([
             'index'        => ['required', 'integer', 'min:0', 'max:' . (EditorialIdeasAiService::MAX_IDEAS - 1)],
             'publish_date' => ['nullable', 'date'],

@@ -306,6 +306,68 @@ class EditorialWorkflowTest extends TestCase
         $this->assertSame(['Ana Designer (equipa XPLENDOR)'], array_values(array_unique($who)));
     }
 
+    // ── Modo de produção ─────────────────────────────────────────────────────
+
+    public function test_client_managed_by_the_team_comments_and_approves_but_does_not_produce(): void
+    {
+        $this->a->forceFill(['content_production_mode' => 'team'])->save();
+        $p = $this->makePost($this->a, ['stage' => EditorialPost::STAGE_PRODUCTION]);
+
+        foreach ([$this->userA, $this->adminA, $this->approverA] as $client) {
+            $this->write($client, $p)->assertStatus(403)->assertJsonPath('message', 'Nesta empresa a produção é feita pela equipa XPLENDOR: pode comentar, aprovar ou pedir alterações.');
+            $this->move($client, $p, 'internal_review')->assertStatus(403);
+            $this->as($client)->postJson($this->url($this->a, '/posts'), ['title' => 'Nova', 'publish_date' => now()->addDays(5)->toDateString(), 'format' => 'Reels', 'channel' => 'instagram'])->assertStatus(403);
+            $this->as($client)->putJson($this->url($this->a, "/posts/{$p->id}"), ['title' => 'Mudada', 'publish_date' => $p->publish_date->toDateString(), 'format' => 'Reels', 'channel' => 'instagram'])->assertStatus(403);
+            $this->as($client)->deleteJson($this->url($this->a, "/posts/{$p->id}"))->assertStatus(403);
+            $this->as($client)->postJson($this->url($this->a, "/posts/{$p->id}/creative-suggestions"))->assertStatus(403);
+            $this->as($client)->postJson($this->url($this->a, '/ideas'), ['year' => (int) now()->year, 'month' => (int) now()->month])->assertStatus(403);
+
+            $detail = $this->as($client)->getJson($this->url($this->a, "/posts/{$p->id}/workflow"))->assertOk()->json('data');
+            $this->assertSame([false, false, []], [$detail['permissions']['can_produce'], $detail['permissions']['can_edit_content'], $detail['moves']]);
+            $board = $this->as($client)->getJson($this->url($this->a, '/board?month=' . $p->publish_date->format('Y-m')))->assertOk()->json('data');
+            $this->assertFalse($board['can_produce']);
+            $this->assertSame([], $board['posts'][0]['moves']);
+            // Comentar continua a ser possível.
+            $this->as($client)->postJson($this->url($this->a, "/posts/{$p->id}/comments"), ['body' => 'Gosto da ideia.'])->assertOk();
+        }
+        $this->assertSame(['Reel de inverno', 'production', null], [$p->fresh()->title, $p->fresh()->stage, $p->fresh()->current_version_id]);
+
+        // A equipa produz (root ou em sessão como cliente) e o cliente aprova.
+        $this->write($this->impersonating($this->userA), $p, 'Pela equipa')->assertOk();
+        $this->move($this->root, $p, 'client_review')->assertOk();
+        $this->as($this->adminA)->postJson($this->url($this->a, "/posts/{$p->id}/request-changes"), ['message' => 'Outra foto.'])->assertOk();
+        $this->write($this->root, $p, 'Com outra foto')->assertOk();
+        $this->move($this->root, $p, 'client_review')->assertOk();
+        $this->as($this->approverA)->postJson($this->url($this->a, "/posts/{$p->id}/approve"))->assertOk()->assertJsonPath('data.post.stage', 'scheduled');
+        $this->move($this->adminA, $p, 'published')->assertStatus(403);
+        $this->move($this->root, $p, 'published')->assertOk();
+    }
+
+    public function test_own_production_is_the_default_and_unchanged(): void
+    {
+        $this->assertSame('self', $this->as($this->adminA)->getJson($this->url($this->a, '/workflow-settings'))->json('data.production_mode'));
+        $p = $this->makePost($this->a, ['stage' => EditorialPost::STAGE_PRODUCTION]);
+
+        $this->write($this->userA, $p)->assertOk();
+        $this->move($this->userA, $p, 'client_review')->assertOk();
+        $detail = $this->as($this->userA)->getJson($this->url($this->a, "/posts/{$p->id}/workflow"))->json('data');
+        $this->assertTrue($detail['permissions']['can_produce']);
+    }
+
+    public function test_only_the_team_changes_the_production_mode(): void
+    {
+        $body = fn (string $mode) => ['content_approval_required' => true, 'internal_review_required' => false, 'production_mode' => $mode];
+
+        $this->as($this->adminA)->putJson($this->url($this->a, '/workflow-settings'), $body('team'))->assertStatus(403);
+        $this->assertSame('self', $this->a->fresh()->content_production_mode);
+        // O administrador continua a poder mudar as outras definições (sem mudar o modo).
+        $this->as($this->adminA)->putJson($this->url($this->a, '/workflow-settings'), $body('self'))->assertOk();
+
+        $this->impersonating($this->adminA)->putJson($this->url($this->a, '/workflow-settings'), $body('team'))->assertOk()->assertJsonPath('data.production_mode', 'team');
+        $this->as($this->root)->putJson($this->url($this->a, '/workflow-settings'), $body('self'))->assertOk()->assertJsonPath('data.production_mode', 'self');
+        $this->as($this->root)->putJson($this->url($this->a, '/workflow-settings'), $body('outro'))->assertStatus(422);
+    }
+
     // ── Estado antigo, Site e tenancy ────────────────────────────────────────
 
     public function test_old_status_is_converted_to_stages(): void

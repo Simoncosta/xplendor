@@ -35,6 +35,7 @@ class EditorialCreativeController extends Controller
 
     public function suggest(Request $request, int $companyId, int $postId)
     {
+        \App\Services\Editorial\EditorialWorkflowService::assertProducer($request->user(), $companyId);
         $suggestion = $this->ai->request(Company::with('contentSector')->findOrFail($companyId), $request->user(), $postId);
 
         return ApiResponse::success($this->presentSuggestion($suggestion), 'Pedido enviado.', 202);
@@ -66,6 +67,7 @@ class EditorialCreativeController extends Controller
     /** Aceita os campos escolhidos (só os enviados). O formato aceite passa também para a publicação. */
     public function accept(Request $request, int $companyId, int $postId)
     {
+        \App\Services\Editorial\EditorialWorkflowService::assertProducer($request->user(), $companyId);
         $post = $this->findPost($companyId, $postId);
         if (! $post) {
             return ApiResponse::error('Publicação não encontrada.', 404);

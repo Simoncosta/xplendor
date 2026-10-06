@@ -219,13 +219,15 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
 - A publicação editorial (`editorial_posts`) é a unidade de produção e aprovação; a F2 cria as publicações na rede a partir da versão aprovada.
 - Aprovam o administrador da empresa e os utilizadores marcados como "aprovador de conteúdos"; nunca o root e nunca em impersonation. Todas as ações guardam a pessoa real (`impersonator_user_id`).
 - Revisão interna e aprovação do cliente configuráveis por empresa; a revisão interna é feita por outra pessoa.
+- Modo de produção por empresa: "Produção própria" (por omissão, os utilizadores da empresa produzem) ou "Produção pela equipa XPLENDOR" (os utilizadores do cliente comentam, aprovam e pedem alterações, mas não editam nem mudam etapas). Só a equipa muda o modo.
 - Versão congelada no envio ao cliente; editar depois cria a versão seguinte e volta a pedir aprovação. Uma só aprovação por versão.
 - Link por lote (não por publicação nem por marca), token no fragmento do URL, validade de 14 dias.
 - Media num disco privado com URLs assinados de curta duração; a cópia pública só na publicação (F2). Retenção: versões substituídas apagadas aos 30 dias; originais das publicações publicadas guardados 12 meses (biblioteca da marca), a rever na passagem para S3.
 
 **Fatias:**
 - [x]  F3a: etapas, Kanban, versões, comentários (internos e partilhados), aprovação na app, histórico
-- [ ]  F3b: media (imagem, carrossel, vídeo, capa), miniaturas e pré-visualização como na rede
+- [x]  Vistas: calendário com a etapa por cor e legenda, Kanban, a mesma janela de produção nas duas, vista lembrada por utilizador e no URL
+- [ ]  F3b: media (imagem, carrossel, vídeo, capa), miniaturas, pré-visualização como na rede e a vista "Grelha do Instagram" (as próximas publicações como a grelha do perfil)
 - [ ]  F3c: link por lote, aberturas, avisos e lembretes
 - [ ]  F3d: Publicado com o link da publicação e Análise com notas manuais
 

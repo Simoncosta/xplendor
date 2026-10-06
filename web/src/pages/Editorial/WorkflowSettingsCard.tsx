@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Input, Label, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getWorkflowSettings, setContentApprover, updateWorkflowSettings } from "helpers/laravel_helper";
-import type { WorkflowSettings } from "common/models/editorialWorkflow.model";
+import { PRODUCTION_MODE_LABEL, ProductionMode, WorkflowSettings } from "common/models/editorialWorkflow.model";
 
 /**
  * Definições do fluxo de produção e aprovação da empresa (F3a): aprovação do cliente e
@@ -24,13 +24,14 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
         getWorkflowSettings(companyId).then((r: any) => setData(r.data)).catch(() => setData(null));
     }, [companyId]);
 
-    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required">>) => {
+    const save = async (patch: Partial<Pick<WorkflowSettings, "content_approval_required" | "internal_review_required" | "production_mode">>) => {
         if (!data) return;
         setBusy(true);
         try {
             const r: any = await updateWorkflowSettings(companyId, {
                 content_approval_required: patch.content_approval_required ?? data.content_approval_required,
                 internal_review_required: patch.internal_review_required ?? data.internal_review_required,
+                ...(patch.production_mode ? { production_mode: patch.production_mode } : {}),
             });
             setData(r.data);
             toast.success("Definições guardadas.");
@@ -62,6 +63,19 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                 <p className="text-muted fs-13 mb-0">Como as publicações passam de Produção a Programado.</p>
             </CardHeader>
             <CardBody>
+                <div className="mb-3">
+                    <Label className="fw-semibold mb-1" for="wf-mode">Modo de produção</Label>
+                    <Input type="select" id="wf-mode" value={data.production_mode} disabled={!data.can_change_mode || busy}
+                        onChange={(e) => save({ production_mode: e.target.value as ProductionMode })}>
+                        {(Object.keys(PRODUCTION_MODE_LABEL) as ProductionMode[]).map((m) => <option key={m} value={m}>{PRODUCTION_MODE_LABEL[m]}</option>)}
+                    </Input>
+                    <div className="form-text">
+                        {data.production_mode === "team"
+                            ? "A equipa XPLENDOR produz. Os utilizadores da empresa comentam, aprovam e pedem alterações, mas não editam o conteúdo nem mudam etapas."
+                            : "Os utilizadores da empresa produzem, aprovam e publicam."}
+                        {!data.can_change_mode && " Só a equipa XPLENDOR muda o modo de produção."}
+                    </div>
+                </div>
                 <div className="form-check form-switch mb-2">
                     <Input type="checkbox" role="switch" className="form-check-input" id="wf-approval" disabled={!data.can_edit || busy}
                         checked={data.content_approval_required} onChange={(e) => save({ content_approval_required: e.target.checked })} />

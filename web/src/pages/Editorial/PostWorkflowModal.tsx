@@ -145,6 +145,11 @@ export default function PostWorkflowModal({ isOpen, toggle, companyId, postId, o
                             )}
                             {busy && <Spinner size="sm" />}
                         </div>
+                        {!data.permissions.can_produce && data.settings.production_mode === "team" && (
+                            <div className="alert alert-info fs-13 py-2">
+                                <i className="ri-team-line me-1" />A produção desta empresa é feita pela equipa XPLENDOR. Pode comentar, aprovar ou pedir alterações.
+                            </div>
+                        )}
                         {blocked.length > 0 && forward.length === 0 && !data.permissions.can_approve && (
                             <p className="text-muted fs-12 mb-3"><i className="ri-information-line me-1" />{blocked[0][1]}</p>
                         )}

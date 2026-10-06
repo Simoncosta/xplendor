@@ -50,9 +50,11 @@ class EditorialWorkflowController extends Controller
             'month' => $data['month'],
             'is_approver' => $approver,
             'is_team' => EditorialWorkflowService::isTeam($user),
+            'can_produce' => EditorialWorkflowService::isProducer($user, $companyId),
             'settings' => [
                 'content_approval_required' => (bool) $company->content_approval_required,
                 'internal_review_required' => (bool) $company->internal_review_required,
+                'production_mode' => EditorialWorkflowService::productionMode($companyId),
             ],
             'posts' => $posts->map(fn (EditorialPost $p) => [
                 'id' => $p->id, 'title' => $p->title, 'channel' => $p->channel, 'publish_date' => $p->publish_date->toDateString(),
@@ -132,7 +134,10 @@ class EditorialWorkflowController extends Controller
         return ApiResponse::success($this->presentSettings(Company::findOrFail($companyId), $request->user()), 'Definições carregadas.');
     }
 
-    /** Aprovação do cliente e revisão interna: o administrador ou a equipa XPLENDOR. */
+    /**
+     * Aprovação do cliente e revisão interna: o administrador ou a equipa XPLENDOR.
+     * Modo de produção: só a equipa XPLENDOR o muda (é ela que passa a produzir).
+     */
     public function updateSettings(Request $request, int $companyId)
     {
         if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
@@ -141,8 +146,17 @@ class EditorialWorkflowController extends Controller
         $data = $request->validate([
             'content_approval_required' => ['required', 'boolean'],
             'internal_review_required' => ['required', 'boolean'],
+            'production_mode' => ['nullable', Rule::in(EditorialWorkflowService::MODES)],
         ]);
         $company = Company::findOrFail($companyId);
+        $mode = $data['production_mode'] ?? null;
+        unset($data['production_mode']);
+        if ($mode !== null && $mode !== EditorialWorkflowService::productionMode($companyId)) {
+            if (! EditorialWorkflowService::isTeam($request->user())) {
+                return ApiResponse::error('O modo de produção só é alterado pela equipa XPLENDOR.', 403);
+            }
+            $data['content_production_mode'] = $mode;
+        }
         $company->forceFill($data)->save();
 
         return ApiResponse::success($this->presentSettings($company, $request->user()), 'Definições guardadas.');
@@ -179,6 +193,8 @@ class EditorialWorkflowController extends Controller
         return [
             'content_approval_required' => (bool) $company->content_approval_required,
             'internal_review_required' => (bool) $company->internal_review_required,
+            'production_mode' => EditorialWorkflowService::productionMode($company->id),
+            'can_change_mode' => EditorialWorkflowService::isTeam($user),
             'can_edit' => CollaboratorService::canEditContent($user, $company->id),
             'can_manage_approvers' => CollaboratorService::canManageAccess($user, $company->id),
             'users' => User::where('company_id', $company->id)->whereNull('deactivated_at')->whereIn('role', ['admin', 'user'])

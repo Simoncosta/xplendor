@@ -8,15 +8,27 @@ export type Stage = "idea" | "planning" | "production" | "internal_review" | "cl
 
 export const STAGE_ORDER: Stage[] = ["idea", "planning", "production", "internal_review", "client_review", "scheduled", "published", "analysis"];
 
-export const STAGE_META: Record<Stage, { label: string; color: string; icon: string; hint: string }> = {
-    idea:            { label: "Ideia",       color: "secondary", icon: "ri-lightbulb-line",        hint: "Por confirmar." },
-    planning:        { label: "Planeamento", color: "info",      icon: "ri-calendar-todo-line",    hint: "Data, tema e formato." },
-    production:      { label: "Produção",    color: "primary",   icon: "ri-palette-line",          hint: "Legenda e materiais." },
-    internal_review: { label: "Revisão",     color: "dark",      icon: "ri-eye-line",              hint: "Revisão interna." },
-    client_review:   { label: "Aprovação",   color: "warning",   icon: "ri-user-follow-line",      hint: "À espera do cliente." },
-    scheduled:       { label: "Programado",  color: "success",   icon: "ri-calendar-check-line",   hint: "Aprovado, com data." },
-    published:       { label: "Publicado",   color: "success",   icon: "ri-checkbox-circle-line",  hint: "Já está na rede." },
-    analysis:        { label: "Análise",     color: "info",      icon: "ri-line-chart-line",       hint: "Resultados e notas." },
+export const STAGE_META: Record<Stage, { label: string; short: string; color: string; hex: string; icon: string; hint: string }> = {
+    idea:            { label: "Ideia",       short: "Ideia",  color: "secondary", hex: "#878a99", icon: "ri-lightbulb-line",       hint: "Por confirmar." },
+    planning:        { label: "Planeamento", short: "Plan.",  color: "info",      hex: "#299cdb", icon: "ri-calendar-todo-line",   hint: "Data, tema e formato." },
+    production:      { label: "Produção",    short: "Prod.",  color: "primary",   hex: "#405189", icon: "ri-palette-line",         hint: "Legenda e materiais." },
+    internal_review: { label: "Revisão",     short: "Rev.",   color: "dark",      hex: "#6559cc", icon: "ri-eye-line",             hint: "Revisão interna." },
+    client_review:   { label: "Aprovação",   short: "Aprov.", color: "warning",   hex: "#f7b84b", icon: "ri-user-follow-line",     hint: "À espera do cliente." },
+    scheduled:       { label: "Programado",  short: "Prog.",  color: "success",   hex: "#0ab39c", icon: "ri-calendar-check-line",  hint: "Aprovado, com data." },
+    published:       { label: "Publicado",   short: "Publ.",  color: "success",   hex: "#45cb85", icon: "ri-checkbox-circle-line", hint: "Já está na rede." },
+    analysis:        { label: "Análise",     short: "Anál.",  color: "info",      hex: "#e83e8c", icon: "ri-line-chart-line",      hint: "Resultados e notas." },
+};
+
+/** Texto legível sobre a cor da etapa (o âmbar pede texto escuro). */
+export const stageTextColor = (stage: Stage) => (stage === "client_review" ? "#212529" : "#fff");
+
+/** Etapa equivalente de um artigo do blog (canal Site), só para a cor no calendário. */
+export const BLOG_STATUS_STAGE: Record<string, Stage> = { draft: "production", in_review: "client_review", approved: "scheduled", published: "published" };
+
+export type ProductionMode = "self" | "team";
+export const PRODUCTION_MODE_LABEL: Record<ProductionMode, string> = {
+    self: "Produção própria",
+    team: "Produção pela equipa XPLENDOR",
 };
 
 export type VersionStatus = "draft" | "sent" | "approved" | "changes_requested" | "superseded";
@@ -49,7 +61,8 @@ export interface BoardData {
     month: string;
     is_approver: boolean;
     is_team: boolean;
-    settings: { content_approval_required: boolean; internal_review_required: boolean };
+    can_produce: boolean;
+    settings: { content_approval_required: boolean; internal_review_required: boolean; production_mode: ProductionMode };
     posts: BoardPost[];
 }
 
@@ -81,13 +94,15 @@ export interface PostWorkflow {
     creative: { caption: string | null; hashtags: string[]; cta: string | null; media_format: string | null } | null;
     /** etapa → motivo (null = permitido) */
     moves: Partial<Record<Stage, string | null>>;
-    permissions: { can_edit_content: boolean; can_approve: boolean; is_approver: boolean; is_team: boolean };
-    settings: { content_approval_required: boolean; internal_review_required: boolean };
+    permissions: { can_edit_content: boolean; can_approve: boolean; is_approver: boolean; is_team: boolean; can_produce: boolean };
+    settings: { content_approval_required: boolean; internal_review_required: boolean; production_mode: ProductionMode };
 }
 
 export interface WorkflowSettings {
     content_approval_required: boolean;
     internal_review_required: boolean;
+    production_mode: ProductionMode;
+    can_change_mode: boolean;
     can_edit: boolean;
     can_manage_approvers: boolean;
     users: { id: number; name: string; role: string; is_approver: boolean; by_role: boolean }[];
