@@ -264,9 +264,17 @@ brand_members             (acesso de empresas convidadas; a dona não precisa de
 brand_member_users        (opcional, fase 2: exceções por utilizador dentro da empresa dona ou convidada)
   brand_id, user_id, role
 
-brand_review_links        (aprovação por cliente sem registo; ver decisão 6)
-  id, brand_id, token_hash (UNIQUE), scope ('review'), email, expires_at, revoked_at, last_used_at
+(o antigo brand_review_links foi substituído pelo link por LOTE da F3: content_review_links,
+ content_review_link_items e content_review_link_opens; ver a nota abaixo e a decisão 6)
 ```
+
+**Nota (F3, decidido em outubro de 2026):** a aprovação por link deixa de ser um link por marca e passa a ser **um link por lote de publicações** (`content_review_links`), com o padrão do link do orçamento:
+- token de 64 caracteres em hash (pesquisa) e cifrado (para a equipa o voltar a copiar), revogável, validade de 14 dias que se pode prolongar;
+- o token vai no fragmento do URL (`/aprovar#<token>`) e chega à API num cabeçalho, com `Referrer-Policy: no-referrer` e `noindex`;
+- cada item guarda a versão enviada (`content_review_link_items.version_id`); se a equipa alterar a publicação, o item fica "atualizado pela equipa" até ser reenviado no mesmo link;
+- aberturas sem robôs nem equipa, a mesma visita em 30 minutos, avisos limitados (serviço partilhado com o orçamento);
+- aprovar ou pedir alterações por publicação e "Aprovar tudo".
+As tabelas levam `company_id` agora e `brand_id` quando as marcas existirem. Um cliente sem registo usa só este link.
 
 **Papéis e o que cada um pode fazer** (fixos no código; ver decisão 9):
 
@@ -487,7 +495,7 @@ social_publications                 (um envio para UMA conta; uma ideia editoria
   status              (ver 3.3)
   requires_approval   bool (copiado da definição da marca no momento da criação)
   version             int (sobe a cada edição de conteúdo; uma edição depois de aprovada volta a pedir aprovação)
-  approved_version, approved_by_user_id | approved_via_link_id, approved_at
+  approved_version, approved_by_user_id | approved_via_link_id (content_review_links), approved_at
   native_scheduled    bool (Facebook agendado do lado da Meta)
   external_container_id, external_children json, external_id, permalink
   attempts, next_attempt_at, last_error_code, last_error_message, last_error_kind (transient|permanent|unknown)
@@ -646,7 +654,7 @@ POST   /brands/{brand}/media                     brand.can:edit
 GET|POST|PATCH /brands/{brand}/publications[...]  brand.can:edit
 POST   /brands/{brand}/publications/validate
 POST   /brands/{brand}/publications/{id}/submit | approve | request-changes | schedule | cancel
-GET    /review/{token}  POST /review/{token}/...  (link de revisão sem conta; throttle; só o âmbito do token)
+GET    /public/review  POST /public/review/...    (link por lote, sem conta; token no cabeçalho, nunca no caminho; throttle; só os itens do lote)
 ```
 
 ---
@@ -673,7 +681,7 @@ Cada decisão tem opções e uma recomendação (R).
    - **R: (b)**, e (c) para clientes que ainda não têm empresa. A faturação fica no dono.
 6. **Aprovação por um cliente sem registo.**
    - Opções: (a) obrigar a criar conta; (b) link de revisão sem conta, com âmbito restrito, prazo e revogável.
-   - **R: (b)**, com registo de quem aprovou (email do link, IP, hora) em `social_publication_events`.
+   - **R: (b)**, como link **por lote** (`content_review_links`, F3) e não por marca. Regista quem decidiu (nome indicado, dispositivo e hora) em `editorial_post_reviews` e no histórico; o IP não é guardado. Quem tem conta também pode aprovar dentro da XPLENDOR (administrador ou aprovador marcado, nunca em impersonation).
 7. **Planeamento e publicação.**
    - Opções: (a) alargar `editorial_posts` com media e estado de publicação; (b) tabela `social_publications` ligada.
    - **R: (b).** Uma ideia editorial pode ir para várias contas com estados diferentes, e o planeamento atual não muda.

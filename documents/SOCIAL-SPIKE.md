@@ -213,13 +213,21 @@ Notas: com "Instagram Login" os nomes mudam (`instagram_business_*`). Acesso ava
 
 ### F3 · Fluxo de aprovação
 
-**Objetivo:** Ideia → Rascunho → Revisão da equipa → Aprovação do cliente → Agendado.
+**Objetivo:** Ideia → Planeamento → Produção → Revisão (interna) → Aprovação (cliente) → Programado → Publicado → Análise, com aprovação do cliente dentro da XPLENDOR, por link sem login, ou pelos dois.
 
-- [ ]  Estados e transições (estender os estados atuais da Linha Editorial)
-- [ ]  Comentários por publicação
-- [ ]  Aprovação do cliente por link (decisão em aberto: com ou sem login)
-- [ ]  Registo de quem aprovou e quando
-- [ ]  Só publica o que está aprovado (opcional por conta)
+**Decidido (outubro de 2026):**
+- A publicação editorial (`editorial_posts`) é a unidade de produção e aprovação; a F2 cria as publicações na rede a partir da versão aprovada.
+- Aprovam o administrador da empresa e os utilizadores marcados como "aprovador de conteúdos"; nunca o root e nunca em impersonation. Todas as ações guardam a pessoa real (`impersonator_user_id`).
+- Revisão interna e aprovação do cliente configuráveis por empresa; a revisão interna é feita por outra pessoa.
+- Versão congelada no envio ao cliente; editar depois cria a versão seguinte e volta a pedir aprovação. Uma só aprovação por versão.
+- Link por lote (não por publicação nem por marca), token no fragmento do URL, validade de 14 dias.
+- Media num disco privado com URLs assinados de curta duração; a cópia pública só na publicação (F2). Retenção: versões substituídas apagadas aos 30 dias; originais das publicações publicadas guardados 12 meses (biblioteca da marca), a rever na passagem para S3.
+
+**Fatias:**
+- [x]  F3a: etapas, Kanban, versões, comentários (internos e partilhados), aprovação na app, histórico
+- [ ]  F3b: media (imagem, carrossel, vídeo, capa), miniaturas e pré-visualização como na rede
+- [ ]  F3c: link por lote, aberturas, avisos e lembretes
+- [ ]  F3d: Publicado com o link da publicação e Análise com notas manuais
 
 ### F4 · Vistas: calendário, kanban e lista
 
@@ -323,8 +331,8 @@ Nota: precisa de semanas de dados acumulados. Começar a recolha cedo.
 
 - [ ]  Modelo de contas (recomendado: delegação)
 - [ ]  Formatos e redes do MVP (proposta: imagem, carrossel, reel no Instagram; imagem e link no Facebook)
-- [ ]  Aprovação do cliente: por link sem login, ou com login na XPLENDOR?
-- [ ]  Papéis: quem cria, quem aprova, quem publica
+- [x]  Aprovação do cliente: dentro da XPLENDOR e por link sem login (link por lote); ver F3
+- [x]  Papéis: produzem os utilizadores da empresa e a equipa XPLENDOR; aprovam o administrador e os aprovadores marcados; ver F3
 - [ ]  Automação: só Instagram primeiro, ou Instagram e Facebook?
 - [ ]  Quando ligar a cobrança por conta gerida
 
