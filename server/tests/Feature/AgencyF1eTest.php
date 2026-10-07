@@ -117,6 +117,28 @@ class AgencyF1eTest extends TestCase
         $this->assertEqualsCanonicalizing(['rui@norte.pt', 'avisos@norte.pt'], ContentReviewNotifier::recipients($this->client->id, null));
     }
 
+    public function test_root_users_of_the_agency_company_count_as_its_admins_for_notices(): void
+    {
+        // A XPLENDOR como agência: os roots dela recebem os avisos dos clientes (sino da agência e email), incluindo o resumo diário.
+        $this->xplendor->forceFill(['agency_enabled_at' => now()])->save();
+        $wife = User::factory()->create(['company_id' => $this->xplendor->id, 'role' => 'root', 'email' => 'rosiane@xplendor.tech']);
+        $xClient = $this->company('Cliente da XPLENDOR', null);
+        $xClient->forceFill(['content_production_mode' => 'team'])->save();
+        $m = CompanyManagement::create(['agency_company_id' => $this->xplendor->id, 'managed_company_id' => $xClient->id, 'origin' => 'platform',
+            'status' => 'active', 'active_key' => $xClient->id, 'team_scope' => 'all', 'requested_at' => now()]);
+
+        $this->assertEqualsCanonicalizing(['simon@xplendor.tech', 'rosiane@xplendor.tech'], ContentReviewNotifier::recipients($xClient->id, null));
+        $this->assertEqualsCanonicalizing(['simon@xplendor.tech', 'rosiane@xplendor.tech'], GenerateDailyAlertsEmailJob::recipients($xClient));
+        app(ContentReviewNotifier::class)->notifyCompany($xClient->id, 'warning', 'Para publicar hoje: 1 publicação', 'Outono.');
+        $this->assertSame(1, Alert::where('company_id', $this->xplendor->id)->count(), 'No sino da XPLENDOR (a agência), que os roots veem.');
+        $this->assertSame(1, $this->as($wife)->getJson("/api/v1/companies/{$this->xplendor->id}/alerts/unread-count")->json('data.count'));
+
+        // Os avisos da relação (por exemplo, o fim) também chegam aos roots da agência.
+        $this->as($this->root)->postJson("/api/v1/admin/companies/{$xClient->id}/management/end", ['reason' => 'Teste.'])->assertOk();
+        $this->assertSame('ended', $m->fresh()->status);
+        Mail::assertQueued(\App\Mail\AgencyNoticeMail::class, fn ($mail) => $mail->hasTo('rosiane@xplendor.tech') && str_contains($mail->title, 'Relação terminada'));
+    }
+
     public function test_companies_without_an_agency_still_use_the_xplendor_team(): void
     {
         $solo = $this->company('Sem agência', 'active');

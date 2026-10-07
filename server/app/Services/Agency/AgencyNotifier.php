@@ -35,7 +35,7 @@ class AgencyNotifier
     public function agency(Company $agency, string $title, array $lines, string $path, string $type = 'opportunity'): void
     {
         $this->alerts->createSystemAlert($agency->id, $type, $title, mb_substr(implode(' ', $lines), 0, 900), 'medium', $path);
-        $emails = self::adminEmails($agency->id);
+        $emails = self::agencyAdminEmails($agency->id);
         if ($agency->agency_notification_email) {
             $emails[] = mb_strtolower($agency->agency_notification_email);
         }
@@ -76,15 +76,27 @@ class AgencyNotifier
         $emails = $m->team_scope === \App\Models\CompanyManagement::SCOPE_ASSIGNED
             ? User::whereIn('id', $m->members()->pluck('user_id'))->where('company_id', $m->agency_company_id)->whereNull('deactivated_at')
                 ->whereNotNull('email')->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all()
-            : self::adminEmails($m->agency_company_id);
+            : self::agencyAdminEmails($m->agency_company_id);
         if ($emails === []) {
-            $emails = self::adminEmails($m->agency_company_id);
+            $emails = self::agencyAdminEmails($m->agency_company_id);
         }
         if ($agency?->agency_notification_email) {
             $emails[] = mb_strtolower($agency->agency_notification_email);
         }
 
         return array_values(array_unique($emails));
+    }
+
+    /**
+     * Os admins de uma AGÊNCIA para os avisos: os admins e os roots que pertencem à empresa da
+     * agência (ex.: a XPLENDOR a gerir os seus clientes; os roots dela recebem os avisos).
+     *
+     * @return string[]
+     */
+    public static function agencyAdminEmails(int $agencyId): array
+    {
+        return User::where('company_id', $agencyId)->whereIn('role', ['admin', 'root'])->whereNull('deactivated_at')->whereNotNull('email')
+            ->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->unique()->values()->all();
     }
 
     /** @return string[] */
