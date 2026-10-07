@@ -14,6 +14,7 @@ import { useFormik } from "formik";
 
 import { loginUser } from 'slices/thunks';
 import { reset_login_flag } from 'slices/auth/login/reducer';
+import { PRIVACY_URL } from "common/legal";
 
 const Login = (props: any) => {
     const dispatch: any = useDispatch();
@@ -171,7 +172,7 @@ const Login = (props: any) => {
                         </Form>
 
                         <div className="xlogin-foot">
-                            © {new Date().getFullYear()} XPLENDOR · <Link to="/privacy">Privacidade</Link>
+                            © {new Date().getFullYear()} XPLENDOR · <a href={PRIVACY_URL} target="_blank" rel="noreferrer noopener">Privacidade</a>
                         </div>
                     </div>
                 </div>

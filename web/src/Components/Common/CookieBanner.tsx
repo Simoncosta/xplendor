@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import "./CookieBanner.css";
+import { PRIVACY_URL } from "common/legal";
 
 declare global {
     interface Window {
@@ -59,7 +60,7 @@ const CookieBanner: React.FC = () => {
                 <p className="xplndor-cookie-banner__text">
                     Utilizamos cookies para analisar o tráfego e melhorar a sua experiência. Pode
                     aceitar ou rejeitar. Saiba mais na nossa{" "}
-                    <a href="/privacy">Política de privacidade</a>.
+                    <a href={PRIVACY_URL} target="_blank" rel="noreferrer noopener">Política de privacidade</a>.
                 </p>
                 <div className="xplndor-cookie-banner__actions">
                     <button

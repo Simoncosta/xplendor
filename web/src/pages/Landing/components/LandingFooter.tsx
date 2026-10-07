@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Col, Container, Row } from 'reactstrap';
 import { CTA_WHATSAPP_URL } from '../data/constants';
+import { PRIVACY_URL } from "common/legal";
 
 /**
  * Rodapé rico: marca + navegação do produto + contacto/redes + legal.
@@ -56,7 +57,7 @@ const LandingFooter: React.FC = () => (
                 <Col lg={2} md={4}>
                     <p className="lp-footer2-heading">Legal</p>
                     <ul className="lp-footer2-links">
-                        <li><a href="/privacy">Privacidade</a></li>
+                        <li><a href={PRIVACY_URL}>Privacidade</a></li>
                         <li><a href="/terms">Termos</a></li>
                         <li>
                             <a href="https://www.livroreclamacoes.pt/Inicio/" target="_blank" rel="noopener noreferrer">

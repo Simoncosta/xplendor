@@ -19,6 +19,7 @@ import logoLight from "../../assets/images/logo-light.png";
 import { createSelector } from "reselect";
 import { getUserByInvite, registerByInvite } from "slices/thunks";
 import XInput from "Components/Common/XInput";
+import { PRIVACY_URL } from "common/legal";
 
 const selectRegisterInviteState = (state: any) => state.RegisterInvite;
 
@@ -177,7 +178,7 @@ const Register = () => {
                     </div>
                     <div className="xlogin-foot">
                         © {new Date().getFullYear()} XPLENDOR ·{" "}
-                        <Link to="/privacy">Privacidade</Link>
+                        <a href={PRIVACY_URL} target="_blank" rel="noreferrer noopener">Privacidade</a>
                     </div>
                 </div>
             </div>

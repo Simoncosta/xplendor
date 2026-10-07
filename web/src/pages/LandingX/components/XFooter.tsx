@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import logoLight from '../../../assets/images/logo-light.png';
 import { CTA_WHATSAPP_URL } from '../../Landing/data/constants';
+import { PRIVACY_URL } from "common/legal";
 
 const XFooter: React.FC = () => (
     <footer className="x-footer">
@@ -33,7 +34,7 @@ const XFooter: React.FC = () => (
 
                 <div className="x-footer-col">
                     <h5>Legal</h5>
-                    <Link to="/privacy">Política de privacidade</Link>
+                    <a href={PRIVACY_URL}>Política de privacidade</a>
                 </div>
             </div>
 
