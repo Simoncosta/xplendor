@@ -1548,6 +1548,11 @@ class CompanyPingwinController extends Controller
             ->name("restaurant-sync:{$companyId}:{$fromStr}:{$toStr}")
             ->allowFailures() // um dia a falhar não aborta os outros; o finally corre na mesma
             ->finally(function (Batch $batch) use ($companyId, $fromStr, $toStr) {
+                // F1-2: com o interruptor ligado, relê também as vendas por artigo do período
+                // (depois dos dias, para a conferência ter os líquidos diários).
+                if (\App\Services\PingwinItemSalesService::isEnabled($companyId)) {
+                    \App\Jobs\SyncItemSalesPeriodJob::dispatch($companyId, $fromStr, $toStr);
+                }
                 // UMA notificação quando TODOS os dias terminam.
                 $alerts = app(AlertService::class);
                 if ($batch->failedJobs === 0) {

@@ -98,6 +98,8 @@ return [
         // Relatório "Vendas por artigo" (loja × dia × artigo, F1 do marketing). Global da cloud
         // GrupoPIE (documents/PINGWIN-RELATORIOS-F0.md); só confirmado na Yuko.
         'item_sales_report_id' => env('PINGWIN_REPORT_ID_ITEM_SALES') ?: '919525121217',
+        // Relatório "Análise de vendas anual" (início de cada loja, F1-2). Global, como o anterior.
+        'annual_report_id' => env('PINGWIN_REPORT_ID_ANNUAL') ?: '1093764095994',
         // ⚠️ As 3 chaves seguintes são DIFERENTES (não confundir — ver .env.example):
         'stores'            => env('PINGWIN_STORES', ''),       // CSV de winrest_store_id (filtro do relatório); o sync sobrepõe-no com as lojas cadastradas. NÃO é um dataset.
         'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores (Yuko: 1099511639262)

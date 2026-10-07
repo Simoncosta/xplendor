@@ -23,15 +23,20 @@ class PingwinItemSalesDay extends Model
     /** Relatório sem linhas mas o dia tem (ou pode ter) vendas: nada se apagou. */
     public const STATUS_EMPTY_PROTECTED = 'empty_protected';
 
+    /** Estados que voltam a ler-se (até MAX_READS leituras). */
+    public const STATUSES_TO_REREAD = [self::STATUS_MISMATCH, self::STATUS_EMPTY_PROTECTED];
+    public const MAX_READS = 3;
+
     protected $fillable = [
         'company_id', 'location_id', 'business_date', 'status', 'rows_count',
-        'items_net_cents', 'daily_net_cents', 'synced_at',
+        'items_net_cents', 'daily_net_cents', 'reads_count', 'synced_at',
     ];
 
     protected $casts = [
         'rows_count'      => 'integer',
         'items_net_cents' => 'integer',
         'daily_net_cents' => 'integer',
+        'reads_count'     => 'integer',
         'synced_at'       => 'datetime',
     ];
 }

@@ -35,7 +35,7 @@ class PingwinItemSalesService
 {
     /** Dias por pedido ao PingWin (o relatório parte o intervalo por dia). */
     public const DAYS_PER_CALL = 7;
-    /** Intervalo máximo de um pedido manual (o histórico é da F1-2). */
+    /** Intervalo máximo de uma leitura manual (o período manual da F1-2 pede até 92). */
     public const MAX_DAYS = 31;
     /** Segundos entre pedidos seguidos ao PingWin. */
     public const SPACING_SECONDS = 20;
@@ -67,9 +67,9 @@ class PingwinItemSalesService
      * Lê o intervalo em blocos de 7 dias e grava (ou só simula, com $dryRun). Devolve o
      * resumo por loja × dia, as lojas ignoradas e o peso das famílias.
      */
-    public function sync(int $companyId, string $from, string $to, bool $dryRun = false): array
+    public function sync(int $companyId, string $from, string $to, bool $dryRun = false, int $maxDays = self::MAX_DAYS): array
     {
-        [$start, $end] = $this->validRange($from, $to);
+        [$start, $end] = $this->validRange($from, $to, $maxDays);
 
         $lock = Cache::lock("pingwin-item-sales:{$companyId}", 900);
         if (! $lock->get()) {
@@ -180,8 +180,14 @@ class PingwinItemSalesService
         $days = [];
         $families = [];
         foreach ($locations as $location) {
+            // F1-2: antes do primeiro mês com vendas detetado, a loja não existia no
+            // PingWin; esses dias não se leem nem se marcam.
+            $firstMonth = $location->sales_first_month?->toDateString();
             foreach (CarbonPeriod::create($from, $to) as $day) {
                 $date = $day->toDateString();
+                if ($firstMonth !== null && $date < $firstMonth) {
+                    continue;
+                }
                 $items = $grouped[$location->id][$date] ?? [];
                 $daily = $dailyNet[$location->id][$date] ?? null;
                 $itemsNet = array_sum(array_column($items, 'net_cents'));
@@ -199,11 +205,11 @@ class PingwinItemSalesService
                                 'product_pingwin_id' => (string) $product, 'synced_at' => $now, 'created_at' => $now, 'updated_at' => $now,
                             ], $chunk));
                         }
-                        PingwinItemSalesDay::updateOrCreate(
-                            ['location_id' => $location->id, 'business_date' => $date],
-                            ['company_id' => $companyId, 'status' => $status, 'rows_count' => count($items),
-                                'items_net_cents' => $itemsNet, 'daily_net_cents' => $daily, 'synced_at' => $now],
-                        );
+                        $record = PingwinItemSalesDay::firstOrNew(['location_id' => $location->id, 'business_date' => $date]);
+                        $record->fill(['company_id' => $companyId, 'status' => $status, 'rows_count' => count($items),
+                            'items_net_cents' => $itemsNet, 'daily_net_cents' => $daily, 'synced_at' => $now]);
+                        $record->reads_count = $record->exists ? $record->reads_count + 1 : 1;
+                        $record->save();
                     });
                 }
 
@@ -242,7 +248,7 @@ class PingwinItemSalesService
     }
 
     /** @return array{0: CarbonImmutable, 1: CarbonImmutable} */
-    private function validRange(string $from, string $to): array
+    private function validRange(string $from, string $to, int $maxDays): array
     {
         $valid = fn (string $d) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) === 1 && CarbonImmutable::createFromFormat('Y-m-d', $d)?->toDateString() === $d;
         if (! $valid($from) || ! $valid($to)) {
@@ -253,8 +259,8 @@ class PingwinItemSalesService
         if ($end->lt($start)) {
             throw ValidationException::withMessages(['period' => ['A data final é anterior à inicial.']]);
         }
-        if ($start->diffInDays($end) + 1 > self::MAX_DAYS) {
-            throw ValidationException::withMessages(['period' => ['No máximo ' . self::MAX_DAYS . ' dias de cada vez.']]);
+        if ($start->diffInDays($end) + 1 > $maxDays) {
+            throw ValidationException::withMessages(['period' => ["No máximo {$maxDays} dias de cada vez."]]);
         }
         if ($end->gte(CarbonImmutable::today())) {
             throw ValidationException::withMessages(['period' => ['Só dias já fechados (até ontem).']]);

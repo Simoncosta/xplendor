@@ -38,6 +38,9 @@ class PingwinService
      *  a assinatura de invoke() compatível com os fakes de teste que a fazem override. */
     protected int $invokeTimeout = 180;
 
+    /** Diagnóstico da última leitura completa do catálogo (páginas, total anunciado, famílias). */
+    public ?array $lastCatalogDiagnostics = null;
+
     protected function invoke(array $payload): array
     {
         $command = [
@@ -532,7 +535,7 @@ class PingwinService
      * pingwin_catalog_items por (company_id, pingwin_id). Preços em CÊNTIMOS.
      * São muitos → grava em lotes. Devolve o nº de artigos guardados.
      */
-    public function syncCatalog(int $companyId): int
+    public function syncCatalog(int $companyId, bool $complete = false, bool $byFamily = false): int
     {
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
@@ -545,7 +548,24 @@ class PingwinService
         $password = (string) $integration->access_token; // o cast decifra
         $config = $integration->config;
 
-        $result = $this->invoke($this->buildPayload($config, $password, ['mode' => 'catalog']));
+        // F1-2: $complete pede a leitura completa (não para numa página curta) e $byFamily
+        // junta a leitura família a família. Só com o interruptor da empresa ligado (quem
+        // chama decide); por omissão, a leitura de sempre.
+        $extra = ['mode' => 'catalog'];
+        if ($complete) {
+            $extra['catalog_complete'] = true;
+            $extra['catalog_by_family'] = $byFamily;
+        }
+        $previousTimeout = $this->invokeTimeout;
+        if ($byFamily) {
+            $this->invokeTimeout = max($this->invokeTimeout, 900); // uma leitura por família
+        }
+        try {
+            $result = $this->invoke($this->buildPayload($config, $password, $extra));
+        } finally {
+            $this->invokeTimeout = $previousTimeout;
+        }
+        $this->lastCatalogDiagnostics = is_array($result['diagnostics'] ?? null) ? $result['diagnostics'] : null;
 
         if (! ($result['ok'] ?? false)) {
             throw new \RuntimeException('Sincronização de artigos PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
@@ -1863,6 +1883,41 @@ class PingwinService
         }
 
         return is_array($result['rows'] ?? null) ? $result['rows'] : [];
+    }
+
+    /**
+     * Acumulado mês a mês (sem IVA) de UMA loja num ano, do relatório anual (F1-2, SÓ
+     * LEITURA): 12 valores, de janeiro a dezembro. $locals: os postos de venda a pedir
+     * (vazio salvo indicação; ver documents/F1-NOITE-PERGUNTAS.md).
+     *
+     * @return array<int, float>
+     */
+    public function fetchStoreYear(int $companyId, string $storeId, int $year, string $locals = ''): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'store_year',
+            'store' => $storeId,
+            'year' => $year,
+            'annual_locals' => $locals,
+        ]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Relatório anual PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+        $months = array_map('floatval', array_values((array) ($result['months'] ?? [])));
+        if (count($months) !== 12) {
+            throw new \RuntimeException('Relatório anual PingWin sem os 12 meses.');
+        }
+
+        return $months;
     }
 
     /**

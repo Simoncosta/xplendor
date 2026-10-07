@@ -22,6 +22,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import ssl
 import sys
 import time
@@ -157,6 +158,32 @@ def shape_item_sale(row: Dict[str, Any]) -> Dict[str, Any] | None:
         "tax": _num(row.get("taxvalue")),
         "gross": _num(row.get("total")),
     }
+
+
+_CONTENT_RANGE_TOTAL = re.compile(r"/\s*(\d+)\s*$")
+
+
+def announced_total(headers: Any) -> int | None:
+    """Total anunciado pelo servidor no Content-Range ("items 0-499/1340" → 1340)."""
+    try:
+        value = headers.get("Content-Range") or headers.get("content-range") or ""
+    except AttributeError:
+        return None
+    m = _CONTENT_RANGE_TOTAL.search(str(value))
+    return int(m.group(1)) if m else None
+
+
+def item_key(item: Dict[str, Any]) -> str:
+    """Chave de um item de browserdataset (id → product_id → code), para não repetir."""
+    for k in ("id", "product_id", "code"):
+        v = item.get(k)
+        if v not in (None, ""):
+            return f"{k}:{v}"
+    return json.dumps(item, sort_keys=True, default=str)
+
+
+ANNUAL_MONTHS = ["january", "february", "march", "april", "may", "june", "july",
+                 "august", "september", "october", "november", "december"]
 
 
 def custom_pbkdf2(password: str, salt_hex: str) -> str:
@@ -469,6 +496,33 @@ class MyCloudPieClient:
             f"PingWin não gerou o relatório {label} (report.id={report_id}) "
             f"após {self.REPORT_ATTEMPTS} tentativas: resposta sem reportdata — {r.text[:200]}"
         )
+
+    # ------------------------------------------- INÍCIO DE UMA LOJA (F1-2, só leitura)
+    # Relatório "Análise de vendas anual": a linha "Acumulado" dá o acumulado mês a mês
+    # (sem IVA) de UMA loja num ano. GROUPBY "1" (artigo), o capturado. NUNCA os
+    # agrupamentos por cliente, comercial ou local (dados pessoais).
+    def fetch_store_year(self, report_id: str, store: str, year: int, locals_csv: str = "") -> List[float]:
+        if not report_id or not store:
+            raise ValueError("report_id e loja são obrigatórios no relatório anual.")
+        row = self.run_report(report_id, {
+            "YEAR": str(int(year)),
+            "GROUPBY": "1",
+            "ProdList": "",
+            "WithTax": 0,
+            "Client": "",
+            "Employee": "",
+            "Locals": locals_csv,
+            "Stores": store,
+        }, "anual")
+        payload = decode_reportdata(row["reportdata"])
+        rows = ((payload.get("dados") or payload.get("data") or {}).get("data")) or []
+        acc = next((r for r in rows if r.get("band_0\\idx") == -1
+                    or str(r.get("band_1\\group_description") or "").strip().lower() == "acumulado"), None)
+        if acc is None:
+            if not rows:
+                return [0.0] * 12  # ano sem vendas: o relatório vem sem linhas
+            raise RuntimeError("Relatório anual sem a linha Acumulado.")
+        return [_num(acc.get(f"band_2\\{m}")) for m in ANNUAL_MONTHS]
 
     # ------------------------------------------- VENDAS POR ARTIGO (F1, só leitura)
     # Relatório "Vendas por artigo" (ID global da cloud GrupoPIE, ver
@@ -1322,6 +1376,80 @@ class MyCloudPieClient:
         }
 
     # -------------------------------------------------- BROWSER: CATÁLOGO
+    # F1-2: o catálogo da Yuko parou aos 1012 artigos (página de 1000 + página de 12),
+    # deixando de fora todos os códigos seguintes por ordem de texto (F0 §7). A leitura
+    # completa (fetch_catalog_complete) usa fetch_browserdataset_complete (não para numa
+    # página curta) e, se ainda faltarem artigos, lê família a família (by_family). Só é
+    # usada quando o Laravel a pede (catalog_complete, com o interruptor da empresa
+    # ligado); fetch_catalog e o helper antigo ficam iguais para o resto.
+    CATALOG_PAGE_SIZE = 500
+    CATALOG_MAX_PAGES = 60
+    CATALOG_FAMILY_PAUSE_S = 2.0
+
+    def fetch_browserdataset_complete(
+        self,
+        dataset_id: str,
+        body: Dict[str, Any],
+        page_size: int = 500,
+        max_pages: int = 60,
+    ) -> tuple[List[Dict[str, Any]], Dict[str, Any]]:
+        """
+        Leitura paginada que NÃO para numa página curta: o pedido seguinte começa a seguir
+        ao último item recebido, até vir uma página vazia, uma página só com itens
+        repetidos, o total anunciado no Content-Range ou a trava max_pages. Devolve
+        (itens sem repetidos, diagnóstico). READ-ONLY.
+        """
+        url = f"{self.api_url}/service/browser/{dataset_id}/browserdataset"
+        out: List[Dict[str, Any]] = []
+        seen: set = set()
+        diag: Dict[str, Any] = {"pages": [], "announced_total": None, "stopped": "max_pages"}
+        start = 0
+        for _ in range(max_pages):
+            headers = {
+                "Action": "OPEN,GET,INFO,CLOSE",
+                "Content-Type": "application/json;charset=UTF-8",
+                "Range": f"items={start}-{start + page_size - 1}",
+            }
+            r = self.session.post(url, json=body, headers=headers)
+            if r.status_code not in (200, 206):
+                log.error(f"fetch_browserdataset_complete({dataset_id}) falhou: HTTP {r.status_code} body={r.text[:1000]}")
+                r.raise_for_status()
+            items = r.json().get("browser", {}).get("browserdataset", [])
+            total = announced_total(getattr(r, "headers", None) or {})
+            if total is not None:
+                diag["announced_total"] = total
+            new = [it for it in items if item_key(it) not in seen]
+            diag["pages"].append({"range": f"{start}-{start + page_size - 1}", "items": len(items), "new": len(new)})
+            if not items:
+                diag["stopped"] = "página vazia"
+                break
+            if not new:
+                diag["stopped"] = "só repetidos"
+                break
+            for it in new:
+                seen.add(item_key(it))
+                out.append(it)
+            # Avança pelo que veio, não pelo tamanho pedido: uma página curta a meio
+            # (o servidor cortou) não salta os itens seguintes.
+            start += len(items)
+            if total is not None and len(out) >= total:
+                diag["stopped"] = "total anunciado"
+                break
+        diag["collected"] = len(out)
+        log.info(f"browserdataset {dataset_id} (completo): {len(out)} item(s), {len(diag['pages'])} página(s), "
+                 f"total anunciado={diag['announced_total']}, parou por: {diag['stopped']}")
+        return out, diag
+
+    @staticmethod
+    def _catalog_body(state: str, family_id: str = "") -> Dict[str, Any]:
+        return {
+            "orderby": "code",  # ordem estável p/ paginação consistente
+            "params": {
+                "CODE": "", "DESCRIPTION": "", "BARCODE": "", "FAMILY_ID": family_id,
+                "PART_PRODUCT_ID": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": state,
+            },
+        }
+
     def fetch_catalog(self, dataset_id: str, page_size: int = 1000, max_pages: int = 30) -> List[Dict[str, Any]]:
         """
         Catálogo COMPLETO de artigos via browserdataset (porta 8136, como fetch_stores).
@@ -1336,6 +1464,35 @@ class MyCloudPieClient:
             },
         }
         items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
+        log.info(f"Catálogo: {len(items)} artigos")
+        return items
+
+    def fetch_catalog_complete(self, dataset_id: str, by_family: bool = False) -> List[Dict[str, Any]]:
+        """
+        Catálogo COMPLETO de artigos ativos (STATE:0) via browserdataset (porta 8136).
+        Com by_family, junta ainda a leitura de cada família (FAMILY_ID), para apanhar o
+        que a paginação geral não devolver. O diagnóstico fica em self.last_catalog_diag.
+        Requer login. READ-ONLY.
+        """
+        items, diag = self.fetch_browserdataset_complete(
+            dataset_id, self._catalog_body("0"), self.CATALOG_PAGE_SIZE, self.CATALOG_MAX_PAGES)
+        diag["by_family"] = None
+        if by_family:
+            seen = {item_key(it) for it in items}
+            families = [f for f in self.fetch_families() if int(f.get("deleted") or 0) != 1 and f.get("id")]
+            added = 0
+            for i, fam in enumerate(families):
+                if i > 0:
+                    time.sleep(self.CATALOG_FAMILY_PAUSE_S)
+                fam_items, _ = self.fetch_browserdataset_complete(
+                    dataset_id, self._catalog_body("0", str(fam["id"])), self.CATALOG_PAGE_SIZE, self.CATALOG_MAX_PAGES)
+                for it in fam_items:
+                    if item_key(it) not in seen:
+                        seen.add(item_key(it))
+                        items.append(it)
+                        added += 1
+            diag["by_family"] = {"families": len(families), "added": added}
+        self.last_catalog_diag = diag
         log.info(f"Catálogo: {len(items)} artigos")
         return items
 
@@ -1355,6 +1512,27 @@ class MyCloudPieClient:
             },
         }
         items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
+        ids: List[str] = []
+        for it in items:
+            if int(it.get("deleted") or 0) != 1:
+                continue
+            pid = it.get("id") or it.get("product_id") or it.get("code")
+            if pid not in (None, ""):
+                ids.append(str(pid))
+        log.info(f"Catálogo anulados (STATE:1, deleted:1): {len(ids)} id(s)")
+        return ids
+
+
+    def fetch_catalog_deleted_ids_complete(self, dataset_id: str) -> List[str]:
+        """
+        (F1-2: leitura completa, como fetch_catalog_complete.) IDs dos artigos ANULADOS (STATE:1) — mesmo browserdataset/paginação do catálogo,
+        só muda STATE:"1". O "anular" no PingWin é SOFT-DELETE: o artigo continua a existir
+        mas move-se para os Anulados (deleted:1). Devolve os pingwin_id (precedência
+        id→product_id→code, IGUAL à do sync dos ativos) dos que têm deleted:1. READ-ONLY.
+        ⚠️ deleted (anulado) ≠ status (Ativo/Inativo/Descontinuado): usa-se o deleted:1.
+        """
+        items, _ = self.fetch_browserdataset_complete(
+            dataset_id, self._catalog_body("1"), self.CATALOG_PAGE_SIZE, self.CATALOG_MAX_PAGES)
         ids: List[str] = []
         for it in items:
             if int(it.get("deleted") or 0) != 1:

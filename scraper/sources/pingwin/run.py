@@ -9,7 +9,8 @@ Devolve JSON por STDOUT. Logs vão para STDERR (nunca poluem o STDOUT do resulta
 Ciclo (LOGOUT GARANTIDO pelo `with`):
   · mode="validate" → login + logout (teste de ligação antes de gravar credenciais);
   · mode="sync"     → login → descobrir lojas → resumo de vendas por loja → logout;
-  · mode="item_sales" → login → Vendas por artigo (até 7 dias) → logout.
+  · mode="item_sales" → login → Vendas por artigo (até 7 dias) → logout;
+  · mode="store_year" → login → acumulado mensal de uma loja num ano → logout.
 
 Segurança:
   · PINGWIN_ALLOWED_HOSTS (allowlist) — mitiga o SSL fraco apontar a outro host;
@@ -168,12 +169,20 @@ def run(cfg: dict) -> dict:
             dataset_id = cfg.get("catalog_dataset_id")
             if not dataset_id:
                 return {"ok": False, "error": "catalog_dataset_id em falta (definir PINGWIN_CATALOG_DATASET_ID)."}
-            articles = client.fetch_catalog(dataset_id)
+            # F1-2: catalog_complete (só com o interruptor da empresa ligado) usa a leitura
+            # completa, que não para numa página curta; catalog_by_family junta a leitura
+            # família a família. Sem ele, a leitura é a de sempre.
+            if cfg.get("catalog_complete"):
+                articles = client.fetch_catalog_complete(dataset_id, by_family=bool(cfg.get("catalog_by_family")))
+            else:
+                articles = client.fetch_catalog(dataset_id)
             # Também os ANULADOS (STATE:1) → para marcar is_active=false no espelho.
             # Se ESTA leitura falhar, o raise propaga e o run devolve ok:false → o PHP
             # NÃO aplica nada (nem os ativos): melhor não corrigir do que meio-corrigir.
-            deleted_ids = client.fetch_catalog_deleted_ids(dataset_id)
-            return {"ok": True, "mode": "catalog", "articles": articles, "deleted_ids": deleted_ids}
+            deleted_ids = (client.fetch_catalog_deleted_ids_complete(dataset_id) if cfg.get("catalog_complete")
+                           else client.fetch_catalog_deleted_ids(dataset_id))
+            return {"ok": True, "mode": "catalog", "articles": articles, "deleted_ids": deleted_ids,
+                    "diagnostics": getattr(client, "last_catalog_diag", None)}
 
         if mode == "paycond":
             # READ-ONLY (Fatia 1): CONDIÇÕES DE PAGAMENTO. Lista (browserdataset, 8136) +
@@ -317,6 +326,18 @@ def run(cfg: dict) -> dict:
             unit = cfg.get("unit") or {}
             saved = client.save_unit(unit)
             return {"ok": True, "mode": "save_unit", "unit": saved}
+
+        if mode == "store_year":
+            # READ-ONLY (F1-2): acumulado mês a mês de UMA loja num ano (relatório anual),
+            # para detetar o primeiro mês com vendas. Locals vazio salvo indicação.
+            report_id = str(cfg.get("annual_report_id") or "")
+            store = str(cfg.get("store") or "")
+            try:
+                year = int(cfg.get("year"))
+            except (TypeError, ValueError):
+                return {"ok": False, "error": "year em falta ou inválido."}
+            months = client.fetch_store_year(report_id, store, year, str(cfg.get("annual_locals") or ""))
+            return {"ok": True, "mode": "store_year", "store": store, "year": year, "months": months}
 
         if mode == "item_sales":
             # READ-ONLY (F1): Vendas por artigo, loja × dia × artigo, até 7 dias por pedido.
