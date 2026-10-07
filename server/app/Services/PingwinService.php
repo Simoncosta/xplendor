@@ -1801,21 +1801,7 @@ class PingwinService
             throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
         }
 
-        // ⚠️ O relatório precisa das lojas a pedir. Compõe o "Stores" (CSV) a
-        // partir dos winrest_store_id das lojas ATIVAS cadastradas. Sem lojas →
-        // mensagem clara (o relatório iria com "Stores": "" e falharia).
-        $storeIds = PingwinLocation::where('company_id', $companyId)
-            ->where('is_active', true)
-            ->orderBy('id')
-            ->pluck('winrest_store_id')
-            ->filter(fn ($id) => trim((string) $id) !== '')
-            ->values();
-
-        if ($storeIds->isEmpty()) {
-            throw ValidationException::withMessages([
-                'pingwin' => ['Cadastra pelo menos uma loja (ID PingWin) para sincronizar vendas.'],
-            ]);
-        }
+        $storeIds = $this->activeStoreIds($companyId);
 
         // O cast decifra a senha (APP_KEY); passamos ao Python por STDIN.
         $password = (string) $integration->access_token;
@@ -1845,6 +1831,60 @@ class PingwinService
         $result['locations_count'] = $count;
 
         return $result;
+    }
+
+    /**
+     * Vendas por artigo (F1 do marketing, SÓ LEITURA): loja × dia × artigo de um
+     * intervalo de até 7 dias, das lojas ATIVAS cadastradas. Devolve as linhas tal como
+     * o Python as entrega (lista fechada de campos); a gravação é do
+     * PingwinItemSalesService. Não olha ao interruptor: quem chama decide.
+     *
+     * @return array<int, array{store_id: string, date: string, product_id: string, product_code: string, product_name: string, family_id: string, family_path: string, qty: float, net: float, tax: float, gross: float}>
+     */
+    public function fetchItemSales(int $companyId, string $start, string $end): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'item_sales',
+            'stores' => $this->activeStoreIds($companyId)->implode(','),
+            'start' => $start,
+            'end' => $end,
+        ]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Vendas por artigo PingWin falharam: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return is_array($result['rows'] ?? null) ? $result['rows'] : [];
+    }
+
+    /**
+     * winrest_store_id das lojas ATIVAS cadastradas (o "Stores" dos relatórios). Sem
+     * lojas → mensagem clara (o relatório iria com "Stores": "" e falharia).
+     */
+    private function activeStoreIds(int $companyId): \Illuminate\Support\Collection
+    {
+        $storeIds = PingwinLocation::where('company_id', $companyId)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->pluck('winrest_store_id')
+            ->filter(fn ($id) => trim((string) $id) !== '')
+            ->values();
+
+        if ($storeIds->isEmpty()) {
+            throw ValidationException::withMessages([
+                'pingwin' => ['Cadastra pelo menos uma loja (ID PingWin) para sincronizar vendas.'],
+            ]);
+        }
+
+        return $storeIds;
     }
 
     /** Extrai o objeto JSON do stdout (1.º "{" até ao último "}"), ignorando ruído. */

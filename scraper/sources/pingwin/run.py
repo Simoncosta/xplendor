@@ -8,7 +8,8 @@ Devolve JSON por STDOUT. Logs vão para STDERR (nunca poluem o STDOUT do resulta
 
 Ciclo (LOGOUT GARANTIDO pelo `with`):
   · mode="validate" → login + logout (teste de ligação antes de gravar credenciais);
-  · mode="sync"     → login → descobrir lojas → resumo de vendas por loja → logout.
+  · mode="sync"     → login → descobrir lojas → resumo de vendas por loja → logout;
+  · mode="item_sales" → login → Vendas por artigo (até 7 dias) → logout.
 
 Segurança:
   · PINGWIN_ALLOWED_HOSTS (allowlist) — mitiga o SSL fraco apontar a outro host;
@@ -316,6 +317,20 @@ def run(cfg: dict) -> dict:
             unit = cfg.get("unit") or {}
             saved = client.save_unit(unit)
             return {"ok": True, "mode": "save_unit", "unit": saved}
+
+        if mode == "item_sales":
+            # READ-ONLY (F1): Vendas por artigo, loja × dia × artigo, até 7 dias por pedido.
+            # Só saem os campos de ITEM_SALES_FIELDS (sem empresa, sem descontos).
+            report_id = str(cfg.get("item_sales_report_id") or "")
+            stores_csv = str(cfg.get("stores") or "")
+            try:
+                start = datetime.strptime(str(cfg.get("start") or ""), "%Y-%m-%d")
+                end = datetime.strptime(str(cfg.get("end") or ""), "%Y-%m-%d")
+            except ValueError:
+                return {"ok": False, "error": "start/end em falta ou inválidos (AAAA-MM-DD)."}
+            rows = client.fetch_item_sales(report_id, stores_csv, start, end)
+            return {"ok": True, "mode": "item_sales", "start": start.strftime("%Y-%m-%d"),
+                    "end": end.strftime("%Y-%m-%d"), "rows": rows}
 
         # sync — descoberta de lojas + resumo de vendas por loja.
         stores = []

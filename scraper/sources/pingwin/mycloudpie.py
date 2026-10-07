@@ -118,6 +118,47 @@ def parse_report_json_to_dataframe(reportdata_b64: str) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=list(labels.values()))
 
 
+def decode_reportdata(reportdata_b64: str) -> Dict[str, Any]:
+    """reportdata (base64) → dict. Alguns relatórios trazem caracteres de controlo
+    (\\r) entre campos: strict=False aceita-os."""
+    return json.loads(base64.b64decode(reportdata_b64).decode("utf-8"), strict=False)
+
+
+# Campos que saem do Vendas por artigo (lista fechada: o resto da linha é descartado).
+ITEM_SALES_FIELDS = ["store_id", "date", "product_id", "product_code", "product_name",
+                     "family_id", "family_path", "qty", "net", "tax", "gross"]
+
+
+def _num(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def shape_item_sale(row: Dict[str, Any]) -> Dict[str, Any] | None:
+    """Linha do Vendas por artigo → só os ITEM_SALES_FIELDS. None se faltar a loja,
+    o dia ou o artigo. A data vem como AAAAMMDDT00:00:00 → AAAA-MM-DD."""
+    store_id = str(row.get("store_id") or "").strip()
+    product_id = str(row.get("product_id") or "").strip()
+    doc_date = str(row.get("doc_date") or "").strip()
+    if not store_id or not product_id or len(doc_date) < 8 or not doc_date[:8].isdigit():
+        return None
+    return {
+        "store_id": store_id,
+        "date": f"{doc_date[0:4]}-{doc_date[4:6]}-{doc_date[6:8]}",
+        "product_id": product_id,
+        "product_code": str(row.get("product_code") or "").strip(),
+        "product_name": str(row.get("product_desc") or "").strip(),
+        "family_id": str(row.get("family_id") or "").strip(),
+        "family_path": str(row.get("family_desc") or "").strip(),
+        "qty": _num(row.get("qnt")),
+        "net": _num(row.get("basevalue")),
+        "tax": _num(row.get("taxvalue")),
+        "gross": _num(row.get("total")),
+    }
+
+
 def custom_pbkdf2(password: str, salt_hex: str) -> str:
     """
     PBKDF2 customizado do PingWin BO (GrupoPIE): 1000 iterações de MD5 com XOR.
@@ -372,19 +413,27 @@ class MyCloudPieClient:
 
     def trigger_report(self, target_date: datetime) -> Dict[str, Any]:
         """Pede o Resumo de Vendas em JSON. Devolve a linha do relatório (com
-        reportdata). Repete enquanto o servidor devolver vazio/5xx; esgotadas as
-        tentativas, falha com mensagem explícita — NUNCA devolve vendas vazias
-        (isso gravaria um dia "sincronizado" com zero vendas)."""
+        reportdata). Repete enquanto o servidor devolver vazio/5xx (ver run_report);
+        NUNCA devolve vendas vazias (isso gravaria um dia "sincronizado" com zero vendas)."""
         date_str = target_date.strftime("%Y%m%dT00:00:00")
+        return self.run_report(self.report_id, {
+            "Stores": self.stores,
+            "START_DATE": date_str,
+            "END_DATE": date_str,
+            "Groupby": "1",
+            "Family_level": "-1",
+            "GROUPBY_LOCAL": 0,
+        }, "de vendas")
+
+    def run_report(self, report_id: str, params: Dict[str, Any], label: str) -> Dict[str, Any]:
+        """Pede um relatório em JSON (POST /service/report/*/report, Action OPEN,GET,CLOSE).
+        Devolve a linha do relatório (com reportdata). SÓ LEITURA. Repete na mesma sessão
+        enquanto o servidor devolver vazio/5xx; esgotadas as tentativas, falha com
+        mensagem explícita."""
         payload = {
             "params": {
-                "querystring": f"report.id = '{self.report_id}'",
-                "Stores": self.stores,
-                "START_DATE": date_str,
-                "END_DATE": date_str,
-                "Groupby": "1",
-                "Family_level": "-1",
-                "GROUPBY_LOCAL": 0,
+                "querystring": f"report.id = '{report_id}'",
+                **params,
                 "sendmail": 0,
                 "mimetype": "application/json",
             }
@@ -400,11 +449,11 @@ class MyCloudPieClient:
             last = attempt == self.REPORT_ATTEMPTS
 
             if r.status_code >= 500 and not last:
-                log.warning(f"trigger_report HTTP {r.status_code} (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — a repetir: {r.text[:200]}")
+                log.warning(f"run_report({report_id}) HTTP {r.status_code} (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — a repetir: {r.text[:200]}")
                 time.sleep(self.REPORT_RETRY_DELAY_S)
                 continue
             if r.status_code != 200:
-                log.error(f"trigger_report falhou: HTTP {r.status_code}")
+                log.error(f"run_report({report_id}) falhou: HTTP {r.status_code}")
                 log.error(f"Response body (primeiros 2000 chars): {r.text[:2000]}")
                 r.raise_for_status()
 
@@ -413,13 +462,47 @@ class MyCloudPieClient:
                 log.info(f"Relatório gerado (json): {rows[0].get('reportfile')} (tentativa {attempt}/{self.REPORT_ATTEMPTS})")
                 return rows[0]
             if not last:
-                log.warning(f"trigger_report devolveu vazio (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — servidor intermitente, a repetir")
+                log.warning(f"run_report({report_id}) devolveu vazio (tentativa {attempt}/{self.REPORT_ATTEMPTS}) — servidor intermitente, a repetir")
                 time.sleep(self.REPORT_RETRY_DELAY_S)
 
         raise RuntimeError(
-            f"PingWin não gerou o relatório de vendas (report.id={self.report_id}) "
+            f"PingWin não gerou o relatório {label} (report.id={report_id}) "
             f"após {self.REPORT_ATTEMPTS} tentativas: resposta sem reportdata — {r.text[:200]}"
         )
+
+    # ------------------------------------------- VENDAS POR ARTIGO (F1, só leitura)
+    # Relatório "Vendas por artigo" (ID global da cloud GrupoPIE, ver
+    # documents/PINGWIN-RELATORIOS-F0.md): uma linha por loja × dia × artigo, com a
+    # família. Um pedido cobre até 7 dias. Só saem os campos de ITEM_SALES_FIELDS.
+    ITEM_SALES_MAX_DAYS = 7
+
+    def fetch_item_sales(self, report_id: str, stores: str, start: datetime, end: datetime) -> List[Dict[str, Any]]:
+        if not report_id:
+            raise ValueError("report_id do Vendas por artigo em falta.")
+        if not stores:
+            raise ValueError("Lojas em falta para o Vendas por artigo.")
+        if end < start:
+            raise ValueError("Intervalo inválido: o fim é anterior ao início.")
+        if (end - start).days + 1 > self.ITEM_SALES_MAX_DAYS:
+            raise ValueError(f"Intervalo acima de {self.ITEM_SALES_MAX_DAYS} dias por pedido.")
+
+        row = self.run_report(report_id, {
+            "START_DATE": start.strftime("%Y%m%dT00:00:00"),
+            "END_DATE": end.strftime("%Y%m%dT00:00:00"),
+            "ProdList": "",
+            "ProductGroup": "",
+            "Product_Type": "",
+            "PIVOT": 0,
+            "SHOWEXTFAC": 0,
+            "GROUP_MENUS": 1,
+            "Stores": stores,
+        }, "Vendas por artigo")
+        payload = decode_reportdata(row["reportdata"])
+        rows = ((payload.get("data") or {}).get("data")) or []
+        out = [shape_item_sale(r) for r in rows if isinstance(r, dict)]
+        out = [r for r in out if r is not None]
+        log.info(f"Vendas por artigo: {len(out)} linha(s) de {start:%Y-%m-%d} a {end:%Y-%m-%d}")
+        return out
 
     # ------------------------------------------- GERAR RELATÓRIO (genérico)
     def trigger_report_custom(

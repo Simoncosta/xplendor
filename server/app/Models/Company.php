@@ -81,6 +81,9 @@ class Company extends Model
             'content_approval_required' => 'boolean',
             'internal_review_required' => 'boolean',
             'cm_avg_ticket_enabled' => 'boolean',
+            // Interruptor da sincronização nova do PingWin (vendas por artigo). NÃO está no
+            // fillable: só o comando pingwin:item-sales-switch o muda.
+            'pingwin_item_sales_enabled' => 'boolean',
             'billing_reminders_enabled' => 'boolean',
         ];
     }

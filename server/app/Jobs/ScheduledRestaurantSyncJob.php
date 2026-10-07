@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\CompanyIntegration;
 use App\Models\User;
 use App\Services\AlertService;
+use App\Services\PingwinItemSalesService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,6 +27,9 @@ use Illuminate\Support\Facades\Log;
  * deixa este fan-out CONHECER as falhas sem parar as outras. Corre no WORKER (tem o docker
  * socket que o PingWin precisa). Avisos: sino por empresa em falha + UM resumo ao dono
  * (só quando há falhas — silêncio quando corre tudo bem).
+ *
+ * Nas empresas com o interruptor pingwin_item_sales_enabled ligado, lê também as
+ * vendas por artigo dos 7 dias anteriores (PingwinItemSalesService).
  */
 class ScheduledRestaurantSyncJob implements ShouldQueue
 {
@@ -84,6 +88,21 @@ class ScheduledRestaurantSyncJob implements ShouldQueue
                         detailPath: '/restauracao',
                     );
                 } catch (\Throwable) { /* o resumo ao dono continua */ }
+            }
+
+            // Vendas por artigo (F1 do marketing): SÓ com o interruptor da empresa ligado
+            // (desligado por omissão). Um pedido para os 7 dias anteriores; uma falha aqui
+            // entra no resumo ao dono mas não pára as outras empresas.
+            if (PingwinItemSalesService::isEnabled($companyId)) {
+                try {
+                    [$from, $to] = PingwinItemSalesService::nightlyWindow($this->date);
+                    app(PingwinItemSalesService::class)->sync($companyId, $from, $to);
+                } catch (\Throwable $e) {
+                    $failed[$companyId] = trim(($failed[$companyId] ?? '') . ' vendas por artigo: ' . mb_substr($e->getMessage(), 0, 150));
+                    Log::warning('[Scheduled Restaurant Sync] vendas por artigo falharam', [
+                        'company_id' => $companyId, 'error' => $e->getMessage(),
+                    ]);
+                }
             }
         }
 

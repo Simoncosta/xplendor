@@ -152,3 +152,51 @@ Por empresa, em série, à noite, com pelo menos 20 s entre pedidos e uma sessã
 | Histórico do Vendas por artigo, 7 dias por pedido | Uma vez, até 10 pedidos por noite | cerca de 30 para a Yuko (3 noites) |
 
 Hoje a integração faz 1 relatório por noite. Com a F1 passa a 2, e a 3 com a F2, mais o catálogo e a margem ao domingo e o histórico inicial.
+
+## 9. F1-1: primeira execução manual (dev, fora de serviço)
+
+A sincronização nova está atrás do interruptor `companies.pingwin_item_sales_enabled`, desligado por omissão. O job das 05:00 só lê as vendas por artigo nas empresas com o interruptor ligado. Os comandos correm no contentor `xplendor-worker` (é o que tem o socket do Docker).
+
+1. Estado do interruptor (deve dizer "desligadas"):
+   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5`
+2. Simulação: lê e confere, não grava nada. Um só pedido ao PingWin, o mesmo período da captura h1b:
+   `docker exec xplendor-worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06 --dry-run`
+3. Se a simulação estiver como abaixo, ligar o interruptor e gravar o mesmo período:
+   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 on`
+   `docker exec xplendor-worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06`
+4. No fim da sessão, desligar, se não quiser que o job das 05:00 do Mac leia sozinho:
+   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 off`
+
+O que deve aparecer na simulação:
+
+- No topo: "Interruptor: desligado", "Período: 2026-09-30 a 2026-10-06 (simulação: nada é gravado)".
+- Uma tabela com 14 linhas (2 lojas × 7 dias), sem "NÃO BATE" e sem "VAZIO (protegido)".
+- Estado "OK" de 30/09 a 02/10 (há líquido diário em dev) e "sem resumo para conferir" de 03/10 a 06/10 (o espelho de dev acaba a 02/10).
+- A soma dos artigos igual, ao cêntimo, à da captura (salvo correções feitas no PingWin depois de 7 de outubro):
+
+| Dia | Yuko Baixa | Yuko Costa Cabral |
+|---|---|---|
+| 30/09 | 1 248,04 € | 3 286,30 € |
+| 01/10 | 1 955,17 € | 3 445,99 € |
+| 02/10 | 3 058,27 € | 6 506,20 € |
+| 03/10 | 3 826,20 € | 6 434,85 € |
+| 04/10 | 4 105,27 € | 7 252,64 € |
+| 05/10 | 2 615,94 € | 4 970,11 € |
+| 06/10 | 1 231,26 € | 2 511,99 € |
+
+- Famílias: "Família \ Comidas \ Francesinhas" à frente, perto de 58%.
+- Nenhuma linha "Lojas do PingWin sem cadastro".
+- "Pedidos ao PingWin: 1" e "Simulação concluída: nada foi gravado."
+
+Se aparecer outra coisa:
+
+- "Falhou: … após 8 tentativas": o servidor do PingWin está a devolver vazios; tentar mais tarde. Nada foi gravado.
+- Erro HTTP 404 ou de ligação: o pedido segue para o `api_url` (porta 8136), como o Resumo de Vendas; as capturas usaram a porta 8138. Guardar a mensagem e não ligar o interruptor.
+- "NÃO BATE" ou valores diferentes da tabela: guardar o resultado e não ligar o interruptor.
+
+Depois da gravação (passo 3), a conferência no MariaDB de dev:
+
+```sql
+SELECT status, COUNT(*) FROM pingwin_item_sales_days WHERE company_id = 5 GROUP BY status;  -- ok 6, unverified 8
+SELECT COUNT(*) FROM pingwin_item_sales_daily WHERE company_id = 5;                          -- 1174 na captura
+```
