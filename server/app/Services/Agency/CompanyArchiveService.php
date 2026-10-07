@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Arquivo de uma empresa SEM admin que perde a agência: fica desativada 90 dias (os dados
- * ficam guardados), com aviso ao contacto no início e 7 dias antes do fim, e é apagada no
- * fim (job diário). Se entretanto ganhar um admin ou outra agência, sai do arquivo.
+ * ficam guardados), com aviso ao contacto no início e 7 dias antes do fim, e é apagada de
+ * forma definitiva no fim (job diário; ficam só as cobranças da XPLENDOR, ver CompanyPurgeService). Se entretanto ganhar um admin ou outra agência, sai do arquivo.
  */
 class CompanyArchiveService
 {
@@ -48,7 +48,7 @@ class CompanyArchiveService
     public function runDaily(): array
     {
         $out = ['released' => 0, 'warned' => 0, 'deleted' => 0];
-        foreach (Company::whereNotNull('archived_at')->get() as $company) {
+        foreach (Company::whereNotNull('archived_at')->whereNull('purged_at')->get() as $company) {
             if (AgencyNotifier::hasAdmin($company->id) || CompanyManagement::active()->where('managed_company_id', $company->id)->exists()) {
                 $this->release($company);
                 $out['released']++;
@@ -56,7 +56,7 @@ class CompanyArchiveService
             }
             if ($company->archive_delete_at && $company->archive_delete_at->lte(now())) {
                 Log::info('[Arquivo] Empresa apagada ao fim de 90 dias sem admin nem agência.', ['company_id' => $company->id]);
-                $company->delete();
+                app(CompanyPurgeService::class)->purge($company);
                 $out['deleted']++;
                 continue;
             }

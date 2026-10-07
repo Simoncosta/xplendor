@@ -80,6 +80,8 @@ export default function CompanyProfileEditor({
         const q = new URLSearchParams(window.location.search);
         return q.get('tab') === 'integrations' || q.has('meta') || q.has('social');
     }, []);
+    // ?gestao=1 (avisos de gestão por agências): destaca e mostra os pedidos e a agência gestora.
+    const wantsGestao = useMemo(() => new URLSearchParams(window.location.search).get('gestao') === '1', []);
     const [activeTab, setActiveTab] = useState(() => (isEdit && wantsIntegrations ? "3" : "1"));
     const openedFromLink = useRef(false);
     useEffect(() => {
@@ -271,7 +273,7 @@ export default function CompanyProfileEditor({
                                 </CardBody>
                             </Card>
 
-                            {isEdit && <ManagingAgencyCard companyId={companyId} />}
+                            {isEdit && <ManagingAgencyCard companyId={companyId} highlight={wantsGestao} />}
                             {isEdit && isRoot && (
                                 <Card>
                                     <CardBody>

@@ -239,3 +239,12 @@ Schedule::job(new \App\Jobs\CompanyArchiveJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Gestão por agências] Arquivo de empresas falhou no scheduler');
     });
+
+Schedule::job(new \App\Jobs\ScrubManagementRequestsJob())
+    ->dailyAt('04:20')
+    ->timezone('Europe/Lisbon')
+    ->name('management-requests-scrub')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Gestão por agências] Apagar dados de pedidos falhou no scheduler');
+    });

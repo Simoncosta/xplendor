@@ -29,10 +29,12 @@ class ManagementRequest extends Model
     protected $fillable = [
         'agency_company_id', 'requested_by_user_id', 'identifier_type', 'identifier', 'message', 'authorization_declared_at',
         'status', 'managed_company_id', 'management_id', 'expires_at', 'responded_by_user_id', 'responded_at', 'decline_reason', 'withdrawn_at',
+        'identifier_scrubbed_at',
     ];
 
     protected $casts = [
         'authorization_declared_at' => 'datetime', 'expires_at' => 'datetime', 'responded_at' => 'datetime', 'withdrawn_at' => 'datetime',
+        'identifier_scrubbed_at' => 'datetime',
     ];
 
     public function agency(): BelongsTo

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Badge, Button, Input, Label, Spinner } from "reactstrap";
+import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { getAdminAgencies, getAdminCompanyManagement, setAdminCompanyAgency, setAdminCompanyManagement } from "helpers/laravel_helper";
+import { endAdminCompanyManagement, getAdminAgencies, getAdminCompanyManagement, setAdminCompanyAgency, setAdminCompanyManagement } from "helpers/laravel_helper";
+import ReasonButton from "Components/Common/ReasonButton";
 import XSelect from "pages/Editorial/XSelect";
-import { confirmAction } from "helpers/swal";
 
 /**
  * Gestão por agências de UMA empresa (só o root): "Esta empresa é uma agência" e "Gerida
@@ -69,13 +69,27 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
             setIsAgency(!!data?.is_agency);
         } finally { setBusy(null); }
     };
+    // Terminar a relação (com motivo): acesso da agência cortado de imediato, dados na empresa,
+    // período de teste ou arquivo conforme o caso (o servidor trata disso e avisa os lados).
+    const [ending, setEnding] = useState(false);
+    const [endReason, setEndReason] = useState("");
+    const endRelation = async () => {
+        setBusy("managed");
+        try {
+            await endAdminCompanyManagement(companyId, endReason.trim());
+            toast.success("Relação terminada. A agência deixou de ter acesso a esta empresa.");
+            setEnding(false);
+            setEndReason("");
+            load();
+            onChanged?.();
+        } catch (e) {
+            toast.error(errorOf(e, "Não foi possível terminar a relação."));
+        } finally { setBusy(null); }
+    };
     const saveManaged = async () => {
-        if (!agencyId) {
-            const ok = await confirmAction({
-                title: "Retirar a gestão?", text: `A agência ${data?.current?.agency.name ?? ""} deixa de gerir esta empresa.`,
-                confirmText: "Retirar gestão", icon: "warning", confirmVariant: "danger",
-            });
-            if (!ok) return;
+        if (!agencyId && data?.current) {
+            setEnding(true);
+            return;
         }
         setBusy("managed");
         try {
@@ -121,7 +135,7 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
                 </div>
                 {managedDirty && (
                     <Button size="sm" color="primary" disabled={busy !== null} onClick={saveManaged}>
-                        {busy === "managed" ? <Spinner size="sm" /> : agencyId ? "Guardar agência gestora" : "Retirar gestão"}
+                        {busy === "managed" ? <Spinner size="sm" /> : agencyId ? "Guardar agência gestora" : "Terminar relação"}
                     </Button>
                 )}
             </div>
@@ -145,6 +159,22 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
                     ))}
                 </ul>
             )}
+
+            <Modal isOpen={ending} toggle={() => busy === null && setEnding(false)} centered>
+                <ModalHeader toggle={() => busy === null && setEnding(false)}>Terminar a relação com {data.current?.agency.name}?</ModalHeader>
+                <ModalBody>
+                    <p className="mb-2">A agência deixa de ter acesso a esta empresa <strong>de imediato</strong>. Os dados ficam na empresa; a empresa e a agência são avisadas.</p>
+                    <p className="text-muted fs-12 mb-2">Se o acesso vinha da agência, a empresa ganha um período de teste de 30 dias. Sem administrador, fica arquivada 90 dias.</p>
+                    <Label for={`end-reason-${companyId}`} className="mb-1">Motivo</Label>
+                    <Input id={`end-reason-${companyId}`} type="textarea" rows={2} maxLength={500} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" disabled={busy !== null} onClick={() => setEnding(false)}>Cancelar</Button>
+                    <ReasonButton color="danger" disabled={busy !== null} onClick={endRelation} reason={endReason.trim().length < 3 ? "Indique o motivo." : null}>
+                        {busy === "managed" ? <Spinner size="sm" /> : "Terminar relação"}
+                    </ReasonButton>
+                </ModalFooter>
+            </Modal>
         </div>
     );
 }

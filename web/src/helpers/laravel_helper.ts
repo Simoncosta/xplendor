@@ -365,8 +365,25 @@ export const getAlertsUnreadCount = (companyId: number) => api.get(url.GET_COMPA
 export const getWorkingCompanies = () => api.get(url.GET_COMPANIES);
 // Empresa gerida: a agência gestora; terminar a relação (só o admin da empresa); primeiro admin (a agência).
 export const getCompanyManagement = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/management`);
-export const endCompanyManagement = (companyId: number, reason?: string) =>
-    api.delete(url.GET_COMPANIES + `/${companyId}/management`, { data: { reason: reason || null } });
+export const endCompanyManagement = (companyId: number, reason?: string, connections?: "keep" | "disconnect") =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/management`, { data: { reason: reason || null, connections: connections ?? null } });
+// F1d: pedidos de gestão recebidos (só os admins da empresa) e a escolha sobre as ligações da agência.
+export const getCompanyManagementRequests = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/management/requests`);
+export const acceptCompanyManagementRequest = (companyId: number, requestId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/accept`, {});
+export const declineCompanyManagementRequest = (companyId: number, requestId: number, reason?: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/management/requests/${requestId}/decline`, { reason: reason || null });
+export const decideCompanyConnections = (companyId: number, decision: "keep" | "disconnect") =>
+    api.create(url.GET_COMPANIES + `/${companyId}/management/connections`, { decision });
+// F1d: a agência pede a gestão de uma empresa existente e termina a relação com um cliente.
+export const getAgencyManagementRequests = (agencyId: number) => api.get(AG(agencyId) + `/management-requests`);
+export const createAgencyManagementRequest = (agencyId: number, data: { nipc?: string; email?: string; message?: string; authorization_declared: boolean }) =>
+    api.create(AG(agencyId) + `/management-requests`, data);
+export const withdrawAgencyManagementRequest = (agencyId: number, requestId: number) => api.create(AG(agencyId) + `/management-requests/${requestId}/withdraw`, {});
+export const endAgencyManagement = (agencyId: number, companyId: number, reason: string) => api.create(AG(agencyId) + `/managed/${companyId}/end`, { reason });
+// F1d (root): pedidos de gestão com a situação de faturação, e terminar uma relação.
+export const getAdminManagementRequests = (status?: string) => api.get(url.GET_ADMIN + `/management-requests`, status ? { status } : undefined);
+export const endAdminCompanyManagement = (companyId: number, reason: string) => api.create(url.GET_ADMIN + `/companies/${companyId}/management/end`, { reason });
 export const inviteFirstAdmin = (companyId: number, data: { name: string; email: string }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/management/first-admin`, data);
 // Root: agências e agência gestora de cada empresa (com o histórico da relação).

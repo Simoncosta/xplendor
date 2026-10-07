@@ -171,6 +171,20 @@ class ManagementRequestService
         return $due->count();
     }
 
+    /** Dias depois do fim (expirado ou retirado) em que se apaga o NIPC ou email de um pedido sem empresa. */
+    public const SCRUB_AFTER_DAYS = 30;
+
+    /** Job diário: apaga o NIPC ou email dos pedidos sem empresa correspondente, 30 dias depois do fim. */
+    public function scrubUnmatched(): int
+    {
+        $limit = now()->subDays(self::SCRUB_AFTER_DAYS);
+
+        return ManagementRequest::whereNull('managed_company_id')->whereNotNull('identifier')
+            ->where(fn ($q) => $q->where(fn ($e) => $e->where('status', ManagementRequest::EXPIRED)->where('expires_at', '<=', $limit))
+                ->orWhere(fn ($w) => $w->where('status', ManagementRequest::WITHDRAWN)->where('withdrawn_at', '<=', $limit)))
+            ->update(['identifier' => null, 'identifier_scrubbed_at' => now()]);
+    }
+
     // ── Apresentação ─────────────────────────────────────────────────────────
 
     /** Para a agência: nunca diz se a empresa existe (só o nome depois de aceite). */
@@ -180,7 +194,8 @@ class ManagementRequestService
         $status = $r->status === ManagementRequest::PENDING && ! $r->isOpen() ? ManagementRequest::EXPIRED : $r->status;
 
         return [
-            'id' => $r->id, 'identifier_type' => $r->identifier_type, 'identifier' => $r->identifier, 'message' => $r->message,
+            'id' => $r->id, 'identifier_type' => $r->identifier_type, 'identifier' => $r->identifier,
+            'identifier_scrubbed' => $r->identifier_scrubbed_at !== null, 'message' => $r->message,
             'status' => $status, 'requested_by' => $r->requester?->name, 'requested_at' => optional($r->created_at)->toIso8601String(),
             'expires_at' => optional($r->expires_at)->toIso8601String(), 'responded_at' => optional($r->responded_at)->toIso8601String(),
             'decline_reason' => $status === ManagementRequest::DECLINED ? $r->decline_reason : null,

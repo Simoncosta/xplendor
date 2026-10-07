@@ -11,6 +11,7 @@ import ActionsMenu from 'Components/Common/ActionsMenu';
 import CompanyUsersModal from './components/CompanyUsersModal';
 import CompanyEditModal from './components/CompanyEditModal';
 import CompanyRequestsModal from './components/CompanyRequestsModal';
+import ManagementRequestsAdminModal from './components/ManagementRequestsAdminModal';
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
@@ -53,6 +54,12 @@ const CompanyList = () => {
         getAdminCompanyRequests('pending').then((r: any) => setPendingRequests(Number(r?.data?.pending_count ?? 0))).catch(() => setPendingRequests(0));
     }, []);
     useEffect(() => { loadPending(); }, [loadPending]);
+    // Pedidos de gestão aceites, com a situação de faturação (?gestao=1 vem do sino e do email).
+    const [mgmtOpen, setMgmtOpen] = useState(searchParams.get('gestao') === '1');
+    const closeMgmt = () => {
+        setMgmtOpen(false);
+        if (searchParams.has('gestao')) setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('gestao'); return n; }, { replace: true });
+    };
     const closeRequests = () => {
         setRequestsOpen(false);
         if (searchParams.has('pedidos')) setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('pedidos'); return n; }, { replace: true });
@@ -186,10 +193,13 @@ const CompanyList = () => {
             <div className="page-content">
                 <Container fluid>
                     <PageHeader title="Empresas" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                        description="As empresas da plataforma, as agências e os pedidos de nova empresa gerida."
+                        description="As empresas da plataforma, as agências, os pedidos de nova empresa gerida e os pedidos de gestão."
                         actions={<>
                             <Button color="outline-primary" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
-                                <i className="ri-inbox-line align-bottom me-1" />Pedidos{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
+                                <i className="ri-inbox-line align-bottom me-1" />Pedidos de empresa nova{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
+                            </Button>
+                            <Button color="outline-primary" onClick={() => setMgmtOpen(true)} data-testid="management-requests-button">
+                                <i className="ri-links-line align-bottom me-1" />Pedidos de gestão
                             </Button>
                             <Button color="primary" onClick={() => setEditing(null)}>
                                 <i className="ri-add-line align-bottom me-1" />Nova empresa
@@ -234,6 +244,8 @@ const CompanyList = () => {
                 onClose={() => setEditing(undefined)}
                 onSaved={refetch}
             />
+
+            <ManagementRequestsAdminModal isOpen={mgmtOpen} onClose={closeMgmt} onChanged={refetch} />
 
             <CompanyRequestsModal
                 isOpen={requestsOpen}

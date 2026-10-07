@@ -7,8 +7,12 @@ import PageHeader from "Components/Common/PageHeader";
 import ClientMark from "Components/Common/ClientMark";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import {
-    createAgencyCompanyRequest, getAgencyAssignments, getAgencyCompanyRequests, getAgencyPanel, getEditorialSectors, setAgencyAssignment,
+    createAgencyCompanyRequest, createAgencyManagementRequest, endAdminCompanyManagement, endAgencyManagement, getAgencyAssignments,
+    getAgencyCompanyRequests, getAgencyManagementRequests, getAgencyPanel, getEditorialSectors, setAgencyAssignment, withdrawAgencyManagementRequest,
 } from "helpers/laravel_helper";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import { confirmAction } from "helpers/swal";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { readAuthUser } from "helpers/impersonation";
 import XSelect from "pages/Editorial/XSelect";
@@ -28,7 +32,7 @@ type Req = {
 };
 type Member = { id: number; name: string; role: string };
 type Assignment = { company: Client; team_scope: "all" | "assigned"; member_ids: number[] };
-type Tab = "clientes" | "pedidos" | "atribuicoes";
+type Tab = "clientes" | "gestao" | "pedidos" | "atribuicoes";
 
 const STATUS: Record<Req["status"], { label: string; color: string }> = {
     pending: { label: "Por decidir", color: "warning" },
@@ -51,7 +55,7 @@ export default function AgencyPanelPage() {
     const isAgencyAdmin = !!wc?.isRoot || (user?.role === "admin" && !user?.impersonating);
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get("tab") as Tab | null;
-    const tab: Tab = tabParam === "pedidos" || (tabParam === "atribuicoes" && isAgencyAdmin) ? tabParam : "clientes";
+    const tab: Tab = tabParam === "pedidos" || tabParam === "gestao" || (tabParam === "atribuicoes" && isAgencyAdmin) ? tabParam : "clientes";
     const setTab = (t: Tab) => setSearchParams((prev) => { const n = new URLSearchParams(prev); n.set("tab", t); return n; }, { replace: true });
 
     if (!agencyId) {
@@ -63,7 +67,7 @@ export default function AgencyPanelPage() {
         );
     }
 
-    const tabs: [Tab, string, string][] = [["clientes", "Clientes", "ri-dashboard-line"], ["pedidos", "Pedidos de empresa", "ri-file-add-line"]];
+    const tabs: [Tab, string, string][] = [["clientes", "Clientes", "ri-dashboard-line"], ["gestao", "Pedidos de gestão", "ri-links-line"], ["pedidos", "Pedidos de empresa nova", "ri-file-add-line"]];
     if (isAgencyAdmin) tabs.push(["atribuicoes", "Atribuições", "ri-team-line"]);
 
     return (
@@ -77,8 +81,9 @@ export default function AgencyPanelPage() {
                     ))}
                 </Nav>
                 {tab === "clientes" && <ClientsTab agencyId={agencyId} />}
+                {tab === "gestao" && <ManagementTab agencyId={agencyId} />}
                 {tab === "pedidos" && <RequestsTab agencyId={agencyId} />}
-                {tab === "atribuicoes" && isAgencyAdmin && <AssignmentsTab agencyId={agencyId} />}
+                {tab === "atribuicoes" && isAgencyAdmin && <AssignmentsTab agencyId={agencyId} asRoot={!!wc?.isRoot} />}
             </Container>
         </div>
     );
@@ -260,14 +265,33 @@ function RequestsTab({ agencyId }: { agencyId: number }) {
     );
 }
 
-function AssignmentsTab({ agencyId }: { agencyId: number }) {
+function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolean }) {
     const [members, setMembers] = useState<Member[]>([]);
     const [rows, setRows] = useState<Assignment[] | null>(null);
     const [saving, setSaving] = useState(0);
+    const [ending, setEnding] = useState<Assignment | null>(null);
+    const [endReason, setEndReason] = useState("");
+    const [endBusy, setEndBusy] = useState(false);
 
-    useEffect(() => {
+    const loadRows = useCallback(() => {
         getAgencyAssignments(agencyId).then((r: any) => { setMembers(r?.data?.members ?? []); setRows(r?.data?.clients ?? []); }).catch(() => setRows([]));
     }, [agencyId]);
+    useEffect(() => { loadRows(); }, [loadRows]);
+
+    // Terminar a relação com um cliente: o acesso da agência é cortado de imediato; os dados ficam no cliente.
+    const endRelation = async () => {
+        if (!ending) return;
+        setEndBusy(true);
+        try {
+            if (asRoot) await endAdminCompanyManagement(ending.company.id, endReason.trim());
+            else await endAgencyManagement(agencyId, ending.company.id, endReason.trim());
+            toast.success(`Relação com ${ending.company.name} terminada. A agência deixou de ter acesso.`);
+            setEnding(null);
+            setEndReason("");
+            loadRows();
+        } catch (e: any) { toast.error(errorText(e, "Não foi possível terminar a relação.")); }
+        finally { setEndBusy(false); }
+    };
 
     const memberOptions = useMemo(() => members.filter((m) => m.role !== "admin").map((m) => ({ value: m.id, label: m.name })), [members]);
     const update = (companyId: number, patch: Partial<Assignment>) => setRows((list) => (list ?? []).map((r) => (r.company.id === companyId ? { ...r, ...patch } : r)));
@@ -286,7 +310,7 @@ function AssignmentsTab({ agencyId }: { agencyId: number }) {
         <Card>
             <CardHeader>
                 <h5 className="card-title mb-0">Atribuições</h5>
-                <small className="text-muted">Por omissão toda a equipa vê todos os clientes. Pode limitar um cliente a pessoas escolhidas: quem não está atribuído deixa de o ver em todo o lado. Os administradores da agência veem sempre todos.</small>
+                <small className="text-muted">Por omissão toda a equipa vê todos os clientes. Pode limitar um cliente a pessoas escolhidas: quem não está atribuído deixa de o ver em todo o lado. Os administradores da agência veem sempre todos. Para deixar de gerir um cliente, use "Terminar relação" no menu da linha.</small>
             </CardHeader>
             <CardBody>
                 {rows.length === 0 ? <p className="text-muted mb-0">A agência ainda não gere clientes.</p> : (
@@ -311,8 +335,11 @@ function AssignmentsTab({ agencyId }: { agencyId: number }) {
                                                 onChange={(v: any) => update(r.company.id, { member_ids: (v ?? []).map((o: any) => o.value) })} />
                                         ) : <span className="text-muted fs-13">Toda a equipa da agência vê este cliente.</span>}
                                     </Col>
-                                    <Col md={1} className="text-md-end">
+                                    <Col md={1} className="text-md-end d-flex justify-content-md-end gap-1">
                                         <Button color="outline-primary" size="sm" disabled={saving === r.company.id} onClick={() => save(r)}>{saving === r.company.id ? <Spinner size="sm" /> : "Guardar"}</Button>
+                                        <ActionsMenu size="sm" label={`Mais ações: ${r.company.name}`} items={[
+                                            { label: "Terminar relação", icon: "ri-link-unlink", danger: true, onClick: () => { setEndReason(""); setEnding(r); } },
+                                        ]} />
                                     </Col>
                                 </Row>
                                 {r.team_scope === "assigned" && r.member_ids.length === 0 && (
@@ -323,6 +350,150 @@ function AssignmentsTab({ agencyId }: { agencyId: number }) {
                     </div>
                 )}
             </CardBody>
+
+            <Modal isOpen={!!ending} toggle={() => !endBusy && setEnding(null)} centered>
+                <ModalHeader toggle={() => !endBusy && setEnding(null)}>Terminar a relação com {ending?.company.name}?</ModalHeader>
+                <ModalBody>
+                    <p className="mb-2">A agência deixa de ter acesso a este cliente <strong>de imediato</strong>. Os dados ficam no cliente; os administradores dele são avisados.</p>
+                    <Label for="end-client-reason" className="mb-1">Motivo</Label>
+                    <Input id="end-client-reason" type="textarea" rows={2} maxLength={500} value={endReason} onChange={(e) => setEndReason(e.target.value)} />
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" disabled={endBusy} onClick={() => setEnding(null)}>Cancelar</Button>
+                    <ReasonButton color="danger" disabled={endBusy} onClick={endRelation} reason={endReason.trim().length < 3 ? "Indique o motivo." : null}>
+                        {endBusy ? <Spinner size="sm" /> : "Terminar relação"}
+                    </ReasonButton>
+                </ModalFooter>
+            </Modal>
         </Card>
+    );
+}
+
+type MgmtReq = {
+    id: number; identifier_type: "nipc" | "email"; identifier: string | null; identifier_scrubbed: boolean; message: string | null;
+    status: "pending" | "accepted" | "declined" | "withdrawn" | "expired"; requested_by: string | null; requested_at: string | null;
+    expires_at: string | null; responded_at: string | null; decline_reason: string | null; company: { id: number; name: string } | null;
+};
+const MGMT_STATUS: Record<MgmtReq["status"], { label: string; color: string }> = {
+    pending: { label: "Pendente", color: "warning" },
+    accepted: { label: "Aceite", color: "success" },
+    declined: { label: "Recusado", color: "danger" },
+    withdrawn: { label: "Retirado", color: "secondary" },
+    expired: { label: "Expirado", color: "secondary" },
+};
+const emptyMgmt = { by: "nipc" as "nipc" | "email", nipc: "", email: "", message: "", authorization_declared: false };
+
+/** Pedir a gestão de uma empresa que já existe na XPLENDOR, e o estado dos pedidos (retirar quando pendente). */
+function ManagementTab({ agencyId }: { agencyId: number }) {
+    const [list, setList] = useState<MgmtReq[] | null>(null);
+    const [canRequest, setCanRequest] = useState(false);
+    const [form, setForm] = useState(emptyMgmt);
+    const [busy, setBusy] = useState(false);
+
+    const load = useCallback(() => {
+        getAgencyManagementRequests(agencyId).then((r: any) => { setList(r?.data?.requests ?? []); setCanRequest(!!r?.data?.can_request); }).catch(() => setList([]));
+    }, [agencyId]);
+    useEffect(() => { load(); }, [load]);
+
+    const value = form.by === "nipc" ? form.nipc.replace(/\D/g, "") : form.email.trim();
+    const missing = form.by === "nipc" ? (value.length !== 9 ? "Indique o NIPC (9 dígitos)." : "") : (!/^\S+@\S+\.\S+$/.test(value) ? "Indique o email de um administrador da empresa." : "");
+    const reason = missing || (!form.authorization_declared ? "Confirme que tem autorização do cliente." : null);
+    const submit = async () => {
+        setBusy(true);
+        try {
+            const r: any = await createAgencyManagementRequest(agencyId, {
+                ...(form.by === "nipc" ? { nipc: value } : { email: value }), message: form.message.trim() || undefined, authorization_declared: true,
+            });
+            toast.success(r?.message ?? "Pedido enviado.");
+            setForm(emptyMgmt);
+            load();
+        } catch (e: any) { toast.error(errorText(e, "Não foi possível enviar o pedido.")); }
+        finally { setBusy(false); }
+    };
+    const withdraw = async (r: MgmtReq) => {
+        const ok = await confirmAction({ title: "Retirar este pedido de gestão?", text: "A empresa deixa de o poder aceitar.", confirmText: "Retirar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
+        try { await withdrawAgencyManagementRequest(agencyId, r.id); toast.success("Pedido retirado."); load(); }
+        catch (e: any) { toast.error(errorText(e, "Não foi possível retirar o pedido.")); }
+    };
+
+    if (list === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
+
+    return (
+        <Row className="g-3">
+            {canRequest && (
+                <Col xl={4}>
+                    <Card className="h-100" data-testid="management-request-form">
+                        <CardHeader>
+                            <h5 className="card-title mb-0">Pedir gestão de uma empresa</h5>
+                            <small className="text-muted">Para uma empresa que já usa a XPLENDOR. Os administradores dela aceitam ou recusam na app.</small>
+                        </CardHeader>
+                        <CardBody>
+                            <div className="mb-3"><div className="xp-seg" role="tablist" aria-label="Identificar a empresa por">
+                                <button type="button" role="tab" aria-selected={form.by === "nipc"} className={form.by === "nipc" ? "on" : ""} onClick={() => setForm({ ...form, by: "nipc" })}>NIPC</button>
+                                <button type="button" role="tab" aria-selected={form.by === "email"} className={form.by === "email" ? "on" : ""} onClick={() => setForm({ ...form, by: "email" })}>Email de um administrador</button>
+                            </div></div>
+                            {form.by === "nipc" ? (
+                                <><Label for="mgmt-nipc" className="mb-1">NIPC da empresa</Label>
+                                    <Input id="mgmt-nipc" inputMode="numeric" maxLength={11} value={form.nipc} onChange={(e) => setForm({ ...form, nipc: e.target.value })} className="mb-3" /></>
+                            ) : (
+                                <><Label for="mgmt-email" className="mb-1">Email de um administrador da empresa</Label>
+                                    <Input id="mgmt-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mb-3" /></>
+                            )}
+                            <Label for="mgmt-message" className="mb-1">Mensagem <span className="text-muted fw-normal">(opcional; a empresa vê-a)</span></Label>
+                            <Input id="mgmt-message" type="textarea" rows={3} maxLength={2000} value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} className="mb-3" />
+                            <div className="form-check mb-3">
+                                <Input id="mgmt-auth" type="checkbox" className="form-check-input" checked={form.authorization_declared} onChange={(e) => setForm({ ...form, authorization_declared: e.target.checked })} />
+                                <Label for="mgmt-auth" className="form-check-label fs-13">Declaro que tenho autorização do cliente para o gerir na XPLENDOR.</Label>
+                            </div>
+                            <ReasonButton color="primary" disabled={busy} onClick={submit} reason={reason}>
+                                {busy ? <Spinner size="sm" /> : "Enviar pedido"}
+                            </ReasonButton>
+                            <p className="text-muted fs-12 mt-3 mb-0">Por privacidade, a resposta é sempre a mesma: só sabe se a empresa existe quando os administradores dela responderem.</p>
+                        </CardBody>
+                    </Card>
+                </Col>
+            )}
+            <Col xl={canRequest ? 8 : 12}>
+                <Card className="h-100">
+                    <CardHeader>
+                        <h5 className="card-title mb-0">Pedidos de gestão</h5>
+                        <small className="text-muted">Os pedidos expiram ao fim de 14 dias sem resposta.</small>
+                    </CardHeader>
+                    <CardBody>
+                        {list.length === 0 ? <p className="text-muted mb-0">Ainda não há pedidos de gestão.</p> : (
+                            <div className="table-responsive">
+                                <Table className="align-middle mb-0" data-testid="management-requests">
+                                    <thead className="table-light"><tr><th>Empresa</th><th>Pedido</th><th>Estado</th><th /></tr></thead>
+                                    <tbody>
+                                        {list.map((r) => (
+                                            <tr key={r.id}>
+                                                <td>
+                                                    {r.company ? <div className="fw-medium">{r.company.name}</div> : null}
+                                                    <div className={r.company ? "text-muted fs-12" : "fw-medium"}>
+                                                        {r.identifier_scrubbed ? <span className="text-muted">Dados apagados</span> : <>{r.identifier_type === "nipc" ? "NIPC" : "Email"}: {r.identifier}</>}
+                                                    </div>
+                                                </td>
+                                                <td className="text-nowrap">{fmtDate(r.requested_at)}<div className="text-muted fs-12">{r.requested_by}</div></td>
+                                                <td>
+                                                    <Badge color={MGMT_STATUS[r.status].color} className="fw-normal">{MGMT_STATUS[r.status].label}</Badge>
+                                                    {r.status === "pending" && r.expires_at && <div className="text-muted fs-12">Expira a {fmtDate(r.expires_at)}</div>}
+                                                    {r.status === "declined" && r.decline_reason && <div className="fs-12 mt-1">Motivo: {r.decline_reason}</div>}
+                                                </td>
+                                                <td className="text-end">
+                                                    {r.status === "pending" && canRequest && (
+                                                        <ActionsMenu size="sm" label="Mais ações do pedido" items={[{ label: "Retirar pedido", icon: "ri-close-circle-line", danger: true, onClick: () => withdraw(r) }]} />
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </Table>
+                            </div>
+                        )}
+                    </CardBody>
+                </Card>
+            </Col>
+        </Row>
     );
 }

@@ -6,6 +6,9 @@ namespace Tests\Feature;
 
 use App\Jobs\CompanyArchiveJob;
 use App\Jobs\ExpireManagementRequestsJob;
+use App\Jobs\ScrubManagementRequestsJob;
+use App\Models\Collaborator;
+use App\Models\EditorialPost;
 use App\Mail\AgencyNoticeMail;
 use App\Models\Alert;
 use App\Models\Company;
@@ -20,6 +23,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -345,11 +349,35 @@ class AgencyManagementRequestTest extends TestCase
 
     public function test_a_company_without_admin_is_archived_its_agency_connections_disconnected_and_deleted_after_90_days(): void
     {
-        $orphan = $this->company('Criada pela agência', null);
-        $orphan->forceFill(['email' => 'geral@orfa.pt'])->save();
+        foreach (['public', 'local', 'media'] as $disk) {
+            Storage::fake($disk);
+        }
+        $orphan = $this->company('Criada pela agência', null, '504444444');
+        $orphan->forceFill(['email' => 'geral@orfa.pt', 'phone' => '210000000', 'logo_path' => "company_{$orphan->id}/logo/x.webp"])->save();
         CompanyManagement::create(['agency_company_id' => $this->agency->id, 'managed_company_id' => $orphan->id, 'origin' => 'created_by_agency',
             'status' => 'active', 'active_key' => $orphan->id, 'team_scope' => 'all', 'requested_at' => now()]);
         CompanyIntegration::create(['company_id' => $orphan->id, 'platform' => 'meta', 'access_token' => 'tok', 'account_id' => 'act_2', 'status' => 'active']);
+
+        // Dados de trabalho e ficheiros (devem sair) e uma cobrança da XPLENDOR (deve ficar).
+        $post = EditorialPost::create(['company_id' => $orphan->id, 'publish_date' => now()->toDateString(), 'title' => 'Outono',
+            'format' => 'Imagem', 'channel' => 'social', 'stage' => 'production']);
+        DB::table('company_brand_profiles')->insert(['company_id' => $orphan->id, 'tone_of_voice' => 'Próximo', 'created_at' => now(), 'updated_at' => now()]);
+        Collaborator::create(['company_id' => $orphan->id, 'name' => 'Rui Lopes', 'role_title' => 'Comercial']);
+        $pendingUser = User::factory()->create(['company_id' => $orphan->id, 'role' => 'user']);
+        $pendingUser->createToken('t');
+        SocialConnection::create(['company_id' => $orphan->id, 'access_token' => 'tok3', 'status' => SocialConnection::STATUS_ACTIVE, 'connected_at' => now()]);
+        Storage::disk('public')->put("company_{$orphan->id}/logo/x.webp", 'logo');
+        Storage::disk('media')->put("company_{$orphan->id}/abc/original.png", 'img');
+        Storage::disk('local')->put("company_{$orphan->id}/document_templates/m.docx", 'doc');
+        Storage::disk('local')->put("charges/company_{$orphan->id}/fatura.pdf", '%PDF');
+        $category = DB::table('expense_categories')->insertGetId(['company_id' => $orphan->id, 'name' => 'XPLENDOR', 'created_at' => now(), 'updated_at' => now()]);
+        $otherCategory = DB::table('expense_categories')->insertGetId(['company_id' => $orphan->id, 'name' => 'Combustível', 'created_at' => now(), 'updated_at' => now()]);
+        $expense = DB::table('expenses')->insertGetId(['company_id' => $orphan->id, 'description' => 'Fatura XPLENDOR', 'amount' => 123, 'date' => now()->toDateString(),
+            'expense_category_id' => $category, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('expenses')->insert(['company_id' => $orphan->id, 'description' => 'Gasóleo', 'amount' => 50, 'date' => now()->toDateString(),
+            'expense_category_id' => $otherCategory, 'created_at' => now(), 'updated_at' => now()]);
+        $charge = DB::table('expense_charges')->insertGetId(['expense_id' => $expense, 'company_id' => $orphan->id, 'status' => 'open', 'due_date' => now()->toDateString(),
+            'invoice_path' => "charges/company_{$orphan->id}/fatura.pdf", 'token_hash' => str_repeat('b', 64), 'token_encrypted' => 'x', 'created_at' => now(), 'updated_at' => now()]);
 
         $this->as($this->agencyAdmin)->postJson("/api/v1/agencies/{$this->agency->id}/managed/{$orphan->id}/end", ['reason' => 'Cliente perdido.'])->assertOk();
         $orphan->refresh();
@@ -359,6 +387,7 @@ class AgencyManagementRequestTest extends TestCase
         $this->assertSame(['archived', 'disconnected'], [CompanyManagement::where('managed_company_id', $orphan->id)->value('data_outcome'),
             CompanyManagement::where('managed_company_id', $orphan->id)->value('connections_decision')]);
         Mail::assertQueued(AgencyNoticeMail::class, fn ($m) => $m->hasTo('geral@orfa.pt') && str_contains($m->title, 'arquivada'));
+        $this->assertTrue(EditorialPost::whereKey($post->id)->exists(), 'Durante o arquivo os dados ficam guardados.');
 
         $this->travel(84)->days();
         app(CompanyArchiveJob::class)->handle(app(\App\Services\Agency\CompanyArchiveService::class));
@@ -368,7 +397,57 @@ class AgencyManagementRequestTest extends TestCase
         $this->travel(7)->days();
         app(CompanyArchiveJob::class)->handle(app(\App\Services\Agency\CompanyArchiveService::class));
         $this->assertNull(Company::find($orphan->id), 'Apagada ao fim de 90 dias.');
-        $this->assertNotNull(Company::withTrashed()->find($orphan->id));
+
+        // Definitivo: dados de trabalho e ficheiros fora.
+        $this->assertFalse(EditorialPost::whereKey($post->id)->exists());
+        $this->assertSame(0, DB::table('company_brand_profiles')->where('company_id', $orphan->id)->count());
+        $this->assertSame(0, DB::table('collaborators')->where('company_id', $orphan->id)->count());
+        $this->assertSame(0, DB::table('users')->where('company_id', $orphan->id)->count(), 'Os utilizadores pendentes saem de vez.');
+        $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $pendingUser->id)->count());
+        $this->assertSame(0, DB::table('social_connections')->where('company_id', $orphan->id)->count());
+        $this->assertSame(0, DB::table('company_integrations')->where('company_id', $orphan->id)->count());
+        Storage::disk('public')->assertMissing("company_{$orphan->id}/logo/x.webp");
+        Storage::disk('media')->assertMissing("company_{$orphan->id}/abc/original.png");
+        Storage::disk('local')->assertMissing("company_{$orphan->id}/document_templates/m.docx");
+
+        // Ficam a cobrança, a despesa e a categoria a que está presa, a fatura e a identificação mínima.
+        $this->assertTrue(DB::table('expense_charges')->where('id', $charge)->exists());
+        $this->assertTrue(DB::table('expenses')->where('id', $expense)->exists());
+        $this->assertSame(1, DB::table('expenses')->where('company_id', $orphan->id)->count(), 'A despesa sem cobrança sai.');
+        $this->assertSame([$category], DB::table('expense_categories')->where('company_id', $orphan->id)->pluck('id')->all());
+        Storage::disk('local')->assertExists("charges/company_{$orphan->id}/fatura.pdf");
+        $row = Company::withTrashed()->find($orphan->id);
+        $this->assertSame(['504444444', 'Criada pela agência'], [$row->nipc, $row->fiscal_name]);
+        $this->assertNull($row->email);
+        $this->assertNull($row->phone);
+        $this->assertNull($row->logo_path);
+        $this->assertNotNull($row->purged_at);
+    }
+
+    public function test_the_identifier_of_a_request_without_a_company_is_erased_30_days_after_it_ends(): void
+    {
+        $this->ask(['nipc' => '599999999'])->assertOk();
+        $miss = $this->pending();
+        $this->ask(['nipc' => '501234567'])->assertOk();
+        $hit = $this->pending();
+        $this->ask(['email' => 'ninguem@exemplo.pt'])->assertOk();
+        $withdrawn = $this->pending();
+        $this->as($this->agencyAdmin)->postJson("/api/v1/agencies/{$this->agency->id}/management-requests/{$withdrawn->id}/withdraw")->assertOk();
+
+        $this->travel(15)->days();
+        (new ExpireManagementRequestsJob())->handle(app(ManagementRequestService::class));
+        (new ScrubManagementRequestsJob())->handle(app(ManagementRequestService::class));
+        $this->assertSame('599999999', $miss->fresh()->identifier, 'Ainda não passaram 30 dias depois de expirar.');
+
+        $this->travel(30)->days();
+        (new ScrubManagementRequestsJob())->handle(app(ManagementRequestService::class));
+        $this->assertNull($miss->fresh()->identifier);
+        $this->assertNotNull($miss->fresh()->identifier_scrubbed_at);
+        $this->assertNull($withdrawn->fresh()->identifier, 'Retirado há mais de 30 dias: também sai.');
+        $this->assertSame('501234567', $hit->fresh()->identifier, 'Pedido que chegou a uma empresa: fica como histórico.');
+        $row = collect($this->as($this->agencyAdmin)->getJson("/api/v1/agencies/{$this->agency->id}/management-requests")->json('data.requests'))->firstWhere('id', $miss->id);
+        $this->assertTrue($row['identifier_scrubbed']);
+        $this->assertNull($row['identifier']);
     }
 
     public function test_an_archived_company_leaves_the_archive_when_it_gains_an_admin_or_an_agency(): void

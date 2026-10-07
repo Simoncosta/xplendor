@@ -74,6 +74,7 @@ class Company extends Model
             'archived_at' => 'datetime',
             'archive_delete_at' => 'datetime',
             'archive_warned_at' => 'datetime',
+            'purged_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'agency_enabled_at' => 'datetime',
             'uses_vat' => 'boolean',
