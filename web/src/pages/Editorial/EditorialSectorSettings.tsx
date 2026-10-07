@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { getEditorialCalendar, getEditorialSectors, changeEditorialSector } from "helpers/laravel_helper";
 import WorkflowSettingsCard from "./WorkflowSettingsCard";
 import SectorChooser from "./SectorChooser";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * XPLENDOR — Linha Editorial (B3b): TROCA de ramo, self-service, nas configurações da
@@ -110,16 +111,17 @@ export default function EditorialSectorSettings({ companyId }: { companyId: numb
                     {pending && (
                         <>
                             <p className="mb-3">
-                                Vais mudar de <strong>{current.name}</strong> para <strong>{pending.name}</strong>. Isto é <strong>irreversível</strong>.
+                                A sua empresa vai mudar de <strong>{current.name}</strong> para <strong>{pending.name}</strong>. Esta troca é <strong>irreversível</strong>.
                             </p>
                             <ul className="list-unstyled vstack gap-2 mb-3">
-                                <li className="d-flex gap-2"><i className="ri-close-circle-line text-danger fs-5" /><span><strong>Fecha</strong> todos os meses que abriste.</span></li>
-                                <li className="d-flex gap-2"><i className="ri-close-circle-line text-danger fs-5" /><span><strong>Apaga</strong> as datas que escondeste.</span></li>
-                                <li className="d-flex gap-2"><i className="ri-checkbox-circle-line text-success fs-5" /><span>As tuas <strong>datas próprias</strong> (aniversário, etc.) <strong>mantêm-se</strong>.</span></li>
+                                <li className="d-flex gap-2"><i className="ri-close-circle-line text-danger fs-5" /><span><strong>Fecha</strong> todos os meses que foram abertos.</span></li>
+                                <li className="d-flex gap-2"><i className="ri-close-circle-line text-danger fs-5" /><span><strong>Apaga</strong> as datas que foram escondidas.</span></li>
+                                <li className="d-flex gap-2"><i className="ri-checkbox-circle-line text-success fs-5" /><span>As <strong>datas próprias</strong> da sua empresa (aniversário, etc.) <strong>mantêm-se</strong>.</span></li>
                                 <li className="d-flex gap-2"><i className="ri-arrow-right-circle-line text-primary fs-5" /><span>As datas do ramo <strong>{pending.name}</strong> passam a aparecer.</span></li>
                             </ul>
-                            <label className="form-label mb-1">Para confirmar, escreve <strong>confirmo</strong>:</label>
+                            <label className="form-label mb-1" htmlFor="sector-confirm">Para confirmar, escreva <strong>confirmo</strong>:</label>
                             <Input
+                                id="sector-confirm"
                                 value={confirmText}
                                 onChange={(e) => setConfirmText(e.target.value)}
                                 placeholder="confirmo"
@@ -132,9 +134,9 @@ export default function EditorialSectorSettings({ companyId }: { companyId: numb
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setPending(null)} disabled={saving}>Cancelar</Button>
-                    <Button color="danger" onClick={doChange} disabled={!confirmValid || saving}>
+                    <ReasonButton color="danger" onClick={doChange} disabled={saving} reason={!confirmValid ? "Escreva confirmo para continuar." : null}>
                         {saving ? <Spinner size="sm" /> : <><i className="ri-repeat-2-line me-1" />Trocar de ramo</>}
-                    </Button>
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
             {/* F3a: produção e aprovação (aprovação do cliente, revisão interna, aprovadores). */}

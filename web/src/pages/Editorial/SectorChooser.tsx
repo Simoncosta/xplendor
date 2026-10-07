@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardBody, Row, Col, Spinner } from "reactstrap";
 import { getEditorialSectors } from "helpers/laravel_helper";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * XPLENDOR — Linha Editorial: escolha do RAMO (setor-folha). Componente REUTILIZÁVEL
@@ -53,20 +54,20 @@ export default function SectorChooser({
                     <div className="avatar-md mx-auto mb-3">
                         <span className="avatar-title bg-primary-subtle text-primary rounded fs-24"><i className="ri-calendar-todo-line" /></span>
                     </div>
-                    <h5 className="mb-1">Escolhe o teu ramo</h5>
-                    <p className="text-muted mb-0">Isto define as datas editoriais do teu setor.</p>
+                    <h5 className="mb-1">Escolha o ramo da sua empresa</h5>
+                    <p className="text-muted mb-0">O ramo define as datas editoriais que aparecem no calendário da sua empresa.</p>
                 </div>
             )}
 
             {variant === "change" ? (
                 <div className="alert alert-danger d-flex gap-2 align-items-start" role="alert">
                     <i className="ri-error-warning-line fs-5" />
-                    <div><strong>Mudar de ramo é irreversível</strong> e recomeça o calendário. Vais confirmar no passo seguinte.</div>
+                    <div><strong>Mudar de ramo é irreversível</strong> e recomeça o calendário da sua empresa. A confirmação é pedida no passo seguinte.</div>
                 </div>
             ) : (
                 <div className="alert alert-warning d-flex gap-2 align-items-start" role="alert">
                     <i className="ri-alert-line fs-5" />
-                    <div>Podes mudar depois em <strong>Configurações</strong>, mas <strong>mudar de ramo recomeça o calendário</strong>. Escolhe com atenção.</div>
+                    <div>Pode mudar depois em <strong>Configurações</strong>, mas <strong>mudar de ramo recomeça o calendário</strong>. Escolha com atenção.</div>
                 </div>
             )}
 
@@ -104,13 +105,13 @@ export default function SectorChooser({
                     </Row>
 
                     <div className="text-center mt-4">
-                        <button className="btn btn-primary" disabled={!selected || busy} onClick={() => selected && onChoose(selected)}>
+                        <ReasonButton color="primary" disabled={busy} reason={!selected ? "Escolha um ramo." : null} onClick={() => selected && onChoose(selected)}>
                             {busy
-                                ? <><Spinner size="sm" className="me-1" /> A definir…</>
+                                ? <><Spinner size="sm" className="me-1" /> A definir</>
                                 : variant === "change"
                                     ? <><i className="ri-arrow-right-line me-1" /> Continuar</>
                                     : <><i className="ri-check-line me-1" /> Confirmar ramo</>}
-                        </button>
+                        </ReasonButton>
                     </div>
                 </>
             )}

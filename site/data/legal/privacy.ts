@@ -188,7 +188,7 @@ export const privacyPt: LegalContent = {
             "o orçamento (dados do cliente, serviços e valores): enquanto for necessário para a relação comercial e para as obrigações legais da XPLENDOR.",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 13 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 14 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
       ],
     },
     {
@@ -211,7 +211,7 @@ export const privacyPt: LegalContent = {
             "ficheiros das publicações: segundo as regras da Plataforma (os das versões substituídas são apagados aos 30 dias; os originais das publicações publicadas são guardados 12 meses).",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 13.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 14.",
       ],
     },
     {
@@ -240,7 +240,7 @@ export const privacyPt: LegalContent = {
             "o email de faturação e o interruptor dos lembretes: enquanto a conta do cliente estiver ativa.",
           ],
         },
-        "Pode pedir o acesso a estes dados nos termos da secção 13. Os documentos contabilísticos são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados nos termos da secção 14. Os documentos contabilísticos são conservados enquanto houver obrigação legal de os manter.",
       ],
     },
     {
@@ -268,24 +268,39 @@ export const privacyPt: LegalContent = {
         {
           list: [
             "alojamento da Plataforma: Hostinger (Hostinger International Ltd.), com os servidores em Paris, França (União Europeia);",
-            "inteligência artificial: OpenAI (OpenAI, L.L.C., Estados Unidos), como subcontratante, para gerar o que o utilizador pede na Plataforma (por exemplo, ideias de publicações, rascunhos de artigos, sugestões de criativos e do Perfil da Marca, descrições e análises de viaturas) e para ler as faturas de fornecedores que o cliente carrega. Recebe apenas o contexto necessário a cada pedido (por exemplo, o Perfil da Marca, a publicação, os dados da viatura ou a imagem da fatura); na análise de viaturas pode incluir métricas agregadas de público recebidas da Meta (faixas etárias e género), que não identificam pessoas. Nunca recebe tokens de acesso nem palavras-passe. Segundo os termos da API da OpenAI, estes dados não são usados para treinar os modelos;",
+            "inteligência artificial: Anthropic (Anthropic Ireland, Limited, Irlanda) e OpenAI (OpenAI Ireland Ltd., Irlanda), como subcontratantes, para gerar o que o utilizador pede na Plataforma (por exemplo, legendas, ideias de publicações, rascunhos de artigos, sugestões de criativos e do Perfil da Marca, descrições e análises de viaturas). Para cada uma destas funções, a XPLENDOR escolhe qual dos dois fornecedores é usado. A leitura das faturas de fornecedores que o cliente carrega é feita sempre pela OpenAI. Cada fornecedor recebe apenas o contexto necessário a cada pedido (por exemplo, o Perfil da Marca, a publicação e as suas imagens, os dados da viatura ou a imagem da fatura); na análise de viaturas pode incluir métricas agregadas de público recebidas da Meta (faixas etárias e género), que não identificam pessoas. Nunca recebe tokens de acesso nem palavras-passe. Segundo os termos atuais de cada fornecedor, estes dados não são usados para treinar os seus modelos. Os pedidos e as respostas são apagados pelos fornecedores no prazo de 30 dias, salvo quando a lei obrigue a conservá-los ou, no caso da Anthropic, quando um pedido seja assinalado por violar a sua política de utilização (até 2 anos). [CONFIRMAR: AS CONTAS DA API DA ANTHROPIC E DA OPENAI ESTÃO EM NOME DA ENTIDADE DA XPLENDOR, COM MORADA EM PORTUGAL, PARA QUE SE APLIQUEM AS ENTIDADES IRLANDESAS];",
             "envio do formulário de contacto deste site: Formspree;",
             "integrações que o próprio cliente ativa (por exemplo, Meta, Google Analytics, programas de faturação), que recebem apenas os pedidos necessários ao funcionamento dessas ligações.",
           ],
         },
-        "Quando algum prestador tratar dados fora do Espaço Económico Europeu, a transferência é feita com as garantias previstas no RGPD, como as cláusulas contratuais-tipo da Comissão Europeia.",
+        "A lista dos subcontratantes ulteriores de cada fornecedor de inteligência artificial está publicada por esse fornecedor: Anthropic em www.anthropic.com/subprocessors e OpenAI em platform.openai.com/subprocessors.",
+      ],
+    },
+    {
+      id: "transferencias",
+      title: "12. Transferências internacionais",
+      blocks: [
+        "A Plataforma e a sua base de dados estão alojadas na União Europeia (Paris, França). Alguns prestadores podem tratar dados fora do Espaço Económico Europeu (EEE):",
+        {
+          list: [
+            "Anthropic: o contrato é celebrado com a Anthropic Ireland, Limited. Os dados podem ser tratados fora do EEE, incluindo nos Estados Unidos, pela Anthropic e pelos seus subcontratantes ulteriores. A garantia aplicável são as cláusulas contratuais-tipo da Comissão Europeia (Decisão de Execução (UE) 2021/914, módulos dois e três), incorporadas no acordo de tratamento de dados da Anthropic, que faz parte dos seus termos comerciais.",
+            "OpenAI: o contrato é celebrado com a OpenAI Ireland Ltd. Quando esta transfere dados para outras empresas do grupo OpenAI ou para terceiros fora do EEE, incluindo nos Estados Unidos, fá-lo com base em cláusulas contratuais-tipo da Comissão Europeia (módulos dois e três) ou numa decisão de adequação da Comissão Europeia (artigo 45.º do RGPD), nos termos do acordo de tratamento de dados da OpenAI.",
+            "Formspree (formulário de contacto deste site): [CONFIRMAR LOCAL DE TRATAMENTO E GARANTIA APLICÁVEL].",
+          ],
+        },
+        "Para conhecer as garantias aplicáveis ou obter uma cópia, escreva para o contacto indicado na secção 1. [CONFIRMAR: DATA DE ACEITAÇÃO DOS ACORDOS DE TRATAMENTO DE DADOS DA ANTHROPIC E DA OPENAI E SE FOI FEITA UMA AVALIAÇÃO DE IMPACTO DAS TRANSFERÊNCIAS].",
       ],
     },
     {
       id: "seguranca",
-      title: "12. Segurança",
+      title: "13. Segurança",
       blocks: [
         "Os tokens de acesso a plataformas externas são guardados cifrados. A chave secreta da aplicação Meta existe apenas no servidor. O acesso à Plataforma é feito com autenticação e cada pedido é verificado para garantir que um utilizador só acede aos dados da sua própria empresa. As comunicações são feitas por ligação cifrada (HTTPS).",
       ],
     },
     {
       id: "direitos",
-      title: "13. Os seus direitos (RGPD)",
+      title: "14. Os seus direitos (RGPD)",
       blocks: [
         "Nos termos do Regulamento Geral sobre a Proteção de Dados, pode exercer, a qualquer momento:",
         {
@@ -304,7 +319,7 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "alteracoes",
-      title: "14. Alterações a esta política",
+      title: "15. Alterações a esta política",
       blocks: [
         "Esta política pode ser atualizada para refletir alterações na Plataforma ou na lei. A data da última atualização está no topo da página. Alterações relevantes são comunicadas aos clientes por email ou na Plataforma.",
       ],
@@ -490,7 +505,7 @@ export const privacyEn: LegalContent = {
             "the quote itself (customer data, services and amounts): for as long as needed for the business relationship and XPLENDOR's legal obligations.",
           ],
         },
-        "You can request access to or deletion of this data as described in section 13 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to or deletion of this data as described in section 14 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
       ],
     },
     {
@@ -513,7 +528,7 @@ export const privacyEn: LegalContent = {
             "post files: according to the Platform rules (files of replaced versions are deleted after 30 days; originals of published posts are kept for 12 months).",
           ],
         },
-        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 13.",
+        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 14.",
       ],
     },
     {
@@ -542,7 +557,7 @@ export const privacyEn: LegalContent = {
             "the billing email and the reminders setting: while the customer's account is active.",
           ],
         },
-        "You can request access to this data as described in section 13. Accounting records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to this data as described in section 14. Accounting records are kept for as long as there is a legal obligation to keep them.",
       ],
     },
     {
@@ -570,24 +585,39 @@ export const privacyEn: LegalContent = {
         {
           list: [
             "Platform hosting: Hostinger (Hostinger International Ltd.), with servers in Paris, France (European Union);",
-            "artificial intelligence: OpenAI (OpenAI, L.L.C., United States), as a processor, to generate what the user asks for on the Platform (for example post ideas, article drafts, creative and Brand Profile suggestions, vehicle descriptions and analyses) and to read the supplier invoices the customer uploads. It receives only the context needed for each request (for example the Brand Profile, the post, the vehicle data or the invoice image); vehicle analyses may include aggregated audience metrics received from Meta (age ranges and gender), which do not identify individuals. It never receives access tokens or passwords. Under the OpenAI API terms, this data is not used to train the models;",
+            "artificial intelligence: Anthropic (Anthropic Ireland, Limited, Ireland) and OpenAI (OpenAI Ireland Ltd., Ireland), as processors, to generate what the user asks for on the Platform (for example captions, post ideas, article drafts, creative and Brand Profile suggestions, vehicle descriptions and analyses). For each of these functions, XPLENDOR chooses which of the two providers is used. Reading the supplier invoices the customer uploads is always done by OpenAI. Each provider receives only the context needed for each request (for example the Brand Profile, the post and its images, the vehicle data or the invoice image); vehicle analyses may include aggregated audience metrics received from Meta (age ranges and gender), which do not identify individuals. It never receives access tokens or passwords. Under each provider's current terms, this data is not used to train their models. Requests and responses are deleted by the providers within 30 days, unless the law requires them to be kept or, in Anthropic's case, a request is flagged as violating its usage policy (up to 2 years). [CONFIRMAR: AS CONTAS DA API DA ANTHROPIC E DA OPENAI ESTÃO EM NOME DA ENTIDADE DA XPLENDOR, COM MORADA EM PORTUGAL, PARA QUE SE APLIQUEM AS ENTIDADES IRLANDESAS];",
             "delivery of this website's contact form: Formspree;",
             "integrations the customer chooses to enable (for example Meta, Google Analytics, invoicing software), which receive only the requests needed for those connections to work.",
           ],
         },
-        "Where a provider processes data outside the European Economic Area, the transfer relies on the safeguards provided by the GDPR, such as the European Commission's standard contractual clauses.",
+        "Each artificial intelligence provider publishes the list of its sub-processors: Anthropic at www.anthropic.com/subprocessors and OpenAI at platform.openai.com/subprocessors.",
+      ],
+    },
+    {
+      id: "transfers",
+      title: "12. International transfers",
+      blocks: [
+        "The Platform and its database are hosted in the European Union (Paris, France). Some providers may process data outside the European Economic Area (EEA):",
+        {
+          list: [
+            "Anthropic: the contract is with Anthropic Ireland, Limited. Data may be processed outside the EEA, including in the United States, by Anthropic and its sub-processors. The applicable safeguard is the European Commission's standard contractual clauses (Implementing Decision (EU) 2021/914, modules two and three), incorporated in Anthropic's data processing addendum, which forms part of its commercial terms.",
+            "OpenAI: the contract is with OpenAI Ireland Ltd. Where it transfers data to other OpenAI group companies or to third parties outside the EEA, including in the United States, it does so on the basis of the European Commission's standard contractual clauses (modules two and three) or an adequacy decision of the European Commission (Article 45 GDPR), under OpenAI's data processing addendum.",
+            "Formspree (this website's contact form): [CONFIRMAR LOCAL DE TRATAMENTO E GARANTIA APLICÁVEL].",
+          ],
+        },
+        "To learn about the applicable safeguards or obtain a copy, write to the contact given in section 1. [CONFIRMAR: DATA DE ACEITAÇÃO DOS ACORDOS DE TRATAMENTO DE DADOS DA ANTHROPIC E DA OPENAI E SE FOI FEITA UMA AVALIAÇÃO DE IMPACTO DAS TRANSFERÊNCIAS].",
       ],
     },
     {
       id: "security",
-      title: "12. Security",
+      title: "13. Security",
       blocks: [
         "Access tokens for external platforms are stored encrypted. The Meta app secret exists only on the server. Access to the Platform requires authentication and every request is checked so that a user can only access the data of their own company. Communications use an encrypted connection (HTTPS).",
       ],
     },
     {
       id: "rights",
-      title: "13. Your rights (GDPR)",
+      title: "14. Your rights (GDPR)",
       blocks: [
         "Under the General Data Protection Regulation you may, at any time, exercise:",
         {
@@ -606,7 +636,7 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "changes",
-      title: "14. Changes to this policy",
+      title: "15. Changes to this policy",
       blocks: [
         "This policy may be updated to reflect changes to the Platform or to the law. The date of the last update is shown at the top of the page. Relevant changes are communicated to customers by email or in the Platform.",
       ],
