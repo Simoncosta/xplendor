@@ -6,8 +6,7 @@ import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
-import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi } from "helpers/laravel_helper";
-import { useModules } from "contexts/ModulesContext";
+import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi, getMyModules } from "helpers/laravel_helper";
 import { ICarmineApi } from "common/models/carmine-api.model";
 import { PingwinStatus } from "common/models/pingwin.model";
 import PingwinConnectModal from "./PingwinConnectModal";
@@ -115,7 +114,6 @@ const selectGoogleIntegration = createSelector(
 
 export default function IntegrationsSettings({ companyId: profileCompanyId, dataCarmine, onSubmitCarmine }: IntegrationsSettingsProps) {
     const dispatch: any = useDispatch();
-    const { has } = useModules();
     const [searchParams, setSearchParams] = useSearchParams();
     const [companyId, setCompanyId] = useState<number>(0);
     // Ligar e desligar os anúncios: admin da própria empresa (o root na sua), nunca em
@@ -133,9 +131,11 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     const metaIntegration = useSelector(selectMetaIntegration);
     const googleIntegration = useSelector(selectGoogleIntegration);
 
-    // Que módulos decidem o que é usável vs bloqueado (fail-open: root/loading → usável).
-    const canUsePingwin = has("pingwin");
-    const canUseCarmine = has("stock");
+    // Os módulos ATIVOS da empresa deste perfil decidem o que é usável e o que se pede ao
+    // servidor (sem pedidos que dão 403). Enquanto não se sabem, nada se pede.
+    const [companyModules, setCompanyModules] = useState<string[] | null>(null);
+    const canUsePingwin = !!companyModules?.includes("pingwin");
+    const canUseCarmine = !!companyModules?.includes("stock");
 
     // GA4 — estado local do cartão (input do property_id + email da Service Account).
     const [gaProperty, setGaProperty] = useState("");
@@ -246,6 +246,13 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
         fetchPingwin(companyId);
         fetchCover(companyId);
     }, [fetchIntegrations, fetchPingwin, fetchCover, profileCompanyId]);
+
+    useEffect(() => {
+        if (!companyId) return;
+        let alive = true;
+        getMyModules(companyId).then((r: any) => { if (alive) setCompanyModules(r?.data?.modules ?? []); }).catch(() => { if (alive) setCompanyModules([]); });
+        return () => { alive = false; };
+    }, [companyId]);
 
     // Retorno do OAuth Meta (backend redireciona para cá com ?meta=...). Mostra
     // o resultado e limpa o parâmetro do URL para não repetir ao refrescar.
@@ -629,11 +636,11 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                     {carmineConnected ? (
                                         <div className="vstack gap-2">
                                             {infoRow("Dealer", dataCarmine?.dealer_id || "—")}
-                                            <button className="btn btn-soft-primary btn-sm mt-1" onClick={() => setCarmineModalOpen(true)}>
+{!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm mt-1" onClick={() => setCarmineModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
-                                            </button>
+                                            </button>)}
                                         </div>
-                                    ) : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
                                         <button className="btn btn-primary w-100" onClick={() => setCarmineModalOpen(true)}
                                             style={{ background: "#DF3E23", borderColor: "#DF3E23" }}>
                                             <i className="ri-links-line me-2" /> Ligar Carmine
@@ -683,9 +690,9 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             <div className="p-2 rounded fs-12 d-flex align-items-center gap-2" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
                                                 <Spinner size="sm" /> A validar a ligação… serás notificado no sino quando terminar.
                                             </div>
-                                            <button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                            {!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
-                                            </button>
+                                            </button>)}
                                         </div>
                                     ) : pingwinError ? (
                                         <div className="vstack gap-2">
@@ -693,10 +700,10 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 <i className="ri-error-warning-line me-1" />
                                                 {pingwin?.error_message || "Não foi possível validar a ligação."}
                                             </div>
-                                            <button className="btn btn-primary btn-sm" onClick={() => setPingwinModalOpen(true)}
+                                            {!agencyMemberOnly && (<button className="btn btn-primary btn-sm" onClick={() => setPingwinModalOpen(true)}
                                                 style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
                                                 <i className="ri-settings-3-line me-1" /> Corrigir credenciais
-                                            </button>
+                                            </button>)}
                                         </div>
                                     ) : pingwinConnected ? (
                                         <div className="vstack gap-2">
@@ -722,11 +729,11 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 {pingwinSyncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar agora</>}
                                             </button>
                                             <div className="text-muted fs-11">As lojas gerem-se em <strong>Restauração › Lojas</strong> (menu lateral).</div>
-                                            <button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                            {!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
-                                            </button>
+                                            </button>)}
                                         </div>
-                                    ) : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
                                         <button className="btn btn-primary w-100" onClick={() => setPingwinModalOpen(true)}
                                             style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
                                             <i className="ri-links-line me-2" /> Ligar PingWin
@@ -775,11 +782,11 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                     checked={avgTicketEnabled} onChange={(e) => toggleAvgTicket(e.target.checked)} />
                                                 <label className="form-check-label fs-13" htmlFor="cm-avg-ticket">Ticket médio com CoverManager</label>
                                             </div>
-                                            <button className="btn btn-soft-danger btn-sm mt-1" onClick={disconnectCover}>
+{!agencyMemberOnly && (<button className="btn btn-soft-danger btn-sm mt-1" onClick={disconnectCover}>
                                                 <i className="ri-unlink me-1" /> Desligar
-                                            </button>
+                                            </button>)}
                                         </div>
-                                    ) : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
                                         <div className="vstack gap-2">
                                             <input type="password" className="form-control" placeholder="token CoverManager (apikey)"
                                                 value={coverToken} onChange={(e) => setCoverToken(e.target.value)} autoComplete="new-password" disabled={coverSaving} />

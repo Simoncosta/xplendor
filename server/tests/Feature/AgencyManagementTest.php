@@ -293,6 +293,23 @@ class AgencyManagementTest extends TestCase
         $this->as($clientUser)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertOk();
     }
 
+    public function test_only_agency_admins_change_pingwin_covermanager_and_carmine_credentials(): void
+    {
+        $this->manage();
+        foreach (['pingwin', 'stock'] as $k) {
+            CompanyModule::firstOrCreate(['company_id' => $this->client->id, 'module_key' => $k]);
+        }
+        $this->as($this->member)->postJson($this->url($this->client, '/integrations/covermanager/connect'), ['token' => 'cm-token'])->assertForbidden();
+        $this->as($this->member)->postJson($this->url($this->client, '/carmine-connection'), ['dealer_id' => 'D1'])->assertForbidden();
+        $this->as($this->member)->postJson($this->url($this->client, '/integrations/pingwin/connect'), ['username' => 'u', 'database' => 'd', 'password' => 'p'])->assertForbidden();
+
+        $this->as($this->agencyAdmin)->postJson($this->url($this->client, '/integrations/covermanager/connect'), ['token' => 'cm-token'])->assertOk();
+        $this->as($this->member)->deleteJson($this->url($this->client, '/integrations/covermanager'))->assertForbidden();
+        $this->as($this->agencyAdmin)->deleteJson($this->url($this->client, '/integrations/covermanager'))->assertOk();
+        // Ler continua aberto a quem trabalha no cliente.
+        $this->as($this->member)->getJson($this->url($this->client, '/integrations/covermanager'))->assertOk();
+    }
+
     public function test_the_agency_edits_the_basic_data_only_of_companies_it_created_and_without_a_client_admin(): void
     {
         $this->as($this->root)->patchJson("/api/v1/admin/companies/{$this->agency->id}/agency", ['enabled' => true])->assertOk();

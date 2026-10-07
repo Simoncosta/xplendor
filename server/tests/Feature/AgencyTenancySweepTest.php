@@ -96,7 +96,7 @@ class AgencyTenancySweepTest extends TestCase
         'DELETE api/v1/companies/{company}',
     ];
 
-    /** Ligar e desligar integrações: só os ADMINS da agência (um membro comum recebe 403). */
+    /** Ligar, alterar e desligar integrações e credenciais: só os ADMINS da agência (um membro comum recebe 403). */
     private const AGENCY_ADMIN_ONLY = [
         'GET api/v1/companies/{id}/integrations/social/auth-url',
         'GET api/v1/companies/{id}/integrations/social/candidates',
@@ -108,6 +108,12 @@ class AgencyTenancySweepTest extends TestCase
         'DELETE api/v1/companies/{id}/integrations/meta',
         'POST api/v1/companies/{id}/integrations/google/connect',
         'DELETE api/v1/companies/{id}/integrations/google',
+        'POST api/v1/companies/{id}/integrations/pingwin/connect',
+        'POST api/v1/companies/{id}/integrations/covermanager/connect',
+        'DELETE api/v1/companies/{id}/integrations/covermanager',
+        'POST api/v1/companies/{id}/carmine-connection',
+        'PUT api/v1/companies/{id}/carmine-connection/{carmine_connection}',
+        'DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}',
     ];
 
     private Company $agency;

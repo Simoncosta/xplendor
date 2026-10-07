@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Bus;
+use App\Services\CollaboratorService;
 
 /**
  * XPLENDOR — PingWin (POS), lado STAND. Cadastrar credenciais (senha cifrada),
@@ -46,6 +47,9 @@ class CompanyPingwinController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if (! CollaboratorService::agencyMayConfigureIntegrations(Auth::user(), $companyId)) {
+            return ApiResponse::error('Pela agência, só os administradores ligam, alteram ou desligam integrações.', 403);
         }
 
         // Só os 3 que VARIAM por restaurante. Tudo o resto (URLs, versão,
@@ -1732,6 +1736,9 @@ class CompanyPingwinController extends Controller
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
+        if (! CollaboratorService::agencyMayConfigureIntegrations(Auth::user(), $companyId)) {
+            return ApiResponse::error('Pela agência, só os administradores ligam, alteram ou desligam integrações.', 403);
+        }
 
         $data = $request->validate(['token' => ['required', 'string', 'max:255']]);
 
@@ -1748,6 +1755,9 @@ class CompanyPingwinController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if (! CollaboratorService::agencyMayConfigureIntegrations(Auth::user(), $companyId)) {
+            return ApiResponse::error('Pela agência, só os administradores ligam, alteram ou desligam integrações.', 403);
         }
 
         \App\Models\CompanyIntegration::where('company_id', $companyId)->where('platform', 'covermanager')

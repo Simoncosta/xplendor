@@ -12,6 +12,7 @@ use App\Services\Social\SocialConnectionService;
 use App\Support\MetaTokenExpiry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -36,6 +37,9 @@ class MetaTokenExpiryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Relógio fixo: o valor esperado e o gravado calculam "daqui a 60 dias" em momentos
+        // diferentes; sem isto, o teste falhava quando o segundo mudava entre os dois.
+        Carbon::setTestNow(Carbon::parse('2026-10-07 10:00:00.250', 'UTC'));
         Queue::fake();
         config([
             'services.meta.app_id' => '111', 'services.meta.app_secret' => 'segredo',
@@ -74,6 +78,12 @@ class MetaTokenExpiryTest extends TestCase
             'zero (não expira)' => [0],
             'ausente' => [null],
         ];
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function expected(mixed $case): ?int

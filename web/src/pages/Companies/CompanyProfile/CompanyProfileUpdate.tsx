@@ -17,6 +17,7 @@ import {
 import { COMPANY_CREATE_DEFAULTS } from "slices/companies/company.defaults";
 import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
 import { getHomeCompanyId } from "helpers/workingCompany";
+import { getMyModules } from "helpers/laravel_helper";
 
 const selectCompanyState = (state: any) => state.Company;
 const selectCarmineState = (state: any) => state.Carmine;
@@ -49,7 +50,10 @@ export default function CompanyProfileUpdate() {
 
     useEffect(() => {
         dispatch(showCompany(Number(id)));
-        dispatch(showCarmine({ companyId: Number(id), id: 0 }));
+        // A ligação Carmine só existe com o módulo de stock (sem ele, o pedido daria 403).
+        getMyModules(Number(id))
+            .then((r: any) => { if ((r?.data?.modules ?? []).includes("stock")) dispatch(showCarmine({ companyId: Number(id), id: 0 })); })
+            .catch(() => { /* sem módulos conhecidos: não pede a ligação */ });
     }, [dispatch, id]);
 
     if (loadingShow) return null;

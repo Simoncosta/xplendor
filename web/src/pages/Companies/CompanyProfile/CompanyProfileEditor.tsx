@@ -14,7 +14,7 @@ import ManagingAgencyCard from './components/ManagingAgencyCard';
 import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPanel';
 import IntegrationsSettings from './IntegrationsSettings';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
-import { useModules } from 'contexts/ModulesContext';
+import { getMyModules } from 'helpers/laravel_helper';
 import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
@@ -44,8 +44,16 @@ export default function CompanyProfileEditor({
     const isRoot = useMemo(() => {
         try { const a = JSON.parse(sessionStorage.getItem("authUser") || "null"); return a?.role === "root" && !a?.impersonating; } catch { return false; }
     }, []);
-    const { has } = useModules();
-    const showEditorial = has('linha_editorial'); // aba só para quem tem o módulo
+    // Aba só para quem tem o módulo, pelos módulos ATIVOS da empresa deste perfil (sem
+    // pedidos que dão 403 enquanto não se sabem).
+    const [profileModules, setProfileModules] = useState<string[] | null>(null);
+    useEffect(() => {
+        if (!companyId) return;
+        let alive = true;
+        getMyModules(companyId).then((r: any) => { if (alive) setProfileModules(r?.data?.modules ?? []); }).catch(() => { if (alive) setProfileModules([]); });
+        return () => { alive = false; };
+    }, [companyId]);
+    const showEditorial = !!profileModules?.includes('linha_editorial');
     // Carmine e PingWin passaram a viver como cartões na aba "Integrações"
     // (IntegrationsSettings), cada um gated pelo seu módulo — mostrado mas
     // BLOQUEADO a quem não o tem. O backend recusa na mesma (Fase 3).
