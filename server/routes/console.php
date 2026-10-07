@@ -220,3 +220,22 @@ Schedule::job(new \App\Jobs\ChargeRemindersJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Cobranças] Lembretes falharam no scheduler');
     });
+
+// Gestão por agências (F1d): pedidos de gestão expiram aos 14 dias (de hora a hora) e o
+// arquivo das empresas sem admin nem agência (diário, 04:10 em Lisboa: aviso e apagamento).
+Schedule::job(new \App\Jobs\ExpireManagementRequestsJob())
+    ->hourly()
+    ->name('management-requests-expire')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Gestão por agências] Expirar pedidos falhou no scheduler');
+    });
+
+Schedule::job(new \App\Jobs\CompanyArchiveJob())
+    ->dailyAt('04:10')
+    ->timezone('Europe/Lisbon')
+    ->name('company-archive')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Gestão por agências] Arquivo de empresas falhou no scheduler');
+    });

@@ -319,7 +319,12 @@ Route::prefix('v1')->group(function () {
                 // Agência gestora: ver (quem tem acesso), terminar (só o admin da empresa) e
                 // convidar o primeiro admin de uma empresa sem nenhum (só a agência ou o root).
                 Route::get('/management', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'show']);
+                // Pedidos de gestão recebidos: só os admins da própria empresa veem, aceitam e recusam.
+                Route::get('/management/requests', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'requests']);
                 Route::middleware('block_when_impersonating')->group(function () {
+                    Route::post('/management/requests/{requestId}/accept', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'accept'])->whereNumber('requestId');
+                    Route::post('/management/requests/{requestId}/decline', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'decline'])->whereNumber('requestId');
+                    Route::post('/management/connections', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'decideConnections']);
                     Route::delete('/management', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'end']);
                     Route::post('/management/first-admin', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'inviteFirstAdmin']);
                 });
@@ -567,6 +572,13 @@ Route::prefix('v1')->group(function () {
                 Route::put('/assignments/{companyId}', [$c, 'assign'])->whereNumber('companyId');
                 Route::get('/company-requests', [$c, 'requests']);
                 Route::post('/company-requests', [$c, 'storeRequest'])->middleware('block_when_impersonating');
+                // Pedir a gestão de uma empresa existente (F1d) e terminar a relação com um cliente.
+                Route::get('/management-requests', [$c, 'managementRequests']);
+                Route::middleware('block_when_impersonating')->group(function () use ($c) {
+                    Route::post('/management-requests', [$c, 'storeManagementRequest'])->middleware('throttle:20,1');
+                    Route::post('/management-requests/{requestId}/withdraw', [$c, 'withdrawManagementRequest'])->whereNumber('requestId');
+                    Route::post('/managed/{companyId}/end', [$c, 'endManagement'])->whereNumber('companyId');
+                });
             });
 
             Route::apiResource('/districts', DistrictController::class)->only(['index']);
@@ -674,6 +686,8 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies/{company}/management', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'show'])->whereNumber('company');
             Route::patch('/companies/{company}/agency', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'setAgency'])->whereNumber('company');
             Route::put('/companies/{company}/management', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'assign'])->whereNumber('company');
+            Route::post('/companies/{company}/management/end', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'end'])->whereNumber('company');
+            Route::get('/management-requests', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'requests']);
         });
     });
 });

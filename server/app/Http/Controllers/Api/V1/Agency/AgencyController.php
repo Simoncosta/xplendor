@@ -166,6 +166,64 @@ class AgencyController extends Controller
         return ApiResponse::success(ManagedCompanyRequestService::present($this->requests->request($agency, $request->user(), $data)), 'Pedido enviado à XPLENDOR.');
     }
 
+    // ── Pedidos de gestão de uma empresa existente (F1d) ─────────────────────
+
+    public function managementRequests(Request $request)
+    {
+        $agency = $this->agency($request);
+        $rows = \App\Models\ManagementRequest::where('agency_company_id', $agency->id)->orderByDesc('id')->limit(100)->get();
+
+        return ApiResponse::success([
+            'requests' => $rows->map(fn ($r) => \App\Services\Agency\ManagementRequestService::presentForAgency($r))->values(),
+            'can_request' => $this->isAgencyAdmin($request) && $request->user()->role !== 'root',
+        ], 'Pedidos de gestão.');
+    }
+
+    // POST { nipc | email, message, authorization_declared }: a resposta é sempre a mesma.
+    public function storeManagementRequest(Request $request, \App\Services\Agency\ManagementRequestService $service)
+    {
+        $agency = $this->agency($request);
+        abort_unless($this->isAgencyAdmin($request) && $request->user()->role !== 'root', 403, 'Só o administrador da agência pede a gestão de uma empresa.');
+        $data = $request->validate([
+            'nipc' => ['nullable', 'required_without:email', 'regex:/^\D*(\d\D*){9}$/'],
+            'email' => ['nullable', 'required_without:nipc', 'email', 'max:255'],
+            'message' => ['nullable', 'string', 'max:2000'],
+            'authorization_declared' => ['accepted'],
+        ], [
+            'nipc.required_without' => 'Indique o NIPC ou o email de um administrador da empresa.',
+            'email.required_without' => 'Indique o NIPC ou o email de um administrador da empresa.',
+            'nipc.regex' => 'O NIPC tem 9 dígitos.',
+            'authorization_declared.accepted' => 'Confirme que tem autorização do cliente para o gerir na XPLENDOR.',
+        ]);
+        if (! empty($data['nipc']) && ! empty($data['email'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['email' => ['Indique só o NIPC ou só o email.']]);
+        }
+        $r = $service->request($agency, $request->user(), $data);
+
+        return ApiResponse::success(\App\Services\Agency\ManagementRequestService::presentForAgency($r), \App\Services\Agency\ManagementRequestService::NEUTRAL_REPLY);
+    }
+
+    public function withdrawManagementRequest(Request $request, int $agencyId, int $requestId, \App\Services\Agency\ManagementRequestService $service)
+    {
+        $agency = $this->agency($request);
+        abort_unless($this->isAgencyAdmin($request), 403, 'Só o administrador da agência retira pedidos.');
+        $r = \App\Models\ManagementRequest::where('agency_company_id', $agency->id)->findOrFail($requestId);
+
+        return ApiResponse::success(\App\Services\Agency\ManagementRequestService::presentForAgency($service->withdraw($r)), 'Pedido retirado.');
+    }
+
+    // POST /agencies/{agency}/managed/{companyId}/end { reason }: a agência termina a relação com um cliente.
+    public function endManagement(Request $request, int $agencyId, int $companyId)
+    {
+        $agency = $this->agency($request);
+        abort_unless($this->isAgencyAdmin($request) && $request->user()->role !== 'root', 403, 'Só o administrador da agência termina a relação com um cliente.');
+        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']], ['reason.required' => 'Indique o motivo.']);
+        $company = \App\Models\Company::findOrFail($companyId);
+        $this->managements->endByAgency($agency, $company, $request->user(), $data['reason']);
+
+        return ApiResponse::success(null, 'Relação terminada. A agência deixou de ter acesso a esta empresa; os dados ficam na empresa.');
+    }
+
     private function isAgencyAdmin(Request $request): bool
     {
         $user = $request->user();

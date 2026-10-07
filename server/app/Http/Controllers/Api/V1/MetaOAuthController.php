@@ -38,6 +38,8 @@ class MetaOAuthController extends Controller
             $companyId,
             now()->addMinutes(15)
         );
+        // Quem iniciou a ligação (para saber depois se foi a agência gestora).
+        \Illuminate\Support\Facades\Cache::put(self::stateCacheKey($nonce) . ':user', $request->user()?->id, now()->addMinutes(15));
 
         $params = http_build_query([
             'client_id'     => config('services.meta.app_id'),
@@ -152,6 +154,7 @@ class MetaOAuthController extends Controller
         $integration->token_expires_at = $expiresAt;
         $integration->status           = 'active';
         $integration->error_message    = null;
+        $integration->connected_by_user_id = \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey($nonce) . ':user') ?: $integration->connected_by_user_id;
         $integration->save();
 
         // 5) Disparar já o BACKFILL de 90 dias (ingestão ao nível da conta). Sem
@@ -240,6 +243,7 @@ class MetaOAuthController extends Controller
                 'token_expires_at' => $expiresAt,
                 'status'           => 'active',
                 'error_message'    => null,
+                'connected_by_user_id' => $user->id,
             ]
         );
 

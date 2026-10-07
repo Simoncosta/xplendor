@@ -11,6 +11,7 @@ class CompanyIntegration extends Model
     protected $fillable = [
         'company_id',
         'platform',
+        'connected_by_user_id',
         'access_token',
         'account_id',
         'page_id',

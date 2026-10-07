@@ -53,6 +53,13 @@ class CheckCompanySubscription
             : null;
         $kind = $routeCompany !== null ? $this->access->kind($user, $routeCompany) : null;
 
+        // EXCEÇÃO: a gestão por agências da PRÓPRIA empresa (ver, aceitar ou recusar um pedido de
+        // gestão, terminar a relação) funciona sem acesso: aceitar uma agência é uma forma de o
+        // recuperar.
+        if ($kind === CompanyAccess::OWN && str_starts_with($route->uri(), 'api/v1/companies/{id}/management')) {
+            return $next($request);
+        }
+
         $companies = [$own];
         if ($kind === CompanyAccess::AGENCY) {
             $companies[] = Company::find((int) $routeCompany);

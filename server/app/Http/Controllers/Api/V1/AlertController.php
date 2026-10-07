@@ -23,7 +23,8 @@ class AlertController extends Controller
         $alerts = $this->alertService->getRecentForCompany(
             $companyId,
             filter_var($request->query('unread_only', false), FILTER_VALIDATE_BOOL),
-            (int) $request->query('limit', 20)
+            (int) $request->query('limit', 20),
+            $this->ownOnlyToo($companyId),
         );
 
         return ApiResponse::success($alerts, 'Alerts fetched successfully.');
@@ -36,7 +37,7 @@ class AlertController extends Controller
         }
 
         return ApiResponse::success([
-            'count' => $this->alertService->unreadCountForCompany($companyId),
+            'count' => $this->alertService->unreadCountForCompany($companyId, $this->ownOnlyToo($companyId)),
         ], 'Unread alerts count fetched successfully.');
     }
 
@@ -51,7 +52,7 @@ class AlertController extends Controller
             'ids.*' => 'integer',
         ]);
 
-        $updated = $this->alertService->markAsRead($companyId, $payload['ids'] ?? []);
+        $updated = $this->alertService->markAsRead($companyId, $payload['ids'] ?? [], $this->ownOnlyToo($companyId));
 
         return ApiResponse::success([
             'updated' => $updated,
@@ -67,6 +68,12 @@ class AlertController extends Controller
         return ApiResponse::success([
             'updated' => $this->alertService->markOneAsRead($companyId, $alertId),
         ], 'Alert marked as read successfully.');
+    }
+
+    /** Quem entra pela agência gestora não vê os avisos só da própria empresa (ex.: pedidos de outras agências). */
+    private function ownOnlyToo(int $companyId): bool
+    {
+        return ! app(\App\Services\Tenancy\CompanyAccess::class)->viaAgency(request()->user(), $companyId);
     }
 
     private function authorizeCompanyAccess(int $companyId): bool

@@ -16,10 +16,12 @@ class Alert extends Model
         'detail_path',
         'severity',
         'is_read',
+        'own_only',
     ];
 
     protected $casts = [
         'is_read' => 'boolean',
+        'own_only' => 'boolean',
     ];
 
     public function company(): BelongsTo

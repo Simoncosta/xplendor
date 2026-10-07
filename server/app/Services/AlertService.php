@@ -45,11 +45,13 @@ class AlertService
         return $createdAlerts;
     }
 
-    public function getRecentForCompany(int $companyId, bool $unreadOnly = false, int $limit = 20): Collection
+    /** $ownOnlyToo: incluir os avisos só da própria empresa (falso para quem entra pela agência). */
+    public function getRecentForCompany(int $companyId, bool $unreadOnly = false, int $limit = 20, bool $ownOnlyToo = true): Collection
     {
         $query = Alert::query()
             ->with(['car.brand:id,name', 'car.model:id,name'])
             ->where('company_id', $companyId)
+            ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
             ->latest();
 
         if ($unreadOnly) {
@@ -59,18 +61,20 @@ class AlertService
         return $query->limit($limit)->get()->map(fn (Alert $alert) => $this->transformAlert($alert));
     }
 
-    public function unreadCountForCompany(int $companyId): int
+    public function unreadCountForCompany(int $companyId, bool $ownOnlyToo = true): int
     {
         return Alert::query()
             ->where('company_id', $companyId)
+            ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
             ->where('is_read', false)
             ->count();
     }
 
-    public function markAsRead(int $companyId, array $ids = []): int
+    public function markAsRead(int $companyId, array $ids = [], bool $ownOnlyToo = true): int
     {
         $query = Alert::query()
             ->where('company_id', $companyId)
+            ->when(! $ownOnlyToo, fn ($q) => $q->where('own_only', false))
             ->where('is_read', false);
 
         if (!empty($ids)) {
@@ -112,8 +116,10 @@ class AlertService
         string $message,
         string $severity = 'medium',
         ?string $detailPath = null,
+        bool $ownOnly = false,
     ): Alert {
         return Alert::create([
+            'own_only' => $ownOnly,
             'company_id' => $companyId,
             'car_id' => null,
             'type' => in_array($type, ['urgent', 'warning', 'opportunity'], true) ? $type : 'warning',

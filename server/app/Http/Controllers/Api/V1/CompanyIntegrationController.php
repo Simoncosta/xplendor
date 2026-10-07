@@ -67,6 +67,7 @@ class CompanyIntegrationController extends Controller
                 'token_expires_at' => $expiresAt,
                 'status'           => 'active',
                 'error_message'    => null,
+                'connected_by_user_id' => $request->user()?->id,
             ]
         );
 
@@ -129,40 +130,9 @@ class CompanyIntegrationController extends Controller
             return ApiResponse::error('Para apagar os dados da Meta, confirme escrevendo ' . MetaDataPurger::CONFIRMATION . '.', 422);
         }
 
-        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
+        $result = app(\App\Services\Integrations\MetaAdsDisconnector::class)->disconnect($companyId, $purge);
 
-        $revoked = false;
-        $token = (string) ($integration?->access_token ?? '');
-        if ($token !== '') {
-            $result = $this->metaAds->revokePermissions($token);
-            $revoked = $result['revoked'];
-            if (! $revoked) {
-                Log::warning('Meta: não foi possível retirar a permissão ads_read ao desligar; desligado na mesma.', [
-                    'company_id' => $companyId,
-                    'status'     => $integration->status,
-                    'error'      => $result['error'],
-                ]);
-            }
-        }
-
-        if ($purge) {
-            $deleted = app(MetaDataPurger::class)->purge($companyId);
-            Log::info('Meta: dados apagados a pedido do cliente.', ['company_id' => $companyId, 'deleted' => $deleted]);
-
-            return ApiResponse::success(
-                ['permissions_revoked' => $revoked, 'purged' => true, 'deleted' => $deleted],
-                'Meta Ads desligado e dados da Meta apagados.'
-            );
-        }
-
-        if ($integration) {
-            CompanyIntegration::whereKey($integration->id)->update(['status' => 'revoked', 'access_token' => '']);
-        }
-
-        return ApiResponse::success(
-            ['permissions_revoked' => $revoked, 'purged' => false, 'deleted' => null],
-            'Meta Ads desconectado.'
-        );
+        return ApiResponse::success($result, $purge ? 'Meta Ads desligado e dados da Meta apagados.' : 'Meta Ads desconectado.');
     }
 
     /** Ligar e desligar os anúncios: admin da empresa, root ou admin da agência gestora, fora de impersonation. */

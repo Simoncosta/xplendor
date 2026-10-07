@@ -71,6 +71,9 @@ class Company extends Model
         return [
             'trial_starts_at' => 'datetime',
             'trial_ends_at' => 'datetime',
+            'archived_at' => 'datetime',
+            'archive_delete_at' => 'datetime',
+            'archive_warned_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
             'agency_enabled_at' => 'datetime',
             'uses_vat' => 'boolean',
@@ -130,6 +133,17 @@ class Company extends Model
         return $this->hasMany(CompanyManagement::class, 'managed_company_id');
     }
 
+    /** Subscrição própria paga e ativa: a própria empresa paga (a agência não paga por ela). */
+    public function paysOwnSubscription(): bool
+    {
+        return $this->subscription_status === self::SUBSCRIPTION_STATUS_ACTIVE;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
+    }
+
     public function isAgency(): bool
     {
         return $this->agency_enabled_at !== null;
@@ -159,7 +173,7 @@ class Company extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where(function ($q) {
+        return $query->whereNull('archived_at')->where(function ($q) {
             self::whereOwnAccess($q);
             // Empresa gerida: o acesso vem da agência (quem paga), nunca do período de teste dela.
             $q->orWhereHas('activeManagement.agency', fn ($a) => self::whereOwnAccess($a));
@@ -191,6 +205,10 @@ class Company extends Model
      */
     public function hasPlatformAccess(): bool
     {
+        // Arquivada (perdeu a agência e não tem admin): desativada até ser apagada ou sair do arquivo.
+        if ($this->archived_at !== null) {
+            return false;
+        }
         if ($this->hasOwnPlatformAccess()) {
             return true;
         }

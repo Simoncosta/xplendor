@@ -8,6 +8,8 @@ use App\Models\Company;
 use App\Models\CompanyManagement;
 use App\Models\CompanyModuleEvent;
 use App\Models\User;
+use App\Services\Agency\CompanyArchiveService;
+use App\Services\Agency\ManagementEndEffects;
 use App\Services\CompanyModuleService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -22,7 +24,10 @@ use Illuminate\Validation\ValidationException;
  */
 class CompanyManagementService
 {
-    public function __construct(private readonly CompanyModuleService $modules) {}
+    public function __construct(
+        private readonly CompanyModuleService $modules,
+        private readonly ManagementEndEffects $effects,
+    ) {}
 
     /**
      * Marca ou desmarca a agência. Desmarcar com clientes ativos é recusado. Marcar liga a
@@ -58,7 +63,7 @@ class CompanyManagementService
 
             if ($agencyId === null) {
                 if ($current) {
-                    $this->end($current, $actor, CompanyManagement::SIDE_PLATFORM, 'Gestão retirada pela plataforma.');
+                    $this->endRelation($current, $actor, CompanyManagement::SIDE_PLATFORM, 'Gestão retirada pela plataforma.');
                 }
 
                 return null;
@@ -82,7 +87,7 @@ class CompanyManagementService
                 return $current->fresh();
             }
             if ($current) {
-                $this->end($current, $actor, CompanyManagement::SIDE_PLATFORM, 'Agência gestora mudada pela plataforma.');
+                $this->closeForSwitch($current, $actor, CompanyManagement::SIDE_PLATFORM, 'Agência gestora mudada pela plataforma.');
             }
 
             $m = CompanyManagement::create([
@@ -93,21 +98,64 @@ class CompanyManagementService
                 'responded_by_user_id' => $actor->id, 'responded_at' => now(),
             ]);
             $this->syncMembers($m, $memberIds, $actor);
+            app(CompanyArchiveService::class)->release($company);
 
             return $m;
         });
     }
 
-    /** O admin da empresa gerida termina a relação. */
-    public function endByCompany(Company $company, User $actor, ?string $reason): void
+    /** O admin da empresa gerida termina a relação (e escolhe logo o que fazer às ligações da agência). */
+    public function endByCompany(Company $company, User $actor, ?string $reason, ?string $connections = null): void
     {
-        DB::transaction(function () use ($company, $actor, $reason) {
-            $m = CompanyManagement::active()->where('managed_company_id', $company->id)->lockForUpdate()->first();
-            if (! $m) {
-                throw ValidationException::withMessages(['management' => ['Esta empresa não tem agência gestora.']]);
+        $m = CompanyManagement::active()->where('managed_company_id', $company->id)->first();
+        if (! $m) {
+            throw ValidationException::withMessages(['management' => ['Esta empresa não tem agência gestora.']]);
+        }
+        $this->endRelation($m, $actor, CompanyManagement::SIDE_COMPANY, $reason ?: 'Relação terminada pela empresa.', $connections);
+    }
+
+    /** O admin da agência termina a relação com um cliente. */
+    public function endByAgency(Company $agency, Company $company, User $actor, string $reason): void
+    {
+        $m = CompanyManagement::active()->where('managed_company_id', $company->id)->where('agency_company_id', $agency->id)->first();
+        if (! $m) {
+            abort(404, 'Cliente não encontrado nesta agência.');
+        }
+        $this->endRelation($m, $actor, CompanyManagement::SIDE_AGENCY, $reason);
+    }
+
+    /** O root termina a relação de uma empresa com a agência dela. */
+    public function endByPlatform(Company $company, User $actor, string $reason): void
+    {
+        $m = CompanyManagement::active()->where('managed_company_id', $company->id)->first();
+        if (! $m) {
+            throw ValidationException::withMessages(['management' => ['Esta empresa não tem agência gestora.']]);
+        }
+        $this->endRelation($m, $actor, CompanyManagement::SIDE_PLATFORM, $reason);
+    }
+
+    /**
+     * Fim da relação: corta o acesso da agência de imediato (a relação deixa de estar ativa) e
+     * aplica os efeitos (período de teste, arquivo, ligações da agência, avisos).
+     */
+    public function endRelation(CompanyManagement $m, User $actor, string $side, string $reason, ?string $connections = null): void
+    {
+        $company = Company::find($m->managed_company_id);
+        $hadOwnAccess = (bool) $company?->hasOwnPlatformAccess();
+        DB::transaction(function () use ($m, $actor, $side, $reason) {
+            $locked = CompanyManagement::whereKey($m->id)->lockForUpdate()->first();
+            if (! $locked || ! $locked->isActive()) {
+                throw ValidationException::withMessages(['management' => ['Esta relação já não está ativa.']]);
             }
-            $this->end($m, $actor, CompanyManagement::SIDE_COMPANY, $reason ?: 'Relação terminada pela empresa.');
+            $this->end($locked, $actor, $side, $reason);
         });
+        $this->effects->apply($m->fresh(), $hadOwnAccess, $connections);
+    }
+
+    /** Termina a relação atual porque outra agência passa a gerir a empresa (sem período de teste nem arquivo). */
+    public function closeForSwitch(CompanyManagement $m, User $actor, string $side, string $reason): void
+    {
+        $this->end($m, $actor, $side, $reason);
     }
 
     /** Histórico das relações da empresa (mais recente primeiro), para os ecrãs. */
@@ -131,6 +179,7 @@ class CompanyManagementService
             'ended_at' => optional($m->ended_at)->toIso8601String(),
             'ended_by' => $names[$m->ended_by_user_id] ?? null,
             'ended_by_side' => $m->ended_by_side, 'end_reason' => $m->end_reason,
+            'data_outcome' => $m->data_outcome, 'connections_decision' => $m->connections_decision,
         ];
     }
 

@@ -16,6 +16,20 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        // Gestão por agências: uma empresa arquivada (sem admin nem agência) sai do arquivo
+        // quando ganha um administrador ativo.
+        static::saved(function (User $user) {
+            if ($user->role === 'admin' && $user->deactivated_at === null && $user->company_id) {
+                $company = Company::find($user->company_id);
+                if ($company?->archived_at !== null) {
+                    app(\App\Services\Agency\CompanyArchiveService::class)->release($company);
+                }
+            }
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *

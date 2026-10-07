@@ -29,7 +29,8 @@ use Tests\TestCase;
  *  · Estático: toda a rota /companies/{id}|{company} tem o tenant; toda a rota /admin tem
  *    o ensure_super_admin; qualquer outra rota da API está numa lista explícita.
  *  · Matriz: uma pessoa da agência sem relação, com relação pendente, recusada, retirada,
- *    terminada, expirada, de outra agência ou sem estar atribuída ao cliente recebe 403
+ *    terminada, expirada, com um pedido de gestão pendente, recusado, expirado ou retirado,
+ *    de outra agência ou sem estar atribuída ao cliente recebe 403
  *    em TODAS as rotas de empresa. Com relação ativa, nenhuma rota dá 403, salvo as do
  *    cliente (aprovar, acessos, decisões sobre orçamentos, dados da empresa, cobranças da
  *    XPLENDOR), que dão 403;
@@ -88,6 +89,11 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/editorial/posts/{postId}/approve',
         'POST api/v1/companies/{id}/editorial/posts/{postId}/request-changes',
         'DELETE api/v1/companies/{id}/management',
+        // Pedidos de gestão recebidos e a escolha sobre as ligações da agência: só os admins da empresa.
+        'GET api/v1/companies/{id}/management/requests',
+        'POST api/v1/companies/{id}/management/requests/{requestId}/accept',
+        'POST api/v1/companies/{id}/management/requests/{requestId}/decline',
+        'POST api/v1/companies/{id}/management/connections',
         'PATCH api/v1/companies/{id}/quotes/{quote}/decision',
         'POST api/v1/companies/{id}/support-tickets/quotes/approve',
         'PATCH api/v1/companies/{id}/support-tickets/{ticket}/quote-decision',
@@ -174,6 +180,15 @@ class AgencyTenancySweepTest extends TestCase
         $this->denied['sem relação'] = $this->unrelated;
         foreach (['pending', 'declined', 'withdrawn', 'ended', 'expired'] as $status) {
             $relation($this->agency, $this->denied[$status] = $make("Estado {$status}"), $status);
+        }
+        // Pedidos de gestão (F1d) sem relação ativa: nunca dão acesso.
+        foreach (['pending', 'declined', 'expired', 'withdrawn'] as $status) {
+            $target = $this->denied["pedido {$status}"] = $make("Pedido {$status}");
+            \App\Models\ManagementRequest::create([
+                'agency_company_id' => $this->agency->id, 'requested_by_user_id' => $this->agencyAdmin->id, 'identifier_type' => 'nipc',
+                'identifier' => (string) $target->nipc, 'status' => $status, 'managed_company_id' => $target->id,
+                'authorization_declared_at' => now(), 'expires_at' => $status === 'expired' ? now()->subDay() : now()->addDays(14),
+            ]);
         }
         $relation($this->otherAgency, $this->denied['de outra agência'] = $make('De outra agência'), 'active');
         $relation($this->agency, $this->denied['não atribuído'] = $make('Só atribuídos'), 'active', 'assigned');

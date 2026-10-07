@@ -77,6 +77,38 @@ class CompanyManagementController extends Controller
         return ApiResponse::success($this->payload($company->fresh()), $m ? 'Agência gestora definida.' : 'Gestão retirada.');
     }
 
+    // POST /admin/companies/{company}/management/end { reason }: o root termina a relação.
+    public function end(Request $request, int $companyId)
+    {
+        $this->ensureRoot();
+        $data = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']], ['reason.required' => 'Indique o motivo.']);
+        $company = Company::findOrFail($companyId);
+        $this->service->endByPlatform($company, $request->user(), $data['reason']);
+
+        return ApiResponse::success($this->payload($company->fresh()), 'Relação terminada. A agência deixou de ter acesso a esta empresa.');
+    }
+
+    // GET /admin/management-requests?status=accepted: pedidos de gestão, com a situação de faturação.
+    public function requests(Request $request)
+    {
+        $this->ensureRoot();
+        $data = $request->validate(['status' => ['nullable', Rule::in(['pending', 'accepted', 'declined', 'withdrawn', 'expired'])]]);
+        $rows = \App\Models\ManagementRequest::query()->when($data['status'] ?? null, fn ($q, $st) => $q->where('status', $st))
+            ->with(['agency:id,fiscal_name,trade_name', 'managed', 'requester:id,name'])->orderByDesc('id')->limit(200)->get();
+
+        return ApiResponse::success(['requests' => $rows->map(function ($r) {
+            $base = \App\Services\Agency\ManagementRequestService::presentForAgency($r);
+            $managed = $r->managed;
+
+            return $base + [
+                'agency' => ['id' => $r->agency_company_id, 'name' => $r->agency?->trade_name ?: $r->agency?->fiscal_name],
+                'matched_company' => $managed ? ['id' => $managed->id, 'name' => $managed->trade_name ?: $managed->fiscal_name] : null,
+                'billing' => $managed && $r->status === 'accepted' ? \App\Services\Agency\AgencyBilling::situation($managed, $r->responded_at) : null,
+                'relation_active' => $r->management_id ? CompanyManagement::whereKey($r->management_id)->where('status', CompanyManagement::ACTIVE)->exists() : false,
+            ];
+        })->values()], 'Pedidos de gestão.');
+    }
+
     private function payload(Company $company): array
     {
         $current = $company->activeManagement()->first();

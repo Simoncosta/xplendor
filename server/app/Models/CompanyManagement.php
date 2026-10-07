@@ -42,6 +42,7 @@ class CompanyManagement extends Model
         'requested_by_user_id', 'requested_at', 'request_message', 'agency_authorization_declared_at',
         'responded_by_user_id', 'responded_at', 'decline_reason', 'request_expires_at',
         'ended_by_user_id', 'ended_by_side', 'ended_at', 'end_reason', 'data_outcome', 'notes',
+        'connections_decision', 'connections_decided_at',
     ];
 
     protected $casts = [
@@ -50,6 +51,7 @@ class CompanyManagement extends Model
         'responded_at' => 'datetime',
         'request_expires_at' => 'datetime',
         'ended_at' => 'datetime',
+        'connections_decided_at' => 'datetime',
     ];
 
     public function agency(): BelongsTo

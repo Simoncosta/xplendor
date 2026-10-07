@@ -7,6 +7,11 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
+use App\Models\CompanyManagement;
+use App\Models\ManagementRequest;
+use App\Services\Agency\AgencyConnectionsService;
+use App\Services\Agency\ManagementEndEffects;
+use App\Services\Agency\ManagementRequestService;
 use App\Models\User;
 use App\Models\UserInvite;
 use App\Services\CollaboratorService;
@@ -36,6 +41,7 @@ class CompanyManagementController extends Controller
         $company = Company::findOrFail($companyId);
         $m = $company->activeManagement()->with('agency:id,fiscal_name,trade_name')->first();
         $user = $request->user();
+        $own = $this->isOwnAdmin($user, $companyId);
 
         return ApiResponse::success([
             'agency' => $m ? ['id' => $m->agency_company_id, 'name' => $m->agency?->trade_name ?: $m->agency?->fiscal_name] : null,
@@ -46,7 +52,72 @@ class CompanyManagementController extends Controller
             // O formulário do perfil fica só de leitura quando a pessoa não o pode gravar (regra do CompanyRequest).
             'can_edit_company' => $this->access->canEditCompany($user, $companyId),
             'can_edit_basics_only' => $this->access->agencyEditsBasics($user, $companyId),
+            // F1d (só para os admins da própria empresa): pedidos por responder, ligações da
+            // agência atual (para a escolha ao terminar) e a escolha pendente depois de um fim.
+            'pending_requests' => $own ? ManagementRequest::where('managed_company_id', $companyId)->where('status', ManagementRequest::PENDING)
+                ->where('expires_at', '>', now())->count() : 0,
+            'agency_connections' => $own && $m ? app(AgencyConnectionsService::class)->agencyMade($companyId, $m->agency_company_id) : [],
+            'connections_decision' => $own ? $this->pendingDecision($companyId) : null,
         ], 'Agência gestora.');
+    }
+
+    // ── Pedidos de gestão recebidos (só os admins da própria empresa) ────────
+
+    public function requests(Request $request, int $companyId)
+    {
+        $this->assertOwnAdmin($request, $companyId);
+        $rows = ManagementRequest::where('managed_company_id', $companyId)->where('status', ManagementRequest::PENDING)
+            ->where('expires_at', '>', now())->orderByDesc('id')->get();
+
+        return ApiResponse::success(['requests' => $rows->map(fn ($r) => ManagementRequestService::presentForCompany($r))->values()], 'Pedidos de gestão.');
+    }
+
+    public function accept(Request $request, int $companyId, int $requestId, ManagementRequestService $service)
+    {
+        $this->assertOwnAdmin($request, $companyId);
+        $service->accept(ManagementRequest::findOrFail($requestId), Company::findOrFail($companyId), $request->user());
+
+        return ApiResponse::success(null, 'Pedido aceite. A agência passou a gerir a sua empresa.');
+    }
+
+    public function decline(Request $request, int $companyId, int $requestId, ManagementRequestService $service)
+    {
+        $this->assertOwnAdmin($request, $companyId);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+        $service->decline(ManagementRequest::findOrFail($requestId), Company::findOrFail($companyId), $request->user(), $data['reason'] ?? null);
+
+        return ApiResponse::success(null, 'Pedido recusado.');
+    }
+
+    // POST { decision: keep|disconnect }: a escolha sobre as ligações deixadas pela agência.
+    public function decideConnections(Request $request, int $companyId, ManagementEndEffects $effects)
+    {
+        $this->assertOwnAdmin($request, $companyId);
+        $data = $request->validate(['decision' => ['required', 'in:keep,disconnect']]);
+        $m = CompanyManagement::where('managed_company_id', $companyId)->where('connections_decision', ManagementEndEffects::DECISION_PENDING)->latest('id')->first();
+        if (! $m) {
+            throw ValidationException::withMessages(['decision' => ['Não há ligações por decidir.']]);
+        }
+        $effects->decideConnections($m, $data['decision']);
+
+        return ApiResponse::success(null, $data['decision'] === 'disconnect' ? 'Ligações da agência desligadas.' : 'Ligações mantidas.');
+    }
+
+    private function pendingDecision(int $companyId): ?array
+    {
+        $m = CompanyManagement::where('managed_company_id', $companyId)->where('connections_decision', ManagementEndEffects::DECISION_PENDING)
+            ->with('agency:id,fiscal_name,trade_name')->latest('id')->first();
+        if (! $m) {
+            return null;
+        }
+
+        return ['agency' => $m->agency?->trade_name ?: $m->agency?->fiscal_name,
+            'connections' => app(AgencyConnectionsService::class)->agencyMade($companyId, $m->agency_company_id)];
+    }
+
+    private function assertOwnAdmin(Request $request, int $companyId): void
+    {
+        abort_unless($this->isOwnAdmin($request->user(), $companyId) && $request->user()->role === 'admin', 403, 'Só os administradores da empresa decidem sobre a gestão por agências.');
     }
 
     public function end(Request $request, int $companyId)
@@ -54,8 +125,8 @@ class CompanyManagementController extends Controller
         if (! $this->isOwnAdmin($request->user(), $companyId)) {
             return ApiResponse::error('Só o administrador da empresa pode terminar a relação com a agência.', 403);
         }
-        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
-        $this->service->endByCompany(Company::findOrFail($companyId), $request->user(), $data['reason'] ?? null);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500'], 'connections' => ['nullable', 'in:keep,disconnect']]);
+        $this->service->endByCompany(Company::findOrFail($companyId), $request->user(), $data['reason'] ?? null, $data['connections'] ?? null);
 
         return ApiResponse::success(null, 'Relação terminada. A agência deixou de ter acesso a esta empresa.');
     }
