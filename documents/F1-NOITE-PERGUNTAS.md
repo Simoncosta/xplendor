@@ -12,3 +12,25 @@ Perguntas que surgiram durante a construção da F1 (7 para 8 de outubro de 2026
 - O comando aceita `--locals=` com a lista explícita, para a sessão de amanhã.
 
 **Pergunta.** Na sessão de amanhã, se a deteção recusar, posso usar a lista da captura (`584955579139621602,62590524561075475,1649601157548,1649601157547,1649601156521,56161405118316322`)? E, para o job das 05:00, onde devem ficar estes IDs: na configuração da integração da empresa (são por cliente) ou noutra forma de os obter?
+
+## 2. Quem é "a equipa" que confirma as categorias?
+
+**Contexto.** O desenho diz que nada fica confirmado sem a equipa. Não diz se é só a equipa da XPLENDOR ou também o administrador do restaurante.
+
+**O que ficou feito.** Confirmar e pedir sugestões à IA seguem a regra das integrações: o administrador da empresa, um administrador da agência gestora ou o root. Os outros utilizadores só veem. Fica registado quem confirmou e quando.
+
+**Pergunta.** Deve ser só o root (equipa XPLENDOR)? Ou está bem assim?
+
+## 3. A página "Categorias das famílias" deve ter entrada no menu?
+
+**O que ficou feito.** A página existe em `/restauracao/categorias` (módulo PingWin) e abre-se pelo cartão "Dados para o marketing" (ligação "Ver as categorias"). Não acrescentei entrada no menu lateral.
+
+**Pergunta.** Quer uma entrada no menu, e em que grupo (Restauração ou Cadastros)?
+
+## 4. O job das 05:00 com várias empresas
+
+**Contexto.** O job corre as empresas em série, com um limite de 30 minutos. Uma noite completa da Yuko (janela, histórico com 10 pedidos e, ao domingo, o catálogo família a família) pode chegar a cerca de 20 minutos.
+
+**O que ficou feito.** Não mudei o limite. Com uma empresa chega; com mais empresas com o interruptor ligado, será preciso subir o limite ou separar o histórico num job próprio.
+
+**Pergunta.** Prefere separar já o histórico num job próprio, ou só quando houver a segunda empresa?
