@@ -53,10 +53,11 @@ return [
         'blog_ai_model' => env('BLOG_AI_MODEL', 'gpt-4o'),
         // Limite mensal de pedidos à IA por empresa, POR MODO (um modo não gasta o de outro).
         'ai_monthly_caps' => [
-            'blog'          => (int) env('BLOG_AI_MONTHLY_CAP', 30),           // rascunhos de artigos
-            'brand_profile' => (int) env('BRAND_PROFILE_AI_MONTHLY_CAP', 10),  // "Sugerir perfil"
-            'creative'      => (int) env('CREATIVE_AI_MONTHLY_CAP', 60),       // "Sugerir criativo"
-            'ideas'         => (int) env('IDEAS_AI_MONTHLY_CAP', 10),          // "Gerar ideias do mês"
+            'blog'          => (int) env('BLOG_AI_MONTHLY_CAP', 6),            // rascunhos de artigos
+            'brand_profile' => (int) env('BRAND_PROFILE_AI_MONTHLY_CAP', 3),   // "Sugerir perfil"
+            'creative'      => (int) env('CREATIVE_AI_MONTHLY_CAP', 40),       // "Sugerir criativo"
+            'ideas'         => (int) env('IDEAS_AI_MONTHLY_CAP', 3),           // "Gerar ideias do mês"
+            'caption'       => (int) env('CAPTION_AI_MONTHLY_CAP', 60),        // "Gerar legenda"
         ],
     ],
 

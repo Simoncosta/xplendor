@@ -29,6 +29,7 @@ use Tests\TestCase;
 class BlogAiTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\FakesAi;
 
     private Company $a;
     private Company $b;
@@ -39,7 +40,8 @@ class BlogAiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.openai.key' => 'test-key', 'services.openai.ai_monthly_caps.blog' => 30]);
+        $this->configureAi();
+        config(['services.openai.ai_monthly_caps.blog' => 30]);
 
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 999, 'created_at' => now(), 'updated_at' => now()]);
         $this->a = Company::create(['nipc' => '500020001', 'fiscal_name' => 'Quebom Lda', 'trade_name' => 'Quebom', 'plan_id' => $planId, 'subscription_status' => 'active']);
@@ -74,21 +76,18 @@ class BlogAiTest extends TestCase
             'review_notes' => ['Confirmar o prazo da garantia.'],
         ], $content);
 
-        Http::fake(['api.openai.com/*' => $status === 200
-            ? Http::response(['choices' => [['message' => ['content' => json_encode($content)]]], 'usage' => ['prompt_tokens' => 812, 'completion_tokens' => 1430, 'total_tokens' => 2242]])
-            : Http::response(['error' => ['message' => 'invalid']], $status)]);
+        Http::fake(['api.anthropic.com/*' => $status === 200
+            ? $this->anthropicResponse($content, ['input_tokens' => 812, 'output_tokens' => 1430])
+            : Http::response(['type' => 'error', 'error' => ['type' => 'invalid_request_error', 'message' => 'invalid']], $status)]);
     }
 
     private function sentUserPrompt(): string
     {
-        $prompt = null;
-        Http::assertSent(function (Request $r) use (&$prompt) {
-            $prompt = $r['messages'][1]['content'] ?? null;
+        // O modelo inicial: claude-opus-5-5 com esforço médio no blog (raciocínio sempre ligado, sem temperature).
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'api.anthropic.com') && $r['model'] === 'claude-opus-5-5'
+            && $r['output_config']['effort'] === 'medium' && ! isset($r['temperature']));
 
-            return str_contains($r->url(), 'api.openai.com') && $r['model'] === 'gpt-4o' && $r['response_format'] === ['type' => 'json_object'];
-        });
-
-        return (string) $prompt;
+        return $this->sentAiPrompt(false);
     }
 
     // ── Geração ──────────────────────────────────────────────────────────────
@@ -113,7 +112,8 @@ class BlogAiTest extends TestCase
 
         $row = AiRequest::find($draft['id']);
         $this->assertSame(['blog', 'topic'], [$row->mode, $row->variant]);
-        $this->assertSame(['blog-v1', 'gpt-4o', 812, 1430, 2242], [$row->prompt_version, $row->model, $row->prompt_tokens, $row->completion_tokens, $row->total_tokens]);
+        $this->assertSame(['blog-v1', 'claude-opus-5-5', 'anthropic', 812, 1430, 2242], [$row->prompt_version, $row->model, $row->provider, $row->prompt_tokens, $row->completion_tokens, $row->total_tokens]);
+        $this->assertEqualsWithDelta((812 * 4 + 1430 * 20) / 1_000_000, $row->cost_usd, 0.000001);
 
         $prompt = $this->sentUserPrompt();
         foreach (['Quebom', 'Próximo e técnico', 'barato', 'política', 'autocaravana inverno', AudienceSummaryService::NO_DATA_WARNING, "<<<DADOS\nPreparar a autocaravana para o inverno\nDADOS>>>"] as $expected) {
@@ -138,7 +138,7 @@ class BlogAiTest extends TestCase
         $this->assertSame(1, substr_count($prompt, '<<<DADOS'));
     }
 
-    public function test_openai_failure_marks_the_draft_as_error_and_does_not_count(): void
+    public function test_provider_failure_marks_the_draft_as_error_and_counts_because_the_provider_answered(): void
     {
         $this->fakeOpenAi([], 400);
 
@@ -147,7 +147,9 @@ class BlogAiTest extends TestCase
         $draft = AiRequest::find($id);
         $this->assertSame('error', $draft->status);
         $this->assertNotNull($draft->error_message);
-        $this->as($this->userA)->getJson($this->url($this->a, '/blog-ai/context'))->assertOk()->assertJsonPath('data.used', 0);
+        $this->assertSame(400, $draft->provider_status);
+        // Os erros com resposta do fornecedor contam para o limite.
+        $this->as($this->userA)->getJson($this->url($this->a, '/blog-ai/context'))->assertOk()->assertJsonPath('data.used', 1);
         Http::assertSentCount(1); // 4xx não se repete
     }
 

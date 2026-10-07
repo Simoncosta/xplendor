@@ -43,7 +43,7 @@ class MediaService
 
     public static function quotaBytes(): int
     {
-        return (int) config('media.company_quota_mb', 5120) * 1024 * 1024;
+        return (int) config('media.company_quota_mb', 3072) * 1024 * 1024;
     }
 
     // ── Envio em partes ──────────────────────────────────────────────────────
@@ -66,7 +66,9 @@ class MediaService
                 : 'Os vídeos podem ter até ' . intdiv($max, 1048576) . ' MB.']]);
         }
         if (self::usedBytes($companyId) + $size > self::quotaBytes()) {
-            throw ValidationException::withMessages(['file' => ['O espaço de media da empresa está cheio (' . intdiv(self::quotaBytes(), 1048576) . ' MB). Contacte a equipa XPLENDOR.']]);
+            $quota = self::quotaBytes();
+            $label = $quota >= 1073741824 && $quota % 1073741824 === 0 ? intdiv($quota, 1073741824) . ' GB' : intdiv($quota, 1048576) . ' MB';
+            throw ValidationException::withMessages(['file' => ["O espaço de media da empresa está cheio ({$label}). Contacte a equipa XPLENDOR."]]);
         }
 
         return MediaUpload::create([

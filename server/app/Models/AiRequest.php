@@ -10,9 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Pedido à IA (fila, registo e contador do limite mensal POR MODO). Nunca grava no
  * destino: o resultado é proposto no ecrã e o humano decide o que usa.
- *  · mode:    blog | brand_profile | creative | ideas;
+ *  · mode:    a função (blog | brand_profile | creative | ideas | caption | car_description | car_analysis);
  *  · variant: subtipo do modo (no blog: topic | from_post).
- * Guarda a versão do prompt, o modelo e os tokens de cada pedido.
+ * Guarda a versão do prompt, o fornecedor, o modelo e o esforço, os tokens (entrada, saída e
+ * raciocínio), o custo calculado e o resultado do verificador do português de Portugal.
  */
 class AiRequest extends Model
 {
@@ -22,7 +23,10 @@ class AiRequest extends Model
     public const MODE_BRAND_PROFILE = 'brand_profile';
     public const MODE_CREATIVE = 'creative';
     public const MODE_IDEAS = 'ideas';
-    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS];
+    public const MODE_CAPTION = 'caption';
+    public const MODE_CAR_DESCRIPTION = 'car_description';
+    public const MODE_CAR_ANALYSIS = 'car_analysis';
+    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS];
 
     /** Subtipos do modo blog. */
     public const VARIANT_TOPIC = 'topic';
@@ -37,6 +41,7 @@ class AiRequest extends Model
         'company_id', 'blog_id', 'editorial_post_id', 'user_id', 'mode', 'variant', 'status', 'input', 'context', 'result',
         'model', 'prompt_version', 'prompt_tokens', 'completion_tokens', 'total_tokens', 'error_message',
         'dismissed_at', 'stalled_logged_at',
+        'provider', 'effort', 'input_tokens', 'output_tokens', 'reasoning_tokens', 'cost_usd', 'provider_status', 'pt_issues', 'pt_retried', 'car_id',
     ];
 
     protected $casts = [
@@ -46,6 +51,13 @@ class AiRequest extends Model
         'prompt_tokens' => 'integer',
         'completion_tokens' => 'integer',
         'total_tokens' => 'integer',
+        'input_tokens' => 'integer',
+        'output_tokens' => 'integer',
+        'reasoning_tokens' => 'integer',
+        'cost_usd' => 'float',
+        'provider_status' => 'integer',
+        'pt_issues' => 'array',
+        'pt_retried' => 'boolean',
         'dismissed_at' => 'datetime',
         'stalled_logged_at' => 'datetime',
     ];

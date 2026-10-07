@@ -428,6 +428,11 @@ Route::prefix('v1')->group(function () {
                         ->whereNumber('postId')->middleware('throttle:20,1');
                     Route::get('/editorial/posts/{postId}/creative-suggestions/{suggestionId}', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'suggestion'])
                         ->whereNumber('postId')->whereNumber('suggestionId');
+                    // "Gerar legenda" (IA, com as imagens da versão atual): propostas, nunca gravadas.
+                    Route::post('/editorial/posts/{postId}/caption-suggestions', [\App\Http\Controllers\Api\V1\EditorialCaptionController::class, 'suggest'])
+                        ->whereNumber('postId')->middleware('throttle:20,1');
+                    Route::get('/editorial/posts/{postId}/caption-suggestions/{suggestionId}', [\App\Http\Controllers\Api\V1\EditorialCaptionController::class, 'suggestion'])
+                        ->whereNumber('postId')->whereNumber('suggestionId');
                     Route::get('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'show'])
                         ->whereNumber('postId');
                     Route::put('/editorial/posts/{postId}/creative', [\App\Http\Controllers\Api\V1\EditorialCreativeController::class, 'accept'])
@@ -602,6 +607,14 @@ Route::prefix('v1')->group(function () {
             Route::post('/creative-format-rules', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'store']);
             Route::put('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'update'])->whereNumber('ruleId');
             Route::delete('/creative-format-rules/{ruleId}', [\App\Http\Controllers\Api\V1\Admin\CreativeFormatRuleController::class, 'destroy'])->whereNumber('ruleId');
+            // Modelos de IA por função (o OCR não entra), histórico, custos e teste às cegas: só o root.
+            Route::get('/ai-models', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'index']);
+            Route::put('/ai-models/{function}', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'update'])->where('function', '[a-z_]+');
+            Route::post('/ai-models/apply-all', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'applyAll']);
+            Route::get('/ai-blind-tests', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'blindTests']);
+            Route::post('/ai-blind-tests', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'createBlindTest'])->middleware('throttle:10,1');
+            Route::get('/ai-blind-tests/{testId}', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'blindTest'])->whereNumber('testId');
+            Route::post('/ai-blind-tests/{testId}/cases/{caseId}/choice', [\App\Http\Controllers\Api\V1\Admin\AiModelsController::class, 'chooseBlindCase'])->whereNumber('testId')->whereNumber('caseId');
             // Contagens transversais para o dashboard root (users + carros da plataforma).
             Route::get('/platform/summary', [AdminController::class, 'platformSummary']);
 

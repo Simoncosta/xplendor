@@ -40,7 +40,7 @@ class AiRequestController extends Controller
             ->orderByDesc('id');
 
         match ($data['mode']) {
-            AiRequest::MODE_CREATIVE => $query->where('editorial_post_id', (int) ($data['editorial_post_id'] ?? 0)),
+            AiRequest::MODE_CREATIVE, AiRequest::MODE_CAPTION => $query->where('editorial_post_id', (int) ($data['editorial_post_id'] ?? 0)),
             // Artigo ainda por gravar: só os pedidos do próprio utilizador, sem artigo.
             AiRequest::MODE_BLOG => ! empty($data['blog_id'])
                 ? $query->where('blog_id', (int) $data['blog_id'])

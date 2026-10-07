@@ -35,9 +35,9 @@ class VehiclePromptBuilder
             ->count();
 
         $qualityNote = match (true) {
-            $missingCritical === 0 => 'Alta — contexto comercial completo',
-            $missingCritical <= 2 => 'Média — existem algumas lacunas, mas há base suficiente para diagnóstico',
-            default => 'Baixa — faltam sinais críticos, mantém análise conservadora',
+            $missingCritical === 0 => 'Alta: contexto comercial completo',
+            $missingCritical <= 2 => 'Média: existem algumas lacunas, mas há base suficiente para diagnóstico',
+            default => 'Baixa: faltam sinais críticos, mantém análise conservadora',
         };
 
         return [
@@ -269,9 +269,9 @@ PROMPT,
             ->count();
 
         $qualityNote = match (true) {
-            $missingCritical === 0 => 'Alta — contexto comercial e de procura suficientemente rico',
-            $missingCritical <= 2 => 'Média — existe base para diagnóstico, mas com algumas lacunas',
-            default => 'Baixa — faltam sinais críticos, mantém leitura prudente e sem extrapolar',
+            $missingCritical === 0 => 'Alta: contexto comercial e de procura suficientemente rico',
+            $missingCritical <= 2 => 'Média: existe base para diagnóstico, mas com algumas lacunas',
+            default => 'Baixa: faltam sinais críticos, mantém leitura prudente e sem extrapolar',
         };
 
         return [

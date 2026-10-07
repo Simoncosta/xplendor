@@ -12,7 +12,7 @@ const FAST_MS = 2000;
 const SLOW_MS = 15000;
 
 type Status = "queued" | "processing" | "done" | "error";
-export type AiPollable = { id: number; status: Status; stalled?: boolean; stalled_message?: string | null; error_message?: string | null };
+export type AiPollable = { id: number; status: Status; stalled?: boolean; stalled_message?: string | null; error_message?: string | null; pt_review?: boolean; pt_issues?: string[] };
 
 const pending = (s: Status | undefined) => s === "queued" || s === "processing";
 

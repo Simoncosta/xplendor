@@ -339,6 +339,7 @@ const Navdata = () => {
                     { id: "admin-service-catalog", label: "Catálogo de serviços", link: "/admin/service-catalog", parentId: "admin" },
                     { id: "admin-stock", label: "Stock global", link: "/admin/stock", parentId: "admin" },
                     { id: "admin-creative-format-rules", label: "Regras de formato", link: "/admin/creative-format-rules", parentId: "admin" },
+                    { id: "admin-ai-models", label: "Modelos de IA", link: "/admin/ai-models", parentId: "admin" },
                 ],
             },
         ] : []),
@@ -382,10 +383,10 @@ const Navdata = () => {
             if (it.id === "admin") {
                 // UMA só entrada de empresas: a CompanyList (/companies) com gestão
                 // (criar/editar/módulos/ativar-inativar) + o novo modal de utilizadores
-                // ("entrar como"). + Tickets + Orçamentos + Regras de formato; sem Stock global.
+                // ("entrar como"). + Tickets + Orçamentos + Regras de formato + Modelos de IA; sem Stock global.
                 acc.push({
                     ...it,
-                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-charges", "admin-creative-format-rules"].includes(s.id)),
+                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-charges", "admin-creative-format-rules", "admin-ai-models"].includes(s.id)),
                 });
                 return acc;
             }

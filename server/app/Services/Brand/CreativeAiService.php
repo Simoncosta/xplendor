@@ -13,7 +13,9 @@ use App\Models\EditorialPost;
 use App\Models\User;
 use App\Services\Ai\AiRequestQuota;
 use App\Services\Ai\AiText;
-use App\Services\Ai\OpenAiChat;
+use App\Services\Ai\AiFunctionSettings;
+use App\Services\Ai\AiGateway;
+use App\Services\Ai\AiPrompt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -32,12 +34,13 @@ class CreativeAiService
 
     public function __construct(
         private readonly CreativeFormatAdvisor $advisor,
-        private readonly OpenAiChat $openAi,
+        private readonly AiGateway $ai,
     ) {}
 
+    /** O modelo escolhido pelo root para esta função (Administração › Modelos de IA). */
     public static function model(): string
     {
-        return (string) config('services.openai.blog_ai_model', 'gpt-4o');
+        return AiFunctionSettings::for('creative')['model'];
     }
 
     public function request(Company $company, User $actor, int $postId): AiRequest
@@ -89,17 +92,12 @@ class CreativeAiService
             $company = Company::with('contentSector')->findOrFail($request->company_id);
 
             $context = $this->buildContext($company, $post);
-            $response = $this->openAi->call($this->messages($context), (string) $request->model, 2500, 0.6);
-            $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']), (string) $post->primaryNetwork(), $context['format']);
+            $ai = $this->ai->generate('creative', AiPrompt::fromMessages($this->messages($context)));
+            $result = $this->sanitizeResult((array) $ai->json, (string) $post->primaryNetwork(), $context['format']);
 
-            app(AiRequestLifecycle::class)->complete($request, [
-                'status'            => AiRequest::DONE,
+            app(AiRequestLifecycle::class)->complete($request, $ai->requestFields() + [
                 'context'           => $context,
                 'result'            => $result,
-                'prompt_tokens'     => $response['usage']['prompt_tokens'] ?? null,
-                'completion_tokens' => $response['usage']['completion_tokens'] ?? null,
-                'total_tokens'      => $response['usage']['total_tokens'] ?? null,
-                'error_message'     => null,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Criativo IA] Falhou', ['request_id' => $requestId, 'error' => mb_substr($e->getMessage(), 0, 300)]);

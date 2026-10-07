@@ -14,7 +14,9 @@ use App\Models\Municipality;
 use App\Models\User;
 use App\Services\Ai\AiRequestQuota;
 use App\Services\Ai\AiText;
-use App\Services\Ai\OpenAiChat;
+use App\Services\Ai\AiFunctionSettings;
+use App\Services\Ai\AiGateway;
+use App\Services\Ai\AiPrompt;
 use App\Services\Blog\AudienceSummaryService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -41,12 +43,12 @@ class BrandProfileAiService
 
     public function __construct(
         private readonly AudienceSummaryService $audience,
-        private readonly OpenAiChat $openAi,
+        private readonly AiGateway $ai,
     ) {}
 
     public static function model(): string
     {
-        return (string) config('services.openai.blog_ai_model', 'gpt-4o');
+        return AiFunctionSettings::for('brand_profile')['model'];
     }
 
     /** Valida o limite do modo, regista o pedido e põe-no na fila. */
@@ -77,7 +79,7 @@ class BrandProfileAiService
         return $request->refresh();
     }
 
-    /** Corre na fila: monta o prompt, chama a OpenAI, limpa e guarda a proposta (só no pedido). */
+    /** Corre na fila: monta o prompt, chama a IA, limpa e guarda a proposta (só no pedido). */
     public function process(int $requestId): void
     {
         $request = AiRequest::where('mode', AiRequest::MODE_BRAND_PROFILE)->find($requestId);
@@ -89,19 +91,14 @@ class BrandProfileAiService
         try {
             $company = Company::with('contentSector')->findOrFail($request->company_id);
             $context = $this->buildContext($company);
-            $response = $this->openAi->call($this->messages($context), (string) $request->model, 3000);
-            $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']));
+            $ai = $this->ai->generate('brand_profile', AiPrompt::fromMessages($this->messages($context)));
+            $result = $this->sanitizeResult((array) $ai->json);
             $result['template'] = $context['template']['key'];
             $result['template_version'] = $context['template']['version'];
 
-            app(AiRequestLifecycle::class)->complete($request, [
-                'status'            => AiRequest::DONE,
+            app(AiRequestLifecycle::class)->complete($request, $ai->requestFields() + [
                 'context'           => $context,
                 'result'            => $result,
-                'prompt_tokens'     => $response['usage']['prompt_tokens'] ?? null,
-                'completion_tokens' => $response['usage']['completion_tokens'] ?? null,
-                'total_tokens'      => $response['usage']['total_tokens'] ?? null,
-                'error_message'     => null,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Perfil IA] Falhou', ['request_id' => $requestId, 'error' => mb_substr($e->getMessage(), 0, 300)]);

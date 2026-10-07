@@ -16,7 +16,6 @@ use App\Models\EditorialPost;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -30,6 +29,7 @@ use Tests\TestCase;
 class EditorialIdeasTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\FakesAi;
 
     private Company $a;
     private Company $b;
@@ -40,7 +40,8 @@ class EditorialIdeasTest extends TestCase
     {
         parent::setUp();
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-12-10 10:00:00', 'Europe/Lisbon'));
-        config(['services.openai.key' => 'test-key', 'services.openai.ai_monthly_caps.ideas' => 10]);
+        $this->configureAi();
+        config(['services.openai.ai_monthly_caps.ideas' => 10]);
 
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 99, 'created_at' => now(), 'updated_at' => now()]);
         $sector = ContentSector::where('slug', 'restauracao')->firstOrFail();
@@ -84,22 +85,12 @@ class EditorialIdeasTest extends TestCase
             ['title' => 'Ideia num canal inventado', 'channel' => 'tiktok', 'date' => '2026-12-21', 'why' => 'Inválida.'],
             ['title' => 'Jantar do aniversário da casa', 'channel' => 'instagram', 'content_type' => 'Inventado', 'media_format' => null, 'date' => '2026-11-02', 'anchor' => 'Aniversário da casa', 'why' => 'Âncora própria.'],
         ];
-        Http::fake(['api.openai.com/*' => Http::response([
-            'choices' => [['message' => ['content' => json_encode(['ideas' => $ideas])]]],
-            'usage' => ['prompt_tokens' => 1500, 'completion_tokens' => 900, 'total_tokens' => 2400],
-        ])]);
+        Http::fake(['api.anthropic.com/*' => $this->anthropicResponse(['ideas' => $ideas], ['input_tokens' => 1500, 'output_tokens' => 900])]);
     }
 
     private function sentPrompt(): string
     {
-        $prompt = '';
-        Http::assertSent(function (HttpRequest $r) use (&$prompt) {
-            $prompt = (string) ($r['messages'][1]['content'] ?? '');
-
-            return true;
-        });
-
-        return $prompt;
+        return $this->sentAiPrompt(false);
     }
 
     private function generate(Company $c, User $u, int $month = 12, int $year = 2026)

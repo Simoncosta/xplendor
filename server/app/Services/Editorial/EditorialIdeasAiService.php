@@ -13,7 +13,9 @@ use App\Models\EditorialPost;
 use App\Models\User;
 use App\Services\Ai\AiRequestQuota;
 use App\Services\Ai\AiText;
-use App\Services\Ai\OpenAiChat;
+use App\Services\Ai\AiFunctionSettings;
+use App\Services\Ai\AiGateway;
+use App\Services\Ai\AiPrompt;
 use App\Services\Brand\CreativeFormatAdvisor;
 use App\Services\EditorialLineService;
 use App\Services\EditorialPostService;
@@ -49,12 +51,12 @@ class EditorialIdeasAiService
         private readonly EditorialLineService $line,
         private readonly EditorialPostService $posts,
         private readonly CreativeFormatAdvisor $advisor,
-        private readonly OpenAiChat $openAi,
+        private readonly AiGateway $ai,
     ) {}
 
     public static function model(): string
     {
-        return (string) config('services.openai.blog_ai_model', 'gpt-4o');
+        return AiFunctionSettings::for('ideas')['model'];
     }
 
     // ── pedido ────────────────────────────────────────────────────────────────
@@ -101,17 +103,12 @@ class EditorialIdeasAiService
         try {
             $company = Company::with('contentSector')->findOrFail($request->company_id);
             $context = $this->buildContext($company, (int) $request->input['year'], (int) $request->input['month']);
-            $response = $this->openAi->call($this->messages($context), (string) $request->model, 3500, 0.7);
-            $result = $this->sanitizeResult(AiText::decodeJson((string) $response['content']), $context);
+            $ai = $this->ai->generate('ideas', AiPrompt::fromMessages($this->messages($context)));
+            $result = $this->sanitizeResult((array) $ai->json, $context);
 
-            app(AiRequestLifecycle::class)->complete($request, [
-                'status'            => AiRequest::DONE,
+            app(AiRequestLifecycle::class)->complete($request, $ai->requestFields() + [
                 'context'           => $context,
                 'result'            => $result,
-                'prompt_tokens'     => $response['usage']['prompt_tokens'] ?? null,
-                'completion_tokens' => $response['usage']['completion_tokens'] ?? null,
-                'total_tokens'      => $response['usage']['total_tokens'] ?? null,
-                'error_message'     => null,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Ideias IA] Falhou', ['request_id' => $requestId, 'error' => mb_substr($e->getMessage(), 0, 300)]);

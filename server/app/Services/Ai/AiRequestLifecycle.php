@@ -37,7 +37,9 @@ class AiRequestLifecycle
     public function fail(AiRequest $request, \Throwable|string $reason): void
     {
         $message = is_string($reason) ? $reason : self::failureMessage($reason);
-        $request->update(['status' => AiRequest::ERROR, 'error_message' => $message]);
+        // O estado HTTP quando o fornecedor respondeu: estes erros contam no limite mensal.
+        $providerStatus = $reason instanceof AiProviderException ? $reason->status : null;
+        $request->update(['status' => AiRequest::ERROR, 'error_message' => $message, 'provider_status' => $providerStatus]);
         $this->notify($request);
     }
 
@@ -55,17 +57,18 @@ class AiRequestLifecycle
     /** Motivo da falha em linguagem simples (o detalhe técnico fica só no registo). */
     public static function failureMessage(\Throwable $e): string
     {
-        $status = $e instanceof RequestException ? $e->response->status() : null;
+        $status = $e instanceof RequestException ? $e->response->status() : ($e instanceof AiProviderException ? $e->status : null);
         $text = $e->getMessage();
 
         return match (true) {
-            str_contains($text, 'OPENAI_KEY'), $status === 401, $status === 403
+            str_contains($text, 'recusou') => 'O modelo de IA recusou este pedido. Reveja o pedido e tente de novo.',
+            str_contains($text, 'OPENAI_KEY'), str_contains($text, 'ANTHROPIC_API_KEY'), str_contains($text, 'não configurada'), $status === 401, $status === 403
                 => 'O serviço de IA não está configurado corretamente. Contacte o suporte da XPLENDOR.',
             $status === 429
                 => 'O serviço de IA recebeu demasiados pedidos. Tente novamente dentro de alguns minutos.',
-            $status !== null && $status >= 500, $e instanceof ConnectionException, str_contains($text, 'indisponível')
+            $status !== null && $status >= 500, $e instanceof ConnectionException, str_contains($text, 'indisponível'), str_contains($text, 'não respondeu')
                 => 'O serviço de IA não respondeu a tempo. Tente novamente dentro de alguns minutos.',
-            str_contains($text, 'JSON'), str_contains($text, 'não devolveu'), str_contains($text, 'vazio')
+            str_contains($text, 'JSON'), str_contains($text, 'não devolveu'), str_contains($text, 'vazio'), str_contains($text, 'incompleta')
                 => 'A resposta da IA veio incompleta. Tente novamente.',
             default => 'Não foi possível concluir o pedido. Tente novamente dentro de alguns minutos.',
         };
@@ -102,6 +105,7 @@ class AiRequestLifecycle
         [$doneTitle, $errorTitle, $path] = match ($r->mode) {
             AiRequest::MODE_BRAND_PROFILE => ['A sugestão do Perfil da Marca está pronta', 'Não foi possível gerar a sugestão do Perfil da Marca', '/brand-profile?suggestion=' . $r->id],
             AiRequest::MODE_CREATIVE      => ['A sugestão de criativo está pronta', 'Não foi possível gerar a sugestão de criativo', '/editorial?creative=' . $r->editorial_post_id],
+            AiRequest::MODE_CAPTION       => ['As propostas de legenda estão prontas', 'Não foi possível gerar as propostas de legenda', '/editorial?publicacao=' . $r->editorial_post_id],
             AiRequest::MODE_IDEAS         => ['As ideias do mês estão prontas', 'Não foi possível gerar as ideias do mês', sprintf('/editorial?ideas=%04d-%02d', (int) ($r->input['year'] ?? 0), (int) ($r->input['month'] ?? 0))],
             default                       => ['O rascunho do artigo está pronto', 'Não foi possível gerar o rascunho do artigo', $r->blog_id ? "/blogs/{$r->blog_id}?ai=1" : '/blogs/create?ai_request=' . $r->id],
         };
@@ -134,6 +138,9 @@ class AiRequestLifecycle
             'dismissed'     => $r->dismissed_at !== null,
             'result'        => $r->status === AiRequest::DONE ? $r->result : null,
             'error_message' => $r->error_message,
+            // O verificador do português de Portugal: marcas que persistiram depois de pedir de novo (o ecrã mostra "Rever o português").
+            'pt_review'     => $r->status === AiRequest::DONE && ! empty($r->pt_issues),
+            'pt_issues'     => $r->status === AiRequest::DONE ? ($r->pt_issues ?? []) : [],
             'used'          => AiRequestQuota::used((int) $r->company_id, $r->mode),
             'cap'           => AiRequestQuota::cap($r->mode),
         ];
@@ -144,6 +151,7 @@ class AiRequestLifecycle
                 'audience_warning' => $r->context['audience']['warning'] ?? null,
             ],
             AiRequest::MODE_CREATIVE => ['post_id' => $r->editorial_post_id],
+            AiRequest::MODE_CAPTION => ['post_id' => $r->editorial_post_id, 'images_sent' => $r->context['images_sent'] ?? null],
             AiRequest::MODE_IDEAS => ['year' => (int) ($r->input['year'] ?? 0), 'month' => (int) ($r->input['month'] ?? 0)],
             // A API do blog chama "mode" ao subtipo (topic | from_post).
             default => [

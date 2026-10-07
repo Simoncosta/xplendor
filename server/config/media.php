@@ -17,7 +17,7 @@ return [
     'video_extensions' => ['mp4', 'mov'],
 
     // Quota por empresa (originais).
-    'company_quota_mb' => (int) env('MEDIA_COMPANY_QUOTA_MB', 5120),
+    'company_quota_mb' => (int) env('MEDIA_COMPANY_QUOTA_MB', 3072), // 3 GB por empresa
 
     // URLs assinados de curta duração.
     'signed_url_minutes' => 30,

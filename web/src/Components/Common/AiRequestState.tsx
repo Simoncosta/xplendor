@@ -1,10 +1,11 @@
 import { Spinner } from "reactstrap";
 import type { AiPollable } from "hooks/useAiRequestPoll";
+import PtReviewNotice from "./PtReviewNotice";
 
 /**
  * Estado de um pedido à IA, sem bloquear o ecrã: "Em fila" ou "A gerar" (com a indicação
  * de que pode sair da página), "parado" ao fim de 3 minutos e o motivo do erro em
- * linguagem simples. Não mostra nada quando o pedido está pronto.
+ * linguagem simples. Quando o pedido está pronto, só o aviso "Rever o português" (se for o caso).
  */
 export default function AiRequestState({ data, what = "o resultado" }: { data: AiPollable | null; what?: string }) {
     if (!data) return null;
@@ -17,6 +18,7 @@ export default function AiRequestState({ data, what = "o resultado" }: { data: A
             </div>
         );
     }
+    if (data.status === "done") return <PtReviewNotice issues={data.pt_review ? data.pt_issues : null} />;
     if (data.status !== "queued" && data.status !== "processing") return null;
 
     return (

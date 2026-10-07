@@ -174,6 +174,20 @@ export const getCreativeSuggestion = (companyId: number, postId: number, id: num
 export const getPostCreative = (companyId: number, postId: number) => api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`);
 export const acceptPostCreative = (companyId: number, postId: number, data: any) =>
     api.put(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/creative`, data);
+// "Gerar legenda" (IA, com as imagens da versão atual): propostas, nunca gravadas.
+export const requestCaptionSuggestion = (companyId: number, postId: number, networks?: string[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions`, networks ? { networks } : {});
+export const getCaptionSuggestion = (companyId: number, postId: number, id: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/editorial/posts/${postId}/caption-suggestions/${id}`);
+// Modelos de IA por função e teste às cegas: só root.
+export const getAiModels = () => api.get(`/admin/ai-models`);
+export const updateAiModel = (fn: string, data: { model: string; effort: string }) => api.put(`/admin/ai-models/${fn}`, data);
+export const applyAiModelToAll = (data: { model: string; effort: string }) => api.create(`/admin/ai-models/apply-all`, data);
+export const getAiBlindTests = () => api.get(`/admin/ai-blind-tests`);
+export const createAiBlindTest = (fn: string) => api.create(`/admin/ai-blind-tests`, { function: fn });
+export const getAiBlindTest = (id: number) => api.get(`/admin/ai-blind-tests/${id}`);
+export const chooseAiBlindCase = (testId: number, caseId: number, choice: "left" | "right" | "tie") =>
+    api.create(`/admin/ai-blind-tests/${testId}/cases/${caseId}/choice`, { choice });
 // Regras de formato (referência de mercado): só root.
 export const getCreativeFormatRules = () => api.get(`/admin/creative-format-rules`);
 export const createCreativeFormatRule = (data: any) => api.create(`/admin/creative-format-rules`, data);

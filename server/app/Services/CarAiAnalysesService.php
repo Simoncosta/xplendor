@@ -7,18 +7,11 @@ use App\Models\CarAiAnalysis;
 use App\Models\MetaAudienceInsight;
 use App\Repositories\Contracts\CarAiAnalysesRepositoryInterface;
 use App\Services\PromptBuilders\VehiclePromptBuilder;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 class CarAiAnalysesService extends BaseService
 {
-    private const OPENAI_TIMEOUT_SECONDS = 45;
-    private const OPENAI_CONNECT_TIMEOUT_SECONDS = 10;
-    private const OPENAI_MAX_ATTEMPTS = 3;
-    private const OPENAI_BACKOFF_MS = [800, 1800];
 
     public function __construct(
         protected CarAiAnalysesRepositoryInterface $carAiAnalysesRepository,
@@ -42,14 +35,17 @@ class CarAiAnalysesService extends BaseService
         $rawJson    = null;
 
         try {
-            $rawJson = $this->callOpenAi($car, $inputData);
+            $ai = $this->callAi($car, $inputData);
+            $rawJson = $ai->text;
             $parsed = $this->parseResponse($rawJson, $car);
+            // O verificador do português encontrou marcas que persistiram: o ecrã mostra "Rever o português".
+            $parsed['pt_review'] = $ai->ptIssues !== [];
 
             return $this->persist($car, $inputData, $rawJson, $parsed);
         } catch (\Throwable $exception) {
             $this->persistFailure($car, $inputData, $rawJson, $exception);
             throw new \RuntimeException(
-                'Nao foi possivel gerar a analise IA desta viatura neste momento. Tenta novamente dentro de instantes.'
+                'Não foi possível gerar a análise desta viatura neste momento. Tente novamente dentro de instantes.'
             );
         }
     }
@@ -378,7 +374,7 @@ class CarAiAnalysesService extends BaseService
         ];
     }
 
-    private function outputSchema(): array
+    public function outputSchema(): array
     {
         return [
             'score_conversao' => [
@@ -452,90 +448,17 @@ class CarAiAnalysesService extends BaseService
     // Chamada à API
     // -------------------------------------------------------------------------
 
-    private function callOpenAi(Car $car, array $inputData): string
+    /** Pela interface única da IA (função car_analysis), registada em ai_requests com o custo e o verificador do português. */
+    private function callAi(Car $car, array $inputData): \App\Services\Ai\AiResult
     {
-        $apiKey = config('services.openai.key');
         $prompts = $this->vehiclePromptBuilder->build($car, [
             'input_data' => $inputData,
             'output_schema' => $this->outputSchema(),
         ]);
-        $systemPrompt = $prompts['system_prompt'] ?? '';
-        $userPrompt = $prompts['user_prompt'] ?? '';
-        $promptSize = mb_strlen($systemPrompt) + mb_strlen($userPrompt);
-        $lastException = null;
 
-        for ($attempt = 1; $attempt <= self::OPENAI_MAX_ATTEMPTS; $attempt++) {
-            try {
-                $response = Http::withToken($apiKey)
-                    ->connectTimeout(self::OPENAI_CONNECT_TIMEOUT_SECONDS)
-                    ->timeout(self::OPENAI_TIMEOUT_SECONDS)
-                    ->acceptJson()
-                    ->post('https://api.openai.com/v1/chat/completions', [
-                        'model'       => 'gpt-4o',
-                        'temperature' => 0.2,
-                        'max_tokens'  => 1800,
-                        'messages'    => [
-                            [
-                                'role'    => 'system',
-                                'content' => $systemPrompt,
-                            ],
-                            [
-                                'role'    => 'user',
-                                'content' => $userPrompt,
-                            ],
-                        ],
-                    ]);
-
-                if ($response->failed()) {
-                    $status = $response->status();
-                    $body = $this->truncateForLog($response->body());
-
-                    Log::warning('CarAiAnalysesService: OpenAI request failed', [
-                        'car_id' => $car->id,
-                        'company_id' => $car->company_id,
-                        'attempt' => $attempt,
-                        'prompt_size' => $promptSize,
-                        'status_code' => $status,
-                        'response_body' => $body,
-                    ]);
-
-                    if ($this->shouldRetryStatus($status) && $attempt < self::OPENAI_MAX_ATTEMPTS) {
-                        usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
-                        continue;
-                    }
-
-                    $response->throw();
-                }
-
-                $content = $response->json('choices.0.message.content');
-                if (!is_string($content) || trim($content) === '') {
-                    throw new \RuntimeException('OpenAI devolveu conteúdo vazio.');
-                }
-
-                return $content;
-            } catch (ConnectionException | RequestException | \RuntimeException $exception) {
-                $lastException = $exception;
-
-                Log::warning('CarAiAnalysesService: OpenAI attempt exception', [
-                    'car_id' => $car->id,
-                    'company_id' => $car->company_id,
-                    'attempt' => $attempt,
-                    'prompt_size' => $promptSize,
-                    'exception' => $exception->getMessage(),
-                ]);
-
-                if (!$this->shouldRetryException($exception) || $attempt === self::OPENAI_MAX_ATTEMPTS) {
-                    break;
-                }
-
-                usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
-            }
-        }
-
-        throw new \RuntimeException(
-            'OpenAI indisponivel ou instavel ao gerar a analise.',
-            previous: $lastException
-        );
+        return \App\Services\Ai\AiSyncRequest::run('car_analysis',
+            new \App\Services\Ai\AiPrompt((string) ($prompts['system_prompt'] ?? ''), (string) ($prompts['user_prompt'] ?? '')),
+            (int) $car->company_id, auth()->id(), ['car_id' => $car->id]);
     }
 
     // -------------------------------------------------------------------------
@@ -546,7 +469,7 @@ class CarAiAnalysesService extends BaseService
     {
         $clean = trim($rawJson);
         if ($clean === '') {
-            Log::error('CarAiAnalysesService: resposta vazia da OpenAI', [
+            Log::error('CarAiAnalysesService: resposta vazia da IA', [
                 'car_id' => $car->id,
                 'company_id' => $car->company_id,
             ]);
@@ -570,7 +493,7 @@ class CarAiAnalysesService extends BaseService
             }
         }
 
-        Log::error('CarAiAnalysesService: JSON invalido da OpenAI', [
+        Log::error('CarAiAnalysesService: JSON inválido da IA', [
             'car_id' => $car->id,
             'company_id' => $car->company_id,
             'error' => json_last_error_msg(),
@@ -696,25 +619,6 @@ class CarAiAnalysesService extends BaseService
             'error' => $exception->getMessage(),
             'raw' => $this->truncateForLog($rawJson),
         ]);
-    }
-
-    private function shouldRetryStatus(int $status): bool
-    {
-        return in_array($status, [408, 409, 429, 500, 502, 503, 504], true);
-    }
-
-    private function shouldRetryException(\Throwable $exception): bool
-    {
-        if ($exception instanceof ConnectionException) {
-            return true;
-        }
-
-        if ($exception instanceof RequestException) {
-            $status = $exception->response?->status();
-            return $status !== null && $this->shouldRetryStatus($status);
-        }
-
-        return str_contains(strtolower($exception->getMessage()), 'conteúdo vazio');
     }
 
     private function extractJsonObject(string $raw): ?string

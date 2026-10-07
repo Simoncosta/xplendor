@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 /**
- * Pedidos à IA sem prender o ecrã (OpenAI sempre simulada): aviso no sino ao terminar ou
+ * Pedidos à IA sem prender o ecrã (fornecedores de IA sempre simulados): aviso no sino ao terminar ou
  * falhar, motivo do erro em linguagem simples, pedido parado ao fim de 3 minutos (registado
  * uma vez), trabalho interrompido na fila, e o resultado "à espera" ao voltar à página
  * (último pedido do contexto, descartar) com tenancy.
@@ -25,6 +25,7 @@ use Tests\TestCase;
 class AiRequestFollowUpTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\FakesAi;
 
     private Company $a;
     private Company $b;
@@ -35,7 +36,7 @@ class AiRequestFollowUpTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['services.openai.key' => 'test-key']);
+        $this->configureAi();
         $planId = DB::table('plans')->insertGetId(['name' => 'P', 'price' => 0, 'car_limit' => 99, 'created_at' => now(), 'updated_at' => now()]);
         $this->a = Company::create(['nipc' => '500060001', 'fiscal_name' => 'Quebom Lda', 'plan_id' => $planId, 'subscription_status' => 'active']);
         $this->b = Company::create(['nipc' => '500060002', 'fiscal_name' => 'Outra Lda', 'plan_id' => $planId, 'subscription_status' => 'active']);
@@ -73,10 +74,10 @@ class AiRequestFollowUpTest extends TestCase
 
     public function test_done_request_notifies_the_bell_with_a_link_to_the_waiting_result(): void
     {
-        Http::fake(['api.openai.com/*' => Http::response(['choices' => [['message' => ['content' => json_encode([
+        $this->fakeAi([
             'title' => 'Inverno', 'slug' => 'inverno', 'meta_title' => 'Inverno', 'meta_description' => 'x', 'excerpt' => 'x',
             'content' => '<p>A revisão de inverno começa pela água.</p>', 'review_notes' => [],
-        ])]]], 'usage' => []])]);
+        ]);
 
         $id = $this->blogDraft($this->userA, $this->a)->assertStatus(202)->assertJsonPath('data.status', 'done')->json('data.id');
 
@@ -87,7 +88,7 @@ class AiRequestFollowUpTest extends TestCase
     public function test_failures_show_the_reason_in_plain_language_and_notify(): void
     {
         // 401 (não se repete); 429 três vezes (repete e desiste); 400.
-        Http::fakeSequence('api.openai.com/*')
+        Http::fakeSequence('api.anthropic.com/*')
             ->push(['error' => ['message' => 'x']], 401)
             ->push(['error' => ['message' => 'x']], 429)->push(['error' => ['message' => 'x']], 429)->push(['error' => ['message' => 'x']], 429)
             ->push(['error' => ['message' => 'x']], 400);
@@ -96,7 +97,7 @@ class AiRequestFollowUpTest extends TestCase
             $this->assertStringContainsString($expected, $res->json('data.error_message'));
         }
 
-        config(['services.openai.key' => '']);
+        config(['ai.providers.anthropic.key' => '']);
         $this->assertStringContainsString('não está configurado', $this->blogDraft($this->userA, $this->a)->json('data.error_message'));
 
         $this->assertSame(4, Alert::where('company_id', $this->a->id)->where('type', 'warning')->where('title', 'Não foi possível gerar o rascunho do artigo')->count());

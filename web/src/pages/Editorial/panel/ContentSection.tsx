@@ -2,11 +2,13 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { savePostContent } from "helpers/laravel_helper";
+import ReasonButton from "Components/Common/ReasonButton";
 import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
 import { PostWorkflow, VERSION_STATUS_LABEL } from "common/models/editorialWorkflow.model";
 import PostPreview from "../PostPreview";
 import VersionMediaEditor from "../VersionMediaEditor";
 import { dirtyKeys, mergeDraft } from "./draftMerge";
+import CaptionModal, { CaptionProposal } from "./CaptionModal";
 
 /**
  * Conteúdo da publicação: um só texto para as redes escolhidas, com uma legenda própria
@@ -19,6 +21,9 @@ import { dirtyKeys, mergeDraft } from "./draftMerge";
  * grava-se sozinho ao sair do campo e pouco depois de parar de escrever ("A gravar…",
  * "Gravado"). Numa versão congelada (enviada ou aprovada), gravar cria a versão seguinte e
  * pede nova aprovação: aí só se grava com o botão, e o texto fica guardado no painel até lá.
+ *
+ * "Gerar legenda" (IA): a proposta escolhida passa para o rascunho e NÃO se grava sozinha:
+ * enquanto estiver por gravar, a gravação automática fica parada e só o botão a grava.
  */
 
 const AUTOSAVE_MS = 1200;
@@ -64,6 +69,10 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
     const savingRef = useRef<Promise<boolean> | null>(null);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [status, setStatus] = useState<SaveStatus>("idle");
+    const [captionOpen, setCaptionOpen] = useState(false);
+    // Uma proposta da IA no rascunho, por gravar: sem gravação automática até a pessoa gravar.
+    const aiPendingRef = useRef(false);
+    const [aiPending, setAiPending] = useState(false);
     const setDraft = (next: Draft) => { draftRef.current = next; setDraftState(next); };
     const isDirty = () => dirtyKeys(draftRef.current, baseRef.current).length > 0;
 
@@ -78,7 +87,8 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
         setStatus((st) => (dirty ? (st === "saving" ? st : "dirty") : st === "dirty" ? "saved" : st));
         // Uma ação de ficheiros numa versão congelada cria a seguinte: o texto por gravar grava-se nela.
         const nowFrozen = !!data.versions.find((v) => v.id === data.post.current_version_id)?.frozen;
-        if (dirty && data.permissions.can_edit_content && !nowFrozen && !savingRef.current) {
+        if (!dirty && aiPendingRef.current) { aiPendingRef.current = false; setAiPending(false); }
+        if (dirty && data.permissions.can_edit_content && !nowFrozen && !savingRef.current && !aiPendingRef.current) {
             if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = setTimeout(() => { void saveRef.current(); }, AUTOSAVE_MS);
         }
@@ -96,6 +106,8 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
         if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
         if (savingRef.current) { await savingRef.current; }
         if (!canEdit || !isDirty()) return true;
+        aiPendingRef.current = false;
+        setAiPending(false);
         const snapshot = { ...draftRef.current };
         setStatus("saving");
         const run = (async () => {
@@ -130,10 +142,32 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
         setStatus("dirty");
         // Gravação automática pouco depois de parar de escrever (não numa versão congelada).
         if (timerRef.current) clearTimeout(timerRef.current);
-        if (canEdit && !frozen) timerRef.current = setTimeout(() => { void save(); }, AUTOSAVE_MS);
+        if (canEdit && !frozen && !aiPendingRef.current) timerRef.current = setTimeout(() => { void save(); }, AUTOSAVE_MS);
     };
-    /** Ao sair de um campo, grava logo (não numa versão congelada). */
-    const onBlur = () => { if (canEdit && !frozen && isDirty()) void save(); };
+    /** Ao sair de um campo, grava logo (não numa versão congelada nem com uma proposta da IA por gravar). */
+    const onBlur = () => { if (canEdit && !frozen && !aiPendingRef.current && isDirty()) void save(); };
+
+    /** A proposta escolhida passa para o rascunho, sem gravar (a pessoa edita e grava). */
+    const applyProposal = (prop: CaptionProposal, nets: Network[]) => {
+        if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+        const ig = prop.captions.instagram ?? "";
+        const fb = prop.captions.facebook ?? "";
+        const patch: Partial<Draft> = { hashtags: prop.hashtags.join(" "), cta: prop.cta };
+        if (nets.includes("instagram")) patch.caption = ig;
+        if (nets.includes("facebook")) {
+            if (!nets.includes("instagram") && both) Object.assign(patch, { fbOwn: true, fbCaption: fb });
+            else if (!nets.includes("instagram")) patch.caption = fb;
+            else if (both && fb.trim() && fb.trim() !== ig.trim()) Object.assign(patch, { fbOwn: true, fbCaption: fb });
+            else Object.assign(patch, { fbOwn: false, fbCaption: "" });
+        }
+        aiPendingRef.current = true;
+        setAiPending(true);
+        setDraft({ ...draftRef.current, ...patch });
+        const d = isDirty();
+        onDirty(d);
+        setStatus(d ? "dirty" : "idle");
+        toast.info("Proposta no rascunho. Reveja e grave quando estiver pronta.");
+    };
     useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
     const dirty = isDirty();
 
@@ -153,7 +187,7 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
                         {status === "saving" ? <><Spinner size="sm" className="me-1" />A gravar…</>
                             : status === "saved" ? <><i className="ri-check-line me-1" />Gravado</>
                                 : status === "error" ? <><i className="ri-error-warning-line me-1" />Não gravado</>
-                                    : dirty ? (frozen ? "Alterações por gravar" : "Por gravar") : null}
+                                    : dirty ? (aiPending ? "Proposta da IA por gravar" : frozen ? "Alterações por gravar" : "Por gravar") : null}
                     </span>
                 </span>
             </div>
@@ -201,9 +235,14 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
                         <Col xs={12}><Label className="mb-1" for="pc-first">Primeiro comentário</Label><Input id="pc-first" value={draft.first_comment} maxLength={2200} disabled={!canEdit} onChange={(e) => set({ first_comment: e.target.value })} onBlur={onBlur} /></Col>
                     </Row>
                     <div className="d-flex flex-wrap gap-2 mt-2">
-                        {canEdit && <Button color="success" size="sm" disabled={status === "saving" || !dirty} onClick={() => void save()}>{status === "saving" ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />{frozen ? `Gravar (nasce a versão ${(current?.number ?? 0) + 1})` : "Gravar agora"}</>}</Button>}
+                        {canEdit && <ReasonButton color="primary" size="sm" disabled={status === "saving"} reason={!dirty ? "Não há alterações por gravar." : null} onClick={() => void save()}>{status === "saving" ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />{frozen ? `Gravar (nasce a versão ${(current?.number ?? 0) + 1})` : "Gravar agora"}</>}</ReasonButton>}
+                        {data.permissions.can_produce && canEdit && <Button color="outline-primary" size="sm" onClick={() => setCaptionOpen(true)}><i className="ri-quill-pen-line me-1" />Gerar legenda</Button>}
                         {data.permissions.can_produce && <Button color="outline-primary" size="sm" onClick={onCreative}><i className="ri-magic-line me-1" />Criativo sugerido</Button>}
                     </div>
+                    {data.permissions.can_produce && canEdit && (
+                        <CaptionModal isOpen={captionOpen} toggle={() => setCaptionOpen(false)} companyId={companyId} postId={p.id}
+                            networks={networks.filter((n): n is Network => n === "instagram" || n === "facebook")} imageCount={current?.media.items.length ?? 0} onApply={applyProposal} />
+                    )}
                     <VersionMediaEditor companyId={companyId} postId={p.id} media={current?.media ?? { items: [], cover: null }}
                         validation={data.media_validation} mediaFormat={coverFormat} canEdit={canEdit}
                         onChanged={(d) => onChanged(d)} />

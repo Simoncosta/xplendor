@@ -5,25 +5,24 @@ namespace App\Services;
 use App\Models\CarBrand;
 use App\Models\CarModel;
 use App\Models\VehicleAttribute;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class CarDescriptionService
 {
-    private const OPENAI_TIMEOUT_SECONDS = 30;
-    private const OPENAI_CONNECT_TIMEOUT_SECONDS = 10;
-
-    public function generate(array $data): string
+    /** A descrição (texto) e o resultado do verificador do português (pela interface única da IA). */
+    public function generate(array $data, int $companyId, ?int $userId = null): \App\Services\Ai\AiResult
     {
         $data['brand_name'] = CarBrand::find($data['car_brand_id'])?->name ?? '';
         $data['model_name'] = CarModel::find($data['car_model_id'])?->name ?? '';
 
         $prompts = $this->buildPrompts($data);
 
-        return trim($this->callOpenAi($prompts));
+        return \App\Services\Ai\AiSyncRequest::run('car_description',
+            new \App\Services\Ai\AiPrompt($prompts['system'], $prompts['user'], json: false),
+            $companyId, $userId, ['input' => ['brand' => $data['brand_name'], 'model' => $data['model_name']]]);
     }
 
-    private function buildPrompts(array $data): array
+    public function buildPrompts(array $data): array
     {
         $vehicleType    = $data['vehicle_type'] ?? 'car';
         $brand          = $data['brand_name'];
@@ -47,11 +46,11 @@ class CarDescriptionService
 
         $system = <<<SYSTEM
 És um redator especializado em anúncios de veículos usados no mercado português, com sensibilidade para SEO.
-O teu estilo é direto, credível e factual — sem linguagem de brochura, sem adjetivos vazios, sem repetir de forma seca a ficha técnica.
+O teu estilo é direto, credível e factual, sem linguagem de brochura, sem adjetivos vazios, sem repetir de forma seca a ficha técnica.
 
-Escreves para ser encontrado nas pesquisas: integras de forma natural os termos que os compradores procuram (marca, modelo, ano, tipo de veículo), mas o texto lê-se sempre bem e é específico deste veículo — NUNCA uma lista de palavras-chave.
+Escreves para ser encontrado nas pesquisas: integras de forma natural os termos que os compradores procuram (marca, modelo, ano, tipo de veículo), mas o texto lê-se sempre bem e é específico deste veículo, NUNCA uma lista de palavras-chave.
 
-A descrição não é um resumo dos campos — é o que os campos não conseguem transmitir, com os termos de pesquisa tecidos naturalmente na prosa.
+A descrição não é um resumo dos campos: é o que os campos não conseguem transmitir, com os termos de pesquisa tecidos naturalmente na prosa.
 SYSTEM;
 
         $lines = ['Escreve a descrição deste veículo em Português de Portugal, otimizada para SEO (natural, não "keyword stuffing").'];
@@ -68,8 +67,8 @@ SYSTEM;
 
         $lines[] = '';
         $lines[] = 'REGRAS CRÍTICAS:';
-        $lines[] = '- SEO: menciona UMA vez, de forma natural e integrada na prosa, a marca, o modelo, o ano e o tipo de veículo (autocaravana, caravana ou carro) — são os termos por que as pessoas pesquisam. Sem os alinhar como lista, sem repetir.';
-        $lines[] = '- NÃO faças um resumo seco da ficha técnica: os NÚMEROS (km, cilindrada, potência, transmissão, lugares, dimensões, preço) já estão visíveis no anúncio — não os despejes; no máximo, um deles pode aparecer dentro de uma frase que acrescente valor.';
+        $lines[] = '- SEO: menciona UMA vez, de forma natural e integrada na prosa, a marca, o modelo, o ano e o tipo de veículo (autocaravana, caravana ou carro): são os termos por que as pessoas pesquisam. Sem os alinhar como lista, sem repetir.';
+        $lines[] = '- NÃO faças um resumo seco da ficha técnica: os NÚMEROS (km, cilindrada, potência, transmissão, lugares, dimensões, preço) já estão visíveis no anúncio; não os despejes; no máximo, um deles pode aparecer dentro de uma frase que acrescente valor.';
         $lines[] = '- A descrição deve acrescentar o que os campos não capturam: estado de conservação percetível, combinação de equipamentos que se destaca, historial relevante, ou o que torna este veículo específico interessante face a outros iguais.';
         $lines[] = '- Não inventes dados que não te foram dados (localização, contactos, historial). Se não tens a informação, não a menciones.';
 
@@ -101,7 +100,7 @@ SYSTEM;
         $lines[] = '';
         $lines[] = 'PROIBIDO: "Descubra", "perfeito para", "não perca", "aventuras", "liberdade", "elegante", "moderno", qualquer frase que funcione em qualquer outro anúncio do mundo.';
         $lines[] = '';
-        $lines[] = 'O texto deve funcionar apenas para este veículo específico — se puder ser copiado para outro anúncio sem mudar nada, está errado.';
+        $lines[] = 'O texto deve funcionar apenas para este veículo específico: se puder ser copiado para outro anúncio sem mudar nada, está errado.';
 
         // Afinação pedida pelo utilizador (opcional) — SEMPRE subordinada às regras.
         $this->appendRefinements($lines, $data);
@@ -229,7 +228,7 @@ SYSTEM;
         }
 
         $lines[] = '';
-        $lines[] = 'AFINAÇÃO DE ESTILO PEDIDA PELO UTILIZADOR (preferências — aplica-as apenas se NÃO contrariarem nada acima):';
+        $lines[] = 'AFINAÇÃO DE ESTILO PEDIDA PELO UTILIZADOR (preferências: aplica-as apenas se NÃO contrariarem nada acima):';
 
         foreach ($presets as $key) {
             $lines[] = '- ' . self::REFINEMENT_PRESETS[$key];
@@ -283,38 +282,9 @@ SYSTEM;
     {
         if ($promo && $price) {
             $lines[] = "Preço original: {$price}";
-            $lines[] = "Preço promocional: {$promo} (promoção ativa — menciona a promoção na descrição)";
+            $lines[] = "Preço promocional: {$promo} (promoção ativa: menciona a promoção na descrição)";
         } elseif ($price) {
             $lines[] = "Preço: {$price}";
         }
-    }
-
-    private function callOpenAi(array $prompts): string
-    {
-        $apiKey = config('services.openai.key');
-
-        $response = Http::withToken($apiKey)
-            ->connectTimeout(self::OPENAI_CONNECT_TIMEOUT_SECONDS)
-            ->timeout(self::OPENAI_TIMEOUT_SECONDS)
-            ->acceptJson()
-            ->post('https://api.openai.com/v1/chat/completions', [
-                'model'       => 'gpt-4o',
-                'temperature' => 0.5,
-                'max_tokens'  => 400,
-                'messages'    => [
-                    ['role' => 'system', 'content' => $prompts['system']],
-                    ['role' => 'user',   'content' => $prompts['user']],
-                ],
-            ]);
-
-        if ($response->failed()) {
-            Log::warning('CarDescriptionService: OpenAI request failed', [
-                'status_code'   => $response->status(),
-                'response_body' => substr($response->body(), 0, 500),
-            ]);
-            $response->throw();
-        }
-
-        return $response->json('choices.0.message.content', '');
     }
 }

@@ -6,6 +6,7 @@ use App\Models\AiRequest;
 use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Brand\BrandProfileAiService;
 use App\Services\Brand\CreativeAiService;
+use App\Services\Editorial\CaptionAiService;
 use App\Services\Editorial\EditorialIdeasAiService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,7 +15,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Processa um pedido à IA (ai_requests) dos modos perfil da marca, criativo e ideias do mês. O ecrã
+ * Processa um pedido à IA (ai_requests) dos modos perfil da marca, criativo, ideias do mês e legenda. O ecrã
  * consulta o estado até ficar pronto. O blog tem o seu próprio job (GenerateBlogAiDraftJob).
  */
 class ProcessAiRequestJob implements ShouldQueue
@@ -34,6 +35,7 @@ class ProcessAiRequestJob implements ShouldQueue
             AiRequest::MODE_BRAND_PROFILE => app(BrandProfileAiService::class)->process($this->requestId),
             AiRequest::MODE_CREATIVE      => app(CreativeAiService::class)->process($this->requestId),
             AiRequest::MODE_IDEAS         => app(EditorialIdeasAiService::class)->process($this->requestId),
+            AiRequest::MODE_CAPTION       => app(CaptionAiService::class)->process($this->requestId),
             default                       => null,
         };
     }

@@ -7,9 +7,11 @@ namespace App\Services\Ai;
 use App\Models\AiRequest;
 
 /**
- * Limite mensal de pedidos à IA por empresa, POR MODO (blog, perfil da marca,
- * criativos): um modo nunca gasta o limite de outro. Os pedidos que falharam não
- * contam. Os limites vivem em config/services.php (openai.ai_monthly_caps).
+ * Limite mensal de pedidos à IA por marca (empresa), POR FUNÇÃO (blog, perfil da marca,
+ * criativos, ideias, legenda): uma função nunca gasta o limite de outra. Os erros com
+ * resposta do fornecedor contam (o fornecedor trabalhou e cobrou); os que falharam sem
+ * resposta (sem rede, tempo esgotado, configuração) não. Os limites vivem em
+ * config/services.php (openai.ai_monthly_caps).
  */
 class AiRequestQuota
 {
@@ -25,7 +27,7 @@ class AiRequestQuota
         return AiRequest::where('company_id', $companyId)
             ->where('mode', $mode)
             ->where('created_at', '>=', now()->startOfMonth())
-            ->where('status', '!=', AiRequest::ERROR)
+            ->where(fn ($q) => $q->where('status', '!=', AiRequest::ERROR)->orWhereNotNull('provider_status'))
             ->count();
     }
 

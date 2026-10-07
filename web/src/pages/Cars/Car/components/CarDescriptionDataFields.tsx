@@ -9,6 +9,7 @@ import "quill/dist/quill.snow.css";
 import type { ICarFormValues } from "./CarImagesDataFields";
 import XButton from "Components/Common/XButton";
 import ReasonButton from "Components/Common/ReasonButton";
+import PtReviewNotice from "Components/Common/PtReviewNotice";
 import { generateCarDescriptionApi } from "helpers/laravel_helper";
 import type { VehicleType } from "common/models/car.model";
 
@@ -72,6 +73,8 @@ export default function CarDescriptionDataFields({
     // Sugestão da IA a aguardar validação humana (null = sem sugestão pendente).
     // O campo SÓ é preenchido quando o utilizador clica "Usar esta descrição".
     const [suggestion, setSuggestion] = useState<string | null>(null);
+    // Marcas do português do Brasil que o verificador ainda encontrou (aviso "Rever o português").
+    const [ptIssues, setPtIssues] = useState<string[] | null>(null);
 
     // ── Limite de gerações (proteção de tokens) ─────────────────────────────
     // Contagem POR VEÍCULO. Em edição persiste em localStorage pela id do carro
@@ -191,11 +194,12 @@ export default function CarDescriptionDataFields({
 
             const response: any = await generateCarDescriptionApi(companyId!, payload);
             const description: string = response?.data?.description ?? response?.description ?? "";
+            setPtIssues(response?.data?.pt_review ? response.data.pt_issues ?? [] : null);
 
             if (description) {
                 setSuggestion(description.trim());   // fica em pré-visualização, à espera de validação
             } else {
-                toast.error("A IA não devolveu texto. Tenta novamente.", { position: "top-right", hideProgressBar: true });
+                toast.error("A IA não devolveu texto. Tente novamente.", { position: "top-right", hideProgressBar: true });
             }
         } catch (error: unknown) {
             console.error(error);
@@ -207,9 +211,9 @@ export default function CarDescriptionDataFields({
             if (serverMessage && status !== undefined && status < 500) {
                 message = serverMessage;
             } else if (status === undefined || status >= 500) {
-                message = "Serviço temporariamente indisponível. Tenta novamente em alguns segundos.";
+                message = "Serviço temporariamente indisponível. Tente novamente dentro de alguns segundos.";
             } else {
-                message = "Não foi possível gerar a descrição. Tenta novamente.";
+                message = "Não foi possível gerar a descrição. Tente novamente.";
             }
 
             toast.error(message, { position: "top-right", hideProgressBar: true });
@@ -289,7 +293,7 @@ export default function CarDescriptionDataFields({
                         type="text"
                         className="form-control form-control-sm"
                         maxLength={300}
-                        placeholder='Instrução própria (ex.: "foca na autonomia para viagens longas")'
+                        placeholder='Instrução própria (por exemplo: "realçar a autonomia para viagens longas")'
                         value={customInstruction}
                         onChange={(e) => setCustomInstruction(e.target.value)}
                     />
@@ -306,6 +310,7 @@ export default function CarDescriptionDataFields({
                         <span className="badge bg-info-subtle text-info">Pré-visualização, ainda não preenchida</span>
                     </div>
                     <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{suggestion}</p>
+                    <PtReviewNotice issues={ptIssues} />
                     <div className="d-flex flex-wrap gap-2">
                         <XButton
                             size="sm"

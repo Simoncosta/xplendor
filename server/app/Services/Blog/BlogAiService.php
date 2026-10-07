@@ -9,7 +9,9 @@ use App\Models\Blog;
 use App\Models\AiRequest;
 use App\Services\Ai\AiRequestLifecycle;
 use App\Services\Ai\AiRequestQuota;
-use App\Services\Ai\OpenAiChat;
+use App\Services\Ai\AiFunctionSettings;
+use App\Services\Ai\AiGateway;
+use App\Services\Ai\AiPrompt;
 use App\Models\Company;
 use App\Models\CompanyBrandProfile;
 use App\Models\District;
@@ -22,8 +24,8 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
- * "Ajudar a escrever" e "a partir de uma publicação" (colar o texto). OpenAI gpt-4o em JSON
- * mode, em fila (como o OCR), com limite mensal por empresa e registo da versão do prompt,
+ * "Ajudar a escrever" e "a partir de uma publicação" (colar o texto). Pela interface única da IA
+ * (o modelo da função blog é escolhido pelo root), em fila (como o OCR), com limite mensal por empresa e registo da versão do prompt,
  * do modelo e dos tokens em ai_requests (modo blog; limite próprio do modo).
  *
  * O prompt leva o perfil da marca, o ramo, a zona, o público MEDIDO (só acima dos mínimos;
@@ -43,7 +45,7 @@ class BlogAiService
 
     public static function model(): string
     {
-        return (string) config('services.openai.blog_ai_model', 'gpt-4o');
+        return AiFunctionSettings::for('blog')['model'];
     }
 
     /** Limite mensal do modo blog (cada modo de IA tem o seu: ver AiRequestQuota). */
@@ -103,7 +105,7 @@ class BlogAiService
         return $draft->refresh();
     }
 
-    /** Corre na fila: monta o prompt, chama a OpenAI, limpa e guarda o resultado. */
+    /** Corre na fila: monta o prompt, chama a IA, limpa e guarda o resultado. */
     public function process(int $draftId): void
     {
         $draft = AiRequest::where('mode', AiRequest::MODE_BLOG)->find($draftId);
@@ -117,17 +119,12 @@ class BlogAiService
             $context = $this->buildContext($company);
             $messages = $this->messages((string) $draft->variant, $draft->input ?? [], $context);
 
-            $response = $this->callOpenAi($messages);
-            $result = $this->sanitizeResult($this->decodeJson((string) $response['content']));
+            $ai = app(AiGateway::class)->generate('blog', AiPrompt::fromMessages($messages));
+            $result = $this->sanitizeResult((array) $ai->json);
 
-            app(AiRequestLifecycle::class)->complete($draft, [
-                'status'            => AiRequest::DONE,
+            app(AiRequestLifecycle::class)->complete($draft, $ai->requestFields() + [
                 'context'           => $context,
                 'result'            => $result,
-                'prompt_tokens'     => $response['usage']['prompt_tokens'] ?? null,
-                'completion_tokens' => $response['usage']['completion_tokens'] ?? null,
-                'total_tokens'      => $response['usage']['total_tokens'] ?? null,
-                'error_message'     => null,
             ]);
         } catch (\Throwable $e) {
             Log::warning('[Blog IA] Falhou', ['draft_id' => $draftId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
@@ -265,32 +262,6 @@ class BlogAiService
         $clean = array_filter(array_map(fn ($i) => $this->clean((string) $i, 60), array_slice($items, 0, 30)));
 
         return implode(', ', $clean);
-    }
-
-    // ── OpenAI ───────────────────────────────────────────────────────────────
-
-    /** @return array{content: string, usage: array} */
-    /** A chamada à OpenAI é partilhada pelos modos de IA (ver OpenAiChat). */
-    protected function callOpenAi(array $messages): array
-    {
-        return app(OpenAiChat::class)->call($messages, self::model());
-    }
-
-    private function decodeJson(string $raw): array
-    {
-        $decoded = json_decode(trim($raw), true);
-        if (! is_array($decoded)) {
-            $start = strpos($raw, '{');
-            $end = strrpos($raw, '}');
-            if ($start !== false && $end !== false && $end > $start) {
-                $decoded = json_decode(substr($raw, $start, $end - $start + 1), true);
-            }
-        }
-        if (! is_array($decoded)) {
-            throw new \RuntimeException('A IA devolveu um JSON inválido.');
-        }
-
-        return $decoded;
     }
 
     /** Tipos, tamanhos e HTML limpo (lista de etiquetas permitidas). */

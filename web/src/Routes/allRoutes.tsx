@@ -108,6 +108,7 @@ import QuoteEditor from "pages/Admin/QuoteEditor";
 import ServiceCatalogPage from "pages/Admin/ServiceCatalogPage";
 import AdminStockList from "pages/Admin/AdminStockList";
 import CreativeFormatRulesPage from "pages/Admin/CreativeFormatRulesPage";
+import AiModelsPage from "pages/Admin/AiModelsPage";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 import RequireModule from "./RequireModule";
 
@@ -254,6 +255,7 @@ const authProtectedRoutes = [
     { path: "/admin/stock", component: <RequireSuperAdmin><AdminStockList /></RequireSuperAdmin> },
     // Regras de formato (referência de mercado) do "Sugerir criativo": só o root.
     { path: "/admin/creative-format-rules", component: <RequireSuperAdmin><CreativeFormatRulesPage /></RequireSuperAdmin> },
+    { path: "/admin/ai-models", component: <RequireSuperAdmin><AiModelsPage /></RequireSuperAdmin> },
 
     // this route should be at the end of all other routes
     // eslint-disable-next-line react/display-name

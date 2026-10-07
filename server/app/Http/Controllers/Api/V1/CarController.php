@@ -345,13 +345,14 @@ class CarController extends Controller
         ]);
 
         try {
-            $description = $this->carDescriptionService->generate($data);
+            $ai = $this->carDescriptionService->generate($data, $companyId, $request->user()?->id);
 
-            return ApiResponse::success(['description' => $description], 'Descrição gerada com sucesso.');
+            // pt_review: o verificador do português encontrou marcas que persistiram (o ecrã mostra "Rever o português").
+            return ApiResponse::success(['description' => trim($ai->text), 'pt_review' => $ai->ptIssues !== [], 'pt_issues' => $ai->ptIssues], 'Descrição gerada com sucesso.');
         } catch (Throwable $exception) {
             Log::error('CarController::generateDescription failed', ['error' => $exception->getMessage()]);
 
-            return ApiResponse::error('Não foi possível gerar a descrição. Tenta novamente.', 503);
+            return ApiResponse::error(\App\Services\Ai\AiRequestLifecycle::failureMessage($exception), 503);
         }
     }
 

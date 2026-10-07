@@ -19,7 +19,6 @@ use App\Services\Blog\AudienceSummaryService;
 use App\Services\Brand\BrandProfileTemplates;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -33,6 +32,7 @@ use Tests\TestCase;
 class BrandProfileAssistantsTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\FakesAi;
 
     private Company $a;
     private Company $b;
@@ -45,8 +45,8 @@ class BrandProfileAssistantsTest extends TestCase
     {
         parent::setUp();
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-10-05 10:00:00', 'Europe/Lisbon'));
+        $this->configureAi();
         config([
-            'services.openai.key' => 'test-key',
             'services.openai.ai_monthly_caps' => ['blog' => 30, 'brand_profile' => 10, 'creative' => 60],
         ]);
 
@@ -86,21 +86,14 @@ class BrandProfileAssistantsTest extends TestCase
 
     private function fakeOpenAi(array $content, int $status = 200): void
     {
-        Http::fake(['api.openai.com/*' => $status === 200
-            ? Http::response(['choices' => [['message' => ['content' => json_encode($content)]]], 'usage' => ['prompt_tokens' => 500, 'completion_tokens' => 300, 'total_tokens' => 800]])
-            : Http::response(['error' => ['message' => 'invalid']], $status)]);
+        Http::fake(['api.anthropic.com/*' => $status === 200
+            ? $this->anthropicResponse($content, ['input_tokens' => 500, 'output_tokens' => 300])
+            : Http::response(['type' => 'error', 'error' => ['message' => 'invalid']], $status)]);
     }
 
     private function sentUserPrompt(): string
     {
-        $prompt = '';
-        Http::assertSent(function (Request $r) use (&$prompt) {
-            $prompt = (string) ($r['messages'][1]['content'] ?? '');
-
-            return str_contains($r->url(), 'api.openai.com') && $r['response_format'] === ['type' => 'json_object'];
-        });
-
-        return $prompt;
+        return $this->sentAiPrompt(false);
     }
 
     private function makePost(Company $c, string $channel = 'instagram', array $attrs = []): EditorialPost
@@ -190,13 +183,19 @@ class BrandProfileAssistantsTest extends TestCase
         $this->assertSame(0, AiRequest::where('company_id', $this->a->id)->where('mode', 'blog')->count());
     }
 
-    public function test_suggest_profile_failure_is_recorded_and_does_not_count(): void
+    public function test_suggest_profile_failure_is_recorded_and_counts_only_when_the_provider_answered(): void
     {
-        $this->fakeOpenAi([], 400);
+        // Sem resposta do fornecedor (ligação falhada nas três tentativas): não conta. Depois, um erro 400: conta.
+        Http::fakeSequence('api.anthropic.com/*')->pushFailedConnection()->pushFailedConnection()->pushFailedConnection()
+            ->push(['type' => 'error', 'error' => ['message' => 'invalid']], 400);
         $id = $this->as($this->adminA)->postJson($this->url($this->a, '/brand-profile/suggestions'))->assertStatus(202)->json('data.id');
-
         $this->as($this->adminA)->getJson($this->url($this->a, "/brand-profile/suggestions/{$id}"))->assertOk()
-            ->assertJsonPath('data.status', 'error')->assertJsonPath('data.result', null)->assertJsonPath('data.used', 0);
+            ->assertJsonPath('data.status', 'error')->assertJsonPath('data.used', 0);
+
+        // Erro com resposta do fornecedor: conta.
+        $id = $this->as($this->adminA)->postJson($this->url($this->a, '/brand-profile/suggestions'))->assertStatus(202)->json('data.id');
+        $this->as($this->adminA)->getJson($this->url($this->a, "/brand-profile/suggestions/{$id}"))->assertOk()
+            ->assertJsonPath('data.status', 'error')->assertJsonPath('data.result', null)->assertJsonPath('data.used', 1);
     }
 
     // ── Regras de formato (referência de mercado) ────────────────────────────
@@ -260,8 +259,8 @@ class BrandProfileAssistantsTest extends TestCase
         // Formato inválido da IA → o da regra (a faixa acima de 10 mil começa no vídeo).
         $this->followers($this->a, 'instagram', 25000);
         $post = $this->makePost($this->a);
-        $answer = fn (string $format) => Http::response(['choices' => [['message' => ['content' => json_encode(['media_format' => $format, 'hook' => 'h', 'caption' => 'c', 'hashtags' => [], 'cta' => 'x', 'why' => 'y'])]]], 'usage' => []]);
-        Http::fakeSequence('api.openai.com/*')->pushResponse($answer('fb_reel'))->pushResponse($answer('fb_photos'));
+        $answer = fn (string $format) => $this->anthropicResponse(['media_format' => $format, 'hook' => 'h', 'caption' => 'c', 'hashtags' => [], 'cta' => 'x', 'why' => 'y']);
+        Http::fakeSequence('api.anthropic.com/*')->pushResponse($answer('fb_reel'))->pushResponse($answer('fb_photos'));
         $id = $this->as($this->userA)->postJson($this->url($this->a, "/editorial/posts/{$post->id}/creative-suggestions"))->json('data.id');
         $r = AiRequest::find($id)->result;
         $this->assertSame('ig_reel', $r['media_format']);
@@ -271,7 +270,7 @@ class BrandProfileAssistantsTest extends TestCase
         $fb = $this->makePost($this->a, 'facebook');
         $id = $this->as($this->userA)->postJson($this->url($this->a, "/editorial/posts/{$fb->id}/creative-suggestions"))->json('data.id');
         $this->assertSame(['none', 'fb_photos'], [AiRequest::find($id)->result['source'], AiRequest::find($id)->result['media_format']]);
-        $sent = collect(Http::recorded())->map(fn ($pair) => (string) ($pair[0]['messages'][1]['content'] ?? ''))->last();
+        $sent = collect(Http::recorded())->map(fn ($pair) => (string) ($pair[0]['messages'][0]['content'][0]['text'] ?? ''))->last();
         $this->assertStringContainsString('Sem referência: os seguidores atuais desta rede não são conhecidos.', $sent);
     }
 
