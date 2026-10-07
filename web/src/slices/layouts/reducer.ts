@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { readStoredTheme } from "helpers/theme";
 //constants
 import {
   LAYOUT_TYPES,
@@ -32,7 +33,8 @@ export interface LayoutState {
 export const initialState = {
   layoutType: LAYOUT_TYPES.VERTICAL,
   leftSidebarType: LAYOUT_MODE_TYPES.LIGHTMODE,
-  layoutModeType: LAYOUT_SIDEBAR_TYPES.LIGHT,
+  // O tema guardado no browser (persiste depois de atualizar a página); por omissão, claro.
+  layoutModeType: readStoredTheme() ?? LAYOUT_SIDEBAR_TYPES.LIGHT,
   layoutWidthType: LAYOUT_WIDTH_TYPES.FLUID,
   layoutPositionType: LAYOUT_POSITION_TYPES.FIXED,
   topbarThemeType: LAYOUT_TOPBAR_THEME_TYPES.LIGHT,

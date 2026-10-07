@@ -6,6 +6,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { createServiceCatalogItem, getServiceCatalog, updateServiceCatalogItem } from "helpers/laravel_helper";
 import { BILLING_LABEL, ICatalogItem, QuoteBilling, QuoteUnit, UNIT_LABEL, formatQuoteEuro } from "common/models/quote.model";
 import QuoteSelect from "./QuoteSelect";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * XPLENDOR — Catálogo de serviços (tabela padrão dos orçamentos). Só a equipa.
@@ -20,6 +21,13 @@ const toTasks = (lines: ICatalogItem["onboarding_checklist"]): Task[] =>
     (lines ?? []).map((l) => (typeof l === "string" ? { title: l, key: null } : { title: l.title, key: l.key ?? null }));
 const EMPTY: Draft = { name: "", description: "", unit_price: "", unit: "month", billing_type: "monthly", active: true, checklist: [] };
 const MAX_TASKS = 30;
+// Chaves fixas: a tarefa marca-se sozinha quando o cliente conclui o passo no link de configuração.
+const TASK_KEYS = [
+    { value: "", label: "Marca-se à mão" },
+    { value: "social_access", label: "Sozinha: Facebook e Instagram ligados" },
+    { value: "meta_ads_access", label: "Sozinha: anúncios da Meta ligados" },
+    { value: "ga4_access", label: "Sozinha: Google Analytics ligado" },
+];
 
 const ServiceCatalogPage = () => {
     document.title = "Catálogo de serviços | Xplendor";
@@ -155,13 +163,15 @@ const ServiceCatalogPage = () => {
                             <div className="border-top mt-3 pt-3">
                                 <Label className="form-label mb-1">Lista de arranque</Label>
                                 <p className="text-muted fs-12 mb-2">
-                                    Quando um orçamento com este serviço é aceite, estas tarefas entram no ticket de arranque. Sem lista, fica uma tarefa genérica.
+                                    Quando um orçamento com este serviço é aceite, estas tarefas entram no ticket de arranque. Sem lista, fica uma tarefa genérica. As tarefas de acesso podem marcar-se sozinhas quando o cliente conclui o passo no link de configuração.
                                 </p>
                                 <div className="vstack gap-2">
                                     {editing.checklist.map((t, idx) => (
-                                        <div key={idx} className="d-flex gap-2">
-                                            <Input value={t.title} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
+                                        <div key={idx} className="d-flex flex-wrap flex-md-nowrap gap-2">
+                                            <Input className="flex-grow-1" style={{ minWidth: 200 }} value={t.title} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
                                                 onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? { ...x, title: e.target.value } : x)) })} />
+                                            <XSelect small width={250} ariaLabel={`Como se marca a tarefa ${idx + 1}`} options={TASK_KEYS} value={t.key ?? ""}
+                                                onChange={(v) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? { ...x, key: v || null } : x)) })} />
                                             <button type="button" className={`btn btn-outline-primary btn-sm ${idx === 0 ? "invisible" : ""}`} aria-label="Subir"
                                                 onClick={() => { const c = [...editing.checklist]; [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]; setEditing({ ...editing, checklist: c }); }}>
                                                 <i className="ri-arrow-up-line" />

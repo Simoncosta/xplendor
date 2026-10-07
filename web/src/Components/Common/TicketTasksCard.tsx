@@ -10,9 +10,11 @@ import type { ISupportTicketTask } from "common/models/supportTicket.model";
 type Props = {
     tasks: ISupportTicketTask[];
     onToggle?: (task: ISupportTicketTask, done: boolean) => Promise<void>;
+    /** Tarefas de acesso (com chave) por fazer: "Gerar link de configuração" (equipa XPLENDOR). */
+    onSetupLink?: (task: ISupportTicketTask) => void;
 };
 
-export default function TicketTasksCard({ tasks, onToggle }: Props) {
+export default function TicketTasksCard({ tasks, onToggle, onSetupLink }: Props) {
     const [busyId, setBusyId] = useState<number | null>(null);
     const groups = useMemo(() => {
         const map = new Map<string, ISupportTicketTask[]>();
@@ -55,7 +57,13 @@ export default function TicketTasksCard({ tasks, onToggle }: Props) {
                                         <Label className={`mb-0 fs-13${t.done ? " text-muted text-decoration-line-through" : ""}`} for={onToggle ? `task-${t.id}` : undefined}>
                                             {t.title}
                                             {t.done && t.done_by_name && <small className="text-muted ms-1 text-decoration-none d-inline-block">({t.done_by_name})</small>}
+                                            {t.done && !t.done_by_name && t.task_key && <small className="text-muted ms-1 text-decoration-none d-inline-block">(pelo link de configuração)</small>}
                                         </Label>
+                                        {onSetupLink && t.task_key && !t.done && (
+                                            <button type="button" className="btn btn-link btn-sm p-0 ms-auto fs-12 text-nowrap" onClick={() => onSetupLink(t)}>
+                                                <i className="ri-send-plane-line me-1" />Gerar link de configuração
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

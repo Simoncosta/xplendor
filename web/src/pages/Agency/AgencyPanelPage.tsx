@@ -16,6 +16,7 @@ import { confirmAction } from "helpers/swal";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { readAuthUser } from "helpers/impersonation";
 import XSelect from "pages/Editorial/XSelect";
+import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkModal";
 
 /**
  * Painel da agência (a equipa da agência e o root, no contexto da agência): por cliente, o
@@ -81,7 +82,7 @@ export default function AgencyPanelPage() {
                     ))}
                 </Nav>
                 {tab === "clientes" && isAgencyAdmin && <BillingCard agencyId={agencyId} />}
-                {tab === "clientes" && <ClientsTab agencyId={agencyId} />}
+                {tab === "clientes" && <ClientsTab agencyId={agencyId} isAgencyAdmin={isAgencyAdmin} />}
                 {tab === "gestao" && <ManagementTab agencyId={agencyId} />}
                 {tab === "pedidos" && <RequestsTab agencyId={agencyId} />}
                 {tab === "atribuicoes" && isAgencyAdmin && <AssignmentsTab agencyId={agencyId} asRoot={!!wc?.isRoot} />}
@@ -90,8 +91,10 @@ export default function AgencyPanelPage() {
     );
 }
 
-function ClientsTab({ agencyId }: { agencyId: number }) {
+function ClientsTab({ agencyId, isAgencyAdmin }: { agencyId: number; isAgencyAdmin: boolean }) {
     const [rows, setRows] = useState<PanelRow[] | null>(null);
+    // Link de configuração do cliente (só os administradores da agência o geram).
+    const [setupFor, setSetupFor] = useState<{ id: number; name: string } | null>(null);
     useEffect(() => {
         getAgencyPanel(agencyId).then((r: any) => setRows(r?.data?.rows ?? [])).catch(() => setRows([]));
     }, [agencyId]);
@@ -129,6 +132,7 @@ function ClientsTab({ agencyId }: { agencyId: number }) {
                                     <th className="text-center">Atrasadas</th>
                                     <th className="text-center">À espera de aprovação</th>
                                     <th className="text-center" title="Produção e Revisão interna">Em produção</th>
+                                    {isAgencyAdmin && <th aria-label="Ações" />}
                                 </tr>
                             </thead>
                             <tbody>
@@ -144,6 +148,13 @@ function ClientsTab({ agencyId }: { agencyId: number }) {
                                         <td className="text-center">{cell(r, r.overdue, "calendario", "danger", "Atrasadas")}</td>
                                         <td className="text-center">{cell(r, r.awaiting, "kanban", "warning", "À espera de aprovação")}</td>
                                         <td className="text-center">{cell(r, r.production, "kanban", "primary", "Em produção")}</td>
+                                        {isAgencyAdmin && (
+                                            <td className="text-end">
+                                                <ActionsMenu size="sm" label={`Mais ações: ${r.company.name}`} items={[
+                                                    { label: "Enviar link de configuração", icon: "ri-send-plane-line", onClick: () => setSetupFor({ id: r.company.id, name: r.company.name }) },
+                                                ]} />
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -155,12 +166,14 @@ function ClientsTab({ agencyId }: { agencyId: number }) {
                                         <td className="text-center">{totals.overdue}</td>
                                         <td className="text-center">{totals.awaiting}</td>
                                         <td className="text-center">{totals.production}</td>
+                                        {isAgencyAdmin && <td />}
                                     </tr>
                                 </tfoot>
                             )}
                         </Table>
                     </div>
                 )}
+                <SetupLinkModal isOpen={!!setupFor} onClose={() => setSetupFor(null)} companyId={setupFor?.id ?? null} companyName={setupFor?.name} />
                 <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />"Em produção" conta as publicações em Produção e em Revisão interna (o trabalho ainda do lado da equipa).</p>
             </CardBody>
         </Card>
@@ -273,6 +286,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
     const [ending, setEnding] = useState<Assignment | null>(null);
     const [endReason, setEndReason] = useState("");
     const [endBusy, setEndBusy] = useState(false);
+    const [setupFor, setSetupFor] = useState<{ id: number; name: string } | null>(null);
 
     const loadRows = useCallback(() => {
         getAgencyAssignments(agencyId).then((r: any) => { setMembers(r?.data?.members ?? []); setRows(r?.data?.clients ?? []); }).catch(() => setRows([]));
@@ -339,6 +353,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
                                     <Col md={1} className="text-md-end d-flex justify-content-md-end gap-1">
                                         <Button color="outline-primary" size="sm" disabled={saving === r.company.id} onClick={() => save(r)}>{saving === r.company.id ? <Spinner size="sm" /> : "Guardar"}</Button>
                                         <ActionsMenu size="sm" label={`Mais ações: ${r.company.name}`} items={[
+                                            { label: "Enviar link de configuração", icon: "ri-send-plane-line", onClick: () => setSetupFor({ id: r.company.id, name: r.company.name }) },
                                             { label: "Terminar relação", icon: "ri-link-unlink", danger: true, onClick: () => { setEndReason(""); setEnding(r); } },
                                         ]} />
                                     </Col>
@@ -352,6 +367,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
                 )}
             </CardBody>
 
+            <SetupLinkModal isOpen={!!setupFor} onClose={() => setSetupFor(null)} companyId={setupFor?.id ?? null} companyName={setupFor?.name} />
             <Modal isOpen={!!ending} toggle={() => !endBusy && setEnding(null)} centered>
                 <ModalHeader toggle={() => !endBusy && setEnding(null)}>Terminar a relação com {ending?.company.name}?</ModalHeader>
                 <ModalBody>

@@ -7,6 +7,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0d1b36" />
 
+  <!-- Tema escolhido (claro ou escuro): aplicado ANTES de a app carregar, para não piscar em
+       claro depois de atualizar a página. Sem acesso ao armazenamento, vale o claro. -->
+  <script>
+    (function () {
+      try {
+        var t = window.localStorage.getItem('xp-theme');
+        if (t === 'dark' || t === 'light') {
+          document.documentElement.setAttribute('data-bs-theme', t);
+          if (t === 'dark') document.documentElement.setAttribute('data-sidebar', 'dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <style>
+    html[data-bs-theme="dark"], html[data-bs-theme="dark"] body { background-color: #1a1d21; color-scheme: dark; }
+  </style>
+
   <!-- Google Consent Mode v2 — default DENIED até consentimento -->
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -20,11 +37,11 @@
     });
   </script>
 
-  <!-- Google tag (gtag.js) — GA4. Nunca na página pública dos orçamentos (/orcamento/):
-       essa página não usa cookies nem análise de terceiros (política de privacidade, secção 7). -->
+  <!-- Google tag (gtag.js), GA4. Nunca nas páginas públicas (orçamento, aprovação, cobrança e
+       configuração): não usam cookies nem análise de terceiros (como o aviso de cookies em App.tsx). -->
   <script>
     (function () {
-      if (/\/orcamento\//.test(window.location.pathname)) return;
+      if (/\/(orcamento|aprovar|cobranca|configurar)\//.test(window.location.pathname + '/')) return;
       var s = document.createElement('script');
       s.async = true;
       s.src = 'https://www.googletagmanager.com/gtag/js?id=G-KMK84KG99K';

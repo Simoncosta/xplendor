@@ -284,7 +284,7 @@ class SetupPublicService
             return $first;
         });
 
-        $this->tasks->markDone($link->company_id, CompanySetupLink::STEP_TASK_KEYS[$step]);
+        $this->tasks->markDone($link->company_id, CompanySetupLink::STEP_TASK_KEYS[$step], $link->support_ticket_id);
         $link->refresh();
         if ($completedNow) {
             $this->notify->completed($link);

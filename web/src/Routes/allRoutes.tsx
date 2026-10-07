@@ -109,6 +109,7 @@ import ServiceCatalogPage from "pages/Admin/ServiceCatalogPage";
 import AdminStockList from "pages/Admin/AdminStockList";
 import CreativeFormatRulesPage from "pages/Admin/CreativeFormatRulesPage";
 import AiModelsPage from "pages/Admin/AiModelsPage";
+import SetupPublicPage from "pages/SetupPublic";
 import RequireSuperAdmin from "./RequireSuperAdmin";
 import RequireModule from "./RequireModule";
 
@@ -295,6 +296,7 @@ const publicRoutes = [
     { path: "/orcamento", component: <QuotePublicPage /> },
     // Aprovação de conteúdos por lote (sem conta, sem indexação). Token no fragmento: /aprovar#<token>.
     { path: "/aprovar", component: <ContentReviewPage /> },
+    { path: "/configurar", component: <SetupPublicPage /> },
     // Fatura da XPLENDOR (sem conta, sem indexação): ver, descarregar e "Já paguei". Token no fragmento: /cobranca#<token>.
     { path: "/cobranca", component: <ChargePublicPage /> },
     // A mesma página vista pela equipa (não conta como abertura; mesma aba, para manter a sessão).

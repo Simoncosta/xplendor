@@ -1,0 +1,28 @@
+/* Página do link de configuração: pensada para o telemóvel, com as cores do tema do telemóvel (claro ou escuro). */
+.sp-page { min-height: 100vh; background: var(--vz-body-bg); color: var(--vz-body-color); padding: 16px 16px 48px; }
+.sp-wrap { max-width: 560px; margin: 0 auto; }
+.sp-page .min-w-0 { min-width: 0; }
+.sp-logo { width: 44px; height: 44px; border-radius: 10px; object-fit: contain; background: var(--vz-secondary-bg); border: 1px solid var(--vz-border-color); }
+.sp-logo-fallback { width: 44px; height: 44px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;
+    background: var(--vz-primary-bg-subtle); color: var(--vz-primary); }
+.sp-step { border: 1px solid var(--vz-border-color); border-radius: 12px; padding: 14px; background: var(--vz-secondary-bg); }
+.sp-step.sp-done { border-color: var(--vz-success-border-subtle, var(--vz-border-color)); }
+.sp-choice { border: 1px solid var(--vz-border-color); border-radius: 10px; padding: 10px 12px; background: var(--vz-body-bg); }
+.sp-page .btn { min-height: 44px; }
+.sp-page .btn-sm { min-height: 36px; }
+.sp-email { word-break: break-all; font-family: var(--vz-font-monospace, monospace); font-size: 13px; }
+
+/*
+ * Campos sempre legíveis nos dois modos: as cores vêm do tema do próprio contentor
+ * (data-bs-theme), com placeholder e preenchimento automático com contraste suficiente.
+ * O Velzon só define as variáveis dos campos no :root e em [data-bs-theme=dark].
+ */
+.sp-page[data-bs-theme="light"] { color-scheme: light; --vz-input-bg-custom: #fff; --vz-input-border-custom: #ced4da; }
+.sp-page[data-bs-theme="dark"] { color-scheme: dark; --vz-input-bg-custom: #262a2f; --vz-input-border-custom: #3a4047; }
+.sp-page .form-control { color: var(--vz-body-color); -webkit-text-fill-color: var(--vz-body-color); background-color: var(--vz-input-bg-custom);
+    border-color: var(--vz-input-border-custom); caret-color: var(--vz-body-color); }
+.sp-page .form-control::placeholder { color: #6b717c; -webkit-text-fill-color: #6b717c; opacity: 1; }
+.sp-page[data-bs-theme="dark"] .form-control::placeholder { color: #a3a8b8; -webkit-text-fill-color: #a3a8b8; }
+.sp-page .form-control:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--vz-input-bg-custom) inset; -webkit-text-fill-color: var(--vz-body-color); }
+.sp-page .form-check-input { background-color: var(--vz-input-bg-custom); border-color: var(--vz-input-border-custom); }
+.sp-page .form-check-input:checked { background-color: var(--vz-primary); border-color: var(--vz-primary); }

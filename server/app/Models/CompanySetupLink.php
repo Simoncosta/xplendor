@@ -52,7 +52,7 @@ class CompanySetupLink extends Model
     public const REVOKED_REPLACED = 'replaced';
 
     protected $fillable = [
-        'company_id', 'created_by_user_id', 'impersonator_user_id', 'company_management_id', 'token_hash', 'token_encrypted',
+        'company_id', 'created_by_user_id', 'impersonator_user_id', 'company_management_id', 'support_ticket_id', 'token_hash', 'token_encrypted',
         'steps', 'expires_at', 'revoked_at', 'revoked_reason', 'revoked_by_user_id', 'completed_at',
     ];
 

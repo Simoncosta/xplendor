@@ -1,4 +1,5 @@
 import { changeHTMLAttribute } from './utils';
+import { storeTheme } from "helpers/theme";
 import {
     changeLayoutAction,
     changeLayoutModeAction,
@@ -39,6 +40,7 @@ export const changeLayout = (layout : any) => async (dispatch : any) => {
 export const changeLayoutMode = (layoutMode : any) => async (dispatch : any) => {
     try {
         changeHTMLAttribute("data-bs-theme", layoutMode);
+        storeTheme(layoutMode); // persiste depois de atualizar a página
         dispatch(changeLayoutModeAction(layoutMode));
     } catch (error) { }
 };

@@ -7,6 +7,7 @@ namespace App\Services\Setup;
 use App\Models\Company;
 use App\Models\CompanyConnectionEvent;
 use App\Models\CompanySetupLink;
+use App\Models\SupportTicket;
 use App\Models\User;
 use App\Services\CollaboratorService;
 use App\Services\Tenancy\CompanyAccess;
@@ -34,16 +35,26 @@ class SetupLinkService
         return CompanySetupLink::where('company_id', $companyId)->orderByDesc('id')->first();
     }
 
-    /** @param string[] $steps */
-    public function create(int $companyId, User $actor, array $steps): CompanySetupLink
+    /**
+     * @param string[] $steps
+     * @param int|null $ticketId o ticket de arranque de onde o link foi gerado (as tarefas dele
+     *   marcam-se pela chave, mesmo noutra empresa): só a equipa XPLENDOR, ou um ticket da própria empresa.
+     */
+    public function create(int $companyId, User $actor, array $steps, ?int $ticketId = null): CompanySetupLink
     {
         $this->assertCanManage($actor, $companyId);
+        if ($ticketId !== null) {
+            $ticket = SupportTicket::find($ticketId);
+            if (! $ticket || $ticket->type !== SupportTicket::TYPE_ONBOARDING || ($actor->role !== 'root' && (int) $ticket->company_id !== $companyId)) {
+                throw new HttpException(422, 'Ticket de arranque inválido.');
+            }
+        }
         $steps = array_values(array_intersect(array_keys(CompanySetupLink::STEPS), $steps));
         if ($steps === []) {
             throw new HttpException(422, 'Escolha pelo menos um passo.');
         }
 
-        return DB::transaction(function () use ($companyId, $actor, $steps) {
+        return DB::transaction(function () use ($companyId, $actor, $steps, $ticketId) {
             Company::whereKey($companyId)->lockForUpdate()->firstOrFail(); // um link ativo por empresa
             CompanySetupLink::where('company_id', $companyId)->whereNull('revoked_at')
                 ->update(['revoked_at' => now(), 'revoked_reason' => CompanySetupLink::REVOKED_REPLACED, 'revoked_by_user_id' => $actor->id, 'updated_at' => now()]);
@@ -54,6 +65,7 @@ class SetupLinkService
                 'company_id' => $companyId,
                 'created_by_user_id' => $actor->id,
                 'company_management_id' => app(CompanyAccess::class)->management($companyId)?->id,
+                'support_ticket_id' => $ticketId,
                 'token_hash' => $token['token_hash'],
                 'token_encrypted' => $token['token_encrypted'],
                 'steps' => array_fill_keys($steps, CompanySetupLink::blankStep()),
@@ -115,6 +127,7 @@ class SetupLinkService
             'created_at' => $link->created_at?->toIso8601String(),
             'created_by' => $link->creator?->name,
             'open_count' => (int) $link->open_count,
+            'support_ticket_id' => $link->support_ticket_id,
             'last_opened_at' => $link->last_opened_at?->toIso8601String(),
             'steps' => array_map(fn ($k) => self::presentStep($link, $k), $link->stepKeys()),
         ];

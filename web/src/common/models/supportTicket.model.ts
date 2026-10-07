@@ -57,12 +57,16 @@ export interface ISupportTicket {
     type_changes?: ISupportTicketTypeChange[]; // só no lado admin
     // Lista de tarefas (ticket de arranque).
     tasks?: ISupportTicketTask[];
+    // Ticket de arranque: a empresa a configurar pelo link (null: escolhe-se no ecrã).
+    setup_company_id?: number | null;
 }
 
 export interface ISupportTicketTask {
     id: number;
     group_label: string | null;
     title: string;
+    // Chave fixa (social_access, meta_ads_access, ga4_access): marca-se sozinha pelo link de configuração.
+    task_key?: string | null;
     done: boolean;
     done_at: string | null;
     done_by_name: string | null;

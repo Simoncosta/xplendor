@@ -6,13 +6,15 @@ import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { useMetaOAuth } from "hooks/useMetaOAuth";
 import { disconnectMetaAds, getCompanyIntegrations } from "slices/metaAds/thunk";
-import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, setMetaAccountApi, getMyModules } from "helpers/laravel_helper";
+import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPingwin, syncPingwin, getCoverManager, connectCoverManager, disconnectCoverManager, getCoverManagerSettings, updateCoverManagerSettings, getMyModules } from "helpers/laravel_helper";
 import { ICarmineApi } from "common/models/carmine-api.model";
 import { PingwinStatus } from "common/models/pingwin.model";
 import PingwinConnectModal from "./PingwinConnectModal";
 import CarmineConnectModal from "./CarmineConnectModal";
 import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
 import SocialConnectionCard from "./SocialConnectionCard";
+import MetaAccountPicker from "./MetaAccountPicker";
+import SetupLinkCard from "./setupLink/SetupLinkCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { confirmAction } from "helpers/swal";
@@ -123,9 +125,6 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     // impersonation. O backend decide; aqui só se escondem os botões.
     const [canManageMeta, setCanManageMeta] = useState(false);
     const [agencyMemberOnly, setAgencyMemberOnly] = useState(false);
-    // Escolha da conta de anúncios após o OAuth (callback no backend não a pede).
-    const [metaAccountInput, setMetaAccountInput] = useState("");
-    const [savingMetaAccount, setSavingMetaAccount] = useState(false);
     // Corrigir uma conta já guardada (ID mal escrito → sync falha sem outra saída).
     const [editingMetaAccount, setEditingMetaAccount] = useState(false);
     // Desligar a Meta (com escolha: manter histórico ou apagar) ou apagar o histórico guardado.
@@ -286,23 +285,6 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
         setSearchParams(next, { replace: true });
     }, [searchParams, setSearchParams]);
 
-    const saveMetaAccount = async () => {
-        const acc = metaAccountInput.trim();
-        if (!acc || !companyId) return;
-        setSavingMetaAccount(true);
-        try {
-            await setMetaAccountApi(companyId, acc);
-            toast.success("Conta de anúncios guardada. A sincronizar os últimos 90 dias…");
-            setMetaAccountInput("");
-            setEditingMetaAccount(false);
-            await fetchIntegrations(companyId);
-        } catch (e: any) {
-            toast.error(e?.message ?? "Não foi possível guardar a conta de anúncios.");
-        } finally {
-            setSavingMetaAccount(false);
-        }
-    };
-
     const confirmMetaDisconnect = async ({ purge, confirmation }: { purge: boolean; confirmation?: string }) => {
         const mode = metaModalMode;
         try {
@@ -422,6 +404,8 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                 </Row>
 
                 <Row className="g-3">
+                    {/* Link de configuração do cliente (só quem pode gerir o vê) e histórico das ligações. */}
+                    {companyId > 0 && <SetupLinkCard companyId={companyId} />}
 
                     {/* ── Meta Ads ─────────────────────────────────────────── */}
                     <Col md={6} xl={4}>
@@ -481,30 +465,9 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
 
                                         {/* Conta por definir (logo após o OAuth) ou a corrigir: o token já
                                             está guardado; falta escolher/corrigir a conta de anúncios. */}
-                                        {canManageMeta && (!metaIntegration.account_id || editingMetaAccount) && (
-                                            <div className="border rounded p-2 mt-1" style={{ background: "var(--vz-tertiary-bg)" }}>
-                                                <p className="fs-12 text-body mb-2">
-                                                    Introduza o ID da sua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
-                                                </p>
-                                                <input
-                                                    type="text"
-                                                    className="form-control form-control-sm mb-2"
-                                                    placeholder="123456789 ou act_123456789"
-                                                    value={metaAccountInput}
-                                                    onChange={(e) => setMetaAccountInput(e.target.value)}
-                                                    onKeyDown={(e) => e.key === "Enter" && saveMetaAccount()}
-                                                />
-                                                <ReasonButton
-                                                    color="outline-primary"
-                                                    size="sm"
-                                                    className="w-100"
-                                                    onClick={saveMetaAccount}
-                                                    disabled={savingMetaAccount}
-                                                    reason={!savingMetaAccount && !metaAccountInput.trim() ? "Indique o ID da conta de anúncios." : null}
-                                                >
-                                                    {savingMetaAccount ? <><Spinner size="sm" className="me-1" />A guardar…</> : "Guardar conta de anúncios"}
-                                                </ReasonButton>
-                                            </div>
+                                        {canManageMeta && (!metaIntegration.account_id || editingMetaAccount) && metaIntegration.status !== "revoked" && (
+                                            <MetaAccountPicker companyId={companyId} current={metaIntegration.account_id || null}
+                                                onSaved={() => { setEditingMetaAccount(false); void fetchIntegrations(companyId); }} />
                                         )}
 
                                         {!canManageMeta ? (

@@ -37,8 +37,9 @@ class CompanySetupLinkController extends Controller
         $data = $request->validate([
             'steps' => ['required', 'array', 'min:1', 'max:3'],
             'steps.*' => ['string', Rule::in(array_keys(CompanySetupLink::STEPS))],
+            'support_ticket_id' => ['nullable', 'integer'],
         ], ['steps.required' => 'Escolha pelo menos um passo.', 'steps.min' => 'Escolha pelo menos um passo.', 'steps.*.in' => 'Passo desconhecido.']);
-        $this->links->create($companyId, $request->user(), array_values(array_unique($data['steps'])));
+        $this->links->create($companyId, $request->user(), array_values(array_unique($data['steps'])), isset($data['support_ticket_id']) ? (int) $data['support_ticket_id'] : null);
 
         return ApiResponse::success($this->payload($companyId), 'Link de configuração gerado. O link anterior deixou de funcionar.', 201);
     }
@@ -71,6 +72,7 @@ class CompanySetupLinkController extends Controller
     private function payload(int $companyId): array
     {
         return [
+            'company_name' => \App\Services\Agency\AgencyNotifier::name(\App\Models\Company::find($companyId)),
             'link' => $this->links->present($this->links->latest($companyId)),
             'steps' => collect(CompanySetupLink::STEPS)->map(fn ($label, $key) => ['key' => $key, 'label' => $label])->values()->all(),
             'validity_days' => CompanySetupLink::VALIDITY_DAYS,

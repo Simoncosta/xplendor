@@ -16,9 +16,13 @@ const resources = {
     // },
 };
 
-const language = localStorage.getItem("I18N_LANGUAGE");
-if (!language) {
-    localStorage.setItem("I18N_LANGUAGE", "pt");
+// O armazenamento do browser pode estar bloqueado (modo privado): nesse caso, português.
+let language: string | null = null;
+try {
+    language = localStorage.getItem("I18N_LANGUAGE");
+    if (!language) localStorage.setItem("I18N_LANGUAGE", "pt");
+} catch {
+    language = null;
 }
 
 i18n
@@ -26,7 +30,7 @@ i18n
     .use(initReactI18next) // passes i18n down to react-i18next
     .init({
         resources,
-        lng: localStorage.getItem("I18N_LANGUAGE") || "pt",
+        lng: language || "pt",
         fallbackLng: "pt", // use en if detected lng is not available
 
         keySeparator: false, // we do not use keys in form messages.welcome

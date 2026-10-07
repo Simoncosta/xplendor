@@ -413,6 +413,29 @@ class CompanySetupLinkTest extends TestCase
         $this->assertSame(0, Alert::where('company_id', $this->agency->id)->count());
     }
 
+    public function test_link_generated_from_a_ticket_marks_that_tickets_tasks_even_in_another_company(): void
+    {
+        // Orçamento de prospeto: o ticket de arranque está na empresa XPLENDOR.
+        $teamTask = $this->onboardingTask($this->xplendor, 'ga4_access', 'Pedir o acesso ao Google Analytics');
+        $otherTeamTask = $this->onboardingTask($this->xplendor, 'ga4_access');
+
+        // Só a equipa (ou um ticket da própria empresa) pode associar o ticket.
+        $this->as($this->agencyAdmin)->postJson($this->url($this->client, '/setup-links'), ['steps' => ['ga4'], 'support_ticket_id' => $teamTask->support_ticket_id])->assertStatus(422);
+        $res = $this->as($this->root)->postJson($this->url($this->client, '/setup-links'), ['steps' => ['ga4'], 'support_ticket_id' => $teamTask->support_ticket_id])
+            ->assertCreated()->assertJsonPath('data.link.support_ticket_id', $teamTask->support_ticket_id);
+        $token = explode('#', (string) $res->json('data.link.url'))[1];
+
+        $this->pub($token)->postJson('/api/public/setup/ga4/verify', ['property_id' => '398765432'])->assertOk();
+        $this->assertNotNull($teamTask->fresh()->done_at, 'A tarefa do ticket de origem marca-se pela chave.');
+        $this->assertNull($otherTeamTask->fresh()->done_at, 'Outros tickets da XPLENDOR não.');
+
+        // Um ticket que não é de arranque não se associa.
+        $plain = SupportTicket::create(['company_id' => $this->client->id, 'user_id' => $this->root->id, 'type' => 'bug', 'title' => 'x', 'description' => 'x', 'status' => 'open', 'priority' => 'normal']);
+        $this->as($this->root)->postJson($this->url($this->client, '/setup-links'), ['steps' => ['ga4'], 'support_ticket_id' => $plain->id])->assertStatus(422);
+        // As tarefas mostram a chave (o ecrã do ticket oferece "Gerar link de configuração").
+        $this->as($this->root)->getJson("/api/v1/admin/tickets/{$teamTask->support_ticket_id}")->assertOk()->assertJsonPath('data.tasks.0.task_key', 'ga4_access');
+    }
+
     // ── Meta sem App Review ──────────────────────────────────────────────────
 
     public function test_meta_app_not_approved_shows_an_honest_message_and_warns_the_agency_once(): void

@@ -50,10 +50,18 @@ class SupportTicketResource extends JsonResource
                 'id'           => $t->id,
                 'group_label'  => $t->group_label,
                 'title'        => $t->title,
+                'task_key'     => $t->task_key,
                 'done'         => $t->done_at !== null,
                 'done_at'      => optional($t->done_at)->toIso8601String(),
                 'done_by_name' => $t->doneBy?->name,
             ])->values()->all()),
+            // Ticket de arranque: a empresa a configurar pelo link (a do orçamento; num orçamento de
+            // prospeto o ticket está na XPLENDOR e a empresa escolhe-se no ecrã).
+            'setup_company_id' => $this->when($this->type === \App\Models\SupportTicket::TYPE_ONBOARDING, function () {
+                $fromQuote = \App\Models\Quote::where('onboarding_ticket_id', $this->id)->value('company_id');
+
+                return $fromQuote ?: ((int) $this->company_id !== (int) \App\Services\Billing\ChargeService::teamCompanyId() ? $this->company_id : null);
+            }),
             'created_at'     => optional($this->created_at)->toIso8601String(),
             'updated_at'     => optional($this->updated_at)->toIso8601String(),
         ];

@@ -15,6 +15,11 @@ import {
 } from "common/models/supportTicket.model";
 import { useTicketTypeChange } from "Components/Common/useTicketTypeChange";
 import TicketTasksCard from "Components/Common/TicketTasksCard";
+import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkModal";
+import type { SetupStepKey } from "common/models/setupLink.model";
+
+/** Chave da tarefa de arranque => passo do link de configuração. */
+const TASK_STEP: Record<string, SetupStepKey> = { social_access: "social", meta_ads_access: "meta_ads", ga4_access: "ga4" };
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
@@ -30,6 +35,8 @@ const AdminTicketDetail = () => {
     const navigate = useNavigate();
 
     const [ticket, setTicket] = useState<ISupportTicket | null>(null);
+    // Link de configuração gerado a partir de uma tarefa de acesso do ticket de arranque.
+    const [setupOpen, setSetupOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [body, setBody] = useState("");
@@ -329,7 +336,7 @@ const AdminTicketDetail = () => {
                         </Card>
 
                         {ticket.tasks && ticket.tasks.length > 0 && (
-                            <TicketTasksCard tasks={ticket.tasks} onToggle={async (task, done) => {
+                            <TicketTasksCard tasks={ticket.tasks} onSetupLink={ticket.type === "onboarding" ? () => setSetupOpen(true) : undefined} onToggle={async (task, done) => {
                                 try {
                                     const r: any = await updateAdminTicketTask(ticket.id, task.id, done);
                                     if (r?.data) setTicket((prev) => (prev ? { ...prev, tasks: r.data.tasks } : prev));
@@ -337,6 +344,11 @@ const AdminTicketDetail = () => {
                                     toast.error(e?.message ?? "Não foi possível atualizar a tarefa.");
                                 }
                             }} />
+                        )}
+
+                        {ticket.type === "onboarding" && (
+                            <SetupLinkModal isOpen={setupOpen} onClose={() => { setSetupOpen(false); }} companyId={ticket.setup_company_id ?? null} supportTicketId={ticket.id}
+                                presetSteps={Array.from(new Set((ticket.tasks ?? []).filter((t) => !t.done && t.task_key && TASK_STEP[t.task_key]).map((t) => TASK_STEP[t.task_key as string])))} />
                         )}
 
                         <Card>

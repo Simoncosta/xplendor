@@ -188,6 +188,14 @@ export const createAiBlindTest = (fn: string) => api.create(`/admin/ai-blind-tes
 export const getAiBlindTest = (id: number) => api.get(`/admin/ai-blind-tests/${id}`);
 export const chooseAiBlindCase = (testId: number, caseId: number, choice: "left" | "right" | "tie") =>
     api.create(`/admin/ai-blind-tests/${testId}/cases/${caseId}/choice`, { choice });
+// Link de configuração do cliente (F1c) e histórico das ligações.
+export const getSetupLink = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/setup-link`);
+export const createSetupLink = (companyId: number, steps: string[], supportTicketId?: number | null) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/setup-links`, { steps, ...(supportTicketId ? { support_ticket_id: supportTicketId } : {}) });
+export const extendSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/extend`, {});
+export const revokeSetupLink = (companyId: number, linkId: number) => api.create(url.GET_COMPANIES + `/${companyId}/setup-links/${linkId}/revoke`, {});
+export const getIntegrationsHistory = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/history`);
+export const getMetaAdAccounts = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/meta/ad-accounts`);
 // Regras de formato (referência de mercado): só root.
 export const getCreativeFormatRules = () => api.get(`/admin/creative-format-rules`);
 export const createCreativeFormatRule = (data: any) => api.create(`/admin/creative-format-rules`, data);
