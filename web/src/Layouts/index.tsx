@@ -7,6 +7,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import SupportFab from '../Components/Common/SupportFab';
+import { changeHTMLAttribute } from "../slices/layouts/utils";
 import { WorkingCompanyBand } from "../Components/Common/WorkingCompanySwitcher";
 import ImpersonationBanner from '../Components/Common/ImpersonationBanner';
 import { reconcileImpersonation } from '../helpers/impersonation';
@@ -94,10 +95,11 @@ const Layout = (props: any) => {
             window.dispatchEvent(new Event('resize'));
             dispatch(changeLeftsidebarViewType(leftSidebarViewType));
             dispatch(changeLeftsidebarSizeType(leftsidbarSizeType));
-            // A sidebar acompanha o modo dark: em dark mode força data-sidebar="dark"
-            // (escuro E legível, pelas SCSS &[data-sidebar="dark"] do Velzon);
-            // em light respeita o tema de sidebar configurado.
-            dispatch(changeSidebarTheme(layoutModeType === "dark" ? "dark" : leftSidebarType));
+            // A barra lateral segue o tema: em modo escuro aplica-se data-sidebar="dark"
+            // (escuro e legível, pelas SCSS &[data-sidebar="dark"] do Velzon) SEM mudar o
+            // tema configurado da barra; em modo claro volta ao configurado.
+            if (layoutModeType === "dark") changeHTMLAttribute("data-sidebar", "dark");
+            else dispatch(changeSidebarTheme(leftSidebarType));
             dispatch(changeLayoutMode(layoutModeType));
             dispatch(changeLayoutWidth(layoutWidthType));
             dispatch(changeLayoutPosition(layoutPositionType));

@@ -129,6 +129,7 @@ class CompanyController extends Controller
         return ApiResponse::success([
             'modules' => $service->overview($companyId),
             'presets' => array_keys(ModuleRegistry::PRESETS),
+            'history' => $service->history($companyId),
         ], 'Módulos carregados.');
     }
 
@@ -148,13 +149,14 @@ class CompanyController extends Controller
 
         // ValidationException (422) sobe automaticamente se o desligar for bloqueado.
         if ($data['enabled']) {
-            $service->enable($companyId, $data['module_key']);
+            $service->enable($companyId, $data['module_key'], 'manual', $request->user()->id);
         } else {
-            $service->disable($companyId, $data['module_key']);
+            $service->disable($companyId, $data['module_key'], 'manual', $request->user()->id);
         }
 
         return ApiResponse::success([
             'modules' => $service->overview($companyId),
+            'history' => $service->history($companyId),
         ], 'Módulo atualizado.');
     }
 
@@ -171,10 +173,11 @@ class CompanyController extends Controller
             'preset' => ['required', 'string'],
         ]);
 
-        $service->applyPreset($companyId, $data['preset']);
+        $service->applyPreset($companyId, $data['preset'], $request->user()->id);
 
         return ApiResponse::success([
             'modules' => $service->overview($companyId),
+            'history' => $service->history($companyId),
         ], 'Preset aplicado.');
     }
 }

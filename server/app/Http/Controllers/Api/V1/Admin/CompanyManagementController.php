@@ -55,7 +55,7 @@ class CompanyManagementController extends Controller
             'enabled' => ['required', 'boolean'],
             'notification_email' => ['nullable', 'email', 'max:255'],
         ]);
-        $this->service->setAgency($company, (bool) $data['enabled'], $data['notification_email'] ?? null);
+        $this->service->setAgency($company, (bool) $data['enabled'], $data['notification_email'] ?? null, $request->user());
 
         return ApiResponse::success($this->payload($company->fresh()), $data['enabled'] ? 'Empresa marcada como agência.' : 'A empresa deixou de ser agência.');
     }

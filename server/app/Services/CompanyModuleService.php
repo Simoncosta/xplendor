@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\CompanyModule;
+use App\Models\CompanyModuleEvent;
 use App\Modules\ModuleRegistry;
 use Illuminate\Validation\ValidationException;
 
@@ -14,11 +15,14 @@ use Illuminate\Validation\ValidationException;
  *  · desligar um módulo é BLOQUEADO se algum módulo ATIVO depender dele (cadeia);
  *  · ligar um módulo LIGA em cascata as suas dependências;
  *  · aplicar um preset de ramo substitui o conjunto (já fechado sobre dependências).
+ * Cada módulo ligado ou desligado fica no histórico (company_module_events), com a origem.
  *
  * Não faz tenancy nem auth — isso é do controller (só super-admin gere).
  */
 class CompanyModuleService
 {
+    private const PRESET_LABELS = ['automotive' => 'Automotivo', 'restaurant' => 'Restauração', 'base' => 'Base'];
+
     /** @return string[] chaves dos módulos ativos da empresa. */
     public function enabledKeys(int $companyId): array
     {
@@ -58,7 +62,7 @@ class CompanyModuleService
     }
 
     /** Liga um módulo + (em cascata) as suas dependências. */
-    public function enable(int $companyId, string $key): void
+    public function enable(int $companyId, string $key, string $source = CompanyModuleEvent::SOURCE_MANUAL, ?int $userId = null, ?string $note = null): void
     {
         $this->assertModule($key);
 
@@ -68,6 +72,7 @@ class CompanyModuleService
         foreach ($toEnable as $k) {
             if (! in_array($k, $existing, true)) {
                 CompanyModule::create(['company_id' => $companyId, 'module_key' => $k]);
+                $this->log($companyId, $k, CompanyModuleEvent::ENABLED, $source, $userId, $k === $key ? $note : "Dependência de {$key}.");
             }
         }
     }
@@ -77,7 +82,7 @@ class CompanyModuleService
      * (transitivamente) — segue toda a cadeia. Ex.: não deixa desligar Stock se
      * Comercial/CRM ou Pós-venda estiverem ligados.
      */
-    public function disable(int $companyId, string $key): void
+    public function disable(int $companyId, string $key, string $source = CompanyModuleEvent::SOURCE_MANUAL, ?int $userId = null): void
     {
         $this->assertModule($key);
 
@@ -91,32 +96,55 @@ class CompanyModuleService
             ]);
         }
 
-        CompanyModule::where('company_id', $companyId)->where('module_key', $key)->delete();
+        if (CompanyModule::where('company_id', $companyId)->where('module_key', $key)->delete() > 0) {
+            $this->log($companyId, $key, CompanyModuleEvent::DISABLED, $source, $userId);
+        }
     }
 
     /**
      * Aplica um preset de ramo: passa a ter EXATAMENTE os módulos do preset (já
      * fechado sobre dependências). É um atalho — depois ajusta-se individualmente.
      */
-    public function applyPreset(int $companyId, string $preset): void
+    public function applyPreset(int $companyId, string $preset, ?int $userId = null): void
     {
         if (! ModuleRegistry::presetExists($preset)) {
             throw ValidationException::withMessages(['preset' => ["Ramo inválido: {$preset}."]]);
         }
 
         $target = ModuleRegistry::presetKeys($preset);
+        $label = self::PRESET_LABELS[$preset] ?? $preset;
         $current = $this->enabledKeys($companyId);
 
         // Remove os que saem.
         $toRemove = array_diff($current, $target);
         if (! empty($toRemove)) {
             CompanyModule::where('company_id', $companyId)->whereIn('module_key', $toRemove)->delete();
+            foreach ($toRemove as $k) {
+                $this->log($companyId, $k, CompanyModuleEvent::DISABLED, CompanyModuleEvent::SOURCE_PRESET, $userId, $label);
+            }
         }
 
         // Adiciona os que entram.
         foreach (array_diff($target, $current) as $k) {
             CompanyModule::create(['company_id' => $companyId, 'module_key' => $k]);
+            $this->log($companyId, $k, CompanyModuleEvent::ENABLED, CompanyModuleEvent::SOURCE_PRESET, $userId, $label);
         }
+    }
+
+    /** O histórico de módulos da empresa, do mais recente para o mais antigo. */
+    public function history(int $companyId, int $limit = 30): array
+    {
+        return CompanyModuleEvent::where('company_id', $companyId)->with('user:id,name')->orderByDesc('id')->limit($limit)->get()
+            ->map(fn (CompanyModuleEvent $e) => [
+                'module' => ModuleRegistry::exists($e->module_key) ? ModuleRegistry::label($e->module_key) : $e->module_key,
+                'action' => $e->action, 'source' => $e->source, 'note' => $e->note,
+                'user' => $e->user?->name, 'at' => optional($e->created_at)->toIso8601String(),
+            ])->all();
+    }
+
+    private function log(int $companyId, string $key, string $action, string $source, ?int $userId, ?string $note = null): void
+    {
+        CompanyModuleEvent::create(['company_id' => $companyId, 'module_key' => $key, 'action' => $action, 'source' => $source, 'note' => $note, 'user_id' => $userId]);
     }
 
     private function assertModule(string $key): void

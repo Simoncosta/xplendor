@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { getMyModules } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { getHomeCompanyId } from "helpers/workingCompany";
 
 /**
  * XPLENDOR — Fonte ÚNICA (frontend) dos módulos ATIVOS da empresa em que se trabalha.
@@ -9,9 +10,14 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * middleware EnsureModuleActive no backend.
  *
  * `modules === null` = ainda não sabido / root / falha → tratar como "vê tudo".
+ *
+ * O root vê tudo só na PRÓPRIA empresa. No contexto de um cliente, o ecrã (menu, dashboard,
+ * rotas) segue os módulos desse cliente, para o root ver como o cliente vê; o servidor
+ * continua a deixá-lo passar (suporte).
  */
 interface ModulesState {
     modules: string[] | null;
+    /** Vê tudo: o root na própria empresa (não num cliente). */
     isRoot: boolean;
     loading: boolean;
     /** true se o módulo está ativo OU se ainda não sabemos/root (fail-open UX). */
@@ -21,6 +27,10 @@ interface ModulesState {
 const ModulesContext = createContext<ModulesState>({
     modules: null, isRoot: false, loading: true, has: () => true,
 });
+
+/** O root na própria empresa vê tudo; noutra empresa, o ecrã segue os módulos dela. */
+export const seesAllModules = (role: string | undefined, workingId: number, homeId: number): boolean =>
+    role === "root" && (!workingId || workingId === homeId);
 
 export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [modules, setModules] = useState<string[] | null>(null);
@@ -33,15 +43,17 @@ export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     useEffect(() => {
         let alive = true;
-        let root = false;
+        let role: string | undefined;
         try {
             const raw = sessionStorage.getItem("authUser");
-            if (raw) { const o = JSON.parse(raw); root = o.role === "root"; }
+            if (raw) role = JSON.parse(raw).role;
         } catch { /* ignore */ }
-        setIsRoot(root);
+        const all = seesAllModules(role, companyId, getHomeCompanyId());
+        setIsRoot(all);
+        setModules(null);
         setLoading(true);
 
-        if (root || !companyId) { setLoading(false); return; } // root vê tudo
+        if (all || !companyId) { setLoading(false); return; } // root na própria empresa vê tudo
 
         getMyModules(companyId)
             .then((r: any) => { if (alive) setModules(r?.data?.modules ?? null); })

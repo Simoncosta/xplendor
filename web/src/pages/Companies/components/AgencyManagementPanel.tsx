@@ -60,7 +60,7 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
         try {
             const r: any = await setAdminCompanyAgency(companyId, isAgency, email);
             apply(r.data);
-            toast.success(isAgency ? "Empresa marcada como agência." : "A empresa deixou de ser agência.");
+            toast.success(isAgency ? "Empresa marcada como agência. A Linha Editorial fica ativa." : "A empresa deixou de ser agência.");
             getAdminAgencies().then((a: any) => setAgencies(a.data.agencies ?? []));
             onChanged?.();
         } catch (e) {

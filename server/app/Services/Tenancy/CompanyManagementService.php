@@ -6,7 +6,9 @@ namespace App\Services\Tenancy;
 
 use App\Models\Company;
 use App\Models\CompanyManagement;
+use App\Models\CompanyModuleEvent;
 use App\Models\User;
+use App\Services\CompanyModuleService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,8 +22,13 @@ use Illuminate\Validation\ValidationException;
  */
 class CompanyManagementService
 {
-    /** Marca ou desmarca a agência. Desmarcar com clientes ativos é recusado. */
-    public function setAgency(Company $company, bool $enabled, ?string $notificationEmail): Company
+    public function __construct(private readonly CompanyModuleService $modules) {}
+
+    /**
+     * Marca ou desmarca a agência. Desmarcar com clientes ativos é recusado. Marcar liga a
+     * Linha Editorial (a vista de todos os clientes vive lá), com registo no histórico.
+     */
+    public function setAgency(Company $company, bool $enabled, ?string $notificationEmail, ?User $actor = null): Company
     {
         if ($enabled && $company->activeManagement()->exists()) {
             throw ValidationException::withMessages(['enabled' => ['Uma empresa gerida por uma agência não pode ser ela própria uma agência.']]);
@@ -33,6 +40,9 @@ class CompanyManagementService
             'agency_enabled_at' => $enabled ? ($company->agency_enabled_at ?? now()) : null,
             'agency_notification_email' => $enabled ? $notificationEmail : null,
         ])->save();
+        if ($enabled) {
+            $this->modules->enable($company->id, 'linha_editorial', CompanyModuleEvent::SOURCE_AGENCY, $actor?->id, 'Ativado ao marcar a empresa como agência.');
+        }
 
         return $company;
     }

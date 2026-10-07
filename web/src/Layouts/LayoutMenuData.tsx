@@ -312,7 +312,8 @@ const Navdata = () => {
         // ── Administração — visível apenas a role root. Sub-nav único; a área
         //    /admin cresce aqui dentro (novas consolas entram como sub-itens).
         //    Gating ao nível do array (o `hidden` NÃO é respeitado em subItems).
-        ...(isRoot ? [
+        // Num cliente, o root vê o menu como o cliente o vê (sem a Administração).
+        ...(isRoot && !workingAway ? [
             {
                 label: "Administração",
                 isHeader: true,
