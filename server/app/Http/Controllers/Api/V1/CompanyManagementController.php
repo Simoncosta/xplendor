@@ -58,6 +58,9 @@ class CompanyManagementController extends Controller
                 ->where('expires_at', '>', now())->count() : 0,
             'agency_connections' => $own && $m ? app(AgencyConnectionsService::class)->agencyMade($companyId, $m->agency_company_id) : [],
             'connections_decision' => $own ? $this->pendingDecision($companyId) : null,
+            // A página do pedido de gestão (sem o resto da app) para quem está sem acesso.
+            'company_name' => $own ? ($company->trade_name ?: $company->fiscal_name) : null,
+            'has_platform_access' => $company->hasPlatformAccess(),
         ], 'Agência gestora.');
     }
 

@@ -22,9 +22,14 @@ const errorOf = (e: any, fallback: string): string => {
 };
 const dmy = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt-PT") : "");
 
-type Props = { companyId: number; pending: number; highlight?: boolean; onChanged: () => void };
+type Props = {
+    companyId: number; pending: number; highlight?: boolean; onChanged: () => void;
+    /** Depois de aceitar ou recusar (a página do pedido mostra o resultado). */
+    onAccepted?: (agencyName: string) => void;
+    onDeclined?: () => void;
+};
 
-export default function ManagementRequestsCard({ companyId, pending, highlight, onChanged }: Props) {
+export default function ManagementRequestsCard({ companyId, pending, highlight, onChanged, onAccepted, onDeclined }: Props) {
     const [list, setList] = useState<Req[] | null>(null);
     const [busy, setBusy] = useState(0);
     const [declining, setDeclining] = useState<Req | null>(null);
@@ -48,6 +53,7 @@ export default function ManagementRequestsCard({ companyId, pending, highlight, 
         try {
             await acceptCompanyManagementRequest(companyId, r.id);
             toast.success(`A agência ${r.agency.name} passou a gerir a sua empresa.`);
+            onAccepted?.(r.agency.name);
             onChanged();
             load();
         } catch (e: any) { toast.error(errorOf(e, "Não foi possível aceitar o pedido.")); }
@@ -61,6 +67,7 @@ export default function ManagementRequestsCard({ companyId, pending, highlight, 
             toast.success("Pedido recusado. A agência foi avisada.");
             setDeclining(null);
             setReason("");
+            onDeclined?.();
             onChanged();
             load();
         } catch (e: any) { toast.error(errorOf(e, "Não foi possível recusar o pedido.")); }

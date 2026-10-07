@@ -11,6 +11,7 @@ import ArtigosPage from "pages/Restauracao/ArtigosPage";
 import ArtigoFormPage from "pages/Restauracao/ArtigoFormPage";
 import EditorialPage from "pages/Editorial/EditorialPage";
 import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
+import ManagementRequestPage from "pages/ManagementRequest";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
@@ -268,6 +269,8 @@ const publicRoutes = [
     // Authentication Page
     { path: "/logout", component: <Logout /> },
     { path: "/login", component: <Login /> },
+    // Pedido de gestão por uma agência: página só com o pedido (funciona sem acesso à plataforma; pede sessão).
+    { path: "/pedido-gestao/:companyId", component: <ManagementRequestPage /> },
     { path: "/forgot-password", component: <ForgetPasswordPage /> },
     { path: "/register", component: <Register /> },
 

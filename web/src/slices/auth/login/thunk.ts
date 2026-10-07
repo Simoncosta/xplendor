@@ -51,7 +51,10 @@ export const loginUser = (user: any, history: any) => async (dispatch: any) => {
             sessionStorage.setItem("authUser", JSON.stringify(data.data));
             setAuthorization(data.data.token);
             dispatch(loginSuccess(data.data));
-            history('/dashboard');
+            // Uma página pediu para voltar depois de entrar (ex.: a página do pedido de gestão).
+            let next: string | null = null;
+            try { next = sessionStorage.getItem("xp-after-login"); sessionStorage.removeItem("xp-after-login"); } catch { /* ignore */ }
+            history(next && next.startsWith("/") ? next : '/dashboard');
         }
     } catch (error) {
         dispatch(apiError(error));

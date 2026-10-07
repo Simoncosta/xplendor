@@ -258,10 +258,16 @@ class AgencyManagementRequestTest extends TestCase
     {
         $this->client->forceFill(['subscription_status' => 'expired'])->save();
         $this->ask(['nipc' => '501234567'])->assertOk();
+        // O aviso leva à página do pedido, e a página sabe que a empresa está sem acesso.
+        $this->assertSame("/pedido-gestao/{$this->client->id}", Alert::where('company_id', $this->client->id)->value('detail_path'));
+        $show = $this->as($this->clientAdmin)->getJson("/api/v1/companies/{$this->client->id}/management")->assertOk()->json('data');
+        $this->assertSame([false, 'Domiway', 1], [$show['has_platform_access'], $show['company_name'], $show['pending_requests']]);
         $this->as($this->clientAdmin)->getJson("/api/v1/companies/{$this->client->id}/editorial/calendar")->assertForbidden();
         $this->as($this->clientAdmin)->getJson("/api/v1/companies/{$this->client->id}/management/requests")->assertOk();
         $this->accept()->assertOk();
         $this->as($this->clientAdmin)->getJson("/api/v1/companies/{$this->client->id}/editorial/calendar")->assertOk();
+        $this->assertTrue($this->as($this->clientAdmin)->getJson("/api/v1/companies/{$this->client->id}/management")->json('data.has_platform_access'),
+            'Depois de aceitar, o acesso passa a ser assegurado pela agência.');
     }
 
     // ── Fim da relação ───────────────────────────────────────────────────────

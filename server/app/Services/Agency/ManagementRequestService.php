@@ -218,7 +218,8 @@ class ManagementRequestService
 
     public static function companyPath(int $companyId): string
     {
-        return "/companies/{$companyId}?gestao=1";
+        // A página do pedido: mostra só o pedido a quem está sem acesso; com acesso, abre o perfil da empresa.
+        return "/pedido-gestao/{$companyId}";
     }
 
     // ── Regras ───────────────────────────────────────────────────────────────
