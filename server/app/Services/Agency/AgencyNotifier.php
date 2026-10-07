@@ -63,6 +63,30 @@ class AgencyNotifier
         Mail::to($to)->queue(new AgencyNoticeMail($title, $title, $lines));
     }
 
+    /**
+     * Quem recebe os avisos e resumos de um cliente gerido: as pessoas atribuídas ao cliente
+     * (quando o cliente está limitado a pessoas escolhidas) ou os admins da agência, e o email
+     * de avisos da agência.
+     *
+     * @return string[]
+     */
+    public static function recipientsFor(\App\Models\CompanyManagement $m): array
+    {
+        $agency = Company::find($m->agency_company_id);
+        $emails = $m->team_scope === \App\Models\CompanyManagement::SCOPE_ASSIGNED
+            ? User::whereIn('id', $m->members()->pluck('user_id'))->where('company_id', $m->agency_company_id)->whereNull('deactivated_at')
+                ->whereNotNull('email')->pluck('email')->map(fn ($e) => mb_strtolower((string) $e))->all()
+            : self::adminEmails($m->agency_company_id);
+        if ($emails === []) {
+            $emails = self::adminEmails($m->agency_company_id);
+        }
+        if ($agency?->agency_notification_email) {
+            $emails[] = mb_strtolower($agency->agency_notification_email);
+        }
+
+        return array_values(array_unique($emails));
+    }
+
     /** @return string[] */
     public static function adminEmails(int $companyId): array
     {

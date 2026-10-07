@@ -28,7 +28,7 @@ export const BLOG_STATUS_STAGE: Record<string, Stage> = { draft: "production", i
 export type ProductionMode = "self" | "team";
 export const PRODUCTION_MODE_LABEL: Record<ProductionMode, string> = {
     self: "Produção própria",
-    team: "Produção pela equipa XPLENDOR",
+    team: "Produção pela agência", // nos ecrãs: "Produção pela sua agência (Nome)" (useProducerLabel)
 };
 
 export type VersionStatus = "draft" | "sent" | "approved" | "changes_requested" | "superseded";

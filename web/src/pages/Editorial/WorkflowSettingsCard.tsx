@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { getWorkflowSettings, setContentApprover, updateWorkflowSettings } from "helpers/laravel_helper";
 import { PRODUCTION_MODE_LABEL, ProductionMode, WorkflowSettings } from "common/models/editorialWorkflow.model";
 import XSelect from "pages/Editorial/XSelect";
+import useProducerLabel, { byProducer, capitalize } from "./useProducerLabel";
 
 /**
  * Definições do fluxo de produção e aprovação da empresa (F3a): aprovação do cliente e
@@ -17,6 +18,7 @@ const errorMessage = (e: any, fallback: string) => {
 };
 
 export default function WorkflowSettingsCard({ companyId }: { companyId: number }) {
+    const producer = useProducerLabel(companyId);
     const [data, setData] = useState<WorkflowSettings | null>(null);
     const [busy, setBusy] = useState(false);
 
@@ -68,12 +70,12 @@ export default function WorkflowSettingsCard({ companyId }: { companyId: number 
                     <Label className="fw-semibold mb-1" for="wf-mode">Modo de produção</Label>
                     <XSelect id="wf-mode" value={data.production_mode} disabled={!data.can_change_mode || busy}
                         onChange={(m) => save({ production_mode: m as ProductionMode })}
-                        options={(Object.keys(PRODUCTION_MODE_LABEL) as ProductionMode[]).map((m) => ({ value: m, label: PRODUCTION_MODE_LABEL[m] }))} />
+                        options={(Object.keys(PRODUCTION_MODE_LABEL) as ProductionMode[]).map((m) => ({ value: m, label: m === "team" ? `Produção ${byProducer(producer)}` : PRODUCTION_MODE_LABEL[m] }))} />
                     <div className="form-text">
                         {data.production_mode === "team"
-                            ? "A equipa XPLENDOR produz. Os utilizadores da empresa comentam, aprovam e pedem alterações, mas não editam o conteúdo nem mudam etapas."
+                            ? `${capitalize(producer)} produz. Os utilizadores da empresa comentam, aprovam e pedem alterações, mas não editam o conteúdo nem mudam etapas.`
                             : "Os utilizadores da empresa produzem, aprovam e publicam."}
-                        {!data.can_change_mode && " Só a equipa XPLENDOR muda o modo de produção."}
+                        {!data.can_change_mode && ` Só ${producer} muda o modo de produção.`}
                     </div>
                 </div>
                 <div className="form-check form-switch mb-2">

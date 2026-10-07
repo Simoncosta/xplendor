@@ -23,6 +23,20 @@ class GenerateDailyAlertsEmailJob implements ShouldQueue
         'rosianemunhoz@xplendor.tech',
     ];
 
+    /**
+     * Gestão por agências: o resumo de uma empresa gerida vai para a AGÊNCIA dela (pessoas
+     * atribuídas ao cliente ou admins da agência, e o email de avisos da agência); o das outras
+     * empresas continua a ir para a equipa XPLENDOR.
+     *
+     * @return string[]
+     */
+    public static function recipients(Company $company): array
+    {
+        $management = $company->activeManagement()->first();
+
+        return $management ? \App\Services\Agency\AgencyNotifier::recipientsFor($management) : self::RECIPIENTS;
+    }
+
     public function handle(AlertService $alertService): void
     {
         $companies = Company::query()
@@ -44,14 +58,18 @@ class GenerateDailyAlertsEmailJob implements ShouldQueue
                 continue;
             }
 
-            Mail::to(self::RECIPIENTS)->send(new DailyAlertsSummaryMail($company, $alerts));
+            $recipients = self::recipients($company);
+            if ($recipients === []) {
+                continue;
+            }
+            Mail::to($recipients)->send(new DailyAlertsSummaryMail($company, $alerts));
 
             Cache::put($cacheKey, true, now()->addDays(2));
 
             Log::info('[DailyAlerts] Summary email sent', [
                 'company_id' => $company->id,
                 'alerts_count' => $alerts->count(),
-                'recipients' => self::RECIPIENTS,
+                'recipients' => $recipients,
             ]);
         }
     }

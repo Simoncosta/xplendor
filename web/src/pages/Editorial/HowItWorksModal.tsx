@@ -4,6 +4,7 @@ import { Background, Handle, MarkerType, Position, ReactFlow, type Edge, type No
 import "@xyflow/react/dist/style.css";
 import { STAGE_META, Stage } from "common/models/editorialWorkflow.model";
 import useOpenInCompany from "./useOpenInCompany";
+import useProducerLabel, { byProducer } from "./useProducerLabel";
 
 /**
  * "Como funciona" da Linha Editorial: o caminho do Perfil da Marca até à Análise, com os
@@ -83,6 +84,7 @@ type Props = {
 };
 
 export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedReason, canProduce, stageCounts = {}, companyId = 0 }: Props) {
+    const producer = useProducerLabel(companyId);
     const openInCompany = useOpenInCompany();
     const mobile = useIsMobile();
     const dark = document.documentElement.getAttribute("data-bs-theme") === "dark";
@@ -112,7 +114,7 @@ export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedR
         };
         const data: Record<Key, Omit<StepData, "status" | "vertical">> = {
             profile: { title: "Perfil da Marca", icon: "ri-user-star-line", hex: "#405189", subtitle: profileReady ? "Preenchido" : blocked ? "À espera do preenchimento" : "Tom, público e pilares" },
-            ideas: { title: "Gerar ideias", icon: "ri-lightbulb-flash-line", hex: "#405189", subtitle: canProduce ? "A IA propõe; aceita as que quiser" : "Feito pela equipa XPLENDOR" },
+            ideas: { title: "Gerar ideias", icon: "ri-lightbulb-flash-line", hex: "#405189", subtitle: canProduce ? "A IA propõe; aceita as que quiser" : `Feito ${byProducer(producer)}` },
             creative: { title: "Criativo", icon: "ri-magic-line", hex: "#f06548", subtitle: "Sugestão para as redes" },
             article: { title: "Escrever artigo", icon: "ri-article-line", hex: "#0ab39c", subtitle: "Site, pelo fluxo do Blog" },
         } as Record<Key, Omit<StepData, "status" | "vertical">>;
@@ -140,7 +142,7 @@ export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedR
             branch("a1", "planning", "article", "branch-out", "branch-in"), branch("a2", "article", "published", "branch-out", "branch-in-bottom"),
         ];
         return { nodes, edges, height: mobile ? MAIN.length * step + 30 : 2 * (H + 46) + H + 40 };
-    }, [mobile, blocked, profileReady, canProduce, current, stageCounts]);
+    }, [mobile, blocked, profileReady, canProduce, current, stageCounts, producer]);
 
     const goProfile = () => { toggle(); openInCompany(companyId, "/brand-profile"); };
 

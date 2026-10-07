@@ -15,7 +15,7 @@ import ManagementRequestsAdminModal from './components/ManagementRequestsAdminMo
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
-import { getAdminCompanyRequests, setAdminCompanyStatus } from 'helpers/laravel_helper';
+import { getAdminAgencies, getAdminCompanyRequests, setAdminCompanyStatus } from 'helpers/laravel_helper';
 import { confirmAction } from 'helpers/swal';
 
 const selectCompanyState = (state: any) => state.Company;
@@ -54,6 +54,12 @@ const CompanyList = () => {
         getAdminCompanyRequests('pending').then((r: any) => setPendingRequests(Number(r?.data?.pending_count ?? 0))).catch(() => setPendingRequests(0));
     }, []);
     useEffect(() => { loadPending(); }, [loadPending]);
+    // Paga quem dá o acesso: quantas empresas contam para cada agência (mês atual e seguinte).
+    const [agencyBilling, setAgencyBilling] = useState<Record<number, { current: number; next: number }>>({});
+    useEffect(() => {
+        getAdminAgencies().then((r: any) => setAgencyBilling(Object.fromEntries((r?.data?.agencies ?? [])
+            .map((a: any) => [a.id, { current: Number(a.billing?.current?.count ?? 0), next: Number(a.billing?.next?.count ?? 0) }])))).catch(() => setAgencyBilling({}));
+    }, []);
     // Pedidos de gestão aceites, com a situação de faturação (?gestao=1 vem do sino e do email).
     const [mgmtOpen, setMgmtOpen] = useState(searchParams.get('gestao') === '1');
     const closeMgmt = () => {
@@ -144,7 +150,15 @@ const CompanyList = () => {
                 cell: (cellProps: any) => {
                     const c = cellProps.row.original;
                     const managedBy = c.active_management?.agency;
-                    if (c.agency_enabled_at) return <Badge color="info" className="fw-normal"><i className="ri-team-line me-1" />Agência</Badge>;
+                    if (c.agency_enabled_at) {
+                        const b = agencyBilling[c.id];
+                        return (
+                            <span className="d-inline-flex flex-wrap align-items-center gap-2">
+                                <Badge color="info" className="fw-normal"><i className="ri-team-line me-1" />Agência</Badge>
+                                {b && <span className="fs-12 text-muted" data-testid="agency-billing-count" title="Empresas que contam para a agência (sem subscrição própria)">Contam {b.current} este mês, {b.next} no próximo</span>}
+                            </span>
+                        );
+                    }
                     if (managedBy) return <span className="fs-13">Gerida por <strong>{managedBy.trade_name || managedBy.fiscal_name}</strong></span>;
                     return <span className="text-muted">-</span>;
                 },
@@ -185,7 +199,7 @@ const CompanyList = () => {
                 }
             },
         ],
-        [busyId, toggleStatus]
+        [busyId, toggleStatus, agencyBilling]
     );
 
     return (

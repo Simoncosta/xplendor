@@ -224,6 +224,15 @@ class AgencyController extends Controller
         return ApiResponse::success(null, 'Relação terminada. A agência deixou de ter acesso a esta empresa; os dados ficam na empresa.');
     }
 
+    // GET /agencies/{agency}/billing: quantas empresas contam para a agência (mês atual e seguinte), só o admin.
+    public function billing(Request $request)
+    {
+        $agency = $this->agency($request);
+        abort_unless($this->isAgencyAdmin($request), 403, 'Só o administrador da agência vê a faturação.');
+
+        return ApiResponse::success(\App\Services\Agency\AgencyBilling::summary($agency), 'Faturação da agência.');
+    }
+
     private function isAgencyAdmin(Request $request): bool
     {
         $user = $request->user();

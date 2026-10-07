@@ -248,3 +248,13 @@ Schedule::job(new \App\Jobs\ScrubManagementRequestsJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Gestão por agências] Apagar dados de pedidos falhou no scheduler');
     });
+
+// Gestão por agências (F1e): no dia 1 de cada mês, a contagem das empresas que contam para cada agência.
+Schedule::job(new \App\Jobs\AgencyBillingSnapshotJob())
+    ->monthlyOn(1, '00:30')
+    ->timezone('Europe/Lisbon')
+    ->name('agency-billing-snapshot')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Gestão por agências] Contagem mensal falhou no scheduler');
+    });

@@ -33,7 +33,13 @@ class CompanyManagementController extends Controller
         $counts = CompanyManagement::active()->selectRaw('agency_company_id, count(*) as n')->groupBy('agency_company_id')->pluck('n', 'agency_company_id');
 
         $agencies = Company::whereNotNull('agency_enabled_at')->orderBy('fiscal_name')->get(['id', 'fiscal_name', 'trade_name'])
-            ->map(fn (Company $c) => ['id' => $c->id, 'name' => $c->trade_name ?: $c->fiscal_name, 'managed_count' => (int) ($counts[$c->id] ?? 0)]);
+            ->map(function (Company $c) use ($counts) {
+                $billing = \App\Services\Agency\AgencyBilling::summary($c);
+
+                return ['id' => $c->id, 'name' => $c->trade_name ?: $c->fiscal_name, 'managed_count' => (int) ($counts[$c->id] ?? 0),
+                    // Paga quem dá o acesso: as empresas que contam para a agência neste mês e no seguinte.
+                    'billing' => ['current' => $billing['current'], 'next' => $billing['next'], 'monthly_fee' => $billing['monthly_fee']]];
+            });
 
         return ApiResponse::success(['agencies' => $agencies], 'Agências carregadas.');
     }

@@ -574,6 +574,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/company-requests', [$c, 'storeRequest'])->middleware('block_when_impersonating');
                 // Pedir a gestão de uma empresa existente (F1d) e terminar a relação com um cliente.
                 Route::get('/management-requests', [$c, 'managementRequests']);
+                Route::get('/billing', [$c, 'billing']);
                 Route::middleware('block_when_impersonating')->group(function () use ($c) {
                     Route::post('/management-requests', [$c, 'storeManagementRequest'])->middleware('throttle:20,1');
                     Route::post('/management-requests/{requestId}/withdraw', [$c, 'withdrawManagementRequest'])->whereNumber('requestId');

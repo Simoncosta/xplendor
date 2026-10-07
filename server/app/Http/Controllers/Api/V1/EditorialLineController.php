@@ -237,7 +237,7 @@ class EditorialLineController extends Controller
         }
         // Planear (criar, editar, apagar publicações) é produção: o cliente gerido pela equipa não planeia.
         if (! \App\Services\Editorial\EditorialWorkflowService::isProducer(Auth::user(), $company->id)) {
-            return ApiResponse::error(\App\Services\Editorial\EditorialWorkflowService::MSG_TEAM_PRODUCES, 403);
+            return ApiResponse::error(\App\Services\Editorial\EditorialWorkflowService::teamProducesMessage($company->id), 403);
         }
 
         try {

@@ -47,7 +47,8 @@ export const privacyPt: LegalContent = {
             "empresas clientes da Plataforma e aos utilizadores que estas autorizam;",
             "visitantes dos sites dos clientes que instalaram o script de medição da XPLENDOR (secção 6);",
             "pessoas e empresas a quem a XPLENDOR envia orçamentos (secção 7);",
-            "pessoas a quem é enviado um link de aprovação de conteúdos (secção 8).",
+            "pessoas a quem é enviado um link de aprovação de conteúdos (secção 8);",
+            "empresas geridas por uma agência na Plataforma e às agências que as gerem (secção 10).",
           ],
         },
       ],
@@ -72,7 +73,7 @@ export const privacyPt: LegalContent = {
       id: "dados-meta",
       title: "4. Dados recebidos da Meta (Facebook e Instagram)",
       blocks: [
-        "Esta secção descreve, de forma específica, os dados que a XPLENDOR recebe da Meta através do Facebook Login. Há duas ligações separadas, cada uma com as suas permissões: a dos anúncios (a conta de anúncios da Meta) e a das redes sociais (as Páginas de Facebook e as contas de Instagram profissionais da empresa). Cada ligação é sempre iniciada pelo administrador da empresa cliente e pode ser desligada a qualquer momento, sem afetar a outra.",
+        "Esta secção descreve, de forma específica, os dados que a XPLENDOR recebe da Meta através do Facebook Login. Há duas ligações separadas, cada uma com as suas permissões: a dos anúncios (a conta de anúncios da Meta) e a das redes sociais (as Páginas de Facebook e as contas de Instagram profissionais da empresa). Cada ligação é iniciada por um administrador da empresa cliente ou, quando a empresa é gerida por uma agência na Plataforma (secção 10), por um administrador dessa agência, com a autorização do cliente. O cliente pode desligar cada ligação a qualquer momento, sem afetar a outra.",
         { h3: "4.1 Permissões pedidas" },
         "Ligação dos anúncios: a XPLENDOR pede apenas a permissão ads_read, para ler os dados de desempenho da conta de anúncios indicada pelo cliente.",
         "Ligação das redes sociais: a XPLENDOR pede apenas três permissões:",
@@ -124,7 +125,7 @@ export const privacyPt: LegalContent = {
       id: "conservacao-meta",
       title: "5. Onde ficam, quanto tempo e como se eliminam os dados da Meta",
       blocks: [
-        "Onde ficam: na base de dados da Plataforma, em servidores alojados por [FORNECEDOR DE ALOJAMENTO E PAÍS], separados por empresa cliente. Cada empresa só tem acesso aos seus próprios dados.",
+        "Onde ficam: na base de dados da Plataforma, em servidores alojados pela Hostinger (Hostinger International Ltd.) em Paris, França, na União Europeia, separados por empresa cliente. Cada empresa só tem acesso aos seus próprios dados.",
         "Quanto tempo: os dados de desempenho e de estrutura das campanhas são conservados enquanto a conta do cliente na Plataforma estiver ativa, para permitir comparações históricas. Não existe, de momento, eliminação automática por antiguidade.",
         "Quando o cliente desliga a integração na Plataforma:",
         {
@@ -187,7 +188,7 @@ export const privacyPt: LegalContent = {
             "o orçamento (dados do cliente, serviços e valores): enquanto for necessário para a relação comercial e para as obrigações legais da XPLENDOR.",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 12 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 13 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
       ],
     },
     {
@@ -199,7 +200,7 @@ export const privacyPt: LegalContent = {
         { h3: "8.1 Dados de quem recebe o link" },
         "O nome e o email do destinatário, se quem envia os indicar, para enviar o link e um único lembrete se as publicações continuarem à espera. Fundamento: execução do contrato com o cliente da Plataforma e interesse legítimo em obter a aprovação a tempo.",
         { h3: "8.2 Aberturas do link" },
-        "Registamos as aberturas como nos orçamentos (secção 7.2): apenas a data e a hora e o tipo de dispositivo. Não guardamos o endereço IP; o identificador aleatório que a página guarda no browser fica no servidor só em hash; as pré-visualizações automáticas de links e as aberturas da equipa não são registadas; a página não usa cookies nem ferramentas de análise de terceiros. Servem para quem enviou saber se o lote foi visto e quando faz sentido lembrar. Fundamento: interesse legítimo.",
+        "Registamos as aberturas como nos orçamentos (secção 7.2): apenas a data e a hora e o tipo de dispositivo. Não guardamos o endereço IP; o identificador aleatório que a página guarda no browser fica no servidor só em hash; as pré-visualizações automáticas de links e as aberturas da equipa da XPLENDOR e da agência que gere a empresa não são registadas; a página não usa cookies nem ferramentas de análise de terceiros. Servem para quem enviou saber se o lote foi visto e quando faz sentido lembrar. Fundamento: interesse legítimo.",
         { h3: "8.3 Registo das decisões e dos comentários" },
         "Quando uma publicação é aprovada ou são pedidas alterações, guardamos o nome indicado por quem decide, a decisão, a mensagem (se houver), a versão da publicação, a data e a hora e o tipo de dispositivo. Cada versão só admite uma decisão. Os comentários ficam com o nome indicado e a data. Este registo faz parte do histórico da publicação e é a prova da aprovação. Fundamento: execução do contrato com o cliente da Plataforma.",
         { h3: "8.4 Conservação" },
@@ -210,7 +211,7 @@ export const privacyPt: LegalContent = {
             "ficheiros das publicações: segundo as regras da Plataforma (os das versões substituídas são apagados aos 30 dias; os originais das publicações publicadas são guardados 12 meses).",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 12.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 13.",
       ],
     },
     {
@@ -239,17 +240,35 @@ export const privacyPt: LegalContent = {
             "o email de faturação e o interruptor dos lembretes: enquanto a conta do cliente estiver ativa.",
           ],
         },
-        "Pode pedir o acesso a estes dados nos termos da secção 12. Os documentos contabilísticos são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados nos termos da secção 13. Os documentos contabilísticos são conservados enquanto houver obrigação legal de os manter.",
+      ],
+    },
+    {
+      id: "agencias",
+      title: "10. Gestão por agências",
+      blocks: [
+        "Uma agência pode gerir na Plataforma a conta de uma empresa cliente: quando a empresa aceita, na Plataforma, um pedido de gestão da agência, ou quando a XPLENDOR estabelece essa relação a pedido das partes.",
+        {
+          list: [
+            "Papéis: a empresa cliente é a responsável pelo tratamento dos seus dados; a agência trata-os por conta do cliente, como subcontratante dele; a XPLENDOR presta a Plataforma, também como subcontratante.",
+            "O que a agência vê e faz: trabalha nas áreas ativas da empresa (por exemplo, Linha Editorial, Blog e Perfil da Marca), vê os resultados e os alertas, e os administradores da agência podem ligar integrações em nome da empresa. A agência não gere os utilizadores nem os acessos da empresa, não aprova conteúdos em nome dela, não altera nem apaga os dados da empresa e não vê as faturas da XPLENDOR.",
+            "Quem da agência acede: toda a equipa da agência ou, quando a agência o limita, apenas as pessoas atribuídas ao cliente. Os avisos de produção desse cliente chegam a essas pessoas e ao email de avisos da agência.",
+            "Pedidos de gestão: a agência identifica a empresa pelo NIPC ou pelo email de um administrador. A resposta à agência nunca revela se a empresa existe. Quando o NIPC ou o email não corresponde a nenhuma empresa, é apagado 30 dias depois de o pedido expirar ou ser retirado.",
+            "Fim da relação: o cliente pode terminar a relação a qualquer momento, na Plataforma; a agência e a XPLENDOR também a podem terminar. O acesso da agência é cortado de imediato e os dados ficam na empresa do cliente. As ligações à Meta feitas pela agência mantêm-se ou desligam-se por escolha do administrador do cliente.",
+            "Empresa sem administrador: se a relação terminar e a empresa não tiver nenhum administrador, a empresa fica arquivada (sem acesso) durante 90 dias, com aviso ao contacto da empresa no início e 7 dias antes do fim, e as ligações feitas pela agência são desligadas. Ao fim dos 90 dias, os dados de trabalho são apagados de forma definitiva; conservam-se apenas as faturas e cobranças da XPLENDOR, durante 10 anos, por obrigação legal, e a identificação mínima da empresa (NIPC e nome).",
+          ],
+        },
       ],
     },
     {
       id: "partilha",
-      title: "10. Partilha com terceiros",
+      title: "11. Partilha com terceiros",
       blocks: [
         "A XPLENDOR não vende dados pessoais. Os dados podem ser tratados pelos seguintes prestadores, apenas na medida do necessário para prestar o serviço:",
         {
           list: [
-            "alojamento da Plataforma: [FORNECEDOR DE ALOJAMENTO E PAÍS];",
+            "alojamento da Plataforma: Hostinger (Hostinger International Ltd.), com os servidores em Paris, França (União Europeia);",
+            "inteligência artificial: OpenAI (OpenAI, L.L.C., Estados Unidos), como subcontratante, para gerar o que o utilizador pede na Plataforma (por exemplo, ideias de publicações, rascunhos de artigos, sugestões de criativos e do Perfil da Marca, descrições e análises de viaturas) e para ler as faturas de fornecedores que o cliente carrega. Recebe apenas o contexto necessário a cada pedido (por exemplo, o Perfil da Marca, a publicação, os dados da viatura ou a imagem da fatura); na análise de viaturas pode incluir métricas agregadas de público recebidas da Meta (faixas etárias e género), que não identificam pessoas. Nunca recebe tokens de acesso nem palavras-passe. Segundo os termos da API da OpenAI, estes dados não são usados para treinar os modelos;",
             "envio do formulário de contacto deste site: Formspree;",
             "integrações que o próprio cliente ativa (por exemplo, Meta, Google Analytics, programas de faturação), que recebem apenas os pedidos necessários ao funcionamento dessas ligações.",
           ],
@@ -259,14 +278,14 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "seguranca",
-      title: "11. Segurança",
+      title: "12. Segurança",
       blocks: [
         "Os tokens de acesso a plataformas externas são guardados cifrados. A chave secreta da aplicação Meta existe apenas no servidor. O acesso à Plataforma é feito com autenticação e cada pedido é verificado para garantir que um utilizador só acede aos dados da sua própria empresa. As comunicações são feitas por ligação cifrada (HTTPS).",
       ],
     },
     {
       id: "direitos",
-      title: "12. Os seus direitos (RGPD)",
+      title: "13. Os seus direitos (RGPD)",
       blocks: [
         "Nos termos do Regulamento Geral sobre a Proteção de Dados, pode exercer, a qualquer momento:",
         {
@@ -285,7 +304,7 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "alteracoes",
-      title: "13. Alterações a esta política",
+      title: "14. Alterações a esta política",
       blocks: [
         "Esta política pode ser atualizada para refletir alterações na Plataforma ou na lei. A data da última atualização está no topo da página. Alterações relevantes são comunicadas aos clientes por email ou na Plataforma.",
       ],
@@ -330,7 +349,8 @@ export const privacyEn: LegalContent = {
             "companies that are customers of the Platform and the users they authorise;",
             "visitors of customer websites that installed the XPLENDOR measurement script (section 6);",
             "people and companies to whom XPLENDOR sends quotes (section 7);",
-            "people who receive a content approval link (section 8).",
+            "people who receive a content approval link (section 8);",
+            "companies managed by an agency on the Platform and the agencies that manage them (section 10).",
           ],
         },
       ],
@@ -355,7 +375,7 @@ export const privacyEn: LegalContent = {
       id: "meta-data",
       title: "4. Data received from Meta (Facebook and Instagram)",
       blocks: [
-        "This section specifically describes the data XPLENDOR receives from Meta through Facebook Login. There are two separate connections, each with its own permissions: the advertising connection (the Meta ad account) and the social media connection (the company's Facebook Pages and Instagram professional accounts). Each connection is always started by an administrator of the customer company and can be disconnected at any time without affecting the other.",
+        "This section specifically describes the data XPLENDOR receives from Meta through Facebook Login. There are two separate connections, each with its own permissions: the advertising connection (the Meta ad account) and the social media connection (the company's Facebook Pages and Instagram professional accounts). Each connection is started by an administrator of the customer company or, when the company is managed by an agency on the Platform (section 10), by an administrator of that agency, with the customer's authorisation. The customer can disconnect each connection at any time without affecting the other.",
         { h3: "4.1 Permissions requested" },
         "Advertising connection: XPLENDOR requests only the ads_read permission, to read the performance data of the ad account selected by the customer.",
         "Social media connection: XPLENDOR requests only three permissions:",
@@ -407,7 +427,7 @@ export const privacyEn: LegalContent = {
       id: "meta-retention",
       title: "5. Where Meta data is stored, for how long and how it is deleted",
       blocks: [
-        "Where: in the Platform database, on servers hosted by [FORNECEDOR DE ALOJAMENTO E PAÍS], separated by customer company. Each company can access only its own data.",
+        "Where: in the Platform database, on servers hosted by Hostinger (Hostinger International Ltd.) in Paris, France, in the European Union, separated by customer company. Each company can access only its own data.",
         "How long: campaign performance and structure data is kept while the customer's Platform account is active, to allow historical comparisons. There is currently no automatic deletion based on age.",
         "When the customer disconnects the integration in the Platform:",
         {
@@ -470,7 +490,7 @@ export const privacyEn: LegalContent = {
             "the quote itself (customer data, services and amounts): for as long as needed for the business relationship and XPLENDOR's legal obligations.",
           ],
         },
-        "You can request access to or deletion of this data as described in section 12 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to or deletion of this data as described in section 13 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
       ],
     },
     {
@@ -482,7 +502,7 @@ export const privacyEn: LegalContent = {
         { h3: "8.1 Data about the link recipient" },
         "The recipient's name and email, if the sender provides them, to send the link and a single reminder if the posts are still waiting. Legal basis: performance of the contract with the Platform customer and legitimate interest in getting the approval in time.",
         { h3: "8.2 Link opens" },
-        "We record opens as for quotes (section 7.2): only the date and time and the device type. We do not store the IP address; the random identifier the page stores in the browser is kept on the server only as a hash; automatic link previews and opens by the team are not recorded; the page does not use cookies or third party analytics. They let the sender know whether the batch was seen and when a reminder makes sense. Legal basis: legitimate interest.",
+        "We record opens as for quotes (section 7.2): only the date and time and the device type. We do not store the IP address; the random identifier the page stores in the browser is kept on the server only as a hash; automatic link previews and opens by the XPLENDOR team and by the agency that manages the company are not recorded; the page does not use cookies or third party analytics. They let the sender know whether the batch was seen and when a reminder makes sense. Legal basis: legitimate interest.",
         { h3: "8.3 Record of decisions and comments" },
         "When a post is approved or changes are requested, we store the name given by the person deciding, the decision, the message (if any), the post version, the date and time and the device type. Each version accepts only one decision. Comments are stored with the given name and the date. This record is part of the post history and is the proof of approval. Legal basis: performance of the contract with the Platform customer.",
         { h3: "8.4 Retention" },
@@ -493,7 +513,7 @@ export const privacyEn: LegalContent = {
             "post files: according to the Platform rules (files of replaced versions are deleted after 30 days; originals of published posts are kept for 12 months).",
           ],
         },
-        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 12.",
+        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 13.",
       ],
     },
     {
@@ -522,17 +542,35 @@ export const privacyEn: LegalContent = {
             "the billing email and the reminders setting: while the customer's account is active.",
           ],
         },
-        "You can request access to this data as described in section 12. Accounting records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to this data as described in section 13. Accounting records are kept for as long as there is a legal obligation to keep them.",
+      ],
+    },
+    {
+      id: "agencies",
+      title: "10. Management by agencies",
+      blocks: [
+        "An agency can manage a customer company's account on the Platform: when the company accepts, on the Platform, a management request from the agency, or when XPLENDOR sets up that relationship at the request of both parties.",
+        {
+          list: [
+            "Roles: the customer company is the controller of its data; the agency processes it on the customer's behalf, as the customer's processor; XPLENDOR provides the Platform, also as a processor.",
+            "What the agency sees and does: it works in the company's active areas (for example the Editorial Line, Blog and Brand Profile), sees results and alerts, and agency administrators can connect integrations on the company's behalf. The agency does not manage the company's users or access, does not approve content on its behalf, does not change or delete the company's data and does not see XPLENDOR invoices.",
+            "Who at the agency has access: the whole agency team or, when the agency limits it, only the people assigned to the customer. Production notices for that customer go to those people and to the agency's notification email.",
+            "Management requests: the agency identifies the company by its tax number (NIPC) or by an administrator's email. The answer to the agency never reveals whether the company exists. When the tax number or email does not match any company, it is deleted 30 days after the request expires or is withdrawn.",
+            "End of the relationship: the customer can end the relationship at any time, on the Platform; the agency and XPLENDOR can also end it. The agency's access is removed immediately and the data stays in the customer's company. Meta connections made by the agency are kept or disconnected as the customer's administrator chooses.",
+            "Company without an administrator: if the relationship ends and the company has no administrator, the company is archived (no access) for 90 days, with a notice to the company's contact at the start and 7 days before the end, and the connections made by the agency are disconnected. At the end of the 90 days, the working data is permanently deleted; only XPLENDOR invoices and charges are kept, for 10 years, as required by law, together with the company's minimum identification (tax number and name).",
+          ],
+        },
       ],
     },
     {
       id: "sharing",
-      title: "10. Sharing with third parties",
+      title: "11. Sharing with third parties",
       blocks: [
         "XPLENDOR does not sell personal data. Data may be processed by the following providers, only as needed to provide the service:",
         {
           list: [
-            "Platform hosting: [FORNECEDOR DE ALOJAMENTO E PAÍS];",
+            "Platform hosting: Hostinger (Hostinger International Ltd.), with servers in Paris, France (European Union);",
+            "artificial intelligence: OpenAI (OpenAI, L.L.C., United States), as a processor, to generate what the user asks for on the Platform (for example post ideas, article drafts, creative and Brand Profile suggestions, vehicle descriptions and analyses) and to read the supplier invoices the customer uploads. It receives only the context needed for each request (for example the Brand Profile, the post, the vehicle data or the invoice image); vehicle analyses may include aggregated audience metrics received from Meta (age ranges and gender), which do not identify individuals. It never receives access tokens or passwords. Under the OpenAI API terms, this data is not used to train the models;",
             "delivery of this website's contact form: Formspree;",
             "integrations the customer chooses to enable (for example Meta, Google Analytics, invoicing software), which receive only the requests needed for those connections to work.",
           ],
@@ -542,14 +580,14 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "security",
-      title: "11. Security",
+      title: "12. Security",
       blocks: [
         "Access tokens for external platforms are stored encrypted. The Meta app secret exists only on the server. Access to the Platform requires authentication and every request is checked so that a user can only access the data of their own company. Communications use an encrypted connection (HTTPS).",
       ],
     },
     {
       id: "rights",
-      title: "12. Your rights (GDPR)",
+      title: "13. Your rights (GDPR)",
       blocks: [
         "Under the General Data Protection Regulation you may, at any time, exercise:",
         {
@@ -568,7 +606,7 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "changes",
-      title: "13. Changes to this policy",
+      title: "14. Changes to this policy",
       blocks: [
         "This policy may be updated to reflect changes to the Platform or to the law. The date of the last update is shown at the top of the page. Relevant changes are communicated to customers by email or in the Platform.",
       ],

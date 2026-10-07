@@ -50,7 +50,7 @@ class ContentReviewPublicService
     public function recordOpen(ContentReviewLink $link, Request $request): array
     {
         $open = $this->opens->record($request, 'review|' . $link->id, $link, ContentReviewLinkOpen::class,
-            ['content_review_link_id' => $link->id], [], (int) config('content_review.open_alert_every_hours', 6));
+            ['content_review_link_id' => $link->id], [], (int) config('content_review.open_alert_every_hours', 6), (int) $link->company_id);
 
         if ($open['alert']) {
             $device = $open['device'] === 'mobile' ? 'num telemóvel' : 'num computador';

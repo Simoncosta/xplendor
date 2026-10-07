@@ -61,6 +61,9 @@ class CompanyManagementController extends Controller
             // A página do pedido de gestão (sem o resto da app) para quem está sem acesso.
             'company_name' => $own ? ($company->trade_name ?: $company->fiscal_name) : null,
             'has_platform_access' => $company->hasPlatformAccess(),
+            // Quem produz para a empresa (nos textos da Linha Editorial): "a sua agência (Nome)" para o
+            // cliente, "a agência Nome" para quem trabalha pela agência, ou a equipa XPLENDOR.
+            'producer_label' => \App\Services\Editorial\EditorialWorkflowService::producerLabel($companyId, ! $this->access->viaAgency($user, $companyId)),
         ], 'Agência gestora.');
     }
 

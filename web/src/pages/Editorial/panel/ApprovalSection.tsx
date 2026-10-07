@@ -5,6 +5,7 @@ import { approvePost, commentOnPost, movePostStage, requestPostChanges } from "h
 import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt, mediaSrc } from "common/models/editorialWorkflow.model";
 import XSelect from "../XSelect";
 import ReasonButton from "Components/Common/ReasonButton";
+import useProducerLabel, { byProducer } from "../useProducerLabel";
 
 /**
  * Aprovação: as passagens de etapa permitidas, aprovar ou pedir alterações (uma decisão
@@ -20,6 +21,7 @@ const errorMessage = (e: any, fallback: string) => {
 type Props = { companyId: number; data: PostWorkflow; onChanged: (d: PostWorkflow) => void; beforeMove: () => Promise<boolean> };
 
 export default function ApprovalSection({ companyId, data, onChanged, beforeMove }: Props) {
+    const producer = useProducerLabel(companyId);
     const p = data.post;
     const [busy, setBusy] = useState(false);
     const [comment, setComment] = useState("");
@@ -79,7 +81,7 @@ export default function ApprovalSection({ companyId, data, onChanged, beforeMove
             </div>
             {p.networks.length > 1 && <p className="text-muted fs-12">Uma só aprovação para {p.networks.map((n) => n.network === "instagram" ? "Instagram" : "Facebook").join(" e ")}.</p>}
             {!data.permissions.can_produce && data.settings.production_mode === "team" && (
-                <div className="alert alert-info fs-13 py-2"><i className="ri-team-line me-1" />A produção desta empresa é feita pela equipa XPLENDOR. Pode comentar, aprovar ou pedir alterações.</div>
+                <div className="alert alert-info fs-13 py-2"><i className="ri-team-line me-1" />A produção desta empresa é feita {byProducer(producer)}. Pode comentar, aprovar ou pedir alterações.</div>
             )}
             {blocked.length > 0 && forward.length === 0 && !data.permissions.can_approve && <p className="text-muted fs-12 mb-3"><i className="ri-information-line me-1" />{blocked[0][1]}</p>}
             {p.stage === "client_review" && !data.permissions.can_approve && (

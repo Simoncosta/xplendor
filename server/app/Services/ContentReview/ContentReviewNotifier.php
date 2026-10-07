@@ -15,9 +15,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Avisos da Linha Editorial para quem produz (links de aprovação, F3c; publicação e
  * análise, F3d): no sino (logo) e no resumo por email
- * (a cada 15 minutos). Quem produz é a equipa XPLENDOR no modo "Produção pela equipa"
- * (sino da empresa da equipa, emails da equipa) e a própria empresa no modo "Produção
- * própria" (sino da empresa, email de quem enviou o link).
+ * (a cada 15 minutos). No modo "Produção pela equipa", quem produz é a AGÊNCIA gestora
+ * (sino da agência, emails das pessoas atribuídas ao cliente e do email de avisos da agência)
+ * ou, numa empresa sem agência, a equipa XPLENDOR (sino da empresa da equipa e
+ * CONTENT_REVIEW_TEAM_EMAILS, ou os roots). No modo "Produção própria", a própria empresa
+ * (sino da empresa, email de quem enviou o link).
  */
 class ContentReviewNotifier
 {
@@ -26,7 +28,7 @@ class ContentReviewNotifier
     /** @param 'urgent'|'warning'|'opportunity' $type */
     public function notify(ContentReviewLink $link, string $type, string $title, string $message, string $severity = 'medium'): void
     {
-        $this->notifyCompany((int) $link->company_id, $type, $title, $message, $severity, "/editorial?aprovacoes={$link->id}", $link->id);
+        $this->notifyCompany((int) $link->company_id, $type, $title, $message, $severity, "/editorial?aprovacoes={$link->id}", $link->id, "aprovacoes={$link->id}");
     }
 
     /**
@@ -36,14 +38,21 @@ class ContentReviewNotifier
      *
      * @param 'urgent'|'warning'|'opportunity' $type
      */
-    public function notifyCompany(int $companyId, string $type, string $title, string $message, string $severity = 'medium', ?string $path = null, ?int $linkId = null): void
+    public function notifyCompany(int $companyId, string $type, string $title, string $message, string $severity = 'medium', ?string $path = null, ?int $linkId = null, ?string $agencyQuery = null): void
     {
         try {
             $company = Company::find($companyId);
             $team = $company && EditorialWorkflowService::productionMode($company->id) === EditorialWorkflowService::MODE_TEAM;
-            $alertCompanyId = $team ? self::teamCompanyId() : $companyId;
+            $management = $team ? $company->activeManagement()->first() : null;
             $name = $company ? (string) ($company->trade_name ?: $company->fiscal_name) : '';
-            if ($alertCompanyId) {
+            if ($agencyQuery === null && $path !== null && str_starts_with($path, '/editorial?')) {
+                $agencyQuery = substr($path, strlen('/editorial?'));
+            }
+            if ($management) {
+                // Empresa gerida: o aviso vai para a agência, com a ligação que abre o cliente na vista da agência.
+                $this->alerts->createSystemAlert((int) $management->agency_company_id, $type, "{$name}: {$title}", $message, $severity,
+                    "/editorial?cliente={$companyId}" . ($agencyQuery ? "&{$agencyQuery}" : ''));
+            } elseif ($alertCompanyId = $team ? self::teamCompanyId() : $companyId) {
                 $this->alerts->createSystemAlert($alertCompanyId, $type, $team ? "{$name}: {$title}" : $title, $message, $severity, $team ? null : $path);
             }
             ContentReviewNotification::create([
@@ -59,7 +68,10 @@ class ContentReviewNotifier
     public static function recipients(int $companyId, ?ContentReviewLink $link): array
     {
         if (EditorialWorkflowService::productionMode($companyId) === EditorialWorkflowService::MODE_TEAM) {
-            return self::teamEmails();
+            $management = \App\Models\CompanyManagement::active()->where('managed_company_id', $companyId)->first();
+
+            // Gerida: a agência dela. Sem agência: a equipa XPLENDOR (CONTENT_REVIEW_TEAM_EMAILS ou os roots).
+            return $management ? \App\Services\Agency\AgencyNotifier::recipientsFor($management) : self::teamEmails();
         }
         $sender = $link?->sent_by_user_id ? User::find($link->sent_by_user_id) : null;
         if ($sender && $sender->role !== 'root' && $sender->email) {
@@ -69,6 +81,7 @@ class ContentReviewNotifier
         return User::where('company_id', $companyId)->where('role', 'admin')->whereNotNull('email')->pluck('email')->all();
     }
 
+    /** Recurso só para as empresas SEM agência no modo "Produção pela equipa". */
     public static function teamEmails(): array
     {
         $configured = array_filter(array_map('trim', explode(',', (string) config('content_review.team_emails'))));

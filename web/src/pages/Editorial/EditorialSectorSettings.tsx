@@ -75,7 +75,7 @@ export default function EditorialSectorSettings({ companyId }: { companyId: numb
     if (!current) {
         return (
             <Alert color="info" className="mb-0">
-                Ainda não escolheste um ramo. Faz a <strong>primeira escolha</strong> no ecrã da Linha Editorial (menu Marketing → Linha Editorial).
+                Ainda não escolheu um ramo. Faça a <strong>primeira escolha</strong> no ecrã da Linha Editorial (menu Marketing, Linha Editorial).
             </Alert>
         );
     }

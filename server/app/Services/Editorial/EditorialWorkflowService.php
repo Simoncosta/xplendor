@@ -94,6 +94,41 @@ class EditorialWorkflowService
         return self::isTeam($user, $companyId) || self::productionMode($companyId) === self::MODE_SELF;
     }
 
+    /**
+     * Quem produz para a empresa no modo "Produção pela equipa": a agência gestora (do lado do
+     * cliente, "a sua agência") ou, sem agência, a equipa XPLENDOR.
+     */
+    public static function producerLabel(int $companyId, bool $clientView = true): string
+    {
+        $agency = Company::whereKey(Company::find($companyId)?->activeManagement?->agency_company_id)->first();
+        if (! $agency) {
+            return 'a equipa XPLENDOR';
+        }
+        $name = (string) ($agency->trade_name ?: $agency->fiscal_name);
+
+        if ($clientView) {
+            return "a sua agência ({$name})";
+        }
+
+        // "a Agência Norte" (sem repetir a palavra quando o nome já a tem) ou "a agência Norte".
+        return mb_stripos($name, 'agência') === 0 ? "a {$name}" : "a agência {$name}";
+    }
+
+    /** "pela sua agência (Nome)", "pela agência Nome" ou "pela equipa XPLENDOR" (a contração de "por" com o artigo). */
+    public static function byProducer(int $companyId, bool $clientView = true): string
+    {
+        return 'pel' . self::producerLabel($companyId, $clientView);
+    }
+
+    /** A explicação quando o cliente tenta produzir no modo "Produção pela equipa". */
+    public static function teamProducesMessage(int $companyId): string
+    {
+        $who = self::producerLabel($companyId);
+
+        return $who === 'a equipa XPLENDOR' ? self::MSG_TEAM_PRODUCES
+            : 'Nesta empresa a produção é feita ' . self::byProducer($companyId) . ': pode comentar, aprovar ou pedir alterações.';
+    }
+
     public static function productionMode(int $companyId): string
     {
         $mode = (string) (Company::whereKey($companyId)->value('content_production_mode') ?? self::MODE_SELF);
@@ -107,7 +142,7 @@ class EditorialWorkflowService
         if (self::isProducer($user, $companyId)) {
             return;
         }
-        throw new HttpException(403, self::isMember($user, $companyId) ? self::MSG_TEAM_PRODUCES : 'Acesso negado.');
+        throw new HttpException(403, self::isMember($user, $companyId) ? self::teamProducesMessage($companyId) : 'Acesso negado.');
     }
 
     /** A equipa que produz para o cliente: o root, a sessão como cliente (suporte) ou a agência gestora. */
@@ -668,7 +703,7 @@ class EditorialWorkflowService
             throw ValidationException::withMessages(['body' => ['Escreva o comentário.']]);
         }
         if ($visibility === EditorialPostComment::INTERNAL && ! self::isTeam($user, (int) $post->company_id)) {
-            throw ValidationException::withMessages(['visibility' => ['Só a equipa XPLENDOR escreve comentários internos.']]);
+            throw ValidationException::withMessages(['visibility' => ['Só a equipa que produz escreve comentários internos.']]);
         }
 
         $comment = EditorialPostComment::create([

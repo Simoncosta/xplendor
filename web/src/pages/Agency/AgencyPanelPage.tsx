@@ -8,7 +8,7 @@ import ClientMark from "Components/Common/ClientMark";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import {
     createAgencyCompanyRequest, createAgencyManagementRequest, endAdminCompanyManagement, endAgencyManagement, getAgencyAssignments,
-    getAgencyCompanyRequests, getAgencyManagementRequests, getAgencyPanel, getEditorialSectors, setAgencyAssignment, withdrawAgencyManagementRequest,
+    getAgencyBilling, getAgencyCompanyRequests, getAgencyManagementRequests, getAgencyPanel, getEditorialSectors, setAgencyAssignment, withdrawAgencyManagementRequest,
 } from "helpers/laravel_helper";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
@@ -80,6 +80,7 @@ export default function AgencyPanelPage() {
                         <NavItem key={k}><NavLink href="#" active={tab === k} onClick={(e) => { e.preventDefault(); setTab(k); }}><i className={`${i} me-1`} />{l}</NavLink></NavItem>
                     ))}
                 </Nav>
+                {tab === "clientes" && isAgencyAdmin && <BillingCard agencyId={agencyId} />}
                 {tab === "clientes" && <ClientsTab agencyId={agencyId} />}
                 {tab === "gestao" && <ManagementTab agencyId={agencyId} />}
                 {tab === "pedidos" && <RequestsTab agencyId={agencyId} />}
@@ -495,5 +496,67 @@ function ManagementTab({ agencyId }: { agencyId: number }) {
                 </Card>
             </Col>
         </Row>
+    );
+}
+
+type Billing = {
+    monthly_fee: number;
+    current: { month: string; count: number; from_snapshot: boolean };
+    next: { month: string; count: number };
+    companies: { id: number; name: string; since: string; pays_own: boolean; counts_current: boolean; counts_next: boolean }[];
+};
+const MONTHS_PT = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const monthName = (ym: string) => MONTHS_PT[Number(ym.split("-")[1]) - 1] ?? ym;
+const euros = (n: number) => n.toLocaleString("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+/** Faturação da agência (só o admin): paga quem dá o acesso. Quantas empresas contam este mês e no seguinte. */
+function BillingCard({ agencyId }: { agencyId: number }) {
+    const [b, setB] = useState<Billing | null>(null);
+    const [open, setOpen] = useState(false);
+    useEffect(() => {
+        getAgencyBilling(agencyId).then((r: any) => setB(r?.data ?? null)).catch(() => setB(null));
+    }, [agencyId]);
+    if (!b) return null;
+
+    return (
+        <Card className="mb-3" data-testid="agency-billing">
+            <CardBody>
+                <div className="d-flex flex-wrap align-items-center gap-3">
+                    <div className="me-auto">
+                        <h5 className="card-title mb-1">Faturação da agência</h5>
+                        <small className="text-muted">Paga quem dá o acesso: cada cliente sem subscrição própria conta {euros(b.monthly_fee)} por mês, a partir do mês seguinte ao início.</small>
+                    </div>
+                    <div className="text-center px-2">
+                        <div className="fs-20 fw-semibold">{b.current.count}</div>
+                        <div className="text-muted fs-12">em {monthName(b.current.month)} ({euros(b.current.count * b.monthly_fee)})</div>
+                    </div>
+                    <div className="text-center px-2">
+                        <div className="fs-20 fw-semibold">{b.next.count}</div>
+                        <div className="text-muted fs-12">em {monthName(b.next.month)} ({euros(b.next.count * b.monthly_fee)})</div>
+                    </div>
+                    {b.companies.length > 0 && (
+                        <Button size="sm" color="outline-primary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "Esconder detalhe" : "Ver detalhe"}</Button>
+                    )}
+                </div>
+                {open && (
+                    <div className="table-responsive mt-3">
+                        <Table size="sm" className="align-middle mb-0 fs-13">
+                            <thead className="table-light"><tr><th>Cliente</th><th>Gerido desde</th><th>Situação</th><th className="text-center">{monthName(b.current.month)}</th><th className="text-center">{monthName(b.next.month)}</th></tr></thead>
+                            <tbody>
+                                {b.companies.map((c) => (
+                                    <tr key={c.id}>
+                                        <td>{c.name}</td>
+                                        <td className="text-nowrap">{fmtDate(c.since)}</td>
+                                        <td>{c.pays_own ? <span className="text-success">Paga a própria subscrição</span> : "Acesso pela agência"}</td>
+                                        <td className="text-center">{c.counts_current ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>}</td>
+                                        <td className="text-center">{c.counts_next ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </Table>
+                    </div>
+                )}
+            </CardBody>
+        </Card>
     );
 }

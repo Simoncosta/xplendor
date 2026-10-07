@@ -39,7 +39,7 @@ export default function StageLegendModal({ isOpen, toggle }: { isOpen: boolean; 
                     })}
                 </ul>
                 <p className="text-muted fs-12 mb-0">
-                    <i className="ri-article-line me-1" />No canal Site, a cor mostra a etapa do artigo do Blog. Quem produz: os utilizadores da empresa ou, no modo "Produção pela equipa", a equipa XPLENDOR.
+                    <i className="ri-article-line me-1" />No canal Site, a cor mostra a etapa do artigo do Blog. Quem produz: os utilizadores da empresa ou, no modo de produção pela agência, a agência que gere a empresa (sem agência, a equipa XPLENDOR).
                 </p>
             </ModalBody>
         </Modal>

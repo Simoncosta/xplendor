@@ -146,13 +146,13 @@ class EditorialWorkflowController extends Controller
     }
 
     /**
-     * Aprovação do cliente e revisão interna: o administrador ou a equipa XPLENDOR.
-     * Modo de produção: só a equipa XPLENDOR o muda (é ela que passa a produzir).
+     * Aprovação do cliente e revisão interna: o administrador ou quem produz (a agência gestora ou a equipa XPLENDOR).
+     * Modo de produção: só quem produz o muda (é quem passa a produzir).
      */
     public function updateSettings(Request $request, int $companyId)
     {
         if (! CollaboratorService::canEditContent($request->user(), $companyId)) {
-            return ApiResponse::error('Só o administrador da empresa ou a equipa XPLENDOR pode alterar o fluxo.', 403);
+            return ApiResponse::error('Só o administrador da empresa ou ' . EditorialWorkflowService::producerLabel($companyId) . ' pode alterar o fluxo.', 403);
         }
         $data = $request->validate([
             'content_approval_required' => ['required', 'boolean'],
@@ -164,7 +164,7 @@ class EditorialWorkflowController extends Controller
         unset($data['production_mode']);
         if ($mode !== null && $mode !== EditorialWorkflowService::productionMode($companyId)) {
             if (! EditorialWorkflowService::isTeam($request->user(), $companyId)) {
-                return ApiResponse::error('O modo de produção só é alterado pela equipa XPLENDOR.', 403);
+                return ApiResponse::error('O modo de produção só é alterado ' . EditorialWorkflowService::byProducer($companyId) . '.', 403);
             }
             $data['content_production_mode'] = $mode;
         }

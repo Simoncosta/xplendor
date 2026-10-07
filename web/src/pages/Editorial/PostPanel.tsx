@@ -14,6 +14,7 @@ import { XOption } from "./XSelect";
 import "./panel/post-panel.css";
 import "./editorial.css";
 import { confirmAction } from "helpers/swal";
+import useProducerLabel, { byProducer } from "./useProducerLabel";
 
 /**
  * O MESMO painel da publicação em todas as vistas (calendário, Kanban, Feed, Resultados,
@@ -67,6 +68,7 @@ type Props = {
 };
 
 export default function PostPanel({ target, onClose, companyId, anchors, pillars, range, canProduce, formats, monthOpen, onCalendar, onChanged }: Props) {
+    const producer = useProducerLabel(companyId);
     const [postId, setPostId] = useState<number | null>(null);
     const [data, setData] = useState<PostWorkflow | null>(null);
     const [plan, setPlan] = useState<PlanValues>(emptyPlan(""));
@@ -244,7 +246,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                                 busy={busy} onSubmit={() => void savePlan()} onDelete={!creating && editable ? () => void remove() : undefined} errors={errors}
                                 writeArticleUrl={p && p.channel === "site" ? `/blogs/create?${new URLSearchParams({ editorial_post_id: String(p.id), title: p.title, ...(p.keyword ? { keyword: p.keyword } : {}) }).toString()}` : null} />
                         )}
-                        {tab === "planning" && !editable && !creating && <p className="text-muted fs-12 mt-2"><i className="ri-lock-2-line me-1" />{canProduce ? "O mês desta publicação está fechado: só consulta." : "A produção é feita pela equipa XPLENDOR."}</p>}
+                        {tab === "planning" && !editable && !creating && <p className="text-muted fs-12 mt-2"><i className="ri-lock-2-line me-1" />{canProduce ? "O mês desta publicação está fechado: só consulta." : `A produção é feita ${byProducer(producer)}.`}</p>}
                         {/* O Conteúdo fica montado ao trocar de separador: o texto por gravar não se perde. */}
                         {data && p && p.channel !== "site" && (
                             <div className={tab === "content" ? undefined : "d-none"}>

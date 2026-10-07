@@ -95,9 +95,12 @@ class AlertService
 
     public function getAlertsForDailySummary(Company $company): Collection
     {
+        // Sem os avisos só da própria empresa (seguem por email direto aos admins; o resumo de uma
+        // empresa gerida vai para a agência).
         return Alert::query()
             ->with(['car.brand:id,name', 'car.model:id,name'])
             ->where('company_id', $company->id)
+            ->where('own_only', false)
             ->where('created_at', '>=', now()->subDay())
             ->latest()
             ->get()

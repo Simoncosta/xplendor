@@ -377,6 +377,8 @@ export const decideCompanyConnections = (companyId: number, decision: "keep" | "
     api.create(url.GET_COMPANIES + `/${companyId}/management/connections`, { decision });
 // F1d: a agência pede a gestão de uma empresa existente e termina a relação com um cliente.
 export const getAgencyManagementRequests = (agencyId: number) => api.get(AG(agencyId) + `/management-requests`);
+// F1e: quantas empresas contam para a agência (paga quem dá o acesso), mês atual e seguinte.
+export const getAgencyBilling = (agencyId: number) => api.get(AG(agencyId) + `/billing`);
 export const createAgencyManagementRequest = (agencyId: number, data: { nipc?: string; email?: string; message?: string; authorization_declared: boolean }) =>
     api.create(AG(agencyId) + `/management-requests`, data);
 export const withdrawAgencyManagementRequest = (agencyId: number, requestId: number) => api.create(AG(agencyId) + `/management-requests/${requestId}/withdraw`, {});

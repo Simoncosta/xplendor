@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
  * Aberturas dos links públicos sem login (orçamento e aprovação de conteúdos):
  *
  *  · só conta o sinal enviado pela página depois de carregar e estar visível;
- *  · robôs (pré-visualizações de links, verificadores do email) e a equipa não contam;
+ *  · robôs (pré-visualizações de links, verificadores do email), a equipa XPLENDOR e a agência
+ *    que gere a empresa do link não contam;
  *  · a mesma visita (o mesmo browser) dentro de 30 minutos é a mesma abertura;
  *  · o IP não é guardado: só um identificador aleatório do browser em hash e o dispositivo;
  *  · avisos limitados: na primeira abertura e numa nova, no máximo um a cada N horas.
@@ -30,9 +31,10 @@ class PublicLinkOpens
      * @param  class-string<Model>  $openModel  tabela das aberturas
      * @param  array<string, mixed>  $scope  colunas que identificam o link nas aberturas
      * @param  array<string, mixed>  $extra  colunas a acrescentar a uma abertura nova
+     * @param  int|null  $companyId  a empresa do link: as aberturas da agência que a gere também não contam
      * @return array{counted: bool, reason: ?string, alert: bool, first: bool, device: ?string, open_count: int}
      */
-    public function record(Request $request, string $visitorScope, Model $counter, string $openModel, array $scope, array $extra, int $alertEveryHours): array
+    public function record(Request $request, string $visitorScope, Model $counter, string $openModel, array $scope, array $extra, int $alertEveryHours, ?int $companyId = null): array
     {
         $data = $request->validate([
             'visitor_id' => ['required', 'string', 'regex:/^[A-Za-z0-9_-]{16,64}$/'],
@@ -43,8 +45,11 @@ class PublicLinkOpens
             return $this->skipped('bot');
         }
         $viewer = auth('sanctum')->user();
-        if (TeamDeviceMarker::verify($data['team_marker'] ?? null) || ($viewer && $viewer->role === 'root')) {
-            return $this->skipped('team');
+        $marked = TeamDeviceMarker::user($data['team_marker'] ?? null);
+        foreach (array_filter([$viewer, $marked]) as $person) {
+            if ($person->role === 'root' || ($companyId && self::isManagingAgency($person, $companyId))) {
+                return $this->skipped('team');
+            }
         }
 
         $visitorHash = hash('sha256', $visitorScope . '|' . $data['visitor_id']);
@@ -74,6 +79,13 @@ class PublicLinkOpens
 
             return ['counted' => true, 'reason' => null, 'alert' => $alert, 'first' => $first, 'device' => $device, 'open_count' => (int) $row->open_count];
         });
+    }
+
+    /** Pessoa da agência que gere a empresa do link (relação ativa). */
+    private static function isManagingAgency(\App\Models\User $person, int $companyId): bool
+    {
+        return $person->company_id !== null && \App\Models\CompanyManagement::active()
+            ->where('managed_company_id', $companyId)->where('agency_company_id', (int) $person->company_id)->exists();
     }
 
     private function skipped(string $reason): array

@@ -73,9 +73,11 @@ class UserController extends Controller
 
         $token = $this->userService->createToken($user, $user['name']);
 
-        // Equipa XPLENDOR: marca assinada do browser (as aberturas dos orçamentos feitas
-        // neste browser não contam). O frontend apaga-a quando o root termina a sessão.
-        $extra = $user->role === 'root' ? ['team_marker' => \App\Support\TeamDeviceMarker::issue($user)] : [];
+        // Equipa XPLENDOR e agências: marca assinada do browser (as aberturas dos orçamentos e
+        // dos links de aprovação dos clientes da agência feitas neste browser não contam). O
+        // frontend apaga-a quando a pessoa termina a sessão.
+        $inAgency = $user->company_id && \App\Models\Company::whereKey($user->company_id)->whereNotNull('agency_enabled_at')->exists();
+        $extra = $user->role === 'root' || $inAgency ? ['team_marker' => \App\Support\TeamDeviceMarker::issue($user)] : [];
 
         return ApiResponse::success(
             array_merge(['token' => $token], $user->toArray(), $extra),
