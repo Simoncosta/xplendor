@@ -320,6 +320,17 @@ export const getMetaOverview = (companyId: number, days = 28) =>
 export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 
+// Cobranças da XPLENDOR. Root: todas as empresas; empresa: as suas (sem o módulo de Finanças).
+export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);
+export const createAdminCharge = (data: FormData) => api.create(url.GET_ADMIN + `/charges`, data, { headers: { "Content-Type": "multipart/form-data" } });
+export const adminChargeAction = (id: number, action: "paid" | "cancel" | "refuse" | "send", body: Record<string, unknown> = {}) =>
+    api.create(url.GET_ADMIN + `/charges/${id}/${action}`, body);
+export const adminChargeFilePath = (id: number, file: "invoice" | "proof") => url.GET_ADMIN + `/charges/${id}/${file}`;
+export const getCompanyCharges = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/xplendor-charges`);
+export const companyChargeInvoicePath = (companyId: number, id: number) => url.GET_COMPANIES + `/${companyId}/xplendor-charges/${id}/invoice`;
+export const indicateCompanyChargePaid = (companyId: number, id: number, data: FormData) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/xplendor-charges/${id}/paid`, data, { headers: { "Content-Type": "multipart/form-data" } });
+
 // Gestão por agências: as empresas onde a pessoa pode trabalhar (a própria e as geridas; o root vê todas).
 export const getWorkingCompanies = () => api.get(url.GET_COMPANIES);
 // Empresa gerida: a agência gestora; terminar a relação (só o admin da empresa); primeiro admin (a agência).

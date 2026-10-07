@@ -8,7 +8,7 @@ export const termsPt: LegalContent = {
   title: "Termos e Condições",
   intro: "Condições de utilização deste site e da Plataforma XPLENDOR.",
   updatedLabel: "Última atualização",
-  updated: "5 de outubro de 2026",
+  updated: "7 de outubro de 2026",
   tocLabel: "Nesta página",
   alternate: { href: "/en/terms/", label: "Read in English" },
   sections: [
@@ -35,6 +35,7 @@ export const termsPt: LegalContent = {
           list: [
             "O cliente é responsável pela veracidade dos dados que introduz e pela confidencialidade das credenciais dos seus utilizadores.",
             "Cada empresa cliente só tem acesso aos seus próprios dados.",
+            "As faturas da XPLENDOR (emitidas num programa de faturação certificado) ficam disponíveis na Plataforma e num link pessoal enviado por email. O cliente pode ligar ou desligar os lembretes de cobrança no perfil da empresa (desligados por omissão) e indicar \"Já paguei\", com ou sem comprovativo; o pagamento só fica confirmado quando a XPLENDOR o confirmar.",
             `O cliente deve comunicar de imediato qualquer utilização não autorizada da sua conta para ${COMPANY.email}.`,
           ],
         },
@@ -117,7 +118,7 @@ export const termsEn: LegalContent = {
   title: "Terms and Conditions",
   intro: "Terms of use of this website and of the XPLENDOR Platform.",
   updatedLabel: "Last updated",
-  updated: "5 October 2026",
+  updated: "7 October 2026",
   tocLabel: "On this page",
   alternate: { href: "/termos-e-condicoes/", label: "Ler em português" },
   sections: [
@@ -144,6 +145,7 @@ export const termsEn: LegalContent = {
           list: [
             "The customer is responsible for the accuracy of the data it enters and for keeping its users' credentials confidential.",
             "Each customer company can access only its own data.",
+            "XPLENDOR invoices (issued with certified invoicing software) are available on the Platform and through a personal link sent by email. The customer can turn payment reminders on or off in the company profile (off by default) and indicate \"I have paid\", with or without proof of payment; the payment is only confirmed once XPLENDOR confirms it.",
             `The customer must report any unauthorised use of its account to ${COMPANY.email} without delay.`,
           ],
         },

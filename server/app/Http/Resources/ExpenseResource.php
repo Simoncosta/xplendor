@@ -42,6 +42,12 @@ class ExpenseResource extends JsonResource
             'is_automatic'        => $this->resource->isAutomatic(),
             'can_edit'            => ! $this->resource->isAutomatic(),
             'notes'               => $this->notes,
+            // Cobrança da XPLENDOR: só de leitura; o cliente vê a fatura e indica o pagamento.
+            'is_xplendor_charge'  => $this->resource->isXplendorCharge(),
+            'charge'              => $this->resource->isXplendorCharge() && $this->resource->relationLoaded('charge') && $this->charge ? [
+                'id' => $this->charge->id, 'status' => $this->charge->status, 'due_date' => $this->charge->due_date->toDateString(),
+                'overdue' => $this->charge->isOverdue(), 'can_indicate_payment' => $this->charge->status === \App\Models\ExpenseCharge::OPEN,
+            ] : null,
 
             'created_at'          => $this->created_at,
             'updated_at'          => $this->updated_at,

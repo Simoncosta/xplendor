@@ -223,6 +223,13 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('qa|' . $r->ip()),
             \Illuminate\Cache\RateLimiting\Limit::perHour(20)->by('qt|' . (string) $r->route('token')),
         ]);
+        // Link seguro das cobranças da XPLENDOR: o mesmo padrão, por IP e por token (em hash).
+        \Illuminate\Support\Facades\RateLimiter::for('charge-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('cr|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('charge-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('co|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('charge-public-action', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('ca|' . $r->ip()),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(10)->by('ct|' . hash('sha256', (string) $r->header('X-Charge-Token', ''))),
+        ]);
         // Link de aprovação de conteúdos (F3c): o mesmo padrão, por IP e por token (em hash).
         \Illuminate\Support\Facades\RateLimiter::for('review-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('rr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('ro|' . $r->ip()));

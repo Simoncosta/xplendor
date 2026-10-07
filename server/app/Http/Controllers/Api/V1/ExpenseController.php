@@ -20,16 +20,20 @@ class ExpenseController extends Controller
 {
     public function __construct(protected ExpenseService $service) {}
 
-    private const RELATIONS = ['category', 'supplier', 'car.brand', 'car.model'];
+    private const RELATIONS = ['category', 'supplier', 'car.brand', 'car.model', 'charge'];
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
         return $this->authorizeCompany($companyId);
     }
 
-    /** Despesas automáticas (gasto Meta) não se editam, arquivam nem apagam à mão. */
-    private function automaticLocked()
+    /** Despesas automáticas (gasto Meta) e cobranças da XPLENDOR não se editam, arquivam nem apagam à mão. */
+    private function automaticLocked(?Expense $expense = null)
     {
+        if ($expense?->isXplendorCharge()) {
+            return ApiResponse::error('Esta despesa é uma cobrança da XPLENDOR: só a XPLENDOR a altera. Pode ver a fatura e indicar o pagamento.', 409);
+        }
+
         return ApiResponse::error(
             'Esta despesa é automática: é atualizada a partir do gasto reportado pela Meta e não pode ser alterada à mão.',
             409
@@ -38,13 +42,19 @@ class ExpenseController extends Controller
 
     private function findScoped(int $companyId, int $id): ?Expense
     {
-        return Expense::with(self::RELATIONS)->where('company_id', $companyId)->find($id);
+        return $this->visible(Expense::with(self::RELATIONS)->where('company_id', $companyId), $companyId)->find($id);
+    }
+
+    /** As cobranças da XPLENDOR são só da própria empresa (e do root): a agência gestora não as vê. */
+    private function visible(Builder $query, int $companyId): Builder
+    {
+        return $this->viaAgency($companyId) ? $query->where('source', '!=', Expense::SOURCE_XPLENDOR) : $query;
     }
 
     /** Aplica os filtros partilhados por index() e summary(). */
     private function applyFilters(Builder $query, Request $request, int $companyId): Builder
     {
-        $query->where('company_id', $companyId);
+        $this->visible($query->where('company_id', $companyId), $companyId);
 
         if ($request->filled('expense_category_id')) {
             $query->where('expense_category_id', (int) $request->input('expense_category_id'));
@@ -55,8 +65,8 @@ class ExpenseController extends Controller
         if ($request->filled('car_id')) {
             $query->where('car_id', (int) $request->input('car_id'));
         }
-        // source=manual|meta_ads (despesas automáticas do gasto Meta).
-        if (in_array($request->input('source'), [Expense::SOURCE_MANUAL, Expense::SOURCE_META_ADS], true)) {
+        // source=manual|meta_ads|xplendor (gasto Meta automático; cobranças da XPLENDOR).
+        if (in_array($request->input('source'), [Expense::SOURCE_MANUAL, Expense::SOURCE_META_ADS, Expense::SOURCE_XPLENDOR], true)) {
             $query->where('source', $request->input('source'));
         }
         if ($request->has('is_paid') && $request->input('is_paid') !== '') {
@@ -105,7 +115,8 @@ class ExpenseController extends Controller
         // Repartição analítica (opção 1): as despesas automáticas do gasto Meta ficam
         // FORA dos totais (a fatura manual da Meta é o registo financeiro) e aparecem à
         // parte, como informativas. Na margem por viatura contam (MarginService).
-        $base = (clone $filtered)->where('source', Expense::SOURCE_MANUAL);
+        // As cobranças da XPLENDOR são custo real: contam nos totais.
+        $base = (clone $filtered)->whereIn('source', [Expense::SOURCE_MANUAL, Expense::SOURCE_XPLENDOR]);
         $automatic = (clone $filtered)->where('source', Expense::SOURCE_META_ADS);
 
         $total = (float) (clone $base)->sum('amount');
@@ -176,7 +187,7 @@ class ExpenseController extends Controller
         }
 
         if ($expense->isAutomatic()) {
-            return $this->automaticLocked();
+            return $this->automaticLocked($expense);
         }
 
         $data = $this->service->normalizePaidState($request->validated());
@@ -204,7 +215,7 @@ class ExpenseController extends Controller
         }
 
         if ($expense->isAutomatic()) {
-            return $this->automaticLocked();
+            return $this->automaticLocked($expense);
         }
 
         // Regra: sem vínculo → elimina; com vínculo → bloqueia (deve arquivar-se).

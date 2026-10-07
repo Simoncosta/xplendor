@@ -31,7 +31,8 @@ use Tests\TestCase;
  *  · Matriz: uma pessoa da agência sem relação, com relação pendente, recusada, retirada,
  *    terminada, expirada, de outra agência ou sem estar atribuída ao cliente recebe 403
  *    em TODAS as rotas de empresa. Com relação ativa, nenhuma rota dá 403, salvo as do
- *    cliente (aprovar, acessos, decisões sobre orçamentos, dados da empresa), que dão 403;
+ *    cliente (aprovar, acessos, decisões sobre orçamentos, dados da empresa, cobranças da
+ *    XPLENDOR), que dão 403;
  *    e ligar ou desligar integrações, que é só para os admins da agência.
  *  · Registos filhos de outra empresa, pedidos debaixo da empresa gerida: 404.
  */
@@ -94,6 +95,10 @@ class AgencyTenancySweepTest extends TestCase
         'PUT api/v1/companies/{id}/users/{user}',
         'PUT api/v1/companies/{company}',
         'DELETE api/v1/companies/{company}',
+        // Cobranças da XPLENDOR: só da própria empresa (a agência gestora não as vê).
+        'GET api/v1/companies/{id}/xplendor-charges',
+        'GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice',
+        'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',
     ];
 
     /** Ligar, alterar e desligar integrações e credenciais: só os ADMINS da agência (um membro comum recebe 403). */

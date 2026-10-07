@@ -16,7 +16,7 @@ export const privacyPt: LegalContent = {
   intro:
     "Como a XPLENDOR trata os dados pessoais e os dados de publicidade dos seus clientes, incluindo os dados recebidos da Meta (Facebook e Instagram).",
   updatedLabel: "Última atualização",
-  updated: "6 de outubro de 2026",
+  updated: "7 de outubro de 2026",
   tocLabel: "Nesta página",
   alternate: { href: "/en/privacy-policy/", label: "Read in English" },
   sections: [
@@ -187,7 +187,7 @@ export const privacyPt: LegalContent = {
             "o orçamento (dados do cliente, serviços e valores): enquanto for necessário para a relação comercial e para as obrigações legais da XPLENDOR.",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 11 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação nos termos da secção 12 e da página Eliminação de Dados (/eliminacao-de-dados/). Os registos de aceitação são conservados enquanto houver obrigação legal de os manter.",
       ],
     },
     {
@@ -210,12 +210,41 @@ export const privacyPt: LegalContent = {
             "ficheiros das publicações: segundo as regras da Plataforma (os das versões substituídas são apagados aos 30 dias; os originais das publicações publicadas são guardados 12 meses).",
           ],
         },
-        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 11.",
+        "Pode pedir o acesso a estes dados ou a sua eliminação à empresa que lhe enviou o link ou à XPLENDOR, nos termos da secção 12.",
+      ],
+    },
+    {
+      id: "cobrancas",
+      title: "9. Faturas e lembretes de cobrança da XPLENDOR",
+      blocks: [
+        "A XPLENDOR não emite faturas na Plataforma: emite-as num programa de faturação certificado e carrega na Plataforma a fatura em PDF, para o cliente a consultar, acompanhar o estado do pagamento e receber lembretes. A fatura aparece nas Despesas da empresa cliente (só de leitura) e numa página própria, aberta por um link enviado por email, onde se pode descarregar o PDF e indicar \"Já paguei\", sem precisar de conta. Cada link dá acesso apenas a essa fatura, não pode ser adivinhado, deixa de valer quando a fatura é anulada ou 90 dias depois de paga, e a página não é indexada por motores de pesquisa. As faturas da XPLENDOR de uma empresa só são visíveis para os utilizadores dessa empresa e para a XPLENDOR (nunca para uma agência que gira a empresa).",
+        { h3: "9.1 Dados tratados" },
+        {
+          list: [
+            "o nome da empresa, o valor, a descrição, a data da fatura e o vencimento, e a fatura em PDF;",
+            "o email de faturação da empresa ou, se não existir, o nome e o email dos seus administradores, para onde vão os emails;",
+            "a data dos emails enviados (uma fatura nova, no dia do vencimento e depois às segundas-feiras, até estar paga, anulada ou com pagamento indicado; nunca mais do que um por dia);",
+            "quando o cliente indica que pagou: a data e a hora, o meio (link ou Plataforma), quem indicou (se for dentro da Plataforma), a nota e o comprovativo, se forem juntos (PDF ou imagem, até 10 MB);",
+            "a confirmação ou a recusa do pagamento pela XPLENDOR, com a nota da recusa.",
+          ],
+        },
+        "Os lembretes por email só são enviados se a empresa os ligar (\"Enviar lembretes de cobrança\", desligado por omissão); a empresa pode desligá-los a qualquer momento no perfil da empresa. Fundamento: execução do contrato com o cliente e cumprimento de obrigações legais.",
+        { h3: "9.2 Aberturas do link" },
+        "Registamos as aberturas como nos orçamentos (secção 7.2): apenas a data e a hora e o tipo de dispositivo. Não guardamos o endereço IP; o identificador aleatório que a página guarda no browser fica no servidor só em hash; as pré-visualizações automáticas de links, os verificadores de links do email e as aberturas da equipa não são registados; a página não usa cookies nem ferramentas de análise de terceiros. Fundamento: interesse legítimo em saber se a fatura foi vista.",
+        { h3: "9.3 Conservação" },
+        {
+          list: [
+            "aberturas: 12 meses, depois são apagadas automaticamente (fica apenas o número total de aberturas);",
+            "faturas, comprovativos e o registo do pagamento: 10 anos, o prazo legal de conservação da documentação contabilística;",
+            "o email de faturação e o interruptor dos lembretes: enquanto a conta do cliente estiver ativa.",
+          ],
+        },
+        "Pode pedir o acesso a estes dados nos termos da secção 12. Os documentos contabilísticos são conservados enquanto houver obrigação legal de os manter.",
       ],
     },
     {
       id: "partilha",
-      title: "9. Partilha com terceiros",
+      title: "10. Partilha com terceiros",
       blocks: [
         "A XPLENDOR não vende dados pessoais. Os dados podem ser tratados pelos seguintes prestadores, apenas na medida do necessário para prestar o serviço:",
         {
@@ -230,14 +259,14 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "seguranca",
-      title: "10. Segurança",
+      title: "11. Segurança",
       blocks: [
         "Os tokens de acesso a plataformas externas são guardados cifrados. A chave secreta da aplicação Meta existe apenas no servidor. O acesso à Plataforma é feito com autenticação e cada pedido é verificado para garantir que um utilizador só acede aos dados da sua própria empresa. As comunicações são feitas por ligação cifrada (HTTPS).",
       ],
     },
     {
       id: "direitos",
-      title: "11. Os seus direitos (RGPD)",
+      title: "12. Os seus direitos (RGPD)",
       blocks: [
         "Nos termos do Regulamento Geral sobre a Proteção de Dados, pode exercer, a qualquer momento:",
         {
@@ -256,7 +285,7 @@ export const privacyPt: LegalContent = {
     },
     {
       id: "alteracoes",
-      title: "12. Alterações a esta política",
+      title: "13. Alterações a esta política",
       blocks: [
         "Esta política pode ser atualizada para refletir alterações na Plataforma ou na lei. A data da última atualização está no topo da página. Alterações relevantes são comunicadas aos clientes por email ou na Plataforma.",
       ],
@@ -270,7 +299,7 @@ export const privacyEn: LegalContent = {
   intro:
     "How XPLENDOR handles personal data and advertising data of its customers, including the data received from Meta (Facebook and Instagram).",
   updatedLabel: "Last updated",
-  updated: "6 October 2026",
+  updated: "7 October 2026",
   tocLabel: "On this page",
   alternate: { href: "/politica-de-privacidade/", label: "Ler em português" },
   sections: [
@@ -441,7 +470,7 @@ export const privacyEn: LegalContent = {
             "the quote itself (customer data, services and amounts): for as long as needed for the business relationship and XPLENDOR's legal obligations.",
           ],
         },
-        "You can request access to or deletion of this data as described in section 11 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
+        "You can request access to or deletion of this data as described in section 12 and on the Data Deletion page (/en/data-deletion/). Acceptance records are kept for as long as there is a legal obligation to keep them.",
       ],
     },
     {
@@ -464,12 +493,41 @@ export const privacyEn: LegalContent = {
             "post files: according to the Platform rules (files of replaced versions are deleted after 30 days; originals of published posts are kept for 12 months).",
           ],
         },
-        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 11.",
+        "You can request access to or deletion of this data from the company that sent you the link or from XPLENDOR, as described in section 12.",
+      ],
+    },
+    {
+      id: "billing",
+      title: "9. XPLENDOR invoices and payment reminders",
+      blocks: [
+        "XPLENDOR does not issue invoices on the Platform: it issues them with certified invoicing software and uploads the invoice PDF to the Platform, so that the customer can see it, follow the payment status and receive reminders. The invoice appears in the customer company's Expenses (read only) and on its own page, opened by a link sent by email, where the PDF can be downloaded and \"I have paid\" can be indicated, without an account. Each link only gives access to that invoice, cannot be guessed, stops working when the invoice is cancelled or 90 days after it is paid, and the page is not indexed by search engines. A company's XPLENDOR invoices are only visible to that company's users and to XPLENDOR (never to an agency that manages the company).",
+        { h3: "9.1 Data processed" },
+        {
+          list: [
+            "the company name, the amount, the description, the invoice date and the due date, and the invoice PDF;",
+            "the company's billing email or, if there is none, the name and email of its administrators, where the emails are sent;",
+            "the date of the emails sent (a new invoice, on the due date and then on Mondays, until it is paid, cancelled or payment has been indicated; never more than one a day);",
+            "when the customer indicates payment: the date and time, the channel (link or Platform), who indicated it (inside the Platform), the note and the proof of payment, if attached (PDF or image, up to 10 MB);",
+            "XPLENDOR's confirmation or refusal of the payment, with the refusal note.",
+          ],
+        },
+        "Reminder emails are only sent if the company turns them on (\"Send payment reminders\", off by default); the company can turn them off at any time in the company profile. Legal basis: performance of the contract with the customer and compliance with legal obligations.",
+        { h3: "9.2 Link opens" },
+        "We record opens as for quotes (section 7.2): only the date and time and the device type. We do not store the IP address; the random identifier the page stores in the browser is kept on the server only as a hash; automatic link previews, email link checkers and opens by the team are not recorded; the page does not use cookies or third party analytics. Legal basis: legitimate interest in knowing whether the invoice was seen.",
+        { h3: "9.3 Retention" },
+        {
+          list: [
+            "opens: 12 months, then deleted automatically (only the total number of opens is kept);",
+            "invoices, proofs of payment and the payment record: 10 years, the legal retention period for accounting records;",
+            "the billing email and the reminders setting: while the customer's account is active.",
+          ],
+        },
+        "You can request access to this data as described in section 12. Accounting records are kept for as long as there is a legal obligation to keep them.",
       ],
     },
     {
       id: "sharing",
-      title: "9. Sharing with third parties",
+      title: "10. Sharing with third parties",
       blocks: [
         "XPLENDOR does not sell personal data. Data may be processed by the following providers, only as needed to provide the service:",
         {
@@ -484,14 +542,14 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "security",
-      title: "10. Security",
+      title: "11. Security",
       blocks: [
         "Access tokens for external platforms are stored encrypted. The Meta app secret exists only on the server. Access to the Platform requires authentication and every request is checked so that a user can only access the data of their own company. Communications use an encrypted connection (HTTPS).",
       ],
     },
     {
       id: "rights",
-      title: "11. Your rights (GDPR)",
+      title: "12. Your rights (GDPR)",
       blocks: [
         "Under the General Data Protection Regulation you may, at any time, exercise:",
         {
@@ -510,7 +568,7 @@ export const privacyEn: LegalContent = {
     },
     {
       id: "changes",
-      title: "12. Changes to this policy",
+      title: "13. Changes to this policy",
       blocks: [
         "This policy may be updated to reflect changes to the Platform or to the law. The date of the last update is shown at the top of the page. Relevant changes are communicated to customers by email or in the Platform.",
       ],

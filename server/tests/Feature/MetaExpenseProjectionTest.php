@@ -166,7 +166,7 @@ class MetaExpenseProjectionTest extends TestCase
         $this->assertSame(1, $this->auto()->count());
         $this->assertSame($id, $this->auto()->value('id'));
         $this->assertSame('12.50', $this->auto()->value('amount'));
-        $this->assertSame(1, ExpenseCategory::where('company_id', $this->company->id)->count());
+        $this->assertSame(1, ExpenseCategory::where('company_id', $this->company->id)->where('system_key', ExpenseCategory::SYSTEM_META_ADS)->count());
     }
 
     public function test_month_that_drops_to_zero_loses_its_automatic_line(): void

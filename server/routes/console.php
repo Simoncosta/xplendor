@@ -210,3 +210,13 @@ Schedule::job(new \App\Jobs\EditorialPublishingWatchJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Linha Editorial] Vigia das publicações falhou no scheduler');
     });
+
+// Cobranças da XPLENDOR: lembretes às 09:00 (Lisboa), no dia do vencimento e às segundas-feiras.
+Schedule::job(new \App\Jobs\ChargeRemindersJob())
+    ->dailyAt('09:00')
+    ->timezone('Europe/Lisbon')
+    ->name('charge-reminders')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Cobranças] Lembretes falharam no scheduler');
+    });

@@ -102,6 +102,10 @@ class ExpenseCategoryController extends Controller
             return ApiResponse::error('Categoria não encontrada.', 404);
         }
 
+        if ($category->isLocked()) {
+            return ApiResponse::error('A categoria XPLENDOR é da plataforma: não pode ser alterada nem apagada.', 409);
+        }
+
         $data = $request->validated();
         unset($data['company_id']); // deriva da rota/tenant — imutável
 
@@ -123,6 +127,10 @@ class ExpenseCategoryController extends Controller
 
         if (! $category) {
             return ApiResponse::error('Categoria não encontrada.', 404);
+        }
+
+        if ($category->isLocked()) {
+            return ApiResponse::error('A categoria XPLENDOR é da plataforma: não pode ser alterada nem apagada.', 409);
         }
 
         // Regra: sem despesas → elimina; com despesas → bloqueia (deve arquivar-se).

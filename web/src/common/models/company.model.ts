@@ -41,6 +41,8 @@ export interface ICompany {
 
     // DMS Fase 1a — interruptor "modo IVA" da empresa.
     uses_vat: boolean;
+    /** Cobranças da XPLENDOR: lembretes por email (desligado por omissão). */
+    billing_reminders_enabled?: boolean;
 
     facebook_page_id: string | null;
     facebook_pixel_id: string | null;

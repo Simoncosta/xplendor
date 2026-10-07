@@ -22,6 +22,7 @@ import RootDashboard from "./RootDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getWorkingCompany } from "helpers/workingCompany";
+import XplendorChargesNotice from "pages/Charges/XplendorChargesNotice";
 
 // Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
 // true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
@@ -131,6 +132,7 @@ const CarStockTab = ({ companyId, onHighCount }: { companyId: number; onHighCoun
             <Row className="g-3 mb-3">
                 <SubscriptionTrialBanner />
             </Row>
+            <XplendorChargesNotice />
             <AutomotiveHubStock companyId={companyId} onHighCount={onHighCount} />
             {SHOW_STOCK_BREAKDOWN && (
                 <Row className="g-3 mb-3">
@@ -216,6 +218,7 @@ const ClientDashboard = () => {
                         <Row className="g-3 mb-3">
                             <SubscriptionTrialBanner />
                         </Row>
+                        <XplendorChargesNotice />
                         {showPingwin && <PingwinDashboardContent />}
                     </Container>
                 </div>

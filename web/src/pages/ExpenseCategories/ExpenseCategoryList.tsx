@@ -117,9 +117,12 @@ const ExpenseCategoryList = () => {
                 <ColorDot color={c.color} />
                 {c.name}
                 {isArchivedRow && <span className="badge bg-light text-muted ms-2">Arquivada</span>}
+                {c.locked && <span className="badge bg-primary-subtle text-primary ms-2">Da plataforma</span>}
             </td>
             <td className="text-end">
-                {!isArchivedRow ? (
+                {c.locked ? (
+                    <span className="text-muted" title="Categoria das faturas da XPLENDOR: não pode ser alterada nem apagada."><i className="ri-lock-line" /></span>
+                ) : !isArchivedRow ? (
                     <>
                         <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(c)} title="Editar">
                             <i className="ri-pencil-line" />

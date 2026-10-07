@@ -330,6 +330,7 @@ const Navdata = () => {
                     { id: "company", label: "Empresas", link: "/companies", parentId: "admin" },
                     { id: "admin-tickets", label: "Tickets", link: "/admin", parentId: "admin" },
                     { id: "admin-quotes", label: "Orçamentos", link: "/admin/quotes", parentId: "admin" },
+                    { id: "admin-charges", label: "Cobranças", link: "/admin/charges", parentId: "admin" },
                     { id: "admin-service-catalog", label: "Catálogo de serviços", link: "/admin/service-catalog", parentId: "admin" },
                     { id: "admin-stock", label: "Stock global", link: "/admin/stock", parentId: "admin" },
                     { id: "admin-creative-format-rules", label: "Regras de formato", link: "/admin/creative-format-rules", parentId: "admin" },
@@ -379,7 +380,7 @@ const Navdata = () => {
                 // ("entrar como"). + Tickets + Orçamentos + Regras de formato; sem Stock global.
                 acc.push({
                     ...it,
-                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-creative-format-rules"].includes(s.id)),
+                    subItems: (it.subItems ?? []).filter((s: any) => ["company", "admin-tickets", "admin-quotes", "admin-charges", "admin-creative-format-rules"].includes(s.id)),
                 });
                 return acc;
             }

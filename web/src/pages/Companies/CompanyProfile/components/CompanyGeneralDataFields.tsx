@@ -131,6 +131,17 @@ export default function CompanyGeneralDataFields({ isEdit, managed = false }: { 
                     label="Esta empresa trabalha com IVA"
                 />
             </Col>
+            {isEdit && (
+                <Col lg={12} className="mb-2">
+                    <XInputCheckbox
+                        name="billing_reminders_enabled"
+                        label="Enviar lembretes de cobrança"
+                    />
+                    <div className="form-text">
+                        Faturas da XPLENDOR: um email quando chega uma fatura nova, no dia do vencimento e depois às segundas-feiras, até estar paga. Vai para o email de faturação (sem ele, para os administradores).
+                    </div>
+                </Col>
+            )}
             <Col lg={12} className="mb-2">
                 <XInput
                     type="url"

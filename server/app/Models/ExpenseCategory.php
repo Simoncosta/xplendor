@@ -17,6 +17,9 @@ class ExpenseCategory extends Model implements AuditableContract
     /** Categoria de sistema das despesas automáticas do gasto Meta. */
     public const SYSTEM_META_ADS = 'meta_ads';
 
+    /** Categoria universal e bloqueada das cobranças da XPLENDOR (em todas as empresas). */
+    public const SYSTEM_XPLENDOR = 'xplendor';
+
     protected $fillable = [
         'company_id',
         'name',
@@ -27,6 +30,24 @@ class ExpenseCategory extends Model implements AuditableContract
     protected $casts = [
         'archived' => 'boolean',
     ];
+
+    /** A categoria "XPLENDOR" da empresa (criada se ainda não existir). */
+    public static function ensureXplendor(int $companyId): self
+    {
+        $category = self::where('company_id', $companyId)->where('system_key', self::SYSTEM_XPLENDOR)->first();
+        if ($category) {
+            return $category;
+        }
+        $category = new self(['company_id' => $companyId, 'name' => 'XPLENDOR', 'color' => '#405189', 'archived' => false]);
+        $category->forceFill(['system_key' => self::SYSTEM_XPLENDOR])->save();
+
+        return $category;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->system_key === self::SYSTEM_XPLENDOR;
+    }
 
     public function company(): BelongsTo
     {

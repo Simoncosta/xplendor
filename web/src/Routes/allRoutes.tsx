@@ -52,6 +52,8 @@ import CollaboratorEditor from "pages/Collaborators/CollaboratorEditor";
 import PrivacyPolicy from "pages/Privacy";
 // Pós-venda — relatório público de satisfação (sem auth)
 import QuotePublicPage from "pages/QuotePublic";
+import ChargePublicPage from "pages/ChargePublic";
+import AdminChargesPage from "pages/Admin/AdminChargesPage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
@@ -239,6 +241,8 @@ const authProtectedRoutes = [
     { path: "/admin/tickets/:id", component: <RequireSuperAdmin><AdminTicketDetail /></RequireSuperAdmin> },
     // 2ª consola da área /admin — gestão comercial (orçamentos avulsos).
     { path: "/admin/quotes", component: <RequireSuperAdmin><AdminQuotesList /></RequireSuperAdmin> },
+    // Cobranças da XPLENDOR (todas as empresas).
+    { path: "/admin/charges", component: <RequireSuperAdmin><AdminChargesPage /></RequireSuperAdmin> },
     { path: "/admin/quotes/new", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/quotes/:id", component: <RequireSuperAdmin><QuoteEditor /></RequireSuperAdmin> },
     { path: "/admin/service-catalog", component: <RequireSuperAdmin><ServiceCatalogPage /></RequireSuperAdmin> },
@@ -283,6 +287,8 @@ const publicRoutes = [
     { path: "/orcamento", component: <QuotePublicPage /> },
     // Aprovação de conteúdos por lote (sem conta, sem indexação). Token no fragmento: /aprovar#<token>.
     { path: "/aprovar", component: <ContentReviewPage /> },
+    // Fatura da XPLENDOR (sem conta, sem indexação): ver, descarregar e "Já paguei". Token no fragmento: /cobranca#<token>.
+    { path: "/cobranca", component: <ChargePublicPage /> },
     // A mesma página vista pela equipa (não conta como abertura; mesma aba, para manter a sessão).
     { path: "/admin/quotes/:id/preview/:version", component: <RequireSuperAdmin><QuotePublicPreview /></RequireSuperAdmin> },
 ];

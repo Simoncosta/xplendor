@@ -31,7 +31,12 @@ class ExpenseRequest extends FormRequest
             'amount'              => [$req, 'numeric', 'min:0'],
             'date'                => [$req, 'date'],
 
-            'expense_category_id' => ['nullable', 'integer', 'exists:expense_categories,id'],
+            'expense_category_id' => ['nullable', 'integer', 'exists:expense_categories,id', function ($attribute, $value, $fail) {
+                // Reservada às cobranças da XPLENDOR (ninguém a escolhe numa despesa à mão).
+                if ($value && \App\Models\ExpenseCategory::whereKey($value)->where('system_key', \App\Models\ExpenseCategory::SYSTEM_XPLENDOR)->exists()) {
+                    $fail('A categoria XPLENDOR é reservada às cobranças da XPLENDOR.');
+                }
+            }],
             'supplier_id'         => ['nullable', 'integer', 'exists:suppliers,id'],
             'car_id'              => ['nullable', 'integer', 'exists:cars,id'],
 

@@ -1,3 +1,5 @@
+import type { ChargeStatus } from "./charge.model";
+
 // DMS sub-fase 1c.2b — Despesa.
 export interface IExpense {
     id: number;
@@ -20,9 +22,12 @@ export interface IExpense {
     can_delete: boolean; // false quando tem vínculo → só arquivar
     notes: string | null;
     // Despesa automática (gasto Meta por viatura/mês): não editável à mão.
-    source?: "manual" | "meta_ads";
+    source?: "manual" | "meta_ads" | "xplendor";
     is_automatic?: boolean;
     can_edit?: boolean;
+    // Cobrança da XPLENDOR: só de leitura; ver a fatura e indicar o pagamento.
+    is_xplendor_charge?: boolean;
+    charge?: { id: number; status: ChargeStatus; due_date: string; overdue: boolean; can_indicate_payment: boolean } | null;
 
     created_at?: string;
     updated_at?: string;

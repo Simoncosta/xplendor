@@ -8,6 +8,8 @@ export interface IExpenseCategory {
     // Nº de despesas que usam a categoria (0 até a 1c.2b existir) + se pode ser eliminada.
     expenses_count: number;
     can_delete: boolean;
+    /** Categoria universal das cobranças da XPLENDOR: ninguém a edita nem apaga. */
+    locked?: boolean;
     created_at?: string;
     updated_at?: string;
 }

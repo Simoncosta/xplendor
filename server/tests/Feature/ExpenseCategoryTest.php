@@ -64,9 +64,10 @@ class ExpenseCategoryTest extends TestCase
 
     public function test_company_starts_empty(): void
     {
+        // Só a categoria universal e bloqueada das cobranças da XPLENDOR.
         $response = $this->actingAs($this->user, 'sanctum')->getJson($this->url());
         $response->assertStatus(200);
-        $this->assertCount(0, $response->json('data'));
+        $this->assertSame([['XPLENDOR', true]], array_map(fn ($c) => [$c['name'], $c['locked']], $response->json('data')));
     }
 
     public function test_creates_category_with_only_name(): void
@@ -97,7 +98,7 @@ class ExpenseCategoryTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertSame(14, $response->json('data.created_count'));
-        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->count());
+        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->whereNull('system_key')->count());
         $this->assertCount(count(ExpenseCategoryService::SUGGESTED), ExpenseCategoryService::SUGGESTED);
     }
 
@@ -109,7 +110,7 @@ class ExpenseCategoryTest extends TestCase
         $response = $this->actingAs($this->user, 'sanctum')->postJson($this->url('/import-suggested'));
         $response->assertStatus(200);
         $this->assertSame(0, $response->json('data.created_count'));
-        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->count());
+        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->whereNull('system_key')->count());
     }
 
     public function test_import_suggested_only_creates_missing(): void
@@ -120,7 +121,7 @@ class ExpenseCategoryTest extends TestCase
         $response->assertStatus(200);
         // 14 sugeridas menos a "Pintura" já existente = 13 criadas.
         $this->assertSame(13, $response->json('data.created_count'));
-        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->count());
+        $this->assertSame(14, ExpenseCategory::where('company_id', $this->company->id)->whereNull('system_key')->count());
     }
 
     public function test_deletes_category_without_expenses(): void

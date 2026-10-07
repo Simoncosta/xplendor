@@ -25,7 +25,9 @@ class ExpenseCategoryResource extends JsonResource
             'color'          => $this->color,
             'archived'       => (bool) $this->archived,
             'expenses_count' => $expensesCount,
-            'can_delete'     => $expensesCount === 0,
+            'can_delete'     => $expensesCount === 0 && ! $this->resource->isLocked(),
+            // Categoria universal das cobranças da XPLENDOR: ninguém a edita nem apaga.
+            'locked'         => $this->resource->isLocked(),
             'created_at'     => $this->created_at,
             'updated_at'     => $this->updated_at,
         ];

@@ -324,6 +324,12 @@ Route::prefix('v1')->group(function () {
                     Route::post('/management/first-admin', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'inviteFirstAdmin']);
                 });
 
+                // Cobranças da XPLENDOR (só a própria empresa e o root; sem o módulo de Finanças).
+                Route::get('/xplendor-charges', [\App\Http\Controllers\Api\V1\CompanyChargeController::class, 'index']);
+                Route::get('/xplendor-charges/{chargeId}/invoice', [\App\Http\Controllers\Api\V1\CompanyChargeController::class, 'invoice'])->whereNumber('chargeId');
+                Route::post('/xplendor-charges/{chargeId}/paid', [\App\Http\Controllers\Api\V1\CompanyChargeController::class, 'paid'])->whereNumber('chargeId')
+                    ->middleware(['block_when_impersonating', 'throttle:charge-public-action']);
+
                 Route::get('/users', [UserController::class, 'index']);
                 Route::get('/users/{user}', [UserController::class, 'show']);
                 Route::post('/users', [UserController::class, 'store'])->middleware('block_when_impersonating');
@@ -627,6 +633,17 @@ Route::prefix('v1')->group(function () {
             Route::patch('/companies/{company}/modules', [AdminCompanyController::class, 'setModule']);
             Route::post('/companies/{company}/modules/preset', [AdminCompanyController::class, 'applyModulePreset']);
 
+            // Cobranças da XPLENDOR (todas as empresas).
+            Route::get('/charges', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'index']);
+            Route::post('/charges', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'store']);
+            Route::get('/charges/{chargeId}', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'show'])->whereNumber('chargeId');
+            Route::get('/charges/{chargeId}/invoice', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'invoice'])->whereNumber('chargeId');
+            Route::get('/charges/{chargeId}/proof', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'proof'])->whereNumber('chargeId');
+            Route::post('/charges/{chargeId}/paid', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'markPaid'])->whereNumber('chargeId');
+            Route::post('/charges/{chargeId}/cancel', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'cancel'])->whereNumber('chargeId');
+            Route::post('/charges/{chargeId}/refuse', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'refuse'])->whereNumber('chargeId');
+            Route::post('/charges/{chargeId}/send', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'send'])->whereNumber('chargeId');
+
             // Agências: marcar a empresa como agência e definir, mudar ou retirar a agência gestora.
             Route::get('/agencies', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'agencies']);
             Route::get('/companies/{company}/management', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'show'])->whereNumber('company');
@@ -673,6 +690,14 @@ Route::middleware(['resolve_report_token'])->prefix('public')->group(function ()
 // aleatórios) só dá acesso àquela versão e vem no cabeçalho X-Quote-Token, nunca no
 // caminho (o link é /orcamento#<token>). Limites com nome (AppServiceProvider):
 // leitura, sinal de abertura e respostas do cliente.
+// Link seguro das cobranças da XPLENDOR (sem conta): token no cabeçalho X-Charge-Token.
+Route::prefix('public/charge')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Api\Public\ChargePublicController::class, 'show'])->middleware('throttle:charge-public-read');
+    Route::get('/pdf', [\App\Http\Controllers\Api\Public\ChargePublicController::class, 'pdf'])->middleware('throttle:charge-public-read');
+    Route::post('/open', [\App\Http\Controllers\Api\Public\ChargePublicController::class, 'open'])->middleware('throttle:charge-public-open');
+    Route::post('/paid', [\App\Http\Controllers\Api\Public\ChargePublicController::class, 'paid'])->middleware('throttle:charge-public-action');
+});
+
 Route::prefix('public/quote')->group(function () {
     Route::get('/', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'show'])->middleware('throttle:quote-public-read');
     Route::get('/pdf', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'pdf'])->middleware('throttle:quote-public-read');

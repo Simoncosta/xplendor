@@ -63,6 +63,7 @@ class Company extends Model
         'trial_ends_at',
         'subscription_ends_at',
         'cm_avg_ticket_enabled',
+        'billing_reminders_enabled', // Cobranças da XPLENDOR: lembretes por email (desligado por omissão)
     ];
 
     protected function casts(): array
@@ -76,6 +77,7 @@ class Company extends Model
             'content_approval_required' => 'boolean',
             'internal_review_required' => 'boolean',
             'cm_avg_ticket_enabled' => 'boolean',
+            'billing_reminders_enabled' => 'boolean',
         ];
     }
 

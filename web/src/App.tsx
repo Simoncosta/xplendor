@@ -30,7 +30,7 @@ function App() {
         <React.Fragment>
             <Route />
             {/* As páginas públicas do orçamento e da aprovação de conteúdos não usam cookies nem análise de terceiros. */}
-            {!/\/(orcamento|aprovar)\/?$/.test(window.location.pathname) && <CookieBanner />}
+            {!/\/(orcamento|aprovar|cobranca)\/?$/.test(window.location.pathname) && <CookieBanner />}
         </React.Fragment>
     );
 }

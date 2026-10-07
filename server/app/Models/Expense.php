@@ -23,6 +23,12 @@ class Expense extends Model implements AuditableContract
      */
     public const SOURCE_META_ADS = 'meta_ads';
 
+    /**
+     * Cobrança da XPLENDOR (só o root a cria): só de leitura para o cliente, conta nos
+     * totais, e nunca visível para a agência gestora. Os dados próprios estão em ExpenseCharge.
+     */
+    public const SOURCE_XPLENDOR = 'xplendor';
+
     protected $fillable = [
         'company_id',
         'description',
@@ -64,6 +70,16 @@ class Expense extends Model implements AuditableContract
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function charge(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ExpenseCharge::class);
+    }
+
+    public function isXplendorCharge(): bool
+    {
+        return ($this->source ?? self::SOURCE_MANUAL) === self::SOURCE_XPLENDOR;
     }
 
     public function car(): BelongsTo

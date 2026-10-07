@@ -19,6 +19,11 @@ import { ISupplier } from "common/models/supplier.model";
 // Helpers
 import { confirmDelete, alertMessage } from "helpers/swal";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import XplendorChargesNotice from "pages/Charges/XplendorChargesNotice";
+import { CHARGE_STATUS_META, dmy } from "common/models/charge.model";
+import { companyChargeInvoicePath } from "helpers/laravel_helper";
+import { openPdfGet } from "helpers/download_helper";
+import { useModules } from "contexts/ModulesContext";
 
 interface Option { value: number; label: string; }
 
@@ -97,8 +102,15 @@ const ExpenseList = () => {
             .then((res: any) => setSupplierOptions(((res?.data as ISupplier[]) ?? []).map((s) => ({ value: s.id, label: s.name }))))
             .catch(() => setSupplierOptions([]));
 
-        loadAllCarOptions(companyId).then(setCarOptions).catch(() => setCarOptions([]));
     }, [companyId]);
+
+    // Viaturas só com o módulo de stock (sem ele, o pedido daria 403).
+    const { has, loading: modulesLoading } = useModules();
+    const hasStock = !modulesLoading && has("stock");
+    useEffect(() => {
+        if (!companyId || !hasStock) { setCarOptions([]); return; }
+        loadAllCarOptions(companyId).then(setCarOptions).catch(() => setCarOptions([]));
+    }, [companyId, hasStock]);
 
     const filterParams = useMemo(() => {
         const p: Record<string, any> = {};
@@ -188,6 +200,9 @@ const ExpenseList = () => {
                             </XButton>
                         </Col>
                     </Row>
+
+                    {/* Faturas da XPLENDOR por resolver: ver a fatura e indicar "Já paguei". */}
+                    <XplendorChargesNotice onChanged={fetchAll} />
 
                     {/* Totais */}
                     <Row className="g-3 mb-3">
@@ -291,7 +306,13 @@ const ExpenseList = () => {
                                                 <td>{e.date}</td>
                                                 <td className={e.archived ? "" : "fw-medium"}>
                                                     {e.description}
-                                                    {e.is_automatic && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
+                                                    {e.is_automatic && !e.is_xplendor_charge && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
+                                                    {e.is_xplendor_charge && e.charge && (
+                                                        <>
+                                                            {e.charge.overdue && <Badge color="danger" className="ms-2 fw-normal">Vencida</Badge>}
+                                                            <div className="text-muted fs-12">Cobrança da XPLENDOR · vence a {dmy(e.charge.due_date)}</div>
+                                                        </>
+                                                    )}
                                                     {e.archived && <Badge color="light" className="text-muted ms-2">Arquivada</Badge>}
                                                 </td>
                                                 <td>
@@ -306,17 +327,26 @@ const ExpenseList = () => {
                                                 <td>{e.car_name || <span className="text-muted">—</span>}</td>
                                                 <td className="text-end fw-medium">{eur(e.amount)}</td>
                                                 <td>
+                                                    {e.is_xplendor_charge && e.charge ? (
+                                                        <Badge color={CHARGE_STATUS_META[e.charge.status].color} className="fw-normal" title="A XPLENDOR confirma o pagamento">{CHARGE_STATUS_META[e.charge.status].label}</Badge>
+                                                    ) : (
                                                     <button
                                                         className={`btn btn-sm ${e.is_paid ? "btn-soft-success" : "btn-soft-warning"}`}
                                                         onClick={() => togglePaid(e)}
                                                         disabled={e.is_automatic}
-                                                        title={e.is_automatic ? "Cobrada automaticamente pela Meta" : "Alternar pago/aberto"}
+                                                        title={e.is_xplendor_charge ? "A XPLENDOR confirma o pagamento" : e.is_automatic ? "Cobrada automaticamente pela Meta" : "Alternar pago/aberto"}
                                                     >
                                                         {e.is_paid ? `Paga${e.paid_at ? ` · ${e.paid_at}` : ""}` : "Em aberto"}
                                                     </button>
+                                                    )}
                                                 </td>
                                                 <td className="text-end">
-                                                    {e.is_automatic ? (
+                                                    {e.is_xplendor_charge && e.charge ? (
+                                                        <button className="btn btn-sm btn-soft-secondary" title="Ver a fatura da XPLENDOR (só de leitura)"
+                                                            onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, e.charge!.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
+                                                            <i className="ri-lock-line me-1" /><i className="ri-file-pdf-2-line" />
+                                                        </button>
+                                                    ) : e.is_automatic ? (
                                                         <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
                                                     ) : (<>
                                                     <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(e)} title="Editar"><i className="ri-pencil-line" /></button>

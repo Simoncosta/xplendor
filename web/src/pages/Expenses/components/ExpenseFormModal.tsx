@@ -128,7 +128,8 @@ export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, f
         },
     });
 
-    const categoryOptions: Option[] = categories.map((c) => ({ value: c.id, label: c.name }));
+    // A categoria XPLENDOR é reservada às cobranças da XPLENDOR (não se escolhe à mão).
+    const categoryOptions: Option[] = categories.filter((c) => !c.locked).map((c) => ({ value: c.id, label: c.name }));
     const supplierOptions: Option[] = suppliers.map((s) => ({ value: s.id, label: s.name }));
 
     const selectedCategory = categoryOptions.find((o) => o.value === formik.values.expense_category_id) ?? null;

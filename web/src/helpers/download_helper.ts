@@ -115,3 +115,24 @@ export async function openPdfGet(path: string): Promise<DownloadResult> {
         return { ok: false, status, body };
     }
 }
+
+/**
+ * Abre um ficheiro autenticado (PDF ou imagem) num separador novo, com o tipo que o
+ * servidor indicar (comprovativos de pagamento).
+ */
+export async function openFileGet(path: string): Promise<DownloadResult> {
+    const tab = window.open("", "_blank");
+    const client = axios.create({ baseURL: API_URL });
+    try {
+        const res = await client.get(path, { responseType: "blob", headers: authHeaders() });
+        const type = String(res.headers?.["content-type"] || "application/octet-stream");
+        const href = URL.createObjectURL(new Blob([res.data], { type }));
+        if (tab) tab.location.href = href;
+        else window.location.href = href;
+        setTimeout(() => URL.revokeObjectURL(href), 60_000);
+        return { ok: true };
+    } catch (err: any) {
+        tab?.close();
+        return { ok: false, status: err?.response?.status ?? 0, body: null };
+    }
+}

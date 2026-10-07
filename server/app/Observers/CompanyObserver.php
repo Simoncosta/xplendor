@@ -30,6 +30,8 @@ class CompanyObserver
     public function created(Company $company): void
     {
         app(CompanyModuleService::class)->applyPreset($company->id, 'automotive');
+        // Cobranças da XPLENDOR: a categoria universal e bloqueada existe em todas as empresas.
+        \App\Models\ExpenseCategory::ensureXplendor($company->id);
     }
 
     protected function generateUniqueSlug(string $name): string

@@ -69,6 +69,8 @@ class CompanyRequest extends FormRequest
             'mobile' => ['nullable', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:255'],
             'invoice_email' => ['nullable', 'email', 'max:255'],
+            // Cobranças da XPLENDOR: lembretes para o email de faturação (desligado por omissão).
+            'billing_reminders_enabled' => ['nullable', 'boolean'],
 
             // Dados fiscais / legais
             'registry_office' => ['nullable', 'string', 'max:255'],
