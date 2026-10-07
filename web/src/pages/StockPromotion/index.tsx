@@ -44,6 +44,7 @@ import MarketChip from "./components/MarketChip";
 import MarketLegendHeader from "./components/MarketLegendHeader";
 import PromotionMobileCard from "./components/PromotionMobileCard";
 import CarThumbnail from "Components/Common/CarThumbnail";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 // ── Design tokens espelhados da CarList ──────────────────────────────────────
 // Cards: sombra suave + gradiente vertical branco→quase-branco.
@@ -116,8 +117,8 @@ const StockPromotionPage = () => {
         if (!authUser) return;
         const obj = JSON.parse(authUser);
         setUserRole(obj.role);
-        setUserCompanyId(obj.company_id);
-        setSelectedCompanyId(obj.company_id);
+        setUserCompanyId(getWorkingCompanyId());
+        setSelectedCompanyId(getWorkingCompanyId());
     }, []);
 
     const isRoot = userRole === "root";

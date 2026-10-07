@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Tenancy\CompanyAccess;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,7 +10,9 @@ class CompanyRequest extends FormRequest
 {
     /**
      * Criar empresa: só root. Alterar: admin da própria empresa, ou root (que
-     * edita as empresas dos clientes a partir da lista /companies).
+     * edita as empresas dos clientes a partir da lista /companies), ou a agência
+     * gestora nos dados básicos das empresas que criou e ainda sem admin do cliente
+     * (o controller guarda só esses campos).
      */
     public function authorize(): bool
     {
@@ -24,7 +27,8 @@ class CompanyRequest extends FormRequest
         }
 
         return $auth->role === 'root'
-            || ($auth->role === 'admin' && (int) $auth->company_id === (int) $companyId);
+            || ($auth->role === 'admin' && (int) $auth->company_id === (int) $companyId)
+            || ($this->isMethod('PUT') || $this->isMethod('PATCH')) && app(CompanyAccess::class)->agencyEditsBasics($auth, $companyId);
     }
 
     public function rules(): array

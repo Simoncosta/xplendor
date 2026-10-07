@@ -131,7 +131,7 @@ class SocialConnectionController extends Controller
     private function assertCanManage(Request $request, int $companyId): void
     {
         if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
-            abort(403, 'Só o administrador da empresa ou a agência gestora pode ligar ou desligar as redes sociais.');
+            abort(403, 'Só o administrador da empresa ou um administrador da agência gestora pode ligar ou desligar as redes sociais.');
         }
     }
 }

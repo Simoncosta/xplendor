@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, Container, Row, Col, Spinner, Label } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
@@ -8,6 +8,7 @@ import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import { getPingwinSuppliers, syncPingwinSuppliers } from "helpers/laravel_helper";
 import { PingwinSupplier, LaravelPaginator } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Fornecedores (Fase 1, só leitura). Fornecedores do
@@ -38,11 +39,7 @@ export default function FornecedoresPage() {
     document.title = "Fornecedores | Restauração | Xplendor";
     const isMobile = useIsMobile();
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinSupplier>, "data"> | null>(null);

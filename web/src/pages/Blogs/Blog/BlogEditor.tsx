@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormikProvider, useFormik } from "formik";
 import CreatableSelect from "react-select/creatable";
@@ -11,6 +11,7 @@ import {
 import { BLOG_STATUS_META, IBlogAiResult, IBlogPost, blogImage, fmtDateTime, hasMarker, slugify } from "common/models/blog.model";
 import BlogSeoPanel from "./BlogSeoPanel";
 import BlogAiModal from "./BlogAiModal";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Criar e editar um artigo do blog. Conteúdo (o HTML é limpo no servidor ao gravar e ao
@@ -22,10 +23,6 @@ const errorMessage = (e: any, fallback: string) => {
     const first = e?.errors ? Object.values(e.errors).flat()[0] : null;
     return (first as string) || e?.message || fallback;
 };
-const readAuth = () => {
-    try { return JSON.parse(sessionStorage.getItem("authUser") || "null") ?? {}; } catch { return {}; }
-};
-
 interface Form {
     title: string; subtitle: string; slug: string; excerpt: string; content: string; category: string; tags: string[];
     meta_title: string; meta_description: string; focus_keyword: string; seo_answer_first_ok: boolean;
@@ -65,8 +62,7 @@ const BlogEditor = () => {
     const fromPostId = isNew ? Number(searchParams.get("editorial_post_id") || 0) || null : null;
     const fromTitle = searchParams.get("title") ?? "";
     const fromKeyword = searchParams.get("keyword") ?? "";
-    const auth = useMemo(readAuth, []);
-    const companyId = Number(auth.company_id || 0);
+    const companyId = getWorkingCompanyId();
 
     const [blog, setBlog] = useState<IBlogPost | null>(null);
     const [loading, setLoading] = useState(!isNew);

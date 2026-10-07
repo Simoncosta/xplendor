@@ -8,6 +8,7 @@ import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import { getPingwinUnits, syncPingwinUnits, createPingwinUnit, getPingwinUnitCreation, editPingwinUnit, anularPingwinUnit, getPingwinUnitUsage } from "helpers/laravel_helper";
 import { PingwinUnitRow, LaravelPaginator } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Unidades (Fase 1, só leitura). As unidades do PingWin
@@ -32,11 +33,7 @@ export default function UnidadesPage() {
     document.title = "Unidades | Restauração | Xplendor";
     const isMobile = useIsMobile();
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinUnitRow>, "data"> | null>(null);

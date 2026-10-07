@@ -5,8 +5,11 @@ import XInputCheckbox from "Components/Common/XInputCheckbox";
 import XInputMask from "Components/Common/XInputMask";
 import AddressFields from "Components/Common/AddressFields";
 import { Row, Col } from "reactstrap";
+import { useField } from "formik";
 
-export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }) {
+export default function CompanyGeneralDataFields({ isEdit, managed = false }: { isEdit: boolean; managed?: boolean }) {
+    // NIPC: fixo depois de criado, salvo numa empresa gerida que nasceu sem ele.
+    const [nipc] = useField("nipc");
     return (
         <Row>
             {!isEdit && (
@@ -20,7 +23,7 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
                             name="name_user"
                             label="Nome do usuário"
                             placeholder="Nome do usuário"
-                            required={!isEdit}
+                            required={!isEdit && !managed}
                         />
                     </Col>
                     <Col lg={6}>
@@ -30,7 +33,7 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
                             name="email_user"
                             label="Email de acesso"
                             placeholder="Email de acesso"
-                            required={!isEdit}
+                            required={!isEdit && !managed}
                         />
                     </Col>
                 </>
@@ -44,8 +47,8 @@ export default function CompanyGeneralDataFields({ isEdit }: { isEdit: boolean }
                     name="nipc"
                     label="NIPC"
                     placeholder="Introduza o NIPC"
-                    disabled={isEdit}
-                    required
+                    disabled={isEdit && !!nipc.value}
+                    required={!managed}
                 />
             </Col>
             <Col lg={6}>

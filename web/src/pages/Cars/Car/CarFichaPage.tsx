@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
@@ -26,6 +26,7 @@ import {
     EXTERIOR_COLOR_LABELS,
 } from "helpers/labels";
 import type { CarSpecs } from "types/api";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 export default function CarFichaPage() {
     document.title = "Ficha Técnica | Xplendor";
@@ -41,11 +42,7 @@ export default function CarFichaPage() {
     // deslize no telemóvel nativamente.
     const [lightboxIndex, setLightboxIndex] = useState<number>(-1);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        return Number(JSON.parse(authUser).company_id);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     // Função partilhada — também usada pelo SaleInfoCard como callback onSaved
     // (para refrescar o bloco da venda depois de editar/adicionar).

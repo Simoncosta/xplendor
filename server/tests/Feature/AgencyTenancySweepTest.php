@@ -31,7 +31,8 @@ use Tests\TestCase;
  *  · Matriz: uma pessoa da agência sem relação, com relação pendente, recusada, retirada,
  *    terminada, expirada, de outra agência ou sem estar atribuída ao cliente recebe 403
  *    em TODAS as rotas de empresa. Com relação ativa, nenhuma rota dá 403, salvo as do
- *    cliente (aprovar, acessos, decisões sobre orçamentos, dados da empresa), que dão 403.
+ *    cliente (aprovar, acessos, decisões sobre orçamentos, dados da empresa), que dão 403;
+ *    e ligar ou desligar integrações, que é só para os admins da agência.
  *  · Registos filhos de outra empresa, pedidos debaixo da empresa gerida: 404.
  */
 class AgencyTenancySweepTest extends TestCase
@@ -95,9 +96,24 @@ class AgencyTenancySweepTest extends TestCase
         'DELETE api/v1/companies/{company}',
     ];
 
+    /** Ligar e desligar integrações: só os ADMINS da agência (um membro comum recebe 403). */
+    private const AGENCY_ADMIN_ONLY = [
+        'GET api/v1/companies/{id}/integrations/social/auth-url',
+        'GET api/v1/companies/{id}/integrations/social/candidates',
+        'PUT api/v1/companies/{id}/integrations/social/accounts',
+        'DELETE api/v1/companies/{id}/integrations/social',
+        'GET api/v1/companies/{id}/integrations/meta/oauth-url',
+        'POST api/v1/companies/{id}/integrations/meta/connect',
+        'PATCH api/v1/companies/{id}/integrations/meta/account',
+        'DELETE api/v1/companies/{id}/integrations/meta',
+        'POST api/v1/companies/{id}/integrations/google/connect',
+        'DELETE api/v1/companies/{id}/integrations/google',
+    ];
+
     private Company $agency;
     private Company $otherAgency;
     private User $member;
+    private User $agencyAdmin;
     private Company $active;
     private Company $unrelated;
     /** @var array<string, Company> estado → empresa */
@@ -132,6 +148,7 @@ class AgencyTenancySweepTest extends TestCase
         $this->otherAgency = $make('Agência Sul');
         $this->otherAgency->forceFill(['agency_enabled_at' => now()])->save();
         $this->member = User::factory()->create(['company_id' => $this->agency->id, 'role' => 'user']);
+        $this->agencyAdmin = User::factory()->create(['company_id' => $this->agency->id, 'role' => 'admin']);
 
         $relation = function (Company $agency, Company $managed, string $status, string $scope = 'all'): void {
             CompanyManagement::create([
@@ -206,7 +223,18 @@ class AgencyTenancySweepTest extends TestCase
         $this->assertSame([], $wrong);
     }
 
-    public function test_agency_with_an_active_relation_works_everywhere_except_the_client_decisions(): void
+    public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
+    {
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY]);
+    }
+
+    public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
+    {
+        $this->assertActiveMatrix($this->agencyAdmin, self::CLIENT_ONLY);
+    }
+
+    /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */
+    private function assertActiveMatrix(User $actor, array $expected403): void
     {
         $wrong = [];
         // As do cliente primeiro (com corpo válido) e os DELETE no fim, para os registos reais existirem quando são precisos.
@@ -215,11 +243,11 @@ class AgencyTenancySweepTest extends TestCase
         foreach ($routes as $route) {
             $key = $this->key($route);
             $body = in_array($key, self::CLIENT_ONLY, true) ? $this->clientBody() : [];
-            $status = $this->hit($route, $this->active, $body)->getStatusCode();
-            $clientOnly = in_array($key, self::CLIENT_ONLY, true);
-            if ($clientOnly && $status !== 403) {
-                $wrong[] = "devia ser 403 (é do cliente): {$key} → {$status}";
-            } elseif (! $clientOnly && $status === 403) {
+            $status = $this->hit($route, $this->active, $body, $actor)->getStatusCode();
+            $forbidden = in_array($key, $expected403, true);
+            if ($forbidden && $status !== 403) {
+                $wrong[] = "devia ser 403: {$key} → {$status}";
+            } elseif (! $forbidden && $status === 403) {
                 $wrong[] = "403 indevido: {$key}";
             }
         }
@@ -291,7 +319,7 @@ class AgencyTenancySweepTest extends TestCase
             'email' => 'novo@exemplo.pt', 'name' => 'Novo', 'decision' => 'accepted', 'can_approve' => true, 'reason' => 'Teste.'];
     }
 
-    private function hit(RouteDef $route, Company $company, array $body = [])
+    private function hit(RouteDef $route, Company $company, array $body = [], ?User $actor = null)
     {
         $method = collect($route->methods())->reject(fn ($m) => $m === 'HEAD')->first();
         $url = preg_replace_callback('#\{(\w+)\??\}#', function ($m) use ($route, $company) {
@@ -306,7 +334,9 @@ class AgencyTenancySweepTest extends TestCase
             return $this->valueFor($route, $name);
         }, $route->uri());
 
-        return $this->actingAs($this->member, 'sanctum')->json($method, '/' . $url, $body)->baseResponse;
+        $this->app['auth']->forgetGuards();
+
+        return $this->actingAs($actor ?? $this->member, 'sanctum')->json($method, '/' . $url, $body)->baseResponse;
     }
 
     /** Um valor que cumpre o "where" do parâmetro (para a rota corresponder). */

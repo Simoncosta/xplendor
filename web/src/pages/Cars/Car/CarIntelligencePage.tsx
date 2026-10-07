@@ -11,6 +11,7 @@ import CarPageNav from "./components/CarPageNav";
 import MarketPositionCard from "./components/intelligence/MarketPositionCard";
 
 import { fmtDate, ipsClassBadge } from "./helpers/CarAnalyticsData";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectCarState = (state: any) => state.Car;
 const selectViewModel = createSelector(
@@ -29,7 +30,7 @@ export default function CarIntelligencePage() {
     const { carAnalytics, loading } = useSelector(selectViewModel);
 
     const authUser = sessionStorage.getItem("authUser");
-    const companyId = authUser ? Number(JSON.parse(authUser).company_id ?? 0) : 0;
+    const companyId = getWorkingCompanyId();
     const userRole = authUser ? (JSON.parse(authUser).role ?? "") : "";
 
     useEffect(() => {

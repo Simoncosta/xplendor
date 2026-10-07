@@ -3,6 +3,7 @@ import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader
 import { toast, ToastContainer } from "react-toastify";
 import { getCompanyTicketQuotes, approveCompanyTicketQuotes } from "helpers/laravel_helper";
 import { ISupportTicket, ITicketQuotePipeline, QUOTE_STATUS_META, formatEuro } from "common/models/supportTicket.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Orçamentos do STAND (autonomia do cliente). Mostra os orçamentos-em-
@@ -17,11 +18,7 @@ const num = (n?: number | null) => Number(n ?? 0);
 export default function OrcamentosStand() {
     document.title = "Orçamentos | Xplendor";
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [tickets, setTickets] = useState<ISupportTicket[]>([]);
     const [summary, setSummary] = useState<ITicketQuotePipeline | null>(null);

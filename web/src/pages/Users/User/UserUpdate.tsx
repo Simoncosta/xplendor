@@ -11,6 +11,7 @@ import { USER_CREATE_DEFAULTS } from "slices/users/user.defaults";
 import { showUser, updateUser } from "slices/thunks";
 // Utils
 import { toast, ToastContainer } from "react-toastify";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectUserState = (state: any) => state.User;
 
@@ -38,9 +39,8 @@ export default function UserUpdate() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(Number(obj.company_id));
-            dispatch(showUser({ companyId: obj.company_id, id: Number(id) }));
+            setCompanyId(getWorkingCompanyId());
+            dispatch(showUser({ companyId: getWorkingCompanyId(), id: Number(id) }));
         }
     }, [dispatch, id]);
 

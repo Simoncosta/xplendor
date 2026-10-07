@@ -23,7 +23,7 @@ class MetaOAuthController extends Controller
 
     public function getAuthUrl(Request $request, int $companyId): JsonResponse
     {
-        // Ligar os anúncios com o próprio login: admin da empresa, root ou agência gestora, fora de impersonation.
+        // Ligar os anúncios com o próprio login: admin da empresa, root ou admin da agência gestora, fora de impersonation.
         if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
             return ApiResponse::error('Só o administrador da empresa pode ligar os anúncios da Meta.', 403);
         }

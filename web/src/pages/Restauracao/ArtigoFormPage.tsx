@@ -18,6 +18,7 @@ import { useArticleWritePolling } from "./useArticleWritePolling";
 import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -64,10 +65,7 @@ export default function ArtigoFormPage() {
 
     document.title = (isCreate ? "Novo artigo" : "Editar artigo") + " | Restauração | Xplendor";
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        try { return a ? Number(JSON.parse(a).company_id || 0) : 0; } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const { busy, submit } = useArticleWritePolling(companyId);
     const { read } = useArticleReadPolling(companyId);

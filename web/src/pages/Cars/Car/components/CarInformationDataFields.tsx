@@ -17,6 +17,7 @@ import { statusOptions, originOptions } from "common/data/cars";
 // Models
 import { ICarUpdatePayload } from "common/models/car.model";
 import { getUsersPaginate } from "slices/users/thunk";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectUserState = (state: any) => state.User;
 
@@ -47,9 +48,7 @@ export default function CarInformationDataFields({
     const dispatch: any = useDispatch();
     const { values, setFieldValue, setFieldTouched } = useFormikContext<ICarUpdatePayload>();
     const { users, loading } = useSelector(selectSellerOptionsViewModel);
-    const authUserRaw = sessionStorage.getItem("authUser");
-    const authUser = authUserRaw ? JSON.parse(authUserRaw) : null;
-    const resolvedCompanyId = Number(companyId ?? authUser?.company_id ?? 0);
+    const resolvedCompanyId = Number(companyId ?? getWorkingCompanyId());
 
     useEffect(() => {
         if (!resolvedCompanyId) return;

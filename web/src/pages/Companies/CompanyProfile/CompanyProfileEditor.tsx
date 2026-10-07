@@ -9,6 +9,9 @@ import * as Yup from "yup";
 // Components
 import XButton from 'Components/Common/XButton';
 import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
+import AgencyCreateFields from './components/AgencyCreateFields';
+import ManagingAgencyCard from './components/ManagingAgencyCard';
+import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPanel';
 import IntegrationsSettings from './IntegrationsSettings';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
 import { useModules } from 'contexts/ModulesContext';
@@ -37,6 +40,10 @@ export default function CompanyProfileEditor({
 }: CompanyProfileEditorProps) {
     const isEdit = Boolean((data as any)?.id);
     const companyId = Number((data as any)?.id) || 0;
+    // Gestão por agências: o root marca agências e define a agência gestora.
+    const isRoot = useMemo(() => {
+        try { const a = JSON.parse(sessionStorage.getItem("authUser") || "null"); return a?.role === "root" && !a?.impersonating; } catch { return false; }
+    }, []);
     const { has } = useModules();
     const showEditorial = has('linha_editorial'); // aba só para quem tem o módulo
     // Carmine e PingWin passaram a viver como cartões na aba "Integrações"
@@ -67,11 +74,11 @@ export default function CompanyProfileEditor({
         if (activeTab !== tab) setActiveTab(tab);
     };
 
+    // Uma empresa gerida por uma agência pode nascer sem NIPC (e sem utilizador de acesso).
     const validationSchema = Yup.object({
-        nipc: Yup.string()
-            .required("NIPC é obrigatório")
-            .matches(/^\d+$/, "NIPC deve conter apenas números")
-            .length(9, "NIPC deve ter 9 dígitos"),
+        nipc: Yup.string().nullable()
+            .when("managed_by_company_id", ([managedBy]: any[], schema: any) => (managedBy ? schema.notRequired() : schema.required("NIPC é obrigatório")))
+            .test("nipc", "NIPC deve ter 9 dígitos", (v: any) => !v || /^\d{9}$/.test(String(v))),
     });
 
     const formik = useFormik({
@@ -242,6 +249,16 @@ export default function CompanyProfileEditor({
                                     </div>
                                 </CardBody>
                             </Card>
+
+                            {isEdit && <ManagingAgencyCard companyId={companyId} />}
+                            {isEdit && isRoot && (
+                                <Card>
+                                    <CardBody>
+                                        <h5 className="card-title mb-3"><i className="ri-team-line me-1" />Gestão por agências</h5>
+                                        <AgencyManagementPanel companyId={companyId} />
+                                    </CardBody>
+                                </Card>
+                            )}
                         </Col>
 
                         <Col xxl={9}>
@@ -289,8 +306,10 @@ export default function CompanyProfileEditor({
                                         <TabPane tabId="1">
                                             <FormikProvider value={formik}>
                                                 <form onSubmit={formik.handleSubmit}>
+                                                    {!isEdit && isRoot && <AgencyCreateFields />}
                                                     <CompanyGeneralDataFields
                                                         isEdit={isEdit}
+                                                        managed={!isEdit && !!(formik.values as any).managed_by_company_id}
                                                     />
 
                                                     <Col lg={12}>
@@ -320,6 +339,7 @@ export default function CompanyProfileEditor({
                                         </TabPane>
                                         <TabPane tabId="3">
                                             <IntegrationsSettings
+                                                companyId={companyId}
                                                 dataCarmine={dataCarmine}
                                                 onSubmitCarmine={onSubmitCarmine}
                                             />

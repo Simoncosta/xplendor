@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner, Input, Label } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
@@ -9,6 +9,7 @@ import {
 import {
     getCompanyTasks, updateCompanyTask, moveCompanyTask, getCompanyUsers,
 } from "helpers/laravel_helper";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — DETALHE de uma tarefa interna (B1), com o VISUAL do TaskDetails do
@@ -45,10 +46,7 @@ const CompanyTaskDetails = () => {
     const navigate = useNavigate();
     const taskId = Number(id);
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [task, setTask] = useState<ICompanyTask | null>(null);
     const [users, setUsers] = useState<CompanyUser[]>([]);

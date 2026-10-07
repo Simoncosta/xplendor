@@ -238,6 +238,9 @@ class AgencyManagementTest extends TestCase
         $this->assertSame([$this->member->id], $events->pluck('user_id')->unique()->values()->all());
         $this->assertSame([null], $events->pluck('impersonator_user_id')->unique()->values()->all());
         $this->assertSame([$this->agency->id], $events->pluck('acting_company_id')->unique()->values()->all());
+        // No histórico e nos comentários: "Rita Agência (Agência Norte)" (o nome da agência já começa por "Agência").
+        $detail = $this->as($clientAdmin)->getJson("{$base}/workflow")->json('data');
+        $this->assertSame(['Rita Agência (Agência Norte)'], array_values(array_unique(array_column($detail['events'], 'who'))));
         // O comentário interno só a equipa o vê.
         $this->assertCount(1, $this->as($this->member)->getJson("{$base}/workflow")->json('data.comments'));
         $this->assertCount(0, $this->as($clientAdmin)->getJson("{$base}/workflow")->json('data.comments'));
@@ -267,15 +270,67 @@ class AgencyManagementTest extends TestCase
         $this->assertSame(EditorialPost::STAGE_SCHEDULED, $p->fresh()->stage);
     }
 
-    public function test_the_agency_connects_integrations_with_its_own_login_but_not_in_impersonation(): void
+    public function test_only_agency_admins_connect_integrations_with_their_own_login(): void
     {
         $this->manage();
-        $this->as($this->member)->getJson($this->url($this->client, '/integrations/meta/oauth-url'))->assertOk();
-        $this->as($this->member)->getJson($this->url($this->client, '/integrations/social/auth-url'))->assertOk();
-        $this->assertTrue($this->as($this->member)->getJson($this->url($this->client, '/integrations/social'))->json('data.can_manage'));
+        // Um ADMIN da agência liga e desliga (Meta, redes sociais, GA4)…
+        $this->as($this->agencyAdmin)->getJson($this->url($this->client, '/integrations/meta/oauth-url'))->assertOk();
+        $this->as($this->agencyAdmin)->getJson($this->url($this->client, '/integrations/social/auth-url'))->assertOk();
+        $this->assertTrue($this->as($this->agencyAdmin)->getJson($this->url($this->client, '/integrations/social'))->json('data.can_manage'));
+        $this->as($this->agencyAdmin)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertOk();
+        $this->as($this->agencyAdmin)->deleteJson($this->url($this->client, '/integrations/google'))->assertOk();
 
+        // …um membro comum da agência produz, mas não liga integrações.
+        $this->as($this->member)->getJson($this->url($this->client, '/integrations/meta/oauth-url'))->assertForbidden();
+        $this->as($this->member)->getJson($this->url($this->client, '/integrations/social/auth-url'))->assertForbidden();
+        $this->assertFalse($this->as($this->member)->getJson($this->url($this->client, '/integrations/social'))->json('data.can_manage'));
+        $this->as($this->member)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertForbidden();
+        $this->as($this->member)->deleteJson($this->url($this->client, '/integrations/google'))->assertForbidden();
+
+        // Os utilizadores do cliente seguem as regras da empresa (a Meta só o admin; o GA4 qualquer utilizador, como antes).
         $clientUser = User::factory()->create(['company_id' => $this->client->id, 'role' => 'user']);
         $this->as($clientUser)->getJson($this->url($this->client, '/integrations/meta/oauth-url'))->assertForbidden();
+        $this->as($clientUser)->postJson($this->url($this->client, '/integrations/google/connect'), ['property_id' => '398765432'])->assertOk();
+    }
+
+    public function test_the_agency_edits_the_basic_data_only_of_companies_it_created_and_without_a_client_admin(): void
+    {
+        $this->as($this->root)->patchJson("/api/v1/admin/companies/{$this->agency->id}/agency", ['enabled' => true])->assertOk();
+        // Relação nascida da criação pela agência (o fluxo de criar pela agência chega na F1b).
+        CompanyManagement::create(['agency_company_id' => $this->agency->id, 'managed_company_id' => $this->client->id, 'origin' => 'created_by_agency',
+            'status' => 'active', 'active_key' => $this->client->id, 'requested_at' => now()]);
+        $nipc = $this->client->nipc;
+
+        $this->as($this->member)->putJson($this->url($this->client), [
+            'fiscal_name' => 'Domiway Lda', 'phone' => '220000000', 'email' => 'geral@domiway.pt',
+            'nipc' => '599999999', 'plan_id' => $this->plan, 'lead_distribution' => 'automatic_latest',
+        ])->assertOk();
+        $c = $this->client->fresh();
+        $this->assertSame(['Domiway Lda', '220000000', 'geral@domiway.pt'], [$c->fiscal_name, $c->phone, $c->email]);
+        // Só os dados básicos: o resto não se grava.
+        $this->assertSame([$nipc, 'manual'], [$c->nipc, $c->lead_distribution]);
+        // O ramo define-se uma vez; trocar de ramo é uma fase futura.
+        $carros = ContentSector::where('slug', 'carros')->firstOrFail();
+        $restauracao = ContentSector::where('slug', 'restauracao')->firstOrFail();
+        $this->as($this->member)->putJson($this->url($this->client), ['content_sector_id' => $carros->id])->assertOk();
+        $this->as($this->member)->putJson($this->url($this->client), ['content_sector_id' => $restauracao->id])->assertStatus(422);
+        $this->assertSame($carros->id, (int) $this->client->fresh()->content_sector_id);
+        // Apagar, nunca.
+        $this->as($this->member)->deleteJson($this->url($this->client))->assertForbidden();
+
+        // Com admin do cliente, só ele edita.
+        $clientAdmin = User::factory()->create(['company_id' => $this->client->id, 'role' => 'admin']);
+        $this->as($this->member)->putJson($this->url($this->client), ['fiscal_name' => 'Outro nome'])->assertForbidden();
+        $this->as($clientAdmin)->putJson($this->url($this->client), ['fiscal_name' => 'Domiway SA'])->assertOk();
+        $this->assertSame('Domiway SA', $this->client->fresh()->fiscal_name);
+    }
+
+    public function test_the_agency_does_not_edit_companies_it_did_not_create(): void
+    {
+        $this->manage(); // relação definida pela plataforma
+        $this->as($this->member)->putJson($this->url($this->client), ['fiscal_name' => 'Outro nome'])->assertForbidden();
+        $this->as($this->agencyAdmin)->putJson($this->url($this->client), ['fiscal_name' => 'Outro nome'])->assertForbidden();
+        $this->assertSame('Domiway', $this->client->fresh()->fiscal_name);
     }
 
     public function test_the_agency_invites_only_the_first_admin_of_a_company_without_one(): void

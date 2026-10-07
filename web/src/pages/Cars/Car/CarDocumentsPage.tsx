@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import CarPageNav from "./components/CarPageNav";
@@ -7,6 +7,7 @@ import CarDocumentsCard from "./components/CarDocumentsCard";
 import { fetchCarSpecs } from "helpers/carSpecs_helper";
 import { fmtDate, ipsClassBadge } from "./helpers/CarAnalyticsData";
 import type { CarSpecs } from "types/api";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * DMS Fase 3 — tab "Documentos": o lar de tudo o que é imprimível desta viatura
@@ -18,11 +19,7 @@ export default function CarDocumentsPage() {
     document.title = "Documentos | Xplendor";
     const { id } = useParams();
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        return Number(JSON.parse(authUser).company_id);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [specs, setSpecs] = useState<CarSpecs | null>(null);
     const [loading, setLoading] = useState(true);

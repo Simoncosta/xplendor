@@ -6,6 +6,7 @@ import { useSelector } from 'react-redux';
 
 //import images
 import avatar1 from '../../assets/images/users/avatar-company.jpg';
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectProfileUser = createSelector(
     [(state: any) => state.Profile],
@@ -27,7 +28,7 @@ const ProfileDropdown = () => {
             setUserId(obj.id);
             setAvatar(obj.avatar ? String(process.env.REACT_APP_PUBLIC_URL) + "/storage/" + obj.avatar : avatar1);
             setUserName(obj.name);
-            setCompanyId(obj.company_id);
+            setCompanyId(getWorkingCompanyId());
         }
     }, [userName, user]);
 

@@ -8,6 +8,7 @@ import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import { getPingwinCalendar } from "helpers/laravel_helper";
 import { PingwinCalendarDay, PingwinCalendarResponse } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Calendário de faturação. Calendário MENSAL (FullCalendar
@@ -28,11 +29,7 @@ const currentMonth = () => {
 export default function CalendarioPage() {
     document.title = "Calendário de faturação | Restauração | Xplendor";
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [month, setMonth] = useState<string>(currentMonth());
     const [locationId, setLocationId] = useState<number | "">("");

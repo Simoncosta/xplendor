@@ -16,6 +16,7 @@ import {
     voidPingwinDocumentConfig,
 } from "helpers/laravel_helper";
 import { PingwinDocumentConfig, PingwinDocPaycondLink, LaravelPaginator } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 // D1 — selects editáveis do maindataset: {opção no snapshot, campo _id a gravar, label}.
 const DOC_SELECTS: { opt: string; field: string; label: string }[] = [
@@ -130,11 +131,7 @@ export default function DocumentosPage() {
     document.title = "Documentos | Restauração | Xplendor";
     const isMobile = useIsMobile();
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinDocumentConfig>, "data"> | null>(null);

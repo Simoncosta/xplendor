@@ -34,6 +34,7 @@ import { showCarmine, syncCarmine } from "slices/thunks";
 import { getCarsPaginate } from "slices/cars/thunk";
 import { getCarBrands } from "slices/car-brands/thunk";
 import { getCarModels } from "slices/car-models/thunk";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 // 2026-06-26 — filtro status passa a múltipla selecção.
 type CarStatusFilter = "active" | "sold" | "available_soon" | "reserved" | "draft" | "inactive";
@@ -258,8 +259,7 @@ const CarList = () => {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(obj.company_id);
+            setCompanyId(getWorkingCompanyId());
 
             // Se o utilizador desmarcou todos os estados, NÃO fazer fetch —
             // o aviso é renderizado em vez da tabela. Evita bater no backend
@@ -270,7 +270,7 @@ const CarList = () => {
                     getCarsPaginate({
                         page: pagination.pageIndex + 1,
                         perPage: pagination.pageSize,
-                        companyId: obj.company_id,
+                        companyId: getWorkingCompanyId(),
                         status: statusFilters,
                         is_resume: isResumeFilter ?? undefined,
                         has_active_campaign: hasActiveCampaignFilter ?? undefined,
@@ -283,7 +283,7 @@ const CarList = () => {
                     })
                 );
             }
-            dispatch(showCarmine({ companyId: obj.company_id, id: 0 }));
+            dispatch(showCarmine({ companyId: getWorkingCompanyId(), id: 0 }));
             dispatch(getCarBrands());
             if (carBrandIds.length > 0) dispatch(getCarModels(carBrandIds));
         }

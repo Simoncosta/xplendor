@@ -12,6 +12,7 @@ import XButton from "Components/Common/XButton";
 import { createSupplier } from "slices/suppliers/thunk";
 // Models
 import { ISupplier } from "common/models/supplier.model";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 interface QuickAddSupplierModalProps {
     isOpen: boolean;
@@ -28,8 +29,7 @@ interface QuickAddSupplierModalProps {
 function resolveCompanyId(explicit?: number): number {
     if (explicit) return explicit;
     try {
-        const raw = sessionStorage.getItem("authUser");
-        return raw ? Number(JSON.parse(raw).company_id || 0) : 0;
+        return getWorkingCompanyId();
     } catch {
         return 0;
     }

@@ -30,6 +30,7 @@ import TodayPanel from "./TodayPanel";
 import MonthResults from "./MonthResults";
 import "./editorial.css";
 import { BLOG_STATUS_STAGE, FormatTable, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
 const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
@@ -106,10 +107,7 @@ const initialMonth = () => {
 export default function EditorialCalendarPage() {
     document.title = "Linha Editorial | Xplendor";
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        try { return a ? Number(JSON.parse(a).company_id || 0) : 0; } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const calRef = useRef<FullCalendar | null>(null);
     const [phone] = useState(isPhone);

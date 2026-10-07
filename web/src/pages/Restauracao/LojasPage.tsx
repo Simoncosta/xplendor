@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -6,6 +6,7 @@ import {
     getPingwinLocations, createPingwinLocation, updatePingwinLocation, deletePingwinLocation, syncCoverManager, syncRestaurantPeriod, getCoverManager,
 } from "helpers/laravel_helper";
 import { PingwinLocationEntity } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const yesterdayIso = () => {
     const d = new Date();
@@ -32,11 +33,7 @@ export default function LojasPage() {
     document.title = "Lojas | Restauração | Xplendor";
     const isMobile = useIsMobile();
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [rows, setRows] = useState<PingwinLocationEntity[]>([]);
     const [loading, setLoading] = useState(false);

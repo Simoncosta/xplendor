@@ -14,6 +14,7 @@ import {
     visibleMarketingTabs,
     type AnalyticsData,
 } from './visibilityHelpers';
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectDashboardState = (state: any) => state.Dashboard;
 const selectInsightsViewModel = createSelector(
@@ -76,9 +77,8 @@ const InsightsPage = () => {
         if (analytics) return;
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
-        const obj = JSON.parse(authUser);
-        if (!obj?.company_id) return;
-        dispatch(getAnalyticsDashboard({ companyId: obj.company_id }));
+        if (!getWorkingCompanyId()) return;
+        dispatch(getAnalyticsDashboard({ companyId: getWorkingCompanyId() }));
     }, [dispatch, analytics]);
 
     if (loading) return null;

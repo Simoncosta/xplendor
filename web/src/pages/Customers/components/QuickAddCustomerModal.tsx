@@ -13,6 +13,7 @@ import { createCustomer } from "slices/customers/thunk";
 // Models
 import { ICustomer } from "common/models/customer.model";
 import { CUSTOMER_CREATE_DEFAULTS } from "slices/customers/customer.defaults";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 interface QuickAddCustomerModalProps {
     isOpen: boolean;
@@ -25,8 +26,7 @@ interface QuickAddCustomerModalProps {
 function resolveCompanyId(explicit?: number): number {
     if (explicit) return explicit;
     try {
-        const raw = sessionStorage.getItem("authUser");
-        return raw ? Number(JSON.parse(raw).company_id || 0) : 0;
+        return getWorkingCompanyId();
     } catch {
         return 0;
     }

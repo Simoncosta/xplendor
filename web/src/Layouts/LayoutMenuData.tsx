@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useModules } from "contexts/ModulesContext";
+import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 
 const Navdata = () => {
     const history = useNavigate();
@@ -20,6 +21,7 @@ const Navdata = () => {
 
     const [iscurrentState, setIscurrentState] = useState('Dashboard');
     const [isRoot, setIsRoot] = useState(false);
+    const workingAway = !!useWorkingCompany()?.away;
     const [isFinances, setIsFinances] = useState(false);
     const [isComercial, setIsComercial] = useState(false);
     const [isAnalytics, setIsAnalytics] = useState(false);
@@ -390,8 +392,9 @@ const Navdata = () => {
             return acc;
         }, []);
 
-    // Root (não impersonando) → lista curada; caso contrário → menu normal por módulos.
-    const finalMenu = isRoot ? curateForRoot(menuItems) : filterMenu(menuItems);
+    // Root (não impersonando) na própria empresa → lista curada; a trabalhar num cliente
+    // (contexto de trabalho) ou não-root → menu normal por módulos.
+    const finalMenu = isRoot && !workingAway ? curateForRoot(menuItems) : filterMenu(menuItems);
 
     return <React.Fragment>{finalMenu}</React.Fragment>;
 };

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CompanyRequest;
 use App\Http\Requests\PaginateRequest;
 use App\Http\Resources\PlanResource;
+use App\Models\Company;
 use App\Services\CompanyService;
 use App\Services\Tenancy\CompanyAccess;
 use App\Services\Tenancy\CompanyManagementService;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CompanyController extends Controller
 {
@@ -93,9 +95,25 @@ class CompanyController extends Controller
         return ApiResponse::success($company, 'Company fetched successfully.');
     }
 
+    /** O que a agência gestora pode alterar (empresas que criou, ainda sem admin do cliente). */
+    private const AGENCY_BASIC_FIELDS = [
+        'fiscal_name', 'trade_name', 'logo', 'content_sector_id',
+        'phone', 'mobile', 'email', 'website', 'address', 'postal_code', 'district_id', 'municipality_id', 'parish_id',
+    ];
+
     public function update(CompanyRequest $request, int $id)
     {
-        $company = $this->companyService->update($id, $request->validated());
+        $data = $request->validated();
+        // O CompanyRequest só deixou passar a agência nos dados básicos; o resto não se grava.
+        if (app(CompanyAccess::class)->viaAgency(Auth::user(), $id)) {
+            $data = array_intersect_key($data, array_flip(self::AGENCY_BASIC_FIELDS));
+        }
+        // O ramo escolhe-se uma vez (como na Linha Editorial); a troca de ramo é uma fase futura.
+        $current = Company::whereKey($id)->value('content_sector_id');
+        if (! empty($data['content_sector_id']) && $current && (int) $current !== (int) $data['content_sector_id']) {
+            throw ValidationException::withMessages(['content_sector_id' => ['Esta empresa já tem um ramo. A troca de ramo é uma fase futura.']]);
+        }
+        $company = $this->companyService->update($id, $data);
         return ApiResponse::success($company, 'Company updated successfully.');
     }
 

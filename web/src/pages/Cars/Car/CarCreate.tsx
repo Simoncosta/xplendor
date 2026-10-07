@@ -12,6 +12,7 @@ import CarEditor from "./CarEditor";
 // Utils
 import { buildCarFormData } from "./utils/buildCarFormData";
 import { showApiErrorToast, parseApiValidationErrors, type ApiValidationError } from "helpers/error_helper";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectCarState = (state: any) => state.Car;
 
@@ -37,8 +38,7 @@ export default function CarCreate() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(Number(obj.company_id));
+            setCompanyId(getWorkingCompanyId());
         }
     }, [dispatch]);
 

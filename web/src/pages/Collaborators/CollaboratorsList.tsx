@@ -14,6 +14,7 @@ import { confirmAction } from "helpers/swal";
 import {
     ACCESS_META, ICollaborator, IDepartment, PHONE_TYPE_LABEL, PhoneType, collaboratorPhoto, initials,
 } from "common/models/collaborator.model";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Colaboradores (equipa) e departamentos da empresa. A equipa XPLENDOR em sessão como
@@ -35,7 +36,7 @@ const CollaboratorsList = () => {
     document.title = "Colaboradores | Xplendor";
     const navigate = useNavigate();
     const auth = useMemo(readAuth, []);
-    const companyId = Number(auth.company_id || 0);
+    const companyId = getWorkingCompanyId();
     const impersonating = !!auth.impersonating;
     const canEdit = auth.role === "admin" || auth.role === "root" || impersonating;
     // Admin da própria empresa; o root conta como admin da SUA empresa. Nunca em impersonation.

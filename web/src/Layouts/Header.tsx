@@ -16,6 +16,7 @@ import NotificationDropdown from '../Components/Common/NotificationDropdown';
 import { changeSidebarVisibility } from '../slices/thunks';
 import { useSelector, useDispatch } from "react-redux";
 import { createSelector } from 'reselect';
+import WorkingCompanyBadge from '../Components/Common/WorkingCompanyBadge';
 
 const selectSidebarVisibilityType = createSelector(
     [(state: any) => state.Layout],
@@ -140,6 +141,9 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                                 layoutMode={layoutModeType}
                                 onChangeLayoutMode={onChangeLayoutMode}
                             />
+
+                            {/* Contexto de trabalho (agência e root): a empresa em que se trabalha */}
+                            <WorkingCompanyBadge />
 
                             <NotificationDropdown />
 

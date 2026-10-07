@@ -19,6 +19,7 @@ import {
     channelLabels, channelColors,
     ipsClassBadge, timelineDesc,
 } from "./helpers/CarAnalyticsData";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 // As secções (Gráfico/Tabela/Timeline) passaram a usar o componente <Card> do
 // Velzon (como a Ficha) — surface + sombra + raio + dark-mode nativos. Deixou
@@ -43,10 +44,9 @@ export default function CarAnalytics() {
     useEffect(() => {
         const existingId = carAnalytics?.car?.id;
         if (existingId && existingId === Number(id)) return;
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-        const { company_id } = JSON.parse(authUser);
-        dispatch(analyticsCar({ companyId: company_id, id: Number(id) }));
+        const companyId = getWorkingCompanyId();
+        if (!companyId) return;
+        dispatch(analyticsCar({ companyId, id: Number(id) }));
     }, [dispatch, id, carAnalytics?.car?.id]);
 
     const car = carAnalytics?.car;
@@ -58,8 +58,7 @@ export default function CarAnalytics() {
     const timeline = carAnalytics?.timeline || [];
     const contactProbability = carAnalytics?.contact_probability ?? null;
     const primaryRecommendedAction = carAnalytics?.primary_recommended_action ?? null;
-    const authUser = sessionStorage.getItem("authUser");
-    const companyId = authUser ? Number(JSON.parse(authUser).company_id ?? 0) : 0;
+    const companyId = getWorkingCompanyId();
 
     const trafficSources = useMemo(
         () => buildTrafficSources(carAnalytics?.traffic_sources),

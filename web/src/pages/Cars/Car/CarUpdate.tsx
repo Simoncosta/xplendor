@@ -14,6 +14,7 @@ import { closeCarSale } from "slices/car-sales/thunk";
 import { buildCarFormData } from "./utils/buildCarFormData";
 import { ICarSalePayload } from "common/models/car-sale.model";
 import { showApiErrorToast, parseApiValidationErrors, type ApiValidationError } from "helpers/error_helper";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectCarState = (state: any) => state.Car;
 const selectCarSaleState = (state: any) => state.CarSale;
@@ -45,9 +46,8 @@ export default function CarUpdate() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(Number(obj.company_id));
-            dispatch(showCar({ companyId: obj.company_id, id: Number(id) }));
+            setCompanyId(getWorkingCompanyId());
+            dispatch(showCar({ companyId: getWorkingCompanyId(), id: Number(id) }));
         }
     }, [dispatch, id]);
 

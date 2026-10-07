@@ -8,6 +8,7 @@ import {
 
 import { loginSuccess, logoutUserSuccess, apiError, reset_login_flag } from './reducer';
 import { clearTeamMarker, storeTeamMarker } from "helpers/teamMarker";
+import { clearWorkingCompany } from "helpers/workingCompany";
 
 export const registerByInvite =
     (payload: { token: string; password: string; password_confirmation: string }, navigate: any) =>
@@ -71,6 +72,7 @@ export const logoutUser = () => async (dispatch: any) => {
         } catch { /* sessão ilegível */ }
         sessionStorage.removeItem("authUser");
         localStorage.removeItem("authUser");
+        clearWorkingCompany();
         setAuthorization(null);
         dispatch(logoutUserSuccess(true));
     }

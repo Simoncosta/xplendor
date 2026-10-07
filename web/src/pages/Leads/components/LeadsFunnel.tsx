@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import SimpleBar from "simplebar-react";
 import { CardBody, Spinner } from "reactstrap";
@@ -8,6 +8,7 @@ import { ILead, LeadStatus, LEAD_STAGES } from "common/models/lead.model";
 import { getCompanyLeadsAll, updateLead } from "helpers/laravel_helper";
 import LossReasonModal from "./LossReasonModal";
 import LeadDetailModal from "./LeadDetailModal";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Funil de leads em Kanban (CRM). REUTILIZA o padrão/visual dos Kanbans
@@ -33,10 +34,7 @@ const buildBoard = (leads: ILead[]): Board => {
 };
 
 const LeadsFunnel = () => {
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [board, setBoard] = useState<Board>(emptyBoard());
     const [loading, setLoading] = useState(true);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import classnames from "classnames";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, CardHeader, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
@@ -11,6 +11,7 @@ import DashboardSectionHeader from "./components/DashboardSectionHeader";
 import MonthlyBillingChart from "./components/MonthlyBillingChart";
 import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
 import { useRecommendations } from "./components/RecommendationsCard";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -420,11 +421,7 @@ function RestaurantTabsNav({ active, highCount }: { active: RestaurantTab; highC
 }
 
 export function PingwinDashboardContent() {
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [searchParams] = useSearchParams();
     const tab = tabFromSearch(searchParams.get("tab"));

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, Container, Row, Col, Spinner } from "reactstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
@@ -7,6 +7,7 @@ import Pagination from "Components/Common/Pagination";
 import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
 import { OcrInvoiceListRow, OcrInvoiceStatus } from "common/models/ocr.model";
 import { LaravelPaginator } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Faturas (OCR, Fase A). Carrega uma fatura de fornecedor
@@ -33,11 +34,7 @@ export default function FaturasPage() {
     const navigate = useNavigate();
     const fileRef = useRef<HTMLInputElement>(null);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<OcrInvoiceListRow>, "data"> | null>(null);

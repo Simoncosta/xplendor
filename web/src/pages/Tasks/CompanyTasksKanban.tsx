@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import SimpleBar from "simplebar-react";
@@ -15,6 +15,7 @@ import {
     getCompanyTasks, createCompanyTask,
     moveCompanyTask, deleteCompanyTask, getCompanyUsers,
 } from "helpers/laravel_helper";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Kanban de TAREFAS internas do cliente (painel do stand). Entidade
@@ -48,10 +49,7 @@ const CompanyTasksKanban = () => {
     document.title = "Tarefas | Xplendor";
     const navigate = useNavigate();
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [board, setBoard] = useState<Board>(emptyBoard());
     const [users, setUsers] = useState<CompanyUser[]>([]);

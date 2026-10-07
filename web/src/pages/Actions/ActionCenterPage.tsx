@@ -6,6 +6,7 @@ import { getCompanyAlertsApi, getCompanyDecisionsApi, markCompanyAlertsReadApi }
 import { getDecisionLabel } from "./components/DecisionBadge";
 import CarDecisionCard from "./components/CarDecisionCard";
 import { ActionCenterCarItem, AlertItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
@@ -30,7 +31,7 @@ const readCompanyId = () => {
     const authUser = sessionStorage.getItem("authUser");
     if (!authUser) return 0;
 
-    return Number(JSON.parse(authUser).company_id || 0);
+    return getWorkingCompanyId();
 };
 
 export default function ActionCenterPage() {

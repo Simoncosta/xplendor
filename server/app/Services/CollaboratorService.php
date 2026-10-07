@@ -46,7 +46,8 @@ class CollaboratorService
 
     /**
      * Ligar e desligar integrações (redes sociais, anúncios, GA4) com o próprio login:
-     * admin da própria empresa, o root (em qualquer empresa) ou a agência gestora.
+     * admin da própria empresa, o root (em qualquer empresa) ou um ADMIN da agência
+     * gestora (os outros membros da agência produzem, mas não ligam integrações).
      * Nunca em impersonation (o login seria o do cliente).
      */
     public static function canConfigureIntegrations(User $actor, int $companyId): bool
@@ -57,7 +58,18 @@ class CollaboratorService
 
         return ($actor->role === 'admin' && (int) $actor->company_id === $companyId)
             || $actor->role === 'root'
-            || app(CompanyAccess::class)->viaAgency($actor, $companyId);
+            || self::isAgencyAdmin($actor, $companyId);
+    }
+
+    /** Pela agência gestora, só os admins dela ligam integrações (os utilizadores do cliente seguem as regras da empresa). */
+    public static function agencyMayConfigureIntegrations(User $actor, int $companyId): bool
+    {
+        return ! app(CompanyAccess::class)->viaAgency($actor, $companyId) || $actor->role === 'admin';
+    }
+
+    private static function isAgencyAdmin(User $actor, int $companyId): bool
+    {
+        return $actor->role === 'admin' && app(CompanyAccess::class)->viaAgency($actor, $companyId);
     }
 
     /**

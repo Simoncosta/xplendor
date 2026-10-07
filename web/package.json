@@ -109,6 +109,20 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "rules": {
+      "no-restricted-syntax": [
+        "error",
+        { "selector": "MemberExpression[property.name='company_id'][object.type='CallExpression'][object.callee.property.name='parse']", "message": "Contexto de trabalho: use useWorkingCompanyId() ou getWorkingCompanyId() em vez de ler authUser.company_id (para nada se gravar na empresa errada)." },
+        { "selector": "VariableDeclarator[init.type='CallExpression'][init.callee.property.name='parse'] > ObjectPattern > Property[key.name='company_id']", "message": "Contexto de trabalho: use useWorkingCompanyId() ou getWorkingCompanyId() em vez de ler authUser.company_id (para nada se gravar na empresa errada)." },
+        { "selector": "MemberExpression[property.name='company_id'][object.name=/^(authUser|auth|obj|o|u|user|loggedUser|currentUser|authUserRaw)$/]", "message": "Contexto de trabalho: use useWorkingCompanyId() ou getWorkingCompanyId() em vez de ler authUser.company_id (para nada se gravar na empresa errada)." }
+      ]
+    },
+    "overrides": [
+      {
+        "files": ["src/helpers/workingCompany.ts", "src/helpers/impersonation.ts", "src/Components/Common/ImpersonationBanner.tsx"],
+        "rules": { "no-restricted-syntax": "off" }
+      }
     ]
   },
   "browserslist": {

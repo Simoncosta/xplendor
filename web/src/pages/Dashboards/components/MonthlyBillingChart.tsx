@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
 import Select from "react-select";
 import { Card, CardBody, Col } from "reactstrap";
@@ -6,6 +6,7 @@ import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getPingwinMonthlyBilling } from "helpers/laravel_helper";
 import { reactSelectThemeSm } from "helpers/reactSelectStyles";
 import { PingwinMonthlyBilling } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Gráfico de faturação MENSAL por restaurante (Balance Overview do
@@ -34,11 +35,7 @@ const euro = (v: number) =>
     new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(Number(v) || 0);
 
 export default function MonthlyBillingChart() {
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const thisYear = new Date().getFullYear();
     const [year, setYear] = useState<number>(thisYear);

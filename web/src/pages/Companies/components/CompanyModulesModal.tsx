@@ -28,6 +28,7 @@ interface Props {
 const PRESET_LABELS: Record<string, string> = {
     automotive: "Automotivo",
     restaurant: "Restauração",
+    base: "Base (marketing e Linha Editorial)",
 };
 
 const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, onClose }) => {

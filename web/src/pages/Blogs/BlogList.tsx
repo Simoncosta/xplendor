@@ -1,24 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import Pagination from "Components/Common/Pagination";
 import { getBlogs, getBrandProfile } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, BLOG_STATUS_ORDER, BlogStatus, IBlogListItem, blogImage, fmtDateTime } from "common/models/blog.model";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Artigos do blog da empresa. Os que estão em revisão aparecem primeiro; o administrador
  * vê o aviso de quantos aguardam a sua aprovação. "Perfil da marca" alimenta a IA.
  */
-const readAuth = () => {
-    try { return JSON.parse(sessionStorage.getItem("authUser") || "null") ?? {}; } catch { return {}; }
-};
-
 const BlogList = () => {
     document.title = "Blog | Xplendor";
     const navigate = useNavigate();
-    const auth = useMemo(readAuth, []);
-    const companyId = Number(auth.company_id || 0);
+    const companyId = getWorkingCompanyId();
 
     const [items, setItems] = useState<IBlogListItem[]>([]);
     const [meta, setMeta] = useState<any>(null);

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import TicketTasksCard from "Components/Common/TicketTasksCard";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
@@ -8,6 +8,7 @@ import { showSupportTicket, addSupportTicketMessage, decideSupportTicketQuote } 
 import {
     ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
 } from "common/models/supportTicket.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
@@ -17,10 +18,7 @@ const SupportTicketDetail = () => {
     document.title = "Pedido de suporte | Xplendor";
     const { id } = useParams();
     const navigate = useNavigate();
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [ticket, setTicket] = useState<ISupportTicket | null>(null);
     const [loading, setLoading] = useState(true);

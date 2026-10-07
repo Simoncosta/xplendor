@@ -10,6 +10,7 @@ import SupportFab from '../Components/Common/SupportFab';
 import ImpersonationBanner from '../Components/Common/ImpersonationBanner';
 import { reconcileImpersonation } from '../helpers/impersonation';
 import { ModulesProvider } from '../contexts/ModulesContext';
+import { WorkingCompanyProvider, useWorkingCompanyId } from '../contexts/WorkingCompanyContext';
 
 //import actions
 import {
@@ -47,6 +48,15 @@ const selectLayoutProperties = createSelector(
         sidebarVisibilitytype: layout.sidebarVisibilitytype,
     })
 );
+
+/**
+ * A área de trabalho é remontada ao trocar de empresa (contexto de trabalho): nenhuma
+ * página fica com dados ou com a empresa anterior em memória.
+ */
+const WorkingArea = ({ children }: { children: React.ReactNode }) => {
+    const workingId = useWorkingCompanyId();
+    return <div className="main-content" key={workingId}>{children}</div>;
+};
 
 const Layout = (props: any) => {
     const [headerClass, setHeaderClass] = useState("");
@@ -144,25 +154,26 @@ const Layout = (props: any) => {
     }, [sidebarVisibilitytype, layoutType]);
 
     return (
-        <ModulesProvider>
-            <ImpersonationBanner />
-            <div id="layout-wrapper">
-                <Header
-                    headerClass={headerClass}
-                    layoutModeType={layoutModeType}
-                    onChangeLayoutMode={onChangeLayoutMode} />
-                <Sidebar
-                    layoutType={layoutType}
-                />
-                <div className="main-content">
-                    {props.children}
-                    <Footer />
+        <WorkingCompanyProvider>
+            <ModulesProvider>
+                <ImpersonationBanner />
+                <div id="layout-wrapper">
+                    <Header
+                        headerClass={headerClass}
+                        layoutModeType={layoutModeType}
+                        onChangeLayoutMode={onChangeLayoutMode} />
+                    <Sidebar
+                        layoutType={layoutType}
+                    />
+                    <WorkingArea>
+                        {props.children}
+                        <Footer />
+                    </WorkingArea>
                 </div>
-            </div>
-            <SupportFab />
-            {/* <RightSidebar /> */}
-        </ModulesProvider>
-
+                <SupportFab />
+                {/* <RightSidebar /> */}
+            </ModulesProvider>
+        </WorkingCompanyProvider>
     );
 };
 

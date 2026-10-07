@@ -6,6 +6,7 @@ import { executeCarActionApi } from "../../../helpers/laravel_helper";
 import { getRecommendationActionLabel } from "./ActionRecommendationCard";
 import DecisionBadge, { getDecisionAccent } from "./DecisionBadge";
 import { ActionCenterCarItem, ActionExecutionResponse, DecisionType, SmartAdsRecommendation } from "../types";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 interface CarDecisionCardProps {
     item: ActionCenterCarItem;
@@ -327,7 +328,7 @@ function readCompanyId() {
     if (!authUser) return 0;
 
     try {
-        return Number(JSON.parse(authUser).company_id || 0);
+        return getWorkingCompanyId();
     } catch {
         return 0;
     }

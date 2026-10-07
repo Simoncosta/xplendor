@@ -4,6 +4,7 @@ import { Alert, Card, CardBody, Col, Container, Row, Spinner } from "reactstrap"
 import BreadCrumb from "Components/Common/BreadCrumb";
 import { getMetaOverview } from "helpers/laravel_helper";
 import { MetaOverviewResponse, MetaOverviewState, eur, nfmt, pct } from "common/models/metaAds.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Meta / Anúncios (LEITURA). Mostra os dados FACTUAIS que o pipeline
@@ -23,10 +24,7 @@ const POLL_MAX_TICKS = 80; // ~20 min
 const MetaAds = () => {
     document.title = "Meta / Anúncios | Xplendor";
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [days, setDays] = useState(28);
     const [loading, setLoading] = useState(true);

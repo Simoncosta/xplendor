@@ -1,5 +1,5 @@
 // React
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createSelector } from 'reselect';
 import { Link, useSearchParams } from 'react-router-dom';
 import classnames from 'classnames';
@@ -20,6 +20,8 @@ import { useModules } from "contexts/ModulesContext";
 import { PingwinDashboardContent, RestaurantPageTitle } from "./PingwinDashboard";
 import RootDashboard from "./RootDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { getWorkingCompany } from "helpers/workingCompany";
 
 // Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
 // true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
@@ -153,11 +155,7 @@ const CarStockTab = ({ companyId, onHighCount }: { companyId: number; onHighCoun
 
 /** Dashboard do automóvel com separadores: "Stock" (por defeito) e "Marketing e resultados". */
 const CarDashboardTabs = () => {
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [searchParams] = useSearchParams();
     const tab = tabFromSearch(searchParams.get("tab"));
@@ -241,8 +239,9 @@ const ClientDashboard = () => {
 
 /**
  * Encaixe do dashboard ROOT (sem hooks aqui → não parte as regras dos hooks dos filhos):
- * root DE VERDADE (role 'root' e NÃO em impersonation) → RootDashboard; caso contrário
- * (cliente normal, ou root a ver como cliente) → o dashboard do cliente, intacto.
+ * root DE VERDADE (role 'root' e NÃO em impersonation) na própria empresa → RootDashboard;
+ * caso contrário (cliente normal, root a ver como cliente, ou root a trabalhar num cliente
+ * pelo contexto de trabalho) → o dashboard do cliente, intacto.
  */
 const Dashboard = () => {
     let isTrueRoot = false;
@@ -251,7 +250,7 @@ const Dashboard = () => {
         isTrueRoot = o?.role === "root" && !o?.impersonating;
     } catch { /* ignore */ }
 
-    return isTrueRoot ? <RootDashboard /> : <ClientDashboard />;
+    return isTrueRoot && !getWorkingCompany() ? <RootDashboard /> : <ClientDashboard />;
 };
 
 export default Dashboard;

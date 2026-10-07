@@ -24,6 +24,7 @@ import { getUsersPaginate } from "slices/users/thunk";
 import { startImpersonationFlow } from "helpers/impersonation";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import { createSelector } from "reselect";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectUserState = (state: any) => state.User;
 
@@ -62,14 +63,13 @@ export default function UsersList() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(obj.company_id);
+            setCompanyId(getWorkingCompanyId());
 
             dispatch(
                 getUsersPaginate({
                     page: pagination.pageIndex + 1,
                     perPage: pagination.pageSize,
-                    companyId: obj.company_id,
+                    companyId: getWorkingCompanyId(),
                 })
             );
         }

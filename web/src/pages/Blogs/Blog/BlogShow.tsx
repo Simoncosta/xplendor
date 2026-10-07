@@ -1,21 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Badge, Container, Spinner } from "reactstrap";
 import { showBlog } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, IBlogPost, blogImage, fmtDateTime } from "common/models/blog.model";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Pré-visualização de leitura do artigo. O conteúdo chega já limpo pelo servidor (lista de
  * etiquetas permitidas), também nos registos antigos.
  */
-const readAuth = () => {
-    try { return JSON.parse(sessionStorage.getItem("authUser") || "null") ?? {}; } catch { return {}; }
-};
-
 export default function BlogShow() {
     const { id } = useParams();
-    const auth = useMemo(readAuth, []);
-    const companyId = Number(auth.company_id || 0);
+    const companyId = getWorkingCompanyId();
     const [blog, setBlog] = useState<IBlogPost | null>(null);
     const [loading, setLoading] = useState(true);
 

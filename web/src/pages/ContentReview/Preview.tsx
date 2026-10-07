@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Spinner } from "reactstrap";
 import ContentReviewView from "./ContentReviewView";
 import type { ReviewPayload } from "common/models/contentReview.model";
 import { getReviewLinkPreview } from "helpers/laravel_helper";
 import "./content-review.css";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * "Ver como o cliente": a página do link de aprovação dentro da app, exatamente como o
@@ -14,7 +15,7 @@ export default function ContentReviewPreview() {
     const { id } = useParams();
     const [data, setData] = useState<ReviewPayload | null>(null);
     const [failed, setFailed] = useState(false);
-    const companyId = useMemo(() => { try { return Number(JSON.parse(sessionStorage.getItem("authUser") || "{}").company_id || 0); } catch { return 0; } }, []);
+    const companyId = useWorkingCompanyId();
 
     useEffect(() => {
         document.title = "Ver como o cliente | Xplendor";

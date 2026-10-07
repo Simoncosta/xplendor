@@ -10,6 +10,7 @@ import { createUser } from "slices/thunks";
 // Components
 import UserEditor from "./UserEditor";
 import { toast, ToastContainer } from "react-toastify";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const selectUserState = (state: any) => state.User;
 
@@ -33,8 +34,7 @@ export default function UserCreate() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
-            setCompanyId(Number(obj.company_id));
+            setCompanyId(getWorkingCompanyId());
         }
     }, [dispatch]);
 

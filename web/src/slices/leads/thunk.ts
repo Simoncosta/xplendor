@@ -3,6 +3,7 @@ import {
     getLeads as getLeadsApi,
     updateLead as updateLeadApi,
 } from "../../helpers/laravel_helper";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 export const getLeadsPaginate = createAsyncThunk(
     "leads/getLeadsPaginate",
@@ -31,8 +32,7 @@ export const updateLeadStatus = createAsyncThunk(
     "leads/updateStatus",
     async ({ leadId, status, lostReason }: { leadId: number; status: string; lostReason?: string }, { rejectWithValue }) => {
         try {
-            const authUser = sessionStorage.getItem("authUser");
-            const companyId = authUser ? JSON.parse(authUser)?.company_id : null;
+            const companyId = getWorkingCompanyId() || null;
 
             if (!companyId) {
                 return rejectWithValue("Empresa não encontrada para atualizar lead");

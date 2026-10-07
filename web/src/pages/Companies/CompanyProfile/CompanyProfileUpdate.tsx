@@ -16,6 +16,7 @@ import {
 // Slices
 import { COMPANY_CREATE_DEFAULTS } from "slices/companies/company.defaults";
 import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
+import { getHomeCompanyId } from "helpers/workingCompany";
 
 const selectCompanyState = (state: any) => state.Company;
 const selectCarmineState = (state: any) => state.Carmine;
@@ -118,7 +119,7 @@ export default function CompanyProfileUpdate() {
                         const raw = sessionStorage.getItem("authUser");
                         if (raw) {
                             const authUser = JSON.parse(raw);
-                            if (authUser?.company && Number(authUser.company_id) === Number(id)) {
+                            if (authUser?.company && getHomeCompanyId() === Number(id)) {
                                 authUser.company.uses_vat = Boolean((values as any).uses_vat);
                                 sessionStorage.setItem("authUser", JSON.stringify(authUser));
                             }

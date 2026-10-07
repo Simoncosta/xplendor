@@ -14,6 +14,7 @@ import { downloadGet } from "helpers/download_helper";
 import { confirmDelete, promptInput } from "helpers/swal";
 // Models
 import { IDocumentTemplate, IDocumentVariable } from "common/models/documentTemplate.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const selectVM = createSelector(
     [(state: any) => state.DocumentTemplate],
@@ -29,10 +30,7 @@ const DocumentTemplatesList = () => {
     document.title = "Modelos de documento | Xplendor";
 
     const { templates, loadingList, creating } = useSelector(selectVM);
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [variables, setVariables] = useState<IDocumentVariable[]>([]);
     const [name, setName] = useState("");

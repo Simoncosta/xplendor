@@ -9,6 +9,7 @@ import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { BrandPillar, EmojiPolicy, IBrandProfile } from "common/models/blog.model";
 import BrandProfileSuggestModal from "./BrandProfileSuggestModal";
 import FollowersCard from "./FollowersCard";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Perfil da Marca (página própria, fora do Blog). Alimenta a IA (blog, sugestões de
@@ -32,7 +33,7 @@ const EMOJI_OPTIONS: { value: EmojiPolicy; label: string }[] = [
 const MAX_PILLARS = 8;
 
 const companyIdFromSession = () => {
-    try { return Number(JSON.parse(sessionStorage.getItem("authUser") || "null")?.company_id || 0); } catch { return 0; }
+    try { return getWorkingCompanyId(); } catch { return 0; }
 };
 
 const errorMessage = (e: any, fallback: string) => {

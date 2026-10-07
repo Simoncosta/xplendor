@@ -6,6 +6,7 @@ import {
     createCollaborator, getCollaborator, updateCollaborator, uploadCollaboratorPhoto, deleteCollaboratorPhoto, getDepartments,
 } from "helpers/laravel_helper";
 import { ACCESS_META, ContactMode, ICollaborator, IDepartment, PhoneType, collaboratorPhoto, initials } from "common/models/collaborator.model";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
  * Criar ou editar um colaborador. Dados e foto (400x400 WebP, gerada no servidor);
@@ -47,7 +48,7 @@ const CollaboratorEditor = () => {
     const navigate = useNavigate();
     const isNew = !id || id === "new";
     const auth = useMemo(readAuth, []);
-    const companyId = Number(auth.company_id || 0);
+    const companyId = getWorkingCompanyId();
     const impersonating = !!auth.impersonating;
     const canEdit = auth.role === "admin" || auth.role === "root" || impersonating;
     // Admin da própria empresa; o root conta como admin da SUA empresa. Nunca em impersonation.

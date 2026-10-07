@@ -1,9 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner, Badge } from "reactstrap";
 import BreadCrumb from "Components/Common/BreadCrumb";
 import { getCustomerHub } from "helpers/laravel_helper";
 import { LEAD_STATUS_META, LeadStatus } from "common/models/lead.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Fase 3: ficha-HUB do cliente. Junta num só sítio tudo o que se liga
@@ -42,10 +43,7 @@ const CustomerHub = () => {
     document.title = "Ficha do cliente | Xplendor";
     const { id } = useParams();
     const navigate = useNavigate();
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [data, setData] = useState<HubData | null>(null);
     const [loading, setLoading] = useState(true);

@@ -1,4 +1,5 @@
 import { startImpersonation, stopImpersonation, getCurrentImpersonation } from "./laravel_helper";
+import { clearWorkingCompany } from "./workingCompany";
 
 /**
  * XPLENDOR — IMPERSONATION (frontend). O authUser é SÓ o que a UI mostra; a segurança é o
@@ -29,6 +30,9 @@ export async function startImpersonationFlow(userId: number, reason?: string): P
     const r: any = await startImpersonation(userId, reason);
     const d = r?.data ?? {};
     const current = readAuthUser();
+
+    // Em impersonation trabalha-se na empresa do utilizador-alvo (sai do contexto de trabalho).
+    clearWorkingCompany();
 
     // Guarda o root só se ainda não estivermos já em impersonation (evita perder o root real).
     if (current && !current.impersonating) {
@@ -61,6 +65,7 @@ export async function stopImpersonationFlow(): Promise<void> {
 
 /** Restaura o authUser do root (do rootAuthUser) e limpa o estado de impersonation. */
 function restoreRootLocally(): void {
+    clearWorkingCompany();
     try {
         const root = sessionStorage.getItem(ROOT);
         if (root) {

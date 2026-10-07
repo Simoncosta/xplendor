@@ -18,6 +18,7 @@ import { IExpenseCategory } from "common/models/expense-category.model";
 import { ISupplier } from "common/models/supplier.model";
 // Helpers
 import { confirmDelete, alertMessage } from "helpers/swal";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 interface Option { value: number; label: string; }
 
@@ -63,11 +64,7 @@ const ExpenseList = () => {
 
     const { expenses, meta, summary, loading } = useSelector(selectViewModel);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        return Number(JSON.parse(authUser).company_id || 0);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     // Opções para filtros + formulário.
     const [categoryOptions, setCategoryOptions] = useState<Option[]>([]);

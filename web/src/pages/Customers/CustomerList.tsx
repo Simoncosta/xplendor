@@ -1,5 +1,5 @@
 // React
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
@@ -15,6 +15,7 @@ import { getCustomers, deleteCustomer, updateCustomer } from "slices/customers/t
 // Helpers / models
 import { confirmDelete, alertMessage } from "helpers/swal";
 import { ICustomer } from "common/models/customer.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const selectState = (state: any) => state.Customer;
 const selectViewModel = createSelector([selectState], (s) => ({
@@ -29,11 +30,7 @@ const CustomerList = () => {
 
     const { customers, meta, loading } = useSelector(selectViewModel);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        return Number(JSON.parse(authUser).company_id || 0);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
     const [formOpen, setFormOpen] = useState(false);

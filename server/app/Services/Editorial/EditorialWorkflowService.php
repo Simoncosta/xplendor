@@ -53,6 +53,9 @@ class EditorialWorkflowService
     private const LOCKED_STAGES = [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS];
     private const SEND_STAGES = [EditorialPost::STAGE_INTERNAL_REVIEW, EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_SCHEDULED];
 
+    /** @var array<int, string> nomes das empresas (para os rótulos do histórico) */
+    private array $companyNames = [];
+
     // ── Papéis ───────────────────────────────────────────────────────────────
 
     public static function impersonatorId(User $user): ?int
@@ -671,7 +674,7 @@ class EditorialWorkflowService
         $comment = EditorialPostComment::create([
             'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'version_id' => $post->current_version_id,
             'user_id' => $user->id, 'impersonator_user_id' => self::impersonatorId($user),
-            'author_name' => $this->personName($user), 'body' => mb_substr($body, 0, 5000), 'visibility' => $visibility,
+            'author_name' => $this->personName($user, (int) $post->company_id), 'body' => mb_substr($body, 0, 5000), 'visibility' => $visibility,
         ]);
         $internal = $visibility === EditorialPostComment::INTERNAL;
         $this->event($post, $user, $internal ? 'comment_internal' : 'comment', null, null, $post->current_version_id,
@@ -729,7 +732,7 @@ class EditorialWorkflowService
                 'caption' => $v->caption, 'hashtags' => $v->hashtags ?? [], 'cta' => $v->cta, 'first_comment' => $v->first_comment,
                 'media_formats' => $v->media_formats ?? [], 'network_captions' => $v->network_captions ?? [],
                 'media' => self::presentMedia($v),
-                'author' => $this->label($people, $v->created_by_user_id, $v->impersonator_user_id),
+                'author' => $this->label($people, $v->created_by_user_id, $v->impersonator_user_id, null, (int) $post->company_id),
                 'sent_at' => optional($v->sent_at)->toIso8601String(), 'created_at' => optional($v->created_at)->toIso8601String(),
             ])->all(),
             'reviews' => EditorialPostReview::where('editorial_post_id', $post->id)->orderByDesc('id')->get()->map(fn ($r) => [
@@ -747,7 +750,7 @@ class EditorialWorkflowService
             'events' => EditorialPostEvent::where('editorial_post_id', $post->id)->orderByDesc('id')->limit(100)->get()
                 ->filter(fn ($e) => $team || $e->type !== 'comment_internal')->values()->map(fn ($e) => [
                     'type' => $e->type, 'from_stage' => $e->from_stage, 'to_stage' => $e->to_stage, 'message' => $e->message,
-                    'who' => $this->label($people, $e->user_id, $e->impersonator_user_id),
+                    'who' => $this->label($people, $e->user_id, $e->impersonator_user_id, $e->acting_company_id, (int) $post->company_id),
                     'created_at' => optional($e->created_at)->toIso8601String(),
                 ])->all(),
             'media_validation' => self::mediaValidation($cv = $versions->firstWhere('id', $post->current_version_id), self::formatsFor($post, $cv)),
@@ -901,28 +904,47 @@ class EditorialWorkflowService
         ];
     }
 
-    private function personName(User $user): string
+    private function personName(User $user, int $postCompanyId): string
     {
         $imp = self::impersonatorId($user);
         if ($imp) {
             return (User::find($imp)?->name ?? 'Equipa') . ' (equipa XPLENDOR)';
         }
+        if ($user->role === 'root') {
+            return "{$user->name} (equipa XPLENDOR)";
+        }
 
-        return $user->role === 'root' ? "{$user->name} (equipa XPLENDOR)" : (string) $user->name;
+        return $this->withAgency((string) $user->name, $user->company_id ? (int) $user->company_id : null, $postCompanyId);
     }
+
+    /** "Rita (Agência Norte)": quem trabalha pela agência gestora, com a empresa dela no momento da ação. */
+    private function withAgency(string $name, ?int $actingCompanyId, ?int $postCompanyId): string
+    {
+        if (! $actingCompanyId || ! $postCompanyId || $actingCompanyId === $postCompanyId) {
+            return $name;
+        }
+        $this->companyNames[$actingCompanyId] ??= (string) (Company::whereKey($actingCompanyId)->value('trade_name') ?: Company::whereKey($actingCompanyId)->value('fiscal_name'));
+        $agency = $this->companyNames[$actingCompanyId];
+        if ($agency === '') {
+            return $name;
+        }
+
+        return $name . ' (' . (mb_stripos($agency, 'agência') === 0 ? $agency : "Agência {$agency}") . ')';
+    }
+
 
     /** As redes da publicação para os ecrãs: formato, estado, link, hora e quem marcou ou dispensou. */
     private function presentNetworks(EditorialPost $post, array $people): array
     {
         $ids = $post->networks->flatMap(fn ($n) => [$n->published_by_user_id, $n->published_by_impersonator_id, $n->skipped_by_user_id, $n->skipped_by_impersonator_id])->filter()->unique()->diff(array_keys($people));
-        $people += User::whereIn('id', $ids)->get(['id', 'name', 'role'])->keyBy('id')->all();
+        $people += User::whereIn('id', $ids)->get(['id', 'name', 'role', 'company_id'])->keyBy('id')->all();
 
         return $post->networks->map(fn (EditorialPostNetwork $n) => [
             'network' => $n->network, 'media_format' => $n->media_format, 'state' => $n->state(),
             'published_url' => $n->published_url, 'published_at' => optional($n->published_at)->toIso8601String(),
-            'published_by' => $n->published_by_user_id ? $this->label($people, $n->published_by_user_id, $n->published_by_impersonator_id) : null,
+            'published_by' => $n->published_by_user_id ? $this->label($people, $n->published_by_user_id, $n->published_by_impersonator_id, null, (int) $post->company_id) : null,
             'skipped_at' => optional($n->skipped_at)->toIso8601String(), 'skip_reason' => $n->skip_reason,
-            'skipped_by' => $n->skipped_by_user_id ? $this->label($people, $n->skipped_by_user_id, $n->skipped_by_impersonator_id) : null,
+            'skipped_by' => $n->skipped_by_user_id ? $this->label($people, $n->skipped_by_user_id, $n->skipped_by_impersonator_id, null, (int) $post->company_id) : null,
         ])->values()->all();
     }
 
@@ -935,11 +957,14 @@ class EditorialWorkflowService
             EditorialPostVersion::where('editorial_post_id', $post->id)->pluck('impersonator_user_id'),
         ])->flatten()->filter()->unique()->all();
 
-        return User::whereIn('id', $ids)->get(['id', 'name', 'role'])->keyBy('id')->all();
+        return User::whereIn('id', $ids)->get(['id', 'name', 'role', 'company_id'])->keyBy('id')->all();
     }
 
-    /** "Ana (equipa XPLENDOR)" quando foi a equipa; senão o nome do utilizador. */
-    private function label(array $people, ?int $userId, ?int $impersonatorId): ?string
+    /**
+     * "Ana (equipa XPLENDOR)" quando foi a equipa da plataforma; "Rita (Agência Norte)" quando foi
+     * a agência gestora (pela empresa da pessoa no momento da ação); senão o nome do utilizador.
+     */
+    private function label(array $people, ?int $userId, ?int $impersonatorId, ?int $actingCompanyId = null, ?int $postCompanyId = null): ?string
     {
         if ($impersonatorId) {
             return ($people[$impersonatorId]->name ?? 'Equipa') . ' (equipa XPLENDOR)';
@@ -949,6 +974,10 @@ class EditorialWorkflowService
             return null;
         }
 
-        return $u->role === 'root' ? "{$u->name} (equipa XPLENDOR)" : (string) $u->name;
+        if ($u->role === 'root') {
+            return "{$u->name} (equipa XPLENDOR)";
+        }
+
+        return $this->withAgency((string) $u->name, $actingCompanyId ?? ($u->company_id ? (int) $u->company_id : null), $postCompanyId);
     }
 }

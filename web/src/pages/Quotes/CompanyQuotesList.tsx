@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Col, Container, Row, Badge, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import { getCompanyQuotes, decideCompanyQuote, companyQuotePdfPath } from "helpers/laravel_helper";
 import { confirmAction } from "helpers/swal";
 import { openPdfGet } from "helpers/download_helper";
 import { IQuote, QUOTE_STATUS_META, VAT_NOTE, formatQuoteEuro, longDate } from "common/models/quote.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const fmtDate = (iso?: string) =>
     iso ? new Date(iso).toLocaleDateString("pt-PT", { day: "numeric", month: "short", year: "numeric" }) : "—";
@@ -17,10 +18,7 @@ const fmtDate = (iso?: string) =>
 const CompanyQuotesList = () => {
     document.title = "Orçamentos | Xplendor";
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [quotes, setQuotes] = useState<IQuote[]>([]);
     const [loading, setLoading] = useState(true);

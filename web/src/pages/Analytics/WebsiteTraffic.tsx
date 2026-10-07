@@ -8,6 +8,7 @@ import { getGa4Traffic } from "helpers/laravel_helper";
 import {
     Ga4Traffic, CHANNEL_LABELS, DEVICE_LABELS, GENDER_LABELS, fmtDuration, fmtPct,
 } from "common/models/ga4.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Tráfego do site do cliente (GA4). Mostra a propriedade GA4 do
@@ -37,10 +38,7 @@ const Bar: React.FC<{ label: string; value: number; max: number; suffix?: string
 const WebsiteTraffic = () => {
     document.title = "Tráfego do site | Xplendor";
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [days, setDays] = useState(28);
     const [loading, setLoading] = useState(true);

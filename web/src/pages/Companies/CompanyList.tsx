@@ -3,11 +3,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Badge, Card, CardBody, CardHeader, Col, Container, Row, Spinner } from 'reactstrap';
+import { Badge, Card, CardBody, CardHeader, Col, Container, Modal, ModalBody, ModalHeader, Row, Spinner } from 'reactstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
 import CompanyModulesModal from './components/CompanyModulesModal';
 import CompanyUsersModal from './components/CompanyUsersModal';
+import AgencyManagementPanel from './components/AgencyManagementPanel';
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
@@ -41,6 +42,7 @@ const CompanyList = () => {
     const [busyId, setBusyId] = useState<number | null>(null);
     const [modulesFor, setModulesFor] = useState<{ id: number; name: string } | null>(null);
     const [usersFor, setUsersFor] = useState<{ id: number; name: string } | null>(null);
+    const [agencyFor, setAgencyFor] = useState<{ id: number; name: string } | null>(null);
 
     const refetch = useCallback(() => {
         dispatch(
@@ -115,6 +117,18 @@ const CompanyList = () => {
                 enableColumnFilter: false,
             },
             {
+                // Gestão por agências: agência, ou a agência gestora.
+                header: "Agência",
+                enableColumnFilter: false,
+                cell: (cellProps: any) => {
+                    const c = cellProps.row.original;
+                    const managedBy = c.active_management?.agency;
+                    if (c.agency_enabled_at) return <Badge color="info" className="fw-normal"><i className="ri-team-line me-1" />Agência</Badge>;
+                    if (managedBy) return <span className="fs-13">Gerida por <strong>{managedBy.trade_name || managedBy.fiscal_name}</strong></span>;
+                    return <span className="text-muted">-</span>;
+                },
+            },
+            {
                 header: "Estado",
                 enableColumnFilter: false,
                 cell: (cellProps: any) => {
@@ -152,6 +166,14 @@ const CompanyList = () => {
                                 title="Utilizadores / aceder como"
                             >
                                 <i className="ri-team-line align-bottom me-1" />Utilizadores
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-sm btn-soft-info"
+                                onClick={() => setAgencyFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
+                                title="Agência e agência gestora"
+                            >
+                                <i className="ri-building-2-line align-bottom me-1" />Agência
                             </button>
                             <button
                                 type="button"
@@ -227,6 +249,13 @@ const CompanyList = () => {
                 companyName={usersFor?.name}
                 onClose={() => setUsersFor(null)}
             />
+
+            <Modal isOpen={agencyFor !== null} toggle={() => setAgencyFor(null)} centered scrollable>
+                <ModalHeader toggle={() => setAgencyFor(null)}>Gestão por agências: {agencyFor?.name}</ModalHeader>
+                <ModalBody>
+                    {agencyFor && <AgencyManagementPanel companyId={agencyFor.id} onChanged={refetch} />}
+                </ModalBody>
+            </Modal>
         </React.Fragment >
     )
 };

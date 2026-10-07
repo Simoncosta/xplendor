@@ -6,6 +6,7 @@ import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import { getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob } from "helpers/laravel_helper";
 import { OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption } from "common/models/ocr.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Faturas › Validação (OCR Fase A, o CORE). Mostra o que
@@ -28,11 +29,7 @@ export default function FaturaValidacaoPage() {
     const { id } = useParams();
     const invoiceId = Number(id);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [inv, setInv] = useState<OcrInvoiceDetail | null>(null);
     const [suppliers, setSuppliers] = useState<OcrSupplierOption[]>([]);

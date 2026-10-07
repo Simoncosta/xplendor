@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import {
     QUOTE_STATUS_META, SITE_CHANGE_HOURLY_RATE, formatEuro,
 } from "common/models/supportTicket.model";
 import TicketsKanban from "Components/Common/TicketsKanban";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const selectVM = createSelector(
     [(state: any) => state.SupportTicket],
@@ -27,10 +28,7 @@ const SupportTicketsList = () => {
     document.title = "Suporte | Xplendor";
     const { tickets, loading, creating } = useSelector(selectVM);
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [open, setOpen] = useState(false);
     const [view, setView] = useState<"list" | "kanban">("list");

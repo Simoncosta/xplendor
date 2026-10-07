@@ -14,6 +14,7 @@ import PingwinConnectModal from "./PingwinConnectModal";
 import CarmineConnectModal from "./CarmineConnectModal";
 import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
 import SocialConnectionCard from "./SocialConnectionCard";
+import { getHomeCompanyId, getWorkingCompanyId } from "helpers/workingCompany";
 
 interface Integration {
     id: number;
@@ -27,6 +28,8 @@ interface Integration {
 }
 
 type IntegrationsSettingsProps = {
+    /** A empresa do perfil aberto (por omissão, a empresa em que se trabalha). */
+    companyId?: number;
     dataCarmine?: ICarmineApi;
     onSubmitCarmine?: (data: ICarmineApi) => void;
 };
@@ -110,7 +113,7 @@ const selectGoogleIntegration = createSelector(
     ({ integrations }) => integrations.find((integration) => integration.platform === "google")
 );
 
-export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: IntegrationsSettingsProps) {
+export default function IntegrationsSettings({ companyId: profileCompanyId, dataCarmine, onSubmitCarmine }: IntegrationsSettingsProps) {
     const dispatch: any = useDispatch();
     const { has } = useModules();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -118,6 +121,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     // Ligar e desligar os anúncios: admin da própria empresa (o root na sua), nunca em
     // impersonation. O backend decide; aqui só se escondem os botões.
     const [canManageMeta, setCanManageMeta] = useState(false);
+    const [agencyMemberOnly, setAgencyMemberOnly] = useState(false);
     // Escolha da conta de anúncios após o OAuth (callback no backend não a pede).
     const [metaAccountInput, setMetaAccountInput] = useState("");
     const [savingMetaAccount, setSavingMetaAccount] = useState(false);
@@ -231,13 +235,17 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (!authUser) return;
-        const { company_id, role, impersonating } = JSON.parse(authUser);
-        setCompanyId(Number(company_id));
+        const { role, impersonating } = JSON.parse(authUser);
+        const companyId = profileCompanyId || getWorkingCompanyId();
+        setCompanyId(companyId);
+        // O backend confirma: admin da empresa, root ou ADMIN da agência gestora (fora de impersonation).
         setCanManageMeta((role === "admin" || role === "root") && !impersonating);
-        fetchIntegrations(Number(company_id));
-        fetchPingwin(Number(company_id));
-        fetchCover(Number(company_id));
-    }, [fetchIntegrations, fetchPingwin, fetchCover]);
+        // Pela agência (empresa que não é a da pessoa), só os admins dela ligam integrações.
+        setAgencyMemberOnly(role === "user" && companyId !== getHomeCompanyId());
+        fetchIntegrations(companyId);
+        fetchPingwin(companyId);
+        fetchCover(companyId);
+    }, [fetchIntegrations, fetchPingwin, fetchCover, profileCompanyId]);
 
     // Retorno do OAuth Meta (backend redireciona para cá com ?meta=...). Mostra
     // o resultado e limpa o parâmetro do URL para não repetir ao refrescar.
@@ -508,7 +516,7 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                         )}
                                     </div>
                                 ) : !canManageMeta ? (
-                                    <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode ligar os anúncios da Meta.</p>
+                                    <p className="text-muted fs-12 mb-0">{agencyMemberOnly ? "Pela agência, só os administradores ligam integrações." : "Só o administrador da empresa pode ligar os anúncios da Meta."}</p>
                                 ) : (
                                     <button
                                         className="btn btn-primary w-100"
@@ -556,7 +564,11 @@ export default function IntegrationsSettings({ dataCarmine, onSubmitCarmine }: I
                                     Traz para a XPLENDOR os visitantes, páginas mais vistas, origens e dispositivos do teu site.
                                 </p>
 
-                                {gaConnected ? (
+                                {agencyMemberOnly ? (
+                                    gaConnected
+                                        ? <div className="vstack gap-2">{infoRow("Propriedade", googleIntegration?.property_id)}<Link to="/trafego-site" className="btn btn-primary btn-sm mt-1" style={{ background: "#E37400", borderColor: "#E37400" }}><i className="ri-line-chart-line me-1" /> Ver tráfego do site</Link></div>
+                                        : <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p>
+                                ) : gaConnected ? (
                                     <div className="vstack gap-2">
                                         {infoRow("Propriedade", googleIntegration?.property_id)}
                                         {infoRow("Último sync", fmtDate(googleIntegration?.last_synced_at ?? null))}

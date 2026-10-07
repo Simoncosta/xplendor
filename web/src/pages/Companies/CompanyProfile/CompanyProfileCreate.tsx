@@ -8,6 +8,7 @@ import { createCompany } from "slices/thunks";
 import CompanyProfileEditor from "./CompanyProfileEditor";
 import { toast, ToastContainer } from "react-toastify";
 import { CARMINE_API_CREATE_DEFAULTS } from "slices/carmine/carmine-api.defaults";
+import { setAdminCompanyAgency } from "helpers/laravel_helper";
 
 export default function CompanyProfileCreate() {
     const navigate = useNavigate();
@@ -21,11 +22,12 @@ export default function CompanyProfileCreate() {
             <CompanyProfileEditor
                 data={COMPANY_CREATE_DEFAULTS}
                 dataCarmine={CARMINE_API_CREATE_DEFAULTS}
-                onSubmit={(values) => {
+                onSubmit={async (values) => {
                     const formData = new FormData();
+                    const isAgency = !!(values as any).is_agency;
 
                     Object.entries(values).forEach(([key, value]: any) => {
-                        if (value === null || value === undefined) return;
+                        if (value === null || value === undefined || key === "is_agency") return;
 
                         if (key === "logo_file" && value instanceof File) {
                             formData.append("logo", value);
@@ -39,8 +41,19 @@ export default function CompanyProfileCreate() {
                         }
                     });
 
+                    const result: any = await dispatch(createCompany(formData));
+                    if (result?.meta?.requestStatus !== "fulfilled") {
+                        const p = result?.payload;
+                        const first = p?.errors ? (Object.values(p.errors).flat()[0] as string) : null;
+                        toast.error(first || (typeof p === "string" ? p : p?.message) || "Não foi possível criar a empresa.");
+                        return;
+                    }
+                    // "Esta empresa é uma agência": marca-se logo a seguir à criação (só o root).
+                    const newId = Number(result?.payload?.data?.id || 0);
+                    if (isAgency && newId) {
+                        try { await setAdminCompanyAgency(newId, true); } catch { toast.error("A empresa foi criada, mas não foi possível marcá-la como agência."); }
+                    }
                     toast("Empresa criada com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
-                    dispatch(createCompany(formData));
                     navigate(-1);
                 }}
                 onSubmitCarmine={(value) => {

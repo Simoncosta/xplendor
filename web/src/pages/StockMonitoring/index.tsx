@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { getAnalyticsDashboard } from "slices/dashboards/thunk";
 import SummaryDashboard from "../Dashboards/components/SummaryDashboard";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * ⚠️ PÁGINA ÓRFÃ (desativada; código mantido para ser reversível).
@@ -129,10 +130,7 @@ const StockMonitoring = () => {
     document.title = "Monitorização de Stock | Xplendor";
     const { analytics, loading } = useSelector(selectVM);
 
-    const companyId = useMemo(() => {
-        const a = sessionStorage.getItem("authUser");
-        return a ? Number(JSON.parse(a).company_id || 0) : 0;
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     useEffect(() => {
         if (companyId) dispatch(getAnalyticsDashboard({ companyId }));

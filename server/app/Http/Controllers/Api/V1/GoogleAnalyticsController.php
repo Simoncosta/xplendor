@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
+use App\Services\CollaboratorService;
 use App\Services\GoogleAnalyticsService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -42,6 +44,9 @@ class GoogleAnalyticsController extends Controller
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
+        if (! CollaboratorService::agencyMayConfigureIntegrations(Auth::user(), $companyId)) {
+            return ApiResponse::error('Pela agência, só os administradores ligam ou desligam integrações.', 403);
+        }
 
         $data = $request->validate([
             // O ID da propriedade GA4 é numérico (ex.: 398765432). Aceitamos só dígitos.
@@ -73,6 +78,9 @@ class GoogleAnalyticsController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if (! CollaboratorService::agencyMayConfigureIntegrations(Auth::user(), $companyId)) {
+            return ApiResponse::error('Pela agência, só os administradores ligam ou desligam integrações.', 403);
         }
 
         CompanyIntegration::where('company_id', $companyId)

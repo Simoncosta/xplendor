@@ -23,6 +23,7 @@ import {
     DecisionType,
     PauseTargetOption,
 } from "../types";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const actionOptions: ActionExecutionOption[] = [
     {
@@ -87,7 +88,7 @@ const readCompanyId = () => {
     const authUser = sessionStorage.getItem("authUser");
     if (!authUser) return 0;
 
-    return Number(JSON.parse(authUser).company_id || 0);
+    return getWorkingCompanyId();
 };
 
 const getDefaultAction = (decision: DecisionType | "INSUFFICIENT_DATA") => {

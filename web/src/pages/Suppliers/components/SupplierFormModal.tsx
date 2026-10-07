@@ -15,6 +15,7 @@ import { createSupplier, updateSupplier } from "slices/suppliers/thunk";
 // Models
 import { ISupplier, ISupplierPayload } from "common/models/supplier.model";
 import { SUPPLIER_CREATE_DEFAULTS } from "slices/suppliers/supplier.defaults";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 interface SupplierFormModalProps {
     isOpen: boolean;
@@ -28,8 +29,7 @@ interface SupplierFormModalProps {
 function resolveCompanyId(explicit?: number): number {
     if (explicit) return explicit;
     try {
-        const raw = sessionStorage.getItem("authUser");
-        return raw ? Number(JSON.parse(raw).company_id || 0) : 0;
+        return getWorkingCompanyId();
     } catch {
         return 0;
     }

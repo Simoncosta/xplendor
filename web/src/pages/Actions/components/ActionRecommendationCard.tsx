@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 
 import { executeCarActionApi } from "../../../helpers/laravel_helper";
 import { ActionCenterCarItem, SmartAdsRecommendation } from "../types";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 interface ActionRecommendationCardProps {
     item: ActionCenterCarItem;
@@ -49,7 +50,7 @@ const readCompanyId = () => {
     const authUser = sessionStorage.getItem("authUser");
     if (!authUser) return 0;
 
-    return Number(JSON.parse(authUser).company_id || 0);
+    return getWorkingCompanyId();
 };
 
 export default function ActionRecommendationCard({

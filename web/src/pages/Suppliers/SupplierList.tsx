@@ -1,5 +1,5 @@
 // React
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Card, CardBody, Col, Container, Row, Table } from "reactstrap";
@@ -16,6 +16,7 @@ import { getSuppliers, deleteSupplier, updateSupplier } from "slices/suppliers/t
 import { confirmDelete, alertMessage } from "helpers/swal";
 // Models
 import { ISupplier } from "common/models/supplier.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const selectSupplierState = (state: any) => state.Supplier;
 
@@ -34,11 +35,7 @@ const SupplierList = () => {
 
     const { suppliers, meta, loading } = useSelector(selectSupplierListViewModel);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        return Number(JSON.parse(authUser).company_id || 0);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 

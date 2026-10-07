@@ -320,6 +320,22 @@ export const getMetaOverview = (companyId: number, days = 28) =>
 export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 
+// Gestão por agências: as empresas onde a pessoa pode trabalhar (a própria e as geridas; o root vê todas).
+export const getWorkingCompanies = () => api.get(url.GET_COMPANIES);
+// Empresa gerida: a agência gestora; terminar a relação (só o admin da empresa); primeiro admin (a agência).
+export const getCompanyManagement = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/management`);
+export const endCompanyManagement = (companyId: number, reason?: string) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/management`, { data: { reason: reason || null } });
+export const inviteFirstAdmin = (companyId: number, data: { name: string; email: string }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/management/first-admin`, data);
+// Root: agências e agência gestora de cada empresa (com o histórico da relação).
+export const getAdminAgencies = () => api.get(url.GET_ADMIN + `/agencies`);
+export const getAdminCompanyManagement = (companyId: number) => api.get(url.GET_ADMIN + `/companies/${companyId}/management`);
+export const setAdminCompanyAgency = (companyId: number, enabled: boolean, notificationEmail?: string | null) =>
+    api.update(url.GET_ADMIN + `/companies/${companyId}/agency`, { enabled, notification_email: notificationEmail || null });
+export const setAdminCompanyManagement = (companyId: number, agencyCompanyId: number | null) =>
+    api.put(url.GET_ADMIN + `/companies/${companyId}/management`, { agency_company_id: agencyCompanyId });
+
 // XPLENDOR — PingWin (POS restauração). A senha é cifrada no backend e NUNCA
 // devolvida; o connect valida a ligação (login+logout) antes de gravar. Gated
 // por ensure_module:pingwin (403 se a empresa não tem o módulo). Scoped por company.

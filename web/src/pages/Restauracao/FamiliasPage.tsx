@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, Container, Row, Col, Spinner, Collapse } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { getPingwinFamilies, syncPingwinFamilies } from "helpers/laravel_helper";
 import { PingwinFamilyNode } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Famílias (Fase 1, só leitura). Árvore de famílias de
@@ -79,11 +80,7 @@ export default function FamiliasPage() {
     const isMobile = useIsMobile();
     const indent = isMobile ? 16 : 22; // indentação menor em mobile
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [tree, setTree] = useState<PingwinFamilyNode[]>([]);
     const [total, setTotal] = useState(0);

@@ -20,6 +20,7 @@ import {
 import { getLeadsPaginate } from "slices/thunks";
 import { updateLeadStatus } from "slices/leads/thunk";
 import { createSelector } from "reselect";
+import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const formatTimeDiff = (dateStr: string): string => {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -62,13 +63,12 @@ export default function LeadList() {
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
         if (authUser) {
-            const obj = JSON.parse(authUser);
 
             dispatch(
                 getLeadsPaginate({
                     page: pagination.pageIndex + 1,
                     perPage: pagination.pageSize,
-                    companyId: obj.company_id,
+                    companyId: getWorkingCompanyId(),
                 })
             );
         }

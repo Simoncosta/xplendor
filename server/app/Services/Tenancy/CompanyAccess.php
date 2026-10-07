@@ -52,6 +52,21 @@ class CompanyAccess
         return $this->kind($user, $companyId) === self::AGENCY;
     }
 
+    /**
+     * A agência edita os DADOS BÁSICOS (nome, logótipo, contactos, ramo) só das empresas
+     * que ela própria criou e enquanto o cliente não tem admin; havendo admin, só ele edita.
+     */
+    public function agencyEditsBasics(?User $user, int|string|null $companyId): bool
+    {
+        if (! $this->viaAgency($user, $companyId)) {
+            return false;
+        }
+        $m = $this->management((int) $companyId);
+
+        return $m !== null && $m->origin === CompanyManagement::ORIGIN_CREATED_BY_AGENCY
+            && ! User::where('company_id', (int) $companyId)->where('role', 'admin')->whereNull('deactivated_at')->exists();
+    }
+
     /** A relação ativa da empresa (ou null). */
     public function management(int $managedCompanyId): ?CompanyManagement
     {

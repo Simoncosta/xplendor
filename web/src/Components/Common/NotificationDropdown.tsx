@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Col, Dropdown, DropdownMenu, DropdownToggle, Row } from 'reactstrap';
 import { Link, useLocation } from 'react-router-dom';
 import classnames from 'classnames';
@@ -13,6 +13,7 @@ import {
     markCompanyAlertsReadApi,
 } from '../../helpers/laravel_helper';
 import { AlertItem } from '../../pages/Actions/types';
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 // O interceptor Axios (api_helper) desempacota `response.data`, portanto cada
 // chamada devolve directamente o body JSON. Tipamos esse body aqui (sem `any`).
@@ -38,13 +39,7 @@ const NotificationDropdown = () => {
     // não pode depender da lista (limitada a 12) senão mente acima de 12.
     const [unreadTotal, setUnreadTotal] = useState(0);
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-
-        if (!authUser) return 0;
-
-        return Number(JSON.parse(authUser).company_id || 0);
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const fetchAll = useCallback(async () => {
         if (!companyId) {

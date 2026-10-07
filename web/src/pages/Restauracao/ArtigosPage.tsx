@@ -9,6 +9,7 @@ import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import { getPingwinCatalog, syncPingwinCatalog } from "helpers/laravel_helper";
 import { PingwinCatalogItem, LaravelPaginator } from "common/models/pingwin.model";
+import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
  * XPLENDOR — Restauração › Artigos (Fase 1, só leitura). Catálogo de artigos
@@ -48,11 +49,7 @@ export default function ArtigosPage() {
     const openArticle = (a: PingwinCatalogItem) =>
         navigate(`/restauracao/artigos/${a.pingwin_id}`, { state: { catalogItemId: a.id } });
 
-    const companyId = useMemo(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return 0;
-        try { return Number(JSON.parse(authUser).company_id || 0); } catch { return 0; }
-    }, []);
+    const companyId = useWorkingCompanyId();
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinCatalogItem>, "data"> | null>(null);
