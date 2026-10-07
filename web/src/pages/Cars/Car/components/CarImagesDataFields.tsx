@@ -1,4 +1,4 @@
-import { Alert, Col, Row } from "reactstrap";
+import { Alert, Col, Row, Spinner } from "reactstrap";
 import { useFormikContext } from "formik";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
@@ -12,7 +12,7 @@ import FilePondPluginFileValidateSize from "filepond-plugin-file-validate-size";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 
 import type { ICarUpdatePayload } from "common/models/car.model";
-import XButton from "Components/Common/XButton";
+import ReasonButton from "Components/Common/ReasonButton";
 import ImageCropperModal from "Components/Common/ImageCropperModal";
 import type { CropArea } from "Components/Common/ImageCropperModal";
 import styles from "../../../../assets/scss/CarImagesDataFields.module.scss";
@@ -378,18 +378,20 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
                     <h5 className="card-title mb-1">Imagens da Viatura</h5>
                     <p className="text-muted mb-0 fs-13">{imagesCounterDescription}</p>
                 </div>
-                <XButton
+                <ReasonButton
                     type="button"
-                    variant="primary"
-                    soft
-                    rounded
-                    icon={<i className="ri-download-2-line" />}
-                    loading={isDownloadingZip}
-                    disabled={!hasAnyImagesForDownload || isDownloadingZip || !isEdit || Number(companyId) <= 0 || carId <= 0}
+                    color="outline-primary"
+                    disabled={isDownloadingZip}
+                    reason={!isEdit || Number(companyId) <= 0 || carId <= 0
+                        ? "Guarde a viatura primeiro para descarregar as fotos."
+                        : !hasAnyImagesForDownload
+                            ? "Esta viatura ainda não tem fotos."
+                            : null}
                     onClick={handleDownloadZip}
                 >
-                    {isDownloadingZip ? "A preparar download..." : "Descarregar fotos (.zip)"}
-                </XButton>
+                    {isDownloadingZip ? <Spinner size="sm" className="me-1" /> : <i className="ri-download-2-line me-1" />}
+                    {isDownloadingZip ? "A preparar download…" : "Descarregar fotos (.zip)"}
+                </ReasonButton>
             </div>
 
             <Row>

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import Select from "react-select";
 import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner, Table } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import ClientMark from "Components/Common/ClientMark";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import {
@@ -57,7 +57,7 @@ export default function AgencyPanelPage() {
     if (!agencyId) {
         return (
             <div className="page-content"><Container fluid>
-                <BreadCrumb title="Painel da agência" pageTitle="Agência" />
+                <PageHeader title="Painel da agência" />
                 <Card><CardBody className="text-muted">O Painel da agência está disponível no contexto da agência. Escolha a agência no seletor "A trabalhar em".</CardBody></Card>
             </Container></div>
         );
@@ -70,7 +70,7 @@ export default function AgencyPanelPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Painel da agência" pageTitle="Agência" />
+                <PageHeader title="Painel da agência" description="Por cliente, o que está para publicar, atrasado, à espera de aprovação e em produção." />
                 <Nav tabs className="nav-tabs-custom mb-3 flex-nowrap overflow-auto text-nowrap">
                     {tabs.map(([k, l, i]) => (
                         <NavItem key={k}><NavLink href="#" active={tab === k} onClick={(e) => { e.preventDefault(); setTab(k); }}><i className={`${i} me-1`} />{l}</NavLink></NavItem>
@@ -105,10 +105,10 @@ function ClientsTab({ agencyId }: { agencyId: number }) {
         <Card>
             <CardHeader className="d-flex flex-wrap align-items-center gap-2">
                 <div className="me-auto">
-                    <h5 className="mb-0">Clientes</h5>
+                    <h5 className="card-title mb-0">Clientes</h5>
                     <small className="text-muted">Clique num número para abrir a Linha Editorial desse cliente.</small>
                 </div>
-                <Link to="/editorial?cliente=todos" className="btn btn-soft-primary btn-sm"><i className="ri-calendar-2-line me-1" />Linha Editorial de todos</Link>
+                <Link to="/editorial?cliente=todos" className="btn btn-outline-primary btn-sm"><i className="ri-calendar-2-line me-1" />Linha Editorial de todos</Link>
             </CardHeader>
             <CardBody>
                 {rows.length === 0 ? (
@@ -198,7 +198,7 @@ function RequestsTab({ agencyId }: { agencyId: number }) {
         <Card>
             <CardHeader className="d-flex flex-wrap align-items-center gap-2">
                 <div className="me-auto">
-                    <h5 className="mb-0">Pedidos de nova empresa gerida</h5>
+                    <h5 className="card-title mb-0">Pedidos de nova empresa gerida</h5>
                     <small className="text-muted">A XPLENDOR aprova ou recusa cada pedido. Quando aprovado, a empresa aparece no seletor "A trabalhar em".</small>
                 </div>
                 {canRequest
@@ -285,7 +285,7 @@ function AssignmentsTab({ agencyId }: { agencyId: number }) {
     return (
         <Card>
             <CardHeader>
-                <h5 className="mb-0">Atribuições</h5>
+                <h5 className="card-title mb-0">Atribuições</h5>
                 <small className="text-muted">Por omissão toda a equipa vê todos os clientes. Pode limitar um cliente a pessoas escolhidas: quem não está atribuído deixa de o ver em todo o lado. Os administradores da agência veem sempre todos.</small>
             </CardHeader>
             <CardBody>
@@ -312,7 +312,7 @@ function AssignmentsTab({ agencyId }: { agencyId: number }) {
                                         ) : <span className="text-muted fs-13">Toda a equipa da agência vê este cliente.</span>}
                                     </Col>
                                     <Col md={1} className="text-md-end">
-                                        <Button color="soft-primary" size="sm" disabled={saving === r.company.id} onClick={() => save(r)}>{saving === r.company.id ? <Spinner size="sm" /> : "Guardar"}</Button>
+                                        <Button color="outline-primary" size="sm" disabled={saving === r.company.id} onClick={() => save(r)}>{saving === r.company.id ? <Spinner size="sm" /> : "Guardar"}</Button>
                                     </Col>
                                 </Row>
                                 {r.team_scope === "assigned" && r.member_ids.length === 0 && (

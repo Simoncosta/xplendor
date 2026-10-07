@@ -62,7 +62,7 @@ export default function XplendorChargesCard({ companyId, onChanged }: { companyI
                                 {c.refuse_note && <div className="text-danger fs-12 mt-1"><i className="ri-information-line me-1" />{c.refuse_note}</div>}
                             </div>
                             <Badge color={CHARGE_STATUS_META[c.status].color} className="fw-normal">{CHARGE_STATUS_META[c.status].label}</Badge>
-                            <Button size="sm" color="light" onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, c.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
+                            <Button size="sm" color="outline-primary" onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, c.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
                                 <i className="ri-file-pdf-2-line me-1" />Fatura
                             </Button>
                             {c.can_indicate_payment && <Button size="sm" color="success" onClick={() => setPaying(c)}><i className="ri-check-line me-1" />Já paguei</Button>}

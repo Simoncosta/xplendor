@@ -126,7 +126,7 @@ export default function QuickAddSupplierModal({
                     </ModalBody>
                     <ModalFooter>
                         <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                        <XButton variant="success" type="submit" disabled={saving} icon={saving ? <Spinner size="sm" /> : <i className="ri-check-line" />}>
+                        <XButton variant="primary" type="submit" disabled={saving} icon={saving ? <Spinner size="sm" /> : <i className="ri-check-line" />}>
                             Criar
                         </XButton>
                     </ModalFooter>

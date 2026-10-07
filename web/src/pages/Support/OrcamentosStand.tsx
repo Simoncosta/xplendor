@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
+import PageHeader from "Components/Common/PageHeader";
 import { getCompanyTicketQuotes, approveCompanyTicketQuotes } from "helpers/laravel_helper";
 import { ISupportTicket, ITicketQuotePipeline, QUOTE_STATUS_META, formatEuro } from "common/models/supportTicket.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -118,10 +119,8 @@ export default function OrcamentosStand() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3"><Col>
-                    <h4 className="mb-1"><i className="ri-money-euro-circle-line text-primary me-2" />Orçamentos</h4>
-                    <p className="text-muted mb-0">As alterações ao site orçadas. Seleciona as que queres avançar e aprova o pacote.</p>
-                </Col></Row>
+                <PageHeader title="Orçamentos" breadcrumbs={[{ label: "Equipa" }]}
+                    description="As alterações ao site orçadas. Selecione as que quer avançar e aprove o pacote." />
 
                 {/* Pipeline (cards+SUM, reaproveitando o padrão do sistema). */}
                 <Row className="g-3 mb-3">
@@ -141,7 +140,7 @@ export default function OrcamentosStand() {
                 {loading ? (
                     <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
                 ) : tickets.length === 0 ? (
-                    <Card><CardBody className="text-muted">Ainda não há orçamentos. Quando pedires uma alteração ao site e a XPLENDOR a orçar, aparece aqui.</CardBody></Card>
+                    <Card><CardBody className="text-muted">Ainda não há orçamentos. Quando pedir uma alteração ao site e a XPLENDOR a orçar, aparece aqui.</CardBody></Card>
                 ) : (
                     <>
                         <Card className="mb-3">
@@ -197,8 +196,8 @@ export default function OrcamentosStand() {
                     <ModalHeader toggle={() => !approving && setConfirmOpen(false)}>Confirmar aprovação</ModalHeader>
                     <ModalBody>
                         <Alert color="info" className="mb-0">
-                            Vais aprovar <strong>{sel.length}</strong> orçamento(s), no total de <strong>{formatEuro(totalAmount)}</strong> ({totalHours}h, sem IVA).
-                            A XPLENDOR avança com estes trabalhos. Confirmas?
+                            Vai aprovar <strong>{sel.length}</strong> orçamento(s), no total de <strong>{formatEuro(totalAmount)}</strong> ({totalHours}h, sem IVA).
+                            A XPLENDOR avança com estes trabalhos. Confirma?
                         </Alert>
                     </ModalBody>
                     <ModalFooter>

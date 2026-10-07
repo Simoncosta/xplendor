@@ -5,6 +5,8 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { useDispatch, useSelector } from "react-redux";
 // Components
 import XTanStackTable from "Components/Common/XTanStackTable";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import LeadStatusBadge from "./components/LeadStatusBadge";
 import LeadsFunnel from "./components/LeadsFunnel";
@@ -13,7 +15,6 @@ import {
     Container,
     Row,
     Card,
-    CardHeader,
     Col,
 } from "reactstrap";
 // Slices
@@ -103,7 +104,7 @@ export default function LeadList() {
                 return (
                     <div>
                         <h6 className="mb-0">{lead.name}</h6>
-                        <small className="text-muted d-block">{lead.phone || "—"}</small>
+                        <small className="text-muted d-block">{lead.phone || "Sem telefone"}</small>
                         <small className="text-muted">{lead.email}</small>
                     </div>
                 );
@@ -178,12 +179,14 @@ export default function LeadList() {
                 const phone = lead.phone?.replace(/\D/g, "");
 
                 return (
-                    <div className="d-flex gap-2">
-                        {phone && (
+                    <div className="d-flex gap-1">
+                        {phone ? (
                             <>
                                 <a
                                     href={`tel:${phone}`}
-                                    className="btn btn-sm btn-soft-primary"
+                                    className="btn btn-sm btn-outline-primary"
+                                    title="Ligar"
+                                    aria-label={`Ligar: ${lead.name}`}
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <i className="ri-phone-line" />
@@ -193,21 +196,28 @@ export default function LeadList() {
                                     href={`https://wa.me/${phone}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="btn btn-sm btn-soft-success"
+                                    className="btn btn-sm btn-outline-primary"
+                                    title="WhatsApp"
+                                    aria-label={`WhatsApp: ${lead.name}`}
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <i className="ri-whatsapp-line" />
                                 </a>
+                                <ActionsMenu size="sm" label={`Mais ações: ${lead.name}`} items={[
+                                    { label: "Enviar email", icon: "ri-mail-line", onClick: () => { window.location.href = `mailto:${lead.email}`; } },
+                                ]} />
                             </>
+                        ) : (
+                            <a
+                                href={`mailto:${lead.email}`}
+                                className="btn btn-sm btn-outline-primary"
+                                title="Enviar email"
+                                aria-label={`Enviar email: ${lead.name}`}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <i className="ri-mail-line" />
+                            </a>
                         )}
-
-                        <a
-                            href={`mailto:${lead.email}`}
-                            className="btn btn-sm btn-soft-secondary"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <i className="ri-mail-line" />
-                        </a>
                     </div>
                 );
             },
@@ -278,12 +288,13 @@ export default function LeadList() {
                     <span className="text-muted fs-12 text-truncate">
                         {formatTimeDiff(lead.created_at)} · {lead.channel} - {lead.utm_source}
                     </span>
-                    <div className="d-flex gap-2 flex-shrink-0">
-                        {phone && (
+                    <div className="d-flex gap-2 flex-shrink-0 align-items-center">
+                        {phone ? (
                             <>
                                 <a
                                     href={`tel:${phone}`}
-                                    className="btn btn-sm btn-soft-primary"
+                                    className="btn btn-sm btn-outline-primary"
+                                    aria-label={`Ligar: ${lead.name}`}
                                     style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                                 >
                                     <i className="ri-phone-line" />
@@ -292,20 +303,26 @@ export default function LeadList() {
                                     href={`https://wa.me/${phone}`}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="btn btn-sm btn-soft-success"
+                                    className="btn btn-sm btn-outline-primary"
+                                    aria-label={`WhatsApp: ${lead.name}`}
                                     style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                                 >
                                     <i className="ri-whatsapp-line" />
                                 </a>
+                                <ActionsMenu label={`Mais ações: ${lead.name}`} items={[
+                                    { label: "Enviar email", icon: "ri-mail-line", onClick: () => { window.location.href = `mailto:${lead.email}`; } },
+                                ]} />
                             </>
+                        ) : (
+                            <a
+                                href={`mailto:${lead.email}`}
+                                className="btn btn-sm btn-outline-primary"
+                                aria-label={`Enviar email: ${lead.name}`}
+                                style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                                <i className="ri-mail-line" />
+                            </a>
                         )}
-                        <a
-                            href={`mailto:${lead.email}`}
-                            className="btn btn-sm btn-soft-secondary"
-                            style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
-                        >
-                            <i className="ri-mail-line" />
-                        </a>
                     </div>
                 </div>
             </div>
@@ -317,24 +334,26 @@ export default function LeadList() {
     return (
         <div className="page-content">
             <Container fluid>
+                <PageHeader
+                    title="Leads"
+                    breadcrumbs={[{ label: "Comercial" }]}
+                    description="Os contactos interessados nas suas viaturas. Mude o estado de cada lead na lista ou arraste-a no funil."
+                    actions={
+                        <div className="xp-seg" role="tablist" aria-label="Vista">
+                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>
+                                <i className="ri-list-check me-1" />Lista
+                            </button>
+                            <button type="button" role="tab" aria-selected={view === "funnel"} className={view === "funnel" ? "on" : ""} onClick={() => setView("funnel")}>
+                                <i className="ri-layout-grid-line me-1" />Funil
+                            </button>
+                        </div>
+                    }
+                />
                 <Row>
                     <Col lg={12}>
                         <div>
                             <Card>
-                                <CardHeader className="border-0">
-                                    <div className="d-flex align-items-center">
-                                        <h5 className="card-title mb-0 flex-grow-1">Leads {view === "funnel" ? "— Funil" : ""}</h5>
-                                        <div className="btn-group" role="group" aria-label="Vista">
-                                            <button type="button" className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("list")}>
-                                                <i className="ri-list-check me-1" />Lista
-                                            </button>
-                                            <button type="button" className={"btn btn-sm " + (view === "funnel" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("funnel")}>
-                                                <i className="ri-layout-grid-line me-1" />Funil
-                                            </button>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <div className="card-body pt-2">
+                                <div className="card-body">
                                     {view === "funnel" ? (
                                         <LeadsFunnel />
                                     ) : (

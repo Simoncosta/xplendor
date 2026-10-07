@@ -1,6 +1,5 @@
 import { useState } from "react";
-import classNames from "classnames";
-import { Col, Nav, NavItem, Row } from "reactstrap";
+import { Col, Row } from "reactstrap";
 import MarketingTrafficDonutChart from "./MarketingTrafficDonutChart";
 import MarketingRoiSummaryCards from "./MarketingRoiSummaryCards";
 import MarketingRoiChannelTable from "./MarketingRoiChannelTable";
@@ -52,22 +51,14 @@ export default function MarketingWorkspaceTabs({ marketingPerformance, marketing
                 </div>
 
                 <div style={{ padding: "14px 16px 0 16px" }}>
-                    <Nav pills className="gap-2">
+                    <div className="xp-seg" role="tablist" aria-label="Área de marketing">
                         {tabs.map((tab) => (
-                            <NavItem key={tab.key}>
-                                <button
-                                    type="button"
-                                    onClick={() => setActiveTab(tab.key)}
-                                    className={classNames("btn btn-sm", {
-                                        "btn-primary": activeTab === tab.key,
-                                        "btn-light text-body": activeTab !== tab.key,
-                                    })}
-                                >
-                                    {tab.label}
-                                </button>
-                            </NavItem>
+                            <button key={tab.key} type="button" role="tab" aria-selected={activeTab === tab.key}
+                                className={activeTab === tab.key ? "on" : ""} onClick={() => setActiveTab(tab.key)}>
+                                {tab.label}
+                            </button>
                         ))}
-                    </Nav>
+                    </div>
                 </div>
 
                 <div style={{ padding: 16 }}>

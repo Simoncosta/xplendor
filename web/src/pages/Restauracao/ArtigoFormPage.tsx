@@ -19,6 +19,9 @@ import { useArticleReadPolling } from "./useArticleReadPolling";
 import { useSupplierPricesStaging } from "./useSupplierPricesStaging";
 import ArtigoComprasTab from "./ArtigoComprasTab";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import { confirmAction } from "helpers/swal";
 
 /**
  * XPLENDOR — Restauração › Artigo (criar / abrir / editar). Mesmo form nos 2 modos.
@@ -186,6 +189,8 @@ export default function ArtigoFormPage() {
             setLoading(false);
         })();
         return () => { alive = false; };
+        // Só recarrega quando muda o artigo/empresa (compras e location.state são lidos à carga).
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isCreate, companyId, pingwinId, read]);
 
     // Aviso do browser ao fechar/recarregar com alterações de fornecedores por gravar.
@@ -196,8 +201,12 @@ export default function ArtigoFormPage() {
     }, [compras.hasPending]);
 
     // Voltar à lista — confirma se houver alterações de fornecedores por gravar (perdem-se).
-    const goBack = useCallback(() => {
-        if (compras.hasPending && !window.confirm("Tens alterações de fornecedores por gravar. Sair mesmo assim?")) return;
+    const goBack = useCallback(async () => {
+        if (compras.hasPending && !(await confirmAction({
+            title: "Sair sem guardar?",
+            text: "Tem alterações de fornecedores por guardar. Se sair, perdem-se.",
+            confirmText: "Sair", icon: "warning",
+        }))) return;
         navigate("/restauracao/artigos");
     }, [compras.hasPending, navigate]);
 
@@ -272,7 +281,7 @@ export default function ArtigoFormPage() {
         }
 
         // EDITAR
-        if (!catId) { toast.error("Sem id local do artigo — recarrega a página e tenta de novo."); return; }
+        if (!catId) { toast.error("Sem id local do artigo. Recarregue a página e tente de novo."); return; }
         const payload: Record<string, any> = { confirm: true, ...md };
         // ⚠️ preço só se mudou (senão não se toca no preço).
         if (f.saleprice !== loaded.saleprice) { const c = eurToCents(f.saleprice); if (c !== null) payload.saleprice_cents = c; }
@@ -296,7 +305,7 @@ export default function ArtigoFormPage() {
 
     // ⚠️ ANULAR (DELETE definitivo). Usa o fallback do catalogItemId (state ?? backend).
     const onAnular = async () => {
-        if (!catId) { toast.error("Sem id local do artigo — recarrega a página e tenta de novo."); return; }
+        if (!catId) { toast.error("Sem id local do artigo. Recarregue a página e tente de novo."); return; }
         const r = await submit(() => deleteArticle(companyId, catId), (id) => getArticleDeletion(companyId, id));
         if (r.status === "ok") {
             setAnularOpen(false);
@@ -311,12 +320,20 @@ export default function ArtigoFormPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                    <div>
-                        <h4 className="mb-sm-0">{isCreate ? "Novo artigo" : "Editar artigo"}</h4>
-                        <small className="text-muted">{isCreate ? "Criar um artigo no PingWin." : "Alterar o artigo no PingWin (inclui o Estado)."}</small>
-                    </div>
-                </div>
+                <PageHeader
+                    title={isCreate ? "Novo artigo" : (f.description || "Editar artigo")}
+                    crumbLabel={isCreate ? "Novo artigo" : "Editar"}
+                    breadcrumbs={[{ label: "Restauração" }, { label: "Artigos", to: "/restauracao/artigos" }]}
+                    description={isCreate ? "Criar um artigo no PingWin." : "Alterar o artigo no PingWin (inclui o Estado)."}
+                    actions={!isCreate ? (
+                        <ActionsMenu label={`Mais ações: ${f.description || "artigo"}`} items={[
+                            {
+                                label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
+                                disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,
+                            },
+                        ]} />
+                    ) : undefined}
+                />
 
                 {loading ? (
                     <div className="text-center py-5 text-muted"><Spinner color="primary" className="me-2" /> A carregar do PingWin…</div>
@@ -325,7 +342,7 @@ export default function ArtigoFormPage() {
                         {created && (
                             <div className="alert alert-success d-flex align-items-center gap-2" role="alert">
                                 <i className="ri-checkbox-circle-line fs-5" />
-                                <div>Artigo criado no PingWin (código <strong>{created.code}</strong>). Podes continuar a ajustar ou voltar à lista.</div>
+                                <div>Artigo criado no PingWin (código <strong>{created.code}</strong>). Pode continuar a ajustar ou voltar à lista.</div>
                             </div>
                         )}
 
@@ -438,7 +455,7 @@ export default function ArtigoFormPage() {
                                     </TabPane>
 
                                     <TabPane tabId="unidades">
-                                        <p className="text-muted fs-13">Por defeito herdam a unidade base do cabeçalho; ajusta se precisares.</p>
+                                        <p className="text-muted fs-13">Por defeito herdam a unidade base do cabeçalho; ajuste se precisar.</p>
                                         <Row className="g-3">
                                             <Col md={4}><Label className="form-label">Stock</Label>
                                                 <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={baseUnitOptions} value={sel(baseUnitOptions, f.stock_unit_id)} onChange={(o: any) => { mark("stock_unit_id"); set("stock_unit_id", o?.value ?? ""); }} isSearchable placeholder="(usa a base)" /></Col>
@@ -467,27 +484,18 @@ export default function ArtigoFormPage() {
                         {compras.hasPending && (
                             <div className="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
                                 <i className="ri-error-warning-line fs-5" />
-                                <span>Tens alterações de fornecedores por gravar — clica em <strong>Salvar</strong> para as aplicar.</span>
+                                <span>Tem alterações de fornecedores por guardar. Clique em <strong>Guardar</strong> para as aplicar.</span>
                             </div>
                         )}
-                        <div className="d-flex justify-content-between gap-2 mt-3 mb-5">
-                            <div>
-                                {!isCreate && (
-                                    <Button type="button" color="outline-danger" onClick={() => setAnularOpen(true)} disabled={busy || loading}>
-                                        <i className="ri-delete-bin-line me-1" /> Anular
-                                    </Button>
-                                )}
-                            </div>
-                            <div className="d-flex gap-2">
-                                <Button type="submit" color="primary" disabled={busy}>
-                                    {busy
-                                        ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
-                                        : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Salvar"}</>}
-                                </Button>
-                                <Button type="button" color="light" onClick={goBack}>
-                                    <i className="ri-arrow-left-line me-1" /> Voltar
-                                </Button>
-                            </div>
+                        <div className="d-flex justify-content-end gap-2 mt-3 mb-5">
+                            <Button type="button" color="outline-primary" onClick={goBack}>
+                                <i className="ri-arrow-left-line me-1" /> Voltar
+                            </Button>
+                            <Button type="submit" color="primary" disabled={busy}>
+                                {busy
+                                    ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
+                                    : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}
+                            </Button>
                         </div>
                     </Form>
                 )}
@@ -497,15 +505,15 @@ export default function ArtigoFormPage() {
                     <ModalHeader toggle={() => !busy && setAnularOpen(false)}>Anular artigo</ModalHeader>
                     <ModalBody>
                         <p className="mb-2">
-                            Vais <strong>apagar definitivamente</strong> o artigo
+                            Vai <strong>apagar definitivamente</strong> o artigo
                             {f.code ? <> <strong>{f.code}</strong></> : null}
                             {f.description ? <> «{f.description}»</> : null} no PingWin.
-                            Esta ação <strong>não é reversível</strong> — no PingWin não há reativar um artigo apagado.
+                            Esta ação <strong>não é reversível</strong>: no PingWin não é possível reativar um artigo apagado.
                         </p>
                         <p className="text-muted fs-13 mb-0">
                             <i className="ri-information-line me-1" />
-                            Se só queres tirá-lo de circulação sem apagar, <strong>não anules</strong>: muda o
-                            <strong> Estado</strong> para <strong>Descontinuado</strong> e grava.
+                            Se só quer tirá-lo de circulação sem apagar, <strong>não o anule</strong>: mude o
+                            <strong> Estado</strong> para <strong>Descontinuado</strong> e guarde.
                         </p>
                     </ModalBody>
                     <ModalFooter>

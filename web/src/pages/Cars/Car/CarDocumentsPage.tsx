@@ -56,20 +56,15 @@ export default function CarDocumentsPage() {
     return (
         <div className="page-content">
             <Container fluid>
-                {carForHeader && specs && (
-                    <Row className="mb-2">
-                        <Col>
-                            <CarAnalyticsHeader
-                                car={carForHeader}
-                                ips={specs.header_meta.potential_score}
-                                ai={specs.header_meta.analyses?.analysis ?? null}
-                                aiMeta={specs.header_meta.analyses}
-                                fmtDate={fmtDate}
-                                ipsClassBadge={ipsClassBadge}
-                            />
-                        </Col>
-                    </Row>
-                )}
+                <CarAnalyticsHeader
+                    car={carForHeader}
+                    ips={specs?.header_meta.potential_score ?? null}
+                    ai={specs?.header_meta.analyses?.analysis ?? null}
+                    aiMeta={specs?.header_meta.analyses ?? null}
+                    fmtDate={fmtDate}
+                    ipsClassBadge={ipsClassBadge}
+                    section="Documentos"
+                />
 
                 <Row className="mb-3">
                     <Col>
@@ -92,7 +87,7 @@ export default function CarDocumentsPage() {
                         <CardBody className="text-center text-muted py-5">
                             <i className="ri-draft-line display-6 d-block mb-2" />
                             <h6 className="mb-1">Documentos indisponíveis em rascunho</h6>
-                            <p className="mb-0">Publica a viatura (deixa de ser rascunho) para gerar a ficha e os documentos de venda.</p>
+                            <p className="mb-0">Publique a viatura (deixa de ser rascunho) para gerar a ficha e os documentos de venda.</p>
                         </CardBody>
                     </Card>
                 )}

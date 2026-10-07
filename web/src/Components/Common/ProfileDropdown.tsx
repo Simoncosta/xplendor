@@ -13,7 +13,13 @@ const selectProfileUser = createSelector(
     (profileState) => profileState.data.user
 );
 
-const ProfileDropdown = () => {
+type Props = {
+    /** Tema atual e troca de tema: no telemóvel, o botão do tema vive neste menu. */
+    layoutMode?: string;
+    onChangeLayoutMode?: (mode: string) => void;
+};
+
+const ProfileDropdown = ({ layoutMode, onChangeLayoutMode }: Props) => {
     const user = useSelector(selectProfileUser);
 
     const [userId, setUserId] = useState(0);
@@ -51,7 +57,7 @@ const ProfileDropdown = () => {
                     </span>
                 </DropdownToggle>
                 <DropdownMenu className="dropdown-menu-end">
-                    <h6 className="dropdown-header">Bem vindo(a) {userName}!</h6>
+                    <h6 className="dropdown-header">Bem-vindo(a), {userName}!</h6>
                     <DropdownItem className='p-0'>
                         <Link to={`/companies/${companyId}`} className="dropdown-item">
                             <i className="bx bx-buildings text-muted fs-16 align-middle me-1"></i>
@@ -72,12 +78,18 @@ const ProfileDropdown = () => {
                             <span className="align-middle">Perfil da Marca</span>
                         </Link>
                     </DropdownItem>
+                    {onChangeLayoutMode && (
+                        <DropdownItem className="d-sm-none" data-testid="theme-toggle-menu" onClick={() => onChangeLayoutMode(layoutMode === "dark" ? "light" : "dark")}>
+                            <i className={`${layoutMode === "dark" ? "bx bx-sun" : "bx bx-moon"} text-muted fs-16 align-middle me-1`}></i>
+                            <span className="align-middle">{layoutMode === "dark" ? "Modo claro" : "Modo escuro"}</span>
+                        </DropdownItem>
+                    )}
                     <div className="dropdown-divider"></div>
                     <DropdownItem className='p-0'>
                         <Link to="/logout" className="dropdown-item">
                             <i
                                 className="mdi mdi-logout text-muted fs-16 align-middle me-1"></i> <span
-                                    className="align-middle" data-key="t-logout">Logout</span>
+                                    className="align-middle" data-key="t-logout">Terminar sessão</span>
                         </Link>
                     </DropdownItem>
                 </DropdownMenu>

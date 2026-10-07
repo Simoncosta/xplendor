@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Spinner } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 import { toast } from "react-toastify";
 // Components
 import XButton from "Components/Common/XButton";
@@ -62,7 +63,7 @@ export default function ImportSuggestedModal({ isOpen, toggle, companyId, existi
         try {
             const res: any = await dispatch(importSuggestedExpenseCategories({ companyId })).unwrap();
             const count = res?.data?.created_count ?? 0;
-            toast.success(count > 0 ? `${count} categorias importadas.` : "Já tens todas as categorias sugeridas.");
+            toast.success(count > 0 ? `${count} categorias importadas.` : "Já tem todas as categorias sugeridas.");
             onImported?.();
             toggle();
         } catch {
@@ -83,7 +84,7 @@ export default function ImportSuggestedModal({ isOpen, toggle, companyId, existi
                 ) : (
                     <>
                         <p className="text-muted mb-3">
-                            Vamos criar as categorias que ainda não tens. As que já existem ficam como estão (não são duplicadas).
+                            Vamos criar as categorias que ainda não tem. As que já existem ficam como estão (não são duplicadas).
                         </p>
                         <div className="d-flex flex-wrap gap-2">
                             {suggested.map((name) => {
@@ -92,7 +93,7 @@ export default function ImportSuggestedModal({ isOpen, toggle, companyId, existi
                                     <span
                                         key={name}
                                         className={`badge ${exists ? "bg-light text-muted" : "bg-primary-subtle text-primary"} fs-13 fw-normal`}
-                                        title={exists ? "Já existe — não será duplicada" : "Será criada"}
+                                        title={exists ? "Já existe, não será duplicada." : "Será criada"}
                                     >
                                         {!exists && <i className="ri-add-line align-middle me-1" />}
                                         {exists && <i className="ri-check-line align-middle me-1" />}
@@ -106,16 +107,16 @@ export default function ImportSuggestedModal({ isOpen, toggle, companyId, existi
             </ModalBody>
             <ModalFooter>
                 <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                <XButton
-                    variant="success"
+                <ReasonButton
+                    color="primary"
                     type="button"
-                    loading={importing}
-                    disabled={loading || missingCount === 0}
-                    icon={<i className="ri-download-2-line" />}
+                    disabled={loading || importing}
+                    reason={!loading && missingCount === 0 ? "Já tem todas as categorias sugeridas." : null}
                     onClick={handleConfirm}
                 >
+                    {importing ? <Spinner size="sm" className="me-1" /> : <i className="ri-download-2-line me-1" />}
                     {missingCount > 0 ? `Criar ${missingCount}` : "Nada a criar"}
-                </XButton>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

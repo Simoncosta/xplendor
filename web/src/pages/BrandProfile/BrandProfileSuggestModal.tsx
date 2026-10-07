@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Table } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 import { toast } from "react-toastify";
 import { dismissAiRequest, getBrandProfileSuggestion, getLatestAiRequest, requestBrandProfileSuggestion } from "helpers/laravel_helper";
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
@@ -165,9 +166,9 @@ export default function BrandProfileSuggestModal({ isOpen, toggle, companyId, cu
                     {data?.status === "done" && <Button color="light" onClick={dismiss}>Descartar</Button>}
                     <Button color="light" onClick={toggle}>Fechar</Button>
                     {data?.status === "done" && fields.length > 0 && (
-                        <Button color="primary" onClick={apply} disabled={chosen === 0}>
+                        <ReasonButton color="primary" onClick={apply} reason={chosen === 0 ? "Escolha pelo menos um campo." : null}>
                             Aplicar {chosen === 1 ? "1 campo" : `${chosen} campos`} ao formulário
-                        </Button>
+                        </ReasonButton>
                     )}
                 </div>
             </ModalFooter>

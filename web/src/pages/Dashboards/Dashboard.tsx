@@ -24,6 +24,7 @@ import type { SalesRevenueGranularity } from "../../types/api";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getWorkingCompany } from "helpers/workingCompany";
 import XplendorChargesNotice from "pages/Charges/XplendorChargesNotice";
+import PageHeader from "Components/Common/PageHeader";
 
 // Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
 // true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
@@ -236,6 +237,7 @@ const ClientDashboard = () => {
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
+                    <PageHeader title="Dashboard" />
                     <CarDashboardTabs />
                 </Container>
             </div>

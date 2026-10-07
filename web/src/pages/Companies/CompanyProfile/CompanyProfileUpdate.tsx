@@ -46,7 +46,7 @@ export default function CompanyProfileUpdate() {
     document.title = "Perfil da Empresa | Xplendor";
 
     const { company, loadingShow } = useSelector(selectCompanyProfileViewModel);
-    const { carmine, loading } = useSelector(selectCarmineProfileViewModel);
+    const { carmine } = useSelector(selectCarmineProfileViewModel);
 
     useEffect(() => {
         dispatch(showCompany(Number(id)));

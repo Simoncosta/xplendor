@@ -11,6 +11,7 @@ import XInputTextarea from "Components/Common/XInputTextarea";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import XButton from "Components/Common/XButton";
 import AddressFields from "Components/Common/AddressFields";
+import XSelect from "pages/Editorial/XSelect";
 // Redux
 import { createCustomer, updateCustomer } from "slices/customers/thunk";
 // Models
@@ -116,11 +117,9 @@ export default function CustomerFormModal({ isOpen, toggle, customer, companyId,
                             <Col lg={3}><XInput name="profession" label="Profissão" placeholder="Ex.: Motorista" /></Col>
                             <Col lg={3}>
                                 <Label className="form-label" htmlFor="marital_status">Estado civil</Label>
-                                <Input type="select" id="marital_status" value={formik.values.marital_status ?? ""}
-                                    onChange={(e) => formik.setFieldValue("marital_status", e.target.value || null)}>
-                                    <option value="">—</option>
-                                    {MARITAL_STATUS_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                                </Input>
+                                <XSelect id="marital_status" value={formik.values.marital_status ?? ""}
+                                    onChange={(v) => formik.setFieldValue("marital_status", v || null)}
+                                    options={[{ value: "", label: "Não indicado" }, ...MARITAL_STATUS_OPTIONS.map((o) => ({ value: o, label: o }))]} />
                             </Col>
                         </Row>
 
@@ -137,7 +136,7 @@ export default function CustomerFormModal({ isOpen, toggle, customer, companyId,
                     </ModalBody>
                     <ModalFooter>
                         <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                        <XButton variant="success" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
+                        <XButton variant="primary" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
                             {isEdit ? "Guardar" : "Criar"}
                         </XButton>
                     </ModalFooter>

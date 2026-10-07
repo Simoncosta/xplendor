@@ -7,6 +7,7 @@ import * as Yup from "yup";
 import { toast } from "react-toastify";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 // Components
 import XInput from "Components/Common/XInput";
 import XInputTextarea from "Components/Common/XInputTextarea";
@@ -52,7 +53,7 @@ const todayStr = () => new Date().toISOString().slice(0, 10);
 const SELECT_PORTAL = {
     menuPortalTarget: typeof document !== "undefined" ? document.body : undefined,
     menuPosition: "fixed" as const,
-    styles: { menuPortal: (base: any) => ({ ...base, zIndex: 9999 }) },
+    styles: reactSelectTheme,
 };
 
 export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, fixedCarId, carOptions = [], onSaved }: ExpenseFormModalProps) {
@@ -248,7 +249,7 @@ export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, f
                         </ModalBody>
                         <ModalFooter>
                             <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                            <XButton variant="success" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
+                            <XButton variant="primary" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
                                 {isEdit ? "Guardar" : "Criar"}
                             </XButton>
                         </ModalFooter>

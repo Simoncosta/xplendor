@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Card, Container, Row, Col, Spinner } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner } from "reactstrap";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
+import PageHeader from "Components/Common/PageHeader";
 import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
 import { OcrInvoiceListRow, OcrInvoiceStatus } from "common/models/ocr.model";
 import { LaravelPaginator } from "common/models/pingwin.model";
@@ -78,7 +79,7 @@ export default function FaturasPage() {
         setUploading(true);
         try {
             await uploadOcrInvoice(companyId, file);
-            toast.info("A ler a fatura… vais ser notificado no sino quando terminar.");
+            toast.info("A ler a fatura… será notificado no sino quando terminar.");
             setPage(1);
             await fetchRows();
         } catch (err: any) {
@@ -101,25 +102,20 @@ export default function FaturasPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Faturas</h4>
-                                <small className="text-muted">
-                                    Lê faturas de fornecedor com IA e valida-as. Não são enviadas ao PingWin.
-                                    {cap && <> · {cap.used}/{cap.cap} este mês</>}
-                                </small>
-                            </div>
-                            <div>
-                                <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
-                                <button className="btn btn-primary" onClick={onPickFile} disabled={uploading}>
-                                    {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Faturas"
+                    breadcrumbs={[{ label: "Restauração" }]}
+                    description={<>
+                        Faturas de fornecedor lidas com IA, para validar. Não são enviadas ao PingWin.
+                        {cap && <> · {cap.used}/{cap.cap} este mês</>}
+                    </>}
+                    actions={<>
+                        <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
+                        <Button color="primary" onClick={onPickFile} disabled={uploading}>
+                            {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
+                        </Button>
+                    </>}
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -131,7 +127,7 @@ export default function FaturasPage() {
                             {isMobile ? (
                                 <div className="p-3 d-flex flex-column gap-2">
                                     {!loading && rows.length === 0 ? (
-                                        <div className="text-center text-muted py-4">Sem faturas. Usa <strong>“Carregar fatura”</strong>.</div>
+                                        <div className="text-center text-muted py-4">Sem faturas. Use <strong>“Carregar fatura”</strong>.</div>
                                     ) : rows.map((r) => (
                                         <div key={r.id} role="button" onClick={() => goTo(r)}
                                             style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)", cursor: "pointer" }}>
@@ -165,7 +161,7 @@ export default function FaturasPage() {
                                         </thead>
                                         <tbody>
                                             {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={7} className="text-center text-muted py-4">Sem faturas. Usa <strong>“Carregar fatura”</strong>.</td></tr>
+                                                <tr><td colSpan={7} className="text-center text-muted py-4">Sem faturas. Use <strong>“Carregar fatura”</strong>.</td></tr>
                                             ) : rows.map((r) => (
                                                 <tr key={r.id}>
                                                     <td className="fw-medium">{r.supplier_name || <span className="text-muted">Por identificar</span>}</td>
@@ -175,7 +171,7 @@ export default function FaturasPage() {
                                                     <td className="text-center">{r.confidence ? `${r.confidence}%` : "—"}</td>
                                                     <td className="text-center"><StatusBadge s={r.status} /></td>
                                                     <td className="text-end">
-                                                        <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-soft-primary">
+                                                        <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-outline-primary">
                                                             {r.status === "validada" ? <><i className="ri-eye-line me-1" />Ver</> : <><i className="ri-check-double-line me-1" />Validar</>}
                                                         </Link>
                                                     </td>

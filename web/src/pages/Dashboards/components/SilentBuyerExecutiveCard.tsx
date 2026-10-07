@@ -41,7 +41,7 @@ export default function SilentBuyerExecutiveCard({ summary }: Props) {
                     </div>
                     <Link
                         to={targetCar ? `/cars/${targetCar.car_id}/marketing` : "/cars"}
-                        className="btn btn-soft-success btn-sm"
+                        className="btn btn-outline-primary btn-sm"
                     >
                         <i className="ri-whatsapp-line me-1" />
                         Ativar WhatsApp

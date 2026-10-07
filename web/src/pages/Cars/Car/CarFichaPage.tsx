@@ -104,18 +104,15 @@ export default function CarFichaPage() {
             <ToastContainer />
             <Container fluid>
 
-                <Row className="mb-2">
-                    <Col>
-                        <CarAnalyticsHeader
-                            car={carForHeader}
-                            ips={specs.header_meta.potential_score}
-                            ai={specs.header_meta.analyses?.analysis ?? null}
-                            aiMeta={specs.header_meta.analyses}
-                            fmtDate={fmtDate}
-                            ipsClassBadge={ipsClassBadge}
-                        />
-                    </Col>
-                </Row>
+                <CarAnalyticsHeader
+                    car={carForHeader}
+                    ips={specs.header_meta.potential_score}
+                    ai={specs.header_meta.analyses?.analysis ?? null}
+                    aiMeta={specs.header_meta.analyses}
+                    fmtDate={fmtDate}
+                    ipsClassBadge={ipsClassBadge}
+                    section="Ficha"
+                />
 
                 <Row className="mb-3">
                     <Col>

@@ -130,13 +130,13 @@ export function MotorhomeEmptyState({
                         href={aggregate.search_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn btn-sm btn-soft-primary"
+                        className="btn btn-sm btn-outline-primary"
                     >
                         <i className="ri-external-link-line align-bottom me-1" />
                         Ver no StandVirtual
                     </a>
                 )}
-                <button className="btn btn-sm btn-soft-secondary" onClick={onRefresh} disabled={refreshing}>
+                <button type="button" className="btn btn-sm btn-outline-primary" onClick={onRefresh} disabled={refreshing}>
                     {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
                 </button>
             </div>
@@ -163,7 +163,7 @@ export function MotorhomeErrorState({
                     Ocorreu um erro técnico ao calcular o preço de mercado.
                 </p>
                 <p className="mb-0 fs-12">
-                    Não é um problema com os dados desta autocaravana. Tenta novamente dentro de momentos.
+                    Não é um problema com os dados desta autocaravana. Tente novamente dentro de momentos.
                 </p>
                 {userRole === "root" && (
                     <p className="fs-12 mb-0 mt-1">
@@ -171,7 +171,7 @@ export function MotorhomeErrorState({
                     </p>
                 )}
             </Alert>
-            <button className="btn btn-sm btn-soft-secondary" onClick={onRefresh} disabled={refreshing}>
+            <button type="button" className="btn btn-sm btn-outline-primary" onClick={onRefresh} disabled={refreshing}>
                 {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
             </button>
         </div>
@@ -202,7 +202,7 @@ export function MotorhomeSuccessBody({
                 <Alert color="warning" className="fs-13 d-flex align-items-start gap-2">
                     <i className="ri-error-warning-line fs-16 mt-1" />
                     <span>
-                        Valor indicativo — apenas {n} {n === 1 ? "anúncio comparável" : "anúncios comparáveis"} nesta
+                        Valor indicativo: apenas {n} {n === 1 ? "anúncio comparável" : "anúncios comparáveis"} nesta
                         janela. Interpretar com precaução.
                     </span>
                 </Alert>
@@ -242,7 +242,7 @@ export function MotorhomeSuccessBody({
             {/* Selo tipologia + toggle detalhe */}
             <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap pt-2 border-top">
                 <TypologySeal />
-                <button className="btn btn-soft-secondary btn-sm" onClick={onToggleComparables}>
+                <button type="button" className="btn btn-outline-primary btn-sm" onClick={onToggleComparables}>
                     <i className={`align-bottom me-1 ${showComparables ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}`} />
                     {showComparables ? "Ocultar detalhe" : "Ver detalhe"}
                 </button>
@@ -274,7 +274,7 @@ function MotorhomeDetail({
                 <div className="mb-3">
                     <span className="text-muted fs-12 d-block mb-1">Banda central de preços</span>
                     <div className="fw-semibold fs-14 text-body">
-                        {formatCurrency(p25)} — {formatCurrency(p75)}
+                        {formatCurrency(p25)} a {formatCurrency(p75)}
                     </div>
                     <span className="text-muted fs-11">
                         Metade dos anúncios cai dentro desta banda (percentis 25–75).
@@ -361,7 +361,7 @@ function MotorhomeComparablesList({
                                     {simPct !== null ? (
                                         <span
                                             className="badge bg-light text-muted"
-                                            title="Grau de semelhança com a tua autocaravana (ano, cilindrada, dormidas)"
+                                            title="Grau de semelhança com a sua autocaravana (ano, cilindrada, dormidas)"
                                         >
                                             {simPct}%
                                         </span>

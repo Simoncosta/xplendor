@@ -76,7 +76,7 @@ export default function CarUpdate() {
                         toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     } catch (error) {
                         setValidationErrors(parseApiValidationErrors(error));
-                        showApiErrorToast(error, "Erro ao actualizar viatura.");
+                        showApiErrorToast(error, "Erro ao atualizar viatura.");
                     }
                 }}
                 onSubmitDraft={async (values: any) => {
@@ -91,7 +91,7 @@ export default function CarUpdate() {
 
                     try {
                         await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
-                        toast("Rascunho guardado. Podes continuar mais tarde.", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                        toast("Rascunho guardado. Pode continuar mais tarde.", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     } catch (error) {
                         setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao guardar rascunho.");

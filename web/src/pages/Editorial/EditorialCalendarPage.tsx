@@ -3,14 +3,14 @@ import {
     Card, CardBody, CardHeader, Container, Row, Col, Spinner, Button,
     Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGroup, Label, Input,
     Offcanvas, OffcanvasHeader, OffcanvasBody, Tooltip,
-    UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem,
 } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
 import ptLocale from "@fullcalendar/core/locales/pt";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import {
     getEditorialCalendar, setEditorialSector, openEditorialMonth, closeEditorialMonth,
     hideEditorialAnchor, showEditorialAnchor, createEditorialOwnAnchor, deleteEditorialOwnAnchor,
@@ -31,6 +31,7 @@ import MonthResults from "./MonthResults";
 import "./editorial.css";
 import { BLOG_STATUS_STAGE, FormatTable, STAGE_META, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { confirmAction } from "helpers/swal";
 
 // O diagrama (React Flow) só é carregado quando o "Como funciona" abre.
 const HowItWorksModal = lazy(() => import("./HowItWorksModal"));
@@ -396,7 +397,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Linha Editorial" pageTitle="Marketing" />
+                <PageHeader title="Linha Editorial" breadcrumbs={[{ label: "Marketing" }]} />
 
                 {clientFilter && (loading || hasSector === false) && <div className="d-flex justify-content-end mb-3">{clientFilter}</div>}
                 {loading ? (
@@ -409,7 +410,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                     <Card>
                         <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                             <div className="me-auto">
-                                <h5 className="mb-0 d-flex align-items-center gap-1">
+                                <h5 className="card-title mb-0 d-flex align-items-center gap-1">
                                     Linha Editorial
                                     <button type="button" className="btn btn-link btn-sm p-0 lh-1 text-muted" aria-label="Como funciona" title="Como funciona" onClick={() => setHowOpen(true)}>
                                         <i className="ri-question-line fs-18" />
@@ -426,17 +427,14 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                 {canProduce && (newPostReason
                                     ? reasonButton("new", newPostReason, <><i className="ri-add-line me-1" />Nova publicação</>, "primary")
                                     : <Button color="primary" size="sm" onClick={() => newPost()}><i className="ri-add-line me-1" />Nova publicação</Button>)}
-                                <UncontrolledDropdown>
-                                    <DropdownToggle color="light" size="sm" aria-label="Mais ações"><i className="ri-more-2-fill me-1" />Mais</DropdownToggle>
-                                    <DropdownMenu end>
-                                        <DropdownItem onClick={() => setReviewOpen(true)}><i className="ri-links-line me-2" />Aprovação por link</DropdownItem>
-                                        {selected && monthIsOpen && <DropdownItem onClick={openCreate}><i className="ri-calendar-event-line me-2" />Âncora própria</DropdownItem>}
-                                        {selected?.can_close && <DropdownItem disabled={acting} onClick={() => doClose(selected)}><i className="ri-lock-2-line me-2" />Fechar {monthLabel(selected.month_key)}</DropdownItem>}
-                                        <DropdownItem divider />
-                                        <DropdownItem onClick={() => setLegendOpen(true)}><i className="ri-palette-line me-2" />Legenda das etapas</DropdownItem>
-                                        <DropdownItem onClick={() => setHowOpen(true)}><i className="ri-question-line me-2" />Como funciona</DropdownItem>
-                                    </DropdownMenu>
-                                </UncontrolledDropdown>
+                                <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
+                                    { label: "Aprovação por link", icon: "ri-links-line", onClick: () => setReviewOpen(true) },
+                                    { label: "Âncora própria", icon: "ri-calendar-event-line", onClick: openCreate, hidden: !(selected && monthIsOpen) },
+                                    { label: selected ? `Fechar ${monthLabel(selected.month_key)}` : "Fechar o mês", icon: "ri-lock-2-line", hidden: !selected?.can_close,
+                                        disabledReason: acting ? "A processar o mês." : null, onClick: () => { if (selected) doClose(selected); } },
+                                    { label: "Legenda das etapas", icon: "ri-palette-line", onClick: () => setLegendOpen(true) },
+                                    { label: "Como funciona", icon: "ri-question-line", onClick: () => setHowOpen(true) },
+                                ]} />
                             </div>
                         </CardHeader>
 
@@ -452,9 +450,9 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                 </div>
                                 {selectedKey && (
                                     <div className="d-flex flex-wrap align-items-center gap-1 ms-md-auto" style={{ maxWidth: "100%" }}>
-                                        <Button color="light" size="sm" aria-label="Mês anterior" disabled={!!minKey && selectedKey <= minKey} onClick={() => goMonth(shiftKey(selectedKey, -1))}><i className="ri-arrow-left-s-line" /></Button>
+                                        <Button color="outline-primary" size="sm" aria-label="Mês anterior" className={!!minKey && selectedKey <= minKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, -1))}><i className="ri-arrow-left-s-line" /></Button>
                                         <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={selectedKey} onChange={goMonth} /></div>
-                                        <Button color="light" size="sm" aria-label="Mês seguinte" disabled={!!maxKey && selectedKey >= maxKey} onClick={() => goMonth(shiftKey(selectedKey, 1))}><i className="ri-arrow-right-s-line" /></Button>
+                                        <Button color="outline-primary" size="sm" aria-label="Mês seguinte" className={!!maxKey && selectedKey >= maxKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, 1))}><i className="ri-arrow-right-s-line" /></Button>
                                         {selected ? (monthIsOpen
                                             ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
                                             : selected.can_open && canProduce
@@ -550,9 +548,9 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                 <div className="d-flex flex-wrap gap-2">
                                     {canProduce && open && <Button color="primary" size="sm" onClick={() => { setPanelAnchor(null); newPost(date); }}><i className="ri-add-line me-1" />Publicação nesta data</Button>}
                                     {open ? (
-                                        panelAnchor.owned ? <Button color="soft-danger" size="sm" disabled={working} onClick={() => onDeleteAnchor(panelAnchor)}><i className="ri-delete-bin-line me-1" />Apagar âncora</Button>
-                                            : panelAnchor.hidden ? <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onShow(panelAnchor)}><i className="ri-eye-line me-1" />Mostrar</Button>
-                                                : <Button color="soft-secondary" size="sm" disabled={working} onClick={() => onHide(panelAnchor)}><i className="ri-eye-off-line me-1" />Esconder</Button>
+                                        panelAnchor.owned ? <ActionsMenu size="sm" label="Mais ações da âncora" disabled={working} items={[{ label: "Apagar âncora", icon: "ri-delete-bin-line", danger: true, onClick: async () => { if (await confirmAction({ title: `Apagar a âncora "${panelAnchor.title}"?`, text: "Esta ação não se desfaz.", confirmText: "Apagar", icon: "warning", confirmVariant: "danger" })) onDeleteAnchor(panelAnchor); } }]} />
+                                            : panelAnchor.hidden ? <Button color="outline-primary" size="sm" disabled={working} onClick={() => onShow(panelAnchor)}><i className="ri-eye-line me-1" />Mostrar</Button>
+                                                : <Button color="outline-primary" size="sm" disabled={working} onClick={() => onHide(panelAnchor)}><i className="ri-eye-off-line me-1" />Esconder</Button>
                                     ) : <span className="text-muted fs-13"><i className="ri-lock-2-line me-1" />Mês fechado</span>}
                                 </div>
                             </div>
@@ -579,7 +577,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setCascade(null)}>Cancelar</Button>
-                    <Button color="danger" onClick={() => cascade && performClose(cascade)}><i className="ri-lock-2-line me-1" />Fechar estes meses</Button>
+                    <Button color="primary" onClick={() => cascade && performClose(cascade)}><i className="ri-lock-2-line me-1" />Fechar estes meses</Button>
                 </ModalFooter>
             </Modal>
 

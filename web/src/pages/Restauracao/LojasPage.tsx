@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import { confirmAction } from "helpers/swal";
 import {
     getPingwinLocations, createPingwinLocation, updatePingwinLocation, deletePingwinLocation, syncCoverManager, syncRestaurantPeriod, getCoverManager,
 } from "helpers/laravel_helper";
@@ -110,7 +114,7 @@ export default function LojasPage() {
                 toast.success("Loja atualizada.");
             } else {
                 await createPingwinLocation(companyId, payload);
-                toast.success("Loja cadastrada.");
+                toast.success("Loja adicionada.");
             }
             setModalOpen(false);
             await fetchRows();
@@ -128,20 +132,20 @@ export default function LojasPage() {
     // ⚠️ FUSÃO SÓ VISUAL: um botão/modal, mas por baixo continuam as DUAS funções de
     // backend. Uma data (até vazio) → syncCoverManager (1 dia). Duas datas → syncRestaurantPeriod.
     const runSync = async () => {
-        if (!companyId || !periodFrom) { toast.error("Escolhe pelo menos uma data."); return; }
+        if (!companyId || !periodFrom) { toast.error("Escolha pelo menos uma data."); return; }
         if (periodTo && periodTo < periodFrom) { toast.error("A data final não pode ser anterior à inicial."); return; }
         try {
             if (!periodTo) {
                 setSyncingReservs(true);
                 const res: any = await syncCoverManager(companyId, periodFrom); // 1 dia (todas as lojas)
                 const d = res?.data;
-                toast.success(`Reservas sincronizadas (${d?.synced ?? 0} loja(s))${d?.failed?.length ? ` — falhou: ${d.failed.join(", ")}` : ""}.`);
+                toast.success(`Reservas sincronizadas (${d?.synced ?? 0} loja(s)).${d?.failed?.length ? ` Falhou: ${d.failed.join(", ")}.` : ""}`);
                 await fetchRows();
             } else {
                 setSyncingPeriod(true);
                 const res: any = await syncRestaurantPeriod(companyId, periodFrom, periodTo); // período (1 job/dia)
                 const d = res?.data;
-                toast.info(`A importar ${d?.days ?? ""} dia(s) (${periodFrom} a ${periodTo})… serás notificado no sino quando terminar.`);
+                toast.info(`A importar ${d?.days ?? ""} dia(s) (${periodFrom} a ${periodTo})… será notificado no sino quando terminar.`);
             }
             setSyncOpen(false);
         } catch (e: any) {
@@ -153,7 +157,11 @@ export default function LojasPage() {
     };
 
     const remove = async (loc: PingwinLocationEntity) => {
-        if (!window.confirm(`Remover a loja "${loc.display_name || loc.winrest_store_id}"?`)) return;
+        const ok = await confirmAction({
+            title: `Remover a loja "${loc.display_name || loc.winrest_store_id}"?`,
+            text: "Esta ação não se desfaz.", confirmText: "Remover", icon: "warning", confirmVariant: "danger",
+        });
+        if (!ok) return;
         try {
             await deletePingwinLocation(companyId, loc.id);
             toast.success("Loja removida.");
@@ -163,26 +171,33 @@ export default function LojasPage() {
         }
     };
 
+    const locName = (loc: PingwinLocationEntity) => loc.display_name || loc.winrest_name || loc.winrest_store_id;
+    const rowActions = (loc: PingwinLocationEntity) => (
+        <>
+            <Button size="sm" color="outline-primary" onClick={() => openEdit(loc)} aria-label={`Editar ${locName(loc)}`}><i className="ri-pencil-line" /></Button>
+            <ActionsMenu size="sm" label={`Mais ações: ${locName(loc)}`} items={[
+                { label: "Remover", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(loc) },
+            ]} />
+        </>
+    );
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                {/* Cabeçalho (padrão do sistema) + ação principal. */}
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 className="mb-sm-0">Lojas</h4>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={openSync} disabled={syncBusy}>
-                                    {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
-                                </button>
-                                <button className="btn btn-primary" onClick={openAdd}>
-                                    <i className="ri-add-line me-1" /> Adicionar loja
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Lojas"
+                    breadcrumbs={[{ label: "Restauração" }]}
+                    description="As lojas da empresa e a última sincronização de reservas de cada uma."
+                    actions={<>
+                        <Button color="outline-primary" onClick={openSync} disabled={syncBusy}>
+                            {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
+                        </Button>
+                        <Button color="primary" onClick={openAdd}>
+                            <i className="ri-add-line me-1" /> Adicionar loja
+                        </Button>
+                    </>}
+                />
 
                 {/* Tabela limpa (só lista + ações). */}
                 <Row className="g-3 pb-5 mb-5">
@@ -195,7 +210,7 @@ export default function LojasPage() {
                             {isMobile ? (
                                 <div className="p-3 d-flex flex-column gap-2">
                                     {!loading && rows.length === 0 ? (
-                                        <div className="text-center text-muted py-4">Sem lojas. Usa <strong>“Adicionar loja”</strong>.</div>
+                                        <div className="text-center text-muted py-4">Sem lojas. Use <strong>“Adicionar loja”</strong>.</div>
                                     ) : rows.map((loc) => (
                                         <div key={loc.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }}>
                                             <div className="d-flex align-items-start justify-content-between gap-2">
@@ -204,8 +219,7 @@ export default function LojasPage() {
                                                     <div className="text-muted fs-12 text-break">ID: {loc.winrest_store_id}</div>
                                                 </div>
                                                 <div className="d-flex gap-1 flex-shrink-0">
-                                                    <button className="btn btn-sm btn-soft-primary" onClick={() => openEdit(loc)}><i className="ri-pencil-line" /></button>
-                                                    <button className="btn btn-sm btn-soft-danger" onClick={() => remove(loc)}><i className="ri-delete-bin-line" /></button>
+                                                    {rowActions(loc)}
                                                 </div>
                                             </div>
                                             <div className="d-flex flex-wrap align-items-center gap-1 mt-2">
@@ -237,7 +251,7 @@ export default function LojasPage() {
                                         </thead>
                                         <tbody>
                                             {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={8} className="text-center text-muted py-4">Sem lojas. Usa <strong>“Adicionar loja”</strong>.</td></tr>
+                                                <tr><td colSpan={8} className="text-center text-muted py-4">Sem lojas. Use <strong>“Adicionar loja”</strong>.</td></tr>
                                             ) : rows.map((loc) => (
                                                 <tr key={loc.id}>
                                                     <td className="fw-medium text-break" style={{ maxWidth: 180 }}>{loc.winrest_store_id}</td>
@@ -250,8 +264,7 @@ export default function LojasPage() {
                                                     <td>{loc.cm_connected ? <span className="badge bg-success-subtle text-success">CoverManager</span> : <span className="badge bg-secondary-subtle text-secondary">—</span>}</td>
                                                     <td className="text-muted fs-12">{fmtDateTime(loc.cm_last_synced_at)}</td>
                                                     <td className="text-end">
-                                                        <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(loc)}><i className="ri-pencil-line" /></button>
-                                                        <button className="btn btn-sm btn-soft-danger" onClick={() => remove(loc)}><i className="ri-delete-bin-line" /></button>
+                                                        <div className="d-inline-flex gap-1">{rowActions(loc)}</div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -296,7 +309,7 @@ export default function LojasPage() {
                         {!cmIntegrationConnected ? (
                             <div className="alert alert-warning py-2 px-3 fs-12 mb-0" role="alert">
                                 <i className="ri-information-line me-1" />
-                                Liga o <strong>CoverManager</strong> na empresa primeiro (Integrações) para configurar o slug das lojas.
+                                Ligue primeiro o <strong>CoverManager</strong> na empresa (Integrações) para configurar o slug das lojas.
                             </div>
                         ) : (
                             <Row className="g-2">
@@ -305,7 +318,7 @@ export default function LojasPage() {
                                     <input className="form-control" value={form.cm_slug} onChange={(e) => setField("cm_slug", e.target.value)} placeholder="ex.: yuko-baixa" disabled={saving} />
                                 </Col>
                                 <Col md={6}>
-                                    <label className="form-label fs-12 mb-1">Token da loja (override — opcional)</label>
+                                    <label className="form-label fs-12 mb-1">Token da loja (override, opcional)</label>
                                     <input type="password" className="form-control" value={form.cm_token} onChange={(e) => setField("cm_token", e.target.value)}
                                         placeholder={editingId ? "•••••••• (em branco = usar o da empresa)" : "vazio = usar o token da empresa"} autoComplete="new-password" disabled={saving} />
                                     <div className="form-text fs-11">Vazio → usa o token da empresa. O token guardado não é mostrado.</div>
@@ -314,10 +327,10 @@ export default function LojasPage() {
                         )}
                     </ModalBody>
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={submit} disabled={saving}>
+                        <Button color="light" onClick={() => setModalOpen(false)} disabled={saving}>Cancelar</Button>
+                        <Button color="primary" onClick={submit} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : (editingId ? <><i className="ri-save-line me-1" /> Guardar loja</> : <><i className="ri-add-line me-1" /> Adicionar loja</>)}
-                        </button>
+                        </Button>
                     </ModalFooter>
                 </Modal>
 
@@ -326,7 +339,7 @@ export default function LojasPage() {
                     <ModalHeader toggle={() => !syncBusy && setSyncOpen(false)}>Sincronizar reservas</ModalHeader>
                     <ModalBody>
                         <p className="text-muted fs-13 mb-3">
-                            Escolhe <strong>uma data</strong> para sincronizar esse dia, ou <strong>um intervalo</strong> (de → até)
+                            Escolha <strong>uma data</strong> para sincronizar esse dia, ou <strong>um intervalo</strong> (de → até)
                             para sincronizar vários dias. Aplica-se a todas as lojas.
                         </p>
                         <Row className="g-2">
@@ -342,10 +355,10 @@ export default function LojasPage() {
                         </Row>
                     </ModalBody>
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setSyncOpen(false)} disabled={syncBusy}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={runSync} disabled={syncBusy || !periodFrom}>
+                        <Button color="light" onClick={() => setSyncOpen(false)} disabled={syncBusy}>Cancelar</Button>
+                        <ReasonButton color="primary" onClick={runSync} disabled={syncBusy} reason={!periodFrom ? "Indique a data." : null}>
                             {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
-                        </button>
+                        </ReasonButton>
                     </ModalFooter>
                 </Modal>
             </Container>

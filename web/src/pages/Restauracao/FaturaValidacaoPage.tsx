@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, Container, Row, Col, Spinner, Label, Alert } from "reactstrap";
+import { Button, Card, CardBody, Container, Row, Col, Spinner, Label, Alert } from "reactstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader, { Crumb } from "Components/Common/PageHeader";
 import { getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob } from "helpers/laravel_helper";
 import { OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -117,7 +118,7 @@ export default function FaturaValidacaoPage() {
     const warnings = useMemo(() => {
         const w: string[] = [];
         if (lines.length > 0 && !approx(linesSum, summary.taxable_base))
-            w.push(`As linhas somam ${eur(linesSum)}, mas o sumário da IA diz base tributável ${eur(summary.taxable_base)} — confere.`);
+            w.push(`As linhas somam ${eur(linesSum)}, mas o sumário da IA diz base tributável ${eur(summary.taxable_base)}. Confira.`);
         if (!approx(summary.goods_total - summary.commercial_discount, summary.taxable_base))
             w.push(`Mercadorias − desconto comercial (${eur(summary.goods_total - summary.commercial_discount)}) ≠ base tributável (${eur(summary.taxable_base)}).`);
         const chain = summary.taxable_base + summary.vat_total - summary.withholding - summary.financial_discount;
@@ -151,13 +152,18 @@ export default function FaturaValidacaoPage() {
         }
     };
 
+    // Cabeçalho comum (página de detalhe: o título é o registo, o breadcrumb é curto).
+    const crumbs: Crumb[] = [{ label: "Restauração" }, { label: "Faturas", to: "/restauracao/faturas" }];
+    const pageTitle = inv?.number ? `Fatura ${inv.number}` : "Validar fatura";
+
     if (loading) {
-        return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner /> A carregar…</div></Container></div>;
+        return <div className="page-content"><Container fluid><PageHeader title="Validar fatura" breadcrumbs={crumbs} crumbLabel="Validar" /><div className="text-center py-5"><Spinner /> A carregar…</div></Container></div>;
     }
 
     if (inv?.status === "processing") {
         return (
             <div className="page-content"><ToastContainer /><Container fluid>
+                <PageHeader title={pageTitle} breadcrumbs={crumbs} crumbLabel="Validar" />
                 <div className="text-center py-5">
                     <Spinner className="mb-3" style={{ width: 48, height: 48 }} />
                     <h5>A ler a fatura com IA…</h5>
@@ -170,10 +176,11 @@ export default function FaturaValidacaoPage() {
     if (inv?.status === "erro") {
         return (
             <div className="page-content"><ToastContainer /><Container fluid>
+                <PageHeader title={pageTitle} breadcrumbs={crumbs} crumbLabel="Validar" />
                 <Alert color="danger" className="mt-3">
                     <h5 className="alert-heading">Não foi possível ler a fatura</h5>
-                    <p className="mb-2">{inv.error_message || "Erro ao processar. Tenta enviar uma imagem mais nítida."}</p>
-                    <button className="btn btn-sm btn-primary" onClick={() => navigate("/restauracao/faturas")}>Voltar às faturas</button>
+                    <p className="mb-2">{inv.error_message || "Erro ao processar. Tente enviar uma imagem mais nítida."}</p>
+                    <Button size="sm" color="primary" onClick={() => navigate("/restauracao/faturas")}>Voltar às faturas</Button>
                 </Alert>
             </Container></div>
         );
@@ -188,29 +195,25 @@ export default function FaturaValidacaoPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Validar fatura</h4>
-                                <small className="text-muted">
-                                    <span className="badge bg-info-subtle text-info me-2"><i className="ri-robot-2-line me-1" />Lido por IA — verifica os dados</span>
-                                    {inv?.confidence ? `${inv.confidence}% confiança` : ""}
-                                    {inv?.model ? ` · ${inv.model}` : ""}
-                                </small>
-                            </div>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-light" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</button>
-                                <button className="btn btn-success" onClick={save} disabled={saving}>
-                                    {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-check-double-line me-1" /> Validar e guardar</>}
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title={pageTitle}
+                    crumbLabel="Validar"
+                    breadcrumbs={crumbs}
+                    description={<>
+                        <span className="badge bg-info-subtle text-info me-2"><i className="ri-robot-2-line me-1" />Lido por IA: verifique os dados</span>
+                        {inv?.confidence ? `${inv.confidence}% confiança` : ""}
+                        {inv?.model ? ` · ${inv.model}` : ""}
+                    </>}
+                    actions={<>
+                        <Button color="outline-primary" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</Button>
+                        <Button color="primary" onClick={save} disabled={saving}>
+                            {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-check-double-line me-1" /> Validar e guardar</>}
+                        </Button>
+                    </>}
+                />
 
                 {inv?.confidence !== undefined && inv.confidence < 60 && (
-                    <Alert color="warning" className="py-2"><i className="ri-alert-line me-1" /> Confiança baixa ({inv.confidence}%) — confere tudo com atenção contra a imagem.</Alert>
+                    <Alert color="warning" className="py-2"><i className="ri-alert-line me-1" /> Confiança baixa ({inv.confidence}%): confira tudo com atenção contra a imagem.</Alert>
                 )}
                 {warnings.length > 0 && (
                     <Alert color="warning" className="py-2">
@@ -245,7 +248,7 @@ export default function FaturaValidacaoPage() {
                         <Card>
                             <div className="card-header d-flex justify-content-between align-items-center">
                                 <h5 className="card-title mb-0">Linhas</h5>
-                                <button className="btn btn-sm btn-soft-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</button>
+                                <Button size="sm" color="outline-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</Button>
                             </div>
                             <div className="table-responsive">
                                 <table className="table table-bordered align-middle mb-0" style={{ minWidth: 720 }}>
@@ -256,7 +259,7 @@ export default function FaturaValidacaoPage() {
                                     </thead>
                                     <tbody>
                                         {lines.length === 0 ? (
-                                            <tr><td colSpan={8} className="text-center text-muted py-3">Sem linhas. Usa “Adicionar linha”.</td></tr>
+                                            <tr><td colSpan={8} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
                                         ) : lines.map((l, i) => (
                                             <tr key={i}>
                                                 <td><input className="form-control form-control-sm" value={l.item ?? ""} onChange={(e) => setLine(i, { item: e.target.value })} /></td>
@@ -268,9 +271,9 @@ export default function FaturaValidacaoPage() {
                                                 <td style={{ width: 90 }}>
                                                     <Select styles={reactSelectTheme} menuPortalTarget={document.body} isClearable
                                                         options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === l.vat_rate) ?? null}
-                                                        onChange={(o: any) => setLine(i, { vat_rate: o?.value ?? null })} placeholder="—" />
+                                                        onChange={(o: any) => setLine(i, { vat_rate: o?.value ?? null })} placeholder="Taxa" aria-label="Taxa de IVA" />
                                                 </td>
-                                                <td style={{ width: 40 }}><button className="btn btn-sm btn-soft-danger" onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}><i className="ri-delete-bin-line" /></button></td>
+                                                <td style={{ width: 40 }}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover linha ${i + 1}`} onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}><i className="ri-delete-bin-line" /></button></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -291,10 +294,10 @@ export default function FaturaValidacaoPage() {
                                             <div className="text-muted fs-12">Sumário da IA (mercadorias): {eur(summary.goods_total)}</div>
                                         )}
                                     </div>
-                                    <button className="btn btn-sm btn-soft-primary"
+                                    <Button size="sm" color="outline-primary"
                                         onClick={() => setSum({ goods_total: round2(linesSum), taxable_base: summary.taxable_base ? summary.taxable_base : round2(linesSum) })}>
                                         <i className="ri-download-line me-1" />Usar nas mercadorias
-                                    </button>
+                                    </Button>
                                 </div>
                                 <Row className="g-2">
                                     {([
@@ -315,14 +318,14 @@ export default function FaturaValidacaoPage() {
 
                                 <div className="d-flex justify-content-between align-items-center mt-3 mb-1">
                                     <span className="fs-12 text-muted text-uppercase fw-semibold">IVA por taxa</span>
-                                    <button className="btn btn-sm btn-soft-secondary" onClick={() => setSum({ vat_breakdown: [...summary.vat_breakdown, { rate: 23, base: null, vat: null }] })}><i className="ri-add-line" /></button>
+                                    <Button size="sm" color="outline-primary" aria-label="Adicionar taxa de IVA" title="Adicionar taxa de IVA" onClick={() => setSum({ vat_breakdown: [...summary.vat_breakdown, { rate: 23, base: null, vat: null }] })}><i className="ri-add-line" /></Button>
                                 </div>
                                 {summary.vat_breakdown.map((b, i) => (
                                     <Row className="g-2 mb-1 align-items-center" key={i}>
-                                        <Col xs={4}><Select styles={reactSelectTheme} menuPortalTarget={document.body} options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === b.rate) ?? null} onChange={(o: any) => setVat(i, { rate: o?.value ?? null })} placeholder="Taxa" /></Col>
+                                        <Col xs={4}><Select styles={reactSelectTheme} menuPortalTarget={document.body} options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === b.rate) ?? null} onChange={(o: any) => setVat(i, { rate: o?.value ?? null })} placeholder="Taxa" aria-label="Taxa de IVA" /></Col>
                                         <Col xs={3}>{numInput(b.base, (v) => setVat(i, { base: v }))}</Col>
                                         <Col xs={3}>{numInput(b.vat, (v) => setVat(i, { vat: v }))}</Col>
-                                        <Col xs={2}><button className="btn btn-sm btn-soft-danger" onClick={() => setSum({ vat_breakdown: summary.vat_breakdown.filter((_, idx) => idx !== i) })}><i className="ri-delete-bin-line" /></button></Col>
+                                        <Col xs={2}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover taxa ${i + 1}`} onClick={() => setSum({ vat_breakdown: summary.vat_breakdown.filter((_, idx) => idx !== i) })}><i className="ri-delete-bin-line" /></button></Col>
                                     </Row>
                                 ))}
                             </CardBody>

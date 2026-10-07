@@ -377,7 +377,7 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
                                     Ao ligar a Meta (Facebook e Instagram) e o Google Analytics, passa a ver aqui, ao lado das vendas e das reservas,
                                     quanto investe em anúncios e quantas pessoas visitam o site em cada mês.
                                 </p>
-                                <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-soft-primary"><i className="ri-links-line me-1" />Configurar integrações</Link>
+                                <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-outline-primary"><i className="ri-links-line me-1" />Configurar integrações</Link>
                             </CardBody>
                         </Card>
                     )}

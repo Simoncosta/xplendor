@@ -142,14 +142,15 @@ const StockBreakdownCard = ({ data, loading = false }: Props) => {
                             </p>
                             <h5 className="mb-0 fw-semibold">Por marca e tipo de veículo</h5>
                         </div>
-                        <div className="btn-group btn-group-sm" role="group" aria-label="Âmbito do stock">
+                        <div className="xp-seg" role="tablist" aria-label="Âmbito do stock">
                             {SCOPES.map((s) => (
                                 <button
                                     key={s.key}
                                     type="button"
-                                    className={"btn " + (scope === s.key ? "btn-primary" : "btn-outline-primary")}
-                                    onClick={() => setScope(s.key)}
-                                    disabled={loading}
+                                    role="tab"
+                                    aria-selected={scope === s.key}
+                                    className={scope === s.key ? "on" : ""}
+                                    onClick={() => !loading && setScope(s.key)}
                                 >
                                     {s.label}
                                 </button>

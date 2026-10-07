@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import SimpleBar from "simplebar-react";
 import {
-    Card, CardBody, Col, Container, Row, Spinner,
+    Button, Card, CardBody, Container, Spinner,
     Modal, ModalHeader, ModalBody, ModalFooter, Input, Label,
-    UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem,
 } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import {
@@ -16,6 +15,10 @@ import {
     moveCompanyTask, deleteCompanyTask, getCompanyUsers,
 } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { confirmAction } from "helpers/swal";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * XPLENDOR — Kanban de TAREFAS internas do cliente (painel do stand). Entidade
@@ -90,7 +93,7 @@ const CompanyTasksKanban = () => {
     };
 
     const submit = async () => {
-        if (!fTitle.trim()) { toast.error("Dá um título à tarefa."); return; }
+        if (!fTitle.trim()) { toast.error("Indique o título da tarefa."); return; }
         setSaving(true);
         const assignee = fAssignee ? Number(fAssignee) : null;
         try {
@@ -108,7 +111,8 @@ const CompanyTasksKanban = () => {
     };
 
     const remove = async (t: ICompanyTask) => {
-        if (!window.confirm(`Apagar a tarefa "${t.title}"?`)) return;
+        const ok = await confirmAction({ title: `Apagar a tarefa "${t.title}"?`, text: "Esta ação não se desfaz.", confirmText: "Apagar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             await deleteCompanyTask(companyId, t.id);
             toast.success("Tarefa apagada.");
@@ -148,17 +152,9 @@ const CompanyTasksKanban = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-list-check-2 text-primary me-2" />Tarefas</h4>
-                        <p className="text-muted mb-0">O quadro de tarefas da equipa — partilhado por toda a empresa.</p>
-                    </Col>
-                    <Col xs="auto">
-                        <button type="button" className="btn btn-primary" onClick={() => openCreate("todo")}>
-                            <i className="ri-add-line me-1" />Nova tarefa
-                        </button>
-                    </Col>
-                </Row>
+                <PageHeader title="Tarefas" breadcrumbs={[{ label: "Equipa" }]}
+                    description="O quadro de tarefas da equipa, partilhado por toda a empresa."
+                    actions={<Button color="primary" onClick={() => openCreate("todo")}><i className="ri-add-line me-1" />Nova tarefa</Button>} />
 
                 <Card>
                     <CardBody>
@@ -178,9 +174,9 @@ const CompanyTasksKanban = () => {
                                                             <small className={`badge bg-${col.color} align-bottom ms-1 totaltask-badge`}>{items.length}</small>
                                                         </h6>
                                                     </div>
-                                                    <button type="button" className="btn btn-sm btn-soft-primary" onClick={() => openCreate(col.key)} title="Nova tarefa">
+                                                    <Button size="sm" color="outline-primary" onClick={() => openCreate(col.key)} title="Nova tarefa" aria-label={`Nova tarefa em ${col.label}`}>
                                                         <i className="ri-add-line" />
-                                                    </button>
+                                                    </Button>
                                                 </div>
 
                                                 <SimpleBar className="tasks-wrapper px-3 mx-n3">
@@ -200,19 +196,13 @@ const CompanyTasksKanban = () => {
                                                                                     <CardBody className="p-3">
                                                                                         <div className="d-flex align-items-start gap-2 mb-1">
                                                                                             <h6 className="fs-14 mb-0 flex-grow-1">{t.title}</h6>
-                                                                                            <UncontrolledDropdown className="flex-shrink-0" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                                                                                                <DropdownToggle tag="a" className="text-reset" role="button">
-                                                                                                    <i className="ri-more-fill" />
-                                                                                                </DropdownToggle>
-                                                                                                <DropdownMenu container="body" strategy="fixed" className="dropdown-menu-end kanban-card-menu">
-                                                                                                    <DropdownItem onClick={(e) => { e.stopPropagation(); navigate(`/tasks/${t.id}`); }}>
-                                                                                                        <i className="ri-eye-line me-2" />Abrir
-                                                                                                    </DropdownItem>
-                                                                                                    <DropdownItem onClick={(e) => { e.stopPropagation(); remove(t); }}>
-                                                                                                        <i className="ri-delete-bin-line me-2" />Apagar
-                                                                                                    </DropdownItem>
-                                                                                                </DropdownMenu>
-                                                                                            </UncontrolledDropdown>
+                                                                                            {/* O menu abre num portal: o clique não pode chegar ao cartão (que abre a tarefa). */}
+                                                                                            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                                                <ActionsMenu size="sm" label={`Mais ações: ${t.title}`} items={[
+                                                                                                    { label: "Abrir", icon: "ri-eye-line", onClick: () => navigate(`/tasks/${t.id}`) },
+                                                                                                    { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(t) },
+                                                                                                ]} />
+                                                                                            </div>
                                                                                         </div>
 
                                                                                         {t.description && (
@@ -268,17 +258,15 @@ const CompanyTasksKanban = () => {
                     </div>
                     <div className="mb-1">
                         <Label className="form-label">Responsável</Label>
-                        <Input type="select" value={fAssignee} onChange={(e) => setFAssignee(e.target.value)}>
-                            <option value="">Sem responsável</option>
-                            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </Input>
+                        <XSelect ariaLabel="Responsável" value={fAssignee} onChange={setFAssignee}
+                            options={[{ value: "", label: "Sem responsável" }, ...users.map((u) => ({ value: String(u.id), label: u.name }))]} />
                     </div>
                 </ModalBody>
                 <ModalFooter>
-                    <button type="button" className="btn btn-light" onClick={() => setOpen(false)}>Cancelar</button>
-                    <button type="button" className="btn btn-primary" onClick={submit} disabled={saving}>
+                    <Button color="light" onClick={() => setOpen(false)}>Cancelar</Button>
+                    <Button color="primary" onClick={submit} disabled={saving}>
                         {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : "Criar tarefa"}
-                    </button>
+                    </Button>
                 </ModalFooter>
             </Modal>
         </div>

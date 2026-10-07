@@ -7,6 +7,7 @@ import { getSaleDocumentData } from "helpers/laravel_helper";
 import { SaleDocumentData } from "types/api";
 import { getSaleDocument } from "./registry";
 import { buildInitialValues, type DocFieldDef } from "./types";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * DMS Fase 3 — motor PARTILHADO de impressão dos documentos de venda.
@@ -98,12 +99,15 @@ export default function SaleDocumentPrint() {
 
         return (
             <Col md={6} key={f.key}>
-                <Label className="form-label mb-1 fs-13">{f.label}</Label>
+                <Label className="form-label mb-1 fs-13" htmlFor={`docf-${f.key}`}>{f.label}</Label>
                 {type === "select" ? (
-                    <Input type="select" value={val} onChange={(e) => setField(f.key, e.target.value)}>
-                        <option value="">—</option>
-                        {(f.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                    </Input>
+                    <XSelect<string>
+                        id={`docf-${f.key}`}
+                        options={[{ value: "", label: "Sem valor" }, ...(f.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))]}
+                        value={val}
+                        onChange={(v) => setField(f.key, v)}
+                        placeholder="Sem valor"
+                    />
                 ) : type === "textarea" ? (
                     <Input type="textarea" rows={2} value={val} onChange={(e) => setField(f.key, e.target.value)} />
                 ) : (
@@ -120,9 +124,9 @@ export default function SaleDocumentPrint() {
             {/* Modal de campos — entidades pré-preenchidas + manuais (alguns
                 condicionais/pré-preenchidos), todos editáveis. */}
             <Modal isOpen={modalOpen} toggle={goBack} size="lg" centered scrollable backdrop="static">
-                <ModalHeader toggle={goBack}>{def.title} — dados do documento</ModalHeader>
+                <ModalHeader toggle={goBack}>{def.title}: dados do documento</ModalHeader>
                 <ModalBody>
-                    <p className="text-muted fs-13 mb-2">Confere e corrige os dados antes de ver o documento. Os campos das entidades vêm pré-preenchidos; os restantes preenche-os aqui (não ficam guardados).</p>
+                    <p className="text-muted fs-13 mb-2">Confira e corrija os dados antes de ver o documento. Os campos das entidades vêm pré-preenchidos; preencha aqui os restantes (não ficam guardados).</p>
                     <h6 className="fw-semibold mb-2">Dados (pré-preenchidos)</h6>
                     <Row className="g-2 mb-3">
                         {entityFields.map((f) => renderField(f))}
@@ -149,7 +153,7 @@ export default function SaleDocumentPrint() {
                 <div className="doc-overlay">
                     <div className="doc-toolbar no-print">
                         <div className="doc-toolbar-inner">
-                            <button type="button" className="btn btn-light" onClick={goBack}>
+                            <button type="button" className="btn btn-outline-primary" onClick={goBack}>
                                 <i className="ri-arrow-left-line me-1" /> Voltar
                             </button>
                             <div className="doc-toolbar-hint">

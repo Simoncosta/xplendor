@@ -168,12 +168,12 @@ export default function AdsPriorityRankingCard({ cars }: Props) {
                 <div className="d-flex align-items-center gap-2 flex-wrap">
                     <button
                         type="button"
-                        className={`btn btn-sm ${state === "avoid" ? "btn-outline-danger" : "btn-primary"}`}
+                        className="btn btn-sm btn-outline-primary"
                         onClick={() => setSelectedCar(car)}
                     >
                         {actionLabel}
                     </button>
-                    <Link to={`/cars/${car.car_id}/analytics`} className="btn btn-outline-secondary btn-sm">
+                    <Link to={`/cars/${car.car_id}/analytics`} className="btn btn-outline-primary btn-sm">
                         Ver análise
                     </Link>
                     <Link to={`/cars/${car.car_id}`} className="btn btn-link btn-sm text-muted text-decoration-none">

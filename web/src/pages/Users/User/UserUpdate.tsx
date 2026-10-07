@@ -29,7 +29,7 @@ export default function UserUpdate() {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    document.title = "Editar Colaborador | Xplendor";
+    document.title = "Editar colaborador | Xplendor";
 
     // State
     const [companyId, setCompanyId] = useState<number>(0);
@@ -96,9 +96,7 @@ export default function UserUpdate() {
                     dispatch(updateUser({ companyId: Number(companyId), id: Number(id), formData: formData }));
                     toast("Colaborador atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                 }}
-                onCancel={() => {
-                    // history.goBack();
-                }}
+                onCancel={() => navigate("/users")}
             />
         </>
     );

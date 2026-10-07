@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Label } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "pages/Editorial/XSelect";
 import {
     showAdminTicket, updateAdminTicketStatus, addAdminTicketMessage,
     setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted, updateAdminTicketTask,
@@ -141,7 +143,7 @@ const AdminTicketDetail = () => {
     if (error || !ticket || !tm || !sm) {
         return (
             <div className="page-content"><Container fluid>
-                <BreadCrumb title="Ticket" pageTitle="Tickets" pageLink="/admin" />
+                <PageHeader title="Ticket" breadcrumbs={[{ label: "Administração" }, { label: "Tickets", to: "/admin" }]} />
                 <Card><CardBody>
                     <p className="text-muted mb-2">Ticket não encontrado.</p>
                     <button className="btn btn-primary" onClick={() => navigate("/admin")}>Voltar aos tickets</button>
@@ -157,7 +159,8 @@ const AdminTicketDetail = () => {
             <ToastContainer />
             {typeChangeModal}
             <Container fluid>
-                <BreadCrumb title="Ticket" pageTitle="Tickets" pageLink="/admin" />
+                <PageHeader title={`#${ticket.id} ${ticket.title}`} crumbLabel={`#${ticket.id}`}
+                    breadcrumbs={[{ label: "Administração" }, { label: "Tickets", to: "/admin" }]} />
                 <Row>
                     {/* Barra lateral — visual TaskDetails: detalhes (table-card) + orçamento. */}
                     <Col xxl={3}>
@@ -166,9 +169,8 @@ const AdminTicketDetail = () => {
                                 {/* O admin pode mudar o estado aqui (como o "board" do template). */}
                                 <div className="mb-4">
                                     <Label className="form-label">Estado</Label>
-                                    <select className="form-control" value={ticket.status} disabled={savingStatus} onChange={(e) => changeStatus(e.target.value)}>
-                                        {STATUSES.map((s) => <option key={s} value={s}>{TICKET_STATUS_META[s].label}</option>)}
-                                    </select>
+                                    <XSelect<string> ariaLabel="Estado" value={ticket.status} disabled={savingStatus} onChange={(v) => changeStatus(v)}
+                                        options={STATUSES.map((st) => ({ value: st, label: TICKET_STATUS_META[st].label }))} />
                                     {savingStatus && <small className="text-muted d-block mt-1"><Spinner size="sm" /> A guardar…</small>}
                                 </div>
                                 {/* Tipo: com orçamento orçado ou rejeitado pede confirmação; aprovado, pago ou concluído fica bloqueado. */}
@@ -178,10 +180,9 @@ const AdminTicketDetail = () => {
                                         // Ticket de arranque (criado por um orçamento aceite): o tipo não muda.
                                         <div className="form-control bg-light"><i className={`${TICKET_TYPE_META.onboarding.icon} me-1`} />{TICKET_TYPE_META.onboarding.label}</div>
                                     ) : (
-                                        <select className="form-control" value={ticket.type} disabled={typeBusy}
-                                            onChange={(e) => requestTypeChange(ticket, e.target.value as SupportTicketType)}>
-                                            {TYPES.map((t) => <option key={t} value={t}>{TICKET_TYPE_META[t].label}</option>)}
-                                        </select>
+                                        <XSelect<string> ariaLabel="Tipo" value={ticket.type} disabled={typeBusy}
+                                            onChange={(v) => requestTypeChange(ticket, v as SupportTicketType)}
+                                            options={TYPES.map((t) => ({ value: t, label: TICKET_TYPE_META[t].label }))} />
                                     )}
                                 </div>
                                 <div className="table-card">
@@ -191,7 +192,7 @@ const AdminTicketDetail = () => {
                                             <tr><td className="fw-medium">Tipo</td><td><i className={tm.icon + " me-1"} />{tm.label}</td></tr>
                                             <tr><td className="fw-medium">Estado</td><td><span className={`badge bg-${sm.color}-subtle text-${sm.color}`}>{sm.label}</span></td></tr>
                                             <tr><td className="fw-medium">Empresa</td><td>{ticket.company_name ?? `Empresa #${ticket.company_id}`}</td></tr>
-                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "—"}</td></tr>
+                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "Sem nome"}</td></tr>
                                             <tr><td className="fw-medium">Criado</td><td>{fmtDate(ticket.created_at)}</td></tr>
                                             {ticket.resolved_at && <tr><td className="fw-medium">Resolvido</td><td>{fmtDate(ticket.resolved_at)}</td></tr>}
                                         </tbody>
@@ -254,14 +255,14 @@ const AdminTicketDetail = () => {
                                     )}
 
                                     {ticket.quote_status === "rejected" && (
-                                        <p className="text-muted fs-13 mb-0">O stand rejeitou — pedido fechado (sem renegociação).</p>
+                                        <p className="text-muted fs-13 mb-0">O stand rejeitou: pedido fechado (sem renegociação).</p>
                                     )}
                                     {ticket.quote_status === "completed" && (
                                         <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
                                     )}
 
                                     {ticket.invoice_url && (
-                                        <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-soft-primary btn-sm w-100 mt-3">
+                                        <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm w-100 mt-3">
                                             <i className="ri-file-pdf-line me-1" />Ver fatura anexada
                                         </a>
                                     )}
@@ -357,9 +358,10 @@ const AdminTicketDetail = () => {
                                 )}
                                 <div className="d-flex align-items-end gap-2">
                                     <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Responder ao stand…" />
-                                    <button type="button" className="btn btn-primary flex-shrink-0" onClick={reply} disabled={sending || !body.trim()}>
+                                    <ReasonButton color="outline-primary" className="flex-shrink-0" onClick={reply} disabled={sending} aria-label="Enviar resposta"
+                                        reason={!body.trim() ? "Escreva a resposta primeiro." : null}>
                                         {sending ? <Spinner size="sm" /> : <i className="ri-send-plane-2-line" />}
-                                    </button>
+                                    </ReasonButton>
                                 </div>
                             </CardBody>
                         </Card>

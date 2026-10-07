@@ -5,6 +5,7 @@ import { savePostResults, skipPostNetwork } from "helpers/laravel_helper";
 import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/editorialPost.model";
 import { METRICS, METRIC_SOURCE_LABEL, PostNetworkDetail, PostResults, PostWorkflow, fmtRate } from "common/models/editorialWorkflow.model";
 import MarkPublishedModal from "../MarkPublishedModal";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Publicação e Análise, por rede: marcar como publicada (link e hora real) ou "Não
@@ -164,7 +165,7 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
                             <div className="ms-auto d-flex flex-wrap gap-1">
                                 {n.state !== "published" && <Button size="sm" color="success" onClick={() => setMarking(n)}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>}
                                 {n.state === "published" && <Button size="sm" color="link" className="p-0" onClick={() => setMarking(n)}>Corrigir o link ou a hora</Button>}
-                                {n.state === "pending" && p.networks.length > 1 && <Button size="sm" color="soft-secondary" onClick={() => { setSkipping(n.network); setReason(""); }}>Não publicar nesta rede</Button>}
+                                {n.state === "pending" && p.networks.length > 1 && <Button size="sm" color="outline-primary" onClick={() => { setSkipping(n.network); setReason(""); }}>Não publicar nesta rede</Button>}
                             </div>
                         )}
                     </div>
@@ -181,7 +182,7 @@ export default function PublishSection({ companyId, data, onChanged }: Props) {
                             <Label className="fs-13 mb-1" for={`skip-${n.network}`}>Porque não vai sair no {POST_CHANNEL_META[n.network].label}?</Label>
                             <textarea id={`skip-${n.network}`} className="form-control mb-2" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
                             <div className="d-flex gap-2">
-                                <Button size="sm" color="secondary" disabled={busy || reason.trim().length < 3} onClick={() => void skip(n.network)}>Registar</Button>
+                                <ReasonButton size="sm" color="primary" disabled={busy} reason={reason.trim().length < 3 ? "Escreva o motivo (pelo menos 3 caracteres)." : null} onClick={() => void skip(n.network)}>Registar</ReasonButton>
                                 <Button size="sm" color="light" onClick={() => setSkipping(null)}>Cancelar</Button>
                             </div>
                             <div className="form-text">Não pede nova aprovação. Fica no histórico, com o motivo.</div>

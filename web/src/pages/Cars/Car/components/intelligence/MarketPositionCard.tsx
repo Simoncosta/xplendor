@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Alert, Card, CardBody, CardHeader, Collapse, Progress, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
+import ReasonButton from "Components/Common/ReasonButton";
 import type {
     MarketAggregate,
     MarketAggregateStatus,
@@ -155,7 +156,7 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
             // Mensagem 422/429 vem do backend em pt-PT (sem hardcoded).
             const { status, message } = extractApiError(err);
             if (status === 429) {
-                toast.warning(message ?? "Aguarda alguns minutos antes de actualizar novamente.");
+                toast.warning(message ?? "Aguarde alguns minutos antes de atualizar novamente.");
             } else if (status === 422) {
                 toast.info(message ?? "Análise de mercado não disponível para esta viatura.");
             } else {
@@ -203,19 +204,21 @@ export default function MarketPositionCard({ companyId, carId, userRole }: Props
                     const carPrice = aggregate?.comparison?.car_price ?? null;
                     const noPrice  = carPrice === null || carPrice <= 0;
                     const disabledReason = noPrice
-                        ? "Define um preço interno para esta viatura para activar a análise de mercado."
+                        ? "Defina um preço interno para esta viatura para ativar a análise de mercado."
                         : undefined;
                     return (
-                        <button
-                            className="btn btn-sm btn-soft-primary"
+                        <ReasonButton
+                            type="button"
+                            size="sm"
+                            color="outline-primary"
                             onClick={handleRefresh}
-                            disabled={refreshing || noPrice}
-                            title={disabledReason}
+                            disabled={refreshing}
+                            reason={disabledReason ?? null}
                         >
                             {refreshing
-                                ? <><Spinner size="sm" className="me-1" />A actualizar</>
-                                : <><i className="ri-refresh-line align-bottom me-1" />Actualizar agora</>}
-                        </button>
+                                ? <><Spinner size="sm" className="me-1" />A atualizar</>
+                                : <><i className="ri-refresh-line align-bottom me-1" />Atualizar agora</>}
+                        </ReasonButton>
                     );
                 })()}
             </CardHeader>
@@ -260,7 +263,7 @@ function TimedOutState({ onRetry }: { onRetry: () => void }) {
             <i className="ri-time-line display-6 text-warning opacity-75" />
             <p className="mt-3 mb-1 fw-semibold">A análise está a demorar mais do que o esperado</p>
             <p className="text-muted fs-13 mb-3">
-                O serviço de mercado pode estar momentaneamente lento. Tenta de novo em alguns minutos.
+                O serviço de mercado pode estar momentaneamente lento. Tente de novo em alguns minutos.
             </p>
             <button
                 className="btn btn-sm btn-outline-primary"
@@ -279,7 +282,7 @@ function NetworkErrorState({ onRetry }: { onRetry: () => void }) {
             <i className="ri-wifi-off-line display-6 text-warning opacity-75" />
             <p className="mt-3 mb-1 fw-semibold">Não foi possível carregar os dados de mercado</p>
             <p className="text-muted fs-13 mb-3">
-                Verifica a tua ligação e tenta de novo.
+                Verifique a sua ligação e tente de novo.
             </p>
             <button
                 className="btn btn-sm btn-outline-primary"
@@ -398,14 +401,14 @@ function Body({
             {isLowConfidence && (
                 <Alert color="warning" className="fs-13 d-flex align-items-center gap-2">
                     <i className="ri-error-warning-line fs-16" />
-                    Análise baseada em poucos dados — interpretar com precaução.
+                    Análise baseada em poucos dados: interprete com precaução.
                 </Alert>
             )}
 
             <div className="row g-3 mb-3">
                 <div className="col-sm-4">
                     <MetricBox
-                        label={hasPromo ? "Preço promo" : "O teu preço"}
+                        label={hasPromo ? "Preço promo" : "O seu preço"}
                         value={formatCurrency(aggregate.comparison.car_price)}
                         hint={hasPromo ? `↑ PVP: ${formatCurrency(aggregate.comparison.car_price_gross ?? null)}` : undefined}
                     />
@@ -483,7 +486,8 @@ function Body({
                     )}
                 </div>
                 <button
-                    className="btn btn-soft-secondary btn-sm"
+                    type="button"
+                    className="btn btn-outline-primary btn-sm"
                     onClick={onToggleComparables}
                 >
                     <i className={`align-bottom me-1 ${showComparables ? "ri-arrow-up-s-line" : "ri-arrow-down-s-line"}`} />
@@ -526,7 +530,7 @@ function NeverRunState({ onRefresh, refreshing }: { onRefresh: () => void; refre
 const PENDING_STEPS = [
     { until: 20, text: "A procurar anúncios semelhantes no mercado..." },
     { until: 60, text: "A comparar preços e a filtrar valores atípicos..." },
-    { until: Infinity, text: "Quase lá — a consolidar os resultados..." },
+    { until: Infinity, text: "Quase lá, a consolidar os resultados…" },
 ];
 
 function PendingState({ pollAttempts }: { pollAttempts: number }) {
@@ -550,7 +554,7 @@ function PendingState({ pollAttempts }: { pollAttempts: number }) {
             />
             <p className="text-muted fs-12 mb-0">
                 <i className="ri-information-line me-1" />
-                Podes sair desta página — a análise continua e os resultados ficam guardados.
+                Pode sair desta página: a análise continua e os resultados ficam guardados.
             </p>
         </div>
     );
@@ -604,32 +608,34 @@ function NoneState({
 
     let message: string;
     if (noPrice && hidePriceOnline) {
-        message = "Viatura 'Sob consulta' sem preço interno definido. Define um preço para activar a análise de mercado.";
+        message = "Viatura 'Sob consulta' sem preço interno definido. Defina um preço para ativar a análise de mercado.";
     } else if (noPrice) {
-        message = "Define um preço para esta viatura para activar a análise de mercado.";
+        message = "Defina um preço para esta viatura para ativar a análise de mercado.";
     } else {
         // MS2.g item 3 — preço > 0 + scrape correu + 0 comparáveis: caso real
         // das McLouis gasolina / modelos invulgares. Orienta a verificar dados
         // em vez de parecer um erro técnico.
-        message = "Não encontrámos viaturas semelhantes à venda neste momento. Pode ser um modelo invulgar no mercado — confirma na Ficha que o combustível e o ano estão correctos.";
+        message = "Não encontrámos viaturas semelhantes à venda neste momento. Pode ser um modelo invulgar no mercado. Confirme na Ficha que o combustível e o ano estão corretos.";
     }
 
     // MS2.g item 2 — botão off quando não há preço. Tooltip explica porquê.
     const disabledReason = noPrice
-        ? "Define um preço interno para esta viatura para activar a análise de mercado."
+        ? "Defina um preço interno para esta viatura para ativar a análise de mercado."
         : undefined;
 
     return (
         <div className="d-flex align-items-center justify-content-between gap-3 flex-wrap py-1">
             <span className="text-muted fs-13">{message}</span>
-            <button
-                className="btn btn-sm btn-outline-secondary"
+            <ReasonButton
+                type="button"
+                size="sm"
+                color="outline-primary"
                 onClick={onRefresh}
-                disabled={refreshing || noPrice}
-                title={disabledReason}
+                disabled={refreshing}
+                reason={disabledReason ?? null}
             >
                 {refreshing ? <><Spinner size="sm" className="me-1" />A tentar</> : "Tentar novamente"}
-            </button>
+            </ReasonButton>
         </div>
     );
 }

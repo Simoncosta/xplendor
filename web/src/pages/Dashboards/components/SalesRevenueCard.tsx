@@ -229,14 +229,15 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                             <h6 className="text-uppercase text-muted fs-12 mb-1">Vendas no período</h6>
                             <small className="text-muted">Valor das vendas registadas (não é lucro).</small>
                         </div>
-                        <div className="d-flex flex-wrap gap-1 align-items-start">
+                        <div className="xp-seg" role="tablist" aria-label="Período">
                             {(["this_month", "last_month", "this_quarter", "this_year", "custom"] as SalesRevenuePreset[]).map((p) => (
                                 <button
                                     key={p}
                                     type="button"
-                                    className={`btn btn-sm ${preset === p ? "btn-primary" : "btn-soft-secondary"}`}
-                                    onClick={() => applyPreset(p)}
-                                    disabled={loading}
+                                    role="tab"
+                                    aria-selected={preset === p}
+                                    className={preset === p ? "on" : ""}
+                                    onClick={() => !loading && applyPreset(p)}
                                 >
                                     {PRESET_LABELS[p]}
                                 </button>
@@ -266,7 +267,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                                     min={customFromMonth}
                                 />
                             </div>
-                            <button type="button" className="btn btn-sm btn-primary" onClick={applyCustom} disabled={loading}>
+                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={applyCustom} disabled={loading}>
                                 Aplicar
                             </button>
                         </div>

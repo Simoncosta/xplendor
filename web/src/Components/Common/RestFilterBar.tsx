@@ -55,7 +55,7 @@ export default function RestFilterBar({
                     {searchField}
                     <button
                         type="button"
-                        className="btn btn-soft-secondary flex-shrink-0"
+                        className="btn btn-outline-primary flex-shrink-0"
                         onClick={() => setOpen(true)}
                     >
                         <i className="ri-filter-3-line me-1" />

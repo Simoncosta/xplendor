@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Modal, ModalHeader, ModalBody, ModalFooter, Input, Label, Spinner } from "reactstrap";
+import { Modal, ModalHeader, ModalBody, ModalFooter, Label, Spinner } from "reactstrap";
 import { LOSS_REASONS } from "common/models/lead.model";
+import XSelect from "pages/Editorial/XSelect";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * XPLENDOR — Motivo de perda obrigatório ao marcar uma lead como "Perdida".
@@ -24,20 +26,23 @@ const LossReasonModal: React.FC<Props> = ({ isOpen, leadName, saving = false, on
             <ModalHeader toggle={onCancel}>Motivo da perda</ModalHeader>
             <ModalBody>
                 <p className="text-muted fs-13 mb-3">
-                    {leadName ? <>Vais marcar <strong>{leadName}</strong> como perdida.</> : "Vais marcar esta lead como perdida."}{" "}
-                    Indica o motivo (obrigatório).
+                    {leadName ? <>Vai marcar <strong>{leadName}</strong> como perdida.</> : "Vai marcar esta lead como perdida."}{" "}
+                    Indique o motivo (obrigatório).
                 </p>
-                <Label className="form-label">Motivo</Label>
-                <Input type="select" value={reason} onChange={(e) => setReason(e.target.value)}>
-                    <option value="">Escolhe um motivo…</option>
-                    {LOSS_REASONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                </Input>
+                <Label className="form-label" htmlFor="loss-reason">Motivo</Label>
+                <XSelect<string>
+                    id="loss-reason"
+                    options={LOSS_REASONS.map((r) => ({ value: r.key, label: r.label }))}
+                    value={reason || null}
+                    onChange={setReason}
+                    placeholder="Escolha um motivo…"
+                />
             </ModalBody>
             <ModalFooter>
                 <button type="button" className="btn btn-light" onClick={onCancel} disabled={saving}>Cancelar</button>
-                <button type="button" className="btn btn-danger" onClick={() => reason && onConfirm(reason)} disabled={!reason || saving}>
+                <ReasonButton type="button" color="danger" onClick={() => reason && onConfirm(reason)} disabled={saving} reason={!reason ? "Escolha o motivo da perda." : null}>
                     {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : "Marcar como perdida"}
-                </button>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

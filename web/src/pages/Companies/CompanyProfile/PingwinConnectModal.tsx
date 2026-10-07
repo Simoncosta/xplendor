@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 import { toast } from "react-toastify";
 import { connectPingwin } from "helpers/laravel_helper";
 import { PingwinConfigFields } from "common/models/pingwin.model";
@@ -50,7 +51,7 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
 
     const submit = async () => {
         if (missingRequired) {
-            setError("Preenche o utilizador, a base de dados e a senha.");
+            setError("Preencha o utilizador, a base de dados e a senha.");
             return;
         }
         setSaving(true);
@@ -61,7 +62,7 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
                 database: values.database.trim(),
                 password: password.trim(),
             });
-            toast.info("Credenciais guardadas — a validar a ligação. Serás notificado quando terminar.");
+            toast.info("Credenciais guardadas, a validar a ligação. Será notificado quando terminar.");
             onSaved();
             onClose();
         } catch (e: any) {
@@ -69,7 +70,7 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
                 e?.errors?.connection?.[0] ||
                 (e?.errors && Object.values(e.errors)?.[0] && (Object.values(e.errors)[0] as any)[0]) ||
                 e?.message ||
-                "Não foi possível ligar ao PingWin. Verifica as credenciais.";
+                "Não foi possível ligar ao PingWin. Verifique as credenciais.";
             setError(String(msg));
         } finally {
             setSaving(false);
@@ -85,7 +86,7 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
                 <p className="text-muted fs-13">
                     Ao guardar, as credenciais ficam gravadas (com a senha cifrada) e a XPLENDOR
                     <strong> valida a ligação em segundo plano</strong> (teste real de login + logout).
-                    Serás <strong>notificado no sino</strong> quando terminar — ligado, ou o motivo se falhar.
+                    Será <strong>notificado no sino</strong> quando terminar: ligado, ou o motivo se falhar.
                     Os restantes parâmetros (servidor, versão, relatório) são geridos globalmente.
                 </p>
 
@@ -125,7 +126,7 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
                         <input
                             type={showPassword ? "text" : "password"}
                             className="form-control pe-5"
-                            placeholder={isReconfigure ? "•••••••• (escreve para atualizar)" : "senha do PingWin"}
+                            placeholder={isReconfigure ? "•••••••• (escreva para atualizar)" : "senha do PingWin"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             autoComplete="new-password"
@@ -136,20 +137,22 @@ export default function PingwinConnectModal({ isOpen, companyId, initialConfig, 
                             className="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted"
                             onClick={() => setShowPassword((s) => !s)}
                             tabIndex={-1}
+                            aria-label={showPassword ? "Esconder a senha" : "Mostrar a senha"}
                         >
                             <i className={showPassword ? "ri-eye-off-fill" : "ri-eye-fill"} />
                         </button>
                     </div>
                     <div className="form-text fs-11">
-                        Por segurança, a senha guardada não é mostrada. Escreve-a para validar/guardar.
+                        Por segurança, a senha guardada não é mostrada. Escreva-a para validar e guardar.
                     </div>
                 </div>
             </ModalBody>
             <ModalFooter>
-                <button className="btn btn-light" onClick={onClose} disabled={saving}>Cancelar</button>
-                <button className="btn btn-primary" onClick={submit} disabled={saving || missingRequired}>
+                <Button color="light" onClick={onClose} disabled={saving}>Cancelar</Button>
+                <ReasonButton color="primary" onClick={submit} disabled={saving}
+                    reason={!saving && missingRequired ? "Preencha o utilizador, a base de dados e a senha." : null}>
                     {saving ? <><Spinner size="sm" className="me-1" /> A validar ligação…</> : <><i className="ri-links-line me-1" /> Guardar e validar</>}
-                </button>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

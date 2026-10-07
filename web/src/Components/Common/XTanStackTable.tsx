@@ -258,7 +258,7 @@ const XTanStackTable = ({
                     ))}
                 </div>
             ) : (
-                <div className={`${divClass} ${isBordered ? 'table-bordered' : ''}`}>
+                <div className={`${divClass || "table-responsive"} ${isBordered ? "table-bordered" : ""}`}>
                     <Table hover className={tableClass}>
                         <thead className={theadClass}>
                             {getHeaderGroups().map((headerGroup: any) => (
@@ -327,7 +327,7 @@ const XTanStackTable = ({
                     </div>
                 </div>
                 <div className="col-sm-auto">
-                    <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
+                    <ul className="pagination pagination-separated pagination-md flex-wrap justify-content-center justify-content-sm-start mb-0">
                         <li
                             className={`page-item ${pageIndex === 0 ? "disabled" : ""
                                 }`}

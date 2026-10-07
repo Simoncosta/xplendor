@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Desligar as redes sociais com a mesma escolha da Meta: manter o histórico de
@@ -75,11 +76,12 @@ export default function SocialDisconnectModal({ isOpen, mode, loading = false, o
                 )}
             </ModalBody>
             <ModalFooter>
-                <Button color="light" className="border" onClick={onCancel} disabled={loading}>Cancelar</Button>
-                <Button color="danger" disabled={loading || !confirmed}
+                <Button color="light" onClick={onCancel} disabled={loading}>Cancelar</Button>
+                <ReasonButton color="danger" disabled={loading}
+                    reason={!loading && !confirmed ? `Escreva ${SOCIAL_PURGE_CONFIRMATION} para confirmar.` : null}
                     onClick={() => onConfirm(purge ? { purge: true, confirmation: confirmation.trim() } : { purge: false })}>
-                    {loading ? <><Spinner size="sm" className="me-2" />A processar...</> : confirmText}
-                </Button>
+                    {loading ? <><Spinner size="sm" className="me-2" />A processar</> : confirmText}
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

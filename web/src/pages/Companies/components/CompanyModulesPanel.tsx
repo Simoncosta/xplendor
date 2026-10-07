@@ -100,7 +100,7 @@ const CompanyModulesPanel: React.FC<Props> = ({ companyId }) => {
                 <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <span className="text-muted fs-13">Presets de ramo:</span>
                     {presets.map((p) => (
-                        <button key={p} type="button" className="btn btn-sm btn-soft-primary" disabled={busy !== null} onClick={() => applyPreset(p)}>
+                        <button key={p} type="button" className="btn btn-sm btn-outline-primary" disabled={busy !== null} onClick={() => applyPreset(p)}>
                             {busy === "preset:" + p ? <Spinner size="sm" /> : PRESET_LABELS[p] ?? p}
                         </button>
                     ))}

@@ -7,6 +7,7 @@ import AiRequestState from "Components/Common/AiRequestState";
 import { EditorialIdea, EditorialIdeasRequest, POST_CHANNEL_META, PostChannel, mediaFormatLabel } from "common/models/editorialPost.model";
 import XSelect from "./XSelect";
 import useOpenInCompany from "./useOpenInCompany";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * "Gerar ideias do mês": a IA propõe 8 a 12 ideias para o mês aberto (âncoras com o gancho
@@ -199,11 +200,11 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
                 <span className="text-muted fs-12">{data ? `${data.used}/${data.cap} pedidos de ideias este mês` : ""}</span>
                 <div className="d-flex gap-2">
                     {result && (
-                        <Button color="soft-primary" onClick={generate} disabled={busy || limitReached}>
+                        <ReasonButton color="outline-primary" onClick={generate} disabled={busy} reason={limitReached ? "Atingiu o limite de pedidos de ideias deste mês." : null}>
                             {busy ? <Spinner size="sm" /> : <><i className="ri-refresh-line me-1" />Gerar outras</>}
-                        </Button>
+                        </ReasonButton>
                     )}
-                    {result && <Button color="light" onClick={discard}>Descartar</Button>}
+                    {result && <Button color="outline-primary" onClick={discard}>Descartar</Button>}
                     <Button color="light" onClick={toggle}>Fechar</Button>
                 </div>
             </ModalFooter>

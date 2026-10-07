@@ -50,18 +50,15 @@ export default function CarIntelligencePage() {
     return (
         <div className="page-content mb-3">
             <Container fluid>
-                <Row className="mb-2">
-                    <Col>
-                        <CarAnalyticsHeader
-                            car={car}
-                            ips={ips}
-                            ai={ai}
-                            aiMeta={aiMeta}
-                            fmtDate={fmtDate}
-                            ipsClassBadge={ipsClassBadge}
-                        />
-                    </Col>
-                </Row>
+                <CarAnalyticsHeader
+                    car={car}
+                    ips={ips}
+                    ai={ai}
+                    aiMeta={aiMeta}
+                    fmtDate={fmtDate}
+                    ipsClassBadge={ipsClassBadge}
+                    section="Mercado e público"
+                />
 
                 <Row className="mb-3">
                     <Col>

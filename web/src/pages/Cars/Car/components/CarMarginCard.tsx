@@ -70,9 +70,9 @@ export default function CarMarginCard({ companyId, carId }: CarMarginCardProps) 
                     <Col md={3}>
                         <p className="text-muted fs-12 mb-1">{labels.title}</p>
                         {data.calculable && data.margin !== null ? (
-                            <h4 className="mb-0 fw-bold" style={{ color: data.margin >= 0 ? "#0ab39c" : "#f06548" }}>
+                            <h5 className={`mb-0 fw-bold fs-18 ${data.margin >= 0 ? "text-success" : "text-danger"}`}>
                                 {eur(data.margin)}
-                            </h4>
+                            </h5>
                         ) : (
                             <span className="badge bg-light text-muted fs-13">Não calculável</span>
                         )}

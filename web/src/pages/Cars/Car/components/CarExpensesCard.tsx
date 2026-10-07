@@ -1,10 +1,10 @@
 // React
 import { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { Card, CardBody, CardHeader, Table, Badge } from "reactstrap";
+import { Button, Card, CardBody, CardHeader, Table, Badge } from "reactstrap";
 import { toast } from "react-toastify";
 // Components
-import XButton from "Components/Common/XButton";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import ExpenseFormModal from "pages/Expenses/components/ExpenseFormModal";
 // Redux / helpers
 import { deleteExpense, updateExpense } from "slices/expenses/thunk";
@@ -66,7 +66,7 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
             await alertMessage("Esta despesa está vinculada. Arquive-a em vez de a eliminar.", "Não é possível eliminar", "warning");
             return;
         }
-        const ok = await confirmDelete(`Vais eliminar a despesa "${e.description}".`);
+        const ok = await confirmDelete(`Vai eliminar a despesa "${e.description}".`);
         if (!ok) return;
         try {
             await dispatch(deleteExpense({ companyId, id: e.id })).unwrap();
@@ -80,14 +80,14 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
 
     return (
         <Card className="mt-3">
-            <CardHeader className="d-flex align-items-center justify-content-between">
+            <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div>
-                    <h5 className="mb-0">Despesas</h5>
+                    <h5 className="card-title mb-0">Despesas</h5>
                     <small className="text-muted">Custos associados a esta viatura · Total {eur(total)}</small>
                 </div>
-                <XButton variant="success" outline type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                    Adicionar despesa
-                </XButton>
+                <Button color="outline-primary" type="button" onClick={openCreate}>
+                    <i className="ri-add-line me-1" />Adicionar despesa
+                </Button>
             </CardHeader>
             <CardBody>
                 <div className="table-responsive">
@@ -126,13 +126,14 @@ export default function CarExpensesCard({ companyId, carId }: CarExpensesCardPro
                                         {e.is_automatic ? (
                                             <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
                                         ) : (<>
-                                        <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(e)} title="Editar"><i className="ri-pencil-line" /></button>
-                                        {e.archived ? (
-                                            <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(e, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>
-                                        ) : (
-                                            <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(e, true)} title="Arquivar"><i className="ri-archive-line" /></button>
-                                        )}
-                                        <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(e)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
+                                        <div className="d-inline-flex gap-1">
+                                            <Button size="sm" color="outline-primary" onClick={() => openEdit(e)} title="Editar" aria-label={`Editar: ${e.description}`}><i className="ri-pencil-line" /></Button>
+                                            <ActionsMenu size="sm" label={`Mais ações: ${e.description}`} items={[
+                                                { label: "Restaurar", icon: "ri-inbox-unarchive-line", hidden: !e.archived, onClick: () => void setArchived(e, false) },
+                                                { label: "Arquivar", icon: "ri-archive-line", hidden: e.archived, onClick: () => void setArchived(e, true) },
+                                                { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(e) },
+                                            ]} />
+                                        </div>
                                         </>)}
                                     </td>
                                 </tr>

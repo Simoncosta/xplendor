@@ -3,7 +3,8 @@ import classnames from "classnames";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, CardHeader, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { getPingwinDashboard, queuePingwinSync } from "helpers/laravel_helper";
 import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod } from "common/models/pingwin.model";
@@ -258,9 +259,10 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                         style={{ minWidth: 160 }}
                     />
                 </div>
-                <button className="btn btn-soft-primary" onClick={() => setConfirmOpen(true)} disabled={!date || queuing || !companyId}>
+                <ReasonButton color="outline-primary" onClick={() => setConfirmOpen(true)} disabled={queuing}
+                    reason={!companyId ? "Escolha primeiro a empresa." : !date ? "Indique a data." : null}>
                     {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" /> Buscar dados atualizados</>}
-                </button>
+                </ReasonButton>
             </DashboardSectionHeader>
 
             {/* 3 cards de faturação por período (contexto do período no subtítulo) */}
@@ -458,7 +460,9 @@ export function PingwinDashboardContent() {
 }
 
 /** Título de página único (padrão Velzon), comum ao /dashboard e ao /restauracao. */
-export const RestaurantPageTitle = () => <BreadCrumb title="Restauração" pageTitle="Painel" pageLink="/dashboard" />;
+export const RestaurantPageTitle = () => (
+    <PageHeader title="Restauração" breadcrumbs={[{ label: "Painel", to: "/dashboard" }]} />
+);
 
 export default function PingwinDashboard() {
     document.title = "Restauração | Xplendor";

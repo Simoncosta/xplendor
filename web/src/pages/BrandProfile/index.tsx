@@ -9,6 +9,7 @@ import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { BrandPillar, EmojiPolicy, IBrandProfile } from "common/models/blog.model";
 import BrandProfileSuggestModal from "./BrandProfileSuggestModal";
 import FollowersCard from "./FollowersCard";
+import PageHeader from "Components/Common/PageHeader";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
@@ -131,32 +132,22 @@ export default function BrandProfilePage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between gap-2">
-                            <div>
-                                <h4 className="mb-sm-0">Perfil da Marca</h4>
-                                <p className="text-muted fs-13 mb-0 mt-1">Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA.</p>
-                            </div>
-                            {canEdit && (
-                                <div className="d-flex flex-wrap align-items-center gap-2 mt-2 mt-sm-0">
-                                    {waiting && !suggestOpen && (
-                                        <button type="button" className={`btn btn-sm ${waiting.status === "done" ? "btn-soft-success" : waiting.status === "error" ? "btn-soft-danger" : "btn-soft-secondary"}`} onClick={() => setSuggestOpen(true)}>
-                                            <i className={`${waiting.status === "done" ? "ri-checkbox-circle-line" : waiting.status === "error" ? "ri-error-warning-line" : "ri-time-line"} me-1`} />
-                                            {waiting.status === "done" ? "Sugestão pronta: ver" : waiting.status === "error" ? "A sugestão falhou: ver" : "Sugestão em preparação"}
-                                        </button>
-                                    )}
-                                    <button type="button" className="btn btn-soft-primary" onClick={() => setSuggestOpen(true)} disabled={loading}>
-                                        <i className="ri-magic-line me-1" />Sugerir perfil
-                                    </button>
-                                    <button type="button" className="btn btn-primary" onClick={save} disabled={saving || loading}>
-                                        {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-3-line me-1" />}Guardar
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader title="Perfil da Marca" breadcrumbs={[{ label: "Marketing" }]}
+                    description="Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA."
+                    actions={canEdit ? (<>
+                        {waiting && !suggestOpen && (
+                            <button type="button" className="btn btn-outline-primary" onClick={() => setSuggestOpen(true)}>
+                                <i className={`${waiting.status === "done" ? "ri-checkbox-circle-line text-success" : waiting.status === "error" ? "ri-error-warning-line text-danger" : "ri-time-line"} me-1`} />
+                                {waiting.status === "done" ? "Sugestão pronta: ver" : waiting.status === "error" ? "A sugestão falhou: ver" : "Sugestão em preparação"}
+                            </button>
+                        )}
+                        <button type="button" className="btn btn-outline-primary" onClick={() => setSuggestOpen(true)} disabled={loading}>
+                            <i className="ri-magic-line me-1" />Sugerir perfil
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || loading}>
+                            {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-3-line me-1" />}Guardar
+                        </button>
+                    </>) : undefined} />
 
                 {!loading && !canEdit && (
                     <div className="alert alert-info fs-13">Só o administrador da empresa pode alterar o perfil da marca.</div>
@@ -227,7 +218,7 @@ export default function BrandProfilePage() {
                                             <p className="text-muted fs-12 mb-0">Os grandes temas da marca. A ordem é a prioridade.</p>
                                         </div>
                                         {canEdit && form.pillars.length < MAX_PILLARS && (
-                                            <button type="button" className="btn btn-soft-primary btn-sm" onClick={() => set("pillars", [...form.pillars, { name: "", description: "" }])}>
+                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => set("pillars", [...form.pillars, { name: "", description: "" }])}>
                                                 <i className="ri-add-line me-1" />Acrescentar
                                             </button>
                                         )}
@@ -251,9 +242,9 @@ export default function BrandProfilePage() {
                                                             </div>
                                                             {canEdit && (
                                                                 <div className="d-flex flex-column gap-1">
-                                                                    <button type="button" className="btn btn-light btn-sm py-0" title="Subir" aria-label="Subir" disabled={i === 0} onClick={() => movePillar(i, -1)}><i className="ri-arrow-up-s-line" /></button>
-                                                                    <button type="button" className="btn btn-light btn-sm py-0" title="Descer" aria-label="Descer" disabled={i === form.pillars.length - 1} onClick={() => movePillar(i, 1)}><i className="ri-arrow-down-s-line" /></button>
-                                                                    <button type="button" className="btn btn-soft-danger btn-sm py-0" title="Remover" aria-label="Remover" onClick={() => set("pillars", form.pillars.filter((_, j) => j !== i))}><i className="ri-delete-bin-line" /></button>
+                                                                    <button type="button" className={`btn btn-outline-primary btn-sm py-0 ${i === 0 ? "invisible" : ""}`} title="Subir" aria-label="Subir" onClick={() => movePillar(i, -1)}><i className="ri-arrow-up-s-line" /></button>
+                                                                    <button type="button" className={`btn btn-outline-primary btn-sm py-0 ${i === form.pillars.length - 1 ? "invisible" : ""}`} title="Descer" aria-label="Descer" onClick={() => movePillar(i, 1)}><i className="ri-arrow-down-s-line" /></button>
+                                                                    <button type="button" className="btn btn-outline-danger btn-sm py-0" title="Remover" aria-label="Remover" onClick={() => set("pillars", form.pillars.filter((_, j) => j !== i))}><i className="ri-delete-bin-line" /></button>
                                                                 </div>
                                                             )}
                                                         </div>

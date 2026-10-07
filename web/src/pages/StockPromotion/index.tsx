@@ -19,6 +19,8 @@ import {
 } from "reactstrap";
 import { createSelector } from "reselect";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { listPromotionCandidates, getPromotionSummary } from "../../helpers/stockPromotion_helper";
 import { getCompaniesPaginate } from "slices/companies/thunk";
@@ -244,6 +246,7 @@ const StockPromotionPage = () => {
                 </Label>
                 <Select
                     styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
                     isClearable
                     placeholder="Todos os tipos"
                     options={VEHICLE_TYPE_OPTIONS}
@@ -258,6 +261,7 @@ const StockPromotionPage = () => {
                 </Label>
                 <Select
                     styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
                     isMulti
                     placeholder="Todos os estados"
                     options={STATUS_OPTIONS}
@@ -272,6 +276,7 @@ const StockPromotionPage = () => {
                 </Label>
                 <Select
                     styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
                     isMulti
                     placeholder="Qualquer posição"
                     options={PRICE_SIGNAL_OPTIONS}
@@ -351,6 +356,7 @@ const StockPromotionPage = () => {
                     <div style={{ flex: 1 }}>
                         <Select
                             styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             options={SORT_OPTIONS}
                             value={SORT_OPTIONS.find((o) => o.value === sortBy)}
                             onChange={(opt: any) => setSortBy(opt?.value)}
@@ -358,9 +364,10 @@ const StockPromotionPage = () => {
                     </div>
                     <button
                         type="button"
-                        className="btn btn-soft-secondary btn-sm"
+                        className="btn btn-outline-primary btn-sm"
                         onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-                        title={sortDir === "desc" ? "Descendente — clica para ascendente" : "Ascendente — clica para descendente"}
+                        title={sortDir === "desc" ? "Descendente: clique para ascendente" : "Ascendente: clique para descendente"}
+                        aria-label={sortDir === "desc" ? "Ordem descendente: clique para ascendente" : "Ordem ascendente: clique para descendente"}
                         style={{ minWidth: 40 }}
                     >
                         <i className={sortDir === "desc" ? "ri-sort-desc" : "ri-sort-asc"} />
@@ -556,45 +563,39 @@ const StockPromotionPage = () => {
         <div className="page-content">
             <ToastContainer closeButton={false} limit={1} />
             <Container fluid>
-                {/* HEADER DA PÁGINA — espelha CarList */}
-                <Row className="mb-3">
-                    <Col>
-                        <div className="d-flex align-items-start justify-content-between flex-wrap gap-3">
-                            <div>
-                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={EYEBROW_STYLE}>
-                                    Gestão de Stock
-                                </p>
-                                <h3 className="mb-1 fw-semibold">Candidatas a promoção</h3>
+                <PageHeader
+                    title="Candidatas a promoção"
+                    breadcrumbs={[{ label: "Comercial" }]}
+                    description="As viaturas em stock que vale a pena potenciar com tráfego pago, com a posição de cada uma face ao mercado."
+                    actions={<>
+                        {isRoot && (
+                            <div style={{ minWidth: 240, maxWidth: "100%" }}>
+                                <Select
+                                    styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
+                                    aria-label="Empresa"
+                                    options={companyOptions}
+                                    value={companyOptions.find((o: any) => o.value === selectedCompanyId) || null}
+                                    onChange={(opt: any) => {
+                                        setSelectedCompanyId(opt?.value ?? userCompanyId);
+                                        setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
+                                    }}
+                                    placeholder="Escolher empresa…"
+                                />
                             </div>
-                            <div className="d-flex gap-2 flex-wrap align-items-center">
-                                {isRoot && (
-                                    <div style={{ minWidth: 240 }}>
-                                        <Select
-                                            styles={reactSelectTheme}
-                                            options={companyOptions}
-                                            value={companyOptions.find((o: any) => o.value === selectedCompanyId) || null}
-                                            onChange={(opt: any) => {
-                                                setSelectedCompanyId(opt?.value ?? userCompanyId);
-                                                setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
-                                            }}
-                                            placeholder="Escolher empresa..."
-                                        />
-                                    </div>
-                                )}
-                                {isFiltersMobile && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-soft-secondary btn-sm"
-                                        onClick={() => setFiltersOpen(true)}
-                                    >
-                                        <i className="ri-filter-line me-1" />
-                                        {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                        )}
+                        {isFiltersMobile && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={() => setFiltersOpen(true)}
+                            >
+                                <i className="ri-filter-line me-1" />
+                                {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
+                            </button>
+                        )}
+                    </>}
+                />
 
                 <Row>
                     {/* SIDEBAR DE FILTROS — card com gradiente espelhado */}
@@ -612,18 +613,19 @@ const StockPromotionPage = () => {
                                             </p>
                                             <h5 className="fs-16 mb-1 fw-semibold">Refinar candidatas</h5>
                                             <p className="text-muted fs-13 mb-0">
-                                                Afina por preço, idade, posição no mercado e prioridades já marcadas.
+                                                Afine por preço, idade, posição no mercado e prioridades já marcadas.
                                             </p>
                                         </div>
                                         <div className="flex-shrink-0">
-                                            <button
+                                            <ReasonButton
                                                 type="button"
+                                                color="link"
                                                 onClick={handleClearFilters}
-                                                className="btn btn-link text-decoration-none p-0 fs-13"
-                                                disabled={activeFilterCount === 0}
+                                                className="text-decoration-none p-0 fs-13"
+                                                reason={activeFilterCount === 0 ? "Não há filtros ativos." : null}
                                             >
                                                 Limpar todos
-                                            </button>
+                                            </ReasonButton>
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -648,7 +650,7 @@ const StockPromotionPage = () => {
                                         </p>
                                         <h5 className="mb-1 fw-semibold">Que viaturas vamos potenciar com tráfego pago?</h5>
                                         <p className="text-muted fs-13 mb-0">
-                                            Marca com ★ as que entram na próxima campanha. O orçamento e a ligação ao Meta vêm depois.
+                                            Marque com ★ as que entram na próxima campanha. O orçamento e a ligação ao Meta vêm depois.
                                         </p>
                                     </div>
                                     <span className="badge bg-light text-muted fs-12 px-3 py-2">
@@ -721,14 +723,15 @@ const StockPromotionPage = () => {
                         </OffcanvasHeader>
                         <OffcanvasBody>
                             <div className="d-flex justify-content-end mb-4">
-                                <button
+                                <ReasonButton
                                     type="button"
+                                    color="link"
                                     onClick={handleClearFilters}
-                                    className="btn btn-link text-decoration-none p-0 fs-13"
-                                    disabled={activeFilterCount === 0}
+                                    className="text-decoration-none p-0 fs-13"
+                                    reason={activeFilterCount === 0 ? "Não há filtros ativos." : null}
                                 >
                                     Limpar todos
-                                </button>
+                                </ReasonButton>
                             </div>
                             {filterPanelContent}
                         </OffcanvasBody>

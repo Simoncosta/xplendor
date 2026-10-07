@@ -2,12 +2,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Card, CardBody, Col, Container, Row, Table } from "reactstrap";
+import { Button, Card, CardBody, Container, Table } from "reactstrap";
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 // Components
 import Pagination from "Components/Common/Pagination";
-import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import SupplierFormModal from "./components/SupplierFormModal";
 import QuickAddSupplierModal from "./components/QuickAddSupplierModal";
 // Redux
@@ -83,7 +84,7 @@ const SupplierList = () => {
         }
 
         const confirmed = await confirmDelete(
-            `Vais eliminar o fornecedor "${supplier.name}". Esta ação não pode ser anulada.`
+            `Vai eliminar o fornecedor "${supplier.name}". Esta ação não pode ser anulada.`
         );
         if (!confirmed) return;
 
@@ -113,27 +114,19 @@ const SupplierList = () => {
     };
 
     const locationOf = (s: ISupplier): string =>
-        [s.parish_name, s.municipality_name, s.district_name].filter(Boolean).join(", ") || "—";
+        [s.parish_name, s.municipality_name, s.district_name].filter(Boolean).join(", ") || "-";
 
     return (
         <React.Fragment>
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
-                    <Row className="g-2 mb-3 align-items-center">
-                        <Col>
-                            <h5 className="mb-0">Fornecedores</h5>
-                            <small className="text-muted">Gere os fornecedores da sua empresa (base para as despesas).</small>
-                        </Col>
-                        <Col xs="auto" className="d-flex gap-2">
-                            <XButton variant="secondary" outline type="button" icon={<i className="ri-flashlight-line" />} onClick={() => setQuickOpen(true)}>
-                                Criação rápida
-                            </XButton>
-                            <XButton variant="success" type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                                Adicionar fornecedor
-                            </XButton>
-                        </Col>
-                    </Row>
+                    <PageHeader title="Fornecedores" breadcrumbs={[{ label: "Finanças" }]}
+                        description="Os fornecedores da sua empresa (base para as despesas)."
+                        actions={<>
+                            <Button color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
+                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo fornecedor</Button>
+                        </>} />
 
                     <Card>
                         <CardBody>
@@ -158,7 +151,7 @@ const SupplierList = () => {
                                         {!loading && suppliers.length === 0 && (
                                             <tr>
                                                 <td colSpan={6} className="text-center text-muted py-4">
-                                                    Sem fornecedores. Clica em "Adicionar fornecedor" para criar o primeiro.
+                                                    Sem fornecedores. Clique em "Novo fornecedor" para criar o primeiro.
                                                 </td>
                                             </tr>
                                         )}
@@ -168,26 +161,22 @@ const SupplierList = () => {
                                                     {s.name}
                                                     {s.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}
                                                 </td>
-                                                <td>{s.nif || "—"}</td>
-                                                <td>{s.phone || "—"}</td>
-                                                <td>{s.email || "—"}</td>
+                                                <td>{s.nif || "-"}</td>
+                                                <td>{s.phone || "-"}</td>
+                                                <td>{s.email || "-"}</td>
                                                 <td>{locationOf(s)}</td>
                                                 <td className="text-end">
-                                                    <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(s)} title="Editar">
-                                                        <i className="ri-pencil-line" />
-                                                    </button>
-                                                    {s.archived ? (
-                                                        <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(s, false)} title="Restaurar">
-                                                            <i className="ri-inbox-unarchive-line" />
-                                                        </button>
-                                                    ) : (
-                                                        <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(s, true)} title="Arquivar">
-                                                            <i className="ri-archive-line" />
-                                                        </button>
-                                                    )}
-                                                    <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(s)} title="Eliminar">
-                                                        <i className="ri-delete-bin-line" />
-                                                    </button>
+                                                    <div className="d-inline-flex gap-1">
+                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(s)} title="Editar" aria-label={`Editar: ${s.name}`}>
+                                                            <i className="ri-pencil-line" />
+                                                        </Button>
+                                                        <ActionsMenu size="sm" label={`Mais ações: ${s.name}`} items={[
+                                                            s.archived
+                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(s, false) }
+                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(s, true) },
+                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(s) },
+                                                        ]} />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

@@ -72,11 +72,11 @@ export default function QuoteActivityCard({ quote, activity, loading }: Props) {
                             <div className="text-muted fs-12 mb-1">Link da versão {latest.version}</div>
                             <Input readOnly value={latest.url} onFocus={(e) => e.currentTarget.select()} className="fs-13 mb-2" aria-label="Link público do orçamento" />
                             <div className="d-flex flex-wrap gap-2">
-                                <button type="button" className="btn btn-soft-primary btn-sm" onClick={() => void copy()}><i className="ri-file-copy-line me-1" />Copiar link</button>
-                                <a className="btn btn-success btn-sm" href={waHref} target="_blank" rel="noopener noreferrer">
+                                <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => void copy()}><i className="ri-file-copy-line me-1" />Copiar link</button>
+                                <a className="btn btn-outline-primary btn-sm" href={waHref} target="_blank" rel="noopener noreferrer">
                                     <i className="ri-whatsapp-line me-1" />Enviar por WhatsApp
                                 </a>
-                                <Link className="btn btn-soft-secondary btn-sm" to={`/admin/quotes/${quote.id}/preview/${latest.version}`}>
+                                <Link className="btn btn-outline-primary btn-sm" to={`/admin/quotes/${quote.id}/preview/${latest.version}`}>
                                     <i className="ri-eye-line me-1" />Ver como o cliente
                                 </Link>
                             </div>
@@ -160,7 +160,7 @@ export default function QuoteActivityCard({ quote, activity, loading }: Props) {
                                 <p className="text-muted fs-13 mb-0">Sem respostas pelo link.</p>
                             )}
                             {activity?.onboarding_ticket_id && (
-                                <Link to={`/admin/tickets/${activity.onboarding_ticket_id}`} className="btn btn-soft-primary btn-sm mt-3">
+                                <Link to={`/admin/tickets/${activity.onboarding_ticket_id}`} className="btn btn-outline-primary btn-sm mt-3">
                                     <i className="ri-rocket-2-line me-1" />Ver o ticket de arranque
                                 </Link>
                             )}

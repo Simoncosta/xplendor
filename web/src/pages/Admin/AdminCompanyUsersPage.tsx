@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Card, CardBody, Container, Spinner, Table, Alert, Badge, Button } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { getAdminCompanyUsers } from "helpers/laravel_helper";
 import { startImpersonationFlow } from "helpers/impersonation";
 
@@ -72,20 +72,13 @@ export default function AdminCompanyUsersPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title={companyName || "Utilizadores"} pageTitle="Empresas" pageLink="/root/companies" />
+                <PageHeader title={companyName || `Empresa #${cid}`} crumbLabel="Utilizadores"
+                    breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Empresas", to: "/root/companies" }]}
+                    description="Utilizadores desta empresa."
+                    actions={<Button color="outline-primary" onClick={() => navigate("/root/companies")}><i className="ri-arrow-left-line me-1" />Voltar</Button>} />
 
                 <Card>
                     <CardBody>
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <h5 className="mb-0">{companyName || `Empresa #${cid}`}</h5>
-                                <small className="text-muted">Utilizadores desta empresa</small>
-                            </div>
-                            <Button color="light" size="sm" onClick={() => navigate("/root/companies")}>
-                                <i className="ri-arrow-left-line me-1" />Voltar
-                            </Button>
-                        </div>
-
                         {loading ? (
                             <div className="text-center py-5"><Spinner color="primary" /></div>
                         ) : (
@@ -108,7 +101,7 @@ export default function AdminCompanyUsersPage() {
                                                     <td>{roleBadge(u.role)}</td>
                                                     <td className="text-end">
                                                         {canImpersonate && (
-                                                            <Button color="soft-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
+                                                            <Button color="outline-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
                                                                 <i className="ri-spy-line me-1" />Entrar como
                                                             </Button>
                                                         )}

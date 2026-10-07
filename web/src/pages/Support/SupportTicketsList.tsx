@@ -2,7 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
 import { Link } from "react-router-dom";
-import { Card, CardBody, CardHeader, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Input, Label } from "reactstrap";
+import { Card, CardBody, CardHeader, Container, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Input, Label } from "reactstrap";
+import PageHeader from "Components/Common/PageHeader";
 import { ToastContainer, toast } from "react-toastify";
 import { getSupportTickets, createSupportTicket } from "slices/supportTickets/thunk";
 import {
@@ -62,25 +63,17 @@ const SupportTicketsList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-customer-service-2-line text-primary me-2" />Suporte</h4>
-                        <p className="text-muted mb-0">Os pedidos da tua empresa — ideias, melhorias, bugs e sugestões.</p>
-                    </Col>
-                    <Col xs="auto" className="d-flex gap-2">
-                        <div className="btn-group" role="group" aria-label="Vista">
-                            <button type="button" className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("list")}>
-                                <i className="ri-list-check me-1" />Lista
-                            </button>
-                            <button type="button" className={"btn btn-sm " + (view === "kanban" ? "btn-primary" : "btn-outline-primary")} onClick={() => setView("kanban")}>
-                                <i className="ri-layout-grid-line me-1" />Kanban
-                            </button>
+                <PageHeader title="Suporte" breadcrumbs={[{ label: "Equipa" }]}
+                    description="Os pedidos da sua empresa: ideias, melhorias, erros e sugestões."
+                    actions={<>
+                        <div className="xp-seg" role="tablist" aria-label="Vista">
+                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
+                            <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
                         </div>
                         <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
                             <i className="ri-add-line me-1" />Novo pedido
                         </button>
-                    </Col>
-                </Row>
+                    </>} />
 
                 <Card>
                     <CardHeader><h5 className="mb-0">Os meus pedidos</h5></CardHeader>
@@ -140,17 +133,11 @@ const SupportTicketsList = () => {
                 <ModalHeader toggle={() => setOpen(false)}>Novo pedido</ModalHeader>
                 <ModalBody>
                     <Label className="form-label">Tipo</Label>
-                    <div className="d-flex flex-wrap gap-2 mb-3">
+                    <div className="xp-seg mb-3 flex-wrap" role="radiogroup" aria-label="Tipo de pedido">
                         {TYPES.map((tp) => {
                             const m = TICKET_TYPE_META[tp];
-                            const active = type === tp;
                             return (
-                                <button
-                                    key={tp}
-                                    type="button"
-                                    className={"btn btn-sm " + (active ? "btn-primary" : "btn-light")}
-                                    onClick={() => setType(tp)}
-                                >
+                                <button key={tp} type="button" role="radio" aria-checked={type === tp} className={type === tp ? "on" : ""} onClick={() => setType(tp)}>
                                     <i className={m.icon + " me-1"} />{m.label}
                                 </button>
                             );
@@ -162,9 +149,9 @@ const SupportTicketsList = () => {
                         <div className="alert alert-warning d-flex gap-2 mb-3" role="alert">
                             <i className="ri-money-euro-circle-line fs-18 flex-shrink-0" />
                             <div className="fs-13">
-                                <strong>Este é um serviço pago ({SITE_CHANGE_HOURLY_RATE}€/hora).</strong> Vais
-                                receber um orçamento para aprovar — <u>nenhum trabalho começa sem a tua aprovação
-                                e pagamento</u>. Descreve o que precisas e enviamos-te o valor.
+                                <strong>Este é um serviço pago ({SITE_CHANGE_HOURLY_RATE}€/hora).</strong> Vai
+                                receber um orçamento para aprovar: <u>nenhum trabalho começa sem a sua aprovação
+                                e pagamento</u>. Descreva o que precisa e enviamos-lhe o valor.
                             </div>
                         </div>
                     )}
@@ -175,14 +162,14 @@ const SupportTicketsList = () => {
                     </div>
                     <div className="mb-3">
                         <Label className="form-label">Descrição</Label>
-                        <Input type="textarea" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descreve com detalhe…" />
+                        <Input type="textarea" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descreva com detalhe…" />
                     </div>
 
                     {type === "bug" && (
                         <div className="mb-1">
-                            <Label className="form-label">Print da tela (opcional)</Label>
+                            <Label className="form-label">Captura de ecrã (opcional)</Label>
                             <Input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setScreenshot(e.target.files?.[0] ?? null)} />
-                            <small className="text-muted">Ajuda-nos a perceber o bug. JPG, PNG ou WebP.</small>
+                            <small className="text-muted">Ajuda-nos a perceber o erro. JPG, PNG ou WebP.</small>
                         </div>
                     )}
                 </ModalBody>

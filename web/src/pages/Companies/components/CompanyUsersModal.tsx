@@ -56,7 +56,7 @@ export default function CompanyUsersModal({
 
     return (
         <Modal isOpen={isOpen} toggle={onClose} centered size="lg">
-            <ModalHeader toggle={onClose}>Utilizadores{companyName ? ` — ${companyName}` : ""}</ModalHeader>
+            <ModalHeader toggle={onClose}>Utilizadores{companyName ? `: ${companyName}` : ""}</ModalHeader>
             <ModalBody>
                 {loading ? (
                     <div className="text-center py-4"><Spinner color="primary" /></div>
@@ -80,7 +80,7 @@ export default function CompanyUsersModal({
                                             <td>{roleBadge(u.role)}</td>
                                             <td className="text-end">
                                                 {canImpersonate && (
-                                                    <Button color="soft-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
+                                                    <Button color="outline-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
                                                         <i className="ri-spy-line me-1" />Entrar como
                                                     </Button>
                                                 )}

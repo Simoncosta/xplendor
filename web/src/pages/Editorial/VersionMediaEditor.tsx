@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { setPostMedia } from "helpers/laravel_helper";
 import { uploadMediaFile } from "helpers/mediaUpload";
 import { MediaAssetDto, PostWorkflow, VersionMedia, fmtDuration, mediaSrc } from "common/models/editorialWorkflow.model";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Ficheiros da versão em edição: imagens e vídeos (até 10, por ordem), enviados em partes
@@ -93,9 +94,9 @@ export default function VersionMediaEditor({ companyId, postId, media, validatio
                 {canEdit && (
                     <>
                         <input ref={fileInput} type="file" multiple accept={ACCEPT} className="d-none" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} />
-                        <Button color="soft-primary" size="sm" disabled={saving || media.items.length >= 10} onClick={() => fileInput.current?.click()}>
+                        <ReasonButton color="outline-primary" size="sm" disabled={saving} reason={media.items.length >= 10 ? "No máximo 10 ficheiros por versão." : null} onClick={() => fileInput.current?.click()}>
                             <i className="ri-upload-2-line me-1" />Adicionar ficheiros
-                        </Button>
+                        </ReasonButton>
                     </>
                 )}
             </div>
@@ -155,7 +156,7 @@ export default function VersionMediaEditor({ companyId, postId, media, validatio
                     {canEdit && (
                         <>
                             <input ref={coverInput} type="file" accept="image/jpeg,image/png,image/webp" className="d-none" onChange={(e) => { void upload(e.target.files, true); e.target.value = ""; }} />
-                            <Button color="soft-secondary" size="sm" disabled={saving} onClick={() => coverInput.current?.click()}>Escolher imagem de capa</Button>
+                            <Button color="outline-primary" size="sm" disabled={saving} onClick={() => coverInput.current?.click()}>Escolher imagem de capa</Button>
                         </>
                     )}
                 </div>

@@ -143,11 +143,11 @@ export default function PersonaGroupCard({ group }: Props) {
                         }
                     </span>
                     <div className="d-flex gap-2">
-                        <Link to="/cars" className="btn btn-sm btn-light">
+                        <Link to="/cars" className="btn btn-sm btn-outline-primary">
                             Ver carros
                         </Link>
                         {group.is_campanha_viable && (
-                            <Link to={`/cars/${group.cars[0]?.id}/marketing`} className="btn btn-sm btn-soft-primary">
+                            <Link to={`/cars/${group.cars[0]?.id}/marketing`} className="btn btn-sm btn-outline-primary">
                                 Criar narrativa <i className="ri-arrow-right-line ms-1" />
                             </Link>
                         )}

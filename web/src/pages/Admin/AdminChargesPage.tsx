@@ -5,6 +5,9 @@ import { adminChargeAction, adminChargeFilePath, createAdminCharge, getAdminChar
 import { openFileGet, openPdfGet } from "helpers/download_helper";
 import { AdminCharge, CHARGE_STATUS_META, ChargeStatus, dmy, euro } from "common/models/charge.model";
 import XSelect from "pages/Editorial/XSelect";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Cobranças da XPLENDOR (só o root): todas as despesas da XPLENDOR de todas as empresas,
@@ -98,13 +101,9 @@ export default function AdminChargesPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="g-2 mb-3 align-items-center">
-                    <Col>
-                        <h5 className="mb-0">Cobranças</h5>
-                        <small className="text-muted">Faturas da XPLENDOR aos clientes (emitidas no programa certificado; aqui só se carregam e acompanham).</small>
-                    </Col>
-                    <Col xs="auto"><Button color="success" onClick={() => setCreating(true)}><i className="ri-add-line me-1" />Nova cobrança</Button></Col>
-                </Row>
+                <PageHeader title="Cobranças" breadcrumbs={[{ label: "Administração" }]}
+                    description="Faturas da XPLENDOR aos clientes (emitidas no programa certificado; aqui só se carregam e acompanham)."
+                    actions={<Button color="primary" onClick={() => setCreating(true)}><i className="ri-add-line me-1" />Nova cobrança</Button>} />
 
                 <Row className="g-3 mb-3">
                     <Col sm={6} xl={4}><Stat icon="ri-time-line" color="warning" label="Em aberto" value={euro(summary?.open_amount ?? 0)} /></Col>
@@ -162,23 +161,23 @@ export default function AdminChargesPage() {
                                             </div>
                                         </div>
                                         <div className="d-flex flex-wrap gap-1 mt-2">
-                                            <Button size="sm" color="light" onClick={async () => { const r = await openPdfGet(adminChargeFilePath(c.id, "invoice")); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
+                                            <Button size="sm" color="outline-primary" onClick={async () => { const r = await openPdfGet(adminChargeFilePath(c.id, "invoice")); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
                                                 <i className="ri-file-pdf-2-line me-1" />Fatura
                                             </Button>
-                                            {c.has_proof && <Button size="sm" color="light" onClick={async () => { const r = await openFileGet(adminChargeFilePath(c.id, "proof")); if (!r.ok) toast.error("Não foi possível abrir o comprovativo."); }}>
-                                                <i className="ri-attachment-2 me-1" />Comprovativo
-                                            </Button>}
-                                            {c.link && <Button size="sm" color="light" onClick={() => copyLink(c)}><i className="ri-link me-1" />Copiar link</Button>}
                                             {(c.status === "open" || c.status === "payment_indicated") && (
                                                 <>
-                                                    <Button size="sm" color="soft-primary" disabled={busy === c.id} onClick={() => act(c, "send", "Email enviado.")}><i className="ri-mail-send-line me-1" />Enviar agora</Button>
-                                                    <Button size="sm" color="soft-success" disabled={busy === c.id} onClick={() => act(c, "paid", "Cobrança marcada como paga.")}>
+                                                    <Button size="sm" color="outline-primary" disabled={busy === c.id} onClick={() => act(c, "send", "Email enviado.")}><i className="ri-mail-send-line me-1" />Enviar agora</Button>
+                                                    <Button size="sm" color="success" disabled={busy === c.id} onClick={() => act(c, "paid", "Cobrança marcada como paga.")}>
                                                         <i className="ri-check-double-line me-1" />{c.status === "payment_indicated" ? "Confirmar pagamento" : "Marcar como paga"}
                                                     </Button>
-                                                    {c.status === "payment_indicated" && <Button size="sm" color="soft-warning" disabled={busy === c.id} onClick={() => { setText(""); setDialog({ kind: "refuse", charge: c }); }}><i className="ri-close-circle-line me-1" />Recusar</Button>}
-                                                    <Button size="sm" color="soft-danger" disabled={busy === c.id} onClick={() => { setText(""); setDialog({ kind: "cancel", charge: c }); }}><i className="ri-forbid-2-line me-1" />Anular</Button>
                                                 </>
                                             )}
+                                            <ActionsMenu size="sm" label={`Mais ações: ${c.description}`} disabled={busy === c.id} items={[
+                                                { label: "Comprovativo", icon: "ri-attachment-2", hidden: !c.has_proof, onClick: async () => { const r = await openFileGet(adminChargeFilePath(c.id, "proof")); if (!r.ok) toast.error("Não foi possível abrir o comprovativo."); } },
+                                                { label: "Copiar link", icon: "ri-link", hidden: !c.link, onClick: () => copyLink(c) },
+                                                { label: "Recusar o pagamento indicado", icon: "ri-close-circle-line", hidden: c.status !== "payment_indicated", onClick: () => { setText(""); setDialog({ kind: "refuse", charge: c }); } },
+                                                { label: "Anular", icon: "ri-forbid-2-line", danger: true, hidden: !(c.status === "open" || c.status === "payment_indicated"), onClick: () => { setText(""); setDialog({ kind: "cancel", charge: c }); } },
+                                            ]} />
                                         </div>
                                     </li>
                                 ))}
@@ -206,9 +205,10 @@ export default function AdminChargesPage() {
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" disabled={busy === "new"} onClick={() => setCreating(false)}>Cancelar</Button>
-                    <Button color="success" disabled={busy === "new" || !form.company_id || !form.description.trim() || !form.amount || !form.due_date || !form.invoice} onClick={create}>
+                    <ReasonButton color="primary" disabled={busy === "new"} onClick={create}
+                        reason={!form.company_id ? "Escolha a empresa." : !form.description.trim() ? "Escreva a descrição." : !form.amount ? "Indique o valor." : !form.due_date ? "Indique o vencimento." : !form.invoice ? "Carregue a fatura em PDF." : null}>
                         {busy === "new" ? <Spinner size="sm" /> : "Criar cobrança"}
-                    </Button>
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
 
@@ -223,9 +223,10 @@ export default function AdminChargesPage() {
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setDialog(null)}>Cancelar</Button>
-                    <Button color={dialog?.kind === "cancel" ? "danger" : "warning"} disabled={!text.trim() || busy !== null} onClick={confirmDialog}>
-                        {dialog?.kind === "cancel" ? "Anular" : "Recusar"}
-                    </Button>
+                    <ReasonButton color={dialog?.kind === "cancel" ? "danger" : "primary"} disabled={busy !== null} onClick={confirmDialog}
+                        reason={!text.trim() ? (dialog?.kind === "cancel" ? "Escreva o motivo da anulação." : "Escreva a nota para o cliente.") : null}>
+                        {dialog?.kind === "cancel" ? "Anular a cobrança" : "Recusar o pagamento"}
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
         </div>

@@ -1,6 +1,7 @@
 //React
 import { useEffect } from "react";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { Col, Label, Row } from "reactstrap";
 
 // Components
@@ -13,7 +14,7 @@ import { useFormikContext } from "formik";
 import { ICarUpdatePayload } from "common/models/car.model";
 
 // Redux
-import { classTaxOptions, colorsOptions, conditionsOptions, seatsOptions, segmentOptions } from "common/data/cars";
+import { classTaxOptions } from "common/data/cars";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 
 export default function CarAdditionalDataFields({ isEdit }: { isEdit: boolean }) {
@@ -46,6 +47,8 @@ export default function CarAdditionalDataFields({ isEdit }: { isEdit: boolean })
                         Classe portagem:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="toll_class"
                         name="toll_class"
                         options={classTaxOptions}

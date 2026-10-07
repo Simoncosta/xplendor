@@ -78,7 +78,7 @@ export default function CarCreate() {
 
                     try {
                         const created: any = await dispatch(createCar({ companyId, formData: fd })).unwrap();
-                        toast("Rascunho guardado. Podes continuar mais tarde.", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
+                        toast("Rascunho guardado. Pode continuar mais tarde.", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                         // Redirecciona para /edit para a Matilde continuar onde parou.
                         const newId = created?.data?.id ?? created?.id;
                         if (newId) {

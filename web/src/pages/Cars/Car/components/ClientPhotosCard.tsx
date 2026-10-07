@@ -33,7 +33,7 @@ export default function ClientPhotosCard({ companyId, carId }: { companyId: numb
         <Card className="mt-3 mb-0">
             <CardHeader>
                 <h5 className="mb-0"><i className="ri-camera-line me-1 text-primary" /> Fotos do cliente</h5>
-                <small className="text-muted">Fotos que o cliente partilhou no relatório de pós-venda — usa nas redes sociais.</small>
+                <small className="text-muted">Fotos que o cliente partilhou no relatório de pós-venda, para usar nas redes sociais.</small>
             </CardHeader>
             <CardBody>
                 {loading ? (

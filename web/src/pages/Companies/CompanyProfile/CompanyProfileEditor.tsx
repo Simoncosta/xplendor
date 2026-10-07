@@ -1,13 +1,12 @@
 // React
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 // Images
-import progileBg from '../../../assets/images/profile-company-bg.jpg';
 import avatar1 from '../../../assets/images/users/avatar-company.jpg';
 // Forms
 import { FormikProvider, useFormik } from 'formik';
 import * as Yup from "yup";
 // Components
-import XButton from 'Components/Common/XButton';
+import PageHeader from 'Components/Common/PageHeader';
 import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
 import AgencyCreateFields from './components/AgencyCreateFields';
 import ManagingAgencyCard from './components/ManagingAgencyCard';
@@ -15,7 +14,7 @@ import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPa
 import IntegrationsSettings from './IntegrationsSettings';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
 import { getCompanyManagement, getMyModules } from 'helpers/laravel_helper';
-import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import { Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
 // Models
@@ -202,14 +201,15 @@ export default function CompanyProfileEditor({
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
-                    <div className="position-relative mx-n4 mt-n4">
-                        <div className="profile-wid-bg profile-setting-img">
-                            <img src={progileBg} className="profile-wid-img" alt="" />
-                        </div>
-                    </div>
+                    <PageHeader
+                        title={isEdit ? (data?.fiscal_name || "Perfil da empresa") : "Nova empresa"}
+                        crumbLabel={isEdit ? "Perfil da empresa" : "Nova empresa"}
+                        breadcrumbs={isRoot ? [{ label: "Administração", to: "/admin" }, { label: "Empresas", to: "/companies" }] : []}
+                        description={isEdit ? "Os dados, a Linha Editorial e as integrações da empresa." : "Os dados da nova empresa e o utilizador de acesso."}
+                    />
                     <Row>
                         <Col xxl={3}>
-                            <Card className="mt-n5">
+                            <Card>
                                 <CardBody className="p-4">
                                     <div className="text-center">
                                         <div className="profile-user position-relative d-inline-block mx-auto  mb-4">
@@ -260,7 +260,7 @@ export default function CompanyProfileEditor({
                                 <CardBody>
                                     <div className="d-flex align-items-center mb-5">
                                         <div className="flex-grow-1">
-                                            <h5 className="card-title mb-0">Complete seu perfil empresarial</h5>
+                                            <h5 className="card-title mb-0">Complete o perfil da empresa</h5>
                                         </div>
                                     </div>
                                     <div className="progress animated-progress custom-progress progress-label">
@@ -283,7 +283,7 @@ export default function CompanyProfileEditor({
                         </Col>
 
                         <Col xxl={9}>
-                            <Card className="mt-xxl-n5">
+                            <Card>
                                 <CardHeader>
                                     <Nav className="nav-tabs-custom rounded card-header-tabs border-bottom-0"
                                         role="tablist">
@@ -308,18 +308,20 @@ export default function CompanyProfileEditor({
                                                 </NavLink>
                                             </NavItem>
                                         )}
-                                        <NavItem>
-                                            <NavLink
-                                                className={classnames("text-body", { active: activeTab === "3" })}
-                                                onClick={() => {
-                                                    tabChange("3");
-                                                }}
-                                                disabled={!isEdit}
-                                            >
-                                                <i className="fas fa-home"></i>
-                                                Integrações
-                                            </NavLink>
-                                        </NavItem>
+                                        {/* As integrações só existem depois de criada a empresa. */}
+                                        {isEdit && (
+                                            <NavItem>
+                                                <NavLink
+                                                    className={classnames("text-body", { active: activeTab === "3" })}
+                                                    onClick={() => {
+                                                        tabChange("3");
+                                                    }}
+                                                >
+                                                    <i className="fas fa-home"></i>
+                                                    Integrações
+                                                </NavLink>
+                                            </NavItem>
+                                        )}
                                     </Nav>
                                 </CardHeader>
                                 <CardBody className="p-4">
@@ -349,24 +351,14 @@ export default function CompanyProfileEditor({
 
                                                     <Col lg={12}>
                                                         <div className="hstack gap-2 justify-content-end">
-                                                            {!readOnly && <XButton
-                                                                variant="success"
-                                                                type='submit'
-                                                                outline
-                                                                rounded
-                                                                icon={<i className="ri-check-double-line" />}
-                                                            >
-                                                                Salvar
-                                                            </XButton>}
-                                                            <XButton
-                                                                variant="danger"
-                                                                outline
-                                                                rounded
-                                                                icon={<i className="ri-close-line" />}
-                                                                onClick={() => onCancel()}
-                                                            >
+                                                            <Button color="light" onClick={() => onCancel()}>
                                                                 Cancelar
-                                                            </XButton>
+                                                            </Button>
+                                                            {!readOnly && (
+                                                                <Button color="primary" type="submit">
+                                                                    <i className="ri-check-double-line me-1" />Guardar
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </Col>
                                                 </form>

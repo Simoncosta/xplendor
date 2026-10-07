@@ -1,9 +1,3 @@
-/* Linha Editorial: controlo segmentado das vistas (desliza na horizontal no telemóvel). */
-.xp-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 8px; background: var(--vz-light-bg-subtle, var(--vz-tertiary-bg)); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-.xp-seg::-webkit-scrollbar { display: none; }
-.xp-seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 6px; font-size: 0.8125rem; color: var(--vz-secondary-color); white-space: nowrap; }
-.xp-seg button.on { background: var(--vz-secondary-bg); color: var(--vz-body-color); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
-.xp-seg button:focus-visible { outline: 2px solid var(--vz-primary); outline-offset: 1px; }
 /* Calendário em lista (telemóvel): sem a coluna "Todo o dia" e sem alargar a página. */
 .fc .fc-list-event-time, .fc .fc-list-event-graphic { display: none; }
 .fc .fc-list-event-title { width: 100%; max-width: 0; overflow: hidden; }

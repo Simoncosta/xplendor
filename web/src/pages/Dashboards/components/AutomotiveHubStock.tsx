@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Button, ButtonGroup, Card, CardBody, Col, Row, Spinner, Table } from "reactstrap";
+import { Alert, Card, CardBody, Col, Row, Spinner, Table } from "reactstrap";
 import { getAutomotiveHub, getAutomotiveHubFunnel } from "helpers/laravel_helper";
 import type { AutomotiveFunnel, AutomotiveHub, FunnelRow, FunnelSortKey, HubPrice, SortDirection } from "common/models/automotiveHub.model";
 import type { Recommendation, RecommendationLevel } from "common/models/recommendation.model";
@@ -76,11 +76,11 @@ const RecommendationItem = ({ r }: { r: Recommendation }) => {
     const carTitle = typeof r.evidence?.car_title === "string" ? (r.evidence.car_title as string) : null;
     const carId = typeof r.evidence?.car_id === "number" ? (r.evidence.car_id as number) : null;
     const button = isExternal(r.action.url) ? (
-        <a href={r.action.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-soft-primary flex-shrink-0">
+        <a href={r.action.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary flex-shrink-0">
             {r.action.label}<i className="ri-external-link-line ms-1" />
         </a>
     ) : (
-        <Link to={r.action.url} className="btn btn-sm btn-soft-primary flex-shrink-0">{r.action.label}</Link>
+        <Link to={r.action.url} className="btn btn-sm btn-outline-primary flex-shrink-0">{r.action.label}</Link>
     );
     return (
         <div
@@ -178,11 +178,11 @@ function FunnelCard({ companyId }: { companyId: number }) {
                             Vistas, contactos diretos (WhatsApp, chamada, telefone), leads e venda nos últimos {days} dias, com o investimento Meta atribuído a cada viatura.
                         </p>
                     </div>
-                    <ButtonGroup size="sm" aria-label="Período do funil">
+                    <div className="xp-seg" role="tablist" aria-label="Período do funil">
                         {([14, 30] as const).map((d) => (
-                            <Button key={d} color="primary" outline={days !== d} onClick={() => { setDays(d); setPage(1); }} disabled={loading && days === d}>{d} dias</Button>
+                            <button key={d} type="button" role="tab" aria-selected={days === d} className={days === d ? "on" : ""} onClick={() => { setDays(d); setPage(1); }}>{d} dias</button>
                         ))}
-                    </ButtonGroup>
+                    </div>
                 </div>
 
                 {loading && !data ? (

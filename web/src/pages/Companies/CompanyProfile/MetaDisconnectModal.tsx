@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Desligar a Meta com escolha do que acontece aos dados já recebidos:
@@ -84,16 +85,17 @@ export default function MetaDisconnectModal({ isOpen, mode, loading = false, onC
                 )}
             </ModalBody>
             <ModalFooter>
-                <Button color="light" className="border" onClick={onCancel} disabled={loading}>
+                <Button color="light" onClick={onCancel} disabled={loading}>
                     Cancelar
                 </Button>
-                <Button
+                <ReasonButton
                     color="danger"
-                    disabled={loading || !confirmed}
+                    disabled={loading}
+                    reason={!loading && !confirmed ? `Escreva ${META_PURGE_CONFIRMATION} para confirmar.` : null}
                     onClick={() => onConfirm(purge ? { purge: true, confirmation: confirmation.trim() } : { purge: false })}
                 >
-                    {loading ? <><Spinner size="sm" className="me-2" />A processar...</> : confirmText}
-                </Button>
+                    {loading ? <><Spinner size="sm" className="me-2" />A processar</> : confirmText}
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

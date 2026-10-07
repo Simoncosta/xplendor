@@ -3,6 +3,7 @@ import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Table } fro
 import Select from "react-select";
 import { ToastContainer } from "react-toastify";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
 import {
     getAdminStock, getAdminStockSummary, getAdminStockCompanies,
 } from "helpers/laravel_helper";
@@ -20,7 +21,7 @@ const carTitle = (c: IAdminStockCar) => [c.brand, c.model].filter(Boolean).join(
  * cada um. Página irmã de Tickets/Orçamentos no mesmo portão super-admin.
  */
 const AdminStockList = () => {
-    document.title = "Administração — Stock global | Xplendor";
+    document.title = "Stock global | Xplendor";
 
     const [cars, setCars] = useState<IAdminStockCar[]>([]);
     const [summary, setSummary] = useState<IAdminStockSummary | null>(null);
@@ -89,12 +90,11 @@ const AdminStockList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-stack-line text-primary me-2" />Administração — Stock global</h4>
-                        <p className="text-muted mb-0">Todos os veículos das empresas ativas da plataforma. Empresas inativas não aparecem.</p>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Stock global"
+                    breadcrumbs={[{ label: "Administração", to: "/admin" }]}
+                    description="Todos os veículos das empresas ativas da plataforma. Empresas inativas não aparecem."
+                />
 
                 {/* Cartões do topo — embrião das métricas globais */}
                 <Row className="g-3 mb-3">
@@ -122,6 +122,8 @@ const AdminStockList = () => {
                             <Col md={4}>
                                 <Select
                                     styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
+                                    aria-label="Empresa"
                                     isClearable
                                     placeholder="Todas as empresas"
                                     options={companyOptions}
@@ -132,6 +134,8 @@ const AdminStockList = () => {
                             <Col md={4}>
                                 <Select
                                     styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
+                                    aria-label="Estados"
                                     isMulti
                                     placeholder="Todos os estados"
                                     options={statusOptions}
@@ -143,6 +147,7 @@ const AdminStockList = () => {
                                 <Input
                                     type="text"
                                     placeholder="Procurar marca, modelo, matrícula, empresa…"
+                                    aria-label="Procurar"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                 />
@@ -204,10 +209,10 @@ const AdminStockList = () => {
                                 <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
                                     <small className="text-muted">{total} veículo{total === 1 ? "" : "s"} · página {page} de {lastPage}</small>
                                     <div className="d-flex gap-2">
-                                        <button type="button" className="btn btn-soft-secondary btn-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                                        <button type="button" className={`btn btn-outline-primary btn-sm${page <= 1 ? " invisible" : ""}`} aria-hidden={page <= 1} tabIndex={page <= 1 ? -1 : undefined} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                                             <i className="ri-arrow-left-s-line" /> Anterior
                                         </button>
-                                        <button type="button" className="btn btn-soft-secondary btn-sm" disabled={page >= lastPage} onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>
+                                        <button type="button" className={`btn btn-outline-primary btn-sm${page >= lastPage ? " invisible" : ""}`} aria-hidden={page >= lastPage} tabIndex={page >= lastPage ? -1 : undefined} onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>
                                             Seguinte <i className="ri-arrow-right-s-line" />
                                         </button>
                                     </div>

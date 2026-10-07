@@ -13,6 +13,7 @@ import CreativeModal from "./CreativeModal";
 import { XOption } from "./XSelect";
 import "./panel/post-panel.css";
 import "./editorial.css";
+import { confirmAction } from "helpers/swal";
 
 /**
  * O MESMO painel da publicação em todas as vistas (calendário, Kanban, Feed, Resultados,
@@ -74,7 +75,6 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
     const [errors, setErrors] = useState<string[]>([]);
     const [contentDirty, setContentDirty] = useState(false);
     const [creative, setCreative] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
     const [confirmClose, setConfirmClose] = useState(false);
     const contentRef = useRef<ContentHandle>(null);
     // Planeamento: último valor do servidor e o que acabou de ser gravado (para a junção).
@@ -107,7 +107,6 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
 
     useEffect(() => {
         setErrors([]);
-        setConfirmDelete(false);
         setContentDirty(false);
         if (!target) return;
         if (target.mode === "create") {
@@ -156,7 +155,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
 
     const remove = async () => {
         if (!postId) return;
-        if (!confirmDelete) { setConfirmDelete(true); toast.info("Carregue outra vez em Apagar para confirmar."); return; }
+        if (!(await confirmAction({ title: "Apagar esta publicação?", text: "A publicação e as versões dela deixam de existir. Esta ação não se desfaz.", confirmText: "Apagar", icon: "warning", confirmVariant: "danger" }))) return;
         setBusy(true);
         try {
             const r: any = await deleteEditorialPost(companyId, postId);
@@ -276,7 +275,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setConfirmClose(false)}>Continuar a editar</Button>
-                    <Button color="soft-danger" onClick={() => { setConfirmClose(false); onClose(); }}>Fechar sem gravar</Button>
+                    <Button color="danger" onClick={() => { setConfirmClose(false); onClose(); }}>Fechar sem gravar</Button>
                     <Button color="primary" disabled={busy} onClick={() => void saveAndClose()}>{busy ? <Spinner size="sm" /> : "Gravar e fechar"}</Button>
                 </ModalFooter>
             </Modal>

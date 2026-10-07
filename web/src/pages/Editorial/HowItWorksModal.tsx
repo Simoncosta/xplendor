@@ -156,7 +156,7 @@ export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedR
                 {blocked && (
                     <div className="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 fs-13 py-2">
                         <span><i className="ri-error-warning-line me-1" />{blockedReason ?? "Preencha o Perfil da Marca para começar."}</span>
-                        <Button color="warning" size="sm" onClick={goProfile}><i className="ri-user-star-line me-1" />Preencher o Perfil da Marca</Button>
+                        <Button color="outline-primary" size="sm" onClick={goProfile}><i className="ri-user-star-line me-1" />Preencher o Perfil da Marca</Button>
                     </div>
                 )}
                 <div className="xp-flow" style={{ height, width: "100%" }} aria-label="Diagrama do fluxo da Linha Editorial">

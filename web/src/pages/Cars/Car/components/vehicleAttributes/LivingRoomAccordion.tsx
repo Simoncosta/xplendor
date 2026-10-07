@@ -1,6 +1,7 @@
 import { AccordionBody, AccordionHeader, AccordionItem, Col, Label, Row } from "reactstrap";
 import { useFormikContext } from "formik";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import type { ICarUpdatePayload } from "common/models/car.model";
 
@@ -33,6 +34,8 @@ export default function LivingRoomAccordion({ accordionId }: AccordionProps) {
                     <Col lg={4}>
                         <Label>Tipo de sala</Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             isClearable
                             placeholder="Selecionar"
                             options={layoutOptions}

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, Container, Row, Col, Spinner, Label } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner, Label } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import XSelect from "../Editorial/XSelect";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
@@ -109,7 +109,7 @@ export default function ArtigosPage() {
         setSyncing(true);
         try {
             await syncPingwinCatalog(companyId);
-            toast.info("A sincronizar artigos… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar artigos… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar os artigos.");
         } finally {
@@ -120,7 +120,7 @@ export default function ArtigosPage() {
     const emptyRow = (
         <div className="text-center text-muted py-4">
             {!search && !familyFilter && !saleFilter
-                ? <>Sem artigos. Usa <strong>“Sincronizar”</strong> para os obter do PingWin.</>
+                ? <>Sem artigos. Use <strong>“Sincronizar”</strong> para os obter do PingWin.</>
                 : "Nenhum resultado para o filtro."}
         </div>
     );
@@ -130,25 +130,23 @@ export default function ArtigosPage() {
         <>
             <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                 <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Família</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
+                <XSelect
+                    ariaLabel="Família"
                     options={familyOptions}
-                    value={familyOptions.find((o) => o.value === familyFilter) ?? familyOptions[0]}
-                    onChange={(o: any) => setFamilyFilter(o?.value ?? "")}
-                    isSearchable
+                    value={familyFilter}
+                    onChange={(v) => setFamilyFilter(v)}
+                    searchable
                     placeholder="Todas as famílias"
                 />
             </div>
             <div style={{ flex: "1 1 160px", minWidth: 0 }}>
                 <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Tipo</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
+                <XSelect<SaleFilter>
+                    ariaLabel="Tipo"
                     options={saleOptions}
-                    value={saleOptions.find((o) => o.value === saleFilter) ?? saleOptions[0]}
-                    onChange={(o: any) => setSaleFilter(o?.value ?? "")}
-                    isSearchable={false}
+                    value={saleFilter}
+                    onChange={(v) => setSaleFilter(v)}
+                    searchable={false}
                     placeholder="Todos"
                 />
             </div>
@@ -159,24 +157,19 @@ export default function ArtigosPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Artigos</h4>
-                                <small className="text-muted">Catálogo de artigos do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                                </button>
-                                <button className="btn btn-primary" onClick={() => navigate("/restauracao/artigos/novo")}>
-                                    <i className="ri-add-line me-1" /> Novo artigo
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Artigos"
+                    breadcrumbs={[{ label: "Restauração" }]}
+                    description={<>Catálogo de artigos do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={<>
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                        </Button>
+                        <Button color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
+                            <i className="ri-add-line me-1" /> Novo artigo
+                        </Button>
+                    </>}
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -256,9 +249,9 @@ export default function ArtigosPage() {
                                                     <td className="text-center"><YesNo v={a.forpurchase} color="primary" /></td>
                                                     <td className="text-center"><YesNo v={a.has_bom} color="warning" /></td>
                                                     <td className="text-end">
-                                                        <button className="btn btn-sm btn-soft-primary" onClick={() => openArticle(a)}>
+                                                        <Button size="sm" color="outline-primary" onClick={() => openArticle(a)}>
                                                             <i className="ri-pencil-line me-1" /> Abrir
-                                                        </button>
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             ))}

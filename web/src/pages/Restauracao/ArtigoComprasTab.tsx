@@ -102,7 +102,7 @@ export default function ArtigoComprasTab({
     const supplierOf = (id: number | null) => suppliers.find((s) => Number(s.value) === id) ?? null;
     // Tabelas do fornecedor escolhido (cruzadas pelo pingwin_id).
     const tablesForSupplier = useMemo(() => {
-        const sup = supplierOf(form.supplierId);
+        const sup = suppliers.find((s) => Number(s.value) === form.supplierId);
         if (!sup?.pingwin_id) return [];
         return supplierTables.filter((t) => t.supplier_id === sup.pingwin_id);
     }, [form.supplierId, suppliers, supplierTables]);
@@ -136,10 +136,10 @@ export default function ArtigoComprasTab({
 
     const submit = () => {
         const sup = supplierOf(form.supplierId);
-        if (!sup) { toast.error("Escolhe um fornecedor."); return; }
+        if (!sup) { toast.error("Escolha um fornecedor."); return; }
         if (!selectedTable) { toast.error("Este fornecedor não tem tabela de preços."); return; }
         const cents = eurToCents(form.price);
-        if (cents === null) { toast.error("Indica um preço válido."); return; }
+        if (cents === null) { toast.error("Indique um preço válido."); return; }
         const unit = unitOptions.find((u) => u.value === form.unitId);
 
         const draft: LineDraft = {
@@ -163,7 +163,7 @@ export default function ArtigoComprasTab({
     };
 
     if (isCreate) {
-        return <Alert color="info" className="mb-0">Guarda o artigo primeiro para poderes gerir os fornecedores (tab Compras).</Alert>;
+        return <Alert color="info" className="mb-0">Guarde primeiro o artigo para poder gerir os fornecedores (separador Compras).</Alert>;
     }
 
     return (
@@ -172,7 +172,7 @@ export default function ArtigoComprasTab({
                 <h6 className="mb-0">Fornecedores</h6>
                 <div className="d-flex gap-2">
                     <ColumnSelector columns={columnsForSelector} onChange={setColVisible} defaults={DEFAULT_VISIBLE} />
-                    <Button color="soft-primary" size="sm" onClick={openAdd}><i className="ri-add-line me-1" />Adicionar linha</Button>
+                    <Button color="outline-primary" size="sm" onClick={openAdd}><i className="ri-add-line me-1" />Adicionar linha</Button>
                 </div>
             </div>
 
@@ -222,8 +222,11 @@ export default function ArtigoComprasTab({
                                             </Button>
                                         ) : (
                                             <>
-                                                <button type="button" className="btn btn-sm btn-ghost-secondary p-1" title="Editar" onClick={() => openEdit(r)}><i className="ri-pencil-line" /></button>
-                                                <button type="button" className="btn btn-sm btn-ghost-danger p-1" title="Apagar" onClick={() => staging.deleteRow(r._key)}><i className="ri-delete-bin-line" /></button>
+                                                <div className="d-inline-flex gap-1">
+                                                    <button type="button" className="btn btn-sm btn-outline-primary" title="Editar" aria-label={`Editar linha: ${r.supplier.name ?? "fornecedor"}`} onClick={() => openEdit(r)}><i className="ri-pencil-line" /></button>
+                                                    {/* Exceção do padrão: a linha só se apaga ao guardar o artigo (staging). */}
+                                                    <button type="button" className="btn btn-sm btn-outline-danger" title="Apagar" aria-label={`Apagar linha: ${r.supplier.name ?? "fornecedor"}`} onClick={() => staging.deleteRow(r._key)}><i className="ri-delete-bin-line" /></button>
+                                                </div>
                                             </>
                                         )}
                                     </td>
@@ -247,7 +250,7 @@ export default function ArtigoComprasTab({
                                 value={suppliers.find((s) => Number(s.value) === form.supplierId) ?? null}
                                 onChange={(o: any) => onSupplier(o ? Number(o.value) : null)}
                                 isDisabled={isEditing}  // o fornecedor não muda numa linha existente
-                                isSearchable placeholder="Escolhe o fornecedor…"
+                                isSearchable placeholder="Escolha o fornecedor…"
                             />
                         </Col>
                         <Col md={6}>

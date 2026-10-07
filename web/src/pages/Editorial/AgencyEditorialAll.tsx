@@ -8,6 +8,7 @@ import { getAgencyAwaiting, getAgencyPosts, getAgencyToday } from "helpers/larav
 import { channelIcons } from "common/models/editorialPost.model";
 import { STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 import ClientMark from "Components/Common/ClientMark";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import XSelect, { XOption } from "./XSelect";
 import MonthResults from "./MonthResults";
 import CompanyPostPanel from "./CompanyPostPanel";
@@ -93,7 +94,7 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
             <ClientMark name={c.name} logoPath={c.logo_path} size={size} /><span className="text-truncate">{c.name}</span>
         </span>
     );
-    const why = (key: string, label: React.ReactNode, color = "light") => (
+    const why = (key: string, label: React.ReactNode, color = "outline-primary") => (
         <>
             <span id={`why-all-${key}`} tabIndex={0} role="button" className="d-inline-block" onMouseEnter={() => setReason(key)} onMouseLeave={() => setReason(null)}
                 onFocus={() => setReason(key)} onBlur={() => setReason(null)} onClick={() => setReason(key)}>
@@ -129,13 +130,15 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
         <Card>
             <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <div className="me-auto">
-                    <h5 className="mb-0">Linha Editorial</h5>
+                    <h5 className="card-title mb-0">Linha Editorial</h5>
                     <small className="text-muted">Todos os clientes da agência</small>
                 </div>
                 <div className="d-flex flex-wrap align-items-center gap-2">
                     {filter}
                     {why("ideas", <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")}
-                    {why("links", <><i className="ri-links-line me-1" />Aprovação por link</>)}
+                    <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
+                        { label: "Aprovação por link", icon: "ri-links-line", disabledReason: ONE_CLIENT },
+                    ]} />
                     <Button color="primary" size="sm" onClick={() => { setChosen(editorialClients[0]?.id ?? 0); setChooser(true); }}><i className="ri-add-line me-1" />Nova publicação</Button>
                 </div>
             </CardHeader>
@@ -152,16 +155,16 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
                         <button type="button" role="tab" aria-selected={view === "results"} className={view === "results" ? "on" : ""} onClick={() => setView("results")}><i className="ri-bar-chart-2-line me-1" />Resultados</button>
                     </div>
                     <div className="d-flex flex-wrap align-items-center gap-1 ms-md-auto" style={{ maxWidth: "100%" }}>
-                        <Button color="light" size="sm" aria-label="Mês anterior" onClick={() => goMonth(shiftKey(month, -1))}><i className="ri-arrow-left-s-line" /></Button>
+                        <Button color="outline-primary" size="sm" aria-label="Mês anterior" onClick={() => goMonth(shiftKey(month, -1))}><i className="ri-arrow-left-s-line" /></Button>
                         <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={month} onChange={goMonth} /></div>
-                        <Button color="light" size="sm" aria-label="Mês seguinte" onClick={() => goMonth(shiftKey(month, 1))}><i className="ri-arrow-right-s-line" /></Button>
+                        <Button color="outline-primary" size="sm" aria-label="Mês seguinte" onClick={() => goMonth(shiftKey(month, 1))}><i className="ri-arrow-right-s-line" /></Button>
                     </div>
                 </div>
                 <p className="text-muted fs-12 mb-3"><i className="ri-information-line me-1" />Abrir e fechar meses, âncoras próprias e o Feed são de cada cliente: escolha-o no filtro.</p>
 
                 {view !== "results" && today && (
                     <>
-                        {strip("Para publicar hoje", "ri-send-plane-line", today.today, "success", (p) => p.can_mark && <Button size="sm" color="soft-success" className="ms-auto py-0" onClick={() => openPost(p, true)}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>)}
+                        {strip("Para publicar hoje", "ri-send-plane-line", today.today, "success", (p) => p.can_mark && <Button size="sm" color="success" className="ms-auto py-0" onClick={() => openPost(p, true)}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>)}
                         {strip("Atrasadas", "ri-alarm-warning-line", today.overdue, "danger", () => <Badge color="danger" className="fw-normal">Atrasada</Badge>)}
                         {strip("À espera de aprovação", "ri-time-line", awaiting, "warning", (p) => (p.links?.length ? <span className="text-muted fs-12"><i className="ri-links-line me-1" />{p.links.map((l) => l.title).join(", ")}</span> : <span className="text-muted fs-12">Sem link enviado</span>))}
                     </>

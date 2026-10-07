@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardBody, Container, Spinner, Table, Alert, Badge } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { getAdminCompanies } from "helpers/laravel_helper";
 
 /**
@@ -63,10 +63,10 @@ export default function AdminCompaniesPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Empresas" pageTitle="Administração" />
+                <PageHeader title="Empresas" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
+                    description="Escolha uma empresa para ver os utilizadores e, se precisar, entrar como um deles." />
                 <Card>
                     <CardBody>
-                        <p className="text-muted fs-13 mb-3">Escolhe uma empresa para ver os utilizadores e, se precisares, entrar como um deles.</p>
                         {loading ? (
                             <div className="text-center py-5"><Spinner color="primary" /></div>
                         ) : (
@@ -83,7 +83,7 @@ export default function AdminCompaniesPage() {
                                         ) : companies.map((c) => (
                                             <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/root/companies/${c.id}/users`, { state: { name: c.name } })}>
                                                 <td className="fw-semibold">{c.name}</td>
-                                                <td>{c.plan ?? "—"}</td>
+                                                <td>{c.plan ?? <span className="text-muted">Sem plano</span>}</td>
                                                 <td>{statusBadge(c)}</td>
                                                 <td className="text-end">{c.users_count}</td>
                                                 <td className="text-end"><i className="ri-arrow-right-s-line fs-4 text-muted" /></td>

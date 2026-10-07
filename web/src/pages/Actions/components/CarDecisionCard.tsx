@@ -7,6 +7,7 @@ import { getRecommendationActionLabel } from "./ActionRecommendationCard";
 import DecisionBadge, { getDecisionAccent } from "./DecisionBadge";
 import { ActionCenterCarItem, ActionExecutionResponse, DecisionType, SmartAdsRecommendation } from "../types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import ReasonButton from "Components/Common/ReasonButton";
 
 interface CarDecisionCardProps {
     item: ActionCenterCarItem;
@@ -118,7 +119,7 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                     className="rounded-4 px-3 py-3 mb-4"
                     style={{
                         background: "var(--vz-tertiary-bg)",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid var(--vz-border-color)",
                     }}
                 >
                     <div className="d-flex align-items-start gap-2">
@@ -144,20 +145,21 @@ export default function CarDecisionCard({ item }: CarDecisionCardProps) {
                 <div className="mb-3">
                     {(actionableRecommendation || shouldMapCampaign) && (
                         shouldMapCampaign ? (
-                            <Button color="primary" className="px-4" style={actionButtonStyle} onClick={() => navigate(`/cars/${item.id}/ads`)}>
+                            <Button color="outline-primary" size="sm" className="px-4" style={actionButtonStyle} onClick={() => navigate(`/cars/${item.id}/ads`)}>
                                 Mapear campanha
                             </Button>
                         ) : (
-                            <Button
-                                color={mainAction.color}
-                                outline={mainAction.outline}
+                            <ReasonButton
+                                color="outline-primary"
+                                size="sm"
                                 className="px-4"
                                 style={actionButtonStyle}
                                 onClick={handleExecute}
-                                disabled={!canExecute || isExecuting}
+                                disabled={isExecuting}
+                                reason={!canExecute ? "Esta recomendação não tem uma ação que se possa executar daqui." : null}
                             >
                                 {isExecuting ? <><Spinner size="sm" className="me-2" />{mainAction.label ?? actionLabel}</> : (mainAction.label ?? actionLabel)}
-                            </Button>
+                            </ReasonButton>
                         )
                     )}
                 </div>
@@ -248,15 +250,15 @@ function buildDecisionTitle(recommendation: ActionableRecommendation, contactPro
     const normalizedReason = normalizeText(recommendation.reason);
 
     if (normalizedReason.includes("alcance baixo") || normalizedReason.includes("baixo alcance")) {
-        return "Estás a perder alcance qualificado";
+        return "Está a perder alcance qualificado";
     }
 
     if (normalizedReason.includes("ctr") || normalizedReason.includes("criativo")) {
-        return "O teu criativo não está a gerar atenção";
+        return "O seu criativo não está a gerar atenção";
     }
 
     if (normalizedReason.includes("baixa conversao") || normalizedReason.includes("conversao")) {
-        return "Estás a perder potenciais clientes";
+        return "Está a perder potenciais clientes";
     }
 
     if (recommendation.type.startsWith("pause_")) {
@@ -268,15 +270,15 @@ function buildDecisionTitle(recommendation: ActionableRecommendation, contactPro
     }
 
     if (recommendation.type === "improve_landing" || recommendation.type === "improve_cta" || recommendation.type === "fix_contact_capture") {
-        return "Estás a perder potenciais clientes";
+        return "Está a perder potenciais clientes";
     }
 
     if (recommendation.type === "test_creative") {
-        return "O teu criativo não está a gerar atenção";
+        return "O seu criativo não está a gerar atenção";
     }
 
     if (recommendation.type === "test_audience") {
-        return "Estás a perder alcance qualificado";
+        return "Está a perder alcance qualificado";
     }
 
     if (recommendation.type === "test_offer") {
@@ -296,24 +298,24 @@ function resolveMainAction(
     recommendation: ActionableRecommendation | null,
     shouldMapCampaign: boolean,
     score: number
-): { label: string; color: "primary" | "danger" | "info" | "secondary"; outline: boolean } {
+): { label: string } {
     if (shouldMapCampaign) {
-        return { label: "Mapear campanha", color: "primary", outline: false };
+        return { label: "Mapear campanha" };
     }
 
     if (!recommendation) {
-        return { label: "Ver detalhes", color: "secondary", outline: true };
+        return { label: "Ver detalhes" };
     }
 
     if (recommendation.type.startsWith("pause_") || score < 30) {
-        return { label: getRecommendationActionLabel({ type: recommendation.type }), color: "danger", outline: true };
+        return { label: getRecommendationActionLabel({ type: recommendation.type }) };
     }
 
     if (recommendation.type.startsWith("test_") || score < 55) {
-        return { label: recommendation.type === "test_audience" ? "Testar novo público" : "Gerar criativo", color: "info", outline: true };
+        return { label: recommendation.type === "test_audience" ? "Testar novo público" : "Gerar criativo" };
     }
 
-    return { label: recommendation.label ?? getRecommendationActionLabel({ type: recommendation.type }), color: "primary", outline: false };
+    return { label: recommendation.label ?? getRecommendationActionLabel({ type: recommendation.type }) };
 }
 
 function normalizeText(value: string): string {

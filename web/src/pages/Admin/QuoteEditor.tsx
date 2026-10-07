@@ -1,8 +1,10 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Alert, Badge, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
+import { Alert, Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import Select from "react-select";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 import { ToastContainer, toast } from "react-toastify";
 import {
     createAdminQuote, updateAdminQuote, showAdminQuote, sendAdminQuote, decideAdminQuote, duplicateAdminQuote,
@@ -388,7 +390,7 @@ const QuoteEditor = () => {
                                                         <div className="fw-medium">{v.number} · versão {v.version}</div>
                                                         <small className="text-muted">Enviada a {longDate(v.sent_at)}{v.valid_until ? ` · válida até ${longDate(v.valid_until)}` : ""}</small>
                                                     </div>
-                                                    <button type="button" className="btn btn-soft-secondary btn-sm flex-shrink-0" onClick={() => void openVersion(v.version)}>
+                                                    <button type="button" className="btn btn-outline-primary btn-sm flex-shrink-0" onClick={() => void openVersion(v.version)}>
                                                         <i className="ri-file-pdf-line me-1" />PDF
                                                     </button>
                                                 </li>
@@ -405,49 +407,48 @@ const QuoteEditor = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                {/* Cabeçalho (breadcrumbs, como nos Tickets) e ações */}
-                <BreadCrumb title={isNew ? "Novo orçamento" : "Orçamento"} pageTitle="Orçamentos" pageLink="/admin/quotes" />
-                <Row className="mb-3 align-items-center g-2">
-                    <Col>
-                        <h5 className="mb-0 d-flex align-items-center gap-2 flex-wrap">
-                            {quote ? quote.display_number : "Novo orçamento"}
-                            {quote && <small className="text-muted fs-14 fw-normal">versão {quote.version}</small>}
-                            <Badge color={sm.color} className="fs-12">{sm.label}</Badge>
-                            {dirty && !readOnly && <small className="text-warning fs-12 fw-normal">Alterações por guardar</small>}
-                        </h5>
-                        {quote?.sent_at && (
-                            <small className="text-muted">
-                                Enviado a {longDate(quote.sent_at)}{quote.valid_until ? ` · válido até ${longDate(quote.valid_until)}` : ""}
-                                {quote.legacy_status ? " · migrado do módulo anterior" : ""}
-                            </small>
-                        )}
-                    </Col>
-                    <Col xs="auto" className="d-flex gap-2 flex-wrap justify-content-end">
-                        {!readOnly && (
-                            <button className="btn btn-soft-primary btn-sm" onClick={() => void save()} disabled={busy || (!dirty && !isNew)}>
-                                <i className="ri-save-line me-1" />{reopening ? `Guardar como versão ${(quote?.version ?? 1) + 1}` : "Guardar rascunho"}
-                            </button>
-                        )}
-                        <button className="btn btn-soft-secondary btn-sm" onClick={() => void preview()} disabled={busy || form.lines.length === 0}>
+                <PageHeader
+                    title={<span className="d-inline-flex align-items-center gap-2 flex-wrap">
+                        {quote ? quote.display_number : "Novo orçamento"}
+                        {quote && <small className="text-muted fs-14 fw-normal">versão {quote.version}</small>}
+                        <Badge color={sm.color} className="fs-12">{sm.label}</Badge>
+                    </span>}
+                    crumbLabel={isNew ? "Novo orçamento" : quote?.display_number ?? "Orçamento"}
+                    breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Orçamentos", to: "/admin/quotes" }]}
+                    description={<>
+                        {dirty && !readOnly && <span className="text-warning me-2">Alterações por guardar.</span>}
+                        {quote?.sent_at && <>Enviado a {longDate(quote.sent_at)}{quote.valid_until ? `, válido até ${longDate(quote.valid_until)}` : ""}{quote.legacy_status ? ", migrado do módulo anterior" : ""}.</>}
+                    </>}
+                    actions={<>
+                        <ReasonButton color="outline-primary" onClick={() => void preview()} disabled={busy}
+                            reason={form.lines.length === 0 ? "Adicione pelo menos um serviço para pré-visualizar." : null}>
                             <i className="ri-file-pdf-line me-1" />Pré-visualizar PDF
-                        </button>
+                        </ReasonButton>
+                        {status === "sent" && !quote?.company_id && (
+                            <Button color="outline-primary" onClick={() => void decide("refuse")} disabled={busy}><i className="ri-close-line me-1" />Recusado</Button>
+                        )}
+                        {quote && (
+                            <ActionsMenu label="Mais ações do orçamento" disabled={busy} items={[
+                                { label: "Duplicar", icon: "ri-file-copy-line", onClick: () => void duplicate() },
+                                { label: "Apagar rascunho", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(), hidden: !(status === "draft" && !quote.number) },
+                            ]} />
+                        )}
+                        {!readOnly && (
+                            <ReasonButton color={status === "draft" ? "outline-primary" : "primary"} onClick={() => void save()} disabled={busy}
+                                reason={!dirty && !isNew ? "Sem alterações por guardar." : null}>
+                                <i className="ri-save-line me-1" />{reopening ? `Guardar como versão ${(quote?.version ?? 1) + 1}` : "Guardar rascunho"}
+                            </ReasonButton>
+                        )}
                         {status === "draft" && (
-                            <button className="btn btn-primary btn-sm" onClick={() => void send()} disabled={busy || form.lines.length === 0}>
+                            <ReasonButton color="primary" onClick={() => void send()} disabled={busy}
+                                reason={form.lines.length === 0 ? "Adicione pelo menos um serviço antes de enviar." : null}>
                                 <i className="ri-send-plane-line me-1" />Marcar como enviado
-                            </button>
+                            </ReasonButton>
                         )}
                         {status === "sent" && !quote?.company_id && (
-                            <>
-                                <button className="btn btn-success btn-sm" onClick={() => void decide("accept")} disabled={busy}><i className="ri-check-line me-1" />Aceite</button>
-                                <button className="btn btn-outline-danger btn-sm" onClick={() => void decide("refuse")} disabled={busy}><i className="ri-close-line me-1" />Recusado</button>
-                            </>
+                            <Button color="success" onClick={() => void decide("accept")} disabled={busy}><i className="ri-check-line me-1" />Marcar como aceite</Button>
                         )}
-                        {quote && <button className="btn btn-soft-secondary btn-sm" onClick={() => void duplicate()} disabled={busy}><i className="ri-file-copy-line me-1" />Duplicar</button>}
-                        {quote && status === "draft" && !quote.number && (
-                            <button className="btn btn-soft-danger btn-sm" onClick={() => void remove()} disabled={busy}><i className="ri-delete-bin-line" /></button>
-                        )}
-                    </Col>
-                </Row>
+                    </>} />
 
                 {readOnly && <Alert color="success" className="py-2">Orçamento aceite: já não se altera. Para propor outras condições, duplique-o.</Alert>}
                 {status === "sent" && quote?.company_id && <Alert color="info" className="py-2">Ligado a {quote.company_name}: a empresa aceita ou recusa no painel dela.</Alert>}
@@ -540,7 +541,7 @@ const QuoteEditor = () => {
                                                 <Select classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} placeholder="Adicionar do catálogo" value={null}
                                                     noOptionsMessage={() => "Sem resultados"} options={catalogOptions} onChange={(opt: any) => opt && addFromCatalog(opt.item)} />
                                             </div>
-                                            <button type="button" className="btn btn-soft-primary btn-sm" onClick={addCustom}><i className="ri-add-line me-1" />Linha personalizada</button>
+                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={addCustom}><i className="ri-add-line me-1" />Linha personalizada</button>
                                         </div>
                                     )}
                                 </CardHeader>
@@ -597,9 +598,9 @@ const QuoteEditor = () => {
                                                         <Col xs={4} md={3} className="d-flex gap-1 justify-content-end">
                                                             {!readOnly && (
                                                                 <>
-                                                                    <button type="button" className="btn btn-light btn-sm" onClick={() => moveLine(i, -1)} disabled={i === 0} aria-label="Subir"><i className="ri-arrow-up-line" /></button>
-                                                                    <button type="button" className="btn btn-light btn-sm" onClick={() => moveLine(i, 1)} disabled={i === form.lines.length - 1} aria-label="Descer"><i className="ri-arrow-down-line" /></button>
-                                                                    <button type="button" className="btn btn-soft-danger btn-sm" onClick={() => removeLine(i)} aria-label="Remover"><i className="ri-delete-bin-line" /></button>
+                                                                    <button type="button" className={`btn btn-outline-primary btn-sm ${i === 0 ? "invisible" : ""}`} onClick={() => moveLine(i, -1)} aria-label="Subir"><i className="ri-arrow-up-line" /></button>
+                                                                    <button type="button" className={`btn btn-outline-primary btn-sm ${i === form.lines.length - 1 ? "invisible" : ""}`} onClick={() => moveLine(i, 1)} aria-label="Descer"><i className="ri-arrow-down-line" /></button>
+                                                                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeLine(i)} aria-label="Remover"><i className="ri-delete-bin-line" /></button>
                                                                 </>
                                                             )}
                                                         </Col>

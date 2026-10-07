@@ -2,6 +2,7 @@
 import { useEffect, useMemo } from "react";
 import { Col, Label, Row } from "reactstrap";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { createSelector } from "reselect";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -79,6 +80,8 @@ export default function CarInformationDataFields({
                         Status:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         name="status"
                         options={statusOptions}
                         value={statusOptions.find((opt) => opt.value === values.status) || null}
@@ -99,6 +102,8 @@ export default function CarInformationDataFields({
                         Origem:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         name="origin"
                         options={originOptions}
                         value={originOptions.find((opt) => opt.value === values.origin) || null}
@@ -113,6 +118,8 @@ export default function CarInformationDataFields({
                         Vendedor:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         name="seller_user_id"
                         options={sellerOptions}
                         isClearable
@@ -130,6 +137,8 @@ export default function CarInformationDataFields({
                         Tipo de veículo:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         name="vehicle_type"
                         options={vehicleTypeOptions}
                         value={vehicleTypeOptions.find((opt) => opt.value === values.vehicle_type) || vehicleTypeOptions[0]}

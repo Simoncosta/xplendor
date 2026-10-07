@@ -144,7 +144,7 @@ const Header = ({ onChangeLayoutMode, layoutModeType, headerClass }: any) => {
                             <NotificationDropdown />
 
                             {/* ProfileDropdown */}
-                            <ProfileDropdown />
+                            <ProfileDropdown layoutMode={layoutModeType} onChangeLayoutMode={onChangeLayoutMode} />
                         </div>
                     </div>
                 </div>

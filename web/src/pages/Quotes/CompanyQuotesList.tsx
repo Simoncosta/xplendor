@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Card, CardBody, CardHeader, Col, Container, Row, Badge, Spinner } from "reactstrap";
+import { Card, CardBody, CardHeader, Container, Badge, Spinner } from "reactstrap";
+import PageHeader from "Components/Common/PageHeader";
 import { ToastContainer, toast } from "react-toastify";
 import { getCompanyQuotes, decideCompanyQuote, companyQuotePdfPath } from "helpers/laravel_helper";
 import { confirmAction } from "helpers/swal";
@@ -59,12 +60,8 @@ const CompanyQuotesList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-file-list-3-line text-primary me-2" />Orçamentos</h4>
-                        <p className="text-muted mb-0">Orçamentos que a XPLENDOR lhe enviou. Aceite ou recuse os que estão em aberto.</p>
-                    </Col>
-                </Row>
+                <PageHeader title="Orçamentos" breadcrumbs={[{ label: "Equipa" }]}
+                    description="Orçamentos que a XPLENDOR lhe enviou. Aceite ou recuse os que estão em aberto." />
 
                 <Card>
                     <CardHeader><h5 className="mb-0">Os meus orçamentos</h5></CardHeader>
@@ -105,7 +102,7 @@ const CompanyQuotesList = () => {
                                                     <button type="button" className="btn btn-success btn-sm" disabled={busy} onClick={() => decide(q, "approve")}>
                                                         {busy ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aceitar</>}
                                                     </button>
-                                                    <button type="button" className="btn btn-outline-danger btn-sm" disabled={busy} onClick={() => decide(q, "reject")}>
+                                                    <button type="button" className="btn btn-outline-primary btn-sm" disabled={busy} onClick={() => decide(q, "reject")}>
                                                         <i className="ri-close-line me-1" />Recusar
                                                     </button>
                                                 </div>

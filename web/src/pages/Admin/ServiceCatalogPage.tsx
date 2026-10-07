@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
 import { ToastContainer, toast } from "react-toastify";
 import { createServiceCatalogItem, getServiceCatalog, updateServiceCatalogItem } from "helpers/laravel_helper";
 import { BILLING_LABEL, ICatalogItem, QuoteBilling, QuoteUnit, UNIT_LABEL, formatQuoteEuro } from "common/models/quote.model";
@@ -64,16 +65,9 @@ const ServiceCatalogPage = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center g-2">
-                    <Col>
-                        <Link to="/admin/quotes" className="text-muted fs-13"><i className="ri-arrow-left-line me-1" />Orçamentos</Link>
-                        <h4 className="mb-1 mt-1"><i className="ri-price-tag-3-line text-primary me-2" />Catálogo de serviços</h4>
-                        <p className="text-muted mb-0">Preços sugeridos nos orçamentos (editáveis em cada orçamento). Valores sem IVA.</p>
-                    </Col>
-                    <Col xs="auto">
-                        <button className="btn btn-primary btn-sm" onClick={() => setEditing({ ...EMPTY })}><i className="ri-add-line me-1" />Novo serviço</button>
-                    </Col>
-                </Row>
+                <PageHeader title="Catálogo de serviços" breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Orçamentos", to: "/admin/quotes" }]}
+                    description="Preços sugeridos nos orçamentos (editáveis em cada orçamento). Valores sem IVA."
+                    actions={<button className="btn btn-primary" onClick={() => setEditing({ ...EMPTY })}><i className="ri-add-line me-1" />Novo serviço</button>} />
 
                 <Card>
                     <CardBody>
@@ -109,7 +103,7 @@ const ServiceCatalogPage = () => {
                                                     </div>
                                                 </td>
                                                 <td className="text-end">
-                                                    <button className="btn btn-soft-secondary btn-sm" onClick={() => setEditing({
+                                                    <button className="btn btn-outline-primary btn-sm" aria-label={`Editar ${i.name}`} onClick={() => setEditing({
                                                         id: i.id, name: i.name, description: i.description ?? "", unit_price: String(i.unit_price),
                                                         unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: [...(i.onboarding_checklist ?? [])],
                                                     })}><i className="ri-edit-line" /></button>
@@ -164,29 +158,30 @@ const ServiceCatalogPage = () => {
                                         <div key={idx} className="d-flex gap-2">
                                             <Input value={t} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
                                                 onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? e.target.value : x)) })} />
-                                            <button type="button" className="btn btn-light btn-sm" disabled={idx === 0} aria-label="Subir"
+                                            <button type="button" className={`btn btn-outline-primary btn-sm ${idx === 0 ? "invisible" : ""}`} aria-label="Subir"
                                                 onClick={() => { const c = [...editing.checklist]; [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]; setEditing({ ...editing, checklist: c }); }}>
                                                 <i className="ri-arrow-up-line" />
                                             </button>
-                                            <button type="button" className="btn btn-soft-danger btn-sm" aria-label="Remover tarefa"
+                                            <button type="button" className="btn btn-outline-danger btn-sm" aria-label="Remover tarefa"
                                                 onClick={() => setEditing({ ...editing, checklist: editing.checklist.filter((_, j) => j !== idx) })}>
                                                 <i className="ri-delete-bin-line" />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
-                                <button type="button" className="btn btn-soft-primary btn-sm mt-2" disabled={editing.checklist.length >= MAX_TASKS}
+                                <ReasonButton color="outline-primary" size="sm" className="mt-2" reason={editing.checklist.length >= MAX_TASKS ? `No máximo ${MAX_TASKS} tarefas por serviço.` : null}
                                     onClick={() => setEditing({ ...editing, checklist: [...editing.checklist, ""] })}>
                                     <i className="ri-add-line me-1" />Acrescentar tarefa
-                                </button>
+                                </ReasonButton>
                             </div>
                         </ModalBody>
                     )}
                     <ModalFooter>
                         <button className="btn btn-light" onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={() => void save()} disabled={saving || !editing?.name.trim() || editing?.unit_price === ""}>
+                        <ReasonButton color="primary" onClick={() => void save()} disabled={saving}
+                            reason={!editing?.name.trim() ? "Indique o nome do serviço." : editing?.unit_price === "" ? "Indique o preço." : null}>
                             {saving ? <Spinner size="sm" /> : "Guardar"}
-                        </button>
+                        </ReasonButton>
                     </ModalFooter>
                 </Modal>
             </Container>

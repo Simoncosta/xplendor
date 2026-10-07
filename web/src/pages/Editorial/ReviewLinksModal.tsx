@@ -6,6 +6,7 @@ import { createReviewLink, extendReviewLink, getReviewCandidates, getReviewLinks
 import { Network, POST_CHANNEL_META } from "common/models/editorialPost.model";
 import { mediaSrc } from "common/models/editorialWorkflow.model";
 import { ITEM_STATE_META, LINK_STATE_META, ReviewCandidate, ReviewLinkSummary, whatsappUrl } from "common/models/contentReview.model";
+import ActionsMenu from "Components/Common/ActionsMenu";
 
 /**
  * Links de aprovação por lote (F3c): escolher publicações em Aprovação, indicar o
@@ -120,8 +121,8 @@ export default function ReviewLinksModal({ isOpen, toggle, companyId, canProduce
 
     const shareButtons = (l: ReviewLinkSummary) => l.url && (
         <>
-            <Button size="sm" color="soft-primary" onClick={() => void copy(l.url!)}><i className="ri-file-copy-line me-1" />Copiar link</Button>
-            <a className="btn btn-sm btn-soft-success" href={whatsappUrl(l.share_message ?? l.url)} target="_blank" rel="noreferrer noopener"><i className="ri-whatsapp-line me-1" />Partilhar por WhatsApp</a>
+            <Button size="sm" color="outline-primary" onClick={() => void copy(l.url!)}><i className="ri-file-copy-line me-1" />Copiar link</Button>
+            <a className="btn btn-sm btn-outline-primary" href={whatsappUrl(l.share_message ?? l.url)} target="_blank" rel="noreferrer noopener"><i className="ri-whatsapp-line me-1" />Partilhar por WhatsApp</a>
         </>
     );
 
@@ -184,7 +185,7 @@ export default function ReviewLinksModal({ isOpen, toggle, companyId, canProduce
                                 <div className="fs-12 text-break mb-2">{sent.url}</div>
                                 <div className="d-flex flex-wrap gap-2">
                                     {shareButtons(sent)}
-                                    <Button size="sm" color="soft-secondary" onClick={() => navigate(`/editorial/aprovacao/${sent.id}/ver`)}><i className="ri-eye-line me-1" />Ver como o cliente</Button>
+                                    <Button size="sm" color="outline-primary" onClick={() => navigate(`/editorial/aprovacao/${sent.id}/ver`)}><i className="ri-eye-line me-1" />Ver como o cliente</Button>
                                 </div>
                             </div>
                         )}
@@ -227,11 +228,11 @@ export default function ReviewLinksModal({ isOpen, toggle, companyId, canProduce
                                         </ul>
                                         <div className="d-flex flex-wrap gap-1">
                                             {l.state !== "revoked" && shareButtons(l)}
-                                            <Button size="sm" color="soft-secondary" onClick={() => navigate(`/editorial/aprovacao/${l.id}/ver`)}><i className="ri-eye-line me-1" />Ver como o cliente</Button>
+                                            <Button size="sm" color="outline-primary" onClick={() => navigate(`/editorial/aprovacao/${l.id}/ver`)}><i className="ri-eye-line me-1" />Ver como o cliente</Button>
                                             {canProduce && l.state !== "revoked" && (
                                                 <>
-                                                    <Button size="sm" color="soft-info" disabled={busy} onClick={() => void openForm(l)}><i className="ri-refresh-line me-1" />Reenviar</Button>
-                                                    <Button size="sm" color="soft-secondary" disabled={busy} onClick={() => void act(() => extendReviewLink(companyId, l.id))}><i className="ri-time-line me-1" />Prolongar 14 dias</Button>
+                                                    <Button size="sm" color="outline-primary" disabled={busy} onClick={() => void openForm(l)}><i className="ri-refresh-line me-1" />Reenviar</Button>
+                                                    <Button size="sm" color="outline-primary" disabled={busy} onClick={() => void act(() => extendReviewLink(companyId, l.id))}><i className="ri-time-line me-1" />Prolongar 14 dias</Button>
                                                     {confirmRevoke === l.id ? (
                                                         <span className="d-inline-flex gap-1 align-items-center fs-12">
                                                             Revogar? O cliente fica só a consultar.
@@ -239,7 +240,7 @@ export default function ReviewLinksModal({ isOpen, toggle, companyId, canProduce
                                                             <Button size="sm" color="light" onClick={() => setConfirmRevoke(null)}>Não</Button>
                                                         </span>
                                                     ) : (
-                                                        <Button size="sm" color="soft-danger" disabled={busy} onClick={() => setConfirmRevoke(l.id)}><i className="ri-forbid-line me-1" />Revogar</Button>
+                                                        <ActionsMenu size="sm" label="Mais ações do link" disabled={busy} items={[{ label: "Revogar", icon: "ri-forbid-line", danger: true, onClick: () => setConfirmRevoke(l.id) }]} />
                                                     )}
                                                 </>
                                             )}

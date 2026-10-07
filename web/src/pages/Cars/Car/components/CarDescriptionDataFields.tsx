@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Col, Row } from "reactstrap";
+import { Col, Row, Spinner } from "reactstrap";
 import { useFormikContext } from "formik";
 import { toast } from "react-toastify";
 
@@ -8,6 +8,7 @@ import "quill/dist/quill.snow.css";
 
 import type { ICarFormValues } from "./CarImagesDataFields";
 import XButton from "Components/Common/XButton";
+import ReasonButton from "Components/Common/ReasonButton";
 import { generateCarDescriptionApi } from "helpers/laravel_helper";
 import type { VehicleType } from "common/models/car.model";
 
@@ -139,6 +140,13 @@ export default function CarDescriptionDataFields({
 
     const missingFields = getMissingFields(values);
     const canGenerate = missingFields.length === 0 && Boolean(companyId) && !limitReached;
+    const generateBlockedReason = limitReached
+        ? `Atingiu o limite de ${MAX_GENERATIONS} gerações para este veículo.`
+        : missingFields.length > 0
+            ? `Preencha primeiro: ${missingFields.join(", ")}.`
+            : !companyId
+                ? "Não foi possível identificar a empresa."
+                : null;
 
     // Converte o texto da IA (parágrafos separados por linhas em branco) em HTML
     // para o editor Quill. Fonte única — usada ao "Usar esta descrição".
@@ -232,18 +240,17 @@ export default function CarDescriptionDataFields({
                     <span className="badge bg-light text-body" title="Gerações usadas neste veículo">
                         {genCount}/{MAX_GENERATIONS} gerações
                     </span>
-                    <XButton
+                    <ReasonButton
+                        type="button"
                         size="sm"
-                        variant="info"
-                        soft
-                        rounded
-                        icon={<i className="ri-magic-line" />}
-                        loading={isGenerating}
-                        disabled={!canGenerate || isGenerating}
+                        color="outline-primary"
+                        disabled={isGenerating}
+                        reason={generateBlockedReason}
                         onClick={requestSuggestion}
                     >
-                        {isGenerating ? "A gerar..." : "Gerar com IA"}
-                    </XButton>
+                        {isGenerating ? <Spinner size="sm" className="me-1" /> : <i className="ri-magic-line me-1" />}
+                        {isGenerating ? "A gerar…" : "Gerar com IA"}
+                    </ReasonButton>
                 </div>
             </div>
 
@@ -251,7 +258,7 @@ export default function CarDescriptionDataFields({
             {limitReached && (
                 <div className="alert alert-warning d-flex align-items-center gap-2 mb-3" role="alert">
                     <i className="ri-error-warning-line" />
-                    <span>Atingiste o limite de {MAX_GENERATIONS} gerações para este veículo. Usa uma das sugestões ou edita a descrição manualmente.</span>
+                    <span>Atingiu o limite de {MAX_GENERATIONS} gerações para este veículo. Use uma das sugestões ou edite a descrição manualmente.</span>
                 </div>
             )}
 
@@ -269,7 +276,8 @@ export default function CarDescriptionDataFields({
                                 <button
                                     key={opt.key}
                                     type="button"
-                                    className={"btn btn-sm " + (active ? "btn-info" : "btn-soft-info")}
+                                    className={"btn btn-sm btn-outline-primary" + (active ? " active" : "")}
+                                    aria-pressed={active}
                                     onClick={() => toggleRefinement(opt.key)}
                                 >
                                     <i className={opt.icon + " me-1"} />{opt.label}
@@ -295,7 +303,7 @@ export default function CarDescriptionDataFields({
                     <div className="d-flex align-items-center gap-2 mb-2">
                         <i className="ri-magic-line text-info" />
                         <span className="fw-semibold">Sugestão da IA</span>
-                        <span className="badge bg-info-subtle text-info">Pré-visualização — ainda não preenchido</span>
+                        <span className="badge bg-info-subtle text-info">Pré-visualização, ainda não preenchida</span>
                     </div>
                     <p className="mb-3" style={{ whiteSpace: "pre-wrap" }}>{suggestion}</p>
                     <div className="d-flex flex-wrap gap-2">
@@ -308,19 +316,19 @@ export default function CarDescriptionDataFields({
                         >
                             Usar esta descrição
                         </XButton>
-                        <XButton
+                        <ReasonButton
+                            type="button"
                             size="sm"
-                            variant="info"
-                            soft
-                            icon={<i className="ri-refresh-line" />}
-                            loading={isGenerating}
-                            disabled={isGenerating || limitReached}
+                            color="outline-primary"
+                            disabled={isGenerating}
+                            reason={limitReached ? "Limite de gerações atingido." : null}
                             onClick={requestSuggestion}
                         >
-                            {isGenerating ? "A gerar..." : "Gerar outra"}
-                        </XButton>
+                            {isGenerating ? <Spinner size="sm" className="me-1" /> : <i className="ri-refresh-line me-1" />}
+                            {isGenerating ? "A gerar…" : "Gerar outra"}
+                        </ReasonButton>
                         {limitReached && (
-                            <small className="text-muted align-self-center">Limite de gerações atingido — usa esta ou edita à mão.</small>
+                            <small className="text-muted align-self-center">Limite de gerações atingido: use esta ou edite à mão.</small>
                         )}
                         <XButton
                             size="sm"

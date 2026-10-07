@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Container, Row, Col, Spinner, Label } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner, Label } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import XSelect from "../Editorial/XSelect";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
@@ -89,7 +89,7 @@ export default function FornecedoresPage() {
         setSyncing(true);
         try {
             await syncPingwinSuppliers(companyId);
-            toast.info("A sincronizar fornecedores… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar fornecedores… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar os fornecedores.");
         } finally {
@@ -100,7 +100,7 @@ export default function FornecedoresPage() {
     const emptyRow = (
         <div className="text-center text-muted py-4">
             {!search && !activeFilter
-                ? <>Sem fornecedores. Usa <strong>“Sincronizar”</strong> para os obter do PingWin.</>
+                ? <>Sem fornecedores. Use <strong>“Sincronizar”</strong> para os obter do PingWin.</>
                 : "Nenhum resultado para o filtro."}
         </div>
     );
@@ -108,13 +108,12 @@ export default function FornecedoresPage() {
     const filterFields = (
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
-            <Select
-                styles={reactSelectTheme}
-                menuPortalTarget={document.body}
+            <XSelect
+                ariaLabel="Estado"
                 options={activeOptions}
-                value={activeOptions.find((o) => o.value === activeFilter) ?? activeOptions[0]}
-                onChange={(o: any) => setActiveFilter(o?.value ?? "")}
-                isSearchable={false}
+                value={activeFilter}
+                onChange={(v) => setActiveFilter(v)}
+                searchable={false}
                 placeholder="Todos"
             />
         </div>
@@ -124,19 +123,16 @@ export default function FornecedoresPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Fornecedores</h4>
-                                <small className="text-muted">Fornecedores do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                            </button>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Fornecedores"
+                    breadcrumbs={[{ label: "Cadastros" }]}
+                    description={<>Fornecedores do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                        </Button>
+                    }
+                />
 
                 <Row>
                     <Col xs={12}>

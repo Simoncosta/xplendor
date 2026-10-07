@@ -12,6 +12,7 @@ import type { BedType } from "./data/vehicleAttributes";
 import { ICarSalePayload } from "common/models/car-sale.model";
 // Components
 import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
 import ValidationAlert from "Components/Common/ValidationAlert";
 import type { ApiValidationError } from "helpers/error_helper";
 import CarInformationDataFields from "./components/CarInformationDataFields";
@@ -63,6 +64,7 @@ const CarEditor = ({
     onDismissValidationErrors,
 }: CarEditorProps) => {
     const isEdit = Boolean((data as any)?.id);
+    const carName = [(data as any)?.brand?.name, (data as any)?.model?.name].filter(Boolean).join(" ");
     const initialStatus = data.status ?? "draft";
 
     // Etapa 5 da busca universal — refs aos 2 accordion-containers para o
@@ -295,6 +297,14 @@ const CarEditor = ({
     return (
         <div className="page-content">
             <Container fluid>
+                <PageHeader
+                    title={isEdit ? (carName || "Editar viatura") : "Nova viatura"}
+                    crumbLabel={isEdit ? "Editar" : undefined}
+                    breadcrumbs={[{ label: "Comercial" }, { label: "Carros", to: "/cars" }]}
+                    description={isEdit
+                        ? "Altere os dados da viatura e guarde no fim da página."
+                        : "Preencha os dados da viatura. Pode guardar como rascunho e continuar mais tarde."}
+                />
                 <Row>
                     <Col lg={12}>
                         <Card>
@@ -370,13 +380,19 @@ const CarEditor = ({
                                                 padding: "12px 18px",
                                             }}
                                         >
-                                            <div className="hstack gap-2 justify-content-end">
+                                            <div className="hstack gap-2 justify-content-end flex-wrap">
+                                                <XButton
+                                                    variant="light"
+                                                    disabled={isSubmitting}
+                                                    onClick={() => onCancel()}
+                                                >
+                                                    Cancelar
+                                                </XButton>
                                                 {onSubmitDraft && (
                                                     <XButton
-                                                        variant="secondary"
+                                                        variant="primary"
                                                         type="button"
                                                         outline
-                                                        rounded
                                                         icon={<i className="ri-draft-line" />}
                                                         loading={draftLoading}
                                                         disabled={isSubmitting}
@@ -394,10 +410,8 @@ const CarEditor = ({
                                                     </XButton>
                                                 )}
                                                 <XButton
-                                                    variant="success"
+                                                    variant="primary"
                                                     type='submit'
-                                                    outline
-                                                    rounded
                                                     icon={<i className="ri-check-double-line" />}
                                                     loading={loading || saleLoading}
                                                     disabled={isSubmitting}
@@ -411,16 +425,6 @@ const CarEditor = ({
                                                             : isEdit
                                                                 ? <>Guardar<span className="d-none d-sm-inline"> alterações</span></>
                                                                 : <>Criar<span className="d-none d-sm-inline"> viatura</span></>}
-                                                </XButton>
-                                                <XButton
-                                                    variant="danger"
-                                                    outline
-                                                    rounded
-                                                    icon={<i className="ri-close-line" />}
-                                                    disabled={isSubmitting}
-                                                    onClick={() => onCancel()}
-                                                >
-                                                    Cancelar
                                                 </XButton>
                                             </div>
                                         </div>

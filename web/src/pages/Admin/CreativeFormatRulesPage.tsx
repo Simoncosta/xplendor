@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner, Table } from "reactstrap";
 import Select from "react-select";
 import { toast, ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import { confirmAction } from "helpers/swal";
 import { createCreativeFormatRule, deleteCreativeFormatRule, getCreativeFormatRules, updateCreativeFormatRule } from "helpers/laravel_helper";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { CreativeFormatRule } from "common/models/brandAssistants.model";
@@ -84,7 +86,8 @@ export default function CreativeFormatRulesPage() {
     };
 
     const remove = async (r: CreativeFormatRule) => {
-        if (!window.confirm(`Apagar a regra "${labelOf(r.format_key)}" (${bandLabel(r)})?`)) return;
+        const ok = await confirmAction({ title: `Apagar a regra "${labelOf(r.format_key)}"?`, text: `${bandLabel(r)}. Esta ação não se desfaz.`, confirmText: "Apagar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             await deleteCreativeFormatRule(r.id);
             toast.success("Regra apagada.");
@@ -100,16 +103,11 @@ export default function CreativeFormatRulesPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Regras de formato" pageTitle="Administração" pageLink="/admin" />
+                <PageHeader title="Regras de formato" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
+                    description={<>Referência de mercado usada pelo "Sugerir criativo" quando a conta ainda não tem histórico próprio. Cada regra indica a fonte, que é mostrada a quem recebe a sugestão.</>}
+                    actions={<Button color="primary" onClick={() => setForm({ ...EMPTY })}><i className="ri-add-line me-1" />Nova regra</Button>} />
                 <Card>
                     <CardBody>
-                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <p className="text-muted fs-13 mb-0">
-                                Referência de mercado usada pelo "Sugerir criativo" quando a conta ainda não tem histórico próprio.
-                                Cada regra indica a fonte, que é mostrada a quem recebe a sugestão.
-                            </p>
-                            <Button color="primary" onClick={() => setForm({ ...EMPTY })}><i className="ri-add-line me-1" />Nova regra</Button>
-                        </div>
                         {loading ? <div className="text-center py-4"><Spinner size="sm" /></div> : (
                             <div className="table-responsive">
                                 <Table className="align-middle table-nowrap mb-0 fs-13">
@@ -133,8 +131,12 @@ export default function CreativeFormatRulesPage() {
                                                 </td>
                                                 <td>{r.is_active ? <Badge color="success-subtle" className="text-success">Ativa</Badge> : <Badge color="light" className="text-muted">Inativa</Badge>}</td>
                                                 <td className="text-end">
-                                                    <Button size="sm" color="soft-primary" className="me-1" onClick={() => edit(r)} aria-label="Editar"><i className="ri-pencil-line" /></Button>
-                                                    <Button size="sm" color="soft-danger" onClick={() => remove(r)} aria-label="Apagar"><i className="ri-delete-bin-line" /></Button>
+                                                    <div className="d-inline-flex gap-1">
+                                                        <Button size="sm" color="outline-primary" onClick={() => edit(r)} aria-label="Editar"><i className="ri-pencil-line" /></Button>
+                                                        <ActionsMenu size="sm" label={`Mais ações: ${labelOf(r.format_key)}`} items={[
+                                                            { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(r) },
+                                                        ]} />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

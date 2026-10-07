@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
+import { Button, Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
+import ReasonButton from "Components/Common/ReasonButton";
 import { ICarmineApi } from "common/models/carmine-api.model";
 
 /**
@@ -64,6 +65,7 @@ export default function CarmineConnectModal({ isOpen, data, onClose, onSubmit }:
                             className="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted"
                             onClick={() => setShowToken((s) => !s)}
                             tabIndex={-1}
+                            aria-label={showToken ? "Esconder o token" : "Mostrar o token"}
                         >
                             <i className={showToken ? "ri-eye-off-fill" : "ri-eye-fill"} />
                         </button>
@@ -71,10 +73,10 @@ export default function CarmineConnectModal({ isOpen, data, onClose, onSubmit }:
                 </div>
             </ModalBody>
             <ModalFooter>
-                <button className="btn btn-light" onClick={onClose}>Cancelar</button>
-                <button className="btn btn-primary" onClick={submit} disabled={!dealerId.trim() || !token.trim()}>
+                <Button color="light" onClick={onClose}>Cancelar</Button>
+                <ReasonButton color="primary" onClick={submit} reason={!dealerId.trim() || !token.trim() ? "Indique o ID do Dealer e o token." : null}>
                     <i className="ri-check-double-line me-1" /> Guardar
-                </button>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

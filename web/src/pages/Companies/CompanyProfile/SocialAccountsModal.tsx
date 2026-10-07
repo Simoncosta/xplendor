@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getSocialCandidates, saveSocialAccounts } from "helpers/laravel_helper";
+import ReasonButton from "Components/Common/ReasonButton";
 import type { SocialCandidatePage, SocialConnectionState } from "common/models/socialConnection.model";
 
 /**
@@ -173,10 +174,11 @@ export default function SocialAccountsModal({ isOpen, companyId, onClose, onSave
                 )}
             </ModalBody>
             <ModalFooter>
-                <Button color="light" className="border" onClick={onClose} disabled={saving}>Cancelar</Button>
-                <Button color="primary" onClick={save} disabled={saving || !pages || (fb.length === 0 && ig.length === 0)}>
+                <Button color="light" onClick={onClose} disabled={saving}>Cancelar</Button>
+                <ReasonButton color="primary" onClick={save} disabled={saving || !pages}
+                    reason={!saving && pages && fb.length === 0 && ig.length === 0 ? "Escolha pelo menos uma Página ou conta de Instagram." : null}>
                     {saving && <Spinner size="sm" className="me-1" />}Guardar escolha
-                </Button>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

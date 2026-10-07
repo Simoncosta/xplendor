@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    Badge, Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Input, Label, Modal, ModalBody,
-    ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner, UncontrolledDropdown,
+    Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody,
+    ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner,
 } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import {
@@ -15,6 +15,10 @@ import {
     ACCESS_META, ICollaborator, IDepartment, PHONE_TYPE_LABEL, PhoneType, collaboratorPhoto, initials,
 } from "common/models/collaborator.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu, { MenuAction } from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * Colaboradores (equipa) e departamentos da empresa. A equipa XPLENDOR em sessão como
@@ -103,47 +107,35 @@ const CollaboratorsList = () => {
         );
     };
 
-    const accessActions = (c: ICollaborator) => {
-        if (!canManageAccess) return null;
-        const items: React.ReactNode[] = [<DropdownItem key="h" header>Acesso à plataforma</DropdownItem>];
-        if (c.access_status === "none") {
-            items.push(<DropdownItem key="g" onClick={() => setAccessModal({ c, email: c.email ?? "" })}><i className="ri-mail-send-line me-2" />Dar acesso (convite)</DropdownItem>);
-        }
-        if (c.access_status === "invited") {
-            items.push(<DropdownItem key="r" onClick={() => run(() => resendCollaboratorInvite(companyId, c.id), "Convite reenviado.")}><i className="ri-refresh-line me-2" />Reenviar convite</DropdownItem>);
-            items.push(<DropdownItem key="c" onClick={() => confirmRun("Cancelar o convite?", `O link enviado para ${c.invite?.email ?? "o email"} deixa de funcionar.`, "Cancelar convite", () => cancelCollaboratorInvite(companyId, c.id), "Convite cancelado.", "warning")}><i className="ri-close-circle-line me-2" />Cancelar convite</DropdownItem>);
-        }
-        if (c.access_status === "active") {
-            items.push(<DropdownItem key="v" className="text-danger" onClick={() => confirmRun("Retirar o acesso?", `${c.name} deixa de conseguir entrar na plataforma e as sessões abertas terminam. O colaborador mantém-se.`, "Retirar acesso", () => revokeCollaboratorAccess(companyId, c.id), "Acesso retirado.", "danger")}><i className="ri-lock-line me-2" />Retirar acesso</DropdownItem>);
-        }
-        if (c.access_status === "revoked") {
-            items.push(<DropdownItem key="s" onClick={() => run(() => restoreCollaboratorAccess(companyId, c.id), "Acesso reposto.")}><i className="ri-lock-unlock-line me-2" />Repor acesso</DropdownItem>);
-        }
-        items.push(<DropdownItem key="d" divider />);
-        return items;
-    };
+    // Menu "..." de cada colaborador: acesso à plataforma, ativar/desativar e, no fim, as destrutivas.
+    const rowActions = (c: ICollaborator): MenuAction[] => [
+        { label: "Dar acesso (convite)", icon: "ri-mail-send-line", hidden: !canManageAccess || c.access_status !== "none", onClick: () => setAccessModal({ c, email: c.email ?? "" }) },
+        { label: "Reenviar convite", icon: "ri-refresh-line", hidden: !canManageAccess || c.access_status !== "invited", onClick: () => void run(() => resendCollaboratorInvite(companyId, c.id), "Convite reenviado.") },
+        { label: "Repor acesso", icon: "ri-lock-unlock-line", hidden: !canManageAccess || c.access_status !== "revoked", onClick: () => void run(() => restoreCollaboratorAccess(companyId, c.id), "Acesso reposto.") },
+        c.active
+            ? { label: "Desativar", icon: "ri-eye-off-line", hidden: !canEdit, onClick: () => void confirmRun("Desativar o colaborador?", "Deixa de aparecer no site. Se tiver conta na plataforma, o acesso mantém-se até o retirar.", "Desativar", () => setCollaboratorActive(companyId, c.id, false), "Colaborador desativado.", "primary") }
+            : { label: "Ativar", icon: "ri-eye-line", hidden: !canEdit, onClick: () => void run(() => setCollaboratorActive(companyId, c.id, true), "Colaborador ativado.") },
+        { label: "Cancelar convite", icon: "ri-close-circle-line", danger: true, hidden: !canManageAccess || c.access_status !== "invited", onClick: () => void confirmRun("Cancelar o convite?", `O link enviado para ${c.invite?.email ?? "o email"} deixa de funcionar.`, "Cancelar convite", () => cancelCollaboratorInvite(companyId, c.id), "Convite cancelado.", "danger") },
+        { label: "Retirar acesso", icon: "ri-lock-line", danger: true, hidden: !canManageAccess || c.access_status !== "active", onClick: () => void confirmRun("Retirar o acesso?", `${c.name} deixa de conseguir entrar na plataforma e as sessões abertas terminam. O colaborador mantém-se.`, "Retirar acesso", () => revokeCollaboratorAccess(companyId, c.id), "Acesso retirado.", "danger") },
+        { label: "Apagar", icon: "ri-delete-bin-line", danger: true, hidden: !canEdit || !!c.user, onClick: () => void confirmRun("Apagar o colaborador?", "O registo e a foto são apagados.", "Apagar", () => deleteCollaborator(companyId, c.id), "Colaborador apagado.", "danger", () => setItems((p) => p.filter((x) => x.id !== c.id))) },
+    ];
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center g-2">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-team-line text-primary me-2" />Colaboradores</h4>
-                        <p className="text-muted mb-0">A equipa da empresa. Quem tiver autorização e estiver marcado aparece na secção Equipa do site.</p>
-                    </Col>
-                    {canEdit && tab === "team" && (
-                        <Col xs="auto"><Link to="/users/collaborators/new" className="btn btn-primary btn-sm"><i className="ri-add-line me-1" />Novo colaborador</Link></Col>
-                    )}
-                    {canEdit && tab === "departments" && (
-                        <Col xs="auto" className="d-flex gap-2">
-                            <button className="btn btn-soft-secondary btn-sm" disabled={busy} onClick={() => run(() => createSuggestedDepartments(companyId), "Departamentos criados.", () => loadDepartments())}>
+                <PageHeader title="Colaboradores" breadcrumbs={[{ label: "Configurações" }]}
+                    description="A equipa da empresa. Quem tiver autorização e estiver marcado aparece na secção Equipa do site."
+                    actions={canEdit ? (tab === "team" ? (
+                        <Link to="/users/collaborators/new" className="btn btn-primary"><i className="ri-add-line me-1" />Novo colaborador</Link>
+                    ) : (
+                        <>
+                            <Button color="outline-primary" disabled={busy} onClick={() => run(() => createSuggestedDepartments(companyId), "Departamentos criados.", () => loadDepartments())}>
                                 <i className="ri-magic-line me-1" />Criar departamentos sugeridos
-                            </button>
-                            <button className="btn btn-primary btn-sm" onClick={() => setDeptModal({ ...EMPTY_DEPT })}><i className="ri-add-line me-1" />Novo departamento</button>
-                        </Col>
-                    )}
-                </Row>
+                            </Button>
+                            <Button color="primary" onClick={() => setDeptModal({ ...EMPTY_DEPT })}><i className="ri-add-line me-1" />Novo departamento</Button>
+                        </>
+                    )) : undefined} />
 
                 {impersonating && (
                     <div className="alert alert-info py-2 fs-13">Em sessão como cliente pode editar a equipa e os departamentos. As ações sobre contas (dar ou retirar acesso) ficam reservadas ao administrador da empresa.</div>
@@ -161,11 +153,8 @@ const CollaboratorsList = () => {
                                 <Row className="g-2 mb-3">
                                     <Col md={8}><Input type="search" placeholder="Pesquisar por nome ou função" value={search} onChange={(e) => setSearch(e.target.value)} /></Col>
                                     <Col md={4}>
-                                        <Input type="select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label="Estado">
-                                            <option value="active">Ativos</option>
-                                            <option value="inactive">Desativados</option>
-                                            <option value="">Todos</option>
-                                        </Input>
+                                        <XSelect ariaLabel="Estado" value={status} onChange={setStatus}
+                                            options={[{ value: "active", label: "Ativos" }, { value: "inactive", label: "Desativados" }, { value: "", label: "Todos" }]} />
                                     </Col>
                                 </Row>
                                 {loading ? (
@@ -201,22 +190,12 @@ const CollaboratorsList = () => {
                                                             </td>
                                                             <td><Badge color={am.color} className={am.color === "light" ? "text-body" : ""}>{am.label}</Badge></td>
                                                             <td className="text-end">
-                                                                <UncontrolledDropdown>
-                                                                    <DropdownToggle tag="button" className="btn btn-soft-secondary btn-sm" disabled={busy}><i className="ri-more-fill" /></DropdownToggle>
-                                                                    <DropdownMenu end container="body">
-                                                                        <DropdownItem onClick={() => navigate(`/users/collaborators/${c.id}`)}><i className="ri-edit-line me-2" />{canEdit ? "Editar" : "Ver"}</DropdownItem>
-                                                                        {canEdit && <DropdownItem divider />}
-                                                                        {accessActions(c)}
-                                                                        {canEdit && (c.active
-                                                                            ? <DropdownItem onClick={() => confirmRun("Desativar o colaborador?", "Deixa de aparecer no site. Se tiver conta na plataforma, o acesso mantém-se até o retirar.", "Desativar", () => setCollaboratorActive(companyId, c.id, false), "Colaborador desativado.", "warning")}><i className="ri-eye-off-line me-2" />Desativar</DropdownItem>
-                                                                            : <DropdownItem onClick={() => run(() => setCollaboratorActive(companyId, c.id, true), "Colaborador ativado.")}><i className="ri-eye-line me-2" />Ativar</DropdownItem>)}
-                                                                        {canEdit && !c.user && (
-                                                                            <DropdownItem className="text-danger" onClick={() => confirmRun("Apagar o colaborador?", "O registo e a foto são apagados.", "Apagar", () => deleteCollaborator(companyId, c.id), "Colaborador apagado.", "danger", () => setItems((p) => p.filter((x) => x.id !== c.id)))}>
-                                                                                <i className="ri-delete-bin-line me-2" />Apagar
-                                                                            </DropdownItem>
-                                                                        )}
-                                                                    </DropdownMenu>
-                                                                </UncontrolledDropdown>
+                                                                <div className="d-inline-flex gap-1">
+                                                                    <Button size="sm" color="outline-primary" onClick={() => navigate(`/users/collaborators/${c.id}`)} aria-label={`${canEdit ? "Editar" : "Ver"}: ${c.name}`}>
+                                                                        <i className={canEdit ? "ri-pencil-line" : "ri-eye-line"} />
+                                                                    </Button>
+                                                                    <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} disabled={busy} items={rowActions(c)} />
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     );
@@ -244,8 +223,10 @@ const CollaboratorsList = () => {
                                                     <td className="text-end">
                                                         {canEdit && (
                                                             <div className="d-flex gap-1 justify-content-end">
-                                                                <button className="btn btn-soft-secondary btn-sm" onClick={() => setDeptModal({ id: d.id, name: d.name, whatsapp: d.whatsapp ?? "", phone: d.phone ?? "", phone_type: d.phone_type ?? "", email: d.email ?? "", active: d.active })}><i className="ri-edit-line" /></button>
-                                                                <button className="btn btn-soft-danger btn-sm" onClick={() => confirmRun("Apagar o departamento?", "Os colaboradores deste departamento ficam sem departamento.", "Apagar", () => deleteDepartment(companyId, d.id), "Departamento apagado.", "danger", () => { loadDepartments(); load(); })}><i className="ri-delete-bin-line" /></button>
+                                                                <Button size="sm" color="outline-primary" aria-label={`Editar: ${d.name}`} onClick={() => setDeptModal({ id: d.id, name: d.name, whatsapp: d.whatsapp ?? "", phone: d.phone ?? "", phone_type: d.phone_type ?? "", email: d.email ?? "", active: d.active })}><i className="ri-pencil-line" /></Button>
+                                                                <ActionsMenu size="sm" label={`Mais ações: ${d.name}`} items={[
+                                                                    { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void confirmRun("Apagar o departamento?", "Os colaboradores deste departamento ficam sem departamento.", "Apagar", () => deleteDepartment(companyId, d.id), "Departamento apagado.", "danger", () => { loadDepartments(); load(); }) },
+                                                                ]} />
                                                             </div>
                                                         )}
                                                     </td>
@@ -270,11 +251,11 @@ const CollaboratorsList = () => {
                         </ModalBody>
                     )}
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setAccessModal(null)} disabled={busy}>Cancelar</button>
-                        <button className="btn btn-primary" disabled={busy || !accessModal?.email.trim()} onClick={async () => {
+                        <Button color="light" onClick={() => setAccessModal(null)} disabled={busy}>Cancelar</Button>
+                        <ReasonButton color="primary" disabled={busy} reason={!accessModal?.email.trim() ? "Indique o email." : null} onClick={async () => {
                             if (!accessModal) return;
                             await run(() => grantCollaboratorAccess(companyId, accessModal.c.id, accessModal.email.trim()), "Convite enviado.", (d) => { if (d?.id) replace(d); setAccessModal(null); });
-                        }}>{busy ? <Spinner size="sm" /> : "Enviar convite"}</button>
+                        }}>{busy ? <Spinner size="sm" /> : "Enviar convite"}</ReasonButton>
                     </ModalFooter>
                 </Modal>
 
@@ -291,11 +272,9 @@ const CollaboratorsList = () => {
                                 <Col xs={8}><Label className="form-label">Telefone</Label><Input value={deptModal.phone} onChange={(e) => setDeptModal({ ...deptModal, phone: e.target.value })} placeholder="22 998 4130" /></Col>
                                 <Col xs={4}>
                                     <Label className="form-label">Tipo</Label>
-                                    <Input type="select" value={deptModal.phone_type} onChange={(e) => setDeptModal({ ...deptModal, phone_type: e.target.value as PhoneType })}>
-                                        <option value="">Escolher</option>
-                                        <option value="fixed">Fixo</option>
-                                        <option value="mobile">Móvel</option>
-                                    </Input>
+                                    <XSelect<PhoneType> ariaLabel="Tipo de telefone" value={deptModal.phone_type || null} placeholder="Escolher"
+                                        onChange={(v) => setDeptModal({ ...deptModal, phone_type: v })}
+                                        options={[{ value: "fixed", label: "Fixo" }, { value: "mobile", label: "Móvel" }]} />
                                 </Col>
                                 <Col xs={12}><Label className="form-label">Email</Label><Input type="email" value={deptModal.email} onChange={(e) => setDeptModal({ ...deptModal, email: e.target.value })} placeholder="oficina@empresa.pt" /></Col>
                                 <Col xs={12}>
@@ -309,8 +288,8 @@ const CollaboratorsList = () => {
                         </ModalBody>
                     )}
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setDeptModal(null)} disabled={busy}>Cancelar</button>
-                        <button className="btn btn-primary" onClick={() => void saveDepartment()} disabled={busy || !deptModal?.name.trim()}>{busy ? <Spinner size="sm" /> : "Guardar"}</button>
+                        <Button color="light" onClick={() => setDeptModal(null)} disabled={busy}>Cancelar</Button>
+                        <ReasonButton color="primary" onClick={() => void saveDepartment()} disabled={busy} reason={!deptModal?.name.trim() ? "Indique o nome." : null}>{busy ? <Spinner size="sm" /> : "Guardar"}</ReasonButton>
                     </ModalFooter>
                 </Modal>
             </Container>

@@ -1,7 +1,9 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody } from "reactstrap";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import { formatIpsBadge } from "helpers/ips";
+import PageHeader from "Components/Common/PageHeader";
 
 interface Props {
     car: any;
@@ -10,10 +12,36 @@ interface Props {
     aiMeta: any;
     fmtDate: (d: string) => string;
     ipsClassBadge: (cls: string) => string;
+    /** Nome curto do separador atual (último breadcrumb), ex.: "Ficha". */
+    section: string;
+    /** Ações próprias do separador (secundárias primeiro, a principal no fim). */
+    actions?: React.ReactNode;
 }
 
-export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Props) {
+/**
+ * Topo de todas as páginas de /cars/:id/*: o cabeçalho de página (título = viatura,
+ * breadcrumbs, "Editar viatura") e, por baixo, o resumo fixo da viatura (versão, preço,
+ * matrícula e sinais). Com `car` ainda por carregar, mostra só o cabeçalho.
+ */
+export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, section, actions }: Props) {
     const ipsBadge = ips ? formatIpsBadge(ips.score, ips.classification) : null;
+    const carName = [car?.brand?.name, car?.model?.name].filter(Boolean).join(" ") || "Viatura";
+    const header = (
+        <PageHeader
+            title={carName}
+            crumbLabel={section}
+            breadcrumbs={[{ label: "Comercial" }, { label: "Carros", to: "/cars" }]}
+            actions={<>
+                {car?.id && (
+                    <Link to={`/cars/${car.id}`} className="btn btn-outline-primary">
+                        <i className="ri-pencil-line me-1" />Editar viatura
+                    </Link>
+                )}
+                {actions}
+            </>}
+        />
+    );
+    if (!car) return header;
 
     // Agora é um <Card> Velzon (surface + sombra + raio nativos, como a Ficha).
     // Porque a sombra anterior "não pegava": era um <div> à mão com a sombra
@@ -22,8 +50,10 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
     // Ficha; mantemos uma borda explícita (o .card do Velzon tem border 0) para
     // garantir a separação no tema ESCURO, onde a sombra não ajuda.
     return (
+        <>
+        {header}
         <Card
-            className="mb-0"
+            className="mb-2"
             style={{
                 position: "sticky",
                 top: "72px",
@@ -33,17 +63,12 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
         >
             <CardBody className="d-flex align-items-center justify-content-between flex-wrap gap-3">
                 <div style={{ minWidth: 0 }}>
-                    <div className="d-flex align-items-center flex-wrap gap-2 mb-2">
-                        <h5 className="mb-0 fw-semibold text-truncate" style={{ minWidth: 0 }}>
-                            {car?.brand?.name} {car?.model?.name}
-                        </h5>
+                    <div className="d-flex align-items-center gap-3 flex-wrap fs-13 text-muted">
                         {car?.version && (
-                            <span className="badge bg-primary-subtle text-primary fw-medium" style={{ fontSize: "12px" }}>
+                            <span className="badge bg-primary-subtle text-primary fw-medium text-truncate" style={{ fontSize: "12px", maxWidth: "100%" }}>
                                 {car.version}
                             </span>
                         )}
-                    </div>
-                    <div className="d-flex align-items-center gap-3 flex-wrap fs-13 text-muted">
                         <span className="d-inline-flex align-items-center gap-2">
                             <span>Preço</span>
                             <span className="d-inline-flex align-middle">
@@ -99,13 +124,8 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate }: Pr
                         )}
                     </div>
                 </div>
-                <div className="d-flex gap-2 flex-wrap">
-                    <Link to={`/cars/${car?.id}`} className="btn btn-soft-primary btn-sm">
-                        <i className="ri-pencil-fill" />
-                        <span className="d-none d-md-inline ms-1">Editar viatura</span>
-                    </Link>
-                </div>
             </CardBody>
         </Card>
+        </>
     );
 }

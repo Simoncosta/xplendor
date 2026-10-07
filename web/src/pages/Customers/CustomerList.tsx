@@ -3,11 +3,12 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Card, CardBody, Col, Container, Row, Table } from "reactstrap";
+import { Button, Card, CardBody, Container, Table } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 // Components
 import Pagination from "Components/Common/Pagination";
-import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import CustomerFormModal from "./components/CustomerFormModal";
 import QuickAddCustomerModal from "./components/QuickAddCustomerModal";
 // Redux
@@ -53,7 +54,7 @@ const CustomerList = () => {
             await alertMessage("Este cliente tem vendas associadas. Arquive-o em vez de o eliminar.", "Não é possível eliminar", "warning");
             return;
         }
-        const ok = await confirmDelete(`Vais eliminar o cliente "${c.name}". Esta ação não pode ser anulada.`);
+        const ok = await confirmDelete(`Vai eliminar o cliente "${c.name}". Esta ação não pode ser anulada.`);
         if (!ok) return;
         try {
             await dispatch(deleteCustomer({ companyId, id: c.id })).unwrap();
@@ -77,27 +78,19 @@ const CustomerList = () => {
     };
 
     const locationOf = (c: ICustomer): string =>
-        [c.parish_name, c.municipality_name, c.district_name].filter(Boolean).join(", ") || "—";
+        [c.parish_name, c.municipality_name, c.district_name].filter(Boolean).join(", ") || "-";
 
     return (
         <React.Fragment>
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
-                    <Row className="g-2 mb-3 align-items-center">
-                        <Col>
-                            <h5 className="mb-0">Clientes</h5>
-                            <small className="text-muted">Gere os clientes da sua empresa (base para os documentos de venda).</small>
-                        </Col>
-                        <Col xs="auto" className="d-flex gap-2">
-                            <XButton variant="secondary" outline type="button" icon={<i className="ri-flashlight-line" />} onClick={() => setQuickOpen(true)}>
-                                Criação rápida
-                            </XButton>
-                            <XButton variant="success" type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                                Adicionar cliente
-                            </XButton>
-                        </Col>
-                    </Row>
+                    <PageHeader title="Clientes" breadcrumbs={[{ label: "Comercial" }]}
+                        description="Os clientes da sua empresa (base para os documentos de venda)."
+                        actions={<>
+                            <Button color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
+                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo cliente</Button>
+                        </>} />
 
                     <Card>
                         <CardBody>
@@ -116,7 +109,7 @@ const CustomerList = () => {
                                     <tbody>
                                         {loading && <tr><td colSpan={6} className="text-center text-muted py-4">A carregar…</td></tr>}
                                         {!loading && customers.length === 0 && (
-                                            <tr><td colSpan={6} className="text-center text-muted py-4">Sem clientes. Clica em "Adicionar cliente" para criar o primeiro.</td></tr>
+                                            <tr><td colSpan={6} className="text-center text-muted py-4">Sem clientes. Clique em "Novo cliente" para criar o primeiro.</td></tr>
                                         )}
                                         {!loading && customers.map((c) => (
                                             <tr key={c.id} className={c.archived ? "text-muted" : ""}>
@@ -124,19 +117,21 @@ const CustomerList = () => {
                                                     {c.name}
                                                     {c.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}
                                                 </td>
-                                                <td>{c.nif || "—"}</td>
-                                                <td>{c.phone || "—"}</td>
-                                                <td>{c.email || "—"}</td>
+                                                <td>{c.nif || "-"}</td>
+                                                <td>{c.phone || "-"}</td>
+                                                <td>{c.email || "-"}</td>
                                                 <td>{locationOf(c)}</td>
                                                 <td className="text-end">
-                                                    <Link to={`/customers/${c.id}`} className="btn btn-sm btn-soft-info me-1" title="Ver ficha"><i className="ri-user-line" /></Link>
-                                                    <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(c)} title="Editar"><i className="ri-pencil-line" /></button>
-                                                    {c.archived ? (
-                                                        <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(c, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>
-                                                    ) : (
-                                                        <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(c, true)} title="Arquivar"><i className="ri-archive-line" /></button>
-                                                    )}
-                                                    <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(c)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
+                                                    <div className="d-inline-flex gap-1">
+                                                        <Link to={`/customers/${c.id}`} className="btn btn-sm btn-outline-primary" title="Ver ficha" aria-label={`Ver ficha: ${c.name}`}><i className="ri-user-line" /></Link>
+                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}><i className="ri-pencil-line" /></Button>
+                                                        <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
+                                                            c.archived
+                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(c, false) }
+                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(c, true) },
+                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
+                                                        ]} />
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}

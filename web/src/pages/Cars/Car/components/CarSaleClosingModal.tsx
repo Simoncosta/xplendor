@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import {
     Badge,
     Col,
@@ -105,15 +106,15 @@ export default function CarSaleClosingModal({
         }
 
         if (!formData.buyer_gender) {
-            nextErrors.buyer_gender = "Seleciona quem comprou.";
+            nextErrors.buyer_gender = "Escolha quem comprou.";
         }
 
         if (!formData.buyer_age_range) {
-            nextErrors.buyer_age_range = "Seleciona a faixa etária.";
+            nextErrors.buyer_age_range = "Escolha a faixa etária.";
         }
 
         if (!formData.sale_channel) {
-            nextErrors.sale_channel = "Seleciona o canal da venda.";
+            nextErrors.sale_channel = "Escolha o canal da venda.";
         }
 
         setErrors(nextErrors);
@@ -170,7 +171,7 @@ export default function CarSaleClosingModal({
                         <Badge color="light" className="text-success mb-2 border border-success-subtle">
                             Passo {step} de 2
                         </Badge>
-                        <h4 className="mb-1">Vamos fechar esta venda com contexto</h4>
+                        <h5 className="mb-1">Vamos fechar esta venda com contexto</h5>
                         <p className="text-muted mb-0">
                             São só alguns dados rápidos para alimentar inteligência comercial real.
                         </p>
@@ -184,7 +185,7 @@ export default function CarSaleClosingModal({
                     <div className="bg-light rounded-3 p-3 p-lg-4">
                         <Row className="g-3">
                             <Col lg={6}>
-                                <Label className="form-label">Por quanto vendeste? <span className="text-muted">(opcional)</span></Label>
+                                <Label className="form-label">Por quanto vendeu? <span className="text-muted">(opcional)</span></Label>
                                 <Input
                                     type="number"
                                     min="0"
@@ -198,6 +199,8 @@ export default function CarSaleClosingModal({
                             <Col lg={6}>
                                 <Label className="form-label">Quem comprou?</Label>
                                 <Select
+                                    styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
                                     options={buyerGenderOptions}
                                     value={buyerGenderOptions.find((option) => option.value === formData.buyer_gender) ?? null}
                                     onChange={(option: any) => handleChange("buyer_gender", option?.value ?? "")}
@@ -208,6 +211,8 @@ export default function CarSaleClosingModal({
                             <Col lg={6}>
                                 <Label className="form-label">Faixa etária aproximada?</Label>
                                 <Select
+                                    styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
                                     options={buyerAgeRangeOptions}
                                     value={buyerAgeRangeOptions.find((option) => option.value === formData.buyer_age_range) ?? null}
                                     onChange={(option: any) => handleChange("buyer_age_range", option?.value ?? "")}
@@ -218,6 +223,8 @@ export default function CarSaleClosingModal({
                             <Col lg={6}>
                                 <Label className="form-label">Como chegou ao carro?</Label>
                                 <Select
+                                    styles={reactSelectTheme}
+                                    menuPortalTarget={document.body}
                                     options={saleChannelOptions}
                                     value={saleChannelOptions.find((option) => option.value === formData.sale_channel) ?? null}
                                     onChange={(option: any) => handleChange("sale_channel", option?.value ?? "")}
@@ -289,9 +296,7 @@ export default function CarSaleClosingModal({
                 <div className="hstack gap-2 justify-content-end mt-4 flex-wrap">
                     {step === 1 ? (
                         <XButton
-                            variant="danger"
-                            outline
-                            rounded
+                            variant="light"
                             onClick={onClose}
                             disabled={loading}
                         >
@@ -299,9 +304,7 @@ export default function CarSaleClosingModal({
                         </XButton>
                     ) : (
                         <XButton
-                            variant="secondary"
-                            outline
-                            rounded
+                            variant="light"
                             onClick={() => setStep(1)}
                             disabled={loading}
                         >
@@ -311,20 +314,17 @@ export default function CarSaleClosingModal({
 
                     {step === 1 ? (
                         <XButton
-                            variant="success"
-                            outline
-                            rounded
+                            variant="primary"
                             onClick={handleNext}
                             disabled={loading}
                         >
-                                Continuar
+                            Continuar
                         </XButton>
                     ) : (
                         <>
                             <XButton
-                                variant="success"
+                                variant="primary"
                                 outline
-                                rounded
                                 onClick={() => handleConfirm("draft")}
                                 disabled={loading}
                             >
@@ -332,12 +332,11 @@ export default function CarSaleClosingModal({
                             </XButton>
                             <XButton
                                 variant="success"
-                                rounded
                                 onClick={() => handleConfirm("submit")}
                                 loading={loading}
                                 disabled={loading}
                             >
-                                {loading ? "A concluir venda e guardar..." : "Concluir venda e guardar alterações"}
+                                {loading ? "A concluir venda e guardar…" : "Concluir venda e guardar alterações"}
                             </XButton>
                         </>
                     )}

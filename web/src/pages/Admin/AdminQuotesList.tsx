@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
 import { ToastContainer } from "react-toastify";
+import PageHeader from "Components/Common/PageHeader";
 import { getAdminQuotes, getAdminQuotesSummary } from "helpers/laravel_helper";
 import QuoteSelect from "./QuoteSelect";
 import {
@@ -60,16 +61,12 @@ const AdminQuotesList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center g-2">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-file-list-3-line text-primary me-2" />Orçamentos</h4>
-                        <p className="text-muted mb-0">Orçamentos de serviços da XPLENDOR. Valores sem IVA.</p>
-                    </Col>
-                    <Col xs="auto" className="d-flex gap-2">
-                        <Link to="/admin/service-catalog" className="btn btn-soft-secondary btn-sm"><i className="ri-price-tag-3-line me-1" />Catálogo de serviços</Link>
-                        <Link to="/admin/quotes/new" className="btn btn-primary btn-sm"><i className="ri-add-line me-1" />Novo orçamento</Link>
-                    </Col>
-                </Row>
+                <PageHeader title="Orçamentos" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
+                    description="Orçamentos de serviços da XPLENDOR. Valores sem IVA."
+                    actions={<>
+                        <Link to="/admin/service-catalog" className="btn btn-outline-primary"><i className="ri-price-tag-3-line me-1" />Catálogo de serviços</Link>
+                        <Link to="/admin/quotes/new" className="btn btn-primary"><i className="ri-add-line me-1" />Novo orçamento</Link>
+                    </>} />
 
                 {summary && (
                     <Row className="g-3 mb-3">

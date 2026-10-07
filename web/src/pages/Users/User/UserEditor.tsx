@@ -1,18 +1,17 @@
 // React
 import React, { useState } from 'react';
-import Select from "react-select";
 // Formik
 import * as Yup from "yup";
 import { FormikProvider, useFormik } from 'formik';
 // Models
 import { IUser } from "common/models/user.model";
-import { Card, CardBody, Col, Container, Input, Label, Row } from "reactstrap";
+import { Button, Card, CardBody, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 
 // Images
-import profileBg from "../../../assets/images/profile-employer-bg.jpg";
 import avatar1 from '../../../assets/images/users/avatar-company.jpg';
-import XButton from 'Components/Common/XButton';
 import XInput from 'Components/Common/XInput';
+import PageHeader from 'Components/Common/PageHeader';
+import XSelect from 'pages/Editorial/XSelect';
 import XInputMask from 'Components/Common/XInputMask';
 
 type UserEditorProps = {
@@ -42,11 +41,11 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
     const validationSchema = Yup.object({
         password: Yup.string()
             .nullable()
-            .min(8, "Password deve ter no mínimo 8 caracteres"),
+            .min(8, "A palavra-passe deve ter, no mínimo, 8 caracteres."),
 
         password_confirmation: Yup.string()
             .nullable()
-            .oneOf([Yup.ref("password"), null], "As passwords não coincidem"),
+            .oneOf([Yup.ref("password"), null], "As palavras-passe não coincidem."),
     });
 
     const formik = useFormik({
@@ -60,14 +59,21 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
-                    <div className="position-relative mx-n4 mt-n4">
-                        <div className="profile-wid-bg profile-setting-img">
-                            <img src={profileBg} className="profile-wid-img" alt="" />
-                        </div>
-                    </div>
+                    <PageHeader
+                        title={formik.values.name || (isEdit ? "Colaborador" : "Novo colaborador")}
+                        breadcrumbs={[{ label: "Configurações" }, { label: "Colaboradores", to: "/users" }]}
+                        crumbLabel={isEdit ? "Colaborador" : "Novo"}
+                        description="Dados da conta e palavra-passe do colaborador."
+                        actions={<>
+                            <Button color="outline-primary" disabled={loading} onClick={() => onCancel()}>Cancelar</Button>
+                            <Button color="primary" type="submit" form="user-editor-form" disabled={loading}>
+                                {loading ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
+                            </Button>
+                        </>}
+                    />
                     <Row>
                         <Col xxl={3}>
-                            <Card className="mt-n5">
+                            <Card>
                                 <CardBody className="p-4">
                                     <div className="text-center">
                                         <div className="profile-user position-relative d-inline-block mx-auto  mb-4">
@@ -113,12 +119,12 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                         </Col>
 
                         <Col xxl={9}>
-                            <Card className="mt-xxl-n5">
+                            <Card>
                                 <CardBody className="p-4">
                                     <FormikProvider value={formik}>
-                                        <form onSubmit={formik.handleSubmit}>
+                                        <form id="user-editor-form" onSubmit={formik.handleSubmit}>
                                             <div className="mb-2 border-bottom pb-2">
-                                                <h5 className="card-title">Alterar Senha</h5>
+                                                <h5 className="card-title mb-0">Alterar palavra-passe</h5>
                                             </div>
                                             <Row>
                                                 <Col lg={6}>
@@ -126,23 +132,23 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                                                         type='password'
                                                         className='mb-4'
                                                         name="password"
-                                                        label="Nova Senha"
-                                                        placeholder="Nova Senha"
+                                                        label="Nova palavra-passe"
+                                                        placeholder="Nova palavra-passe"
                                                     />
                                                 </Col>
                                                 <Col lg={6}>
                                                     <XInput
                                                         className='mb-4'
-                                                        placeholder="Confirmar Password"
+                                                        placeholder="Confirmar palavra-passe"
                                                         type="password"
                                                         name="password_confirmation"
-                                                        label="Confirmar Password"
+                                                        label="Confirmar palavra-passe"
                                                     />
                                                 </Col>
                                             </Row>
 
                                             <div className="mb-2 border-bottom pb-2">
-                                                <h5 className="card-title">Dados do Colaborador</h5>
+                                                <h5 className="card-title mb-0">Dados do colaborador</h5>
                                             </div>
 
                                             <Row>
@@ -176,35 +182,21 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                                                 </Col>
                                                 <Col lg={4}>
                                                     <Label for="gender">
-                                                        Sexo:
+                                                        Sexo
                                                     </Label>
-                                                    <Select
-                                                        id="gender"
-                                                        name="gender"
-                                                        options={genderOptions}
-                                                        value={genderOptions.find(option => option.value === formik.values.gender) || null}
-                                                        onChange={(option: any) => {
-                                                            formik.setFieldValue("gender", option?.value ?? null);
-                                                        }}
-                                                        onBlur={() => formik.setFieldTouched("gender", true)}
-                                                        className="mb-3"
-                                                    />
+                                                    <div className="mb-3">
+                                                        <XSelect id="gender" options={genderOptions} value={formik.values.gender as string | null}
+                                                            onChange={(v) => formik.setFieldValue("gender", v)} />
+                                                    </div>
                                                 </Col>
                                                 <Col lg={4}>
                                                     <Label for="role">
-                                                        Perfil:
+                                                        Perfil
                                                     </Label>
-                                                    <Select
-                                                        id="role"
-                                                        name="role"
-                                                        options={roleOptions}
-                                                        value={roleOptions.find(option => option.value === formik.values.role) || null}
-                                                        onChange={(option: any) => {
-                                                            formik.setFieldValue("role", option?.value ?? null);
-                                                        }}
-                                                        onBlur={() => formik.setFieldTouched("role", true)}
-                                                        className="mb-3"
-                                                    />
+                                                    <div className="mb-3">
+                                                        <XSelect id="role" options={roleOptions} value={formik.values.role as string | null}
+                                                            onChange={(v) => formik.setFieldValue("role", v)} />
+                                                    </div>
                                                 </Col>
                                                 <Col lg={6}>
                                                     <XInputMask
@@ -233,31 +225,6 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                                                     />
                                                 </Col>
                                             </Row>
-                                            <Col lg={12}>
-                                                <div className="hstack gap-2 justify-content-end">
-                                                    <XButton
-                                                        variant="success"
-                                                        type='submit'
-                                                        outline
-                                                        rounded
-                                                        icon={<i className="ri-check-double-line" />}
-                                                        loading={loading}
-                                                        disabled={loading}
-                                                    >
-                                                        Salvar
-                                                    </XButton>
-                                                    <XButton
-                                                        variant="danger"
-                                                        outline
-                                                        rounded
-                                                        icon={<i className="ri-close-line" />}
-                                                        disabled={loading}
-                                                        onClick={() => onCancel()}
-                                                    >
-                                                        Cancelar
-                                                    </XButton>
-                                                </div>
-                                            </Col>
                                         </form>
                                     </FormikProvider>
                                 </CardBody>

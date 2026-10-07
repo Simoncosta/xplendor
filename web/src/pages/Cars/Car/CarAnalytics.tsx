@@ -96,18 +96,15 @@ export default function CarAnalytics() {
             <ToastContainer />
             <Container fluid>
 
-                <Row className="mb-2">
-                    <Col>
-                        <CarAnalyticsHeader
-                            car={car}
-                            ips={ips}
-                            ai={ai}
-                            aiMeta={aiMeta}
-                            fmtDate={fmtDate}
-                            ipsClassBadge={ipsClassBadge}
-                        />
-                    </Col>
-                </Row>
+                <CarAnalyticsHeader
+                    car={car}
+                    ips={ips}
+                    ai={ai}
+                    aiMeta={aiMeta}
+                    fmtDate={fmtDate}
+                    ipsClassBadge={ipsClassBadge}
+                    section="Tráfego e canais"
+                />
 
                 <Row className="mb-3">
                     <Col>
@@ -236,12 +233,12 @@ export default function CarAnalytics() {
                                     <Card className="mb-0"><CardBody>
                                 <h6 className="fs-13 fw-semibold mb-3">
                                     <i className="ri-time-line me-2 text-primary" />
-                                    Timeline de actividade
+                                    Cronologia de atividade
                                 </h6>
                                 {timeline.filter((e: any) => e.type !== "car_created").length === 0 ? (
                                     <div className="text-center py-4 text-muted">
                                         <i className="ri-message-3-line display-6 opacity-50" />
-                                        <p className="mt-2 mb-0">Sem contactos directos registados ainda.</p>
+                                        <p className="mt-2 mb-0">Ainda sem contactos diretos registados.</p>
                                         <small>Cliques em WhatsApp, telefone e leads vão aparecer aqui.</small>
                                     </div>
                                 ) : (

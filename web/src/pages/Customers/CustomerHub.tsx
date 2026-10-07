@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner, Badge } from "reactstrap";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { getCustomerHub } from "helpers/laravel_helper";
 import { LEAD_STATUS_META, LeadStatus } from "common/models/lead.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -29,8 +29,8 @@ interface HubData {
 }
 
 const eur = (v: number | null | undefined) =>
-    v == null ? "—" : new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
-const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "—");
+    v == null ? "-" : new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(v);
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "-");
 
 const EmptyBlock: React.FC<{ icon: string; text: string }> = ({ icon, text }) => (
     <div className="text-center text-muted py-4">
@@ -64,7 +64,7 @@ const CustomerHub = () => {
     if (notFound || !data) {
         return (
             <div className="page-content"><Container fluid>
-                <BreadCrumb title="Ficha do cliente" pageTitle="Clientes" pageLink="/customers" />
+                <PageHeader title="Ficha do cliente" breadcrumbs={[{ label: "Comercial" }, { label: "Clientes", to: "/customers" }]} />
                 <Card><CardBody>
                     <p className="text-muted mb-2">Cliente não encontrado.</p>
                     <button className="btn btn-primary" onClick={() => navigate("/customers")}>Voltar aos clientes</button>
@@ -79,16 +79,17 @@ const CustomerHub = () => {
     return (
         <div className="page-content">
             <Container fluid>
-                <BreadCrumb title="Ficha do cliente" pageTitle="Clientes" pageLink="/customers" />
+                <PageHeader title={c.name} crumbLabel="Ficha" breadcrumbs={[{ label: "Comercial" }, { label: "Clientes", to: "/customers" }]}
+                    description="Vendas, leads, documentos e histórico deste cliente." />
 
                 {/* Cabeçalho do cliente */}
                 <Card>
                     <CardBody className="d-flex align-items-center gap-3">
                         <span className="avatar-md flex-shrink-0"><span className="avatar-title bg-primary-subtle text-primary rounded fs-24">{(c.name?.[0] ?? "?").toUpperCase()}</span></span>
                         <div className="flex-grow-1">
-                            <h4 className="mb-1">{c.name}</h4>
+                            <h5 className="card-title mb-1">{c.name}</h5>
                             <div className="text-muted fs-13">
-                                {[c.phone, c.email, c.nif ? `NIF ${c.nif}` : null].filter(Boolean).join(" · ") || "—"}
+                                {[c.phone, c.email, c.nif ? `NIF ${c.nif}` : null].filter(Boolean).join(" · ") || "Sem contactos"}
                             </div>
                         </div>
                         <div className="d-flex gap-3 text-center">
@@ -102,7 +103,7 @@ const CustomerHub = () => {
                     {/* VENDAS */}
                     <Col xl={7}>
                         <Card className="h-100 mb-0"><CardBody>
-                            <h6 className="mb-3 text-uppercase"><i className="ri-car-line me-1" />Vendas</h6>
+                            <h5 className="card-title mb-3"><i className="ri-car-line me-1" />Vendas</h5>
                             {data.sales.length === 0 ? (
                                 <EmptyBlock icon="ri-car-line" text="Sem vendas registadas." />
                             ) : (
@@ -133,7 +134,7 @@ const CustomerHub = () => {
                     {/* LEADS (match por contacto) */}
                     <Col xl={5}>
                         <Card className="h-100 mb-0"><CardBody>
-                            <h6 className="mb-3 text-uppercase"><i className="ri-user-search-line me-1" />Leads</h6>
+                            <h5 className="card-title mb-3"><i className="ri-user-search-line me-1" />Leads</h5>
                             {data.leads.length === 0 ? (
                                 <EmptyBlock icon="ri-user-search-line" text="Sem leads associadas (por contacto)." />
                             ) : (
@@ -142,7 +143,7 @@ const CustomerHub = () => {
                                         <li key={l.id} className="d-flex align-items-center gap-2 border rounded p-2">
                                             <div className="flex-grow-1 min-w-0">
                                                 <div className="fw-medium text-truncate">{l.name}</div>
-                                                <small className="text-muted">{[l.channel, l.utm_source].filter(Boolean).join(" · ") || "origem —"} · {fmtDate(l.created_at)}</small>
+                                                <small className="text-muted">{[l.channel, l.utm_source].filter(Boolean).join(" · ") || "Sem origem"} · {fmtDate(l.created_at)}</small>
                                             </div>
                                             <Badge color={leadBadge(l.status).color} className="flex-shrink-0">{leadBadge(l.status).label}</Badge>
                                         </li>
@@ -156,7 +157,7 @@ const CustomerHub = () => {
                     {/* DOCUMENTOS */}
                     <Col xl={6}>
                         <Card className="h-100 mb-0"><CardBody>
-                            <h6 className="mb-3 text-uppercase"><i className="ri-file-text-line me-1" />Documentos</h6>
+                            <h5 className="card-title mb-3"><i className="ri-file-text-line me-1" />Documentos</h5>
                             <EmptyBlock icon="ri-file-text-line" text="Sem documentos guardados. Os documentos são gerados na ficha da viatura (modelo + venda)." />
                         </CardBody></Card>
                     </Col>
@@ -164,7 +165,7 @@ const CustomerHub = () => {
                     {/* HISTÓRICO (derivado) */}
                     <Col xl={6}>
                         <Card className="h-100 mb-0"><CardBody>
-                            <h6 className="mb-3 text-uppercase"><i className="ri-history-line me-1" />Histórico</h6>
+                            <h5 className="card-title mb-3"><i className="ri-history-line me-1" />Histórico</h5>
                             {data.history.length === 0 ? (
                                 <EmptyBlock icon="ri-history-line" text="Sem registos." />
                             ) : (

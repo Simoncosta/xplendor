@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import {
@@ -7,6 +7,10 @@ import {
 } from "helpers/laravel_helper";
 import { ACCESS_META, ContactMode, ICollaborator, IDepartment, PhoneType, collaboratorPhoto, initials } from "common/models/collaborator.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { confirmAction } from "helpers/swal";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "pages/Editorial/XSelect";
 
 /**
  * Criar ou editar um colaborador. Dados e foto (400x400 WebP, gerada no servidor);
@@ -117,6 +121,7 @@ const CollaboratorEditor = () => {
 
     const removePhoto = async () => {
         if (!collaborator) return;
+        if (!(await confirmAction({ title: "Remover a foto?", text: "A foto deixa de aparecer no site.", confirmText: "Remover", icon: "warning", confirmVariant: "danger" }))) return;
         try {
             const r: any = await deleteCollaboratorPhoto(companyId, collaborator.id);
             setCollaborator(r.data);
@@ -138,39 +143,35 @@ const CollaboratorEditor = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center g-2">
-                    <Col>
-                        <Link to="/users" className="text-muted fs-13"><i className="ri-arrow-left-line me-1" />Colaboradores</Link>
-                        <h4 className="mb-0 mt-1 d-flex align-items-center gap-2 flex-wrap">
-                            {isNew ? "Novo colaborador" : collaborator?.name}
+                <PageHeader title={isNew ? "Novo colaborador" : collaborator?.name ?? "Colaborador"}
+                    breadcrumbs={[{ label: "Configurações" }, { label: "Colaboradores", to: "/users" }]}
+                    crumbLabel={isNew ? "Novo" : "Colaborador"}
+                    description={(am || (collaborator && !collaborator.active)) ? (
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
                             {am && <Badge color={am.color} className={`fs-12 ${am.color === "light" ? "text-body" : ""}`}>{am.label}</Badge>}
-                            {collaborator && !collaborator.active && <Badge color="secondary" className="fs-12">Desativado</Badge>}
-                        </h4>
-                    </Col>
-                    {canEdit && (
-                        <Col xs="auto">
-                            <button className="btn btn-primary btn-sm" onClick={() => void save()} disabled={saving || !form.name.trim() || (form.create_access && !form.access_email.trim())}>
-                                {saving ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
-                            </button>
-                        </Col>
-                    )}
-                </Row>
+                            {collaborator && !collaborator.active && <Badge color="light" className="fs-12 text-body">Desativado</Badge>}
+                        </div>
+                    ) : undefined}
+                    actions={canEdit ? (
+                        <ReasonButton color="primary" onClick={() => void save()} disabled={saving}
+                            reason={!form.name.trim() ? "Indique o nome." : form.create_access && !form.access_email.trim() ? "Indique o email para o convite." : null}>
+                            {saving ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
+                        </ReasonButton>
+                    ) : undefined} />
 
                 <fieldset disabled={!canEdit}>
                     <Row className="g-3">
                         <Col xl={8}>
                             <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Dados</h6></CardHeader>
+                                <CardHeader><h5 className="card-title mb-0">Dados</h5></CardHeader>
                                 <CardBody>
                                     <Row className="g-3">
                                         <Col md={6}><Label className="form-label">Nome</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Col>
                                         <Col md={6}><Label className="form-label">Função</Label><Input value={form.role_title} onChange={(e) => set("role_title", e.target.value)} placeholder="Ex.: Consultor comercial" /></Col>
                                         <Col md={6}>
                                             <Label className="form-label">Departamento</Label>
-                                            <Input type="select" value={form.department_id} onChange={(e) => set("department_id", e.target.value)}>
-                                                <option value="">Sem departamento</option>
-                                                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                            </Input>
+                                            <XSelect ariaLabel="Departamento" value={form.department_id} onChange={(v) => set("department_id", v)} disabled={!canEdit}
+                                                options={[{ value: "", label: "Sem departamento" }, ...departments.map((d) => ({ value: String(d.id), label: d.name }))]} />
                                             {departments.length === 0 && <small className="text-muted">Crie os departamentos no separador "Departamentos" da lista.</small>}
                                         </Col>
                                         <Col md={6}><Label className="form-label">Ordem no site</Label><Input type="number" min={0} value={form.sort} onChange={(e) => set("sort", e.target.value)} /></Col>
@@ -184,7 +185,7 @@ const CollaboratorEditor = () => {
                             </Card>
 
                             <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Contactos pessoais</h6></CardHeader>
+                                <CardHeader><h5 className="card-title mb-0">Contactos pessoais</h5></CardHeader>
                                 <CardBody>
                                     <p className="text-muted fs-13">Só aparecem no site se a pessoa autorizar (secção Site). Sem essa autorização, o site mostra os contactos do departamento.</p>
                                     <Row className="g-3">
@@ -193,11 +194,8 @@ const CollaboratorEditor = () => {
                                         <Col md={8}><Label className="form-label">Telefone</Label><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Col>
                                         <Col md={4}>
                                             <Label className="form-label">Tipo</Label>
-                                            <Input type="select" value={form.phone_type} onChange={(e) => set("phone_type", e.target.value as PhoneType)}>
-                                                <option value="">Escolher</option>
-                                                <option value="mobile">Móvel</option>
-                                                <option value="fixed">Fixo</option>
-                                            </Input>
+                                            <XSelect<PhoneType> ariaLabel="Tipo de telefone" value={form.phone_type || null} placeholder="Escolher" disabled={!canEdit}
+                                                onChange={(v) => set("phone_type", v)} options={[{ value: "mobile", label: "Móvel" }, { value: "fixed", label: "Fixo" }]} />
                                         </Col>
                                     </Row>
                                 </CardBody>
@@ -205,7 +203,7 @@ const CollaboratorEditor = () => {
 
                             {isNew && (
                                 <Card className="mb-3">
-                                    <CardHeader><h6 className="mb-0">Acesso à plataforma</h6></CardHeader>
+                                    <CardHeader><h5 className="card-title mb-0">Acesso à plataforma</h5></CardHeader>
                                     <CardBody>
                                         {canManageAccess ? (
                                             <>
@@ -238,7 +236,7 @@ const CollaboratorEditor = () => {
 
                         <Col xl={4}>
                             <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Foto</h6></CardHeader>
+                                <CardHeader><h5 className="card-title mb-0">Foto</h5></CardHeader>
                                 <CardBody className="text-center">
                                     {currentPhoto
                                         ? <img src={currentPhoto} alt="" width={160} height={160} className="rounded-circle mb-3" style={{ objectFit: "cover" }} />
@@ -250,13 +248,13 @@ const CollaboratorEditor = () => {
                                     }} />
                                     <small className="text-muted d-block mt-2">Fica quadrada, com 400 x 400 píxeis. O original não é guardado.</small>
                                     {collaborator?.photo_path && !photoFile && canEdit && (
-                                        <button type="button" className="btn btn-link btn-sm text-danger mt-1" onClick={() => void removePhoto()}>Remover foto</button>
+                                        <button type="button" className="btn btn-link btn-sm mt-1" onClick={() => void removePhoto()}>Remover foto</button>
                                     )}
                                 </CardBody>
                             </Card>
 
                             <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Site (secção Equipa)</h6></CardHeader>
+                                <CardHeader><h5 className="card-title mb-0">Site (secção Equipa)</h5></CardHeader>
                                 <CardBody>
                                     <div className="form-check mb-2">
                                         <Input className="form-check-input" type="checkbox" id="consent" checked={form.publish_consent}

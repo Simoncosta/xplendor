@@ -1,5 +1,6 @@
 //React
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { useDispatch, useSelector } from "react-redux";
 import { Col, Label, Row } from "reactstrap";
 
@@ -139,6 +140,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         Marca: <span className="text-danger">*</span>
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="car_brand_id"
                         name="car_brand_id"
                         options={brandOptions}
@@ -159,6 +162,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         Modelo: <span className="text-danger">*</span>
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="car_model_id"
                         name="car_model_id"
                         options={modelOptions}
@@ -175,6 +180,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                     <Col lg={2}>
                         <Label for="engine_brand">Marca do motor:</Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             id="engine_brand"
                             name="engine_brand"
                             isClearable
@@ -194,6 +201,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                         Mês:
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="registration_month"
                         name="registration_month"
                         options={monthsOptions}
@@ -222,6 +231,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                             Combustível:
                         </Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             id="fuel_type"
                             name="fuel_type"
                             options={fuelTypeOptions}
@@ -252,6 +263,8 @@ export default function CarVehicleDataFields({ isEdit }: { isEdit: boolean }) {
                             Transmissão:
                         </Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             id="transmission"
                             name="transmission"
                             options={transmissionOptions}

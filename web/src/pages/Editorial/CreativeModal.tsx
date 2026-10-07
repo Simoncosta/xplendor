@@ -216,7 +216,7 @@ export default function CreativeModal({ isOpen, toggle, companyId, postId, postT
             <ModalFooter className="justify-content-between">
                 <span className="text-muted fs-12">{data ? `Sugestões este mês: ${data.used} de ${data.cap}` : ""}</span>
                 <div className="d-flex gap-2">
-                    {result && <Button color="light" onClick={ask} disabled={busy}><i className="ri-refresh-line me-1" />Outra sugestão</Button>}
+                    {result && <Button color="outline-primary" onClick={ask} disabled={busy}><i className="ri-refresh-line me-1" />Outra sugestão</Button>}
                     <Button color="light" onClick={toggle}>Fechar</Button>
                     {result && (
                         <Button color="primary" onClick={save} disabled={saving || chosen.length === 0}>

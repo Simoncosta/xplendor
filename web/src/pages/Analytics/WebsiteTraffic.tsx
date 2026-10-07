@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getGa4Traffic } from "helpers/laravel_helper";
 import {
@@ -82,9 +82,9 @@ const WebsiteTraffic = () => {
     }, [traffic]);
 
     const rangeToggle = (
-        <div className="btn-group" role="group" aria-label="Intervalo">
+        <div className="xp-seg" role="radiogroup" aria-label="Intervalo">
             {RANGES.map((r) => (
-                <button key={r.days} type="button" className={"btn btn-sm " + (days === r.days ? "btn-primary" : "btn-outline-primary")} onClick={() => setDays(r.days)}>
+                <button key={r.days} type="button" role="radio" aria-checked={days === r.days} className={days === r.days ? "on" : ""} onClick={() => setDays(r.days)}>
                     {r.label}
                 </button>
             ))}
@@ -94,23 +94,30 @@ const WebsiteTraffic = () => {
     return (
         <div className="page-content">
             <Container fluid>
-                <BreadCrumb title="Tráfego do site" pageTitle="Análise" />
+                <PageHeader title="Tráfego do site" breadcrumbs={[{ label: "Marketing" }]}
+                    description={!loading && connected && traffic && !error ? `${traffic.range.start} a ${traffic.range.end}` : "Os visitantes, as páginas, as origens e os dispositivos do site (Google Analytics)."}
+                    actions={!loading && connected && traffic && !error ? (<>
+                        {rangeToggle}
+                        <button className="btn btn-outline-primary" onClick={() => fetchTraffic(true)} disabled={refreshing} title="Ignorar a cache e ler dados atualizados" aria-label="Atualizar os dados">
+                            {refreshing ? <Spinner size="sm" /> : <i className="ri-refresh-line" />}
+                        </button>
+                    </>) : undefined} />
 
                 {loading ? (
                     <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                 ) : !connected ? (
                     <Card><CardBody className="text-center py-5">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-light rounded fs-24" style={{ color: "#E37400" }}><i className="ri-bar-chart-box-line" /></span></div>
-                        <h5 className="mb-2">Liga o Google Analytics</h5>
-                        <p className="text-muted mb-1">Ainda não ligaste a propriedade GA4 do teu site.</p>
-                        {saEmail && <p className="text-muted fs-13 mb-3">Adiciona <span className="fw-medium">{saEmail}</span> como Visualizador no teu GA4 e cola o ID da propriedade nas Integrações.</p>}
+                        <h5 className="mb-2">Ligue o Google Analytics</h5>
+                        <p className="text-muted mb-1">Ainda não ligou a propriedade GA4 do seu site.</p>
+                        {saEmail && <p className="text-muted fs-13 mb-3">Adicione <span className="fw-medium">{saEmail}</span> como Visualizador no seu GA4 e cole o ID da propriedade nas Integrações.</p>}
                         <Link to={`/companies/${companyId}`} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
                     </CardBody></Card>
                 ) : error || !traffic ? (
                     <Card><CardBody className="text-center py-5">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-danger-subtle text-danger rounded fs-24"><i className="ri-error-warning-line" /></span></div>
                         <h5 className="mb-2">Não foi possível ler o GA4</h5>
-                        <p className="text-muted mb-2">{error ?? "Tenta novamente mais tarde."}</p>
+                        <p className="text-muted mb-2">{error ?? "Tente novamente mais tarde."}</p>
                         {errorDetail && (
                             <pre className="text-start d-inline-block bg-light text-danger p-2 rounded mb-3" style={{ maxWidth: 640, whiteSpace: "pre-wrap", fontSize: 12 }}>{errorDetail}</pre>
                         )}
@@ -122,16 +129,6 @@ const WebsiteTraffic = () => {
                     </CardBody></Card>
                 ) : (
                     <>
-                        <Row className="mb-3 align-items-center">
-                            <Col><p className="text-muted mb-0 fs-13">{traffic.range.start} a {traffic.range.end}</p></Col>
-                            <Col xs="auto" className="d-flex gap-2">
-                                {rangeToggle}
-                                <button className="btn btn-sm btn-outline-secondary" onClick={() => fetchTraffic(true)} disabled={refreshing} title="Ignorar cache e ler dados frescos">
-                                    {refreshing ? <Spinner size="sm" /> : <i className="ri-refresh-line" />}
-                                </button>
-                            </Col>
-                        </Row>
-
                         {/* KPIs */}
                         <Row className="g-4 mb-4">
                             {kpis.map((c) => (
@@ -233,7 +230,7 @@ const WebsiteTraffic = () => {
                                             <i className="ri-group-line fs-24 d-block mb-2" />
                                             <p className="mb-0 fs-13">
                                                 {traffic.demographics.reason === "thresholded"
-                                                    ? "Sem dados suficientes — o Google esconde a demografia quando o tráfego é reduzido (proteção de privacidade)."
+                                                    ? "Sem dados suficientes: o Google esconde a demografia quando o tráfego é reduzido (proteção de privacidade)."
                                                     : "Sem dados de demografia. Requer o Google Signals ativo e volume de tráfego suficiente."}
                                             </p>
                                         </div>
@@ -303,7 +300,7 @@ const TrendChart: React.FC<{ trend: { date: string; active_users: number; sessio
         tooltip: {
             shared: true,
             x: { format: "dd/MM/yyyy" },
-            y: { formatter: (val) => (val === null ? "—" : Number(val).toLocaleString("pt-PT")) },
+            y: { formatter: (val) => (val === null ? "Sem dados" : Number(val).toLocaleString("pt-PT")) },
         },
         legend: { show: true, position: "top", horizontalAlign: "right", fontSize: "12px" },
     };

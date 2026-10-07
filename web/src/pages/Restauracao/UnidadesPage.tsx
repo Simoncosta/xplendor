@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Card, Container, Row, Col, Spinner, Label, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner, Label, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "../Editorial/XSelect";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
@@ -103,7 +105,7 @@ export default function UnidadesPage() {
         setSyncing(true);
         try {
             await syncPingwinUnits(companyId);
-            toast.info("A sincronizar unidades… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar unidades… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar as unidades.");
         } finally {
@@ -234,7 +236,7 @@ export default function UnidadesPage() {
     const emptyRow = (
         <div className="text-center text-muted py-4">
             {!search && activeFilter === "active"
-                ? <>Sem unidades. Usa <strong>“Sincronizar”</strong> para as obter do PingWin.</>
+                ? <>Sem unidades. Use <strong>“Sincronizar”</strong> para as obter do PingWin.</>
                 : "Nenhum resultado para o filtro."}
         </div>
     );
@@ -256,39 +258,42 @@ export default function UnidadesPage() {
     const filterFields = (
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
-            <Select
-                styles={reactSelectTheme}
-                menuPortalTarget={document.body}
+            <XSelect
+                ariaLabel="Estado"
                 options={activeOptions}
-                value={activeOptions.find((o) => o.value === activeFilter) ?? activeOptions[0]}
-                onChange={(o: any) => setActiveFilter(o?.value ?? "active")}
-                isSearchable={false}
+                value={activeFilter}
+                onChange={(v) => setActiveFilter(v)}
+                searchable={false}
             />
         </div>
+    );
+
+    const rowActions = (u: PingwinUnitRow) => (
+        <>
+            <Button size="sm" color="outline-primary" onClick={() => openEdit(u)} title="Editar" aria-label={`Editar ${u.description || u.shortname || "unidade"}`}><i className="ri-pencil-line" /></Button>
+            <ActionsMenu size="sm" label={`Mais ações: ${u.description || u.shortname || "unidade"}`} items={[
+                { label: "Anular", icon: "ri-forbid-line", danger: true, hidden: !u.is_active, onClick: () => openAnular(u) },
+            ]} />
+        </>
     );
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Unidades</h4>
-                                <small className="text-muted">Unidades e conversões do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                                </button>
-                                <button className="btn btn-primary" onClick={openCreate}>
-                                    <i className="ri-add-line me-1" /> Criar unidade
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Unidades"
+                    breadcrumbs={[{ label: "Cadastros" }]}
+                    description={<>Unidades e conversões do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={<>
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                        </Button>
+                        <Button color="primary" onClick={openCreate}>
+                            <i className="ri-add-line me-1" /> Criar unidade
+                        </Button>
+                    </>}
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -324,10 +329,7 @@ export default function UnidadesPage() {
                                             <div className="mt-1"><Conversion u={u} /></div>
                                             <div className="mt-2 d-flex align-items-center justify-content-between">
                                                 <Uses u={u} />
-                                                <div className="d-flex gap-1">
-                                                    <button className="btn btn-sm btn-soft-primary" onClick={() => openEdit(u)}><i className="ri-pencil-line" /></button>
-                                                    {u.is_active && <button className="btn btn-sm btn-soft-danger" onClick={() => openAnular(u)} title="Anular"><i className="ri-forbid-line" /></button>}
-                                                </div>
+                                                <div className="d-flex gap-1">{rowActions(u)}</div>
                                             </div>
                                         </div>
                                     ))}
@@ -363,8 +365,7 @@ export default function UnidadesPage() {
                                                             : <span className="badge bg-secondary-subtle text-secondary">Anulada</span>}
                                                     </td>
                                                     <td className="text-end">
-                                                        <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(u)} title="Editar"><i className="ri-pencil-line" /></button>
-                                                        {u.is_active && <button className="btn btn-sm btn-soft-danger" onClick={() => openAnular(u)} title="Anular"><i className="ri-forbid-line" /></button>}
+                                                        <div className="d-inline-flex gap-1">{rowActions(u)}</div>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -408,11 +409,9 @@ export default function UnidadesPage() {
                                 <Row className="g-3 mb-3">
                                     <Col md={6}>
                                         <Label className="fs-12 text-muted mb-1">Base *</Label>
-                                        <Select styles={reactSelectTheme} menuPortalTarget={document.body}
-                                            options={parentOptions}
-                                            value={parentOptions.find((o) => o.value === form.parent_id) ?? null}
-                                            onChange={(o: any) => setF("parent_id", o?.value ?? "")}
-                                            placeholder="Escolher unidade-base…" isDisabled={creating} />
+                                        <XSelect ariaLabel="Base" options={parentOptions} value={form.parent_id}
+                                            onChange={(v) => setF("parent_id", v)}
+                                            placeholder="Escolher unidade-base…" disabled={creating} />
                                     </Col>
                                     <Col md={3}>
                                         <Label className="fs-12 text-muted mb-1">Conv. factor</Label>
@@ -456,8 +455,8 @@ export default function UnidadesPage() {
                             <Alert color="warning" className="mb-0">
                                 <h6 className="alert-heading"><i className="ri-error-warning-line me-1" />Confirmar escrita no PingWin</h6>
                                 <p className="mb-0">
-                                    Vais {editingId ? "alterar" : "criar"} a unidade <strong>«{form.description.trim()}»</strong> ({form.shortname.trim()}) no PingWin.
-                                    Isto <strong>escreve no sistema real do restaurante</strong>. Confirmas?
+                                    Vai {editingId ? "alterar" : "criar"} a unidade <strong>«{form.description.trim()}»</strong> ({form.shortname.trim()}) no PingWin.
+                                    Isto <strong>escreve no sistema real do restaurante</strong>. Confirma?
                                 </p>
                             </Alert>
                         )}
@@ -465,15 +464,16 @@ export default function UnidadesPage() {
                     <ModalFooter>
                         {!confirming ? (
                             <>
-                                <button className="btn btn-light" onClick={() => setCreateOpen(false)}>Cancelar</button>
-                                <button className="btn btn-primary" onClick={() => setConfirming(true)} disabled={!formValid}>Continuar</button>
+                                <Button color="light" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                                <ReasonButton color="primary" onClick={() => setConfirming(true)}
+                                    reason={!formValid ? "Indique a descrição, o nome curto e a unidade-base." : null}>Continuar</ReasonButton>
                             </>
                         ) : (
                             <>
-                                <button className="btn btn-light" onClick={() => setConfirming(false)} disabled={creating}>Voltar</button>
-                                <button className="btn btn-danger" onClick={doSave} disabled={creating}>
+                                <Button color="light" onClick={() => setConfirming(false)} disabled={creating}>Voltar</Button>
+                                <Button color="primary" onClick={doSave} disabled={creating}>
                                     {creating ? <><Spinner size="sm" className="me-1" /> A gravar no PingWin…</> : <><i className="ri-check-double-line me-1" /> Confirmar e {editingId ? "gravar" : "criar"}</>}
-                                </button>
+                                </Button>
                             </>
                         )}
                     </ModalFooter>
@@ -484,7 +484,7 @@ export default function UnidadesPage() {
                     <ModalHeader toggle={() => !anulando && setAnularTarget(null)}>Anular unidade no PingWin</ModalHeader>
                     <ModalBody>
                         <Alert color="danger" className="mb-0">
-                            <h6 className="alert-heading"><i className="ri-forbid-line me-1" />Vais ANULAR uma unidade no sistema real</h6>
+                            <h6 className="alert-heading"><i className="ri-forbid-line me-1" />Vai ANULAR uma unidade no sistema real</h6>
                             <p className="mb-2">
                                 A unidade <strong>«{anularTarget?.description}»</strong> ({anularTarget?.shortname}) deixará de estar
                                 disponível no PingWin. Isto <strong>escreve no sistema real do restaurante</strong>.
@@ -493,8 +493,8 @@ export default function UnidadesPage() {
                                 <p className="mb-0 text-muted fs-13"><Spinner size="sm" className="me-1" /> A verificar se está em uso…</p>
                             ) : anularUsage > 0 ? (
                                 <p className="mb-0 fw-semibold">
-                                    <i className="ri-alert-line me-1" />⚠️ Cerca de {anularUsage} artigo(s) parecem usar esta unidade — anulá-la pode
-                                    partir conversões/cálculos. Tens a certeza?
+                                    <i className="ri-alert-line me-1" />⚠️ Cerca de {anularUsage} artigo(s) parecem usar esta unidade: anulá-la pode
+                                    partir conversões/cálculos. Tem a certeza?
                                 </p>
                             ) : (
                                 <p className="mb-0 text-muted fs-13">Não detetámos artigos a usar esta unidade (verificação aproximada).</p>
@@ -502,10 +502,10 @@ export default function UnidadesPage() {
                         </Alert>
                     </ModalBody>
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setAnularTarget(null)} disabled={anulando}>Cancelar</button>
-                        <button className="btn btn-danger" onClick={doAnular} disabled={anulando}>
+                        <Button color="light" onClick={() => setAnularTarget(null)} disabled={anulando}>Cancelar</Button>
+                        <Button color="danger" onClick={doAnular} disabled={anulando}>
                             {anulando ? <><Spinner size="sm" className="me-1" /> A anular…</> : <><i className="ri-forbid-line me-1" /> Confirmar e anular</>}
-                        </button>
+                        </Button>
                     </ModalFooter>
                 </Modal>
             </Container>

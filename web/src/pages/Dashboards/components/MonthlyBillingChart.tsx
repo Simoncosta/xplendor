@@ -106,12 +106,14 @@ export default function MonthlyBillingChart() {
                             <h5 className="mb-0 fw-semibold">Evolução por restaurante</h5>
                         </div>
                         <div className="d-flex flex-wrap align-items-center gap-2">
-                            <div className="btn-group btn-group-sm" role="group" aria-label="Período">
+                            <div className="xp-seg" role="tablist" aria-label="Período">
                                 {RANGES.map((r) => (
                                     <button
                                         key={r.key}
                                         type="button"
-                                        className={"btn " + (range === r.key ? "btn-primary" : "btn-outline-primary")}
+                                        role="tab"
+                                        aria-selected={range === r.key}
+                                        className={range === r.key ? "on" : ""}
                                         onClick={() => setRange(r.key)}
                                     >
                                         {r.label}

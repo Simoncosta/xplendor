@@ -111,7 +111,8 @@ export default function ExpenseCategoryFormModal({ isOpen, toggle, category, com
                                     <button
                                         type="button"
                                         onClick={() => formik.setFieldValue("color", null)}
-                                        className={`btn btn-sm ${selectedColor ? "btn-light" : "btn-secondary"}`}
+                                        className={`btn btn-sm btn-outline-primary ${selectedColor ? "" : "active"}`}
+                                        aria-pressed={!selectedColor}
                                     >
                                         Sem cor
                                     </button>
@@ -121,7 +122,7 @@ export default function ExpenseCategoryFormModal({ isOpen, toggle, category, com
                     </ModalBody>
                     <ModalFooter>
                         <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                        <XButton variant="success" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
+                        <XButton variant="primary" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
                             {isEdit ? "Guardar" : "Criar"}
                         </XButton>
                     </ModalFooter>

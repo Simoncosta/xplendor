@@ -3,6 +3,7 @@ import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader
 import { toast } from "react-toastify";
 import { decideAdminCompanyRequest, getAdminCompanyRequests } from "helpers/laravel_helper";
 import { companyErrorText } from "pages/Companies/companyFormData";
+import ActionsMenu from "Components/Common/ActionsMenu";
 
 /**
  * Pedidos de nova empresa gerida (só o root): as agências pedem, a XPLENDOR aprova (a
@@ -97,9 +98,9 @@ export default function CompanyRequestsModal({ isOpen, onClose, onDecided }: Pro
                                                     <Button size="sm" color="success" disabled={busy === r.id} onClick={() => decide(r, "approve")}>
                                                         {busy === r.id ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar e criar a empresa</>}
                                                     </Button>
-                                                    <Button size="sm" color="soft-danger" disabled={busy === r.id} onClick={() => { setReason(""); setDeclining(r); }}>
-                                                        <i className="ri-close-line me-1" />Recusar
-                                                    </Button>
+                                                    <ActionsMenu size="sm" label={`Mais ações: ${r.name}`} disabled={busy === r.id} items={[
+                                                        { label: "Recusar", icon: "ri-close-line", danger: true, onClick: () => { setReason(""); setDeclining(r); } },
+                                                    ]} />
                                                 </div>
                                             )}
                                         </li>

@@ -98,7 +98,7 @@ export default function RecommendationsCard({ companyId, vertical, state }: {
                                             <a
                                                 href={r.action.url}
                                                 {...(isExternal(r.action.url) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                                                className="btn btn-sm btn-soft-primary flex-shrink-0"
+                                                className="btn btn-sm btn-outline-primary flex-shrink-0"
                                             >
                                                 {r.action.label}
                                                 {isExternal(r.action.url) && <i className="ri-external-link-line ms-1" />}

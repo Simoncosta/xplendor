@@ -68,7 +68,7 @@ const Pagination = ({
 
             <div className="col-sm-6">
                 <div className="d-flex justify-content-center justify-content-sm-end mt-3 mt-sm-0">
-                    <ul className="pagination pagination-separated pagination-md mb-0">
+                    <ul className="pagination pagination-separated pagination-md flex-wrap mb-0">
                         <li className={`page-item ${currentPage <= 1 ? "disabled" : ""}`}>
                             <Link
                                 to="#"

@@ -26,6 +26,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import XTanStackTable from "Components/Common/XTanStackTable";
+import PageHeader from "Components/Common/PageHeader";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import { createSelector } from "reselect";
@@ -69,12 +70,14 @@ const sameStatusSet = (a: CarStatusFilter[], b: CarStatusFilter[]): boolean => {
 const stockTypeOptions: StockTypeOption[] = [
     { value: null, label: "Todos" },
     { value: true, label: "Retoma" },
-    { value: false, label: "Stock proprio" },
+    { value: false, label: "Stock próprio" },
 ];
 
+// Usado pelo filtro "Investimento" (comentado mais abaixo, à espera de reativação).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const investmentFilterOptions: InvestmentFilterOption[] = [
     { value: null, label: "Todos" },
-    { value: true, label: "Com investimento activo" },
+    { value: true, label: "Com investimento ativo" },
 ];
 
 const getMetricCount = (items: any) => (Array.isArray(items) ? items.length : Number(items ?? 0));
@@ -85,7 +88,7 @@ const getAttentionBadge = (car: any) => {
 
     if (views > 500 && leads === 0) {
         return {
-            label: "Interesse sem acção",
+            label: "Interesse sem ação",
             className: "bg-warning-subtle text-warning",
             icon: "ri-error-warning-line",
         };
@@ -108,7 +111,7 @@ const getAttentionBadge = (car: any) => {
     }
 
     return {
-        label: "Em observacao",
+        label: "Em observação",
         className: "bg-info-subtle text-info",
         icon: "ri-focus-3-line",
     };
@@ -429,15 +432,17 @@ const CarList = () => {
                     <div className="d-flex gap-2">
                         <Link
                             to={`/cars/${id}/analytics`}
-                            className="btn btn-soft-info btn-sm"
+                            className="btn btn-outline-primary btn-sm"
                             title="Inteligência"
+                            aria-label="Inteligência"
                         >
                             <i className="ri-brain-line" />
                         </Link>
                         <Link
                             to={`/cars/${id}`}
-                            className="btn btn-soft-primary btn-sm"
+                            className="btn btn-outline-primary btn-sm"
                             title="Editar"
+                            aria-label="Editar"
                         >
                             <i className="ri-pencil-line" />
                         </Link>
@@ -535,8 +540,9 @@ const CarList = () => {
                             <div className="d-flex gap-2">
                                 <Link
                                     to={`/cars/${car.id}/analytics`}
-                                    className="btn btn-soft-info btn-sm"
+                                    className="btn btn-outline-primary btn-sm"
                                     title="Inteligência"
+                                    aria-label="Inteligência"
                                     onClick={(e) => e.stopPropagation()}
                                     style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                                 >
@@ -544,8 +550,9 @@ const CarList = () => {
                                 </Link>
                                 <Link
                                     to={`/cars/${car.id}`}
-                                    className="btn btn-soft-primary btn-sm"
+                                    className="btn btn-outline-primary btn-sm"
                                     title="Editar"
+                                    aria-label="Editar"
                                     onClick={(e) => e.stopPropagation()}
                                     style={{ minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                                 >
@@ -565,7 +572,9 @@ const CarList = () => {
                 <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
                 <Select
                     styles={reactSelectTheme}
-                    placeholder="Selecione as marcas"
+                    menuPortalTarget={document.body}
+                    inputId="car_brand_id"
+                    placeholder="Escolha as marcas"
                     options={brands}
                     getOptionLabel={(option: any) => option.name}
                     getOptionValue={(option: any) => String(option.id)}
@@ -580,7 +589,9 @@ const CarList = () => {
                 <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
                 <Select
                     styles={reactSelectTheme}
-                    placeholder="Selecione os modelos"
+                    menuPortalTarget={document.body}
+                    inputId="car_model_id"
+                    placeholder={carBrandIds.length === 0 ? "Escolha primeiro uma marca" : "Escolha os modelos"}
                     options={models}
                     getOptionLabel={(option: any) => option.name}
                     getOptionValue={(option: any) => String(option.id)}
@@ -593,11 +604,12 @@ const CarList = () => {
                 />
             </div>
             <div className="filter-choices-input mb-4">
-                <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Status</Label>
+                <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Estado</Label>
                 <Select
                     styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
                     inputId="car_status"
-                    placeholder="Seleciona um ou mais estados"
+                    placeholder="Escolha um ou mais estados"
                     options={statusFilterOptions}
                     isMulti
                     closeMenuOnSelect={false}
@@ -611,6 +623,7 @@ const CarList = () => {
                 <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
                 <Select
                     styles={reactSelectTheme}
+                    menuPortalTarget={document.body}
                     inputId="car_stock_type"
                     placeholder="Todo o stock"
                     options={stockTypeOptions}
@@ -635,7 +648,7 @@ const CarList = () => {
                 />
             </div> */}
             <div className="filter-choices-input">
-                <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
+                <Label for="minCost" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
                 <div className="formCost d-flex gap-2 align-items-center">
                     <input
                         className="form-control form-control-sm"
@@ -665,40 +678,33 @@ const CarList = () => {
         <div className="page-content">
             <ToastContainer closeButton={false} limit={1} />
             <Container fluid>
-                <Row className="mb-3">
-                    <Col>
-                        <div className="d-flex align-items-start justify-content-between flex-wrap gap-3">
-                            <div>
-                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                    Painel Comercial
-                                </p>
-                                <h3 className="mb-1 fw-semibold">Carros</h3>
-                            </div>
-                            <div className="d-flex gap-2 flex-wrap">
-                                {isFiltersMobile && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-soft-secondary btn-sm"
-                                        onClick={() => setFiltersOpen(true)}
-                                    >
-                                        <i className="ri-filter-line me-1" />
-                                        {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
-                                    </button>
-                                )}
-                                {carmine && carmine.id && (
-                                    <button onClick={onClickSyncCarmine} className="btn btn-soft-danger">
-                                        <img src={easyDataIcon} alt="EasyData" width={10} className="me-1" />
-                                        Sincronizar
-                                    </button>
-                                )}
-                                <Link to="/cars/create" className="btn btn-primary">
-                                    <i className="ri-add-line align-bottom me-1"></i>
-                                    Nova viatura
-                                </Link>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Carros"
+                    breadcrumbs={[{ label: "Comercial" }]}
+                    description="As viaturas em stock, com o desempenho comercial de cada uma."
+                    actions={<>
+                        {isFiltersMobile && (
+                            <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={() => setFiltersOpen(true)}
+                            >
+                                <i className="ri-filter-line me-1" />
+                                {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
+                            </button>
+                        )}
+                        {carmine && carmine.id && (
+                            <button type="button" onClick={onClickSyncCarmine} className="btn btn-outline-primary">
+                                <img src={easyDataIcon} alt="EasyData" width={10} className="me-1" />
+                                Sincronizar
+                            </button>
+                        )}
+                        <Link to="/cars/create" className="btn btn-primary">
+                            <i className="ri-add-line align-bottom me-1"></i>
+                            Nova viatura
+                        </Link>
+                    </>}
+                />
 
                 <Row>
                     {!isFiltersMobile && (
@@ -723,7 +729,7 @@ const CarList = () => {
                                                 Filtros
                                             </p>
                                             <h5 className="fs-16 mb-1 fw-semibold">Refinar listagem</h5>
-                                            <p className="text-muted fs-13 mb-0">Encontra rapidamente as viaturas que pedem ação.</p>
+                                            <p className="text-muted fs-13 mb-0">Encontre rapidamente as viaturas que pedem ação.</p>
                                         </div>
                                         <div className="flex-shrink-0">
                                             <button
@@ -765,7 +771,7 @@ const CarList = () => {
                                         </p>
                                         <h5 className="mb-1 fw-semibold">Viaturas acompanhadas por filtros e desempenho</h5>
                                         <p className="text-muted fs-13 mb-0">
-                                            Encontra rapidamente as viaturas certas e prioriza as que pedem mais atenção comercial.
+                                            Encontre rapidamente as viaturas certas e dê prioridade às que pedem mais atenção comercial.
                                         </p>
                                     </div>
                                     <span className="badge bg-light text-muted fs-12 px-3 py-2">
@@ -802,7 +808,7 @@ const CarList = () => {
                                             <i className="ri-filter-line text-muted" style={{ fontSize: 28 }} />
                                             <h6 className="fw-semibold mt-2 mb-1">Nenhum estado selecionado</h6>
                                             <p className="text-muted small mb-0">
-                                                Seleciona pelo menos um estado no filtro de <strong>Status</strong> para veres viaturas.
+                                                Escolha pelo menos um estado no filtro <strong>Estado</strong> para ver viaturas.
                                             </p>
                                         </div>
                                     ) : (

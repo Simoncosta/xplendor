@@ -94,7 +94,7 @@ export default function QuickAddCustomerModal({ isOpen, toggle, onCreated, compa
                     </ModalBody>
                     <ModalFooter>
                         <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                        <XButton variant="success" type="submit" loading={saving} icon={<i className="ri-check-line" />}>Criar</XButton>
+                        <XButton variant="primary" type="submit" loading={saving} icon={<i className="ri-check-line" />}>Criar</XButton>
                     </ModalFooter>
                 </form>
             </FormikProvider>

@@ -61,9 +61,9 @@ const LeadDetailModal: React.FC<Props> = ({ lead, saving = false, onSaveNotes, o
 
                 {(phone || lead.email) && (
                     <div className="d-flex gap-2 mt-3">
-                        {phone && <a href={`tel:${phone}`} className="btn btn-sm btn-soft-primary"><i className="ri-phone-line me-1" />Ligar</a>}
-                        {phone && <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-soft-success"><i className="ri-whatsapp-line me-1" />WhatsApp</a>}
-                        {lead.email && <a href={`mailto:${lead.email}`} className="btn btn-sm btn-soft-secondary"><i className="ri-mail-line me-1" />Email</a>}
+                        {phone && <a href={`tel:${phone}`} className="btn btn-sm btn-outline-primary"><i className="ri-phone-line me-1" />Ligar</a>}
+                        {phone && <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary"><i className="ri-whatsapp-line me-1" />WhatsApp</a>}
+                        {lead.email && <a href={`mailto:${lead.email}`} className="btn btn-sm btn-outline-primary"><i className="ri-mail-line me-1" />Email</a>}
                     </div>
                 )}
             </ModalBody>

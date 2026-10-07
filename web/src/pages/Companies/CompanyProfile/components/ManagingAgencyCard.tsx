@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Button, Card, CardBody, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { endCompanyManagement, getCompanyManagement, inviteFirstAdmin } from "helpers/laravel_helper";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Definições da empresa gerida: "Agência gestora: [nome]". Só o admin da própria empresa
@@ -61,19 +63,21 @@ export default function ManagingAgencyCard({ companyId }: { companyId: number })
     return (
         <Card data-testid="managing-agency-card">
             <CardBody>
-                <h5 className="card-title mb-3"><i className="ri-building-2-line me-1" />Agência gestora</h5>
+                <div className="d-flex align-items-start gap-2 mb-3">
+                    <h5 className="card-title mb-0 me-auto"><i className="ri-building-2-line me-1" />Agência gestora</h5>
+                    {m.agency && m.can_end && (
+                        <ActionsMenu size="sm" label={`Mais ações: ${m.agency.name}`} items={[
+                            { label: "Terminar relação", icon: "ri-link-unlink", danger: true, onClick: () => setConfirm(true) },
+                        ]} />
+                    )}
+                </div>
                 {m.agency ? (
                     <>
                         <p className="mb-1"><strong data-testid="managing-agency-name">{m.agency.name}</strong></p>
                         {m.since && <p className="text-muted fs-13 mb-2">Desde {new Date(m.since).toLocaleDateString("pt-PT")}</p>}
-                        <p className="text-muted fs-12 mb-3">
+                        <p className="text-muted fs-12 mb-0">
                             A agência produz conteúdos, configura integrações e vê resultados com a própria conta. A aprovação e os acessos são sempre desta empresa.
                         </p>
-                        {m.can_end && (
-                            <Button color="soft-danger" size="sm" onClick={() => setConfirm(true)}>
-                                <i className="ri-link-unlink me-1" />Terminar relação
-                            </Button>
-                        )}
                     </>
                 ) : <p className="text-muted fs-13 mb-2">Sem agência gestora.</p>}
 
@@ -85,9 +89,10 @@ export default function ManagingAgencyCard({ companyId }: { companyId: number })
                         <Input id="first-admin-name" bsSize="sm" className="mb-2" placeholder="Nome" value={invite.name} onChange={(e) => setInvite({ ...invite, name: e.target.value })} />
                         <Label for="first-admin-email" className="visually-hidden">Email</Label>
                         <Input id="first-admin-email" bsSize="sm" type="email" className="mb-2" placeholder="Email" value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })} />
-                        <Button size="sm" color="primary" disabled={busy || !invite.name.trim() || !invite.email.trim()} onClick={sendInvite}>
+                        <ReasonButton size="sm" color="outline-primary" disabled={busy} onClick={sendInvite}
+                            reason={!invite.name.trim() || !invite.email.trim() ? "Indique o nome e o email." : null}>
                             {busy ? <Spinner size="sm" /> : "Enviar convite"}
-                        </Button>
+                        </ReasonButton>
                     </div>
                 )}
             </CardBody>

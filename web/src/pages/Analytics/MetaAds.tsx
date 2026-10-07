@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { getMetaOverview } from "helpers/laravel_helper";
 import { MetaOverviewResponse, MetaOverviewState, eur, nfmt, pct } from "common/models/metaAds.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -69,17 +69,27 @@ const MetaAds = () => {
     }, [data]);
 
     const rangeToggle = (
-        <div className="btn-group" role="group" aria-label="Intervalo">
+        <div className="xp-seg" role="radiogroup" aria-label="Intervalo">
             {RANGES.map((r) => (
-                <button key={r.days} type="button" className={"btn btn-sm " + (days === r.days ? "btn-primary" : "btn-outline-primary")} onClick={() => changeDays(r.days)}>{r.label}</button>
+                <button key={r.days} type="button" role="radio" aria-checked={days === r.days} className={days === r.days ? "on" : ""} onClick={() => changeDays(r.days)}>{r.label}</button>
             ))}
         </div>
     );
 
+    // Há números para mostrar (o intervalo e a data do último sync vão para o cabeçalho).
+    const showData = !loading && !error && !!data && data.connected && !(data.source === "none" && data.state && BLOCKING_STATES.includes(data.state));
+
     return (
         <div className="page-content">
             <Container fluid>
-                <BreadCrumb title="Meta / Anúncios" pageTitle="Análise" />
+                <PageHeader title="Meta / Anúncios" breadcrumbs={[{ label: "Marketing" }]}
+                    description={showData && data ? (
+                        <>
+                            {data.range.start} a {data.range.end}
+                            {data.last_synced_at ? ` · último sync ${new Date(data.last_synced_at).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
+                        </>
+                    ) : "Os resultados dos anúncios da Meta (Facebook e Instagram)."}
+                    actions={showData ? rangeToggle : undefined} />
 
                 {loading ? (
                     <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
@@ -91,8 +101,8 @@ const MetaAds = () => {
                 ) : !data.connected ? (
                     <Card><CardBody className="text-center py-5">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-light rounded fs-24" style={{ color: "#1877F2" }}><i className="ri-facebook-circle-line" /></span></div>
-                        <h5 className="mb-2">Liga a conta Meta</h5>
-                        <p className="text-muted mb-3">Ainda não ligaste a conta Meta Ads desta empresa.</p>
+                        <h5 className="mb-2">Ligue a conta Meta</h5>
+                        <p className="text-muted mb-3">Ainda não ligou a conta Meta Ads desta empresa.</p>
                         <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
                     </CardBody></Card>
                 ) : data.source === "none" && data.state && BLOCKING_STATES.includes(data.state) ? (
@@ -101,16 +111,6 @@ const MetaAds = () => {
                 ) : (
                     <>
                         {data.state && <StateBanner state={data.state} error={data.sync?.error ?? null} companyId={companyId} slow={pollExhausted} />}
-                        <Row className="mb-3 align-items-center">
-                            <Col>
-                                <p className="text-muted mb-0 fs-13">
-                                    {data.range.start} a {data.range.end}
-                                    {data.last_synced_at ? ` · último sync ${new Date(data.last_synced_at).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
-                                </p>
-                            </Col>
-                            <Col xs="auto">{rangeToggle}</Col>
-                        </Row>
-
                         {/* KPIs factuais */}
                         <Row className="g-4 mb-4">
                             {kpis.map((c) => (
@@ -191,17 +191,17 @@ type StateProps = { state: MetaOverviewState; error: string | null; companyId: n
 /** Abre o perfil da empresa directamente no separador Integrações. */
 const integrationsUrl = (companyId: number) => `/companies/${companyId}?tab=integrations`;
 
-const SLOW_TEXT = "Está a demorar mais do que o normal. Recarrega a página daqui a pouco; se continuar, confirma a conta de anúncios nas Integrações.";
+const SLOW_TEXT = "Está a demorar mais do que o normal. Recarregue a página daqui a pouco; se continuar, confirme a conta de anúncios nas Integrações.";
 
 const STATE_COPY: Partial<Record<MetaOverviewState, { title: string; text: string; color: string; icon: string; cta?: string }>> = {
     token_expired: {
-        title: "Sessão Meta expirada — reconectar",
-        text: "A ligação à Meta expirou, por isso os dados deixaram de ser atualizados. Volta a ligar a conta nas Integrações.",
+        title: "Sessão Meta expirada: volte a ligar",
+        text: "A ligação à Meta expirou, por isso os dados deixaram de ser atualizados. Volte a ligar a conta nas Integrações.",
         color: "danger", icon: "ri-error-warning-line", cta: "Reconectar a Meta",
     },
     needs_account: {
         title: "Falta escolher a conta de anúncios",
-        text: "A Meta está ligada, mas ainda não indicaste qual é a conta de anúncios desta empresa. Escolhe-a nas Integrações.",
+        text: "A Meta está ligada, mas ainda não indicou qual é a conta de anúncios desta empresa. Escolha-a nas Integrações.",
         color: "warning", icon: "ri-advertisement-line", cta: "Escolher a conta",
     },
     syncing_first: {
@@ -211,7 +211,7 @@ const STATE_COPY: Partial<Record<MetaOverviewState, { title: string; text: strin
     },
     sync_failed: {
         title: "A sincronização com a Meta falhou",
-        text: "Não foi possível buscar os dados à Meta. Confirma a conta de anúncios nas Integrações e tenta de novo.",
+        text: "Não foi possível buscar os dados à Meta. Confirme a conta de anúncios nas Integrações e tente de novo.",
         color: "danger", icon: "ri-close-circle-line", cta: "Ver Integrações",
     },
 };
@@ -229,7 +229,7 @@ const StateCard = ({ state, error, companyId, slow }: StateProps) => {
             <h5 className="mb-2">{c.title}</h5>
             <p className="text-muted mb-3 mx-auto" style={{ maxWidth: 520 }}>{state === "syncing_first" && slow ? SLOW_TEXT : c.text}</p>
             {state === "sync_failed" && error && <p className="text-danger fs-13 mb-3">{error}</p>}
-            {state === "syncing_first" && slow && <Link to={integrationsUrl(companyId)} className="btn btn-soft-primary"><i className="ri-links-line me-1" />Ver Integrações</Link>}
+            {state === "syncing_first" && slow && <Link to={integrationsUrl(companyId)} className="btn btn-outline-primary"><i className="ri-links-line me-1" />Ver Integrações</Link>}
             {c.cta && <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />{c.cta}</Link>}
         </CardBody></Card>
     );
@@ -242,7 +242,7 @@ const StateBanner = ({ state, error, companyId, slow }: StateProps) => {
         return (
             <Alert color="light" className="d-flex align-items-center gap-2 fs-13">
                 <i className="ri-information-line fs-16" />
-                Sem gasto neste período — a ligação está correta. Experimenta um intervalo maior.
+                Sem gasto neste período: a ligação está correta. Experimente um intervalo maior.
             </Alert>
         );
     }
@@ -257,7 +257,7 @@ const StateBanner = ({ state, error, companyId, slow }: StateProps) => {
                 <strong className="d-block mb-1">{state === "syncing_first" && !slow && <Spinner size="sm" className="me-2" />}{c.title}</strong>
                 {text}
             </div>
-            {c.cta && <Link to={integrationsUrl(companyId)} className={`btn btn-sm btn-${c.color}`}>{c.cta}</Link>}
+            {c.cta && <Link to={integrationsUrl(companyId)} className="btn btn-sm btn-primary">{c.cta}</Link>}
         </Alert>
     );
 };

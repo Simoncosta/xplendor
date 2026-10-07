@@ -2,12 +2,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Card, CardBody, Col, Container, Row, Table, Input, Label, Badge } from "reactstrap";
+import { Button, Card, CardBody, Col, Container, Row, Table, Input, Label, Badge } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
 // Components
 import Pagination from "Components/Common/Pagination";
-import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import XSelect from "pages/Editorial/XSelect";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import ExpenseFormModal, { CarOption } from "./components/ExpenseFormModal";
 // Redux / helpers
 import { getExpenses, getExpensesSummary, deleteExpense, updateExpense } from "slices/expenses/thunk";
@@ -172,7 +175,7 @@ const ExpenseList = () => {
             await alertMessage("Esta despesa está vinculada (viatura/fornecedor/categoria). Arquive-a em vez de a eliminar.", "Não é possível eliminar", "warning");
             return;
         }
-        const ok = await confirmDelete(`Vais eliminar a despesa "${e.description}". Esta ação não pode ser anulada.`);
+        const ok = await confirmDelete(`Vai eliminar a despesa "${e.description}". Esta ação não pode ser anulada.`);
         if (!ok) return;
         try {
             await dispatch(deleteExpense({ companyId, id: e.id })).unwrap();
@@ -189,17 +192,9 @@ const ExpenseList = () => {
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
-                    <Row className="g-2 mb-3 align-items-center">
-                        <Col>
-                            <h5 className="mb-0">Despesas</h5>
-                            <small className="text-muted">Todas as despesas da empresa (com e sem viatura).</small>
-                        </Col>
-                        <Col xs="auto">
-                            <XButton variant="success" type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                                Nova despesa
-                            </XButton>
-                        </Col>
-                    </Row>
+                    <PageHeader title="Despesas" breadcrumbs={[{ label: "Finanças" }]}
+                        description="Todas as despesas da empresa (com e sem viatura)."
+                        actions={<Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova despesa</Button>} />
 
                     {/* Faturas da XPLENDOR por resolver: ver a fatura e indicar "Já paguei". */}
                     <XplendorChargesNotice onChanged={fetchAll} />
@@ -209,20 +204,20 @@ const ExpenseList = () => {
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Total</p>
-                                <h4 className="mb-0">{eur(summary?.total_amount ?? 0)}</h4>
+                                <div className="fs-20 fw-semibold">{eur(summary?.total_amount ?? 0)}</div>
                                 <small className="text-muted">{summary?.count ?? 0} despesa(s)</small>
                             </CardBody></Card>
                         </Col>
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Em aberto</p>
-                                <h4 className="mb-0 text-danger">{eur(summary?.open_amount ?? 0)}</h4>
+                                <div className="fs-20 fw-semibold text-danger">{eur(summary?.open_amount ?? 0)}</div>
                             </CardBody></Card>
                         </Col>
                         <Col md={4}>
                             <Card className="mb-0"><CardBody>
                                 <p className="text-muted mb-1">Pagas</p>
-                                <h4 className="mb-0 text-success">{eur(summary?.paid_amount ?? 0)}</h4>
+                                <div className="fs-20 fw-semibold text-success">{eur(summary?.paid_amount ?? 0)}</div>
                             </CardBody></Card>
                         </Col>
                     </Row>
@@ -240,25 +235,22 @@ const ExpenseList = () => {
                             <Col lg={3}>
                                 <Label className="form-label mb-1">Categoria</Label>
                                 <Select isClearable placeholder="Todas" options={categoryOptions} value={fCategory}
-                                    onChange={(o: Option | null) => { setFCategory(o); resetToFirstPage(); }} classNamePrefix="react-select" />
+                                    onChange={(o: Option | null) => { setFCategory(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
                             </Col>
                             <Col lg={3}>
                                 <Label className="form-label mb-1">Fornecedor</Label>
                                 <Select isClearable placeholder="Todos" options={supplierOptions} value={fSupplier}
-                                    onChange={(o: Option | null) => { setFSupplier(o); resetToFirstPage(); }} classNamePrefix="react-select" />
+                                    onChange={(o: Option | null) => { setFSupplier(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
                             </Col>
                             <Col lg={3}>
                                 <Label className="form-label mb-1">Viatura</Label>
                                 <Select isClearable placeholder="Todas" options={carOptions} value={fCar}
-                                    onChange={(o: CarOption | null) => { setFCar(o); resetToFirstPage(); }} classNamePrefix="react-select" />
+                                    onChange={(o: CarOption | null) => { setFCar(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
                             </Col>
                             <Col lg={3}>
                                 <Label className="form-label mb-1">Estado</Label>
-                                <Input type="select" value={fPaid} onChange={(e) => { setFPaid(e.target.value as "" | "1" | "0"); resetToFirstPage(); }}>
-                                    <option value="">Todos</option>
-                                    <option value="1">Pagas</option>
-                                    <option value="0">Em aberto</option>
-                                </Input>
+                                <XSelect<"" | "1" | "0"> ariaLabel="Estado" value={fPaid} onChange={(v) => { setFPaid(v); resetToFirstPage(); }}
+                                    options={[{ value: "", label: "Todos" }, { value: "1", label: "Pagas" }, { value: "0", label: "Em aberto" }]} />
                             </Col>
                             <Col lg={3}>
                                 <Label className="form-label mb-1">De</Label>
@@ -276,7 +268,7 @@ const ExpenseList = () => {
                                 </div>
                             </Col>
                             <Col lg={3} className="d-flex align-items-end pb-2">
-                                <XButton variant="light" type="button" icon={<i className="ri-filter-off-line" />} onClick={clearFilters}>Limpar filtros</XButton>
+                                <Button color="outline-primary" onClick={clearFilters}><i className="ri-filter-off-line me-1" />Limpar filtros</Button>
                             </Col>
                         </Row>
                     </CardBody></Card>
@@ -323,40 +315,42 @@ const ExpenseList = () => {
                                                         </span>
                                                     ) : <span className="text-muted">Sem categoria</span>}
                                                 </td>
-                                                <td>{e.supplier_name || <span className="text-muted">—</span>}</td>
-                                                <td>{e.car_name || <span className="text-muted">—</span>}</td>
+                                                <td>{e.supplier_name || <span className="text-muted">-</span>}</td>
+                                                <td>{e.car_name || <span className="text-muted">-</span>}</td>
                                                 <td className="text-end fw-medium">{eur(e.amount)}</td>
                                                 <td>
                                                     {e.is_xplendor_charge && e.charge ? (
                                                         <Badge color={CHARGE_STATUS_META[e.charge.status].color} className="fw-normal" title="A XPLENDOR confirma o pagamento">{CHARGE_STATUS_META[e.charge.status].label}</Badge>
                                                     ) : (
-                                                    <button
-                                                        className={`btn btn-sm ${e.is_paid ? "btn-soft-success" : "btn-soft-warning"}`}
-                                                        onClick={() => togglePaid(e)}
-                                                        disabled={e.is_automatic}
-                                                        title={e.is_xplendor_charge ? "A XPLENDOR confirma o pagamento" : e.is_automatic ? "Cobrada automaticamente pela Meta" : "Alternar pago/aberto"}
-                                                    >
+                                                    <Badge color={e.is_paid ? "success-subtle" : "warning-subtle"} className={`fw-normal ${e.is_paid ? "text-success" : "text-warning"}`}
+                                                        title={e.is_automatic ? "Cobrada automaticamente pela Meta" : undefined}>
                                                         {e.is_paid ? `Paga${e.paid_at ? ` · ${e.paid_at}` : ""}` : "Em aberto"}
-                                                    </button>
+                                                    </Badge>
                                                     )}
                                                 </td>
                                                 <td className="text-end">
                                                     {e.is_xplendor_charge && e.charge ? (
-                                                        <button className="btn btn-sm btn-soft-secondary" title="Ver a fatura da XPLENDOR (só de leitura)"
+                                                        <Button size="sm" color="outline-primary" title="Ver a fatura da XPLENDOR (só de leitura)" aria-label={`Ver a fatura da XPLENDOR: ${e.description}`}
                                                             onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, e.charge!.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
                                                             <i className="ri-lock-line me-1" /><i className="ri-file-pdf-2-line" />
-                                                        </button>
+                                                        </Button>
                                                     ) : e.is_automatic ? (
                                                         <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
-                                                    ) : (<>
-                                                    <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(e)} title="Editar"><i className="ri-pencil-line" /></button>
-                                                    {e.archived ? (
-                                                        <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(e, false)} title="Restaurar"><i className="ri-inbox-unarchive-line" /></button>
                                                     ) : (
-                                                        <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(e, true)} title="Arquivar"><i className="ri-archive-line" /></button>
+                                                    <div className="d-inline-flex gap-1">
+                                                        {!e.is_paid && (
+                                                            <Button size="sm" color="success" onClick={() => togglePaid(e)} title="Marcar como paga" aria-label={`Marcar como paga: ${e.description}`}><i className="ri-check-line" /></Button>
+                                                        )}
+                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(e)} title="Editar" aria-label={`Editar: ${e.description}`}><i className="ri-pencil-line" /></Button>
+                                                        <ActionsMenu size="sm" label={`Mais ações: ${e.description}`} items={[
+                                                            { label: "Marcar como em aberto", icon: "ri-arrow-go-back-line", hidden: !e.is_paid, onClick: () => void togglePaid(e) },
+                                                            e.archived
+                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(e, false) }
+                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(e, true) },
+                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(e) },
+                                                        ]} />
+                                                    </div>
                                                     )}
-                                                    <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(e)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
-                                                    </>)}
                                                 </td>
                                             </tr>
                                         ))}

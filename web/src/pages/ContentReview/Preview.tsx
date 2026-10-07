@@ -25,7 +25,7 @@ export default function ContentReviewPreview() {
     return (
         <div className="page-content">
             <div className="mb-2 px-3">
-                <Link to={`/editorial?aprovacoes=${id}`} className="btn btn-sm btn-light"><i className="ri-arrow-left-line me-1" />Voltar aos links de aprovação</Link>
+                <Link to={`/editorial?aprovacoes=${id}`} className="btn btn-sm btn-outline-primary"><i className="ri-arrow-left-line me-1" />Voltar aos links de aprovação</Link>
             </div>
             {failed ? <p className="text-center text-muted py-5">Não foi possível abrir a pré-visualização.</p>
                 : !data ? <div className="text-center py-5"><Spinner /></div>

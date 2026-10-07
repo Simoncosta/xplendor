@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { createBlogAiDraft, dismissAiRequest, getBlogAiContext, getBlogAiDraft, getLatestAiRequest } from "helpers/laravel_helper";
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
 import AiRequestState from "Components/Common/AiRequestState";
+import ReasonButton from "Components/Common/ReasonButton";
 import { AUDIENCE_REASON, IBlogAiContext, IBlogAiDraft, IBlogAiResult } from "common/models/blog.model";
 
 /**
@@ -169,6 +170,9 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
                             {busy ? <><Spinner size="sm" className="me-1" />A escrever o rascunho…</> : <><i className="ri-magic-line me-1" />{result ? "Gerar outra vez" : "Gerar rascunho"}</>}
                         </button>
                         {limitReached && <div className="text-danger small mt-2">Atingiu o limite mensal de rascunhos com IA.</div>}
+                        {!canGenerate && !limitReached && !busy && (
+                            <div className="text-muted small mt-2">{mode === "topic" ? "Indique o tema ou a pergunta para gerar o rascunho." : "Cole o texto da publicação (mais de 20 caracteres) para gerar o rascunho."}</div>
+                        )}
                         <p className="text-muted small mt-2 mb-0">O rascunho não é gravado nem publicado. Reveja sempre o texto antes de guardar.</p>
                     </div>
 
@@ -211,9 +215,9 @@ const BlogAiModal = ({ isOpen, toggle, companyId, blogId, defaultKeyword, defaul
             <ModalFooter>
                 {result && <button type="button" className="btn btn-light" onClick={dismiss}>Descartar</button>}
                 <button type="button" className="btn btn-light" onClick={toggle}>Fechar</button>
-                <button type="button" className="btn btn-success" disabled={!result || busy} onClick={() => { if (result) { onApply(result); dismiss(); } }}>
+                <ReasonButton color="success" disabled={busy} reason={!result ? "Gere primeiro um rascunho." : null} onClick={() => { if (result) { onApply(result); dismiss(); } }}>
                     <i className="ri-check-line me-1" />Usar no artigo
-                </button>
+                </ReasonButton>
             </ModalFooter>
         </Modal>
     );

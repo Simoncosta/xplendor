@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import { Button, ButtonGroup, Card, CardBody, CardHeader, Col, Input, Row, Spinner } from "reactstrap";
+import { Button, Card, CardBody, CardHeader, Col, Input, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getFollowers, recordFollowers } from "helpers/laravel_helper";
@@ -120,11 +120,11 @@ export default function FollowersCard({ companyId }: { companyId: number }) {
                     <h5 className="card-title mb-1">Seguidores</h5>
                     <p className="text-muted fs-13 mb-0">Os seguidores atuais e o crescimento no tempo, por rede.</p>
                 </div>
-                <ButtonGroup size="sm" aria-label="Período do gráfico">
+                <div className="xp-seg" role="radiogroup" aria-label="Período do gráfico">
                     {WINDOWS.map((w) => (
-                        <Button key={w} color="primary" outline={days !== w} onClick={() => setDays(w)}>{w === 365 ? "1 ano" : `${w} dias`}</Button>
+                        <button key={w} type="button" role="radio" aria-checked={days === w} className={days === w ? "on" : ""} onClick={() => setDays(w)}>{w === 365 ? "1 ano" : `${w} dias`}</button>
                     ))}
-                </ButtonGroup>
+                </div>
             </CardHeader>
             <CardBody>
                 {loading && !data ? (
@@ -190,7 +190,7 @@ export default function FollowersCard({ companyId }: { companyId: number }) {
                                                         value={draft[p.key]}
                                                         onChange={(e) => setDraft((d) => ({ ...d, [p.key]: e.target.value }))}
                                                     />
-                                                    <Button color="primary" className="text-nowrap" onClick={() => save(p.key)} disabled={saving !== null}>
+                                                    <Button color="outline-primary" className="text-nowrap" onClick={() => save(p.key)} disabled={saving !== null}>
                                                         {saving === p.key && <Spinner size="sm" className="me-1" />}Registar
                                                     </Button>
                                                 </div>

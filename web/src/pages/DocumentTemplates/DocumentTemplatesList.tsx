@@ -2,10 +2,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Card, CardBody, CardHeader, Col, Container, Row, Input, Label, Badge, Spinner } from "reactstrap";
+import { Button, Card, CardBody, CardHeader, Col, Container, Row, Input, Label, Badge, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 // Components
 import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 // Redux
 import { getDocumentTemplates, createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate } from "slices/documentTemplates/thunk";
 // Helpers
@@ -66,8 +68,8 @@ const DocumentTemplatesList = () => {
 
     const submit = async () => {
         if (!companyId) return;
-        if (!name.trim()) { toast.error("Dá um nome ao modelo."); return; }
-        if (!file) { toast.error("Escolhe um ficheiro .docx."); return; }
+        if (!name.trim()) { toast.error("Indique o nome do modelo."); return; }
+        if (!file) { toast.error("Escolha um ficheiro .docx."); return; }
         const fd = new FormData();
         fd.append("name", name.trim());
         fd.append("file", file);
@@ -141,23 +143,19 @@ const DocumentTemplatesList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3">
-                    <Col>
-                        <h4 className="mb-1">Modelos de documento</h4>
-                        <p className="text-muted mb-0">Carregue um .docx com variáveis <code>{"{{ }}"}</code>. Depois, em cada venda, gera o documento preenchido para descarregar.</p>
-                    </Col>
-                </Row>
+                <PageHeader title="Modelos de documento" breadcrumbs={[{ label: "Finanças" }]}
+                    description={<>Carregue um .docx com variáveis <code>{"{{ }}"}</code>. Depois, em cada venda, pode gerar o documento preenchido para descarregar.</>}
+                    actions={<Button color="outline-primary" onClick={downloadExample}><i className="ri-download-2-line me-1" />Exemplo .docx</Button>} />
 
                 <Row>
                     {/* Coluna esquerda: variáveis + exemplo */}
                     <Col lg={4} className="mb-3">
                         <Card className="h-100">
-                            <CardHeader className="d-flex align-items-center justify-content-between">
-                                <h5 className="mb-0">Variáveis disponíveis</h5>
-                                <XButton variant="primary" soft size="sm" onClick={downloadExample} icon={<i className="ri-download-2-line" />}>Exemplo .docx</XButton>
+                            <CardHeader>
+                                <h5 className="card-title mb-0">Variáveis disponíveis</h5>
                             </CardHeader>
                             <CardBody>
-                                <p className="text-muted fs-13">Clica numa variável para copiar. Cola-a no teu .docx (Word/Google Docs).</p>
+                                <p className="text-muted fs-13">Clique numa variável para a copiar e cole-a no seu .docx (Word ou Google Docs).</p>
                                 {Object.keys(groups).length === 0 ? (
                                     <div className="text-muted fs-13">A carregar…</div>
                                 ) : Object.entries(groups).map(([group, vars]) => (
@@ -168,11 +166,11 @@ const DocumentTemplatesList = () => {
                                                 <button
                                                     key={v.key}
                                                     type="button"
-                                                    className="btn btn-sm btn-light border"
-                                                    title={`${v.label} — clica para copiar {{${v.key}}}`}
+                                                    className="btn btn-sm btn-outline-primary"
+                                                    title={`${v.label}: clique para copiar {{${v.key}}}`}
                                                     onClick={() => copyTag(v.key)}
                                                 >
-                                                    <i className="ri-file-copy-line me-1 text-primary" />{`{{${v.key}}}`}
+                                                    <i className="ri-file-copy-line me-1" />{`{{${v.key}}}`}
                                                 </button>
                                             ))}
                                         </div>
@@ -185,7 +183,7 @@ const DocumentTemplatesList = () => {
                     {/* Coluna direita: upload + lista */}
                     <Col lg={8}>
                         <Card className="mb-3">
-                            <CardHeader><h5 className="mb-0">Carregar novo modelo</h5></CardHeader>
+                            <CardHeader><h5 className="card-title mb-0">Carregar novo modelo</h5></CardHeader>
                             <CardBody>
                                 <Row className="g-2 align-items-end">
                                     <Col md={5}>
@@ -204,26 +202,28 @@ const DocumentTemplatesList = () => {
                         </Card>
 
                         <Card>
-                            <CardHeader><h5 className="mb-0">Os meus modelos</h5></CardHeader>
+                            <CardHeader><h5 className="card-title mb-0">Os meus modelos</h5></CardHeader>
                             <CardBody>
                                 {loadingList ? (
                                     <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
                                 ) : templates.length === 0 ? (
-                                    <p className="text-muted mb-0">Ainda não há modelos. Carrega o primeiro acima.</p>
+                                    <p className="text-muted mb-0">Ainda não há modelos. Carregue o primeiro acima.</p>
                                 ) : (
                                     <div className="d-flex flex-column gap-2">
                                         {templates.map((t) => (
-                                            <div key={t.id} className="d-flex align-items-center justify-content-between border rounded p-3">
-                                                <div>
-                                                    <div className="fw-medium"><i className="ri-file-word-2-line text-primary me-1" />{t.name}{t.archived && <Badge color="secondary" className="ms-2">Arquivado</Badge>}</div>
+                                            <div key={t.id} className="d-flex align-items-center justify-content-between gap-2 border rounded p-3">
+                                                <div className="min-w-0 text-break">
+                                                    <div className="fw-medium"><i className="ri-file-word-2-line text-primary me-1" />{t.name}{t.archived && <Badge color="light" className="ms-2 text-muted">Arquivado</Badge>}</div>
                                                 </div>
-                                                <div className="d-flex gap-1">
-                                                    <button type="button" className="btn btn-sm btn-light" onClick={() => pickReplacement(t)} disabled={replacingId === t.id} title="Substituir ficheiro">
+                                                <div className="d-flex gap-1 flex-shrink-0">
+                                                    <Button size="sm" color="outline-primary" onClick={() => pickReplacement(t)} disabled={replacingId === t.id} title="Substituir ficheiro" aria-label={`Substituir ficheiro: ${t.name}`}>
                                                         {replacingId === t.id ? <Spinner size="sm" /> : <i className="ri-file-upload-line" />}
-                                                    </button>
-                                                    <button type="button" className="btn btn-sm btn-light" onClick={() => rename(t)} title="Renomear"><i className="ri-pencil-line" /></button>
-                                                    <button type="button" className="btn btn-sm btn-light" onClick={() => toggleArchive(t)} title={t.archived ? "Reativar" : "Arquivar"}><i className={t.archived ? "ri-inbox-unarchive-line" : "ri-archive-line"} /></button>
-                                                    <button type="button" className="btn btn-sm btn-soft-danger" onClick={() => remove(t)} title="Eliminar"><i className="ri-delete-bin-line" /></button>
+                                                    </Button>
+                                                    <Button size="sm" color="outline-primary" onClick={() => rename(t)} title="Renomear" aria-label={`Renomear: ${t.name}`}><i className="ri-pencil-line" /></Button>
+                                                    <ActionsMenu size="sm" label={`Mais ações: ${t.name}`} items={[
+                                                        { label: t.archived ? "Reativar" : "Arquivar", icon: t.archived ? "ri-inbox-unarchive-line" : "ri-archive-line", onClick: () => void toggleArchive(t) },
+                                                        { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(t) },
+                                                    ]} />
                                                 </div>
                                             </div>
                                         ))}

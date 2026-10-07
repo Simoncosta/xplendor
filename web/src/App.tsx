@@ -2,6 +2,7 @@ import React from 'react';
 
 //import Scss
 import './assets/scss/themes.scss';
+import './assets/css/xp-design.css';
 
 //imoprt Route
 import Route from './Routes';

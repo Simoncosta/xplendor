@@ -3,7 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import TicketTasksCard from "Components/Common/TicketTasksCard";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import ReasonButton from "Components/Common/ReasonButton";
 import { showSupportTicket, addSupportTicketMessage, decideSupportTicketQuote } from "helpers/laravel_helper";
 import {
     ISupportTicket, TICKET_TYPE_META, TICKET_STATUS_META, QUOTE_STATUS_META, formatEuro,
@@ -12,7 +13,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 const PUBLIC_URL = process.env.REACT_APP_PUBLIC_URL ?? "";
 const absUrl = (p: string | null | undefined) => (!p ? null : p.startsWith("http") ? p : PUBLIC_URL + p);
-const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "—");
+const fmtDate = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("pt-PT") : "Sem data");
 
 const SupportTicketDetail = () => {
     document.title = "Pedido de suporte | Xplendor";
@@ -73,7 +74,7 @@ const SupportTicketDetail = () => {
     if (error || !ticket) {
         return (
             <div className="page-content"><Container fluid>
-                <BreadCrumb title="Pedido de suporte" pageTitle="Suporte" pageLink="/support" />
+                <PageHeader title="Pedido de suporte" breadcrumbs={[{ label: "Equipa" }, { label: "Suporte", to: "/support" }]} />
                 <Card><CardBody>
                     <p className="text-muted mb-2">Pedido não encontrado.</p>
                     <button className="btn btn-primary" onClick={() => navigate("/support")}>Voltar ao suporte</button>
@@ -90,7 +91,7 @@ const SupportTicketDetail = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Pedido de suporte" pageTitle="Suporte" pageLink="/support" />
+                <PageHeader title={ticket.title} crumbLabel="Pedido de suporte" breadcrumbs={[{ label: "Equipa" }, { label: "Suporte", to: "/support" }]} />
                 <Row>
                     {/* Barra lateral — visual TaskDetails: detalhes (table-card) + orçamento.
                         O cliente NÃO muda o estado (é gerido pelo admin) — só o vê. */}
@@ -103,7 +104,7 @@ const SupportTicketDetail = () => {
                                             <tr><td className="fw-medium">Nº pedido</td><td>#{ticket.id}</td></tr>
                                             <tr><td className="fw-medium">Tipo</td><td><i className={tm.icon + " me-1"} />{tm.label}</td></tr>
                                             <tr><td className="fw-medium">Estado</td><td><span className={`badge bg-${sm.color}-subtle text-${sm.color}`}>{sm.label}</span></td></tr>
-                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "—"}</td></tr>
+                                            <tr><td className="fw-medium">Aberto por</td><td>{ticket.author_name ?? "Sem nome"}</td></tr>
                                             <tr><td className="fw-medium">Criado</td><td>{fmtDate(ticket.created_at)}</td></tr>
                                             {ticket.resolved_at && <tr><td className="fw-medium">Resolvido</td><td>{fmtDate(ticket.resolved_at)}</td></tr>}
                                         </tbody>
@@ -136,7 +137,7 @@ const SupportTicketDetail = () => {
                                             <div className="p-3 rounded mb-3" style={{ background: "var(--vz-tertiary-bg)" }}>
                                                 <div className="text-muted fs-12 text-uppercase fw-semibold mb-1">Valor</div>
                                                 <div className="fs-4 fw-semibold">
-                                                    {ticket.estimated_hours ?? "—"}h × {ticket.hourly_rate ?? 25}€ = {formatEuro(ticket.quoted_amount)}
+                                                    {ticket.estimated_hours ?? "?"}h × {ticket.hourly_rate ?? 25}€ = {formatEuro(ticket.quoted_amount)}
                                                 </div>
                                                 <div className="text-muted fs-12 mt-1">Acresce IVA à taxa legal em vigor.</div>
                                             </div>
@@ -146,7 +147,7 @@ const SupportTicketDetail = () => {
                                                     <button type="button" className="btn btn-success flex-grow-1" onClick={() => decide("approve")} disabled={deciding}>
                                                         {deciding ? <Spinner size="sm" /> : <><i className="ri-check-line me-1" />Aprovar</>}
                                                     </button>
-                                                    <button type="button" className="btn btn-outline-danger flex-grow-1" onClick={() => decide("reject")} disabled={deciding}>
+                                                    <button type="button" className="btn btn-outline-primary flex-grow-1" onClick={() => decide("reject")} disabled={deciding}>
                                                         <i className="ri-close-line me-1" />Rejeitar
                                                     </button>
                                                 </div>
@@ -162,11 +163,11 @@ const SupportTicketDetail = () => {
                                                 <p className="text-success fs-13 mb-0"><i className="ri-check-double-line me-1" />Trabalho concluído.</p>
                                             )}
                                             {ticket.quote_status === "rejected" && (
-                                                <p className="text-muted fs-13 mb-0">Orçamento rejeitado — pedido fechado.</p>
+                                                <p className="text-muted fs-13 mb-0">Orçamento rejeitado: pedido fechado.</p>
                                             )}
 
                                             {ticket.invoice_url && (
-                                                <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-soft-primary btn-sm w-100 mt-3">
+                                                <a href={absUrl(ticket.invoice_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="btn btn-outline-primary btn-sm w-100 mt-3">
                                                     <i className="ri-file-pdf-line me-1" />Ver fatura
                                                 </a>
                                             )}
@@ -228,10 +229,11 @@ const SupportTicketDetail = () => {
                                 )}
 
                                 <div className="d-flex align-items-end gap-2">
-                                    <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escreve uma mensagem…" />
-                                    <button type="button" className="btn btn-primary flex-shrink-0" onClick={send} disabled={sending || !body.trim()}>
+                                    <Input type="textarea" rows={2} value={body} onChange={(e) => setBody(e.target.value)} placeholder="Escreva uma mensagem…" />
+                                    <ReasonButton color="primary" className="flex-shrink-0" onClick={send} disabled={sending} aria-label="Enviar mensagem"
+                                        reason={!body.trim() ? "Escreva a mensagem primeiro." : null}>
                                         {sending ? <Spinner size="sm" /> : <i className="ri-send-plane-2-line" />}
-                                    </button>
+                                    </ReasonButton>
                                 </div>
                             </CardBody>
                         </Card>

@@ -5,6 +5,7 @@
 //React
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { Accordion, AccordionBody, AccordionHeader, AccordionItem, Button, Col, Input, Label, Row } from "reactstrap";
 
 // Components
@@ -233,6 +234,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                             Segmento: <span className="text-danger">*</span>
                         </Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             id="segment"
                             name="segment"
                             options={segmentOptions}
@@ -252,6 +255,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                             Categoria:
                         </Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             id="car_category_id"
                             name="car_category_id"
                             options={categoryOptions}
@@ -272,6 +277,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                         Lugares: <span className="text-danger">*</span>
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="seats"
                         name="seats"
                         options={seatsOptions}
@@ -289,6 +296,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                         Cor: <span className="text-danger">*</span>
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="exterior_color"
                         name="exterior_color"
                         options={colorsOptions}
@@ -313,6 +322,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                         Estado: <span className="text-danger">*</span>
                     </Label>
                     <Select
+                        styles={reactSelectTheme}
+                        menuPortalTarget={document.body}
                         id="condition"
                         name="condition"
                         options={conditionsOptions}
@@ -408,15 +419,14 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                         label={`Dorme ${sleepsTotal}`}
                                                         hint="Calculado automaticamente a partir da capacidade de cada cama (uma cama de casal conta como 2)."
                                                     />
-                                                    <div className="text-muted fs-12">Adiciona quantas camas forem necessárias e define a capacidade de cada.</div>
+                                                    <div className="text-muted fs-12">Adicione quantas camas forem necessárias e defina a capacidade de cada uma.</div>
                                                 </div>
                                                 <Button
                                                     type="button"
-                                                    color="light"
-                                                    className="border"
+                                                    color="outline-primary"
                                                     onClick={() => setFieldValue("vehicle_attributes.beds", [...beds, { type: "outra" as BedType, capacity: 1 }])}
                                                 >
-                                                    Adicionar cama
+                                                    <i className="ri-add-line me-1" />Adicionar cama
                                                 </Button>
                                             </div>
                                         );
@@ -431,6 +441,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                     <div className="d-flex gap-2 align-items-start mb-3">
                                                         <div className="flex-grow-1">
                                                             <Select
+                                                                styles={reactSelectTheme}
+                                                                menuPortalTarget={document.body}
                                                                 name={`vehicle_attributes.beds.${index}.type`}
                                                                 options={getBedOptions(bed?.type)}
                                                                 value={getBedOptions(bed?.type).find((option) => option.value === bed?.type) || null}
@@ -458,14 +470,17 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                         />
                                                         <Button
                                                             type="button"
-                                                            color="light"
-                                                            className="border"
+                                                            size="sm"
+                                                            color="outline-danger"
+                                                            className="btn-icon mt-1"
+                                                            aria-label={`Remover cama ${index + 1}`}
+                                                            title="Remover"
                                                             onClick={() => {
                                                                 const nextBeds = beds.filter((_, bedIndex) => bedIndex !== index);
                                                                 setFieldValue("vehicle_attributes.beds", nextBeds);
                                                             }}
                                                         >
-                                                            Remover
+                                                            <i className="ri-delete-bin-line" />
                                                         </Button>
                                                     </div>
                                                 </Col>
@@ -539,6 +554,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                                 <Col lg={2}>
                                                     <Label>Tipo de frigorífico</Label>
                                                     <Select
+                                                        styles={reactSelectTheme}
+                                                        menuPortalTarget={document.body}
                                                         isClearable
                                                         placeholder="Selecionar"
                                                         options={fridgeTypeOptions}
@@ -604,6 +621,8 @@ const CarVehicleDetailsDataFields = forwardRef<CarVehicleDetailsHandle, { isEdit
                                             <Col lg={2}>
                                                 <Label>Tipo de duche</Label>
                                                 <Select
+                                                    styles={reactSelectTheme}
+                                                    menuPortalTarget={document.body}
                                                     isClearable
                                                     placeholder="Selecionar"
                                                     options={showerTypeOptions}

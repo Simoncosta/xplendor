@@ -13,6 +13,9 @@ import PingwinConnectModal from "./PingwinConnectModal";
 import CarmineConnectModal from "./CarmineConnectModal";
 import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
 import SocialConnectionCard from "./SocialConnectionCard";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import { confirmAction } from "helpers/swal";
 import { getHomeCompanyId, getWorkingCompanyId } from "helpers/workingCompany";
 
 interface Integration {
@@ -45,12 +48,12 @@ const statusBadge = (status: string | null | undefined) => {
 };
 
 const formatMetaAccountId = (accountId: string | null | undefined) => {
-    if (!accountId) return "—";
+    if (!accountId) return "Por definir";
     return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
 };
 
 const fmtDate = (d: string | null) =>
-    d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—";
+    d ? new Date(d).toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "Ainda não";
 
 const infoRow = (label: string, value: React.ReactNode) => (
     <div
@@ -83,9 +86,9 @@ const BlockedCard = ({ icon, iconColor, title, subtitle, note }: {
                     <span className="badge badge-soft-secondary fs-11"><i className="ri-lock-2-line me-1" />Bloqueado</span>
                 </div>
                 <p className="text-muted fs-13 mb-3">{note}</p>
-                <button className="btn btn-outline-secondary w-100" disabled>
+                <ReasonButton color="outline-primary" className="w-100" reason={note}>
                     <i className="ri-lock-2-line me-2" /> Indisponível
-                </button>
+                </ReasonButton>
             </CardBody>
         </Card>
     </Col>
@@ -200,6 +203,8 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     };
 
     const disconnectCover = async () => {
+        const ok = await confirmAction({ title: "Desligar o CoverManager?", text: "O token da empresa é retirado e as lojas sem token próprio deixam de receber as reservas.", confirmText: "Desligar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             await disconnectCoverManager(companyId);
             toast.success("CoverManager desligado.");
@@ -325,7 +330,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
 
     const connectGa = async () => {
         const pid = gaProperty.trim();
-        if (!/^\d{6,15}$/.test(pid)) { toast.error("Cola só o ID numérico da propriedade GA4 (ex.: 398765432)."); return; }
+        if (!/^\d{6,15}$/.test(pid)) { toast.error("Cole só o ID numérico da propriedade GA4 (ex.: 398765432)."); return; }
         setGaSaving(true);
         try {
             await connectGoogleAnalytics(companyId, pid);
@@ -340,6 +345,8 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     };
 
     const disconnectGa = async () => {
+        const ok = await confirmAction({ title: "Desligar o Google Analytics?", text: "A XPLENDOR deixa de receber o tráfego do site.", confirmText: "Desligar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             await disconnectGoogleAnalytics(companyId);
             toast.success("Google Analytics desligado.");
@@ -407,9 +414,9 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
             <Container fluid>
                 <Row className="mb-3">
                     <Col>
-                        <h4 className="fw-semibold mb-1">Integrações</h4>
+                        <h5 className="fw-semibold mb-1">Integrações</h5>
                         <p className="text-muted fs-13 mb-0">
-                            Liga as tuas plataformas externas para que os dados cheguem automaticamente à XPLENDOR.
+                            Ligue as suas plataformas externas para que os dados cheguem automaticamente à XPLENDOR.
                         </p>
                     </Col>
                 </Row>
@@ -434,19 +441,27 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         </div>
                                     </div>
                                     {metaIntegration && (
-                                        <div className="text-end">
-                                            <span className={`badge ${statusBadge(metaIntegration.status).class} fs-11`}>
-                                                {statusBadge(metaIntegration.status).label}
-                                            </span>
-                                            <div className="text-muted fs-11 mt-1">
-                                                {statusBadge(metaIntegration.status).helper}
+                                        <div className="d-flex align-items-start gap-2">
+                                            <div className="text-end">
+                                                <span className={`badge ${statusBadge(metaIntegration.status).class} fs-11`}>
+                                                    {statusBadge(metaIntegration.status).label}
+                                                </span>
+                                                <div className="text-muted fs-11 mt-1">
+                                                    {statusBadge(metaIntegration.status).helper}
+                                                </div>
                                             </div>
+                                            {canManageMeta && (
+                                                <ActionsMenu size="sm" label="Mais ações: Meta Ads" items={[
+                                                    { label: "Desligar a Meta", icon: "ri-unlink", danger: true, hidden: metaIntegration.status === "revoked", onClick: () => setMetaModalMode("disconnect") },
+                                                    { label: "Apagar os dados da Meta guardados", icon: "ri-delete-bin-line", danger: true, hidden: metaIntegration.status !== "revoked", onClick: () => setMetaModalMode("purge") },
+                                                ]} />
+                                            )}
                                         </div>
                                     )}
                                 </div>
 
                                 <p className="text-muted fs-13 mb-3">
-                                    Puxa automaticamente spend, impressions, clicks, CPM e CTR das tuas campanhas todas as noites.
+                                    Puxa automaticamente spend, impressions, clicks, CPM e CTR das suas campanhas todas as noites.
                                 </p>
 
                                 {metaIntegration ? (
@@ -469,7 +484,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         {canManageMeta && (!metaIntegration.account_id || editingMetaAccount) && (
                                             <div className="border rounded p-2 mt-1" style={{ background: "var(--vz-tertiary-bg)" }}>
                                                 <p className="fs-12 text-body mb-2">
-                                                    Introduz o ID da tua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
+                                                    Introduza o ID da sua conta de anúncios (Meta Business Suite → Contas de anúncios, ex.: <code>act_123456789</code>).
                                                 </p>
                                                 <input
                                                     type="text"
@@ -479,47 +494,32 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                     onChange={(e) => setMetaAccountInput(e.target.value)}
                                                     onKeyDown={(e) => e.key === "Enter" && saveMetaAccount()}
                                                 />
-                                                <button
-                                                    className="btn btn-primary btn-sm w-100"
+                                                <ReasonButton
+                                                    color="outline-primary"
+                                                    size="sm"
+                                                    className="w-100"
                                                     onClick={saveMetaAccount}
-                                                    disabled={savingMetaAccount || !metaAccountInput.trim()}
+                                                    disabled={savingMetaAccount}
+                                                    reason={!savingMetaAccount && !metaAccountInput.trim() ? "Indique o ID da conta de anúncios." : null}
                                                 >
                                                     {savingMetaAccount ? <><Spinner size="sm" className="me-1" />A guardar…</> : "Guardar conta de anúncios"}
-                                                </button>
+                                                </ReasonButton>
                                             </div>
                                         )}
 
                                         {!canManageMeta ? (
                                             <p className="text-muted fs-12 mb-0 mt-1">Só o administrador da empresa pode ligar ou desligar os anúncios da Meta.</p>
-                                        ) : metaIntegration.status === "active" ? (
+                                        ) : metaIntegration.status === "active" ? null : (
+                                            /* Token expirado ou com falha: volta a ligar-se aqui; desligar (e apagar)
+                                               fica no menu "..." do cartão. Já desligada: o histórico guardado apaga-se no menu. */
                                             <button
-                                                className="btn btn-soft-danger btn-sm mt-1"
-                                                onClick={() => setMetaModalMode("disconnect")}
+                                                className="btn btn-primary w-100 mt-1"
+                                                onClick={connectMeta}
+                                                style={{ background: "#1877F2", borderColor: "#1877F2" }}
                                             >
-                                                <i className="ri-unlink me-1" /> Desligar
+                                                <i className="ri-facebook-fill me-2" />
+                                                Reconectar com Facebook
                                             </button>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    className="btn btn-primary w-100 mt-1"
-                                                    onClick={connectMeta}
-                                                    style={{ background: "#1877F2", borderColor: "#1877F2" }}
-                                                >
-                                                    <i className="ri-facebook-fill me-2" />
-                                                    Reconectar com Facebook
-                                                </button>
-                                                {/* Token expirado ou com falha: também se pode desligar (e apagar).
-                                                    Já desligada: o histórico guardado pode ser apagado. */}
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-link btn-sm p-0 text-start fs-12 text-danger"
-                                                    onClick={() => setMetaModalMode(metaIntegration.status === "revoked" ? "purge" : "disconnect")}
-                                                >
-                                                    {metaIntegration.status === "revoked"
-                                                        ? <><i className="ri-delete-bin-line me-1" />Apagar os dados da Meta guardados</>
-                                                        : <><i className="ri-unlink me-1" />Desligar a Meta</>}
-                                                </button>
-                                            </>
                                         )}
                                     </div>
                                 ) : !canManageMeta ? (
@@ -568,30 +568,32 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                 </div>
 
                                 <p className="text-muted fs-13 mb-3">
-                                    Traz para a XPLENDOR os visitantes, páginas mais vistas, origens e dispositivos do teu site.
+                                    Traz para a XPLENDOR os visitantes, páginas mais vistas, origens e dispositivos do seu site.
                                 </p>
 
                                 {agencyMemberOnly ? (
                                     gaConnected
-                                        ? <div className="vstack gap-2">{infoRow("Propriedade", googleIntegration?.property_id)}<Link to="/trafego-site" className="btn btn-primary btn-sm mt-1" style={{ background: "#E37400", borderColor: "#E37400" }}><i className="ri-line-chart-line me-1" /> Ver tráfego do site</Link></div>
+                                        ? <div className="vstack gap-2">{infoRow("Propriedade", googleIntegration?.property_id)}<Link to="/trafego-site" className="btn btn-outline-primary btn-sm mt-1"><i className="ri-line-chart-line me-1" /> Ver tráfego do site</Link></div>
                                         : <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p>
                                 ) : gaConnected ? (
                                     <div className="vstack gap-2">
                                         {infoRow("Propriedade", googleIntegration?.property_id)}
                                         {infoRow("Último sync", fmtDate(googleIntegration?.last_synced_at ?? null))}
-                                        <Link to="/trafego-site" className="btn btn-primary btn-sm mt-1" style={{ background: "#E37400", borderColor: "#E37400" }}>
-                                            <i className="ri-line-chart-line me-1" /> Ver tráfego do site
-                                        </Link>
-                                        <button className="btn btn-soft-danger btn-sm" onClick={disconnectGa}>
-                                            <i className="ri-unlink me-1" /> Desligar
-                                        </button>
+                                        <div className="d-flex gap-2 mt-1">
+                                            <Link to="/trafego-site" className="btn btn-outline-primary btn-sm flex-grow-1">
+                                                <i className="ri-line-chart-line me-1" /> Ver tráfego do site
+                                            </Link>
+                                            <ActionsMenu size="sm" label="Mais ações: Google Analytics" items={[
+                                                { label: "Desligar", icon: "ri-unlink", danger: true, onClick: () => void disconnectGa() },
+                                            ]} />
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="vstack gap-2">
                                         <div className="p-2 rounded fs-12" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
-                                            <div className="mb-1"><strong>1.</strong> No teu GA4, em <em>Admin → Gestão de acesso à propriedade</em>, adiciona como <strong>Visualizador</strong> o email:</div>
+                                            <div className="mb-1"><strong>1.</strong> No seu GA4, em <em>Admin → Gestão de acesso à propriedade</em>, adicione como <strong>Visualizador</strong> o email:</div>
                                             <div className="fw-medium text-break mb-2">{saEmail ?? "(email da Service Account da XPLENDOR)"}</div>
-                                            <div><strong>2.</strong> Cola aqui o <strong>ID da propriedade</strong> (Admin → Detalhes da propriedade — só números).</div>
+                                            <div><strong>2.</strong> Cole aqui o <strong>ID da propriedade</strong> (Admin → Detalhes da propriedade, só números).</div>
                                         </div>
                                         <input
                                             type="text"
@@ -601,7 +603,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             value={gaProperty}
                                             onChange={(e) => setGaProperty(e.target.value)}
                                         />
-                                        <button className="btn btn-primary w-100" onClick={connectGa} disabled={gaSaving} style={{ background: "#E37400", borderColor: "#E37400" }}>
+                                        <button className="btn btn-outline-primary w-100" onClick={connectGa} disabled={gaSaving}>
                                             {gaSaving ? <><Spinner size="sm" className="me-1" /> A ligar…</> : <><i className="ri-links-line me-2" />Ligar Google Analytics</>}
                                         </button>
                                     </div>
@@ -631,18 +633,17 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         )}
                                     </div>
                                     <p className="text-muted fs-13 mb-3">
-                                        Sincroniza o stock de veículos a partir da tua conta Carmine.
+                                        Sincroniza o stock de veículos a partir da sua conta Carmine.
                                     </p>
                                     {carmineConnected ? (
                                         <div className="vstack gap-2">
-                                            {infoRow("Dealer", dataCarmine?.dealer_id || "—")}
-{!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm mt-1" onClick={() => setCarmineModalOpen(true)}>
+                                            {infoRow("Dealer", dataCarmine?.dealer_id || "Sem dados")}
+{!agencyMemberOnly && (<button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setCarmineModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
                                             </button>)}
                                         </div>
                                     ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
-                                        <button className="btn btn-primary w-100" onClick={() => setCarmineModalOpen(true)}
-                                            style={{ background: "#DF3E23", borderColor: "#DF3E23" }}>
+                                        <button className="btn btn-outline-primary w-100" onClick={() => setCarmineModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar Carmine
                                         </button>
                                     )}
@@ -682,15 +683,15 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         )}
                                     </div>
                                     <p className="text-muted fs-13 mb-3">
-                                        Descobre as lojas e traz o resumo de vendas por loja do teu POS PingWin.
+                                        Descobre as lojas e traz o resumo de vendas por loja do seu POS PingWin.
                                     </p>
 
                                     {pingwinValidating ? (
                                         <div className="vstack gap-2">
                                             <div className="p-2 rounded fs-12 d-flex align-items-center gap-2" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
-                                                <Spinner size="sm" /> A validar a ligação… serás notificado no sino quando terminar.
+                                                <Spinner size="sm" /> A validar a ligação. Será notificado no sino quando terminar.
                                             </div>
-                                            {!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                            {!agencyMemberOnly && (<button className="btn btn-outline-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
                                             </button>)}
                                         </div>
@@ -700,8 +701,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 <i className="ri-error-warning-line me-1" />
                                                 {pingwin?.error_message || "Não foi possível validar a ligação."}
                                             </div>
-                                            {!agencyMemberOnly && (<button className="btn btn-primary btn-sm" onClick={() => setPingwinModalOpen(true)}
-                                                style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                            {!agencyMemberOnly && (<button className="btn btn-outline-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Corrigir credenciais
                                             </button>)}
                                         </div>
@@ -724,18 +724,16 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                     )}
                                                 </div>
                                             )}
-                                            <button className="btn btn-primary btn-sm mt-1" onClick={runPingwinSync} disabled={pingwinSyncing}
-                                                style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                            <button className="btn btn-outline-primary btn-sm mt-1" onClick={runPingwinSync} disabled={pingwinSyncing}>
                                                 {pingwinSyncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar agora</>}
                                             </button>
                                             <div className="text-muted fs-11">As lojas gerem-se em <strong>Restauração › Lojas</strong> (menu lateral).</div>
-                                            {!agencyMemberOnly && (<button className="btn btn-soft-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
+                                            {!agencyMemberOnly && (<button className="btn btn-outline-primary btn-sm" onClick={() => setPingwinModalOpen(true)}>
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
                                             </button>)}
                                         </div>
                                     ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
-                                        <button className="btn btn-primary w-100" onClick={() => setPingwinModalOpen(true)}
-                                            style={{ background: "#0AB39C", borderColor: "#0AB39C" }}>
+                                        <button className="btn btn-outline-primary w-100" onClick={() => setPingwinModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar PingWin
                                         </button>
                                     )}
@@ -782,16 +780,15 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                     checked={avgTicketEnabled} onChange={(e) => toggleAvgTicket(e.target.checked)} />
                                                 <label className="form-check-label fs-13" htmlFor="cm-avg-ticket">Ticket médio com CoverManager</label>
                                             </div>
-{!agencyMemberOnly && (<button className="btn btn-soft-danger btn-sm mt-1" onClick={disconnectCover}>
-                                                <i className="ri-unlink me-1" /> Desligar
-                                            </button>)}
+{!agencyMemberOnly && (<div className="mt-1"><ActionsMenu size="sm" label="Mais ações: CoverManager" items={[
+                                                { label: "Desligar", icon: "ri-unlink", danger: true, onClick: () => void disconnectCover() },
+                                            ]} /></div>)}
                                         </div>
                                     ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
                                         <div className="vstack gap-2">
                                             <input type="password" className="form-control" placeholder="token CoverManager (apikey)"
                                                 value={coverToken} onChange={(e) => setCoverToken(e.target.value)} autoComplete="new-password" disabled={coverSaving} />
-                                            <button className="btn btn-primary w-100" onClick={connectCover} disabled={coverSaving}
-                                                style={{ background: "#6259CA", borderColor: "#6259CA" }}>
+                                            <button className="btn btn-outline-primary w-100" onClick={connectCover} disabled={coverSaving}>
                                                 {coverSaving ? <><Spinner size="sm" className="me-1" /> A ligar…</> : <><i className="ri-links-line me-2" /> Ligar CoverManager</>}
                                             </button>
                                         </div>
@@ -831,10 +828,10 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                 <p className="text-muted fs-13 mb-3">
                                     Integração com Google Ads em desenvolvimento. Disponível em breve.
                                 </p>
-                                <button className="btn btn-outline-secondary w-100" disabled>
+                                <ReasonButton color="outline-primary" className="w-100" reason="Integração em desenvolvimento.">
                                     <i className="ri-google-fill me-2" />
-                                    Google Ads — Em breve
-                                </button>
+                                    Google Ads: em breve
+                                </ReasonButton>
                             </CardBody>
                         </Card>
                     </Col>

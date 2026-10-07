@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Badge, Container, Spinner } from "reactstrap";
 import { showBlog } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, IBlogPost, blogImage, fmtDateTime } from "common/models/blog.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import PageHeader from "Components/Common/PageHeader";
 
 /**
  * Pré-visualização de leitura do artigo. O conteúdo chega já limpo pelo servidor (lista de
@@ -23,7 +24,14 @@ export default function BlogShow() {
     }, [companyId, id]);
 
     if (loading) return <div className="page-content"><Container fluid><div className="text-center py-5"><Spinner /></div></Container></div>;
-    if (!blog) return <div className="page-content"><Container fluid><p className="text-muted">Artigo não encontrado.</p></Container></div>;
+    if (!blog) {
+        return (
+            <div className="page-content"><Container fluid>
+                <PageHeader title="Artigo" breadcrumbs={[{ label: "Marketing" }, { label: "Blogs", to: "/blogs" }]} />
+                <p className="text-muted">Artigo não encontrado.</p>
+            </Container></div>
+        );
+    }
 
     const sm = BLOG_STATUS_META[blog.status];
     const img = blogImage(blog.banner);
@@ -31,17 +39,16 @@ export default function BlogShow() {
     return (
         <div className="page-content">
             <Container fluid>
+                <PageHeader title={blog.title} crumbLabel="Pré-visualização" breadcrumbs={[{ label: "Marketing" }, { label: "Blogs", to: "/blogs" }]}
+                    description={<><Badge color={`${sm.color}-subtle`} className={`text-${sm.color} me-2`}>{sm.label}</Badge>Pré-visualização de leitura do artigo.</>}
+                    actions={<Link to={`/blogs/${blog.id}`} className="btn btn-outline-primary"><i className="ri-arrow-left-line me-1" />Voltar ao editor</Link>} />
                 <div className="row justify-content-center">
                     <div className="col-xxl-9">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                            <Link to={`/blogs/${blog.id}`} className="btn btn-sm btn-light"><i className="ri-arrow-left-line me-1" />Voltar ao editor</Link>
-                            <Badge color={`${sm.color}-subtle`} className={`text-${sm.color}`}>{sm.label}</Badge>
-                        </div>
                         <div className="card">
                             <div className="card-body">
                                 <div className="text-center mb-4">
                                     {blog.category && <p className="text-success text-uppercase mb-2">{blog.category}</p>}
-                                    <h2 className="mb-2">{blog.title}</h2>
+                                    <div className="h2 mb-2">{blog.title}</div>
                                     {blog.subtitle && <p className="fs-16 mb-2">{blog.subtitle}</p>}
                                     <p className="text-muted mb-3">{blog.published_at ? fmtDateTime(blog.published_at) : "Sem data de publicação"}{blog.read_time ? ` · ${blog.read_time} min de leitura` : ""}</p>
                                     <div className="d-flex align-items-center justify-content-center flex-wrap gap-2">

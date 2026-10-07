@@ -135,7 +135,7 @@ export default function SupplierFormModal({ isOpen, toggle, supplier, companyId,
                     </ModalBody>
                     <ModalFooter>
                         <XButton variant="light" type="button" onClick={toggle}>Cancelar</XButton>
-                        <XButton variant="success" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
+                        <XButton variant="primary" type="submit" loading={saving} icon={<i className="ri-check-line" />}>
                             {isEdit ? "Guardar" : "Criar"}
                         </XButton>
                     </ModalFooter>

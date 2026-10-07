@@ -6,6 +6,7 @@ import { disconnectSocial, getSocialAuthUrl, getSocialConnection } from "helpers
 import { SOCIAL_NOT_APPROVED_TEXT, SocialConnectionState, socialStateView } from "common/models/socialConnection.model";
 import SocialAccountsModal from "./SocialAccountsModal";
 import SocialDisconnectModal, { SocialDisconnectMode } from "./SocialDisconnectModal";
+import ActionsMenu from "Components/Common/ActionsMenu";
 
 /**
  * Redes sociais (Instagram e Facebook) nas Integrações: ligação separada da dos
@@ -135,7 +136,15 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                                 <p className="text-muted fs-12 mb-0">Seguidores da Página e do Instagram</p>
                             </div>
                         </div>
-                        {view && <Badge color={`${view.tone}-subtle`} className={`text-${view.tone} fs-11 text-wrap text-end`}>{view.badge}</Badge>}
+                        <div className="d-flex align-items-start gap-2">
+                            {view && <Badge color={`${view.tone}-subtle`} className={`text-${view.tone} fs-11 text-wrap text-end`}>{view.badge}</Badge>}
+                            {canManage && !loading && (
+                                <ActionsMenu size="sm" label="Mais ações: Redes sociais" items={[
+                                    { label: "Desligar", icon: "ri-unlink", danger: true, hidden: !connected, onClick: () => setModalMode("disconnect") },
+                                    { label: "Apagar o histórico de seguidores lido automaticamente", icon: "ri-delete-bin-line", danger: true, hidden: connected || !state?.has_automatic_history, onClick: () => setModalMode("purge") },
+                                ]} />
+                            )}
+                        </div>
                     </div>
 
                     <p className="text-muted fs-13 mb-3">
@@ -166,17 +175,14 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                             {canManage ? (
                                 <>
                                     {view?.reconnect ? (
-                                        <button className="btn btn-primary w-100 mt-1" onClick={connect} disabled={connecting}>
+                                        <button className="btn btn-outline-primary w-100 mt-1" onClick={connect} disabled={connecting}>
                                             {connecting ? <Spinner size="sm" className="me-1" /> : <i className="ri-refresh-line me-1" />}Voltar a ligar
                                         </button>
                                     ) : (
-                                        <button className="btn btn-soft-primary btn-sm mt-1" onClick={() => setChoosing(true)}>
+                                        <button className="btn btn-outline-primary btn-sm mt-1" onClick={() => setChoosing(true)}>
                                             <i className="ri-list-check-2 me-1" />{state!.status === "pending_selection" ? "Escolher as contas" : "Alterar as contas"}
                                         </button>
                                     )}
-                                    <button type="button" className="btn btn-soft-danger btn-sm" onClick={() => setModalMode("disconnect")}>
-                                        <i className="ri-unlink me-1" />Desligar
-                                    </button>
                                 </>
                             ) : (
                                 <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode alterar ou desligar as redes sociais.</p>
@@ -187,11 +193,6 @@ export default function SocialConnectionCard({ companyId }: { companyId: number 
                             <button className="btn btn-primary w-100" onClick={connect} disabled={connecting} style={{ background: "#1877F2", borderColor: "#1877F2" }}>
                                 {connecting ? <Spinner size="sm" className="me-2" /> : <i className="ri-facebook-fill me-2" />}Ligar com Facebook
                             </button>
-                            {state?.has_automatic_history && (
-                                <button type="button" className="btn btn-link btn-sm p-0 text-start fs-12 text-danger" onClick={() => setModalMode("purge")}>
-                                    <i className="ri-delete-bin-line me-1" />Apagar o histórico de seguidores lido automaticamente
-                                </button>
-                            )}
                         </div>
                     ) : (
                         <p className="text-muted fs-12 mb-0">Só o administrador da empresa pode ligar as redes sociais.</p>

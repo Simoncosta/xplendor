@@ -156,7 +156,7 @@ export default function CompanyEditModal({ isOpen, companyId, initialTab = "dado
                 {isEdit && !showSave && <small className="text-muted me-auto">As alterações deste separador ficam guardadas logo.</small>}
                 <Button color="light" onClick={onClose}>Fechar</Button>
                 {showSave && data && (
-                    <Button color="success" disabled={busy} onClick={submit}>
+                    <Button color="primary" disabled={busy} onClick={submit}>
                         {busy ? <Spinner size="sm" /> : isEdit ? "Guardar" : "Criar empresa"}
                     </Button>
                 )}

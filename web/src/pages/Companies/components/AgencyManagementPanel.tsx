@@ -3,6 +3,7 @@ import { Badge, Button, Input, Label, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getAdminAgencies, getAdminCompanyManagement, setAdminCompanyAgency, setAdminCompanyManagement } from "helpers/laravel_helper";
 import XSelect from "pages/Editorial/XSelect";
+import { confirmAction } from "helpers/swal";
 
 /**
  * Gestão por agências de UMA empresa (só o root): "Esta empresa é uma agência" e "Gerida
@@ -64,11 +65,18 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
             getAdminAgencies().then((a: any) => setAgencies(a.data.agencies ?? []));
             onChanged?.();
         } catch (e) {
-            toast.error(errorOf(e, "Não foi possível gravar."));
+            toast.error(errorOf(e, "Não foi possível guardar."));
             setIsAgency(!!data?.is_agency);
         } finally { setBusy(null); }
     };
     const saveManaged = async () => {
+        if (!agencyId) {
+            const ok = await confirmAction({
+                title: "Retirar a gestão?", text: `A agência ${data?.current?.agency.name ?? ""} deixa de gerir esta empresa.`,
+                confirmText: "Retirar gestão", icon: "warning", confirmVariant: "danger",
+            });
+            if (!ok) return;
+        }
         setBusy("managed");
         try {
             const r: any = await setAdminCompanyManagement(companyId, agencyId || null);
@@ -76,7 +84,7 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
             toast.success(agencyId ? "Agência gestora definida." : "Gestão retirada.");
             onChanged?.();
         } catch (e) {
-            toast.error(errorOf(e, "Não foi possível gravar."));
+            toast.error(errorOf(e, "Não foi possível guardar."));
         } finally { setBusy(null); }
     };
 
@@ -102,7 +110,7 @@ export default function AgencyManagementPanel({ companyId, onChanged }: { compan
             )}
             {agencyDirty && (
                 <Button size="sm" color="primary" className="mb-3" disabled={busy !== null} onClick={saveAgency}>
-                    {busy === "agency" ? <Spinner size="sm" /> : "Gravar"}
+                    {busy === "agency" ? <Spinner size="sm" /> : "Guardar"}
                 </Button>
             )}
 

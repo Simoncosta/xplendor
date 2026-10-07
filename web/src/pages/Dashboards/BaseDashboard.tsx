@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, CardHeader, Col, Container, Row, Spinner } from "reactstrap";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getBaseDashboard } from "helpers/laravel_helper";
 import { STAGE_META, STAGE_ORDER, Stage, fmtInt } from "common/models/editorialWorkflow.model";
@@ -51,7 +51,7 @@ export default function BaseDashboard() {
     return (
         <div className="page-content">
             <Container fluid>
-                <BreadCrumb title="Dashboard" pageTitle="Início" />
+                <PageHeader title="Dashboard" />
                 <Row className="g-3 mb-3"><SubscriptionTrialBanner /></Row>
                 <XplendorChargesNotice />
 
@@ -63,10 +63,10 @@ export default function BaseDashboard() {
                                     <Card className="h-100">
                                         <CardHeader className="d-flex flex-wrap align-items-center gap-2">
                                             <div className="me-auto">
-                                                <h5 className="mb-0">Linha Editorial</h5>
+                                                <h5 className="card-title mb-0">Linha Editorial</h5>
                                                 <small className="text-muted">{monthLabel(ed.month)}: {ed.total} {ed.total === 1 ? "publicação" : "publicações"}</small>
                                             </div>
-                                            <Link to={link("calendario")} className="btn btn-soft-primary btn-sm"><i className="ri-calendar-2-line me-1" />Abrir a Linha Editorial</Link>
+                                            <Link to={link("calendario")} className="btn btn-outline-primary btn-sm"><i className="ri-calendar-2-line me-1" />Abrir a Linha Editorial</Link>
                                         </CardHeader>
                                         <CardBody>
                                             <Row className="g-2 mb-3">
@@ -101,8 +101,8 @@ export default function BaseDashboard() {
                                 <Col xl={ed ? 4 : 6}>
                                     <Card className="h-100">
                                         <CardHeader className="d-flex align-items-center gap-2">
-                                            <h5 className="mb-0 me-auto">Seguidores</h5>
-                                            <Link to="/brand-profile" className="btn btn-soft-secondary btn-sm">Perfil da Marca</Link>
+                                            <h5 className="card-title mb-0 me-auto">Seguidores</h5>
+                                            <Link to="/brand-profile" className="btn btn-outline-primary btn-sm">Perfil da Marca</Link>
                                         </CardHeader>
                                         <CardBody className="vstack gap-3">
                                             {PLATFORMS.map((p) => {

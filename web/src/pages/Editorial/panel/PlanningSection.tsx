@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button, Col, Input, Label, Row, Spinner } from "reactstrap";
+import { Col, Input, Label, Row, Spinner } from "reactstrap";
 import { Link } from "react-router-dom";
 import { getBlogs } from "helpers/laravel_helper";
 import { BLOG_STATUS_META } from "common/models/blog.model";
 import { NETWORKS, Network, POST_CHANNEL_META, POST_FORMATS } from "common/models/editorialPost.model";
 import { FormatTable, crossCheck } from "common/models/editorialWorkflow.model";
 import XSelect, { XOption } from "../XSelect";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Planeamento da publicação (também o ecrã de criar): tema, data e hora, onde publicar
@@ -91,7 +93,7 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
     const pillarOptions: XOption[] = [{ value: "", label: "Sem pilar" }, ...[...pillars, ...(v.pillar && !pillars.includes(v.pillar) ? [v.pillar] : [])].map((p) => ({ value: p, label: p }))];
     const chip = (active: boolean, onClick: () => void, icon: string, label: string, id: string) => (
         <button type="button" id={id} role="checkbox" aria-checked={active} disabled={disabled} onClick={onClick}
-            className={`btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 ${active ? "btn-soft-primary border-primary" : "btn-outline-secondary"}`}>
+            className={`btn btn-sm rounded-pill d-inline-flex align-items-center gap-1 btn-outline-primary ${active ? "active" : ""}`}>
             <i className={active ? "ri-checkbox-fill" : "ri-checkbox-blank-line"} /><i className={icon} />{label}
         </button>
     );
@@ -127,7 +129,7 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
                     <Label for="pp-blog" className="mb-1">Artigo do blog</Label>
                     <XSelect id="pp-blog" options={blogs} value={v.blog_id} onChange={(x) => set({ blog_id: x })} disabled={disabled} />
                     <div className="form-text">O estado no calendário vem do artigo (rascunho, em revisão, agendado, publicado).</div>
-                    {!v.blog_id && writeArticleUrl && <Link to={writeArticleUrl} className="btn btn-sm btn-soft-info mt-2"><i className="ri-quill-pen-line me-1" />Escrever artigo</Link>}
+                    {!v.blog_id && writeArticleUrl && <Link to={writeArticleUrl} className="btn btn-sm btn-outline-primary mt-2"><i className="ri-quill-pen-line me-1" />Escrever artigo</Link>}
                 </div>
             ) : (
                 <>
@@ -176,10 +178,11 @@ export default function PlanningSection({ companyId, values: v, onChange, creati
 
             {!disabled && (
                 <div className="d-flex gap-2 justify-content-end mt-3">
-                    {onDelete && <Button color="soft-danger" className="me-auto" disabled={busy} onClick={onDelete}><i className="ri-delete-bin-line me-1" />Apagar</Button>}
-                    <Button color="primary" type="submit" disabled={busy || !v.title.trim() || check.errors.length > 0}>
+                    {onDelete && <ActionsMenu className="me-auto" label="Mais ações da publicação" disabled={busy} items={[{ label: "Apagar publicação", icon: "ri-delete-bin-line", danger: true, onClick: onDelete }]} />}
+                    <ReasonButton color="primary" type="submit" disabled={busy}
+                        reason={!v.title.trim() ? "Indique o título." : check.errors.length > 0 ? "Corrija os formatos assinalados." : null}>
                         {busy ? <Spinner size="sm" /> : creating ? "Criar publicação" : "Guardar planeamento"}
-                    </Button>
+                    </ReasonButton>
                 </div>
             )}
         </form>

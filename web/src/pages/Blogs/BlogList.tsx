@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import Pagination from "Components/Common/Pagination";
+import PageHeader from "Components/Common/PageHeader";
 import { getBlogs, getBrandProfile } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, BLOG_STATUS_ORDER, BlogStatus, IBlogListItem, blogImage, fmtDateTime } from "common/models/blog.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
@@ -59,20 +60,12 @@ const BlogList = () => {
             <ToastContainer />
             <div className="page-content">
                 <Container fluid>
-                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                        <div>
-                            <h4 className="mb-1">Blog</h4>
-                            <p className="text-muted mb-0">Artigos do site: rascunho, revisão, aprovação e publicação.</p>
-                        </div>
-                        <div className="d-flex gap-2">
-                            <Link to="/brand-profile" className="btn btn-soft-secondary">
-                                <i className="ri-user-voice-line me-1" />Perfil da Marca
-                            </Link>
-                            <Link to="/blogs/create" className="btn btn-success">
-                                <i className="ri-add-line me-1" />Novo artigo
-                            </Link>
-                        </div>
-                    </div>
+                    <PageHeader title="Blogs" breadcrumbs={[{ label: "Marketing" }]}
+                        description="Artigos do site: rascunho, revisão, aprovação e publicação."
+                        actions={<>
+                            <Link to="/brand-profile" className="btn btn-outline-primary"><i className="ri-user-voice-line me-1" />Perfil da Marca</Link>
+                            <Link to="/blogs/create" className="btn btn-primary"><i className="ri-add-line me-1" />Novo artigo</Link>
+                        </>} />
 
                     {profileEmpty && (
                         <div className="alert alert-info d-flex flex-wrap align-items-center gap-2" role="alert">
@@ -80,7 +73,7 @@ const BlogList = () => {
                             <div className="flex-grow-1">
                                 O perfil da marca ainda não está preenchido. Com ele, os rascunhos feitos com IA seguem o tom e o público da marca.
                             </div>
-                            <Link to="/brand-profile" className="btn btn-sm btn-info">Preencher o Perfil da Marca</Link>
+                            <Link to="/brand-profile" className="btn btn-sm btn-outline-primary">Preencher o Perfil da Marca</Link>
                         </div>
                     )}
 
@@ -90,7 +83,7 @@ const BlogList = () => {
                             <div className="flex-grow-1">
                                 {inReview === 1 ? "Há 1 artigo à espera da sua aprovação." : `Há ${inReview} artigos à espera da sua aprovação.`}
                             </div>
-                            <button type="button" className="btn btn-sm btn-warning" onClick={() => { setStatus("in_review"); setPage(1); }}>Ver</button>
+                            <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => { setStatus("in_review"); setPage(1); }}>Ver</button>
                         </div>
                     )}
 
@@ -98,12 +91,12 @@ const BlogList = () => {
                         <CardBody>
                             <Row className="g-2 mb-3 align-items-center">
                                 <Col md="auto">
-                                    <div className="d-flex flex-wrap gap-1">
-                                        <button type="button" className={`btn btn-sm ${status === "" ? "btn-primary" : "btn-light"}`} onClick={() => { setStatus(""); setPage(1); }}>
+                                    <div className="xp-seg" role="tablist" aria-label="Estado">
+                                        <button type="button" role="tab" aria-selected={status === ""} className={status === "" ? "on" : ""} onClick={() => { setStatus(""); setPage(1); }}>
                                             Todos <span className="ms-1 opacity-75">{total}</span>
                                         </button>
                                         {BLOG_STATUS_ORDER.map((s) => (
-                                            <button key={s} type="button" className={`btn btn-sm ${status === s ? "btn-primary" : "btn-light"}`} onClick={() => { setStatus(s); setPage(1); }}>
+                                            <button key={s} type="button" role="tab" aria-selected={status === s} className={status === s ? "on" : ""} onClick={() => { setStatus(s); setPage(1); }}>
                                                 {BLOG_STATUS_META[s].label} <span className="ms-1 opacity-75">{Number(counts[s] ?? 0)}</span>
                                             </button>
                                         ))}

@@ -24,10 +24,10 @@ function renderPreviewHtml(rawHtml: string, typed: Record<string, string>, label
         const v = (typed[key] ?? "").trim();
         if (labels.has(key)) {
             if (v) return `<span style="background:#d1fae5;color:#065f46;padding:1px 5px;border-radius:4px">${escHtml(v)}</span>`;
-            return `<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px">${escHtml(labels.get(key) || key)} — por preencher</span>`;
+            return `<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px">${escHtml(labels.get(key) || key)}: por preencher</span>`;
         }
         if (v) return `<span style="background:#dbeafe;color:#1e40af;padding:1px 5px;border-radius:4px">${escHtml(v)}</span>`;
-        return `<span style="background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:4px">{{${escHtml(key)}}} — não reconhecida</span>`;
+        return `<span style="background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:4px">{{${escHtml(key)}}}: não reconhecida</span>`;
     });
 }
 
@@ -130,7 +130,7 @@ function DocumentTemplatesBox({ companyId, carId }: { companyId: number; carId: 
                             <div className="fw-medium">{t.name}</div>
                             <button
                                 type="button"
-                                className="btn btn-primary btn-sm flex-shrink-0"
+                                className="btn btn-outline-primary btn-sm flex-shrink-0"
                                 onClick={() => openPreview(t)}
                                 disabled={generatingId === t.id}
                             >
@@ -151,10 +151,10 @@ function DocumentTemplatesBox({ companyId, carId }: { companyId: number; carId: 
                         à direita. Cada coluna com scroll próprio. */}
                     <div className="d-flex flex-column-reverse flex-lg-row" style={{ height: "100%" }}>
                         {/* ESQUERDA — documento (preview em tempo real). */}
-                        <div className="flex-grow-1 p-3 p-lg-4" style={{ overflowY: "auto", background: "#eef0f3" }}>
+                        <div className="flex-grow-1 p-3 p-lg-4" style={{ overflowY: "auto", background: "var(--vz-tertiary-bg)" }}>
                             <div className="alert alert-info py-2 px-3 fs-13 mb-3">
                                 <i className="ri-information-line me-1" />
-                                Pré-visualização aproximada (confirma os dados). O <strong>.docx</strong> descarregado mantém a formatação exata do Word.
+                                Pré-visualização aproximada (confirme os dados). O <strong>.docx</strong> descarregado mantém a formatação exata do Word.
                             </div>
                             <div
                                 className="border rounded bg-white p-4 mx-auto shadow-sm"
@@ -173,7 +173,7 @@ function DocumentTemplatesBox({ companyId, carId }: { companyId: number; carId: 
                             {preview && preview.empties.length > 0 && (
                                 <div className="mb-4">
                                     <div className="fw-semibold fs-14 mb-1"><i className="ri-edit-line me-1 text-warning" />Por preencher</div>
-                                    <p className="text-muted fs-13 mb-3">Campos do sistema sem dado nesta venda. Só para este documento — não grava na ficha.</p>
+                                    <p className="text-muted fs-13 mb-3">Campos do sistema sem dado nesta venda. Só para este documento, não grava na ficha.</p>
                                     <div className="d-flex flex-column gap-2">
                                         {preview.empties.map((e) => (
                                             <div key={e.key}>
@@ -194,7 +194,7 @@ function DocumentTemplatesBox({ companyId, carId }: { companyId: number; carId: 
                             {preview && preview.unknowns.length > 0 && (
                                 <div className="mb-4">
                                     <div className="fw-semibold fs-14 mb-1"><i className="ri-error-warning-line me-1 text-danger" />Variáveis personalizadas (não reconhecidas)</div>
-                                    <p className="text-muted fs-13 mb-3">Estas variáveis não existem no sistema. Se são campos teus, preenche-os aqui (só para este documento). Se foi engano (ex.: escreveste mal <code>{"{{cliente_nome}}"}</code>), corrige no teu .docx.</p>
+                                    <p className="text-muted fs-13 mb-3">Estas variáveis não existem no sistema. Se são campos seus, preencha-os aqui (só para este documento). Se foi engano (ex.: escreveu mal <code>{"{{cliente_nome}}"}</code>), corrija no seu .docx.</p>
                                     <div className="d-flex flex-column gap-2">
                                         {preview.unknowns.map((k) => (
                                             <div key={k}>
@@ -338,19 +338,19 @@ function SatisfactionLinkBox({ companyId, carId }: { companyId: number; carId: n
                 <>
                     <div className="d-flex align-items-center gap-2">
                         <Input type="text" readOnly value={box.link} onFocus={(e) => e.currentTarget.select()} style={{ flex: 1, minWidth: 0 }} />
-                        <button type="button" className="btn btn-light btn-sm flex-shrink-0" onClick={copy}><i className="ri-file-copy-line me-1" />Copiar</button>
-                        <a className="btn btn-soft-primary btn-sm flex-shrink-0" href={box.link} target="_blank" rel="noopener noreferrer"><i className="ri-external-link-line me-1" />Abrir</a>
+                        <button type="button" className="btn btn-outline-primary btn-sm flex-shrink-0" onClick={copy}><i className="ri-file-copy-line me-1" />Copiar</button>
+                        <a className="btn btn-outline-primary btn-sm flex-shrink-0" href={box.link} target="_blank" rel="noopener noreferrer"><i className="ri-external-link-line me-1" />Abrir</a>
                     </div>
 
                     <div className="d-flex align-items-center gap-2 flex-wrap mt-2">
                         <span className="text-muted fs-13">Enviar ao cliente:</span>
                         {box.phone && (
-                            <button type="button" className="btn btn-success btn-sm" onClick={sendWhatsApp}>
+                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={sendWhatsApp}>
                                 <i className="ri-whatsapp-line me-1" />WhatsApp
                             </button>
                         )}
                         {box.email && (
-                            <button type="button" className="btn btn-primary btn-sm" onClick={sendEmail} disabled={emailState === "sending"}>
+                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={sendEmail} disabled={emailState === "sending"}>
                                 {emailState === "sending"
                                     ? <><Spinner size="sm" className="me-1" /> A enviar…</>
                                     : <><i className="ri-mail-send-line me-1" />{emailState === "sent" ? "Email enviado" : "Enviar por email"}</>}
@@ -420,8 +420,8 @@ export default function CarDocumentsCard({ companyId, carId, hasCustomer, hasSal
     return (
         <Card className="mt-3">
             <CardHeader>
-                <h5 className="mb-0">Documentos</h5>
-                <small className="text-muted">Tudo o que é imprimível desta viatura — a ficha A4 e os documentos de venda, preenchidos com os dados da viatura, cliente e empresa.</small>
+                <h5 className="card-title mb-0">Documentos</h5>
+                <small className="text-muted">Tudo o que é imprimível desta viatura: a ficha A4 e os documentos de venda, preenchidos com os dados da viatura, cliente e empresa.</small>
             </CardHeader>
             <CardBody>
                 {hasSale && <SatisfactionLinkBox companyId={companyId} carId={carId} />}
@@ -429,7 +429,7 @@ export default function CarDocumentsCard({ companyId, carId, hasCustomer, hasSal
                 {!hasCustomer && (
                     <div className="alert alert-warning py-2 px-3 fs-13 mb-3">
                         <i className="ri-information-line me-1" />
-                        Esta venda ainda não tem cliente associado — os campos do cliente vêm vazios. Liga um cliente na secção "Venda concluída" (na Ficha) para os pré-preencher.
+                        Esta venda ainda não tem cliente associado, por isso os campos do cliente vêm vazios. Ligue um cliente na secção "Venda concluída" (na Ficha) para os pré-preencher.
                     </div>
                 )}
 

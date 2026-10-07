@@ -1,11 +1,13 @@
 // React
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Badge, Button, Card, CardBody, CardHeader, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Row, Spinner, UncontrolledDropdown } from 'reactstrap';
+import { Badge, Button, Card, CardBody, Col, Container, Row, Spinner } from 'reactstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
+import PageHeader from 'Components/Common/PageHeader';
+import ActionsMenu from 'Components/Common/ActionsMenu';
 import CompanyUsersModal from './components/CompanyUsersModal';
 import CompanyEditModal from './components/CompanyEditModal';
 import CompanyRequestsModal from './components/CompanyRequestsModal';
@@ -161,22 +163,16 @@ const CompanyList = () => {
                     const name = c.fiscal_name || `Empresa #${c.id}`;
                     return (
                         <div className="d-flex align-items-center gap-2">
-                            <button type="button" className="btn btn-sm btn-soft-primary text-nowrap" onClick={() => setEditing(c.id)}>
+                            <Button size="sm" color="outline-primary" className="text-nowrap" onClick={() => setEditing(c.id)}>
                                 <i className="ri-pencil-line align-bottom me-1" />Editar
-                            </button>
-                            <UncontrolledDropdown>
-                                <DropdownToggle tag="button" type="button" className="btn btn-sm btn-soft-secondary" aria-label={`Mais ações: ${name}`} disabled={busy}>
-                                    {busy ? <Spinner size="sm" /> : <i className="ri-more-fill align-bottom" />}
-                                </DropdownToggle>
-                                <DropdownMenu end container="body">
-                                    <DropdownItem onClick={() => setUsersFor({ id: c.id, name })}><i className="ri-team-line align-bottom me-2" />Utilizadores</DropdownItem>
-                                    <DropdownItem tag={Link} to={`/companies/${c.id}`}><i className="ri-eye-line align-bottom me-2" />Ver perfil</DropdownItem>
-                                    <DropdownItem divider />
-                                    <DropdownItem className={active ? "text-danger" : "text-success"} onClick={() => toggleStatus(c)}>
-                                        <i className={(active ? "ri-forbid-2-line" : "ri-check-line") + " align-bottom me-2"} />{active ? "Inativar" : "Ativar"}
-                                    </DropdownItem>
-                                </DropdownMenu>
-                            </UncontrolledDropdown>
+                            </Button>
+                            <ActionsMenu size="sm" label={`Mais ações: ${name}`} disabled={busy} items={[
+                                { label: "Utilizadores", icon: "ri-team-line", onClick: () => setUsersFor({ id: c.id, name }) },
+                                { label: "Ver perfil", icon: "ri-eye-line", to: `/companies/${c.id}` },
+                                { label: "Ativar", icon: "ri-check-line", onClick: () => toggleStatus(c), hidden: active },
+                                { label: "Inativar", icon: "ri-forbid-2-line", danger: true, onClick: () => toggleStatus(c), hidden: !active },
+                            ]} />
+                            {busy && <Spinner size="sm" />}
                         </div>
                     );
                 }
@@ -189,23 +185,20 @@ const CompanyList = () => {
         <React.Fragment>
             <div className="page-content">
                 <Container fluid>
+                    <PageHeader title="Empresas" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
+                        description="As empresas da plataforma, as agências e os pedidos de nova empresa gerida."
+                        actions={<>
+                            <Button color="outline-primary" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
+                                <i className="ri-inbox-line align-bottom me-1" />Pedidos{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
+                            </Button>
+                            <Button color="primary" onClick={() => setEditing(null)}>
+                                <i className="ri-add-line align-bottom me-1" />Nova empresa
+                            </Button>
+                        </>} />
                     <Row>
                         <Col lg={12}>
                             <Card id="companyList">
-                                <CardHeader className="border-0">
-                                    <div className="d-flex flex-wrap align-items-center gap-2">
-                                        <h5 className="card-title mb-0 flex-grow-1">Empresas</h5>
-                                        <div className="d-flex gap-2 flex-wrap">
-                                            <Button color="soft-warning" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
-                                                <i className="ri-inbox-line align-bottom me-1" />Pedidos{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
-                                            </Button>
-                                            <Button color="success" onClick={() => setEditing(null)}>
-                                                <i className="ri-add-line align-bottom me-1" />Nova empresa
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardBody className="pt-0">
+                                <CardBody>
                                     <div>
                                         <XTanStackTable
                                             columns={(columns || [])}
@@ -215,7 +208,7 @@ const CompanyList = () => {
                                             onPaginationChange={setPagination}
                                             pageCount={meta?.last_page ?? 0}
                                             total={meta?.total}
-                                            SearchPlaceholder='Pesquisar...'
+                                            SearchPlaceholder='Pesquisar'
                                             isBordered={true}
                                             theadClass="text-muted table-light"
                                         />

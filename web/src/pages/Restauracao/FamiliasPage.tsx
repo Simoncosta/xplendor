@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { Card, Container, Row, Col, Spinner, Collapse } from "reactstrap";
+import { Button, Card, Container, Row, Col, Spinner, Collapse } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import PageHeader from "Components/Common/PageHeader";
 import { getPingwinFamilies, syncPingwinFamilies } from "helpers/laravel_helper";
 import { PingwinFamilyNode } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -123,7 +124,7 @@ export default function FamiliasPage() {
         setSyncing(true);
         try {
             await syncPingwinFamilies(companyId);
-            toast.info("A sincronizar famílias… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar famílias… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar as famílias.");
         } finally {
@@ -135,19 +136,16 @@ export default function FamiliasPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Famílias</h4>
-                                <small className="text-muted">Árvore de famílias de artigos do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                            </button>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Famílias"
+                    breadcrumbs={[{ label: "Cadastros" }]}
+                    description={<>Árvore de famílias de artigos do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                        </Button>
+                    }
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -160,12 +158,12 @@ export default function FamiliasPage() {
                                     </h5>
                                     {tree.length > 0 && (
                                         <div className="d-flex gap-2">
-                                            <button className="btn btn-sm btn-soft-secondary" onClick={expandAll}>
+                                            <Button size="sm" color="outline-primary" onClick={expandAll}>
                                                 <i className="ri-node-tree me-1" /> Expandir tudo
-                                            </button>
-                                            <button className="btn btn-sm btn-soft-secondary" onClick={collapseAll}>
+                                            </Button>
+                                            <Button size="sm" color="outline-primary" onClick={collapseAll}>
                                                 <i className="ri-contract-up-down-line me-1" /> Colapsar tudo
-                                            </button>
+                                            </Button>
                                         </div>
                                     )}
                                 </div>
@@ -177,7 +175,7 @@ export default function FamiliasPage() {
                                 <div style={{ overflowX: "auto" }}>
                                     {!loading && tree.length === 0 ? (
                                         <div className="text-center text-muted py-4">
-                                            Sem famílias. Usa <strong>“Sincronizar”</strong> para as obter do PingWin.
+                                            Sem famílias. Use <strong>“Sincronizar”</strong> para as obter do PingWin.
                                         </div>
                                     ) : (
                                         <div style={{ minWidth: "fit-content" }}>

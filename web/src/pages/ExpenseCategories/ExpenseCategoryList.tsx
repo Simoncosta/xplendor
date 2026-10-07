@@ -2,10 +2,11 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Card, CardBody, Col, Container, Row, Table } from "reactstrap";
+import { Button, Card, CardBody, Container, Table } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 // Components
-import XButton from "Components/Common/XButton";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import ExpenseCategoryFormModal from "./components/ExpenseCategoryFormModal";
 import ImportSuggestedModal from "./components/ImportSuggestedModal";
 // Redux
@@ -94,7 +95,7 @@ const ExpenseCategoryList = () => {
             return;
         }
 
-        const confirmed = await confirmDelete(`Vais eliminar a categoria "${c.name}". Esta ação não pode ser anulada.`);
+        const confirmed = await confirmDelete(`Vai eliminar a categoria "${c.name}". Esta ação não pode ser anulada.`);
         if (!confirmed) return;
 
         try {
@@ -122,27 +123,22 @@ const ExpenseCategoryList = () => {
             <td className="text-end">
                 {c.locked ? (
                     <span className="text-muted" title="Categoria das faturas da XPLENDOR: não pode ser alterada nem apagada."><i className="ri-lock-line" /></span>
-                ) : !isArchivedRow ? (
-                    <>
-                        <button className="btn btn-sm btn-soft-primary me-1" onClick={() => openEdit(c)} title="Editar">
-                            <i className="ri-pencil-line" />
-                        </button>
-                        <button className="btn btn-sm btn-soft-secondary me-1" onClick={() => setArchived(c, true)} title="Arquivar">
-                            <i className="ri-archive-line" />
-                        </button>
-                        <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(c)} title="Eliminar">
-                            <i className="ri-delete-bin-line" />
-                        </button>
-                    </>
                 ) : (
-                    <>
-                        <button className="btn btn-sm btn-soft-success me-1" onClick={() => setArchived(c, false)} title="Restaurar">
-                            <i className="ri-inbox-unarchive-line" />
-                        </button>
-                        <button className="btn btn-sm btn-soft-danger" onClick={() => handleDelete(c)} title="Eliminar">
-                            <i className="ri-delete-bin-line" />
-                        </button>
-                    </>
+                    <div className="d-inline-flex gap-1">
+                        {isArchivedRow ? (
+                            <Button size="sm" color="outline-primary" onClick={() => setArchived(c, false)} title="Restaurar" aria-label={`Restaurar: ${c.name}`}>
+                                <i className="ri-inbox-unarchive-line" />
+                            </Button>
+                        ) : (
+                            <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}>
+                                <i className="ri-pencil-line" />
+                            </Button>
+                        )}
+                        <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
+                            { label: "Arquivar", icon: "ri-archive-line", hidden: isArchivedRow, onClick: () => void setArchived(c, true) },
+                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
+                        ]} />
+                    </div>
                 )}
             </td>
         </tr>
@@ -153,22 +149,12 @@ const ExpenseCategoryList = () => {
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
-                    <Row className="g-2 mb-3 align-items-center">
-                        <Col>
-                            <h5 className="mb-0">Categorias de Despesa</h5>
-                            <small className="text-muted">Classificam as despesas de viatura (para agrupar nos gráficos).</small>
-                        </Col>
-                        {!isEmpty && (
-                            <Col xs="auto" className="d-flex gap-2">
-                                <XButton variant="secondary" outline type="button" icon={<i className="ri-download-2-line" />} onClick={() => setImportOpen(true)}>
-                                    Importar sugeridas
-                                </XButton>
-                                <XButton variant="success" type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                                    Nova categoria
-                                </XButton>
-                            </Col>
-                        )}
-                    </Row>
+                    <PageHeader title="Categorias de Despesa" breadcrumbs={[{ label: "Finanças" }]}
+                        description="Classificam as despesas de viatura (para agrupar nos gráficos)."
+                        actions={!isEmpty ? (<>
+                            <Button color="outline-primary" onClick={() => setImportOpen(true)}><i className="ri-download-2-line me-1" />Importar sugeridas</Button>
+                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova categoria</Button>
+                        </>) : undefined} />
 
                     {/* Estado vazio — importar sugeridas ou criar do zero. */}
                     {isEmpty && (
@@ -177,17 +163,13 @@ const ExpenseCategoryList = () => {
                                 <div className="mb-3">
                                     <i className="ri-price-tag-3-line display-5 text-muted" />
                                 </div>
-                                <h5 className="mb-1">Ainda não tens categorias</h5>
+                                <h5 className="mb-1">Ainda não tem categorias</h5>
                                 <p className="text-muted mb-4">
-                                    Importa as 14 categorias sugeridas para começar depressa, ou cria as tuas de raiz.
+                                    Importe as 14 categorias sugeridas para começar depressa, ou crie as suas de raiz.
                                 </p>
-                                <div className="d-flex justify-content-center gap-2">
-                                    <XButton variant="success" type="button" icon={<i className="ri-download-2-line" />} onClick={() => setImportOpen(true)}>
-                                        Importar categorias sugeridas
-                                    </XButton>
-                                    <XButton variant="light" type="button" icon={<i className="ri-add-line" />} onClick={openCreate}>
-                                        Criar do zero
-                                    </XButton>
+                                <div className="d-flex justify-content-center flex-wrap gap-2">
+                                    <Button color="outline-primary" onClick={openCreate}><i className="ri-add-line me-1" />Criar do zero</Button>
+                                    <Button color="primary" onClick={() => setImportOpen(true)}><i className="ri-download-2-line me-1" />Importar categorias sugeridas</Button>
                                 </div>
                             </CardBody>
                         </Card>
@@ -210,7 +192,7 @@ const ExpenseCategoryList = () => {
                                                 <tr><td colSpan={2} className="text-center text-muted py-4">A carregar…</td></tr>
                                             )}
                                             {!loading && active.length === 0 && (
-                                                <tr><td colSpan={2} className="text-center text-muted py-4">Sem categorias activas.</td></tr>
+                                                <tr><td colSpan={2} className="text-center text-muted py-4">Sem categorias ativas.</td></tr>
                                             )}
                                             {!loading && active.map((c) => renderRow(c, false))}
                                         </tbody>

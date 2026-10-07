@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { approvePost, commentOnPost, movePostStage, requestPostChanges } from "helpers/laravel_helper";
 import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt, mediaSrc } from "common/models/editorialWorkflow.model";
 import XSelect from "../XSelect";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Aprovação: as passagens de etapa permitidas, aprovar ou pedir alterações (uma decisão
@@ -67,7 +68,7 @@ export default function ApprovalSection({ companyId, data, onChanged, beforeMove
                         <Button color="success" size="sm" disabled={busy} onClick={() => void run(() => approvePost(companyId, p.id), "Publicação aprovada.")}>
                             <i className="ri-check-double-line me-1" />Aprovar a versão {current?.number}
                         </Button>
-                        <Button color="warning" size="sm" disabled={busy} onClick={() => setChangesOpen((o) => !o)}><i className="ri-chat-1-line me-1" />Pedir alterações</Button>
+                        <Button color="outline-primary" size="sm" disabled={busy} onClick={() => setChangesOpen((o) => !o)}><i className="ri-chat-1-line me-1" />Pedir alterações</Button>
                     </>
                 )}
                 {backward.length > 0 && (
@@ -88,10 +89,10 @@ export default function ApprovalSection({ companyId, data, onChanged, beforeMove
                 <div className="border rounded p-2 mb-3">
                     <Label className="fs-13 mb-1" for="pa-changes">O que deve ser alterado?</Label>
                     <textarea id="pa-changes" className="form-control mb-2" rows={3} maxLength={2000} value={changesMsg} onChange={(e) => setChangesMsg(e.target.value)} />
-                    <Button color="warning" size="sm" disabled={busy || !changesMsg.trim()}
+                    <ReasonButton color="primary" size="sm" disabled={busy} reason={!changesMsg.trim() ? "Escreva o que deve ser alterado." : null}
                         onClick={async () => { if (await run(() => requestPostChanges(companyId, p.id, changesMsg.trim()), "Alterações pedidas.")) { setChangesOpen(false); setChangesMsg(""); } }}>
                         Devolver à produção
-                    </Button>
+                    </ReasonButton>
                 </div>
             )}
             {p.changes_requested_at && p.stage === "production" && data.reviews[0]?.decision === "changes_requested" && (
@@ -130,7 +131,7 @@ export default function ApprovalSection({ companyId, data, onChanged, beforeMove
                             <h6 className="mb-2">Versões</h6>
                             <div className="vstack gap-1 mb-3">
                                 {data.versions.map((v) => (
-                                    <button key={v.id} type="button" className={`btn btn-sm text-start border ${viewVersion === v.number ? "btn-light" : "btn-ghost-secondary"}`}
+                                    <button key={v.id} type="button" className={`btn btn-sm text-start border btn-outline-primary ${viewVersion === v.number ? "active" : ""}`}
                                         onClick={() => setViewVersion(viewVersion === v.number ? null : v.number)}>
                                         <strong>Versão {v.number}</strong> · {VERSION_STATUS_LABEL[v.status]}<span className="text-muted fs-12"> · {v.author ?? ""} · {fmtDateTimePt(v.sent_at ?? v.created_at)}</span>
                                     </button>

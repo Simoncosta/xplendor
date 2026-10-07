@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Container, Row, Col, Spinner } from "reactstrap";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import {
     getAdminTicketsSummary, getAdminTicketsQuotePipeline, getAdminQuotesSummary,
     getAdminCompanies, getAdminPlatformSummary,
@@ -34,7 +34,7 @@ function Stat({ icon, color, label, value, sub, to }: { icon: string; color: str
             </div>
             <div className="flex-grow-1">
                 <p className="text-muted mb-1 fs-13">{label}</p>
-                <h4 className="mb-0">{value}</h4>
+                <div className="fs-18 fw-semibold">{value}</div>
                 {sub && <small className="text-muted">{sub}</small>}
             </div>
         </CardBody></Card>
@@ -89,7 +89,7 @@ export default function RootDashboard() {
     if (loading) {
         return (
             <div className="page-content"><Container fluid>
-                <BreadCrumb title="Painel de gestão" pageTitle="Xplendor" />
+                <PageHeader title="Painel de gestão" breadcrumbs={[{ label: "Dashboards" }]} />
                 <div className="text-center py-5"><Spinner color="primary" /></div>
             </Container></div>
         );
@@ -98,7 +98,7 @@ export default function RootDashboard() {
     return (
         <div className="page-content">
             <Container fluid>
-                <BreadCrumb title="Painel de gestão" pageTitle="Xplendor" />
+                <PageHeader title="Painel de gestão" breadcrumbs={[{ label: "Dashboards" }]} description="O trabalho pendente e a escala da plataforma." />
 
                 {/* ───────── ZONA 1 — TRABALHO PENDENTE ───────── */}
                 <div className="d-flex align-items-center gap-2 mb-2">
@@ -145,7 +145,7 @@ export default function RootDashboard() {
                 )}
 
                 {/* Nota clara: valores € são pipeline comercial, não faturação das empresas. */}
-                <p className="text-muted fs-12 mb-4"><i className="ri-information-line me-1" />Os valores em € são <strong>pipeline comercial</strong> (orçamentos/pedidos) — não são faturação das empresas.</p>
+                <p className="text-muted fs-12 mb-4"><i className="ri-information-line me-1" />Os valores em € são <strong>pipeline comercial</strong> (orçamentos e pedidos), não são faturação das empresas.</p>
 
                 {/* ───────── ZONA 2 — ESCALA ───────── */}
                 <div className="d-flex align-items-center gap-2 mb-2">

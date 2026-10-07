@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import PageHeader from "Components/Common/PageHeader";
 import { ToastContainer, toast } from "react-toastify";
 import Select from "react-select";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
@@ -167,31 +168,14 @@ const AdminTicketsList = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row className="mb-3 align-items-center">
-                    <Col>
-                        <h4 className="mb-1"><i className="ri-shield-star-line text-primary me-2" />Administração do suporte</h4>
-                        <p className="text-muted mb-0">Tickets de todas as empresas. Por tratar primeiro.</p>
-                    </Col>
-                    <Col xs="auto">
-                        {/* Toggle Lista / Kanban */}
-                        <div className="btn-group" role="group" aria-label="Vista">
-                            <button
-                                type="button"
-                                className={"btn btn-sm " + (view === "list" ? "btn-primary" : "btn-outline-primary")}
-                                onClick={() => setView("list")}
-                            >
-                                <i className="ri-list-check me-1" />Lista
-                            </button>
-                            <button
-                                type="button"
-                                className={"btn btn-sm " + (view === "kanban" ? "btn-primary" : "btn-outline-primary")}
-                                onClick={() => setView("kanban")}
-                            >
-                                <i className="ri-layout-grid-line me-1" />Kanban
-                            </button>
+                <PageHeader title="Tickets" breadcrumbs={[{ label: "Administração" }]}
+                    description="Tickets de todas as empresas. Por tratar primeiro."
+                    actions={
+                        <div className="xp-seg" role="tablist" aria-label="Vista">
+                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
+                            <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
                         </div>
-                    </Col>
-                </Row>
+                    } />
 
                 {typeChangeModal}
 
@@ -349,7 +333,7 @@ const AdminTicketsList = () => {
                                     <span className="text-muted"> · Total: <strong className="text-body">{formatEuro(selTotalAmount)}</strong> · {selTotalHours}h (sem IVA)</span>
                                 </div>
                                 <div className="d-flex gap-2">
-                                    <button className="btn btn-soft-secondary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
+                                    <button className="btn btn-outline-primary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
                                     <button className="btn btn-primary btn-sm" onClick={() => setResumoOpen(true)}><i className="ri-file-list-3-line me-1" />Gerar resumo</button>
                                 </div>
                             </CardBody>
@@ -369,21 +353,21 @@ const AdminTicketsList = () => {
                                         <tr key={t.id}>
                                             <td>{t.title}</td>
                                             <td>{t.company_name ?? `#${t.company_id}`}</td>
-                                            <td className="text-end">{t.estimated_hours ?? "—"}</td>
-                                            <td className="text-end">{t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}</td>
+                                            <td className="text-end">{t.estimated_hours ?? "Sem horas"}</td>
+                                            <td className="text-end">{t.quoted_amount != null ? formatEuro(t.quoted_amount) : "Sem valor"}</td>
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot><tr className="fw-semibold"><td colSpan={2}>Total ({selectedTickets.length}) — sem IVA</td><td className="text-end">{selTotalHours}h</td><td className="text-end">{formatEuro(selTotalAmount)}</td></tr></tfoot>
+                                <tfoot><tr className="fw-semibold"><td colSpan={2}>Total ({selectedTickets.length}), sem IVA</td><td className="text-end">{selTotalHours}h</td><td className="text-end">{formatEuro(selTotalAmount)}</td></tr></tfoot>
                             </table>
                         </div>
                     </ModalBody>
                     <ModalFooter>
                         <button className="btn btn-light" onClick={() => setResumoOpen(false)}>Fechar</button>
-                        <button className="btn btn-soft-primary" onClick={() => {
-                            const lines = selectedTickets.map((t) => `• ${t.title} (${t.company_name ?? "#" + t.company_id}) — ${t.estimated_hours ?? "?"}h — ${t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}`);
+                        <button className="btn btn-primary" onClick={() => {
+                            const lines = selectedTickets.map((t) => `• ${t.title} (${t.company_name ?? "#" + t.company_id}): ${t.estimated_hours ?? "?"}h, ${t.quoted_amount != null ? formatEuro(t.quoted_amount) : "sem valor"}`);
                             const text = `Orçamentos selecionados (${selectedTickets.length}):\n${lines.join("\n")}\n\nTotal: ${formatEuro(selTotalAmount)} · ${selTotalHours}h (sem IVA)`;
-                            navigator.clipboard?.writeText(text).then(() => toast.success("Resumo copiado."), () => toast.info("Copia manualmente o resumo."));
+                            navigator.clipboard?.writeText(text).then(() => toast.success("Resumo copiado."), () => toast.info("Copie o resumo manualmente."));
                         }}><i className="ri-clipboard-line me-1" />Copiar</button>
                     </ModalFooter>
                 </Modal>

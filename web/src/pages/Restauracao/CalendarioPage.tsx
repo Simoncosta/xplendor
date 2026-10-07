@@ -4,8 +4,8 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import ptLocale from "@fullcalendar/core/locales/pt";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import XSelect from "../Editorial/XSelect";
 import { getPingwinCalendar } from "helpers/laravel_helper";
 import { PingwinCalendarDay, PingwinCalendarResponse } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -80,37 +80,29 @@ export default function CalendarioPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <h4 className="mb-sm-0">Calendário de faturação</h4>
-                            <div className="d-flex align-items-center gap-2">
-                                {loading && <Spinner size="sm" />}
-                                {/* Filtro por loja — default "Todas as lojas" (somadas). react-select (padrão do sistema). */}
-                                <div style={{ minWidth: 220 }}>
-                                    <Select
-                                        styles={reactSelectTheme}
-                                        menuPortalTarget={document.body}
-                                        options={locationOptions}
-                                        value={locationOptions.find((o) => o.value === locationId) ?? locationOptions[0]}
-                                        onChange={(o: any) => setLocationId(o?.value ?? "")}
-                                        isSearchable
-                                        placeholder="Todas as lojas"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Calendário de faturação"
+                    breadcrumbs={[{ label: "Restauração" }]}
+                    description="Faturação (c/IVA), pessoas que reservaram e ticket médio por dia. Só leitura: os dias sem dados sincronizados ficam vazios e o ticket médio só aparece com faturação e reservas."
+                    actions={<>
+                        {loading && <Spinner size="sm" />}
+                        {/* Filtro por loja: por omissão "Todas as lojas" (somadas). */}
+                        <XSelect
+                            ariaLabel="Loja"
+                            width={220}
+                            options={locationOptions}
+                            value={locationId}
+                            onChange={(v) => setLocationId(v)}
+                            searchable
+                            placeholder="Todas as lojas"
+                        />
+                    </>}
+                />
 
                 <Row className="pb-5 mb-5">
                     <Col xs={12}>
                         <Card>
                             <CardBody>
-                                <p className="text-muted fs-13 mb-3">
-                                    Faturação (c/IVA), pessoas que reservaram e ticket médio por dia. Só leitura — dias sem
-                                    dados sincronizados ficam vazios; o ticket médio só aparece com faturação e reservas.
-                                </p>
                                 <FullCalendar
                                     plugins={[dayGridPlugin]}
                                     initialView="dayGridMonth"

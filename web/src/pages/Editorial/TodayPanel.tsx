@@ -58,7 +58,7 @@ export default function TodayPanel({ companyId, reloadKey, onOpen }: Props) {
                             {overdueIds.has(p.id) && <Badge color="danger" className="fw-normal">Atrasada</Badge>}
                             {networkLine(p) && <span className="text-muted fs-12">{networkLine(p)}</span>}
                             {p.can_mark && (
-                                <Button size="sm" color="soft-success" className="ms-auto py-0" onClick={() => onOpen(p.id, true)}>
+                                <Button size="sm" color="success" className="ms-auto py-0" onClick={() => onOpen(p.id, true)}>
                                     <i className="ri-checkbox-circle-line me-1" />Marcar como publicada
                                 </Button>
                             )}

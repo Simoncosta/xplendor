@@ -4,10 +4,12 @@ import {
     Modal, ModalHeader, ModalBody, ModalFooter, Nav, NavItem, NavLink, TabContent, TabPane, Badge,
 } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "../Editorial/XSelect";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import {
     getPingwinDocuments, syncPingwinDocuments,
@@ -108,7 +110,7 @@ const ChildBlock = ({ title, rows, showAccount = false }: { title: string; rows?
                 <span className="text-muted fs-12">{linked.length}/{list.length} vinculados</span>
             </div>
             {linked.length === 0 ? (
-                <div className="text-muted fs-12">— nenhum vinculado —</div>
+                <div className="text-muted fs-12">Nenhum vinculado.</div>
             ) : (
                 <div className="d-flex flex-wrap gap-1">
                     {linked.map((r, i) => (
@@ -216,7 +218,7 @@ export default function DocumentosPage() {
         setSyncing(true);
         try {
             await syncPingwinDocuments(companyId);
-            toast.info("A sincronizar documentos… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar documentos… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar os documentos.");
         } finally {
@@ -230,7 +232,7 @@ export default function DocumentosPage() {
         setSyncingRich(true);
         try {
             await syncPingwinDocumentsRich(companyId);
-            toast.info("A obter a config completa dos documentos… vais ser notificado no sino quando terminar.");
+            toast.info("A obter a config completa dos documentos… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar o detalhe dos documentos.");
         } finally {
@@ -354,12 +356,16 @@ export default function DocumentosPage() {
                         return (
                             <Col md={6} key={i} className="mb-2 d-flex align-items-center gap-2">
                                 <span style={{ minWidth: 130 }} className="fs-13">{r.description || id}</span>
-                                <Input type="select" bsSize="sm" value={st} onChange={(e) => setDaState((p) => ({ ...p, [id]: e.target.value }))}>
-                                    {st === "both" && <option value="both">Outro (crédito+débito)</option>}
-                                    <option value="none">Não usada</option>
-                                    <option value="credit">Crédito</option>
-                                    <option value="debit">Débito</option>
-                                </Input>
+                                <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                                    <XSelect small ariaLabel={`Uso da conta ${r.description || id}`} value={st}
+                                        onChange={(v) => setDaState((p) => ({ ...p, [id]: v }))}
+                                        options={[
+                                            ...(st === "both" ? [{ value: "both", label: "Outro (crédito+débito)" }] : []),
+                                            { value: "none", label: "Não usada" },
+                                            { value: "credit", label: "Crédito" },
+                                            { value: "debit", label: "Débito" },
+                                        ]} />
+                                </div>
                             </Col>
                         );
                     })}
@@ -454,7 +460,7 @@ export default function DocumentosPage() {
                 if (status === "a_criar") { pollRef.current = setTimeout(() => pollCreateWrite(writeId), 1500); return; }
                 setCreating2(false);
                 if (status === "ok") {
-                    toast.success("Documento criado no PingWin. Abre-o em “Ver” para configurar as tabelas.");
+                    toast.success("Documento criado no PingWin. Abra-o em “Ver detalhe” para configurar as tabelas.");
                     setShowCreate(false);
                     fetchRows();
                 } else {
@@ -520,7 +526,7 @@ export default function DocumentosPage() {
     const emptyRow = (
         <div className="text-center text-muted py-4">
             {!search && !entityFilter
-                ? <>Sem documentos. Usa <strong>“Sincronizar”</strong> para os obter do PingWin.</>
+                ? <>Sem documentos. Use <strong>“Sincronizar lista”</strong> para os obter do PingWin.</>
                 : "Nenhum resultado para o filtro."}
         </div>
     );
@@ -528,43 +534,47 @@ export default function DocumentosPage() {
     const filterFields = (
         <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Tipo de entidade</Label>
-            <Select
-                styles={reactSelectTheme}
-                menuPortalTarget={document.body}
+            <XSelect
+                ariaLabel="Tipo de entidade"
                 options={entityOptions}
-                value={entityOptions.find((o) => o.value === entityFilter) ?? entityOptions[0]}
-                onChange={(o: any) => setEntityFilter(o?.value ?? "")}
-                isSearchable
+                value={entityFilter}
+                onChange={(v) => setEntityFilter(v)}
+                searchable
                 placeholder="Todas as entidades"
             />
         </div>
+    );
+
+    // Ações raras/destrutivas da linha: "Anular" abre o modal de confirmação (D4).
+    const rowMenu = (d: PingwinDocumentConfig) => (
+        <ActionsMenu size="sm" label={`Mais ações: ${d.description || d.code}`} items={[
+            { label: "Anular", icon: "ri-forbid-2-line", danger: true, hidden: !!d.deleted, onClick: () => setVoidTarget(d) },
+        ]} />
     );
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Documentos</h4>
-                                <small className="text-muted">Tipos de documento do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar lista</>}
-                                </button>
-                                <button className="btn btn-soft-secondary" onClick={runSyncRich} disabled={syncingRich} title="Obter a config completa (maindataset, filhas, options) de cada documento">
-                                    {syncingRich ? <><Spinner size="sm" className="me-1" /> A obter detalhe…</> : <><i className="ri-stack-line me-1" /> Sincronizar detalhe</>}
-                                </button>
-                                <button className="btn btn-primary" onClick={openCreate} disabled={creating2}>
-                                    <i className="ri-add-line me-1" /> Novo documento
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Documentos"
+                    breadcrumbs={[{ label: "Cadastros" }]}
+                    description={<>Tipos de documento do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={<>
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar lista</>}
+                        </Button>
+                        <ActionsMenu label="Mais ações: Documentos" items={[
+                            {
+                                label: syncingRich ? "A obter detalhe…" : "Sincronizar detalhe", icon: "ri-stack-line", onClick: runSyncRich,
+                                disabledReason: syncingRich ? "A sincronização do detalhe já está a correr." : null,
+                            },
+                        ]} />
+                        <Button color="primary" onClick={openCreate} disabled={creating2}>
+                            <i className="ri-add-line me-1" /> Novo documento
+                        </Button>
+                    </>}
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -600,14 +610,10 @@ export default function DocumentosPage() {
                                                 Tipo fiscal: <span className="text-body">{d.fiscaltype_description || d.fiscaltype || "—"}</span>
                                             </div>
                                             <div className="d-flex gap-2 mt-2">
-                                                <button className="btn btn-sm btn-soft-secondary" onClick={() => openDetail(d.external_id)}>
+                                                <Button size="sm" color="outline-primary" onClick={() => openDetail(d.external_id)}>
                                                     <i className="ri-eye-line me-1" /> Ver detalhe
-                                                </button>
-                                                {!d.deleted && (
-                                                    <button className="btn btn-sm btn-soft-danger" onClick={() => setVoidTarget(d)}>
-                                                        <i className="ri-delete-bin-line me-1" /> Anular
-                                                    </button>
-                                                )}
+                                                </Button>
+                                                {rowMenu(d)}
                                             </div>
                                         </div>
                                     ))}
@@ -635,14 +641,10 @@ export default function DocumentosPage() {
                                                     <td>{d.fiscaltype_description || d.fiscaltype || "—"}</td>
                                                     <td className="text-center">
                                                         <div className="d-flex gap-1 justify-content-center">
-                                                            <button className="btn btn-sm btn-soft-secondary" onClick={() => openDetail(d.external_id)} title="Ver config completa">
+                                                            <Button size="sm" color="outline-primary" onClick={() => openDetail(d.external_id)} title="Ver config completa" aria-label={`Ver detalhe: ${d.description || d.code}`}>
                                                                 <i className="ri-eye-line" />
-                                                            </button>
-                                                            {!d.deleted && (
-                                                                <button className="btn btn-sm btn-soft-danger" onClick={() => setVoidTarget(d)} title="Anular">
-                                                                    <i className="ri-delete-bin-line" />
-                                                                </button>
-                                                            )}
+                                                            </Button>
+                                                            {rowMenu(d)}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -671,12 +673,12 @@ export default function DocumentosPage() {
             {/* Fase D0 — Detalhe RICO do documento (read-only), em tabs (como no PingWin). */}
             <Modal isOpen={detailOpen} toggle={() => setDetailOpen(false)} size="xl" scrollable>
                 <ModalHeader toggle={() => setDetailOpen(false)}>
-                    {detailDoc ? <>Documento {detailDoc.code} — {detailDoc.description}</> : "Detalhe do documento"}
+                    {detailDoc ? <>Documento {detailDoc.code}: {detailDoc.description}</> : "Detalhe do documento"}
                     {detailLoading && <Spinner size="sm" className="ms-2" />}
                 </ModalHeader>
                 <ModalBody>
                     {!detailDoc ? (
-                        <div className="text-muted py-3">{detailLoading ? "A carregar…" : "Sem dados. Corre “Sincronizar detalhe” primeiro."}</div>
+                        <div className="text-muted py-3">{detailLoading ? "A carregar…" : "Sem dados. Execute primeiro “Sincronizar detalhe” (no menu de ações da página)."}</div>
                     ) : (
                         <>
                             <Nav tabs className="mb-3">
@@ -692,7 +694,7 @@ export default function DocumentosPage() {
                                         <>
                                             <div className="d-flex justify-content-end mb-2">
                                                 {!detailDoc.deleted && (
-                                                    <Button size="sm" color="soft-primary" onClick={startEdit}>
+                                                    <Button size="sm" color="outline-primary" onClick={startEdit}>
                                                         <i className="ri-pencil-line me-1" /> Editar
                                                     </Button>
                                                 )}
@@ -728,16 +730,14 @@ export default function DocumentosPage() {
                                                     return (
                                                         <Col md={4} className="mb-2" key={s.field}>
                                                             <Label className="fs-12 text-muted">{s.label}</Label>
-                                                            <Input type="select" value={String(form[s.field] ?? "")} onChange={(e) => setField(s.field, e.target.value)}>
-                                                                <option value="">—</option>
-                                                                {opts.map((o, i) => (
-                                                                    <option key={i} value={String(o.id)}>{o.description || o.id}</option>
-                                                                ))}
-                                                                {/* valor atual fora das options (raro) mantém-se visível */}
-                                                                {form[s.field] && !opts.some((o) => String(o.id) === String(form[s.field])) && (
-                                                                    <option value={String(form[s.field])}>{String(form[s.field])}</option>
-                                                                )}
-                                                            </Input>
+                                                            <XSelect ariaLabel={s.label} value={String(form[s.field] ?? "")} onChange={(v) => setField(s.field, v)}
+                                                                options={[
+                                                                    { value: "", label: "Nenhum" },
+                                                                    ...opts.map((o) => ({ value: String(o.id), label: String(o.description || o.id) })),
+                                                                    /* valor atual fora das options (raro) mantém-se visível */
+                                                                    ...(form[s.field] && !opts.some((o) => String(o.id) === String(form[s.field]))
+                                                                        ? [{ value: String(form[s.field]), label: String(form[s.field]) }] : []),
+                                                                ]} />
                                                         </Col>
                                                     );
                                                 })}
@@ -745,16 +745,14 @@ export default function DocumentosPage() {
                                                 {DOC_DEFAULT_SELECTS.map((d) => {
                                                     const src: any[] = (detailDoc as any)?.[d.src] ?? [];
                                                     const rows = d.linkedOnly ? src.filter((r) => !(r.deleted === 1 || r.deleted === "1" || r.deleted === true)) : src;
-                                                    let options = rows.map((r) => ({ value: String(r[d.idKey] ?? ""), label: String(r.description || "").trim() || "— nenhum —" }));
-                                                    if (!options.some((o) => o.value === "")) options = [{ value: "", label: "— nenhum —" }, ...options];
+                                                    let options = rows.map((r) => ({ value: String(r[d.idKey] ?? ""), label: String(r.description || "").trim() || "Nenhum" }));
+                                                    if (!options.some((o) => o.value === "")) options = [{ value: "", label: "Nenhum" }, ...options];
                                                     const cur = String(form[d.field] ?? "");
                                                     if (cur && !options.some((o) => o.value === cur)) options = [...options, { value: cur, label: `${cur} (atual)` }];
                                                     return (
                                                         <Col md={4} className="mb-2" key={d.field}>
                                                             <Label className="fs-12 text-muted">{d.label}</Label>
-                                                            <Input type="select" value={cur} onChange={(e) => setField(d.field, e.target.value)}>
-                                                                {options.map((o, i) => <option key={i} value={o.value}>{o.label}</option>)}
-                                                            </Input>
+                                                            <XSelect ariaLabel={d.label} value={cur} onChange={(v) => setField(d.field, v)} options={options} />
                                                         </Col>
                                                     );
                                                 })}
@@ -788,7 +786,7 @@ export default function DocumentosPage() {
                                             <div className="alert alert-light border py-2 fs-12 mt-2">
                                                 <i className="ri-lock-line me-1" />Perfis de utilizador são read-only aqui (fatia própria).
                                             </div>
-                                            <ChildBlock title="Perfis de utilizador — read-only" rows={detailDoc.userrole_docconfig} />
+                                            <ChildBlock title="Perfis de utilizador (só leitura)" rows={detailDoc.userrole_docconfig} />
                                         </>
                                     ) : (
                                       <>
@@ -835,7 +833,7 @@ export default function DocumentosPage() {
                                         <>
                                             {renderEditableChild("docconfig_local", "Locais")}
                                             <div className="alert alert-light border py-2 fs-12 mt-2"><i className="ri-lock-line me-1" />Lojas (store_docconfig) e config adicional por loja são read-only aqui (fatia D2c).</div>
-                                            <ChildBlock title="Lojas (store_docconfig) — read-only" rows={detailDoc.store_docconfig} />
+                                            <ChildBlock title="Lojas (store_docconfig, só leitura)" rows={detailDoc.store_docconfig} />
                                         </>
                                     ) : (
                                         <>
@@ -874,7 +872,7 @@ export default function DocumentosPage() {
                 <ModalHeader toggle={() => !creating2 && setShowCreate(false)}>Novo documento</ModalHeader>
                 <ModalBody>
                     <div className="alert alert-info py-2 fs-13">
-                        Cria o documento com os campos principais. As 14 tabelas (contas, estados, condições, etc.) ficam no estado inicial — configuram-se depois em <strong>“Ver → Editar”</strong>.
+                        Crie o documento com os campos principais. As 14 tabelas (contas, estados, condições, etc.) ficam no estado inicial e configuram-se depois em <strong>“Ver detalhe → Editar”</strong>.
                     </div>
                     <Row>
                         <Col md={3} className="mb-2">
@@ -897,11 +895,9 @@ export default function DocumentosPage() {
                             return (
                                 <Col md={4} className="mb-2" key={s.field}>
                                     <Label className="fs-12 text-muted">{s.label}</Label>
-                                    <Input type="select" value={String(createForm[s.field] ?? "")}
-                                        onChange={(e) => setCreateForm((p) => ({ ...p, [s.field]: e.target.value }))}>
-                                        <option value="">—</option>
-                                        {opts.map((o, i) => <option key={i} value={String(o.id)}>{o.description || o.id}</option>)}
-                                    </Input>
+                                    <XSelect ariaLabel={s.label} value={String(createForm[s.field] ?? "")}
+                                        onChange={(v) => setCreateForm((p) => ({ ...p, [s.field]: v }))}
+                                        options={[{ value: "", label: "Nenhum" }, ...opts.map((o) => ({ value: String(o.id), label: String(o.description || o.id) }))]} />
                                 </Col>
                             );
                         })}
@@ -909,9 +905,9 @@ export default function DocumentosPage() {
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setShowCreate(false)} disabled={creating2}>Cancelar</Button>
-                    <Button color="primary" onClick={submitCreate} disabled={creating2 || !createForm.description?.trim()}>
+                    <ReasonButton color="primary" onClick={submitCreate} disabled={creating2} reason={!createForm.description?.trim() ? "Indique a descrição." : null}>
                         {creating2 ? <><Spinner size="sm" className="me-1" /> A criar…</> : "Criar documento"}
-                    </Button>
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
 

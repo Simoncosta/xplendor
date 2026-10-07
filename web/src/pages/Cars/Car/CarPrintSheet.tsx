@@ -53,9 +53,6 @@ const currency = (value: number) =>
         maximumFractionDigits: 0,
     }).format(value);
 
-const num = (value: number | null | undefined, suffix = "") =>
-    value == null || Number.isNaN(Number(value)) ? "—" : `${value}${suffix}`;
-
 const numFmt = (value: number | null | undefined, suffix = "") =>
     value == null || Number.isNaN(Number(value))
         ? "—"
@@ -607,13 +604,13 @@ export default function CarPrintSheet() {
                     <div className="print-toolbar-inner">
                         <button
                             type="button"
-                            className="btn btn-light"
+                            className="btn btn-outline-primary"
                             onClick={goBack}
                         >
                             <i className="ri-arrow-left-line me-1" /> Voltar
                         </button>
                         <div className="print-toolbar-hint">
-                            Pré-visualização da ficha para impressão. Clica <strong>Imprimir</strong> para escolher impressora ou guardar como PDF.
+                            Pré-visualização da ficha para impressão. Clique em <strong>Imprimir</strong> para escolher impressora ou guardar como PDF.
                         </div>
                         <button
                             type="button"

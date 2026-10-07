@@ -44,7 +44,7 @@ function openSearchFallback(searchUrl: string | null): void {
     const target = searchUrl ?? "https://www.standvirtual.com/";
     window.open(target, "_blank", "noopener,noreferrer");
     toast.info(
-        "Sem link directo para este anúncio. Abrimos uma pesquisa por viaturas similares no Standvirtual.",
+        "Sem link direto para este anúncio. Abrimos uma pesquisa por viaturas similares no Standvirtual.",
         { autoClose: 6000 }
     );
 }
@@ -69,7 +69,7 @@ export default function ComparablesList({
                     <tr>
                         <th scope="col">Anúncio</th>
                         <th scope="col" className="text-end">Preço</th>
-                        <th scope="col" className="text-end">vs o teu preço</th>
+                        <th scope="col" className="text-end">vs o seu preço</th>
                     </tr>
                 </thead>
                 <tbody>

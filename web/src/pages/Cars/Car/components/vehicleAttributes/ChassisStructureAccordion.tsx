@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import Select from "react-select";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { AccordionBody, AccordionHeader, AccordionItem, Col, Label, Row } from "reactstrap";
 import { useFormikContext } from "formik";
 import XInput from "Components/Common/XInput";
@@ -45,6 +46,8 @@ export default function ChassisStructureAccordion({ accordionId }: AccordionProp
                     <Col lg={2}>
                         <Label>Tipo de chassis</Label>
                         <Select
+                            styles={reactSelectTheme}
+                            menuPortalTarget={document.body}
                             isClearable
                             placeholder="Selecionar"
                             options={chassisTypeOptions}

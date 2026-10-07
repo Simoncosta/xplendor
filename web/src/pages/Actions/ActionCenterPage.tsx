@@ -7,6 +7,7 @@ import { getDecisionLabel } from "./components/DecisionBadge";
 import CarDecisionCard from "./components/CarDecisionCard";
 import { ActionCenterCarItem, AlertItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import PageHeader from "Components/Common/PageHeader";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
@@ -113,7 +114,7 @@ export default function ActionCenterPage() {
                 );
             } catch (err: any) {
                 if (!active) return;
-                setError(typeof err === "string" ? err : "Não foi possível carregar o Action Center.");
+                setError(typeof err === "string" ? err : "Não foi possível carregar as ações.");
                 setItems([]);
             } finally {
                 if (active) {
@@ -172,31 +173,26 @@ export default function ActionCenterPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
+                <PageHeader
+                    title="Ações"
+                    breadcrumbs={[{ label: "Comercial" }]}
+                    description="O que fazer agora, por carro: recomendações operacionais do motor, focadas na próxima ação."
+                    actions={
+                        <Button color="outline-primary" onClick={() => setRefreshKey((value) => value + 1)}>
+                            <i className="ri-refresh-line me-1" />Atualizar
+                        </Button>
+                    }
+                />
                 <Row className="mb-4">
                     <Col>
                         <section
                             style={{
-                                borderRadius: 24,
-                                padding: "24px 24px 20px",
+                                borderRadius: 16,
+                                padding: "16px 20px",
                                 background: "var(--vz-tertiary-bg)",
                                 border: "1px solid var(--vz-border-color)",
                             }}
                         >
-                            <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-4">
-                                <div>
-                                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                        Action Center
-                                    </p>
-                                    <h3 className="mb-2">O que fazer agora, por carro</h3>
-                                    <p className="text-muted mb-0 fs-14">
-                                        Recomendações operacionais do motor, sem gráficos e focadas na próxima ação.
-                                    </p>
-                                </div>
-                                <Button color="light" className="border" onClick={() => setRefreshKey((value) => value + 1)}>
-                                    Atualizar
-                                </Button>
-                            </div>
-
                             <div className="d-flex gap-2 flex-wrap">
                                 {summaryOrder.map((decision) => (
                                     <span key={decision} className="badge bg-light text-body px-3 py-2 fs-12">
@@ -280,7 +276,7 @@ export default function ActionCenterPage() {
                     <Row>
                         <Col>
                             <div className="alert alert-light border mb-0">
-                                Ainda não existem decisões acionáveis para mostrar. Corre o seeder demo ou aguarda sinais reais.
+                                Ainda não existem decisões acionáveis para mostrar. Aguarde por sinais reais das viaturas.
                             </div>
                         </Col>
                     </Row>
@@ -309,7 +305,7 @@ function resolveAlertBadgeClass(alert: AlertItem): string {
 function resolveAlertTypeLabel(type: AlertItem["type"]): string {
     return {
         urgent: "Urgente",
-        warning: "Warning",
+        warning: "Aviso",
         opportunity: "Oportunidade",
     }[type];
 }

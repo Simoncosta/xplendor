@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Spinner, Input, Label } from "reactstrap";
+import { Button, Card, CardBody, Col, Container, Row, Spinner, Input, Label } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
+import XSelect from "pages/Editorial/XSelect";
 import {
     ICompanyTask, CompanyTaskStatus, TASK_COLUMNS, TASK_STATUS_META,
 } from "common/models/companyTask.model";
@@ -82,7 +83,7 @@ const CompanyTaskDetails = () => {
 
     const saveSummary = async () => {
         if (!task) return;
-        if (!fTitle.trim()) { toast.error("Dá um título à tarefa."); return; }
+        if (!fTitle.trim()) { toast.error("Indique o título da tarefa."); return; }
         setSavingSummary(true);
         try {
             const r: any = await updateCompanyTask(companyId, task.id, {
@@ -140,10 +141,10 @@ const CompanyTaskDetails = () => {
         return (
             <div className="page-content">
                 <Container fluid>
-                    <BreadCrumb title="Detalhe da tarefa" pageTitle="Tarefas" pageLink="/tasks" />
+                    <PageHeader title="Tarefa" breadcrumbs={[{ label: "Equipa" }, { label: "Tarefas", to: "/tasks" }]} />
                     <Card><CardBody>
                         <p className="text-muted mb-2">Tarefa não encontrada.</p>
-                        <button className="btn btn-primary" onClick={() => navigate("/tasks")}>Voltar ao quadro</button>
+                        <Button color="primary" onClick={() => navigate("/tasks")}>Voltar ao quadro</Button>
                     </CardBody></Card>
                 </Container>
             </div>
@@ -156,7 +157,8 @@ const CompanyTaskDetails = () => {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Detalhe da tarefa" pageTitle="Tarefas" pageLink="/tasks" />
+                <PageHeader title={task.title} crumbLabel="Tarefa" breadcrumbs={[{ label: "Equipa" }, { label: "Tarefas", to: "/tasks" }]}
+                    description={<>Tarefa #{task.id}{task.creator_name ? `, criada por ${task.creator_name}` : ""}.</>} />
                 <Row>
                     {/* Barra lateral — estilo TimeTracking do template (sem timer/anexos). */}
                     <Col xxl={3}>
@@ -166,13 +168,8 @@ const CompanyTaskDetails = () => {
                             <CardBody>
                                 <div className="mb-4">
                                     <Label className="form-label">Coluna</Label>
-                                    <select
-                                        className="form-control"
-                                        value={task.status}
-                                        onChange={(e) => changeStatus(e.target.value as CompanyTaskStatus)}
-                                    >
-                                        {TASK_COLUMNS.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                                    </select>
+                                    <XSelect<CompanyTaskStatus> ariaLabel="Coluna" value={task.status} onChange={(v) => changeStatus(v)}
+                                        options={TASK_COLUMNS.map((c) => ({ value: c.key, label: c.label }))} />
                                 </div>
                                 <div className="table-card">
                                     <table className="table mb-0">
@@ -205,7 +202,7 @@ const CompanyTaskDetails = () => {
                         <div className="card mb-3">
                             <div className="card-body">
                                 <div className="d-flex mb-3">
-                                    <h6 className="card-title mb-0 flex-grow-1">Responsável</h6>
+                                    <h5 className="card-title mb-0 flex-grow-1">Responsável</h5>
                                 </div>
                                 <ul className="list-unstyled vstack gap-3 mb-3">
                                     <li>
@@ -223,14 +220,8 @@ const CompanyTaskDetails = () => {
                                         </div>
                                     </li>
                                 </ul>
-                                <select
-                                    className="form-control"
-                                    value={task.assignee_user_id ?? ""}
-                                    onChange={(e) => changeAssignee(e.target.value)}
-                                >
-                                    <option value="">Sem responsável</option>
-                                    {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
+                                <XSelect ariaLabel="Responsável" value={task.assignee_user_id ? String(task.assignee_user_id) : ""} onChange={(v) => changeAssignee(v)}
+                                    options={[{ value: "", label: "Sem responsável" }, ...users.map((u) => ({ value: String(u.id), label: u.name }))]} />
                             </div>
                         </div>
                     </Col>
@@ -254,9 +245,9 @@ const CompanyTaskDetails = () => {
                                     />
                                 </div>
                                 <div className="text-end">
-                                    <button className="btn btn-primary" onClick={saveSummary} disabled={savingSummary}>
-                                        {savingSummary ? <><Spinner size="sm" className="me-1" /> A guardar…</> : "Guardar"}
-                                    </button>
+                                    <Button color="primary" onClick={saveSummary} disabled={savingSummary}>
+                                        {savingSummary ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-save-line me-1" />Guardar</>}
+                                    </Button>
                                 </div>
                             </CardBody>
                         </Card>

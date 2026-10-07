@@ -4,8 +4,10 @@ import {
     Modal, ModalHeader, ModalBody, ModalFooter,
 } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import XSelect from "../Editorial/XSelect";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
 import RestFilterBar from "Components/Common/RestFilterBar";
@@ -296,7 +298,7 @@ export default function CondicoesPagamentoPage() {
         setSyncing(true);
         try {
             await syncPingwinPaymentConditions(companyId);
-            toast.info("A sincronizar condições de pagamento… vais ser notificado no sino quando terminar.");
+            toast.info("A sincronizar condições de pagamento… será notificado no sino quando terminar.");
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível sincronizar as condições de pagamento.");
         } finally {
@@ -307,7 +309,7 @@ export default function CondicoesPagamentoPage() {
     const emptyRow = (
         <div className="text-center text-muted py-4">
             {!search && !activeFilter
-                ? <>Sem condições de pagamento. Usa <strong>“Sincronizar”</strong> para as obter do PingWin.</>
+                ? <>Sem condições de pagamento. Use <strong>“Sincronizar”</strong> para as obter do PingWin.</>
                 : "Nenhum resultado para o filtro."}
         </div>
     );
@@ -315,40 +317,43 @@ export default function CondicoesPagamentoPage() {
     const filterFields = (
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
-            <Select
-                styles={reactSelectTheme}
-                menuPortalTarget={document.body}
+            <XSelect
+                ariaLabel="Estado"
                 options={activeOptions}
-                value={activeOptions.find((o) => o.value === activeFilter) ?? activeOptions[0]}
-                onChange={(o: any) => setActiveFilter(o?.value ?? "")}
-                isSearchable={false}
+                value={activeFilter}
+                onChange={(v) => setActiveFilter(v)}
+                searchable={false}
                 placeholder="Todos"
             />
         </div>
+    );
+
+    const rowActions = (c: PingwinPaymentCondition) => (
+        <>
+            <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar ${c.description || c.code}`}><i className="ri-pencil-line" /></Button>
+            <ActionsMenu size="sm" label={`Mais ações: ${c.description || c.code}`} items={[
+                { label: "Anular", icon: "ri-forbid-2-line", danger: true, onClick: () => setVoidTarget(c) },
+            ]} />
+        </>
     );
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <Row>
-                    <Col xs={12}>
-                        <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                            <div>
-                                <h4 className="mb-sm-0">Condições de Pagamento</h4>
-                                <small className="text-muted">Condições de pagamento do PingWin (só leitura). Última sincronização: {fmtDateTime(lastSynced)}</small>
-                            </div>
-                            <div className="d-flex gap-2">
-                                <button className="btn btn-soft-primary" onClick={runSync} disabled={syncing}>
-                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                                </button>
-                                <button className="btn btn-primary" onClick={openNew} disabled={creating}>
-                                    <i className="ri-add-line me-1" /> Nova condição
-                                </button>
-                            </div>
-                        </div>
-                    </Col>
-                </Row>
+                <PageHeader
+                    title="Condições de Pagamento"
+                    breadcrumbs={[{ label: "Cadastros" }]}
+                    description={<>Condições de pagamento do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
+                    actions={<>
+                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                        </Button>
+                        <Button color="primary" onClick={openNew} disabled={creating}>
+                            <i className="ri-add-line me-1" /> Nova condição
+                        </Button>
+                    </>}
+                />
 
                 <Row>
                     <Col xs={12}>
@@ -380,10 +385,7 @@ export default function CondicoesPagamentoPage() {
                                                 </div>
                                                 {c.is_active
                                                     ? (
-                                                        <div className="d-flex gap-1 flex-shrink-0">
-                                                            <button className="btn btn-sm btn-soft-secondary" onClick={() => openEdit(c)} title="Editar"><i className="ri-pencil-line" /></button>
-                                                            <button className="btn btn-sm btn-soft-danger" onClick={() => setVoidTarget(c)} title="Anular"><i className="ri-delete-bin-line" /></button>
-                                                        </div>
+                                                        <div className="d-flex gap-1 flex-shrink-0">{rowActions(c)}</div>
                                                     )
                                                     : <span className="badge bg-secondary-subtle text-secondary flex-shrink-0">Inativo</span>}
                                             </div>
@@ -427,14 +429,7 @@ export default function CondicoesPagamentoPage() {
                                                     </td>
                                                     <td className="text-center">
                                                         {c.is_active && (
-                                                            <div className="d-flex gap-1 justify-content-center">
-                                                                <button className="btn btn-sm btn-soft-secondary" onClick={() => openEdit(c)} title="Editar">
-                                                                    <i className="ri-pencil-line" />
-                                                                </button>
-                                                                <button className="btn btn-sm btn-soft-danger" onClick={() => setVoidTarget(c)} title="Anular">
-                                                                    <i className="ri-delete-bin-line" />
-                                                                </button>
-                                                            </div>
+                                                            <div className="d-flex gap-1 justify-content-center">{rowActions(c)}</div>
                                                         )}
                                                     </td>
                                                 </tr>
@@ -509,14 +504,14 @@ export default function CondicoesPagamentoPage() {
                                 <button type="button" className="btn btn-sm btn-link text-muted p-0" onClick={() => setDocSearch("")}>limpar</button>
                             )}
                             <div className="ms-auto d-flex gap-1">
-                                <button type="button" className="btn btn-sm btn-soft-secondary" onClick={() => setVisibleChecked(true)}
-                                    disabled={visibleDocIds.length === 0} title="Marcar os documentos visíveis">
+                                <ReasonButton type="button" size="sm" color="outline-primary" onClick={() => setVisibleChecked(true)}
+                                    reason={visibleDocIds.length === 0 ? "Não há documentos visíveis." : null} title="Marcar os documentos visíveis">
                                     Marcar visíveis
-                                </button>
-                                <button type="button" className="btn btn-sm btn-soft-secondary" onClick={() => setVisibleChecked(false)}
-                                    disabled={visibleDocIds.length === 0} title="Desmarcar os documentos visíveis">
+                                </ReasonButton>
+                                <ReasonButton type="button" size="sm" color="outline-primary" onClick={() => setVisibleChecked(false)}
+                                    reason={visibleDocIds.length === 0 ? "Não há documentos visíveis." : null} title="Desmarcar os documentos visíveis">
                                     Desmarcar visíveis
-                                </button>
+                                </ReasonButton>
                             </div>
                         </div>
                         <div style={{ maxHeight: 320, overflowY: "auto", border: "1px solid var(--vz-border-color)", borderRadius: 8, padding: "8px 12px" }}>
@@ -549,11 +544,12 @@ export default function CondicoesPagamentoPage() {
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setShowNew(false)} disabled={creating}>Cancelar</Button>
-                    <Button color="primary" onClick={submitForm} disabled={creating || docsLoading || !fDesc.trim()}>
+                    <ReasonButton color="primary" onClick={submitForm} disabled={creating}
+                        reason={docsLoading ? "A carregar os documentos." : !fDesc.trim() ? "Indique a descrição." : null}>
                         {creating
                             ? <><Spinner size="sm" className="me-1" /> A gravar…</>
                             : (editingId ? "Guardar alterações" : "Criar condição")}
-                    </Button>
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
 

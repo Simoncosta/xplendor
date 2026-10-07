@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormikProvider, useFormik } from "formik";
 import CreatableSelect from "react-select/creatable";
-import { Badge, Card, CardBody, CardHeader, Col, Container, Input, InputGroup, InputGroupText, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
+import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, InputGroup, InputGroupText, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import XInputTextareaQuill from "Components/Common/XInputTextareaQuill";
 import {
@@ -12,6 +12,11 @@ import { BLOG_STATUS_META, IBlogAiResult, IBlogPost, blogImage, fmtDateTime, has
 import BlogSeoPanel from "./BlogSeoPanel";
 import BlogAiModal from "./BlogAiModal";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { confirmAction } from "helpers/swal";
+import { reactSelectTheme } from "helpers/reactSelectStyles";
+import PageHeader from "Components/Common/PageHeader";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
 
 /**
  * Criar e editar um artigo do blog. Conteúdo (o HTML é limpo no servidor ao gravar e ao
@@ -194,7 +199,9 @@ const BlogEditor = () => {
     };
 
     const onDelete = async () => {
-        if (!blog || !window.confirm("Apagar este artigo? Esta ação não pode ser desfeita.")) return;
+        if (!blog) return;
+        const ok = await confirmAction({ title: "Apagar este artigo?", text: "Esta ação não pode ser desfeita.", confirmText: "Apagar", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             await deleteBlog(companyId, blog.id);
             toast.success("Artigo apagado.");
@@ -204,9 +211,23 @@ const BlogEditor = () => {
         }
     };
 
+    const onBackToDraft = async () => {
+        const ok = await confirmAction({
+            title: status === "published" ? "Retirar o artigo do site?" : "Cancelar o agendamento?",
+            text: status === "published" ? "O artigo sai do site e volta a rascunho." : "O artigo deixa de estar agendado e volta a rascunho.",
+            confirmText: status === "published" ? "Retirar do site" : "Cancelar agendamento",
+            cancelText: "Voltar",
+            icon: "warning",
+            confirmVariant: "danger",
+        });
+        if (ok) await act((bid) => blogBackToDraft(companyId, bid), "Artigo devolvido a rascunho.");
+    };
+
     const onRemoveBanner = async () => {
         if (bannerFile) { setBannerFile(null); setBannerPreview(null); return; }
         if (!blog) return;
+        const ok = await confirmAction({ title: "Remover o banner?", text: "A imagem deixa de aparecer no artigo e na partilha nas redes.", confirmText: "Remover", icon: "warning", confirmVariant: "danger" });
+        if (!ok) return;
         try {
             const r: any = await deleteBlogBanner(companyId, blog.id);
             setBlog(r.data);
@@ -215,9 +236,9 @@ const BlogEditor = () => {
         }
     };
 
-    const applyAi = (res: IBlogAiResult) => {
+    const applyAi = async (res: IBlogAiResult) => {
         const hasText = v.content.replace(/<[^>]+>/g, "").trim().length > 0;
-        if (hasText && !window.confirm("Substituir o texto atual pelo rascunho da IA?")) return;
+        if (hasText && !(await confirmAction({ title: "Substituir o texto atual pelo rascunho da IA?", confirmText: "Substituir", icon: "question" }))) return;
         formik.setValues({
             ...v,
             title: res.title || v.title,
@@ -245,26 +266,36 @@ const BlogEditor = () => {
             <div className="page-content">
                 <Container fluid>
                     <FormikProvider value={formik}>
-                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                            <div className="d-flex align-items-center gap-2">
-                                <Link to="/blogs" className="btn btn-sm btn-light"><i className="ri-arrow-left-line" /></Link>
-                                <h4 className="mb-0">{isNew ? "Novo artigo" : "Editar artigo"}</h4>
-                                {!isNew && <Badge color={`${statusMeta.color}-subtle`} className={`text-${statusMeta.color} fs-12`}><i className={`${statusMeta.icon} me-1`} />{statusMeta.label}</Badge>}
-                                {dirty && <span className="small text-warning"><i className="ri-edit-circle-line me-1" />Alterações por guardar</span>}
-                            </div>
-                            <div className="d-flex gap-2">
+                        <PageHeader
+                            title={isNew ? "Novo artigo" : blog?.title || "Artigo"}
+                            crumbLabel={isNew ? "Novo" : "Editar"}
+                            breadcrumbs={[{ label: "Marketing" }, { label: "Blogs", to: "/blogs" }]}
+                            description={(!isNew || dirty) ? (
+                                <div className="d-flex flex-wrap align-items-center gap-2">
+                                    {!isNew && <Badge color={`${statusMeta.color}-subtle`} className={`text-${statusMeta.color} fs-12`}><i className={`${statusMeta.icon} me-1`} />{statusMeta.label}</Badge>}
+                                    {dirty && <span className="small text-warning"><i className="ri-edit-circle-line me-1" />Alterações por guardar</span>}
+                                </div>
+                            ) : undefined}
+                            actions={<>
                                 {canEdit && (
-                                    <button type="button" className="btn btn-soft-primary" onClick={() => setAiOpen(true)}>
+                                    <Button color="outline-primary" onClick={() => setAiOpen(true)}>
                                         <i className="ri-magic-line me-1" />Ajudar a escrever
-                                    </button>
+                                    </Button>
+                                )}
+                                {!isNew && (
+                                    <ActionsMenu label="Mais ações do artigo" disabled={acting || saving} items={[
+                                        { label: "Pré-visualizar", icon: "ri-eye-line", to: `/blogs/${id}/show` },
+                                        { label: status === "published" ? "Retirar do site" : "Cancelar agendamento", icon: "ri-arrow-go-back-line", danger: true, hidden: !perms?.can_unpublish, onClick: () => void onBackToDraft() },
+                                        { label: "Apagar artigo", icon: "ri-delete-bin-line", danger: true, hidden: !perms?.can_delete, onClick: () => void onDelete() },
+                                    ]} />
                                 )}
                                 {canEdit && (
-                                    <button type="button" className="btn btn-success" onClick={() => save()} disabled={saving || acting || (!dirty && !isNew)}>
+                                    <ReasonButton color="primary" onClick={() => save()} disabled={saving || acting} reason={!dirty && !isNew && !saving && !acting ? "Sem alterações por guardar." : null}>
                                         {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-line me-1" />}Guardar
-                                    </button>
+                                    </ReasonButton>
                                 )}
-                            </div>
-                        </div>
+                            </>}
+                        />
 
                         {blog?.review_note && status === "draft" && (
                             <div className="alert alert-warning">
@@ -308,7 +339,7 @@ const BlogEditor = () => {
                                                     onChange={(e) => { setSlugTouched(true); set("slug", e.target.value.toLowerCase().replace(/\s+/g, "-")); }}
                                                     onBlur={() => set("slug", slugify(v.slug))} />
                                                 {!slugLocked && canEdit && (
-                                                    <button type="button" className="btn btn-light" title="Gerar a partir do título" onClick={() => { set("slug", slugify(v.title)); setSlugTouched(false); }}>
+                                                    <button type="button" className="btn btn-outline-primary" title="Gerar a partir do título" aria-label="Gerar o endereço a partir do título" onClick={() => { set("slug", slugify(v.title)); setSlugTouched(false); }}>
                                                         <i className="ri-refresh-line" />
                                                     </button>
                                                 )}
@@ -327,11 +358,11 @@ const BlogEditor = () => {
                                         <div className="mb-3">
                                             <Label>Banner</Label>
                                             {bannerUrl && (
-                                                <div className="position-relative mb-2" style={{ maxWidth: 420 }}>
+                                                <div className="mb-2" style={{ maxWidth: 420 }}>
                                                     <img src={bannerUrl} alt="" className="img-fluid rounded border" />
                                                     {canEdit && (
-                                                        <button type="button" className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" onClick={onRemoveBanner} title="Remover">
-                                                            <i className="ri-delete-bin-line" />
+                                                        <button type="button" className="btn btn-link btn-sm px-0" onClick={onRemoveBanner}>
+                                                            <i className="ri-delete-bin-line me-1" />Remover banner
                                                         </button>
                                                     )}
                                                 </div>
@@ -374,6 +405,8 @@ const BlogEditor = () => {
                                                     value={v.tags.map((t) => ({ label: t, value: t }))}
                                                     onChange={(opts) => set("tags", (opts || []).map((o: any) => o.value))}
                                                     onCreateOption={(t) => { const n = t.trim(); if (n && !v.tags.includes(n)) set("tags", [...v.tags, n]); }}
+                                                    styles={reactSelectTheme}
+                                                    menuPortalTarget={document.body}
                                                 />
                                             </Col>
                                         </Row>
@@ -399,34 +432,22 @@ const BlogEditor = () => {
                                                 </ul>
                                                 <div className="d-grid gap-2">
                                                     {perms?.can_submit && (
-                                                        <button type="button" className="btn btn-warning" disabled={acting || saving} onClick={() => act((bid) => submitBlog(companyId, bid), "Artigo enviado para revisão.")}>
+                                                        <Button color="outline-primary" disabled={acting || saving} onClick={() => act((bid) => submitBlog(companyId, bid), "Artigo enviado para revisão.")}>
                                                             <i className="ri-eye-2-line me-1" />Enviar para revisão
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                     {perms?.can_approve && (
-                                                        <button type="button" className="btn btn-success" disabled={acting || saving} onClick={() => { setPublishMode("now"); setPublishAt(toLocalInput(new Date(Date.now() + 24 * 3600 * 1000))); setApproveOpen(true); }}>
+                                                        <Button color="success" disabled={acting || saving} onClick={() => { setPublishMode("now"); setPublishAt(toLocalInput(new Date(Date.now() + 24 * 3600 * 1000))); setApproveOpen(true); }}>
                                                             <i className="ri-check-double-line me-1" />Aprovar
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                     {perms?.can_request_changes && (
-                                                        <button type="button" className="btn btn-soft-warning" disabled={acting || saving} onClick={() => setChangesOpen(true)}>
+                                                        <Button color="outline-primary" disabled={acting || saving} onClick={() => setChangesOpen(true)}>
                                                             <i className="ri-chat-1-line me-1" />Pedir alterações
-                                                        </button>
-                                                    )}
-                                                    {perms?.can_unpublish && (
-                                                        <button type="button" className="btn btn-soft-secondary" disabled={acting || saving}
-                                                            onClick={() => window.confirm(status === "published" ? "Retirar o artigo do site e devolvê-lo a rascunho?" : "Cancelar o agendamento e devolver a rascunho?")
-                                                                && act((bid) => blogBackToDraft(companyId, bid), "Artigo devolvido a rascunho.")}>
-                                                            <i className="ri-arrow-go-back-line me-1" />{status === "published" ? "Retirar do site" : "Cancelar agendamento"}
-                                                        </button>
+                                                        </Button>
                                                     )}
                                                     {status === "in_review" && !perms?.is_approver && (
                                                         <p className="small text-muted mb-0">A aguardar a aprovação de um administrador da empresa.</p>
-                                                    )}
-                                                    {perms?.can_delete && (
-                                                        <button type="button" className="btn btn-link text-danger btn-sm" onClick={onDelete}>
-                                                            <i className="ri-delete-bin-line me-1" />Apagar artigo
-                                                        </button>
                                                     )}
                                                 </div>
                                             </>
@@ -465,10 +486,10 @@ const BlogEditor = () => {
                     <p className="small text-muted mt-2 mb-0">Os artigos agendados são publicados automaticamente (verificação a cada 5 minutos).</p>
                 </ModalBody>
                 <ModalFooter>
-                    <button type="button" className="btn btn-light" onClick={() => setApproveOpen(false)}>Cancelar</button>
-                    <button type="button" className="btn btn-success" disabled={acting} onClick={onApprove}>
+                    <Button color="light" onClick={() => setApproveOpen(false)}>Cancelar</Button>
+                    <Button color="success" disabled={acting} onClick={onApprove}>
                         {acting && <Spinner size="sm" className="me-1" />}{publishMode === "now" ? "Aprovar e publicar" : "Aprovar e agendar"}
-                    </button>
+                    </Button>
                 </ModalFooter>
             </Modal>
 
@@ -480,8 +501,10 @@ const BlogEditor = () => {
                     <p className="small text-muted mt-2 mb-0">O artigo volta a rascunho e a nota fica visível para quem o escreveu.</p>
                 </ModalBody>
                 <ModalFooter>
-                    <button type="button" className="btn btn-light" onClick={() => setChangesOpen(false)}>Cancelar</button>
-                    <button type="button" className="btn btn-warning" disabled={acting} onClick={onRequestChanges}>Devolver</button>
+                    <Button color="light" onClick={() => setChangesOpen(false)}>Cancelar</Button>
+                    <ReasonButton color="primary" disabled={acting} reason={!changesNote.trim() ? "Indique o que deve ser alterado." : null} onClick={onRequestChanges}>
+                        {acting && <Spinner size="sm" className="me-1" />}Devolver
+                    </ReasonButton>
                 </ModalFooter>
             </Modal>
 
@@ -492,7 +515,7 @@ const BlogEditor = () => {
                 blogId={blog?.id ?? null}
                 defaultKeyword={v.focus_keyword}
                 defaultTopic={fromTitle}
-                onApply={applyAi}
+                onApply={(res) => void applyAi(res)}
                 // Abre o Perfil da Marca num separador novo, para não perder o artigo em edição.
                 onOpenBrandProfile={() => window.open(`${process.env.PUBLIC_URL}/brand-profile`, "_blank", "noopener")}
             />

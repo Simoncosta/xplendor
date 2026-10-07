@@ -202,7 +202,7 @@ const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection(
                     </Row>
                     <div className="d-flex flex-wrap gap-2 mt-2">
                         {canEdit && <Button color="success" size="sm" disabled={status === "saving" || !dirty} onClick={() => void save()}>{status === "saving" ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />{frozen ? `Gravar (nasce a versão ${(current?.number ?? 0) + 1})` : "Gravar agora"}</>}</Button>}
-                        {data.permissions.can_produce && <Button color="soft-primary" size="sm" onClick={onCreative}><i className="ri-magic-line me-1" />Criativo sugerido</Button>}
+                        {data.permissions.can_produce && <Button color="outline-primary" size="sm" onClick={onCreative}><i className="ri-magic-line me-1" />Criativo sugerido</Button>}
                     </div>
                     <VersionMediaEditor companyId={companyId} postId={p.id} media={current?.media ?? { items: [], cover: null }}
                         validation={data.media_validation} mediaFormat={coverFormat} canEdit={canEdit}
