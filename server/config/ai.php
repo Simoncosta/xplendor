@@ -55,6 +55,7 @@ return [
         'brand_profile' => ['label' => 'Perfil da Marca', 'hint' => 'Sugerir perfil', 'default_effort' => 'low', 'max_tokens' => 3000],
         'car_description' => ['label' => 'Descrição de viaturas', 'hint' => 'Gerar descrição da viatura', 'default_effort' => 'low', 'max_tokens' => 800],
         'car_analysis' => ['label' => 'Análise de viaturas', 'hint' => 'Análise de mercado e público da viatura', 'default_effort' => 'medium', 'max_tokens' => 2500],
+        'family_categories' => ['label' => 'Categorias das famílias', 'hint' => 'Sugerir a categoria das famílias da restauração (as que as regras não reconhecem)', 'default_effort' => 'low', 'max_tokens' => 1500],
     ],
 
     // Instrução de sistema comum a TODA a IA (antes da instrução de cada função).

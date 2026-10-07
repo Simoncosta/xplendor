@@ -307,6 +307,11 @@ Route::prefix('v1')->group(function () {
                     Route::get('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'show']);
                     Route::get('/ocr/invoices/{invoiceId}/image', [CompanyInvoiceOcrController::class, 'image']);
                     Route::put('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'update']);
+                    // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
+                    Route::get('/integrations/pingwin/marketing-data', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'show']);
+                    Route::get('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'families']);
+                    Route::post('/integrations/pingwin/family-categories/ai-suggest', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'suggest'])->middleware('throttle:10,1');
+                    Route::put('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'confirm']);
                     // Cadastro manual de lojas (desbloqueia o "Stores" do relatório).
                     Route::get('/integrations/pingwin/locations', [CompanyPingwinController::class, 'listLocations']);
                     Route::post('/integrations/pingwin/locations', [CompanyPingwinController::class, 'storeLocation']);

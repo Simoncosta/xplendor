@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AlertService;
 use App\Services\PingwinItemHistoryService;
 use App\Services\PingwinItemSalesService;
+use App\Services\Restaurant\RestaurantDataQualityService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -102,6 +103,7 @@ class ScheduledRestaurantSyncJob implements ShouldQueue
                     [$from, $to] = PingwinItemSalesService::nightlyWindow($this->date);
                     app(PingwinItemSalesService::class)->sync($companyId, $from, $to);
                     app(PingwinItemHistoryService::class)->nightly($companyId);
+                    app(RestaurantDataQualityService::class)->compute($companyId);
                 } catch (\Throwable $e) {
                     $failed[$companyId] = trim(($failed[$companyId] ?? '') . ' vendas por artigo: ' . mb_substr($e->getMessage(), 0, 150));
                     Log::warning('[Scheduled Restaurant Sync] vendas por artigo falharam', [

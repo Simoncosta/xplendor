@@ -618,6 +618,15 @@ export const getEditorialIdeas = (companyId: number, id: number) => api.get(ED(c
 export const acceptEditorialIdea = (companyId: number, id: number, payload: { index: number; publish_date?: string; channel?: string }) =>
     api.create(ED(companyId) + `/ideas/${id}/accept`, payload, { headers: { "Content-Type": "application/json" } });
 
+// F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
+export const getPingwinMarketingData = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
+export const getFamilyCategories = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`);
+export const suggestFamilyCategories = (companyId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories/ai-suggest`, {});
+export const confirmFamilyCategories = (companyId: number, items: { family_pingwin_id: string; category: string }[]) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`, { items });
 export const getPingwinFamilies = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/families`);
 export const syncPingwinFamilies = (companyId: number) =>

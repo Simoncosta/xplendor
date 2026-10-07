@@ -308,6 +308,8 @@ class PingwinItemHistoryTest extends TestCase
             $this->callsOf('item_sales'));
         $this->assertSame([['catalog', true, false]], $this->callsOf('catalog'));
         $this->assertNotNull($this->baixa->fresh()->history_complete_at);
+        // F1-3: o retrato da qualidade dos dados fica atualizado na mesma noite.
+        $this->assertSame(1, \App\Models\RestaurantDataQuality::where('company_id', $this->company->id)->count());
     }
 
     public function test_nightly_job_without_sunday_skips_catalog_and_switch_off_skips_everything(): void

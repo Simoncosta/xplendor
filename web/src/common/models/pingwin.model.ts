@@ -305,3 +305,53 @@ export interface PingwinDashboard {
     avg_ticket: PingwinAvgTicket;
     occupancy: PingwinOccupancy;
 }
+
+/** F1-3: cartão "Dados para o marketing" (GET .../pingwin/marketing-data). */
+export interface MarketingDataLocation {
+    location_id: number;
+    name: string;
+    opened_on: string | null;
+    detected_start: string | null;
+    detected_is_month: boolean;
+    effective_start: string | null;
+    start_warning: boolean;
+    start_difference_days: number | null;
+    start_checked: boolean;
+    days_read: number;
+    oldest_day_read: string | null;
+    history_complete: boolean;
+    history_complete_at: string | null;
+}
+
+export interface MarketingData {
+    enabled: boolean;
+    last_read_at: string | null;
+    catalog: { sold: number; missing: number; coverage_pct: number | null };
+    days: { checked: number; ok: number; marked: number };
+    families: { total: number; unconfirmed: number; revenue_unconfirmed_pct: number | null };
+    locations: MarketingDataLocation[];
+    computed_at: string | null;
+    can_manage: boolean;
+}
+
+/** F1-3: categorias das famílias (GET .../pingwin/family-categories). */
+export interface FamilyCategoryRow {
+    family_pingwin_id: string;
+    family_path: string | null;
+    family: string;
+    net_cents_90d: number;
+    share_pct: number;
+    suggested_category: string | null;
+    suggested_by: "rules" | "ai" | null;
+    category: string | null;
+    confirmed_by: string | null;
+    confirmed_at: string | null;
+}
+
+export interface FamilyCategoriesData {
+    categories: { value: string; label: string }[];
+    families: FamilyCategoryRow[];
+    total_net_cents_90d: number;
+    pending: number;
+    can_manage: boolean;
+}

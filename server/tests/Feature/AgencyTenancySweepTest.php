@@ -131,6 +131,9 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/setup-links/{linkId}/extend',
         'POST api/v1/companies/{id}/setup-links/{linkId}/revoke',
         'GET api/v1/companies/{id}/integrations/meta/ad-accounts',
+        // F1-3 do marketing da restauração: confirmar as categorias das famílias e pedir sugestões à IA.
+        'POST api/v1/companies/{id}/integrations/pingwin/family-categories/ai-suggest',
+        'PUT api/v1/companies/{id}/integrations/pingwin/family-categories',
     ];
 
     private Company $agency;

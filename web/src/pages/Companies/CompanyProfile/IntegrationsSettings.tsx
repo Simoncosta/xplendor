@@ -10,6 +10,7 @@ import { connectGoogleAnalytics, disconnectGoogleAnalytics, getGa4Traffic, getPi
 import { ICarmineApi } from "common/models/carmine-api.model";
 import { PingwinStatus } from "common/models/pingwin.model";
 import PingwinConnectModal from "./PingwinConnectModal";
+import MarketingDataCard from "./MarketingDataCard";
 import CarmineConnectModal from "./CarmineConnectModal";
 import MetaDisconnectModal, { MetaDisconnectMode } from "./MetaDisconnectModal";
 import SocialConnectionCard from "./SocialConnectionCard";
@@ -712,6 +713,9 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                             note="Disponível para o ramo restauração (requer o módulo PingWin)."
                         />
                     )}
+
+                    {/* F1-3: dados para o marketing (vendas por artigo), com o PingWin ligado. */}
+                    {canUsePingwin && pingwinConnected && companyId ? <MarketingDataCard companyId={companyId} /> : null}
 
                     {/* ── CoverManager (reservas) — token AO NÍVEL DA EMPRESA ─── */}
                     {canUsePingwin ? (

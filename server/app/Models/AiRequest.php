@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Pedido à IA (fila, registo e contador do limite mensal POR MODO). Nunca grava no
  * destino: o resultado é proposto no ecrã e o humano decide o que usa.
- *  · mode:    a função (blog | brand_profile | creative | ideas | caption | car_description | car_analysis);
+ *  · mode:    a função (blog | brand_profile | creative | ideas | caption | car_description | car_analysis | family_categories);
  *  · variant: subtipo do modo (no blog: topic | from_post).
  * Guarda a versão do prompt, o fornecedor, o modelo e o esforço, os tokens (entrada, saída e
  * raciocínio), o custo calculado e o resultado do verificador do português de Portugal.
@@ -26,7 +26,8 @@ class AiRequest extends Model
     public const MODE_CAPTION = 'caption';
     public const MODE_CAR_DESCRIPTION = 'car_description';
     public const MODE_CAR_ANALYSIS = 'car_analysis';
-    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS];
+    public const MODE_FAMILY_CATEGORIES = 'family_categories';
+    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS, self::MODE_FAMILY_CATEGORIES];
 
     /** Subtipos do modo blog. */
     public const VARIANT_TOPIC = 'topic';

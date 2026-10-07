@@ -13,6 +13,7 @@ import EditorialPage from "pages/Editorial/EditorialPage";
 import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import ManagementRequestPage from "pages/ManagementRequest";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
+import CategoriasFamiliasPage from "pages/Restauracao/CategoriasFamiliasPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
 import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
@@ -150,6 +151,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
+    // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
+    { path: "/restauracao/categorias", component: <RequireModule module="pingwin"><CategoriasFamiliasPage /></RequireModule> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
     { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },
     { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },

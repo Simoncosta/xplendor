@@ -130,6 +130,16 @@ final class AiBlindTestCases
                 return ['input' => ['viatura' => "{$v['marca']} {$v['modelo']} ({$v['ano']})", 'dias em stock' => $v['dias'], 'visualizações' => $v['views'], 'contactos' => $v['leads']],
                     'prompt' => new AiPrompt((string) $p['system_prompt'], (string) $p['user_prompt'])];
             })(),
+            'family_categories' => (function () use ($index) {
+                $sets = [
+                    ['Família \\ Bebidas \\ Sangria', 'Família \\ Comidas \\ Pao', 'Família \\ Comidas \\ Sandwiches'],
+                    ['Família \\ Bebidas \\ Kombucha', 'Família \\ Comidas \\ Brunch', 'Família \\ Diversos \\ Refeições pessoal'],
+                    ['Família \\ Comidas \\ Sushi', 'Família \\ Bebidas \\ Sake', 'Família \\ Glovo \\ Menus'],
+                ];
+                $paths = $sets[$index % count($sets)];
+
+                return ['input' => ['famílias' => implode('; ', $paths)], 'prompt' => app(\App\Services\Restaurant\FamilyCategoryAiSuggester::class)->prompt($paths)];
+            })(),
             default => throw new \InvalidArgumentException("Função sem casos de teste: {$function}."),
         };
     }
