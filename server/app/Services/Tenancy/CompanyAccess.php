@@ -15,7 +15,7 @@ use App\Models\User;
  *  · own: a empresa do próprio utilizador (também em impersonation: o token é do alvo).
  *  · root: o dono da plataforma passa sempre, em qualquer empresa.
  *  · agency: a empresa do utilizador é agência e tem uma relação ATIVA com esta empresa
- *    (e, se o âmbito for "assigned", a pessoa está atribuída ao cliente).
+ *    (e, se o âmbito for "assigned", a pessoa é admin da agência ou está atribuída ao cliente).
  * Relação pendente, recusada, retirada, terminada ou expirada não dá acesso.
  * O resultado fica guardado no pedido atual (várias verificações, uma só consulta).
  */
@@ -67,6 +67,18 @@ class CompanyAccess
             && ! User::where('company_id', (int) $companyId)->where('role', 'admin')->whereNull('deactivated_at')->exists();
     }
 
+    /** Pode gravar os dados da empresa (a mesma regra do CompanyRequest): root, admin da própria, ou a agência nos dados básicos. */
+    public function canEditCompany(?User $user, int|string|null $companyId): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $user->role === 'root'
+            || ($user->role === 'admin' && (int) $user->company_id === (int) $companyId)
+            || $this->agencyEditsBasics($user, $companyId);
+    }
+
     /** A relação ativa da empresa (ou null). */
     public function management(int $managedCompanyId): ?CompanyManagement
     {
@@ -80,10 +92,22 @@ class CompanyAccess
             return [];
         }
 
+        return $this->visibleManaged((int) $user->company_id, $user);
+    }
+
+    /**
+     * Os clientes de uma agência que esta pessoa vê: todos para o root e para os admins da
+     * agência (são eles que atribuem); para os outros membros, os de "toda a equipa" e
+     * aqueles a que estão atribuídos. @return int[]
+     */
+    public function visibleManaged(int $agencyId, User $user): array
+    {
+        $everything = $user->role === 'root' || ($user->role === 'admin' && (int) $user->company_id === $agencyId);
+
         return CompanyManagement::active()
-            ->where('agency_company_id', $user->company_id)
-            ->where(fn ($q) => $q->where('team_scope', CompanyManagement::SCOPE_ALL)
-                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id)))
+            ->where('agency_company_id', $agencyId)
+            ->when(! $everything, fn ($q) => $q->where(fn ($w) => $w->where('team_scope', CompanyManagement::SCOPE_ALL)
+                ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id))))
             ->pluck('managed_company_id')->map(fn ($id) => (int) $id)->all();
     }
 
@@ -101,7 +125,9 @@ class CompanyAccess
             return false;
         }
 
+        // Os admins da agência veem sempre todos os clientes (são eles que atribuem).
         return $m->team_scope !== CompanyManagement::SCOPE_ASSIGNED
+            || $user->role === 'admin'
             || $m->members()->where('user_id', $user->id)->exists();
     }
 

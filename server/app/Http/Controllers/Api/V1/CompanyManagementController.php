@@ -43,6 +43,9 @@ class CompanyManagementController extends Controller
             'can_end' => $m !== null && $this->isOwnAdmin($user, $companyId),
             'via_agency' => $this->access->viaAgency($user, $companyId),
             'can_invite_first_admin' => $this->canInviteFirstAdmin($user, $company),
+            // O formulário do perfil fica só de leitura quando a pessoa não o pode gravar (regra do CompanyRequest).
+            'can_edit_company' => $this->access->canEditCompany($user, $companyId),
+            'can_edit_basics_only' => $this->access->agencyEditsBasics($user, $companyId),
         ], 'Agência gestora.');
     }
 

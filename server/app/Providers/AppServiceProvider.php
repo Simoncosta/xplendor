@@ -214,6 +214,7 @@ class AppServiceProvider extends ServiceProvider
         Route::aliasMiddleware('block_when_impersonating', \App\Http\Middleware\BlockWhenImpersonating::class);
         Route::aliasMiddleware('editorial_producer', \App\Http\Middleware\EnsureEditorialProducer::class);
         Route::aliasMiddleware('tenant', \App\Http\Middleware\EnsureTenantAccess::class);
+        Route::aliasMiddleware('agency', \App\Http\Middleware\EnsureAgencyAccess::class);
 
         // Página pública dos orçamentos: limites por IP (o IP só é usado aqui, de passagem,
         // e nunca é guardado). Respostas do cliente: também por token.

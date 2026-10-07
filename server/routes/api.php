@@ -324,6 +324,9 @@ Route::prefix('v1')->group(function () {
                     Route::post('/management/first-admin', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'inviteFirstAdmin']);
                 });
 
+                // Dashboard base (empresas sem viaturas nem restauração): Linha Editorial e seguidores, pelos módulos.
+                Route::get('/dashboard/base', [\App\Http\Controllers\Api\V1\CompanyBaseDashboardController::class, 'show']);
+
                 // Cobranças da XPLENDOR (só a própria empresa e o root; sem o módulo de Finanças).
                 Route::get('/xplendor-charges', [\App\Http\Controllers\Api\V1\CompanyChargeController::class, 'index']);
                 Route::get('/xplendor-charges/{chargeId}/invoice', [\App\Http\Controllers\Api\V1\CompanyChargeController::class, 'invoice'])->whereNumber('chargeId');
@@ -549,6 +552,23 @@ Route::prefix('v1')->group(function () {
                     ->middleware('block_when_impersonating');
             });
 
+            // Vista da agência: a Linha Editorial de todos os clientes que a pessoa vê, o painel por
+            // cliente, as atribuições e os pedidos de nova empresa gerida. Portão: agency.
+            Route::prefix('/agencies/{agency}')->whereNumber('agency')->middleware('agency')->group(function () {
+                $c = \App\Http\Controllers\Api\V1\Agency\AgencyController::class;
+                Route::get('/companies', [$c, 'companies']);
+                Route::get('/editorial/calendar', [$c, 'posts']);
+                Route::get('/editorial/board', [$c, 'posts']);
+                Route::get('/editorial/today', [$c, 'today']);
+                Route::get('/editorial/awaiting', [$c, 'awaiting']);
+                Route::get('/editorial/results', [$c, 'results']);
+                Route::get('/panel', [$c, 'panel']);
+                Route::get('/assignments', [$c, 'assignments']);
+                Route::put('/assignments/{companyId}', [$c, 'assign'])->whereNumber('companyId');
+                Route::get('/company-requests', [$c, 'requests']);
+                Route::post('/company-requests', [$c, 'storeRequest'])->middleware('block_when_impersonating');
+            });
+
             Route::apiResource('/districts', DistrictController::class)->only(['index']);
             Route::get('/districts/{id}/municipalities', [DistrictController::class, 'getMunicipalities']);
             Route::get('/municipalities/{id}/parishes', [DistrictController::class, 'getParishes']);
@@ -632,6 +652,11 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies/{company}/modules', [AdminCompanyController::class, 'modules']);
             Route::patch('/companies/{company}/modules', [AdminCompanyController::class, 'setModule']);
             Route::post('/companies/{company}/modules/preset', [AdminCompanyController::class, 'applyModulePreset']);
+
+            // Pedidos de nova empresa gerida (feitos pelas agências).
+            Route::get('/company-requests', [\App\Http\Controllers\Api\V1\Admin\ManagedCompanyRequestController::class, 'index']);
+            Route::post('/company-requests/{requestId}/approve', [\App\Http\Controllers\Api\V1\Admin\ManagedCompanyRequestController::class, 'approve'])->whereNumber('requestId');
+            Route::post('/company-requests/{requestId}/decline', [\App\Http\Controllers\Api\V1\Admin\ManagedCompanyRequestController::class, 'decline'])->whereNumber('requestId');
 
             // Cobranças da XPLENDOR (todas as empresas).
             Route::get('/charges', [\App\Http\Controllers\Api\V1\Admin\ChargeController::class, 'index']);

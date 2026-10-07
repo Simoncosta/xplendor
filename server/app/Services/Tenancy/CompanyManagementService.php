@@ -133,7 +133,7 @@ class CompanyManagementService
         ]);
     }
 
-    private function syncMembers(CompanyManagement $m, array $memberIds, User $actor): void
+    public function syncMembers(CompanyManagement $m, array $memberIds, User $actor): void
     {
         $valid = User::where('company_id', $m->agency_company_id)->whereIn('id', $memberIds)->pluck('id')->all();
         $m->members()->whereNotIn('user_id', $valid)->delete();

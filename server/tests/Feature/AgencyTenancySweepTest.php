@@ -206,6 +206,10 @@ class AgencyTenancySweepTest extends TestCase
                 if (! in_array('tenant', $mw, true)) {
                     $missing[] = $key;
                 }
+            } elseif (str_starts_with($route->uri(), 'api/v1/agencies/{agency}')) {
+                if (! in_array('agency', $mw, true)) {
+                    $missing[] = "{$key} (sem o portão agency)";
+                }
             } elseif (str_starts_with($route->uri(), 'api/v1/admin/')) {
                 if (! in_array('ensure_super_admin', $mw, true)) {
                     $missing[] = "{$key} (sem ensure_super_admin)";
@@ -260,6 +264,25 @@ class AgencyTenancySweepTest extends TestCase
                 $wrong[] = "devia ser 403: {$key} → {$status}";
             } elseif (! $forbidden && $status === 403) {
                 $wrong[] = "403 indevido: {$key}";
+            }
+        }
+        $this->assertSame([], $wrong);
+    }
+
+    public function test_agency_routes_refuse_other_agencies_clients_and_non_agencies(): void
+    {
+        $otherMember = User::factory()->create(['company_id' => $this->otherAgency->id, 'role' => 'admin']);
+        $clientUser = User::factory()->create(['company_id' => $this->active->id, 'role' => 'admin']);
+        $wrong = [];
+        foreach (array_filter($this->apiRoutes(), fn (RouteDef $r) => str_starts_with($r->uri(), 'api/v1/agencies/{agency}')) as $route) {
+            $method = collect($route->methods())->reject(fn ($m) => $m === 'HEAD')->first();
+            foreach ([[$otherMember, $this->agency], [$clientUser, $this->agency], [$this->member, $this->active], [$this->member, $this->otherAgency]] as [$who, $agency]) {
+                $url = '/' . preg_replace_callback('#\{(\w+)\}#', fn ($m) => $m[1] === 'agency' ? (string) $agency->id : $this->valueFor($route, $m[1]), $route->uri());
+                $this->app['auth']->forgetGuards();
+                $status = $this->actingAs($who, 'sanctum')->json($method, $url, ['month' => '2026-10'])->getStatusCode();
+                if ($status !== 403) {
+                    $wrong[] = "{$this->key($route)} ({$who->id} em {$agency->id}) → {$status}";
+                }
             }
         }
         $this->assertSame([], $wrong);
