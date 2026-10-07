@@ -53,18 +53,8 @@ class GoogleAnalyticsController extends Controller
             'property_id' => ['required', 'regex:/^\d{6,15}$/'],
         ]);
 
-        CompanyIntegration::updateOrCreate(
-            ['company_id' => $companyId, 'platform' => 'google'],
-            [
-                'property_id' => $data['property_id'],
-                'access_token' => '',            // Service Account: sem token por cliente
-                'status' => 'active',
-                'error_message' => null,
-            ]
-        );
-
-        // Nova propriedade → limpar cache antiga (se existia).
-        $this->service->forget($companyId, (int) $data['property_id']);
+        // Guarda o ID, limpa a cache e regista no histórico das ligações (quem ligou).
+        app(\App\Services\Ga4\Ga4ConnectionService::class)->connect($companyId, (string) $data['property_id'], Auth::id());
 
         return ApiResponse::success([
             'platform' => 'google',
@@ -83,9 +73,7 @@ class GoogleAnalyticsController extends Controller
             return ApiResponse::error('Pela agência, só os administradores ligam ou desligam integrações.', 403);
         }
 
-        CompanyIntegration::where('company_id', $companyId)
-            ->where('platform', 'google')
-            ->update(['status' => 'revoked', 'property_id' => null]);
+        app(\App\Services\Ga4\Ga4ConnectionService::class)->disconnect($companyId, Auth::id());
 
         return ApiResponse::success([], 'Google Analytics desligado.');
     }

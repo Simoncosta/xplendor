@@ -12,6 +12,7 @@ class CompanyIntegration extends Model
         'company_id',
         'platform',
         'connected_by_user_id',
+        'setup_link_id',
         'access_token',
         'account_id',
         'page_id',

@@ -196,6 +196,18 @@ Route::prefix('v1')->group(function () {
                     Route::delete('/integrations/social', [\App\Http\Controllers\Api\V1\SocialConnectionController::class, 'disconnect']);
                 });
 
+                // F1c: link de configuração do cliente (gerar, renovar, revogar: admin da empresa,
+                // root ou admin da agência gestora, nunca em impersonation) e histórico das ligações.
+                Route::get('/integrations/history', [\App\Http\Controllers\Api\V1\CompanySetupLinkController::class, 'history']);
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::get('/setup-link', [\App\Http\Controllers\Api\V1\CompanySetupLinkController::class, 'show']);
+                    Route::post('/setup-links', [\App\Http\Controllers\Api\V1\CompanySetupLinkController::class, 'store'])->middleware('throttle:20,1');
+                    Route::post('/setup-links/{linkId}/extend', [\App\Http\Controllers\Api\V1\CompanySetupLinkController::class, 'extend'])->whereNumber('linkId');
+                    Route::post('/setup-links/{linkId}/revoke', [\App\Http\Controllers\Api\V1\CompanySetupLinkController::class, 'revoke'])->whereNumber('linkId');
+                    // Contas de anúncios da autorização atual (escolher numa lista em vez de escrever o ID).
+                    Route::get('/integrations/meta/ad-accounts', [CompanyIntegrationController::class, 'metaAdAccounts']);
+                });
+
                 // GA4 — tráfego do site do cliente (Service Account do servidor;
                 // property_id por empresa). Scoped por company_id.
                 Route::post('/integrations/google/connect', [GoogleAnalyticsController::class, 'connect'])->middleware('block_when_impersonating');
@@ -758,6 +770,21 @@ Route::prefix('public/quote')->group(function () {
     Route::post('/accept', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'accept'])->middleware('throttle:quote-public-action');
     Route::post('/refuse', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'refuse'])->middleware('throttle:quote-public-action');
     Route::post('/request-changes', [\App\Http\Controllers\Api\Public\QuotePublicController::class, 'requestChanges'])->middleware('throttle:quote-public-action');
+});
+
+// Link de configuração do cliente (F1c), sem conta: o token vem no cabeçalho X-Setup-Token,
+// nunca no caminho (o link é /configurar#<token>). Os callbacks da Meta são os de sempre.
+Route::prefix('public/setup')->group(function () {
+    $c = \App\Http\Controllers\Api\Public\SetupPublicController::class;
+    Route::get('/', [$c, 'show'])->middleware('throttle:setup-public-read');
+    Route::post('/open', [$c, 'open'])->middleware('throttle:setup-public-open');
+    Route::get('/social/auth-url', [$c, 'socialAuthUrl'])->middleware('throttle:setup-public-action');
+    Route::get('/social/candidates', [$c, 'socialCandidates'])->middleware('throttle:setup-public-action');
+    Route::put('/social/accounts', [$c, 'socialSave'])->middleware('throttle:setup-public-action');
+    Route::get('/ads/auth-url', [$c, 'adsAuthUrl'])->middleware('throttle:setup-public-action');
+    Route::get('/ads/accounts', [$c, 'adsAccounts'])->middleware('throttle:setup-public-action');
+    Route::put('/ads/account', [$c, 'adsSave'])->middleware('throttle:setup-public-action');
+    Route::post('/ga4/verify', [$c, 'ga4Verify'])->middleware('throttle:setup-public-action');
 });
 
 // Link de aprovação de conteúdos por lote (F3c), sem conta: o token vem no cabeçalho

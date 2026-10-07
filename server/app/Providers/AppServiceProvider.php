@@ -232,6 +232,13 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Cache\RateLimiting\Limit::perHour(10)->by('ct|' . hash('sha256', (string) $r->header('X-Charge-Token', ''))),
         ]);
         // Link de aprovação de conteúdos (F3c): o mesmo padrão, por IP e por token (em hash).
+        // Link de configuração do cliente (F1c): leitura, abertura e ações (por IP e por link).
+        \Illuminate\Support\Facades\RateLimiter::for('setup-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('sr|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('setup-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('so|' . $r->ip()));
+        \Illuminate\Support\Facades\RateLimiter::for('setup-public-action', fn (\Illuminate\Http\Request $r) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('sa|' . $r->ip()),
+            \Illuminate\Cache\RateLimiting\Limit::perHour(120)->by('st|' . hash('sha256', (string) $r->header('X-Setup-Token'))),
+        ]);
         \Illuminate\Support\Facades\RateLimiter::for('review-public-read', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('rr|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-open', fn (\Illuminate\Http\Request $r) => \Illuminate\Cache\RateLimiting\Limit::perMinute(30)->by('ro|' . $r->ip()));
         \Illuminate\Support\Facades\RateLimiter::for('review-public-action', fn (\Illuminate\Http\Request $r) => [

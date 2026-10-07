@@ -19,9 +19,13 @@ class MetaAdsDisconnector
     public function __construct(private readonly MetaAdsService $metaAds) {}
 
     /** @return array{permissions_revoked: bool, purged: bool, deleted: mixed} */
-    public function disconnect(int $companyId, bool $purge = false): array
+    public function disconnect(int $companyId, bool $purge = false, ?int $actorId = null): array
     {
         $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
+        if ($integration && $integration->status !== 'revoked' && (string) $integration->access_token !== '') {
+            \App\Models\CompanyConnectionEvent::record($companyId, \App\Models\CompanyConnectionEvent::KIND_META_ADS, \App\Models\CompanyConnectionEvent::DISCONNECTED,
+                $actorId, null, ['purge' => $purge, 'account_id' => $integration->account_id, 'was_setup_link_id' => $integration->setup_link_id]);
+        }
 
         $revoked = false;
         $token = (string) ($integration?->access_token ?? '');

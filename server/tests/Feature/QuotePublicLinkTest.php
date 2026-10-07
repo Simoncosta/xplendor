@@ -431,7 +431,11 @@ class QuotePublicLinkTest extends TestCase
         $this->assertSame([
             ['Social Media', 'Preencher o perfil da marca'], ['Social Media', 'Pedir o acesso às redes sociais'], ['Social Media', 'Preparar o primeiro calendário editorial'],
             ['Website', 'Confirmar o domínio'], ['Website', 'Confirmar o alojamento'], ['Website', 'Receber os conteúdos e as fotos'],
+            ['Website', 'Pedir o acesso ao Google Analytics'],
         ], SupportTicketTask::orderBy('position')->get()->map(fn ($t) => [$t->group_label, $t->title])->all());
+        // As tarefas de acesso levam a chave fixa (marcam-se sozinhas pelo link de configuração).
+        $this->assertSame(['Pedir o acesso às redes sociais' => 'social_access', 'Pedir o acesso ao Google Analytics' => 'ga4_access'],
+            SupportTicketTask::whereNotNull('task_key')->orderBy('position')->pluck('task_key', 'title')->all());
         $this->assertSame('Orçamento aceite: ORC-2026-001', $this->teamAlerts()->last()->title);
 
         // A equipa marca as tarefas; o cliente (empresa ligada) só as vê.
@@ -454,20 +458,22 @@ class QuotePublicLinkTest extends TestCase
         $ticket = SupportTicket::findOrFail($quote->onboarding_ticket_id);
         $this->assertSame($this->client->id, $ticket->company_id);
         $this->assertSame([360.0, 270.0], [(float) $quote->accepted_total_monthly, (float) $quote->accepted_total_one_off]);
-        $this->assertSame(9, SupportTicketTask::where('support_ticket_id', $ticket->id)->count());
+        $this->assertSame(11, SupportTicketTask::where('support_ticket_id', $ticket->id)->count()); // com o GA4 no Tráfego Pago e no Website
         $this->accept($token, [1, 2])->assertStatus(409); // a primeira decisão vale
         $this->assertSame(1, SupportTicket::where('type', 'onboarding')->count());
         // O cliente vê a lista no Suporte.
         $show = $this->actingAs($this->clientAdmin, 'sanctum')->getJson("/api/v1/companies/{$this->client->id}/support-tickets/{$ticket->id}")->assertOk();
-        $this->assertCount(9, $show->json('data.tasks'));
+        $this->assertCount(11, $show->json('data.tasks'));
     }
 
     public function test_catalog_checklist_is_editable_by_the_team(): void
     {
         $id = $this->catalogId('Website');
-        $this->asRoot()->putJson("/api/v1/admin/service-catalog/{$id}", ['onboarding_checklist' => ['Confirmar o domínio', 'Pedir o logótipo']])->assertOk();
-        $this->assertSame(['Confirmar o domínio', 'Pedir o logótipo'], ServiceCatalogItem::find($id)->onboarding_checklist);
+        // Linhas só com texto continuam aceites; com chave fixa, a tarefa marca-se sozinha.
+        $this->asRoot()->putJson("/api/v1/admin/service-catalog/{$id}", ['onboarding_checklist' => ['Confirmar o domínio', ['title' => 'Dar acesso ao GA4', 'key' => 'ga4_access']]])->assertOk();
+        $this->assertSame([['title' => 'Confirmar o domínio', 'key' => null], ['title' => 'Dar acesso ao GA4', 'key' => 'ga4_access']], ServiceCatalogItem::find($id)->onboarding_checklist);
         $this->asRoot()->putJson("/api/v1/admin/service-catalog/{$id}", ['onboarding_checklist' => [str_repeat('x', 201)]])->assertStatus(422);
+        $this->asRoot()->putJson("/api/v1/admin/service-catalog/{$id}", ['onboarding_checklist' => [['title' => 'X', 'key' => 'inventada']]])->assertStatus(422);
     }
 
     // ── 8. Segurança das rotas públicas ──────────────────────────────────────

@@ -67,6 +67,7 @@ class SocialConnectionController extends Controller
             array_values(array_unique($data['instagram'])),
             $data['primary_facebook'] ?? null,
             $data['primary_instagram'] ?? null,
+            $request->user()->id,
         );
 
         return ApiResponse::success(
@@ -88,7 +89,7 @@ class SocialConnectionController extends Controller
             return ApiResponse::error('Para apagar o histórico de seguidores, confirme escrevendo ' . SocialConnectionService::PURGE_CONFIRMATION . '.', 422);
         }
 
-        $result = $this->social->disconnect($companyId, $purge);
+        $result = $this->social->disconnect($companyId, $purge, $request->user()->id);
         Log::info('[Redes sociais] Desligado.', ['company_id' => $companyId] + $result);
 
         return ApiResponse::success(
@@ -101,7 +102,7 @@ class SocialConnectionController extends Controller
     public function callback(Request $request): RedirectResponse
     {
         $base = self::appBase();
-        [$companyId, $signal] = $this->social->handleCallback(
+        [$companyId, $signal, $linkId] = $this->social->handleCallback(
             (string) $request->query('state', ''),
             $request->filled('code') ? (string) $request->query('code') : null,
             $request->filled('error') ? (string) $request->query('error') : null,
@@ -109,6 +110,10 @@ class SocialConnectionController extends Controller
 
         if ($companyId === null) {
             return redirect()->away($base . '/?social=error&reason=state');
+        }
+        // Iniciado no link de configuração do cliente: volta à página pública (token no fragmento).
+        if ($linkId) {
+            return redirect()->away(app(\App\Services\Setup\SetupPublicService::class)->afterOAuth($linkId, \App\Models\CompanySetupLink::STEP_SOCIAL, $signal, $base));
         }
         [$kind, $reason] = array_pad(explode(':', $signal, 2), 2, null);
         $query = $kind === 'choose' ? 'social=choose' : 'social=error&reason=' . $reason;

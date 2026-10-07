@@ -125,6 +125,12 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/carmine-connection',
         'PUT api/v1/companies/{id}/carmine-connection/{carmine_connection}',
         'DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}',
+        // F1c: link de configuração do cliente e contas de anúncios da autorização.
+        'GET api/v1/companies/{id}/setup-link',
+        'POST api/v1/companies/{id}/setup-links',
+        'POST api/v1/companies/{id}/setup-links/{linkId}/extend',
+        'POST api/v1/companies/{id}/setup-links/{linkId}/revoke',
+        'GET api/v1/companies/{id}/integrations/meta/ad-accounts',
     ];
 
     private Company $agency;

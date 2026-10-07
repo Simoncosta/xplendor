@@ -31,7 +31,7 @@ class SocialConnection extends Model
 
     protected $fillable = [
         'company_id', 'meta_user_id', 'access_token', 'token_expires_at', 'granted_scopes', 'status',
-        'connected_by_user_id', 'connected_at', 'last_read_at', 'last_error_at', 'last_error_kind', 'last_error_message',
+        'connected_by_user_id', 'setup_link_id', 'connected_at', 'last_read_at', 'last_error_at', 'last_error_kind', 'last_error_message',
     ];
 
     protected $hidden = ['access_token'];

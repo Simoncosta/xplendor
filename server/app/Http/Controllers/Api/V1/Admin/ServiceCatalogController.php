@@ -36,8 +36,17 @@ class ServiceCatalogController extends Controller
             'active'       => ['sometimes', 'boolean'],
             'sort'         => ['sometimes', 'integer', 'min:0', 'max:100000'],
             // Lista de arranque: tarefas copiadas para o ticket quando um orçamento com o serviço é aceite.
+            // Cada linha: texto, ou {title, key} com uma chave fixa (a tarefa marca-se sozinha).
             'onboarding_checklist'   => ['sometimes', 'nullable', 'array', 'max:30'],
-            'onboarding_checklist.*' => ['string', 'max:200'],
+            'onboarding_checklist.*' => [function (string $attr, mixed $value, \Closure $fail) {
+                $title = is_array($value) ? ($value['title'] ?? null) : $value;
+                $key = is_array($value) ? ($value['key'] ?? null) : null;
+                if (! is_string($title) || mb_strlen($title) > 200) {
+                    $fail('Cada tarefa da lista de arranque tem um texto até 200 caracteres.');
+                } elseif ($key !== null && ! array_key_exists($key, \App\Models\SupportTicketTask::KEYS)) {
+                    $fail('Chave de tarefa desconhecida.');
+                }
+            }],
         ];
     }
 
@@ -55,7 +64,7 @@ class ServiceCatalogController extends Controller
     {
         $this->ensureRoot();
         $this->normalizeActive($request);
-        $data = $request->validate($this->rules(true));
+        $data = $this->withChecklist($request->validate($this->rules(true)));
         // Sem ordem indicada, vai para o fim da lista.
         $data['sort'] ??= ((int) ServiceCatalogItem::max('sort')) + 10;
         $item = ServiceCatalogItem::create($data);
@@ -69,9 +78,20 @@ class ServiceCatalogController extends Controller
         $item = ServiceCatalogItem::find($id);
         abort_unless($item, 404, 'Serviço não encontrado.');
         $this->normalizeActive($request);
-        $item->update($request->validate($this->rules(false)));
+        $item->update($this->withChecklist($request->validate($this->rules(false))));
 
         return ApiResponse::success($item->fresh(), 'Serviço guardado.');
+    }
+
+    /** A lista de arranque guardada sempre como {title, key}. */
+    private function withChecklist(array $data): array
+    {
+        if (array_key_exists('onboarding_checklist', $data)) {
+            $lines = ServiceCatalogItem::normalizeChecklist((array) ($data['onboarding_checklist'] ?? []));
+            $data['onboarding_checklist'] = $lines === [] ? null : $lines;
+        }
+
+        return $data;
     }
 
     /**

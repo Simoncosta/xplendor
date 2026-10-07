@@ -13,7 +13,8 @@ use App\Services\Social\SocialConnectionService;
 /**
  * As ligações à Meta feitas pela agência numa empresa gerida (anúncios da Meta e redes
  * sociais). "Feita pela agência": ligada por uma pessoa da agência, ou sem registo de quem a
- * ligou (ligações anteriores a esse registo). Quando a relação termina, o admin do cliente
+ * ligou (ligações anteriores a esse registo). As ligações autorizadas pelo cliente no link de
+ * configuração (setup_link_id) são do cliente: não contam como da agência. Quando a relação termina, o admin do cliente
  * escolhe mantê-las ou desligá-las; sem admin, desligam-se.
  */
 class AgencyConnectionsService
@@ -27,15 +28,15 @@ class AgencyConnectionsService
     public function agencyMade(int $companyId, int $agencyId): array
     {
         $agencyUsers = User::where('company_id', $agencyId)->pluck('id')->all();
-        $byAgency = fn (?int $userId) => $userId === null || in_array($userId, $agencyUsers, true);
+        $byAgency = fn (?int $userId, ?int $setupLinkId) => $setupLinkId === null && ($userId === null || in_array($userId, $agencyUsers, true));
         $out = [];
 
         $meta = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
-        if ($meta && $meta->status === 'active' && (string) $meta->access_token !== '' && $byAgency($meta->connected_by_user_id)) {
+        if ($meta && $meta->status === 'active' && (string) $meta->access_token !== '' && $byAgency($meta->connected_by_user_id, $meta->setup_link_id)) {
             $out[] = ['kind' => 'meta_ads', 'label' => 'Anúncios da Meta'];
         }
         $social = SocialConnection::where('company_id', $companyId)->first();
-        if ($social && $social->status !== SocialConnection::STATUS_REVOKED && $social->access_token && $byAgency($social->connected_by_user_id)) {
+        if ($social && $social->status !== SocialConnection::STATUS_REVOKED && $social->access_token && $byAgency($social->connected_by_user_id, $social->setup_link_id)) {
             $out[] = ['kind' => 'social', 'label' => 'Redes sociais (Instagram e Página de Facebook)'];
         }
 

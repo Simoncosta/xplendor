@@ -13,7 +13,11 @@ import QuoteSelect from "./QuoteSelect";
  * guardam a sua própria cópia de cada linha).
  */
 // checklist: a lista de arranque (tarefas copiadas para o ticket quando um orçamento com o serviço é aceite).
-type Draft = { id?: number; name: string; description: string; unit_price: string; unit: QuoteUnit; billing_type: QuoteBilling; active: boolean; checklist: string[] };
+// Cada linha guarda a chave fixa (se tiver), para a tarefa se marcar sozinha.
+type Task = { title: string; key: string | null };
+type Draft = { id?: number; name: string; description: string; unit_price: string; unit: QuoteUnit; billing_type: QuoteBilling; active: boolean; checklist: Task[] };
+const toTasks = (lines: ICatalogItem["onboarding_checklist"]): Task[] =>
+    (lines ?? []).map((l) => (typeof l === "string" ? { title: l, key: null } : { title: l.title, key: l.key ?? null }));
 const EMPTY: Draft = { name: "", description: "", unit_price: "", unit: "month", billing_type: "monthly", active: true, checklist: [] };
 const MAX_TASKS = 30;
 
@@ -36,7 +40,7 @@ const ServiceCatalogPage = () => {
         const payload = {
             name: editing.name.trim(), description: editing.description.trim() || null, unit_price: Number(editing.unit_price),
             unit: editing.unit, billing_type: editing.billing_type, active: editing.active,
-            onboarding_checklist: editing.checklist.map((t) => t.trim()).filter(Boolean),
+            onboarding_checklist: editing.checklist.map((t) => ({ title: t.title.trim(), key: t.key })).filter((t) => t.title),
         };
         try {
             if (editing.id) await updateServiceCatalogItem(editing.id, payload);
@@ -105,7 +109,7 @@ const ServiceCatalogPage = () => {
                                                 <td className="text-end">
                                                     <button className="btn btn-outline-primary btn-sm" aria-label={`Editar ${i.name}`} onClick={() => setEditing({
                                                         id: i.id, name: i.name, description: i.description ?? "", unit_price: String(i.unit_price),
-                                                        unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: [...(i.onboarding_checklist ?? [])],
+                                                        unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: toTasks(i.onboarding_checklist),
                                                     })}><i className="ri-edit-line" /></button>
                                                 </td>
                                             </tr>
@@ -156,8 +160,8 @@ const ServiceCatalogPage = () => {
                                 <div className="vstack gap-2">
                                     {editing.checklist.map((t, idx) => (
                                         <div key={idx} className="d-flex gap-2">
-                                            <Input value={t} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
-                                                onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? e.target.value : x)) })} />
+                                            <Input value={t.title} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
+                                                onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? { ...x, title: e.target.value } : x)) })} />
                                             <button type="button" className={`btn btn-outline-primary btn-sm ${idx === 0 ? "invisible" : ""}`} aria-label="Subir"
                                                 onClick={() => { const c = [...editing.checklist]; [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]; setEditing({ ...editing, checklist: c }); }}>
                                                 <i className="ri-arrow-up-line" />
@@ -170,7 +174,7 @@ const ServiceCatalogPage = () => {
                                     ))}
                                 </div>
                                 <ReasonButton color="outline-primary" size="sm" className="mt-2" reason={editing.checklist.length >= MAX_TASKS ? `No máximo ${MAX_TASKS} tarefas por serviço.` : null}
-                                    onClick={() => setEditing({ ...editing, checklist: [...editing.checklist, ""] })}>
+                                    onClick={() => setEditing({ ...editing, checklist: [...editing.checklist, { title: "", key: null }] })}>
                                     <i className="ri-add-line me-1" />Acrescentar tarefa
                                 </ReasonButton>
                             </div>

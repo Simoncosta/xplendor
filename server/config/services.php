@@ -42,6 +42,9 @@ return [
         // Redes sociais (Instagram e Facebook). Vazio: deriva do redirect_uri dos anúncios
         // (.../api/oauth/meta/callback → .../api/oauth/meta/social/callback).
         'social_redirect_uri' => env('META_SOCIAL_REDIRECT_URI'),
+        // A Meta já aprovou a app (App Review)? Enquanto não, o ecrã de gerar o link avisa que o
+        // passo do Facebook só funciona para contas de teste.
+        'app_approved' => (bool) env('META_APP_APPROVED', false),
     ],
 
     'openai' => [

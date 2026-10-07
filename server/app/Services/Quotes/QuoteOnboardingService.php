@@ -116,17 +116,19 @@ class QuoteOnboardingService
                 $position = 0;
                 foreach ($acceptedLines as $line) {
                     $item = isset($line['catalog_item_id']) ? $catalog->get($line['catalog_item_id']) : null;
-                    $tasks = array_values(array_filter((array) ($item?->onboarding_checklist ?? []), fn ($t) => is_string($t) && trim($t) !== ''));
+                    // Cada linha leva a chave fixa (se tiver): as tarefas de acesso marcam-se sozinhas.
+                    $tasks = $item?->checklist() ?? [];
                     if ($tasks === []) {
-                        $tasks = ['Arrancar o serviço ' . $line['name']];
+                        $tasks = [['title' => 'Arrancar o serviço ' . $line['name'], 'key' => null]];
                     }
-                    foreach ($tasks as $title) {
+                    foreach ($tasks as $task) {
                         SupportTicketTask::create([
                             'support_ticket_id' => $ticket->id,
                             'position' => $position++,
                             'group_label' => mb_substr((string) $line['name'], 0, 255),
-                            'title' => mb_substr(trim($title), 0, 255),
+                            'title' => mb_substr(trim($task['title']), 0, 255),
                             'catalog_item_id' => $item?->id,
+                            'task_key' => $task['key'],
                         ]);
                     }
                 }

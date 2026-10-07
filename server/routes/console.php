@@ -258,3 +258,12 @@ Schedule::job(new \App\Jobs\AgencyBillingSnapshotJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Gestão por agências] Contagem mensal falhou no scheduler');
     });
+
+// Link de configuração do cliente (F1c): passos da Meta iniciados e não concluídos (30 minutos).
+Schedule::job(new \App\Jobs\SetupLinkStalledJob())
+    ->everyFiveMinutes()
+    ->name('setup-link-stalled')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Link de configuração] Verificação dos passos parados falhou no scheduler');
+    });

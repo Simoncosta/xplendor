@@ -28,35 +28,10 @@ class MetaOAuthController extends Controller
             return ApiResponse::error('Só o administrador da empresa pode ligar os anúncios da Meta.', 403);
         }
 
-        // CSRF/state correcto: um nonce aleatório, guardado server-side (cache)
-        // ligado a este company_id e de uso único. Substitui o base64 com
-        // company_id+csrf_token() — em API stateless o csrf_token() vinha vazio
-        // ("csrf":null) e nunca era validado. O nonce é opaco e inforjável.
-        $nonce = \Illuminate\Support\Str::random(40);
-        \Illuminate\Support\Facades\Cache::put(
-            self::stateCacheKey($nonce),
-            $companyId,
-            now()->addMinutes(15)
-        );
-        // Quem iniciou a ligação (para saber depois se foi a agência gestora).
-        \Illuminate\Support\Facades\Cache::put(self::stateCacheKey($nonce) . ':user', $request->user()?->id, now()->addMinutes(15));
-
-        $params = http_build_query([
-            'client_id'     => config('services.meta.app_id'),
-            'redirect_uri'  => config('services.meta.redirect_uri'),
-            'scope'         => 'ads_read',
-            'response_type' => 'code',
-            'state'         => $nonce,
-        ]);
-
-        $url = 'https://www.facebook.com/v25.0/dialog/oauth?' . $params;
+        // Nonce de uso único em cache, com a empresa e quem iniciou (MetaAdsConnectionService).
+        $url = app(\App\Services\Integrations\MetaAdsConnectionService::class)->authUrl($companyId, $request->user()?->id);
 
         return ApiResponse::success(['url' => $url]);
-    }
-
-    private static function stateCacheKey(string $nonce): string
-    {
-        return 'meta_oauth_state:' . $nonce;
     }
 
     /**
@@ -87,83 +62,25 @@ class MetaOAuthController extends Controller
     public function handleCallbackRedirect(Request $request): \Illuminate\Http\RedirectResponse
     {
         $base = $this->appReturnBase();
+        [$companyId, $signal, $linkId] = app(\App\Services\Integrations\MetaAdsConnectionService::class)->handleCallback(
+            (string) $request->query('state', ''),
+            $request->filled('code') ? (string) $request->query('code') : null,
+            $request->filled('error') ? (string) $request->query('error') : null,
+        );
 
-        // 1) State primeiro: identifica a empresa e protege contra CSRF (nonce
-        //    de uso único). pull() lê e apaga — não pode ser reutilizado.
-        $nonce     = (string) $request->query('state', '');
-        $companyId = $nonce !== ''
-            ? \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey($nonce))
-            : null;
-
-        if (!$companyId) {
+        if (! $companyId) {
             // State inválido/expirado: não sabemos a empresa → volta à raiz da app.
             return redirect()->away($base . '/?meta=error&reason=state');
         }
-
-        $companyReturn = $base . '/companies/' . $companyId;
-
-        // 2) O utilizador recusou / erro do próprio Meta.
-        if ($request->filled('error') || !$request->filled('code')) {
-            $reason = $request->filled('error') ? 'denied' : 'params';
-            return redirect()->away($companyReturn . '?meta=error&reason=' . $reason);
+        // Iniciado no link de configuração do cliente: volta à página pública (token no fragmento).
+        if ($linkId) {
+            return redirect()->away(app(\App\Services\Setup\SetupPublicService::class)->afterOAuth($linkId, \App\Models\CompanySetupLink::STEP_META_ADS, $signal, $base));
         }
 
-        // 3) Trocar code → token curto (secret SÓ aqui, no backend).
-        $shortTokenResponse = \Illuminate\Support\Facades\Http::asForm()->post(
-            'https://graph.facebook.com/v25.0/oauth/access_token',
-            [
-                'client_id'     => config('services.meta.app_id'),
-                'client_secret' => config('services.meta.app_secret'),
-                'redirect_uri'  => config('services.meta.redirect_uri'),
-                'code'          => (string) $request->query('code'),
-            ]
-        );
+        [$kind, $reason] = array_pad(explode(':', $signal, 2), 2, null);
+        $query = $kind === 'error' ? 'meta=error&reason=' . ($reason === 'not_approved' || $reason === 'scopes' ? 'denied' : $reason) : 'meta=' . $kind;
 
-        if ($shortTokenResponse->failed()) {
-            Log::error('MetaOAuth: falha ao trocar code (redirect)', [
-                'status' => $shortTokenResponse->status(),
-                'body'   => $shortTokenResponse->body(),
-            ]);
-            return redirect()->away($companyReturn . '?meta=error&reason=token');
-        }
-
-        $shortToken = $shortTokenResponse->json('access_token');
-
-        $longToken = $this->metaAds->getLongLivedToken(
-            config('services.meta.app_id'),
-            config('services.meta.app_secret'),
-            $shortToken
-        );
-
-        if (!$longToken) {
-            return redirect()->away($companyReturn . '?meta=error&reason=token');
-        }
-
-        $appToken  = config('services.meta.app_id') . '|' . config('services.meta.app_secret');
-        $tokenInfo = $this->metaAds->debugToken($longToken, $appToken);
-        // 0 ou ausente = sem data de expiração (NULL), nunca 1970.
-        $expiresAt = \App\Support\MetaTokenExpiry::fromDebug($tokenInfo);
-
-        // 4) Guardar o token. NÃO tocamos no account_id aqui: fica o que já
-        //    existia (reconexão) ou null (primeira vez) — escolhido em /app.
-        $integration = CompanyIntegration::firstOrNew([
-            'company_id' => $companyId,
-            'platform'   => 'meta',
-        ]);
-        $integration->access_token     = $longToken;
-        $integration->token_expires_at = $expiresAt;
-        $integration->status           = 'active';
-        $integration->error_message    = null;
-        $integration->connected_by_user_id = \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey($nonce) . ':user') ?: $integration->connected_by_user_id;
-        $integration->save();
-
-        // 5) Disparar já o BACKFILL de 90 dias (ingestão ao nível da conta). Sem
-        //    conta de anúncios fica needs_account e corre quando a conta for escolhida.
-        app(\App\Services\MetaAccountInsightsService::class)->scheduleBackfill($integration);
-
-        // 6) Voltar a /app: com conta → connected; sem conta → tem de a escolher.
-        $signal = $integration->account_id ? 'connected' : 'choose_account';
-        return redirect()->away($companyReturn . '?meta=' . $signal);
+        return redirect()->away($base . '/companies/' . $companyId . '?' . $query);
     }
 
     // ── Passo 2 (LEGADO): Callback via POST do frontend ───────────────────────
@@ -182,7 +99,9 @@ class MetaOAuthController extends Controller
         // State = o MESMO nonce de uso único do fluxo GET (emitido por getAuthUrl,
         // que só o dá para a empresa do utilizador). O antigo base64 com
         // company_id era forjável e deixava ligar a Meta de qualquer empresa.
-        $companyId = \Illuminate\Support\Facades\Cache::pull(self::stateCacheKey((string) $request->state));
+        $state = \Illuminate\Support\Facades\Cache::pull(\App\Services\Integrations\MetaAdsConnectionService::stateKey((string) $request->state));
+        // Os links de configuração do cliente nunca passam por aqui.
+        $companyId = is_array($state) ? (empty($state['setup_link_id']) ? ($state['company_id'] ?? null) : null) : $state;
 
         if (!$companyId) {
             return ApiResponse::error('State inválido ou expirado.', 422);

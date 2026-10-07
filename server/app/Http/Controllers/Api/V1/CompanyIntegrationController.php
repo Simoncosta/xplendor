@@ -85,28 +85,24 @@ class CompanyIntegrationController extends Controller
         $this->assertCanManage($request, $companyId);
         $request->validate(['account_id' => 'required|string']);
 
-        $integration = CompanyIntegration::where('company_id', $companyId)
-            ->where('platform', 'meta')
-            ->first();
-
-        if (!$integration) {
-            return ApiResponse::error('Conta Meta não conectada.', 404);
-        }
-
-        // Normaliza "act_123" → "123" (o resto do sistema guarda sem prefixo).
-        $accountId = preg_replace('/^act_/', '', trim($request->account_id));
-        if ($accountId === '') {
-            return ApiResponse::error('Conta de anúncios inválida.', 422);
-        }
-
-        $previousAccount = $integration->account_id;
-        $integration->update(['account_id' => $accountId]);
-
-        // Definir/mudar a conta DISPARA o backfill de 90 dias (e apaga os dados da
-        // conta antiga se mudou). O ecrã mostra "a sincronizar pela primeira vez…".
-        app(\App\Services\MetaAccountInsightsService::class)->onAccountChanged($integration, $previousAccount);
+        // Normaliza "act_123", grava, dispara o backfill de 90 dias (apaga os dados da conta
+        // antiga se mudou) e regista no histórico das ligações.
+        app(\App\Services\Integrations\MetaAdsConnectionService::class)->setAccount($companyId, (string) $request->account_id, $request->user()?->id);
 
         return ApiResponse::success([], 'Conta de anúncios guardada. A sincronizar os últimos 90 dias…');
+    }
+
+    // GET /companies/{id}/integrations/meta/ad-accounts
+    // As contas de anúncios a que a autorização atual dá acesso (para escolher numa lista).
+    public function metaAdAccounts(Request $request, int $companyId): JsonResponse
+    {
+        $this->assertCanManage($request, $companyId);
+        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', 'meta')->first();
+
+        return ApiResponse::success([
+            'accounts' => app(\App\Services\Integrations\MetaAdsConnectionService::class)->adAccounts($companyId),
+            'selected' => $integration?->account_id,
+        ], 'Contas de anúncios.');
     }
 
     // DELETE /companies/{id}/integrations/meta
@@ -130,7 +126,7 @@ class CompanyIntegrationController extends Controller
             return ApiResponse::error('Para apagar os dados da Meta, confirme escrevendo ' . MetaDataPurger::CONFIRMATION . '.', 422);
         }
 
-        $result = app(\App\Services\Integrations\MetaAdsDisconnector::class)->disconnect($companyId, $purge);
+        $result = app(\App\Services\Integrations\MetaAdsDisconnector::class)->disconnect($companyId, $purge, $request->user()?->id);
 
         return ApiResponse::success($result, $purge ? 'Meta Ads desligado e dados da Meta apagados.' : 'Meta Ads desconectado.');
     }

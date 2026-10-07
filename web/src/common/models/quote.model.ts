@@ -89,7 +89,8 @@ export interface ICatalogItem {
     active: boolean;
     sort: number;
     /** Lista de arranque: tarefas copiadas para o ticket quando um orçamento com o serviço é aceite. */
-    onboarding_checklist?: string[] | null;
+    // Cada linha: {title, key} (a chave fixa marca a tarefa sozinha); linhas antigas só com texto.
+    onboarding_checklist?: Array<string | { title: string; key: string | null }> | null;
 }
 
 // Atividade do link público (GET /admin/quotes/{id}/activity).

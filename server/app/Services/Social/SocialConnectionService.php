@@ -37,10 +37,15 @@ class SocialConnectionService
 
     // ── 1. Autorização ─────────────────────────────────────────────────────────
 
-    public function authUrl(int $companyId, User $actor): string
+    /** Origem: o utilizador que inicia, ou o link de configuração do cliente (sem utilizador). */
+    public function authUrl(int $companyId, ?User $actor, ?int $setupLinkId = null): string
     {
         $nonce = Str::random(40);
-        Cache::put(self::stateKey($nonce), ['company_id' => $companyId, 'user_id' => $actor->id], now()->addMinutes(15));
+        $state = ['company_id' => $companyId, 'user_id' => $setupLinkId ? null : $actor?->id];
+        if ($setupLinkId) {
+            $state['setup_link_id'] = $setupLinkId;
+        }
+        Cache::put(self::stateKey($nonce), $state, now()->addMinutes(15));
 
         return $this->meta->authUrl($nonce);
     }
@@ -53,24 +58,26 @@ class SocialConnectionService
     // ── 2. Callback ────────────────────────────────────────────────────────────
 
     /**
-     * Devolve [company_id|null, sinal] para o redirecionamento: choose | error:<motivo>.
-     * O state é lido e apagado (uso único); sem state válido não se sabe a empresa.
+     * Devolve [company_id|null, sinal, link de configuração|null] para o redirecionamento:
+     * choose | error:<motivo>. O state é lido e apagado (uso único); sem state válido não se
+     * sabe a empresa.
      */
     public function handleCallback(string $nonce, ?string $code, ?string $error): array
     {
         $state = $nonce !== '' ? Cache::pull(self::stateKey($nonce)) : null;
         if (! is_array($state) || empty($state['company_id'])) {
-            return [null, 'error:state'];
+            return [null, 'error:state', null];
         }
         $companyId = (int) $state['company_id'];
+        $linkId = ! empty($state['setup_link_id']) ? (int) $state['setup_link_id'] : null;
 
         if ($error !== null || $code === null || $code === '') {
-            return [$companyId, $error !== null ? 'error:denied' : 'error:params'];
+            return [$companyId, $error !== null ? 'error:denied' : 'error:params', $linkId];
         }
 
         $token = $this->meta->exchangeCode($code);
         if (! $token) {
-            return [$companyId, 'error:token'];
+            return [$companyId, 'error:token', $linkId];
         }
         $missing = array_diff(SocialConnection::SCOPES, $token['scopes']);
         if ($missing !== []) {
@@ -83,10 +90,10 @@ class SocialConnectionService
                 $this->meta->revokePermission($token['token'], $granted);
             }
 
-            return [$companyId, $declined === [] ? 'error:not_approved' : 'error:scopes'];
+            return [$companyId, $declined === [] ? 'error:not_approved' : 'error:scopes', $linkId];
         }
 
-        DB::transaction(function () use ($companyId, $state, $token) {
+        DB::transaction(function () use ($companyId, $state, $token, $linkId) {
             $connection = SocialConnection::firstOrNew(['company_id' => $companyId]);
             $connection->fill([
                 'meta_user_id' => $token['user_id'],
@@ -94,7 +101,9 @@ class SocialConnectionService
                 'token_expires_at' => $token['expires_at'],
                 'granted_scopes' => $token['scopes'],
                 'status' => SocialConnection::STATUS_PENDING_SELECTION,
-                'connected_by_user_id' => $state['user_id'] ?? null,
+                // Origem: o utilizador que iniciou, ou o link de configuração do cliente (sem utilizador).
+                'connected_by_user_id' => $linkId ? null : ($state['user_id'] ?? null),
+                'setup_link_id' => $linkId,
                 'connected_at' => now(),
                 'last_error_at' => null,
                 'last_error_kind' => null,
@@ -104,7 +113,7 @@ class SocialConnectionService
             $this->deleteAccounts($connection);
         });
 
-        return [$companyId, 'choose'];
+        return [$companyId, 'choose', $linkId];
     }
 
     // ── 3. Escolha das contas ──────────────────────────────────────────────────
@@ -140,7 +149,7 @@ class SocialConnectionService
      * cliente) e os tokens das Páginas vêm daí. A principal de cada rede é a indicada
      * ou, por omissão, a primeira escolhida. Lê logo os seguidores (job).
      */
-    public function saveSelection(int $companyId, array $facebookIds, array $instagramIds, ?string $primaryFacebook, ?string $primaryInstagram): SocialConnection
+    public function saveSelection(int $companyId, array $facebookIds, array $instagramIds, ?string $primaryFacebook, ?string $primaryInstagram, ?int $actorId = null): SocialConnection
     {
         $connection = $this->connectionWithToken($companyId);
         if ($facebookIds === [] && $instagramIds === []) {
@@ -190,6 +199,11 @@ class SocialConnectionService
         });
 
         ReadSocialFollowersJob::dispatch($companyId);
+        \App\Models\CompanyConnectionEvent::record($companyId, \App\Models\CompanyConnectionEvent::KIND_SOCIAL, \App\Models\CompanyConnectionEvent::CONNECTED,
+            $connection->setup_link_id ? null : ($actorId ?? $connection->connected_by_user_id), $connection->setup_link_id, [
+                'facebook' => array_values(array_map(fn ($id) => $byPage[$id]['name'], $facebookIds)),
+                'instagram' => array_values(array_map(fn ($id) => $byInstagram[$id]['instagram']['username'] ?? $byInstagram[$id]['instagram']['name'] ?? $id, $instagramIds)),
+            ]);
 
         return $connection->fresh('accounts');
     }
@@ -299,9 +313,13 @@ class SocialConnectionService
      * desliga na mesma. Por omissão mantém o histórico de seguidores; com purge apaga
      * as leituras automáticas (as manuais são do cliente e ficam).
      */
-    public function disconnect(int $companyId, bool $purge): array
+    public function disconnect(int $companyId, bool $purge, ?int $actorId = null): array
     {
         $connection = SocialConnection::where('company_id', $companyId)->first();
+        if ($connection && $connection->status !== SocialConnection::STATUS_REVOKED) {
+            \App\Models\CompanyConnectionEvent::record($companyId, \App\Models\CompanyConnectionEvent::KIND_SOCIAL, \App\Models\CompanyConnectionEvent::DISCONNECTED,
+                $actorId, null, ['purge' => $purge, 'was_setup_link_id' => $connection->setup_link_id]);
+        }
 
         $revoked = [];
         $token = (string) ($connection?->access_token ?? '');
