@@ -19,6 +19,7 @@ import SalesRevenueCard from './components/SalesRevenueCard';
 import { useModules } from "contexts/ModulesContext";
 import { PingwinDashboardContent, RestaurantPageTitle } from "./PingwinDashboard";
 import RootDashboard from "./RootDashboard";
+import BaseDashboard from "./BaseDashboard";
 import type { SalesRevenueGranularity } from "../../types/api";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getWorkingCompany } from "helpers/workingCompany";
@@ -209,6 +210,8 @@ const ClientDashboard = () => {
     // branco. Sem nenhum ramo reconhecido → só o essencial.
     if (!modulesLoading && !showCars) {
         const showPingwin = isRoot || has('pingwin');
+        // Sem viaturas nem restauração: o dashboard base (Linha Editorial, seguidores, faturas).
+        if (!showPingwin) return <BaseDashboard />;
         return (
             <React.Fragment>
                 <div className="page-content">

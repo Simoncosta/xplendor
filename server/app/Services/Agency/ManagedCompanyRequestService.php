@@ -118,10 +118,10 @@ class ManagedCompanyRequestService
         $message = $kind === 'approved'
             ? "{$request->name} foi criada e já é gerida pela agência. Escolha-a no seletor \"A trabalhar em\"."
             : "O pedido não foi aprovado. Motivo: {$request->decline_reason}";
-        $this->alerts->createSystemAlert($agency->id, $kind === 'approved' ? 'opportunity' : 'warning', $title, mb_substr($message, 0, 900), 'medium', '/agency');
+        $this->alerts->createSystemAlert($agency->id, $kind === 'approved' ? 'opportunity' : 'warning', $title, mb_substr($message, 0, 900), 'medium', '/agency?tab=pedidos');
         if ($email = $request->requester?->email) {
             Mail::to($email)->queue(new ManagedCompanyRequestMail($kind, self::name($agency), $request->name,
-                $kind === 'declined' ? $request->decline_reason : null, self::url('/agency')));
+                $kind === 'declined' ? $request->decline_reason : null, self::url('/agency?tab=pedidos')));
         }
     }
 

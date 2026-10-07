@@ -145,7 +145,7 @@ class AgencyController extends Controller
 
         return ApiResponse::success([
             'requests' => $rows->map(fn ($r) => ManagedCompanyRequestService::present($r))->values(),
-            'can_request' => $this->isAgencyAdmin($request),
+            'can_request' => $this->isAgencyAdmin($request) && $request->user()->role !== 'root',
         ], 'Pedidos de nova empresa gerida.');
     }
 

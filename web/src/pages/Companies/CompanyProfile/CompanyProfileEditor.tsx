@@ -14,7 +14,7 @@ import ManagingAgencyCard from './components/ManagingAgencyCard';
 import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPanel';
 import IntegrationsSettings from './IntegrationsSettings';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
-import { getMyModules } from 'helpers/laravel_helper';
+import { getCompanyManagement, getMyModules } from 'helpers/laravel_helper';
 import { Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
@@ -54,6 +54,18 @@ export default function CompanyProfileEditor({
         return () => { alive = false; };
     }, [companyId]);
     const showEditorial = !!profileModules?.includes('linha_editorial');
+    // Quem não pode gravar os dados (ex.: a agência num cliente que já tem administrador) vê
+    // o formulário só de leitura; a agência que ainda edita os dados básicos vê porquê.
+    const [access, setAccess] = useState<{ canEdit: boolean; basicsOnly: boolean }>({ canEdit: true, basicsOnly: false });
+    useEffect(() => {
+        if (!companyId) return;
+        let alive = true;
+        getCompanyManagement(companyId)
+            .then((r: any) => { if (alive) setAccess({ canEdit: r?.data?.can_edit_company !== false, basicsOnly: !!r?.data?.can_edit_basics_only }); })
+            .catch(() => { /* sem resposta: o servidor decide ao gravar */ });
+        return () => { alive = false; };
+    }, [companyId]);
+    const readOnly = isEdit && !access.canEdit;
     // Carmine e PingWin passaram a viver como cartões na aba "Integrações"
     // (IntegrationsSettings), cada um gated pelo seu módulo — mostrado mas
     // BLOQUEADO a quem não o tem. O backend recusa na mesma (Fase 3).
@@ -212,6 +224,7 @@ export default function CompanyProfileEditor({
                                                     type="file"
                                                     accept="image/*"
                                                     className="profile-img-file-input"
+                                                    disabled={readOnly}
                                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                         const file = e.target.files?.[0];
 
@@ -228,7 +241,7 @@ export default function CompanyProfileEditor({
 
                                                 <Label
                                                     htmlFor="profile-img-file-input"
-                                                    className="profile-photo-edit avatar-xs"
+                                                    className={`profile-photo-edit avatar-xs ${readOnly ? "d-none" : ""}`}
                                                 >
                                                     <span className="avatar-title rounded-circle bg-light text-body">
                                                         <i className="ri-camera-fill"></i>
@@ -314,15 +327,29 @@ export default function CompanyProfileEditor({
                                         <TabPane tabId="1">
                                             <FormikProvider value={formik}>
                                                 <form onSubmit={formik.handleSubmit}>
+                                                    {readOnly && (
+                                                        <div className="alert alert-info d-flex gap-2 align-items-start" data-testid="profile-read-only">
+                                                            <i className="ri-lock-line fs-16" />
+                                                            <span>Só de leitura: os dados desta empresa são editados pelo administrador dela.</span>
+                                                        </div>
+                                                    )}
+                                                    {access.basicsOnly && (
+                                                        <div className="alert alert-light d-flex gap-2 align-items-start">
+                                                            <i className="ri-information-line fs-16" />
+                                                            <span>A agência edita os dados desta empresa enquanto o cliente não tiver um administrador. Depois disso, passam a ser só de leitura para a agência.</span>
+                                                        </div>
+                                                    )}
                                                     {!isEdit && isRoot && <AgencyCreateFields />}
-                                                    <CompanyGeneralDataFields
-                                                        isEdit={isEdit}
-                                                        managed={!isEdit && !!(formik.values as any).managed_by_company_id}
-                                                    />
+                                                    <fieldset disabled={readOnly} style={readOnly ? { pointerEvents: "none" } : undefined} aria-readonly={readOnly || undefined}>
+                                                        <CompanyGeneralDataFields
+                                                            isEdit={isEdit}
+                                                            managed={!isEdit && !!(formik.values as any).managed_by_company_id}
+                                                        />
+                                                    </fieldset>
 
                                                     <Col lg={12}>
                                                         <div className="hstack gap-2 justify-content-end">
-                                                            <XButton
+                                                            {!readOnly && <XButton
                                                                 variant="success"
                                                                 type='submit'
                                                                 outline
@@ -330,7 +357,7 @@ export default function CompanyProfileEditor({
                                                                 icon={<i className="ri-check-double-line" />}
                                                             >
                                                                 Salvar
-                                                            </XButton>
+                                                            </XButton>}
                                                             <XButton
                                                                 variant="danger"
                                                                 outline

@@ -104,10 +104,18 @@ const initialMonth = () => {
     return m && /^\d{4}-\d{2}$/.test(m) ? m : "";
 };
 
-export default function EditorialCalendarPage() {
+type PageProps = {
+    /** Na Linha Editorial da agência, o cliente escolhido no filtro (em vez da empresa de trabalho). */
+    companyIdOverride?: number;
+    /** O filtro por cliente da agência, mostrado no cabeçalho. */
+    clientFilter?: React.ReactNode;
+};
+
+export default function EditorialCalendarPage({ companyIdOverride, clientFilter }: PageProps = {}) {
     document.title = "Linha Editorial | Xplendor";
 
-    const companyId = useWorkingCompanyId();
+    const workingId = useWorkingCompanyId();
+    const companyId = companyIdOverride ?? workingId;
 
     const calRef = useRef<FullCalendar | null>(null);
     const [phone] = useState(isPhone);
@@ -390,6 +398,7 @@ export default function EditorialCalendarPage() {
             <Container fluid>
                 <BreadCrumb title="Linha Editorial" pageTitle="Marketing" />
 
+                {clientFilter && (loading || hasSector === false) && <div className="d-flex justify-content-end mb-3">{clientFilter}</div>}
                 {loading ? (
                     <div className="text-center py-5"><Spinner color="primary" /></div>
                 ) : hasSector === false ? (
@@ -410,6 +419,7 @@ export default function EditorialCalendarPage() {
                             </div>
                             {/* Uma ação principal; "Gerar ideias" secundária; o resto em "Mais". */}
                             <div className="d-flex flex-wrap align-items-center gap-2">
+                                {clientFilter}
                                 {canProduce && (ideasReason
                                     ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
                                     : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
@@ -576,7 +586,7 @@ export default function EditorialCalendarPage() {
             {/* "Como funciona" (diagrama carregado só ao abrir) e legenda das etapas. */}
             {howOpen && (
                 <Suspense fallback={<Modal isOpen centered><ModalBody className="text-center py-5"><Spinner /></ModalBody></Modal>}>
-                    <HowItWorksModal isOpen={howOpen} toggle={() => setHowOpen(false)} profileReady={ideasGate ? ideasGate.ready : null}
+                    <HowItWorksModal isOpen={howOpen} toggle={() => setHowOpen(false)} companyId={companyId} profileReady={ideasGate ? ideasGate.ready : null}
                         blockedReason={ideasGate?.reason ?? null} canProduce={canProduce} stageCounts={stageCounts} />
                 </Suspense>
             )}

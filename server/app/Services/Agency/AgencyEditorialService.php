@@ -128,13 +128,13 @@ class AgencyEditorialService
         ))->values()->all();
     }
 
-    /** Painel da agência: por cliente, para publicar hoje, atrasadas, à espera de aprovação, em produção. */
+    /** Painel da agência: por cliente, para publicar hoje, atrasadas, à espera de aprovação, em produção (Produção e Revisão interna). */
     public function panel(Collection $companies, Company $agency): array
     {
         $ids = $companies->pluck('id')->all();
         $today = CarbonImmutable::now(EditorialPost::TIMEZONE)->toDateString();
         $scheduled = $this->scheduledUntil($ids, $today)->groupBy('company_id');
-        $stages = EditorialPost::whereIn('company_id', $ids)->whereIn('stage', [EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_PRODUCTION])
+        $stages = EditorialPost::whereIn('company_id', $ids)->whereIn('stage', [EditorialPost::STAGE_CLIENT_REVIEW, EditorialPost::STAGE_PRODUCTION, EditorialPost::STAGE_INTERNAL_REVIEW])
             ->selectRaw('company_id, stage, count(*) as n')->groupBy('company_id', 'stage')->get()
             ->groupBy('company_id')->map(fn ($rows) => $rows->pluck('n', 'stage'));
 
@@ -146,7 +146,8 @@ class AgencyEditorialService
                 'today' => $mine->filter(fn ($p) => $p->publish_date->toDateString() === $today)->count(),
                 'overdue' => $mine->filter(fn ($p) => $p->isOverdue())->count(),
                 'awaiting' => (int) ($stages[$c->id][EditorialPost::STAGE_CLIENT_REVIEW] ?? 0),
-                'production' => (int) ($stages[$c->id][EditorialPost::STAGE_PRODUCTION] ?? 0),
+                // Em produção: o trabalho ainda do lado da equipa (Produção e Revisão interna).
+                'production' => (int) ($stages[$c->id][EditorialPost::STAGE_PRODUCTION] ?? 0) + (int) ($stages[$c->id][EditorialPost::STAGE_INTERNAL_REVIEW] ?? 0),
             ];
         })->values()->all();
     }

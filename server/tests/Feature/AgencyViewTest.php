@@ -162,6 +162,8 @@ class AgencyViewTest extends TestCase
             'expires_at' => now()->addDays(5), 'last_sent_at' => now()]);
         ContentReviewLinkItem::create(['content_review_link_id' => $link->id, 'editorial_post_id' => $waiting->id, 'version_id' => $version->id]);
         $this->makePost($this->c['quebom'], 'Quebom hoje', 'scheduled', '2026-10-14');
+        $this->makePost($d, 'Em revisão interna', 'internal_review', '2026-10-23');
+        $this->makePost($d, 'Ainda em planeamento', 'planning', '2026-10-24'); // fora de "em produção"
 
         $today = $this->as($this->member)->getJson($this->url('/editorial/today'))->assertOk()->json('data');
         $this->assertSame(['Hoje'], array_column($today['today'], 'title'));
@@ -173,7 +175,8 @@ class AgencyViewTest extends TestCase
 
         $panel = collect($this->as($this->member)->getJson($this->url('/panel'))->json('data.rows'))->keyBy(fn ($r) => $r['company']['name']);
         $this->assertSame(['Agência Norte', 'Domiway'], $panel->keys()->all(), 'Sem o módulo, o cliente não entra no painel.');
-        $this->assertSame(['today' => 1, 'overdue' => 1, 'awaiting' => 1, 'production' => 1],
+        // Em produção: Produção e Revisão interna (o Planeamento fica de fora).
+        $this->assertSame(['today' => 1, 'overdue' => 1, 'awaiting' => 1, 'production' => 2],
             array_intersect_key($panel['Domiway'], array_flip(['today', 'overdue', 'awaiting', 'production'])));
     }
 
@@ -218,6 +221,9 @@ class AgencyViewTest extends TestCase
         Mail::assertQueued(ManagedCompanyRequestMail::class, fn ($m) => $m->kind === 'new' && $m->hasTo('simon@xplendor.tech'));
         $this->assertSame('pending', $this->as($this->member)->getJson($this->url('/company-requests'))->json('data.requests.0.status'));
         $this->assertFalse($this->as($this->member)->getJson($this->url('/company-requests'))->json('data.can_request'));
+        $this->assertTrue($this->as($this->admin)->getJson($this->url('/company-requests'))->json('data.can_request'));
+        // O root decide os pedidos; não os faz em nome da agência.
+        $this->assertFalse($this->as($this->root)->getJson($this->url('/company-requests'))->json('data.can_request'));
         $this->as($this->admin)->postJson("/api/v1/admin/company-requests/{$id}/approve")->assertForbidden();
 
         $r = $this->as($this->root)->postJson("/api/v1/admin/company-requests/{$id}/approve")->assertOk();

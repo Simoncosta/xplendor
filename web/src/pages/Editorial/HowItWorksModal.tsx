@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button, Modal, ModalBody, ModalHeader } from "reactstrap";
-import { useNavigate } from "react-router-dom";
 import { Background, Handle, MarkerType, Position, ReactFlow, type Edge, type Node, type NodeProps } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { STAGE_META, Stage } from "common/models/editorialWorkflow.model";
+import useOpenInCompany from "./useOpenInCompany";
 
 /**
  * "Como funciona" da Linha Editorial: o caminho do Perfil da Marca até à Análise, com os
@@ -78,10 +78,12 @@ type Props = {
     canProduce: boolean;
     /** Publicações do mês por etapa (para destacar a etapa atual). */
     stageCounts?: Partial<Record<Stage, number>>;
+    /** A empresa desta Linha Editorial (o cliente escolhido no filtro da agência). */
+    companyId?: number;
 };
 
-export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedReason, canProduce, stageCounts = {} }: Props) {
-    const navigate = useNavigate();
+export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedReason, canProduce, stageCounts = {}, companyId = 0 }: Props) {
+    const openInCompany = useOpenInCompany();
     const mobile = useIsMobile();
     const dark = document.documentElement.getAttribute("data-bs-theme") === "dark";
     const blocked = profileReady === false;
@@ -140,7 +142,7 @@ export default function HowItWorksModal({ isOpen, toggle, profileReady, blockedR
         return { nodes, edges, height: mobile ? MAIN.length * step + 30 : 2 * (H + 46) + H + 40 };
     }, [mobile, blocked, profileReady, canProduce, current, stageCounts]);
 
-    const goProfile = () => { toggle(); navigate("/brand-profile"); };
+    const goProfile = () => { toggle(); openInCompany(companyId, "/brand-profile"); };
 
     return (
         <Modal isOpen={isOpen} toggle={toggle} size="xl" centered scrollable>

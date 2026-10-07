@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Modal, ModalHeader, ModalBody, ModalFooter, Spinner, Badge } from "reactstrap";
+import { Spinner, Badge } from "reactstrap";
 import { toast } from "react-toastify";
 import { getCompanyModules, setCompanyModule, applyCompanyModulePreset } from "helpers/laravel_helper";
 
 /**
- * XPLENDOR — Gestão de MÓDULOS de uma empresa (só super-admin). Liga/desliga
- * (respeitando a teia de dependências — o backend bloqueia e explica) e aplica
- * presets de ramo. Incremento 1: só a estrutura (não esconde secções ainda).
+ * Módulos de uma empresa (só o root), no separador "Módulos" do modal da empresa: liga e
+ * desliga (respeitando as dependências; o backend bloqueia e explica) e aplica presets de
+ * ramo.
  */
 interface ModuleRow {
     key: string;
@@ -19,10 +19,7 @@ interface ModuleRow {
 }
 
 interface Props {
-    isOpen: boolean;
-    companyId: number | null;
-    companyName?: string;
-    onClose: () => void;
+    companyId: number;
 }
 
 const PRESET_LABELS: Record<string, string> = {
@@ -31,7 +28,7 @@ const PRESET_LABELS: Record<string, string> = {
     base: "Base (marketing e Linha Editorial)",
 };
 
-const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, onClose }) => {
+const CompanyModulesPanel: React.FC<Props> = ({ companyId }) => {
     const [modules, setModules] = useState<ModuleRow[]>([]);
     const [presets, setPresets] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -50,9 +47,9 @@ const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, 
     };
 
     useEffect(() => {
-        if (isOpen && companyId) load();
+        load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, companyId]);
+    }, [companyId]);
 
     const toggle = async (m: ModuleRow) => {
         if (!companyId) return;
@@ -83,10 +80,8 @@ const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, 
     };
 
     return (
-        <Modal isOpen={isOpen} toggle={onClose} centered scrollable>
-            <ModalHeader toggle={onClose}>Módulos — {companyName ?? "empresa"}</ModalHeader>
-            <ModalBody>
-                <div className="d-flex align-items-center gap-2 mb-3">
+        <div data-testid="company-modules">
+                <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
                     <span className="text-muted fs-13">Presets de ramo:</span>
                     {presets.map((p) => (
                         <button key={p} type="button" className="btn btn-sm btn-soft-primary" disabled={busy !== null} onClick={() => applyPreset(p)}>
@@ -112,7 +107,7 @@ const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, 
                                         </div>
                                         {blocked && (
                                             <small className="text-muted d-block">
-                                                <i className="ri-lock-line me-1" />Depende(m) dele: {m.blocking_dependents.join(", ")} — desliga primeiro esses.
+                                                <i className="ri-lock-line me-1" />Depende(m) dele: {m.blocking_dependents.join(", ")}. Desligue primeiro esses.
                                             </small>
                                         )}
                                     </div>
@@ -131,12 +126,8 @@ const CompanyModulesModal: React.FC<Props> = ({ isOpen, companyId, companyName, 
                         })}
                     </ul>
                 )}
-            </ModalBody>
-            <ModalFooter>
-                <button type="button" className="btn btn-light" onClick={onClose}>Fechar</button>
-            </ModalFooter>
-        </Modal>
+        </div>
     );
 };
 
-export default CompanyModulesModal;
+export default CompanyModulesPanel;

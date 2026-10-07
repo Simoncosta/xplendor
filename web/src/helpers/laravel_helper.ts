@@ -331,6 +331,36 @@ export const companyChargeInvoicePath = (companyId: number, id: number) => url.G
 export const indicateCompanyChargePaid = (companyId: number, id: number, data: FormData) =>
     api.create(url.GET_COMPANIES + `/${companyId}/xplendor-charges/${id}/paid`, data, { headers: { "Content-Type": "multipart/form-data" } });
 
+// Vista da agência (F1b): todas as empresas que a pessoa vê; filtro por cliente com company_ids[].
+const AG = (agencyId: number) => `/agencies/${agencyId}`;
+type AgencyFilter = { company_ids?: number[] };
+/** Query com listas no formato do Laravel (company_ids[]=1&company_ids[]=2). */
+const agencyQuery = (params: Record<string, string | number | undefined>, f: AgencyFilter = {}) => {
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== "") q.append(k, String(v)); });
+    (f.company_ids ?? []).forEach((id) => q.append("company_ids[]", String(id)));
+    const s = q.toString();
+    return s ? `?${s}` : "";
+};
+export const getAgencyCompanies = (agencyId: number) => api.get(AG(agencyId) + `/companies`);
+export const getAgencyPosts = (agencyId: number, month: string, f: AgencyFilter = {}) => api.get(AG(agencyId) + `/editorial/board` + agencyQuery({ month }, f));
+export const getAgencyToday = (agencyId: number, f: AgencyFilter = {}) => api.get(AG(agencyId) + `/editorial/today` + agencyQuery({}, f));
+export const getAgencyAwaiting = (agencyId: number, f: AgencyFilter = {}) => api.get(AG(agencyId) + `/editorial/awaiting` + agencyQuery({}, f));
+export const getAgencyResults = (agencyId: number, month: string, f: AgencyFilter = {}) => api.get(AG(agencyId) + `/editorial/results` + agencyQuery({ month }, f));
+export const getAgencyPanel = (agencyId: number) => api.get(AG(agencyId) + `/panel`);
+export const getAgencyAssignments = (agencyId: number) => api.get(AG(agencyId) + `/assignments`);
+export const setAgencyAssignment = (agencyId: number, companyId: number, teamScope: "all" | "assigned", memberIds: number[]) =>
+    api.put(AG(agencyId) + `/assignments/${companyId}`, { team_scope: teamScope, member_ids: memberIds });
+export const getAgencyCompanyRequests = (agencyId: number) => api.get(AG(agencyId) + `/company-requests`);
+export const createAgencyCompanyRequest = (agencyId: number, data: Record<string, unknown>) => api.create(AG(agencyId) + `/company-requests`, data);
+export const getAdminCompanyRequests = (status?: string) => api.get(url.GET_ADMIN + `/company-requests`, status ? { status } : undefined);
+export const decideAdminCompanyRequest = (id: number, decision: "approve" | "decline", reason?: string) =>
+    api.create(url.GET_ADMIN + `/company-requests/${id}/${decision}`, decision === "decline" ? { reason } : {});
+// Dashboard base (empresas sem viaturas nem restauração).
+export const getBaseDashboard = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/dashboard/base`);
+export const getCompany = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}`);
+export const getAlertsUnreadCount = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/alerts/unread-count`);
+
 // Gestão por agências: as empresas onde a pessoa pode trabalhar (a própria e as geridas; o root vê todas).
 export const getWorkingCompanies = () => api.get(url.GET_COMPANIES);
 // Empresa gerida: a agência gestora; terminar a relação (só o admin da empresa); primeiro admin (a agência).

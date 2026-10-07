@@ -11,6 +11,7 @@ import VerticalLayout from "./VerticalLayouts";
 import TwoColumnLayout from "./TwoColumnLayout";
 import { Container } from "reactstrap";
 import HorizontalLayout from "./HorizontalLayout";
+import WorkingCompanySwitcher from "../Components/Common/WorkingCompanySwitcher";
 
 const Sidebar = ({ layoutType }: any) => {
 
@@ -64,6 +65,8 @@ const Sidebar = ({ layoutType }: any) => {
                         <i className="ri-record-circle-line"></i>
                     </button>
                 </div>
+                {/* Contexto de trabalho (agência e root): a empresa em que se trabalha, abaixo do logótipo */}
+                {layoutType !== "horizontal" && <WorkingCompanySwitcher />}
                 {layoutType === "horizontal" ? (
                     <div id="scrollbar">
                         <Container fluid>

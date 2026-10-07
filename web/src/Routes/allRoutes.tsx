@@ -9,7 +9,8 @@ import CalendarioPage from "pages/Restauracao/CalendarioPage";
 import DocumentosPage from "pages/Restauracao/DocumentosPage";
 import ArtigosPage from "pages/Restauracao/ArtigosPage";
 import ArtigoFormPage from "pages/Restauracao/ArtigoFormPage";
-import EditorialCalendarPage from "pages/Editorial/EditorialCalendarPage";
+import EditorialPage from "pages/Editorial/EditorialPage";
+import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
@@ -127,6 +128,8 @@ const CarAdsRedirect = () => {
 
 const authProtectedRoutes = [
     { path: "/dashboard", component: <Dashboard /> },
+    // Painel da agência (a própria página diz o que fazer fora do contexto da agência).
+    { path: "/agency", component: <AgencyPanelPage /> },
     // ROOT — empresas → utilizadores → "entrar como" (impersonation). Root-only na UI; a
     // segurança real é o backend (/admin gated). As páginas recusam não-root na mesma.
     { path: "/root/companies", component: <AdminCompaniesPage /> },
@@ -138,7 +141,7 @@ const authProtectedRoutes = [
     { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos"><DocumentosPage /></RequireModule> },
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
-    { path: "/editorial", component: <RequireModule module="linha_editorial"><EditorialCalendarPage /></RequireModule> },
+    { path: "/editorial", component: <RequireModule module="linha_editorial"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial"><ContentReviewPreview /></RequireModule> },
     { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },

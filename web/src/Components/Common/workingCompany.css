@@ -1,0 +1,96 @@
+/* "A trabalhar em" no topo da barra lateral e a faixa de cor do cliente. */
+
+.xp-wc {
+    padding: 0.5rem 0.75rem 0.25rem;
+}
+.xp-wc-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    padding: 0.45rem 0.5rem;
+    border: 1px solid var(--vz-vertical-menu-border, rgba(127, 127, 127, 0.25));
+    border-radius: 0.5rem;
+    background: rgba(127, 127, 127, 0.08);
+    color: var(--vz-vertical-menu-item-color);
+    text-align: left;
+    line-height: 1.2;
+}
+.xp-wc-toggle:hover,
+.xp-wc-toggle:focus-visible {
+    background: rgba(127, 127, 127, 0.16);
+    color: var(--vz-vertical-menu-item-hover-color, var(--vz-vertical-menu-item-color));
+}
+.xp-wc.is-away .xp-wc-toggle {
+    border-color: rgba(247, 184, 75, 0.6);
+}
+.xp-wc-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+.xp-wc-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    opacity: 0.75;
+}
+.xp-wc-name {
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.xp-wc-caret {
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+/* Barra recolhida: só a marca da empresa (o nome fica na dica). */
+[data-layout="vertical"][data-sidebar-size="sm"] .xp-wc,
+[data-layout="vertical"][data-sidebar-size="sm-hover"] .app-menu:not(:hover) .xp-wc {
+    padding: 0.5rem 0;
+    display: flex;
+    justify-content: center;
+}
+[data-layout="vertical"][data-sidebar-size="sm"] .xp-wc-toggle,
+[data-layout="vertical"][data-sidebar-size="sm-hover"] .app-menu:not(:hover) .xp-wc-toggle {
+    width: auto;
+    padding: 0.3rem;
+    justify-content: center;
+}
+[data-layout="vertical"][data-sidebar-size="sm"] .xp-wc-text,
+[data-layout="vertical"][data-sidebar-size="sm"] .xp-wc-caret,
+[data-layout="vertical"][data-sidebar-size="sm-hover"] .app-menu:not(:hover) .xp-wc-text,
+[data-layout="vertical"][data-sidebar-size="sm-hover"] .app-menu:not(:hover) .xp-wc-caret {
+    display: none;
+}
+
+.xp-wc-menu {
+    z-index: 1100;
+}
+
+/* A faixa fina de cor enquanto se trabalha num cliente. */
+.xp-wc-band {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    z-index: 1010;
+    pointer-events: none;
+}
+html[data-working-away] #page-topbar {
+    top: 4px;
+}
+html[data-working-away] .app-menu {
+    top: 4px;
+}
+html[data-working-away][data-layout="vertical"][data-sidebar-size="sm"] .navbar-brand-box {
+    top: 4px;
+}
+html[data-working-away] .main-content {
+    padding-top: 4px;
+}

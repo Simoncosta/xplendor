@@ -1,18 +1,18 @@
 // React
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Badge, Card, CardBody, CardHeader, Col, Container, Modal, ModalBody, ModalHeader, Row, Spinner } from 'reactstrap';
+import { Badge, Button, Card, CardBody, CardHeader, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Row, Spinner, UncontrolledDropdown } from 'reactstrap';
 import { ToastContainer, toast } from 'react-toastify';
 import XTanStackTable from 'Components/Common/XTanStackTable';
-import CompanyModulesModal from './components/CompanyModulesModal';
 import CompanyUsersModal from './components/CompanyUsersModal';
-import AgencyManagementPanel from './components/AgencyManagementPanel';
+import CompanyEditModal from './components/CompanyEditModal';
+import CompanyRequestsModal from './components/CompanyRequestsModal';
 import { createSelector } from 'reselect';
 // Slices
 import { getCompaniesPaginate } from 'slices/companies/thunk';
-import { setAdminCompanyStatus } from 'helpers/laravel_helper';
+import { getAdminCompanyRequests, setAdminCompanyStatus } from 'helpers/laravel_helper';
 import { confirmAction } from 'helpers/swal';
 
 const selectCompanyState = (state: any) => state.Company;
@@ -40,9 +40,21 @@ const CompanyList = () => {
     });
 
     const [busyId, setBusyId] = useState<number | null>(null);
-    const [modulesFor, setModulesFor] = useState<{ id: number; name: string } | null>(null);
     const [usersFor, setUsersFor] = useState<{ id: number; name: string } | null>(null);
-    const [agencyFor, setAgencyFor] = useState<{ id: number; name: string } | null>(null);
+    // O modal da empresa: undefined fechado, null criar, número editar.
+    const [editing, setEditing] = useState<number | null | undefined>(undefined);
+    // Pedidos de nova empresa gerida (?pedidos=1 vem do sino e do email).
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [requestsOpen, setRequestsOpen] = useState(searchParams.get('pedidos') === '1');
+    const [pendingRequests, setPendingRequests] = useState(0);
+    const loadPending = useCallback(() => {
+        getAdminCompanyRequests('pending').then((r: any) => setPendingRequests(Number(r?.data?.pending_count ?? 0))).catch(() => setPendingRequests(0));
+    }, []);
+    useEffect(() => { loadPending(); }, [loadPending]);
+    const closeRequests = () => {
+        setRequestsOpen(false);
+        if (searchParams.has('pedidos')) setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('pedidos'); return n; }, { replace: true });
+    };
 
     const refetch = useCallback(() => {
         dispatch(
@@ -146,46 +158,25 @@ const CompanyList = () => {
                     const c = cellProps.row.original;
                     const active = !!c.is_active;
                     const busy = busyId === c.id;
+                    const name = c.fiscal_name || `Empresa #${c.id}`;
                     return (
                         <div className="d-flex align-items-center gap-2">
-                            <Link to={`/companies/${c.id}`} title="Ver">
-                                <i className="ri-eye-line align-bottom"></i>
-                            </Link>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-soft-primary"
-                                onClick={() => setModulesFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
-                                title="Gerir módulos"
-                            >
-                                <i className="ri-apps-2-line align-bottom me-1" />Módulos
+                            <button type="button" className="btn btn-sm btn-soft-primary text-nowrap" onClick={() => setEditing(c.id)}>
+                                <i className="ri-pencil-line align-bottom me-1" />Editar
                             </button>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-soft-secondary"
-                                onClick={() => setUsersFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
-                                title="Utilizadores / aceder como"
-                            >
-                                <i className="ri-team-line align-bottom me-1" />Utilizadores
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-sm btn-soft-info"
-                                onClick={() => setAgencyFor({ id: c.id, name: c.fiscal_name || `Empresa #${c.id}` })}
-                                title="Agência e agência gestora"
-                            >
-                                <i className="ri-building-2-line align-bottom me-1" />Agência
-                            </button>
-                            <button
-                                type="button"
-                                className={"btn btn-sm " + (active ? "btn-soft-danger" : "btn-soft-success")}
-                                disabled={busy}
-                                onClick={() => toggleStatus(c)}
-                                title={active ? "Inativar empresa" : "Ativar empresa"}
-                            >
-                                {busy
-                                    ? <Spinner size="sm" />
-                                    : <><i className={(active ? "ri-forbid-2-line" : "ri-check-line") + " align-bottom me-1"} />{active ? "Inativar" : "Ativar"}</>}
-                            </button>
+                            <UncontrolledDropdown>
+                                <DropdownToggle tag="button" type="button" className="btn btn-sm btn-soft-secondary" aria-label={`Mais ações: ${name}`} disabled={busy}>
+                                    {busy ? <Spinner size="sm" /> : <i className="ri-more-fill align-bottom" />}
+                                </DropdownToggle>
+                                <DropdownMenu end container="body">
+                                    <DropdownItem onClick={() => setUsersFor({ id: c.id, name })}><i className="ri-team-line align-bottom me-2" />Utilizadores</DropdownItem>
+                                    <DropdownItem tag={Link} to={`/companies/${c.id}`}><i className="ri-eye-line align-bottom me-2" />Ver perfil</DropdownItem>
+                                    <DropdownItem divider />
+                                    <DropdownItem className={active ? "text-danger" : "text-success"} onClick={() => toggleStatus(c)}>
+                                        <i className={(active ? "ri-forbid-2-line" : "ri-check-line") + " align-bottom me-2"} />{active ? "Inativar" : "Ativar"}
+                                    </DropdownItem>
+                                </DropdownMenu>
+                            </UncontrolledDropdown>
                         </div>
                     );
                 }
@@ -202,14 +193,15 @@ const CompanyList = () => {
                         <Col lg={12}>
                             <Card id="companyList">
                                 <CardHeader className="border-0">
-                                    <div className="d-flex align-items-center">
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
                                         <h5 className="card-title mb-0 flex-grow-1">Empresas</h5>
-                                        <div className="flex-shrink-0">
-                                            <div className="d-flex gap-2 flex-wrap">
-                                                <Link to="/companies/create" className="btn btn-outline-success">
-                                                    <i className="ri-add-line align-bottom"></i>
-                                                </Link>
-                                            </div>
+                                        <div className="d-flex gap-2 flex-wrap">
+                                            <Button color="soft-warning" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
+                                                <i className="ri-inbox-line align-bottom me-1" />Pedidos{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
+                                            </Button>
+                                            <Button color="success" onClick={() => setEditing(null)}>
+                                                <i className="ri-add-line align-bottom me-1" />Nova empresa
+                                            </Button>
                                         </div>
                                     </div>
                                 </CardHeader>
@@ -236,13 +228,6 @@ const CompanyList = () => {
                 </Container>
             </div>
 
-            <CompanyModulesModal
-                isOpen={modulesFor !== null}
-                companyId={modulesFor?.id ?? null}
-                companyName={modulesFor?.name}
-                onClose={() => setModulesFor(null)}
-            />
-
             <CompanyUsersModal
                 isOpen={usersFor !== null}
                 companyId={usersFor?.id ?? null}
@@ -250,12 +235,18 @@ const CompanyList = () => {
                 onClose={() => setUsersFor(null)}
             />
 
-            <Modal isOpen={agencyFor !== null} toggle={() => setAgencyFor(null)} centered scrollable>
-                <ModalHeader toggle={() => setAgencyFor(null)}>Gestão por agências: {agencyFor?.name}</ModalHeader>
-                <ModalBody>
-                    {agencyFor && <AgencyManagementPanel companyId={agencyFor.id} onChanged={refetch} />}
-                </ModalBody>
-            </Modal>
+            <CompanyEditModal
+                isOpen={editing !== undefined}
+                companyId={editing ?? null}
+                onClose={() => setEditing(undefined)}
+                onSaved={refetch}
+            />
+
+            <CompanyRequestsModal
+                isOpen={requestsOpen}
+                onClose={closeRequests}
+                onDecided={() => { loadPending(); refetch(); }}
+            />
         </React.Fragment >
     )
 };

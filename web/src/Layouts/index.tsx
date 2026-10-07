@@ -7,6 +7,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import Footer from './Footer';
 import SupportFab from '../Components/Common/SupportFab';
+import { WorkingCompanyBand } from "../Components/Common/WorkingCompanySwitcher";
 import ImpersonationBanner from '../Components/Common/ImpersonationBanner';
 import { reconcileImpersonation } from '../helpers/impersonation';
 import { ModulesProvider } from '../contexts/ModulesContext';
@@ -157,6 +158,7 @@ const Layout = (props: any) => {
         <WorkingCompanyProvider>
             <ModulesProvider>
                 <ImpersonationBanner />
+                <WorkingCompanyBand />
                 <div id="layout-wrapper">
                     <Header
                         headerClass={headerClass}

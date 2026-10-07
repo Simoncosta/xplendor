@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Badge, Button, Input, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { acceptEditorialIdea, dismissAiRequest, getBrandProfile, getEditorialIdeas, getLatestAiRequest, requestEditorialIdeas } from "helpers/laravel_helper";
@@ -7,6 +6,7 @@ import { useAiRequestPoll } from "hooks/useAiRequestPoll";
 import AiRequestState from "Components/Common/AiRequestState";
 import { EditorialIdea, EditorialIdeasRequest, POST_CHANNEL_META, PostChannel, mediaFormatLabel } from "common/models/editorialPost.model";
 import XSelect from "./XSelect";
+import useOpenInCompany from "./useOpenInCompany";
 
 /**
  * "Gerar ideias do mês": a IA propõe 8 a 12 ideias para o mês aberto (âncoras com o gancho
@@ -36,6 +36,7 @@ type Props = {
 type Edit = { date: string; channel: PostChannel };
 
 export default function IdeasModal({ isOpen, toggle, companyId, year, month, monthLabel, onAccepted }: Props) {
+    const openInCompany = useOpenInCompany();
     const fetchOne = useCallback((id: number) => getEditorialIdeas(companyId, id), [companyId]);
     const { data, busy, stalled, start, resume, reset } = useAiRequestPoll<EditorialIdeasRequest>(fetchOne);
     const [profileEmpty, setProfileEmpty] = useState<boolean | null>(null);
@@ -131,7 +132,7 @@ export default function IdeasModal({ isOpen, toggle, companyId, year, month, mon
                     <div className="alert alert-warning fs-13 py-2">
                         <i className="ri-error-warning-line me-1" />
                         O Perfil da Marca está por preencher: as ideias vão usar só o ramo e as âncoras.{" "}
-                        <Link to="/brand-profile" className="alert-link">Preencher o Perfil da Marca</Link>
+                        <button type="button" className="btn btn-link alert-link p-0 align-baseline fs-13" onClick={() => { toggle(); openInCompany(companyId, "/brand-profile"); }}>Preencher o Perfil da Marca</button>
                     </div>
                 )}
 

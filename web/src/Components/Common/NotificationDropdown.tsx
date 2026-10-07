@@ -13,7 +13,7 @@ import {
     markCompanyAlertsReadApi,
 } from '../../helpers/laravel_helper';
 import { AlertItem } from '../../pages/Actions/types';
-import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import { useWorkingCompany, useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 // O interceptor Axios (api_helper) desempacota `response.data`, portanto cada
 // chamada devolve directamente o body JSON. Tipamos esse body aqui (sem `any`).
@@ -40,6 +40,19 @@ const NotificationDropdown = () => {
     const [unreadTotal, setUnreadTotal] = useState(0);
 
     const companyId = useWorkingCompanyId();
+    // A trabalhar num cliente: os alertas por ler da PRÓPRIA empresa (ex.: a agência) têm um
+    // indicador no sino, para não se perderem enquanto se está noutra empresa.
+    const wc = useWorkingCompany();
+    const homeAwayId = wc?.away ? wc.homeId : 0;
+    const homeName = wc?.options.find((o) => o.home)?.name ?? "a sua empresa";
+    const [homeUnread, setHomeUnread] = useState(0);
+    const fetchHomeUnread = useCallback(async () => {
+        if (!homeAwayId) { setHomeUnread(0); return; }
+        try {
+            const res = (await getCompanyAlertsUnreadCountApi(homeAwayId)) as unknown as UnreadCountResponse;
+            setHomeUnread(Number(res?.data?.count ?? res?.count ?? 0));
+        } catch { /* sem contagem: sem indicador */ }
+    }, [homeAwayId]);
 
     const fetchAll = useCallback(async () => {
         if (!companyId) {
@@ -87,14 +100,15 @@ const NotificationDropdown = () => {
         const handleAlertsUpdated = () => fetchAll();
         window.addEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
 
+        fetchHomeUnread();
         // Atualiza o contador a cada 30s; limpa ao desmontar (não martela o servidor).
-        const pollId = window.setInterval(fetchUnreadCount, 30000);
+        const pollId = window.setInterval(() => { fetchUnreadCount(); fetchHomeUnread(); }, 30000);
 
         return () => {
             window.removeEventListener(ALERTS_UPDATED_EVENT, handleAlertsUpdated);
             window.clearInterval(pollId);
         };
-    }, [fetchAll, fetchUnreadCount, location.pathname]);
+    }, [fetchAll, fetchUnreadCount, fetchHomeUnread, location.pathname]);
 
     const toggle = () => {
         const next = !isOpen;
@@ -152,6 +166,12 @@ const NotificationDropdown = () => {
                             <span className="visually-hidden">notificações por ler</span>
                         </span>
                     )}
+                    {homeUnread > 0 && (
+                        <span className="position-absolute border border-2 border-body rounded-circle bg-warning" data-testid="home-alerts-dot"
+                            style={{ width: 11, height: 11, left: 6, bottom: 6 }} title={`${homeUnread} por ler em ${homeName}`}>
+                            <span className="visually-hidden">{homeUnread} notificações por ler em {homeName}</span>
+                        </span>
+                    )}
                 </DropdownToggle>
 
                 <DropdownMenu className="dropdown-menu-lg dropdown-menu-end p-0">
@@ -182,6 +202,15 @@ const NotificationDropdown = () => {
                         )}
                     </div>
 
+                    {homeUnread > 0 && (
+                        <div className="d-flex align-items-center gap-2 px-3 py-2 border-bottom bg-warning-subtle fs-13">
+                            <i className="ri-building-4-line text-warning fs-16" />
+                            <span className="me-auto">{homeName} tem {homeUnread} {homeUnread === 1 ? "notificação" : "notificações"} por ler.</span>
+                            <button type="button" className="btn btn-link btn-sm p-0 fs-12 text-nowrap" onClick={() => { setIsOpen(false); wc?.exit(); }}>
+                                Ver em {homeName}
+                            </button>
+                        </div>
+                    )}
                     <AlertsList alerts={alerts} onItemClick={handleItemClick} />
                 </DropdownMenu>
             </Dropdown>

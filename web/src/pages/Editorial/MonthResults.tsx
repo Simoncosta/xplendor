@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "reactstrap";
-import { getEditorialResults } from "helpers/laravel_helper";
+import { getAgencyResults, getEditorialResults } from "helpers/laravel_helper";
+import ClientMark from "Components/Common/ClientMark";
 import { MEDIA_FORMATS, POST_CHANNEL_META } from "common/models/editorialPost.model";
 import { ResultRow, STAGE_META, fmtInt, fmtRate } from "common/models/editorialWorkflow.model";
 
@@ -20,14 +21,22 @@ const formatLabel = (r: ResultRow) => {
 };
 const dmy = (iso: string) => iso.split("-").reverse().join("/");
 
-export default function MonthResults({ companyId, month, monthLabel, onOpen }: { companyId: number; month: string; monthLabel: string; onOpen: (id: number) => void }) {
-    const [rows, setRows] = useState<ResultRow[] | null>(null);
+type AgencyRow = ResultRow & { company?: { id: number; name: string; logo_path: string | null } };
+
+/** Com `agency`, os resultados de todos os clientes da vista (coluna Cliente); o onOpen recebe a empresa. */
+export default function MonthResults({ companyId, month, monthLabel, onOpen, agency }: {
+    companyId: number; month: string; monthLabel: string; onOpen: (id: number, companyId?: number) => void;
+    agency?: { agencyId: number; companyIds?: number[] };
+}) {
+    const [rows, setRows] = useState<AgencyRow[] | null>(null);
     const [sort, setSort] = useState<{ key: Key; dir: 1 | -1 }>({ key: "date", dir: 1 });
 
     useEffect(() => {
         setRows(null);
-        getEditorialResults(companyId, month).then((r: any) => setRows(r.data.rows)).catch(() => setRows([]));
-    }, [companyId, month]);
+        (agency ? getAgencyResults(agency.agencyId, month, { company_ids: agency.companyIds }) : getEditorialResults(companyId, month))
+            .then((r: any) => setRows(r.data.rows)).catch(() => setRows([]));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyId, month, agency?.agencyId, (agency?.companyIds ?? []).join(",")]);
 
     const sorted = useMemo(() => {
         if (!rows) return [];
@@ -63,12 +72,13 @@ export default function MonthResults({ companyId, month, monthLabel, onOpen }: {
             ) : (
                 <div className="table-responsive">
                     <table className="table table-sm table-hover align-middle fs-13 mb-0">
-                        <thead className="table-light"><tr><th scope="col">Publicação</th>{COLUMNS.map(head)}</tr></thead>
+                        <thead className="table-light"><tr>{agency && <th scope="col">Cliente</th>}<th scope="col">Publicação</th>{COLUMNS.map(head)}</tr></thead>
                         <tbody>
                             {sorted.map((r) => (
-                                <tr key={r.key}>
+                                <tr key={`${r.company?.id ?? ""}-${r.key}`}>
+                                    {agency && <td className="text-nowrap">{r.company && <span className="d-inline-flex align-items-center gap-1"><ClientMark name={r.company.name} logoPath={r.company.logo_path} size={20} />{r.company.name}</span>}</td>}
                                     <td>
-                                        <button type="button" className="btn btn-link p-0 fs-13 text-start" onClick={() => onOpen(r.id)}>{r.title}</button>
+                                        <button type="button" className="btn btn-link p-0 fs-13 text-start" onClick={() => onOpen(r.id, r.company?.id)}>{r.title}</button>
                                         <div className="text-muted fs-11">{STAGE_META[r.stage].label}{r.published_url && <> · <a href={r.published_url} target="_blank" rel="noreferrer noopener">ver na rede</a></>}</div>
                                     </td>
                                     <td className="text-nowrap">{dmy(r.date)}</td>

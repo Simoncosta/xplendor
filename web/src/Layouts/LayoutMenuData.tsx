@@ -21,7 +21,9 @@ const Navdata = () => {
 
     const [iscurrentState, setIscurrentState] = useState('Dashboard');
     const [isRoot, setIsRoot] = useState(false);
-    const workingAway = !!useWorkingCompany()?.away;
+    const wc = useWorkingCompany();
+    const workingAway = !!wc?.away;
+    const agencyMode = !!wc?.agencyMode;
     const [isFinances, setIsFinances] = useState(false);
     const [isComercial, setIsComercial] = useState(false);
     const [isAnalytics, setIsAnalytics] = useState(false);
@@ -156,6 +158,8 @@ const Navdata = () => {
                 setIscurrentState('Dashboard');
             }
         },
+        // Painel da agência: a equipa da agência (e o root a trabalhar numa agência).
+        ...(agencyMode ? [{ id: "agency-panel", label: "Painel da agência", icon: "ri-building-4-line", link: "/agency" }] : []),
         // ── Comercial — a operação de stock/vendas/marketing num sub-nav ──
         {
             id: "comercial",
@@ -373,7 +377,7 @@ const Navdata = () => {
     const curateForRoot = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {
             if (it.isHeader) { acc.push(it); return acc; }
-            if (it.id === "dashboard") { acc.push(it); return acc; }
+            if (it.id === "dashboard" || it.id === "agency-panel") { acc.push(it); return acc; }
             if (it.id === "admin") {
                 // UMA só entrada de empresas: a CompanyList (/companies) com gestão
                 // (criar/editar/módulos/ativar-inativar) + o novo modal de utilizadores

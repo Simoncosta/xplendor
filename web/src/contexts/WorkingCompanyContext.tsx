@@ -14,9 +14,12 @@ import {
 export type CompanyOption = {
     id: number;
     name: string;
+    logo_path: string | null;
     /** Gerida pela agência da pessoa (para o root: pela agência dele). */
     managed: boolean;
     home: boolean;
+    /** A empresa é uma agência. */
+    is_agency: boolean;
 };
 
 interface WorkingCompanyState {
@@ -29,6 +32,10 @@ interface WorkingCompanyState {
     options: CompanyOption[];
     /** Há mais do que uma empresa onde trabalhar (agência ou root). */
     canSwitch: boolean;
+    /** A própria empresa é uma agência (vista da agência na Linha Editorial e o Painel da agência). */
+    homeIsAgency: boolean;
+    /** A trabalhar numa agência (a própria, ou o root numa agência): as vistas mostram todos os clientes dela. */
+    agencyMode: boolean;
     switchTo: (c: { id: number; name: string }) => void;
     exit: () => void;
 }
@@ -66,8 +73,9 @@ export const WorkingCompanyProvider: React.FC<{ children: React.ReactNode }> = (
             if (!alive) return;
             const list: any[] = Array.isArray(r?.data) ? r.data : (r?.data?.data ?? []);
             const opts: CompanyOption[] = list.map((c) => ({
-                id: Number(c.id), name: optionName(c), home: Number(c.id) === homeId,
+                id: Number(c.id), name: optionName(c), logo_path: c.logo_path ?? null, home: Number(c.id) === homeId,
                 managed: Number(c.active_management?.agency_company_id ?? 0) === homeId,
+                is_agency: !!c.agency_enabled_at,
             }));
             opts.sort((a, b) => Number(b.home) - Number(a.home) || Number(b.managed) - Number(a.managed) || a.name.localeCompare(b.name, "pt"));
             setOptions(opts);
@@ -85,9 +93,13 @@ export const WorkingCompanyProvider: React.FC<{ children: React.ReactNode }> = (
     const value = useMemo<WorkingCompanyState>(() => {
         const homeId = getHomeCompanyId();
         const home = options.find((o) => o.home);
+        const working = options.find((o) => o.id === workingId);
+        const homeIsAgency = !!home?.is_agency;
         return {
             workingId, homeId, isRoot, options, switchTo, exit,
             away: workingId !== homeId,
+            homeIsAgency,
+            agencyMode: !impersonating && !!working?.is_agency && (workingId === homeId || isRoot),
             workingName: stored?.name || options.find((o) => o.id === workingId)?.name || home?.name || "",
             canSwitch: !impersonating && (isRoot || options.length > 1),
         };
