@@ -158,6 +158,56 @@ class CoverManagerTest extends TestCase
         $this->assertSame(0, CmReservationShiftSummary::where('location_id', $bad->id)->count());
     }
 
+    // ── O token nunca chega aos registos ───────────────────────────────────────
+
+    public function test_connection_error_logs_without_the_token(): void
+    {
+        $this->location(['cm_token' => 'TOKEN/SECRETO']);
+        // Um erro de ligação do Guzzle traz o URL completo, com o token no caminho.
+        Http::fake(fn ($request) => throw new \Illuminate\Http\Client\ConnectionException(
+            'cURL error 28: Operation timed out for ' . $request->url()
+        ));
+        $logged = [];
+        \Illuminate\Support\Facades\Log::listen(function ($message) use (&$logged) {
+            $logged[] = $message->message . ' ' . json_encode($message->context);
+        });
+
+        $result = app(CoverManagerService::class)->sync($this->resto->id, '2026-09-18');
+
+        $this->assertSame(['Yuko Baixa'], $result['failed']);
+        $all = implode("\n", $logged);
+        $this->assertStringContainsString('Operation timed out', $all);
+        $this->assertStringContainsString('***', $all);
+        foreach (['TOKEN/SECRETO', 'TOKEN%2FSECRETO', 'TOKEN\\/SECRETO'] as $form) {
+            $this->assertStringNotContainsString($form, $all);
+        }
+    }
+
+    public function test_client_error_masks_the_token_in_message_body_and_trace(): void
+    {
+        // Um 401 que ecoa o token no corpo.
+        Http::fake(['*' => Http::response('invalid apikey TOKEN-SECRETO', 401)]);
+
+        try {
+            app(\App\Services\CoverManagerClient::class)->getReservations('TOKEN-SECRETO', 'yuko-baixa', '2026-09-18');
+            $this->fail('Devia ter falhado.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('401', $e->getMessage());
+            $this->assertStringContainsString('***', $e->getMessage());
+            $this->assertStringNotContainsString('TOKEN-SECRETO', $e->getMessage());
+            // Sem a exceção original encadeada e sem o token nos argumentos do rasto.
+            $this->assertNull($e->getPrevious());
+            $this->assertStringNotContainsString('TOKEN-SECRETO', $e->getTraceAsString());
+        }
+    }
+
+    public function test_mask_covers_raw_and_url_encoded_forms(): void
+    {
+        $masked = \App\Services\CoverManagerClient::mask('a TOKEN/X b TOKEN%2FX c', 'TOKEN/X');
+        $this->assertSame('a *** b *** c', $masked);
+        $this->assertSame('sem token', \App\Services\CoverManagerClient::mask('sem token', null));
+    }
+
     // ── Endpoint: gate do módulo + tenancy ─────────────────────────────────────
 
     public function test_sync_endpoint_is_module_gated(): void

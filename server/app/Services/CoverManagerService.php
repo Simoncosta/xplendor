@@ -44,7 +44,7 @@ class CoverManagerService
      * ⚠️ RESOLUÇÃO do token: a LOJA tem prioridade (override); a EMPRESA é o
      * fallback. Devolve null se nenhum existir.
      */
-    public function resolveToken(PingwinLocation $location, ?string $companyToken = null): ?string
+    public function resolveToken(PingwinLocation $location, #[\SensitiveParameter] ?string $companyToken = null): ?string
     {
         $override = trim((string) $location->cm_token);
         if ($override !== '') {
@@ -56,7 +56,7 @@ class CoverManagerService
     }
 
     /** Lojas sincronizáveis: com slug E com token resolvível (loja ou empresa). */
-    public function syncableLocations(int $companyId, ?string $companyToken = null)
+    public function syncableLocations(int $companyId, #[\SensitiveParameter] ?string $companyToken = null)
     {
         return PingwinLocation::where('company_id', $companyId)
             ->whereNotNull('cm_slug')->where('cm_slug', '!=', '')
@@ -120,7 +120,7 @@ class CoverManagerService
      * SÓ os números por turno (nenhum PII). Persiste apenas turnos com atividade.
      * O token é RESOLVIDO (loja > empresa); $companyToken é o fallback da empresa.
      */
-    public function syncLocation(PingwinLocation $location, string $date, ?string $companyToken = null): array
+    public function syncLocation(PingwinLocation $location, string $date, #[\SensitiveParameter] ?string $companyToken = null): array
     {
         $token = $this->resolveToken($location, $companyToken);
         if ($token === null) {
@@ -172,9 +172,11 @@ class CoverManagerService
                     'shifts' => $this->syncLocation($location, $date, $companyToken),
                 ];
             } catch (\Throwable $e) {
-                // Uma loja a falhar não parte as outras — regista e continua.
+                // Uma loja a falhar não parte as outras — regista e continua. O cliente já
+                // mascara o token; volta a mascarar aqui para qualquer outra origem do erro.
                 Log::warning('[CoverManager] sync de loja falhou', [
-                    'company_id' => $companyId, 'location_id' => $location->id, 'error' => $e->getMessage(),
+                    'company_id' => $companyId, 'location_id' => $location->id,
+                    'error' => CoverManagerClient::mask($e->getMessage(), $this->resolveToken($location, $companyToken)),
                 ]);
                 $failed[] = $location->display_name ?: (string) $location->id;
             }
