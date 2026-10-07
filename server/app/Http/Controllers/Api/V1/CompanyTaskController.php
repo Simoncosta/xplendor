@@ -29,9 +29,7 @@ class CompanyTaskController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?CompanyTask

@@ -136,6 +136,8 @@ class ModuleRegistry
     /** Presets por ramo: um atalho que liga um conjunto (ajustável depois). */
     public const PRESETS = [
         'automotive' => ['stock', 'commercial_crm', 'finance', 'documents', 'aftersales', 'marketing_analytics', 'support_tasks'],
+        // Outros ramos (e empresas sem ramo): marketing, Linha Editorial e suporte.
+        'base' => ['marketing_analytics', 'support_tasks', 'linha_editorial'],
         // Restauração liberta o PingWin + TODAS as secções (operação + cadastros).
         'restaurant' => [
             'marketing_analytics', 'support_tasks', 'pingwin',
@@ -144,6 +146,25 @@ class ModuleRegistry
             'restauracao_condicoes_pagamento',
         ],
     ];
+
+    /** Ramo (raiz da árvore de setores) → preset. */
+    private const SECTOR_PRESETS = ['automovel' => 'automotive', 'restauracao' => 'restaurant'];
+
+    /**
+     * O preset de uma empresa nova, pelo RAMO: o setor ou um antepassado dele decide
+     * (Automóvel → automotive; Restauração → restaurant); outro ramo ou sem ramo → base.
+     */
+    public static function presetForSector(?int $sectorId): string
+    {
+        $sector = $sectorId ? \App\Models\ContentSector::find($sectorId) : null;
+        foreach ($sector ? $sector->pathFromRoot() : [] as $node) {
+            if (isset(self::SECTOR_PRESETS[$node->slug])) {
+                return self::SECTOR_PRESETS[$node->slug];
+            }
+        }
+
+        return 'base';
+    }
 
     /** @return string[] */
     public static function keys(): array

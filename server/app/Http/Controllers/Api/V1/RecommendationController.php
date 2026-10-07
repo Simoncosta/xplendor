@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Recommendations\RecommendationEngine;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * XPLENDOR — Recomendações (motor de regras explicáveis) de UMA empresa.
@@ -22,8 +21,7 @@ class RecommendationController extends Controller
     public function index(Request $request, int $companyId)
     {
         // Tenant guard: só as recomendações da própria empresa (root vê qualquer uma).
-        $user = Auth::user();
-        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

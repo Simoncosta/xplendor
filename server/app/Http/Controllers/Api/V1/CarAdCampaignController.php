@@ -9,7 +9,6 @@ use App\Repositories\CarAdSpendRepository;
 use App\Services\MetaAdsTargetResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class CarAdCampaignController extends Controller
 {
@@ -21,8 +20,7 @@ class CarAdCampaignController extends Controller
     /** Tenancy: só a própria empresa (ou root). */
     private function denied(int $companyId): ?JsonResponse
     {
-        $user = Auth::user();
-        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

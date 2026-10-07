@@ -58,9 +58,4 @@ class CarPerformanceMetricController extends Controller
 
         return ApiResponse::success($updated, 'Métricas atualizadas com sucesso.');
     }
-
-    private function companyId(Request $request): int
-    {
-        return (int) $request->user()->company_id;
-    }
 }

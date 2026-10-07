@@ -316,6 +316,14 @@ Route::prefix('v1')->group(function () {
                 // Utilizadores: listar e ver funcionam em impersonation (ex.: seletor "Vendedor" da
                 // ficha da viatura); criar e alterar contas/password ficam bloqueados. Sem DELETE:
                 // retirar o acesso faz-se no colaborador (/collaborators/{id}/access/revoke).
+                // Agência gestora: ver (quem tem acesso), terminar (só o admin da empresa) e
+                // convidar o primeiro admin de uma empresa sem nenhum (só a agência ou o root).
+                Route::get('/management', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'show']);
+                Route::middleware('block_when_impersonating')->group(function () {
+                    Route::delete('/management', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'end']);
+                    Route::post('/management/first-admin', [\App\Http\Controllers\Api\V1\CompanyManagementController::class, 'inviteFirstAdmin']);
+                });
+
                 Route::get('/users', [UserController::class, 'index']);
                 Route::get('/users/{user}', [UserController::class, 'show']);
                 Route::post('/users', [UserController::class, 'store'])->middleware('block_when_impersonating');
@@ -618,6 +626,12 @@ Route::prefix('v1')->group(function () {
             Route::get('/companies/{company}/modules', [AdminCompanyController::class, 'modules']);
             Route::patch('/companies/{company}/modules', [AdminCompanyController::class, 'setModule']);
             Route::post('/companies/{company}/modules/preset', [AdminCompanyController::class, 'applyModulePreset']);
+
+            // Agências: marcar a empresa como agência e definir, mudar ou retirar a agência gestora.
+            Route::get('/agencies', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'agencies']);
+            Route::get('/companies/{company}/management', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'show'])->whereNumber('company');
+            Route::patch('/companies/{company}/agency', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'setAgency'])->whereNumber('company');
+            Route::put('/companies/{company}/management', [\App\Http\Controllers\Api\V1\Admin\CompanyManagementController::class, 'assign'])->whereNumber('company');
         });
     });
 });

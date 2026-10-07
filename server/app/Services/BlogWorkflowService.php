@@ -9,6 +9,7 @@ use App\Models\Blog;
 use App\Models\Company;
 use App\Models\ImpersonationSession;
 use App\Models\User;
+use App\Services\Tenancy\CompanyAccess;
 use App\Support\BlogHtml;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class BlogWorkflowService
 
     public static function canWrite(User $actor, int $companyId): bool
     {
-        return $actor->role === 'root' || (int) $actor->company_id === $companyId;
+        return app(CompanyAccess::class)->allows($actor, $companyId);
     }
 
     /** Administrador da própria empresa (o root só na sua própria empresa), fora de impersonation. */

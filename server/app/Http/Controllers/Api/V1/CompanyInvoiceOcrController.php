@@ -13,7 +13,6 @@ use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
 use App\Services\InvoiceOcrService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -28,9 +27,7 @@ class CompanyInvoiceOcrController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function disk(): string

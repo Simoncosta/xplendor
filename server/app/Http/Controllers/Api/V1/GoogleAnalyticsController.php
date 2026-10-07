@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Models\CompanyIntegration;
 use App\Services\GoogleAnalyticsService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -27,9 +26,7 @@ class GoogleAnalyticsController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function integration(int $companyId): ?CompanyIntegration

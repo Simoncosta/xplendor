@@ -26,9 +26,7 @@ class SupportTicketController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?SupportTicket
@@ -162,6 +160,9 @@ class SupportTicketController extends Controller
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
+        if ($this->viaAgency($companyId)) {
+            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
+        }
 
         $data = $request->validate([
             'ids'   => ['required', 'array', 'min:1'],
@@ -215,6 +216,9 @@ class SupportTicketController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if ($this->viaAgency($companyId)) {
+            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
         }
 
         $ticket = $this->findScoped($companyId, $id);

@@ -13,7 +13,6 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
@@ -22,10 +21,8 @@ class UserController extends Controller
 
     public function index(PaginateRequest $request, int $companyId)
     {
-        $authUser = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($authUser->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -88,10 +85,8 @@ class UserController extends Controller
 
     public function show(int $companyId, int $id)
     {
-        $authUser = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($authUser->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

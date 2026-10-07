@@ -165,11 +165,11 @@ class CompanyIntegrationController extends Controller
         );
     }
 
-    /** Ligar e desligar os anúncios: admin da própria empresa (o root na sua), fora de impersonation. */
+    /** Ligar e desligar os anúncios: admin da empresa, root ou agência gestora, fora de impersonation. */
     private function assertCanManage(Request $request, int $companyId): void
     {
-        if (! CollaboratorService::canManageAccess($request->user(), $companyId)) {
-            abort(403, 'Só o administrador da empresa pode ligar ou desligar os anúncios da Meta.');
+        if (! CollaboratorService::canConfigureIntegrations($request->user(), $companyId)) {
+            abort(403, 'Só o administrador da empresa ou a agência gestora pode ligar ou desligar os anúncios da Meta.');
         }
     }
 

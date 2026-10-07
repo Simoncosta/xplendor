@@ -39,7 +39,7 @@ class CompanyController extends Controller
 
         $companies = Company::query()
             ->withCount('users')
-            ->with('plan:id,name')
+            ->with(['plan:id,name', 'activeManagement.agency:id,fiscal_name,trade_name,agency_enabled_at,subscription_status,trial_ends_at'])
             ->orderBy('fiscal_name')
             ->get()
             ->map(fn (Company $c) => [
@@ -50,6 +50,11 @@ class CompanyController extends Controller
                 'has_access'          => $c->hasPlatformAccess(),
                 'trial_ends_at'       => optional($c->trial_ends_at)->toDateString(),
                 'users_count'         => $c->users_count,
+                'is_agency'           => $c->isAgency(),
+                'managed_by'          => $c->activeManagement ? [
+                    'id'   => $c->activeManagement->agency_company_id,
+                    'name' => $c->activeManagement->agency?->trade_name ?: $c->activeManagement->agency?->fiscal_name,
+                ] : null,
             ]);
 
         return ApiResponse::success(['companies' => $companies], 'Empresas carregadas.');

@@ -20,9 +20,11 @@ use Tests\TestCase;
 
 /**
  * Ações "só admin" e o root: o root conta como admin da SUA empresa (company_id do
- * root) para ligar e desligar as redes sociais e os anúncios da Meta, gerir os acessos
- * dos colaboradores e aprovar artigos do blog. Noutras empresas continua sem poder, e
- * em impersonation estas ações ficam sempre bloqueadas. Desligar os anúncios retira só
+ * root) para gerir os acessos dos colaboradores e aprovar artigos do blog; noutras
+ * empresas continua sem poder (os acessos e as aprovações são do cliente). Ligar e
+ * desligar as redes sociais e os anúncios faz-se com o próprio login: o root passa
+ * sempre, em qualquer empresa (gestão por agências, F1a). Em impersonation estas ações
+ * ficam sempre bloqueadas. Desligar os anúncios retira só
  * a permissão ads_read e mantém a ligação das redes sociais.
  */
 class RootOwnCompanyAdminActionsTest extends TestCase
@@ -87,13 +89,13 @@ class RootOwnCompanyAdminActionsTest extends TestCase
         ]);
 
         return [
-            ['ligar as redes sociais', 'GET', "{$base}/integrations/social/auth-url", []],
-            ['desligar as redes sociais', 'DELETE', "{$base}/integrations/social", []],
-            ['ligar os anúncios', 'GET', "{$base}/integrations/meta/oauth-url", []],
-            ['escolher a conta de anúncios', 'PATCH', "{$base}/integrations/meta/account", ['account_id' => 'act_456']],
-            ['desligar os anúncios', 'DELETE', "{$base}/integrations/meta", []],
-            ['convidar um colaborador', 'POST', "{$base}/collaborators/{$collaborator->id}/access", ['email' => 'ana.' . $c->id . '@exemplo.pt']],
-            ['aprovar um artigo', 'POST', "{$base}/blogs/{$blogId}/approve", []],
+            ['ligar as redes sociais', 'GET', "{$base}/integrations/social/auth-url", [], 'integration'],
+            ['desligar as redes sociais', 'DELETE', "{$base}/integrations/social", [], 'integration'],
+            ['ligar os anúncios', 'GET', "{$base}/integrations/meta/oauth-url", [], 'integration'],
+            ['escolher a conta de anúncios', 'PATCH', "{$base}/integrations/meta/account", ['account_id' => 'act_456'], 'integration'],
+            ['desligar os anúncios', 'DELETE', "{$base}/integrations/meta", [], 'integration'],
+            ['convidar um colaborador', 'POST', "{$base}/collaborators/{$collaborator->id}/access", ['email' => 'ana.' . $c->id . '@exemplo.pt'], 'client'],
+            ['aprovar um artigo', 'POST', "{$base}/blogs/{$blogId}/approve", [], 'client'],
         ];
     }
 
@@ -113,7 +115,10 @@ class RootOwnCompanyAdminActionsTest extends TestCase
 
     public function test_root_cannot_do_admin_actions_in_another_company(): void
     {
-        foreach ($this->actions($this->b) as [$name, $method, $url, $body]) {
+        foreach ($this->actions($this->b) as [$name, $method, $url, $body, $kind]) {
+            if ($kind === 'integration') {
+                continue; // ver test_root_configures_integrations_in_any_company
+            }
             $status = $this->as($this->root)->json($method, $url, $body)->status();
             $this->assertSame(403, $status, "O root noutra empresa não pode: {$name}.");
         }
@@ -121,6 +126,14 @@ class RootOwnCompanyAdminActionsTest extends TestCase
         $this->assertSame(SocialConnection::STATUS_ACTIVE, SocialConnection::where('company_id', $this->b->id)->value('status'));
         $this->assertSame('in_review', DB::table('blogs')->where('company_id', $this->b->id)->value('status'));
         Http::assertNothingSent();
+    }
+
+    public function test_root_configures_integrations_in_any_company(): void
+    {
+        // Com o próprio login, sem impersonation: o root passa sempre (decisão da F1a).
+        $this->as($this->root)->getJson("/api/v1/companies/{$this->b->id}/integrations/meta/oauth-url")->assertOk();
+        $this->as($this->root)->getJson("/api/v1/companies/{$this->b->id}/integrations/social/auth-url")->assertOk();
+        $this->assertTrue($this->as($this->root)->getJson("/api/v1/companies/{$this->b->id}/integrations/social")->json('data.can_manage'));
     }
 
     public function test_admin_actions_are_blocked_in_impersonation_even_in_the_root_company(): void

@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\PaginateRequest;
 use App\Services\NewsletterService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class NewsletterController extends Controller
 {
@@ -16,13 +15,11 @@ class NewsletterController extends Controller
 
     public function index(PaginateRequest $request, int $companyId)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $filter = $user->role === 'root' ? [] : ['company_id' => $user->company_id];
+        $filter = ['company_id' => $companyId];
 
         $paginate = $request->input('perPage')
             ? ApiPaginate::perPage($request)

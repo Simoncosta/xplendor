@@ -11,7 +11,6 @@ use App\Models\DocumentTemplate;
 use App\Services\DocumentTemplateService;
 use App\Support\DocumentVariables;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS — Caminho B (Metade 1): modelos de documento .docx da empresa.
@@ -26,9 +25,7 @@ class DocumentTemplateController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?DocumentTemplate

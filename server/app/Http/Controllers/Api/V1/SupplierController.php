@@ -11,7 +11,6 @@ use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
 use App\Services\SupplierService;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS sub-fase 1c.1 — CRUD de Fornecedores (scoped por company).
@@ -29,9 +28,7 @@ class SupplierController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     /** Fornecedor da empresa da rota, ou null se não existir / for de outra empresa. */

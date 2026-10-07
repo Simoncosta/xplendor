@@ -42,7 +42,7 @@ class EditorialWorkflowController extends Controller
         $posts = EditorialPost::where('company_id', $companyId)
             ->whereBetween('publish_date', [$start->toDateString(), $start->endOfMonth()->toDateString()])
             ->with(['currentVersion:id,number,status', 'blog:id,company_id,title,status', 'networks'])
-            ->withCount(['comments as comments_count' => fn ($q) => EditorialWorkflowService::isTeam($user) ? $q : $q->where('visibility', EditorialPostComment::SHARED)])
+            ->withCount(['comments as comments_count' => fn ($q) => EditorialWorkflowService::isTeam($user, $companyId) ? $q : $q->where('visibility', EditorialPostComment::SHARED)])
             ->orderBy('publish_date')->orderBy('id')
             ->get();
         // F3d: na Análise (e em Publicada), o alcance e a taxa de envolvimento no cartão.
@@ -52,7 +52,7 @@ class EditorialWorkflowController extends Controller
         return ApiResponse::success([
             'month' => $data['month'],
             'is_approver' => $approver,
-            'is_team' => EditorialWorkflowService::isTeam($user),
+            'is_team' => EditorialWorkflowService::isTeam($user, $companyId),
             'can_produce' => EditorialWorkflowService::isProducer($user, $companyId),
             'settings' => [
                 'content_approval_required' => (bool) $company->content_approval_required,
@@ -163,7 +163,7 @@ class EditorialWorkflowController extends Controller
         $mode = $data['production_mode'] ?? null;
         unset($data['production_mode']);
         if ($mode !== null && $mode !== EditorialWorkflowService::productionMode($companyId)) {
-            if (! EditorialWorkflowService::isTeam($request->user())) {
+            if (! EditorialWorkflowService::isTeam($request->user(), $companyId)) {
                 return ApiResponse::error('O modo de produção só é alterado pela equipa XPLENDOR.', 403);
             }
             $data['content_production_mode'] = $mode;
@@ -205,7 +205,7 @@ class EditorialWorkflowController extends Controller
             'content_approval_required' => (bool) $company->content_approval_required,
             'internal_review_required' => (bool) $company->internal_review_required,
             'production_mode' => EditorialWorkflowService::productionMode($company->id),
-            'can_change_mode' => EditorialWorkflowService::isTeam($user),
+            'can_change_mode' => EditorialWorkflowService::isTeam($user, (int) $company->id),
             'can_edit' => CollaboratorService::canEditContent($user, $company->id),
             'can_manage_approvers' => CollaboratorService::canManageAccess($user, $company->id),
             'users' => User::where('company_id', $company->id)->whereNull('deactivated_at')->whereIn('role', ['admin', 'user'])

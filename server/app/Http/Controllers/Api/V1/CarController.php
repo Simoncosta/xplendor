@@ -46,13 +46,11 @@ class CarController extends Controller
 
     public function index(PaginateRequest $request, int $companyId)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $filter = $user->role === 'root' ? [] : ['company_id' => $user->company_id];
+        $filter = ['company_id' => $companyId];
 
         // Status pode chegar como string única (comportamento antigo) OU CSV
         // (nova selecção múltipla, 2026-06-26). O BaseRepository::getAll aplica
@@ -117,10 +115,8 @@ class CarController extends Controller
 
     public function store(CarRequest $request, int $companyId)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -134,10 +130,8 @@ class CarController extends Controller
 
     public function show(int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -157,9 +151,7 @@ class CarController extends Controller
 
     public function downloadImages(int $companyId, int $carId)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -176,10 +168,8 @@ class CarController extends Controller
 
     public function update(CarRequest $request, int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -209,10 +199,8 @@ class CarController extends Controller
 
     public function destroy(int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -602,9 +590,7 @@ class CarController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     /** A viatura existe E pertence à empresa da rota. */

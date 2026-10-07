@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreCarSaleRequest;
 use App\Http\Requests\UpdateCarSaleRequest;
 use App\Services\CarSaleService;
-use Illuminate\Support\Facades\Auth;
 
 class CarSaleController extends Controller
 {
@@ -17,9 +16,7 @@ class CarSaleController extends Controller
 
     public function store(StoreCarSaleRequest $request, int $companyId, int $car)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -34,9 +31,7 @@ class CarSaleController extends Controller
      */
     public function updateSale(UpdateCarSaleRequest $request, int $companyId, int $car)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -56,8 +51,7 @@ class CarSaleController extends Controller
      */
     public function leadMatch(int $companyId, int $car)
     {
-        $user = Auth::user();
-        if ($user->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -72,8 +66,7 @@ class CarSaleController extends Controller
      */
     public function linkLead(\Illuminate\Http\Request $request, int $companyId, int $car)
     {
-        $user = Auth::user();
-        if ($user->company_id !== $companyId) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

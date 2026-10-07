@@ -559,7 +559,8 @@ class SocialConnectionTest extends TestCase
     public function test_only_the_company_admin_can_connect_choose_or_disconnect(): void
     {
         $this->connected();
-        foreach ([$this->userA, $this->root] as $who) {
+        // O root liga com o próprio login em qualquer empresa (F1a); um utilizador sem perfil de admin não.
+        foreach ([$this->userA] as $who) {
             $this->as($who)->getJson($this->url($this->a, '/integrations/social/auth-url'))->assertForbidden();
             $this->as($who)->getJson($this->url($this->a, '/integrations/social/candidates'))->assertForbidden();
             $this->as($who)->putJson($this->url($this->a, '/integrations/social/accounts'), ['facebook' => ['1001'], 'instagram' => []])->assertForbidden();
@@ -571,6 +572,7 @@ class SocialConnectionTest extends TestCase
         $this->assertStringNotContainsString(self::USER_TOKEN, $s->getContent());
         $this->assertStringNotContainsString(self::PAGE_TOKEN, $s->getContent());
         $this->assertTrue($this->as($this->adminA)->getJson($this->url($this->a, '/integrations/social'))->json('data.can_manage'));
+        $this->assertTrue($this->as($this->root)->getJson($this->url($this->a, '/integrations/social'))->json('data.can_manage'));
         $this->assertSame(SocialConnection::STATUS_ACTIVE, SocialConnection::where('company_id', $this->a->id)->value('status'));
     }
 

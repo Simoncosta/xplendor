@@ -30,7 +30,7 @@ return [
             'sanctum',
             'web',
         ],
-        'resolver' => OwenIt\Auditing\Resolvers\UserResolver::class,
+        'resolver' => App\Support\Audit\RealPersonResolver::class, // em impersonation, o root (a pessoa real)
     ],
 
     /*

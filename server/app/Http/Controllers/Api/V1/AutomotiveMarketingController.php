@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Services\Automotive\AutomotiveMarketingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -24,8 +23,7 @@ class AutomotiveMarketingController extends Controller
 
     public function show(Request $request, int $companyId)
     {
-        $user = Auth::user();
-        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

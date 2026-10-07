@@ -8,7 +8,6 @@ use App\Models\Car;
 use App\Services\ActionExecution\ActionExecutionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class ActionExecutionController extends Controller
 {
@@ -45,9 +44,7 @@ class ActionExecutionController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function resolveCarForCompany(int $companyId, int $carId): Car

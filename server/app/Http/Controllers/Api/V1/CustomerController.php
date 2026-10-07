@@ -11,7 +11,6 @@ use App\Models\Customer;
 use App\Services\CustomerService;
 use App\Services\LeadMatchService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS — CRUD de Clientes (scoped por company). Molde do SupplierController.
@@ -25,9 +24,7 @@ class CustomerController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?Customer

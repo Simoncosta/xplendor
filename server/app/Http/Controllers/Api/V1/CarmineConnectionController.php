@@ -8,7 +8,6 @@ use App\Models\CarmineConnection;
 use App\Services\Api\ApiCarmineService;
 use App\Services\CarmineConnectionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class CarmineConnectionController extends Controller
 {
@@ -16,10 +15,8 @@ class CarmineConnectionController extends Controller
 
     public function show(int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -39,10 +36,8 @@ class CarmineConnectionController extends Controller
 
     public function store(Request $request, int $companyId)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -70,10 +65,8 @@ class CarmineConnectionController extends Controller
 
     public function update(Request $request, int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -94,10 +87,8 @@ class CarmineConnectionController extends Controller
 
     public function destroy(int $companyId, int $id)
     {
-        $user = Auth::user();
-
         // Bloqueia caso o usuário não pertença à empresa da rota
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

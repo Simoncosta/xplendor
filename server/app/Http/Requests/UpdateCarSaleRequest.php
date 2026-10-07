@@ -18,7 +18,7 @@ use Illuminate\Validation\Rule;
  *   - Enums (sale_channel, buyer_gender, buyer_age_range) continuam validados
  *     mas como nullable.
  *
- * Tenant + auth: o controller verifica $user->company_id === $companyId
+ * Tenant + auth: o tenant e o controller verificam a empresa (authorizeCompany)
  * antes de chamar o service. Aqui authorize() devolve true por essa razão.
  */
 class UpdateCarSaleRequest extends FormRequest

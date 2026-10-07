@@ -10,7 +10,6 @@ use App\Models\Expense;
 use App\Services\ExpenseService;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS sub-fase 1c.2b — CRUD de Despesas (scoped por company) + filtros + totais.
@@ -25,9 +24,7 @@ class ExpenseController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     /** Despesas automáticas (gasto Meta) não se editam, arquivam nem apagam à mão. */

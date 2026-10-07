@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 /**
  * POST /api/v1/companies/{companyId}/stock/promotion/{carId}
  *
- * Tenant + auth: o controller verifica $user->company_id === $companyId
+ * Tenant + auth: o tenant e o controller verificam a empresa (authorizeCompany)
  * (ou role root). Aqui authorize() devolve true por essa razão.
  *
  * `note` é a única coisa que o utilizador escreve livremente — limitado a

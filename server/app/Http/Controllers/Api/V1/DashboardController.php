@@ -9,7 +9,6 @@ use App\Http\Resources\SalesRevenueResource;
 use App\Http\Resources\StockBreakdownResource;
 use App\Services\DashboardService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -24,8 +23,7 @@ class DashboardController extends Controller
         // utilizador-alvo, por isso fica limitado à empresa desse utilizador.
         // Sem isto, qualquer utilizador autenticado lia o dashboard de outra
         // empresa trocando o {id} da rota.
-        $user = Auth::user();
-        if (!$user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -43,8 +41,7 @@ class DashboardController extends Controller
      */
     public function stockBreakdown(Request $request, int $companyId)
     {
-        $user = Auth::user();
-        if (!$user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
@@ -62,8 +59,7 @@ class DashboardController extends Controller
      */
     public function salesRevenue(GetSalesRevenueRequest $request, int $companyId)
     {
-        $user = Auth::user();
-        if (!$user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

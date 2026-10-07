@@ -138,6 +138,6 @@ class StockPromotionController extends Controller
         if (!$user) {
             return false;
         }
-        return (int) $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 }

@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Services\CompanyModuleService;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * XPLENDOR — Módulos ATIVOS da empresa do utilizador (lado stand). Só LEITURA —
@@ -21,8 +20,7 @@ class CompanyModuleController extends Controller
 
     public function active(int $companyId)
     {
-        $user = Auth::user();
-        if ($user->company_id !== $companyId && $user->role !== 'root') {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

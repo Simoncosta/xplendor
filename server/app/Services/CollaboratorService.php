@@ -8,6 +8,7 @@ use App\Models\Collaborator;
 use App\Models\CompanyDepartment;
 use App\Models\ImpersonationSession;
 use App\Models\User;
+use App\Services\Tenancy\CompanyAccess;
 use App\Models\UserInvite;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -35,16 +36,34 @@ class CollaboratorService
 
     // ── Permissões ───────────────────────────────────────────────────────────
 
+    /** Conteúdo da empresa (perfil da marca, equipa, definições): admin, root, sessão como cliente ou agência gestora. */
     public static function canEditContent(User $actor, int $companyId): bool
     {
         return $actor->role === 'root'
-            || ((int) $actor->company_id === $companyId && ($actor->role === 'admin' || ImpersonationSession::activeFor($actor)));
+            || ((int) $actor->company_id === $companyId && ($actor->role === 'admin' || ImpersonationSession::activeFor($actor)))
+            || app(CompanyAccess::class)->viaAgency($actor, $companyId);
     }
 
     /**
-     * Ações "só admin" (acessos de colaboradores, ligar e desligar as redes sociais e
-     * os anúncios): administrador da própria empresa; o root conta como admin da SUA
-     * empresa (nunca de outras). Nunca em impersonation.
+     * Ligar e desligar integrações (redes sociais, anúncios, GA4) com o próprio login:
+     * admin da própria empresa, o root (em qualquer empresa) ou a agência gestora.
+     * Nunca em impersonation (o login seria o do cliente).
+     */
+    public static function canConfigureIntegrations(User $actor, int $companyId): bool
+    {
+        if (ImpersonationSession::activeFor($actor)) {
+            return false;
+        }
+
+        return ($actor->role === 'admin' && (int) $actor->company_id === $companyId)
+            || $actor->role === 'root'
+            || app(CompanyAccess::class)->viaAgency($actor, $companyId);
+    }
+
+    /**
+     * Acessos do cliente (contas dos colaboradores, aprovadores, terminar a relação com a
+     * agência): administrador da própria empresa; o root conta como admin da SUA empresa
+     * (nunca de outras). Nunca em impersonation. A agência gestora nunca.
      */
     public static function canManageAccess(User $actor, int $companyId): bool
     {

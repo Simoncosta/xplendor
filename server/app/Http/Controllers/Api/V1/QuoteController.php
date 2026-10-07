@@ -10,7 +10,6 @@ use App\Http\Resources\QuoteResource;
 use App\Models\Quote;
 use App\Services\QuoteService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * XPLENDOR — Orçamentos, LADO DA EMPRESA. Uma empresa vê APENAS os orçamentos
@@ -28,9 +27,7 @@ class QuoteController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?Quote
@@ -58,6 +55,9 @@ class QuoteController extends Controller
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        if ($this->viaAgency($companyId)) {
+            return ApiResponse::error('As decisões sobre orçamentos são do cliente.', 403);
         }
 
         $quote = $this->findScoped($companyId, $id);

@@ -33,12 +33,17 @@ class CompanyRequest extends FormRequest
         $companyId = $this->route('company') ?? null;
 
         return [
-            // New User
-            'name_user' => [$isUpdate ? 'nullable' : 'required', 'string', 'max:255'],
-            'email_user' => [$isUpdate ? 'nullable' : 'required', 'email', 'max:255', 'unique:users,email'],
-            // Identificação
+            // New User (uma empresa gerida por uma agência pode nascer sem utilizadores)
+            'name_user' => [$isUpdate ? 'nullable' : 'required_without:managed_by_company_id', 'nullable', 'string', 'max:255'],
+            'email_user' => [$isUpdate ? 'nullable' : 'required_without:managed_by_company_id', 'nullable', 'required_with:name_user', 'email', 'max:255', 'unique:users,email'],
+            // Gestão por agências: a agência gestora, definida pelo root ao criar.
+            'managed_by_company_id' => ['nullable', 'integer'],
+            // Ramo (setor-folha): decide os módulos ligados à nascença.
+            'content_sector_id' => ['nullable', 'integer', Rule::exists('content_sectors', 'id')->where('is_selectable', true)],
+            // Identificação (o NIPC é opcional numa empresa gerida)
             'nipc' => [
-                $isUpdate ? 'sometimes' : 'required',
+                $isUpdate ? 'sometimes' : 'required_without:managed_by_company_id',
+                'nullable',
                 'string',
                 'max:20',
                 Rule::unique('companies', 'nipc')->ignore($companyId),

@@ -24,7 +24,8 @@ class CompanyObserver
     /**
      * Nova empresa → preset AUTOMOTIVO por defeito (todos os módulos), para
      * nunca ficar sem módulos (o esconder do incremento 2 tornaria uma empresa
-     * sem módulos inacessível). O super-admin ajusta depois.
+     * sem módulos inacessível). O super-admin ajusta depois. Na criação pela
+     * plataforma (CompanyService::store), o preset passa a ser o do RAMO.
      */
     public function created(Company $company): void
     {

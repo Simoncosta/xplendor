@@ -18,8 +18,10 @@ use Symfony\Component\HttpFoundation\Response;
  * Usa o mesmo conceito de módulos da Fase 2 (CompanyModuleService/ModuleRegistry)
  * — menu e rotas alinhados. Uso: ->middleware('ensure_module:stock').
  *
- * A empresa vem do parâmetro {id} da rota (o prefixo /companies/{id}); em fallback,
- * a empresa do utilizador. Root faz bypass (vê tudo). Assume auth:sanctum antes.
+ * A empresa vem do ENDEREÇO ({id} ou {company}); só sem empresa no endereço, a do
+ * utilizador. Quem trabalha pela agência vê o que os módulos da empresa GERIDA permitem
+ * (a visibilidade decide-se só na gestão de módulos). Root faz bypass (vê tudo).
+ * Assume auth:sanctum antes.
  */
 class EnsureModuleActive
 {
@@ -34,7 +36,7 @@ class EnsureModuleActive
             return $next($request);
         }
 
-        $companyId = (int) ($request->route('id') ?? $user?->company_id ?? 0);
+        $companyId = (int) ($request->route('id') ?? $request->route('company') ?? $user?->company_id ?? 0);
         if ($companyId <= 0) {
             abort(403, 'Empresa inválida.');
         }

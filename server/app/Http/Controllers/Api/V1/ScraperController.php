@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\ScraperExecution;
 use App\Services\ScraperService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class ScraperController extends Controller
@@ -21,9 +20,7 @@ class ScraperController extends Controller
      */
     public function run(Request $request, int $id)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $id && $user->role !== 'root') {
+        if (! $this->authorizeCompany($id)) {
             return ApiResponse::error('Acesso negado.', 403);
         }
 
@@ -59,9 +56,7 @@ class ScraperController extends Controller
      */
     public function executions(Request $request, int $id)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $id && $user->role !== 'root') {
+        if (! $this->authorizeCompany($id)) {
             return ApiResponse::error('Acesso negado.', 403);
         }
 
@@ -98,9 +93,7 @@ class ScraperController extends Controller
      */
     public function show(Request $request, int $id, int $runId)
     {
-        $user = Auth::user();
-
-        if ($user->company_id !== $id && $user->role !== 'root') {
+        if (! $this->authorizeCompany($id)) {
             return ApiResponse::error('Acesso negado.', 403);
         }
 

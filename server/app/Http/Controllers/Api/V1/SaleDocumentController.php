@@ -8,7 +8,6 @@ use App\Http\Resources\SaleDocumentDataResource;
 use App\Models\Car;
 use App\Models\Company;
 use App\Models\Municipality;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS Fase 3 — dados para os DOCUMENTOS DE VENDA.
@@ -22,9 +21,7 @@ class SaleDocumentController extends Controller
 {
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     public function data(int $companyId, int $carId)

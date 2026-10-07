@@ -9,7 +9,6 @@ use App\Http\Resources\ExpenseCategoryResource;
 use App\Models\ExpenseCategory;
 use App\Services\ExpenseCategoryService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * DMS sub-fase 1c.2a — CRUD de Categorias de Despesa (scoped por company).
@@ -24,9 +23,7 @@ class ExpenseCategoryController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     private function findScoped(int $companyId, int $id): ?ExpenseCategory

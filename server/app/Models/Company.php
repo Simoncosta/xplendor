@@ -71,6 +71,7 @@ class Company extends Model
             'trial_starts_at' => 'datetime',
             'trial_ends_at' => 'datetime',
             'subscription_ends_at' => 'datetime',
+            'agency_enabled_at' => 'datetime',
             'uses_vat' => 'boolean',
             'content_approval_required' => 'boolean',
             'internal_review_required' => 'boolean',
@@ -115,6 +116,23 @@ class Company extends Model
         return $this->belongsTo(ContentSector::class, 'content_sector_id');
     }
 
+    /** Gestão por agências: a relação ATIVA em que esta empresa é gerida (ou null). */
+    public function activeManagement(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(CompanyManagement::class, 'managed_company_id')->where('status', CompanyManagement::ACTIVE);
+    }
+
+    /** Todas as relações em que esta empresa foi (ou é) gerida: o histórico. */
+    public function managements(): HasMany
+    {
+        return $this->hasMany(CompanyManagement::class, 'managed_company_id');
+    }
+
+    public function isAgency(): bool
+    {
+        return $this->agency_enabled_at !== null;
+    }
+
     public function carExternalImages(): HasMany
     {
         return $this->hasMany(CarExternalImage::class);
@@ -140,7 +158,16 @@ class Company extends Model
     public function scopeActive($query)
     {
         return $query->where(function ($q) {
-            $q->where('subscription_status', self::SUBSCRIPTION_STATUS_ACTIVE)
+            self::whereOwnAccess($q);
+            // Empresa gerida: o acesso vem da agência (quem paga), nunca do período de teste dela.
+            $q->orWhereHas('activeManagement.agency', fn ($a) => self::whereOwnAccess($a));
+        });
+    }
+
+    private static function whereOwnAccess($q): void
+    {
+        $q->where(function ($o) {
+            $o->where('subscription_status', self::SUBSCRIPTION_STATUS_ACTIVE)
                 ->orWhere(function ($t) {
                     $t->where('subscription_status', self::SUBSCRIPTION_STATUS_TRIAL)
                         ->where('trial_ends_at', '>=', now());
@@ -155,7 +182,23 @@ class Company extends Model
             && $this->trial_ends_at->isPast();
     }
 
+    /**
+     * Acesso à plataforma, calculado: a subscrição própria OU, numa empresa gerida, a
+     * subscrição da agência gestora (quem paga). Uma empresa gerida nunca fica bloqueada
+     * pelo período de teste dela.
+     */
     public function hasPlatformAccess(): bool
+    {
+        if ($this->hasOwnPlatformAccess()) {
+            return true;
+        }
+        $agency = $this->activeManagement?->agency;
+
+        return $agency !== null && $agency->isAgency() && $agency->hasOwnPlatformAccess();
+    }
+
+    /** Só a subscrição própria (ativa, ou período de teste dentro do prazo). */
+    public function hasOwnPlatformAccess(): bool
     {
         if ($this->subscription_status === self::SUBSCRIPTION_STATUS_ACTIVE) {
             return true;

@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Services\Automotive\AutomotiveHubService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 /**
  * XPLENDOR — Hub do Automóvel.
@@ -22,8 +21,7 @@ class AutomotiveHubController extends Controller
 
     private function denied(int $companyId)
     {
-        $user = Auth::user();
-        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

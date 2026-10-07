@@ -11,7 +11,6 @@ use App\Repositories\CarAdSpendRepository;
 use App\Services\MetaAccountInsightsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -31,9 +30,7 @@ class MetaInsightsController extends Controller
 {
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-
-        return $user->company_id === $companyId || $user->role === 'root';
+        return $this->authorizeCompany($companyId);
     }
 
     /**

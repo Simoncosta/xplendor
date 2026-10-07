@@ -9,7 +9,6 @@ use App\Http\Controllers\Controller;
 use App\Services\RestaurantMarketingService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
 /**
@@ -27,8 +26,7 @@ class RestaurantMarketingController extends Controller
         // Tenant guard (lição do achado de segurança no dashboard): o utilizador só
         // vê a SUA empresa; root vê qualquer uma. Em impersonation o token é do
         // utilizador-alvo → fica limitado à empresa desse utilizador.
-        $user = Auth::user();
-        if (! $user || ((int) $user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

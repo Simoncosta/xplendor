@@ -15,6 +15,7 @@ use App\Models\EditorialPostVersion;
 use App\Models\ImpersonationSession;
 use App\Models\MediaAsset;
 use App\Models\User;
+use App\Services\Tenancy\CompanyAccess;
 use App\Services\Ai\AiText;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
@@ -59,16 +60,25 @@ class EditorialWorkflowService
         return ImpersonationSession::activeFor($user)?->root_id;
     }
 
+    /** A empresa da pessoa real no momento da ação (a agência, quando trabalha pela agência). */
+    public static function actingCompanyId(User $user): ?int
+    {
+        $imp = self::impersonatorId($user);
+        $companyId = $imp ? User::whereKey($imp)->value('company_id') : $user->company_id;
+
+        return $companyId ? (int) $companyId : null;
+    }
+
     /** Pessoa real que faz a ação (a equipa em sessão como cliente conta como ela própria). */
     public static function personId(User $user): int
     {
         return self::impersonatorId($user) ?? (int) $user->id;
     }
 
-    /** Utilizador da empresa ou equipa XPLENDOR (ver e comentar). */
+    /** Pode trabalhar na empresa (ver e comentar): a própria, o root ou a agência gestora. */
     public static function isMember(User $user, int $companyId): bool
     {
-        return $user->role === 'root' || (int) $user->company_id === $companyId;
+        return app(CompanyAccess::class)->allows($user, $companyId);
     }
 
     /** Pode produzir (editar conteúdo, mudar etapas, planear): a equipa sempre; o cliente só em "Produção própria". */
@@ -78,7 +88,7 @@ class EditorialWorkflowService
             return false;
         }
 
-        return self::isTeam($user) || self::productionMode($companyId) === self::MODE_SELF;
+        return self::isTeam($user, $companyId) || self::productionMode($companyId) === self::MODE_SELF;
     }
 
     public static function productionMode(int $companyId): string
@@ -97,10 +107,12 @@ class EditorialWorkflowService
         throw new HttpException(403, self::isMember($user, $companyId) ? self::MSG_TEAM_PRODUCES : 'Acesso negado.');
     }
 
-    /** Equipa XPLENDOR: root ou em sessão como cliente. */
-    public static function isTeam(User $user): bool
+    /** A equipa que produz para o cliente: o root, a sessão como cliente (suporte) ou a agência gestora. */
+    public static function isTeam(User $user, int $companyId): bool
     {
-        return $user->role === 'root' || ImpersonationSession::activeFor($user) !== null;
+        return $user->role === 'root'
+            || ImpersonationSession::activeFor($user) !== null
+            || app(CompanyAccess::class)->viaAgency($user, $companyId);
     }
 
     public static function isApprover(User $user, int $companyId): bool
@@ -125,7 +137,7 @@ class EditorialWorkflowService
             return [];
         }
         $company ??= Company::findOrFail($post->company_id);
-        if ($company->content_production_mode === self::MODE_TEAM && ! self::isTeam($user)) {
+        if ($company->content_production_mode === self::MODE_TEAM && ! self::isTeam($user, (int) $company->id)) {
             return []; // cliente gerido pela equipa: não muda etapas
         }
         $approval = (bool) $company->content_approval_required;
@@ -652,7 +664,7 @@ class EditorialWorkflowService
         if ($body === '') {
             throw ValidationException::withMessages(['body' => ['Escreva o comentário.']]);
         }
-        if ($visibility === EditorialPostComment::INTERNAL && ! self::isTeam($user)) {
+        if ($visibility === EditorialPostComment::INTERNAL && ! self::isTeam($user, (int) $post->company_id)) {
             throw ValidationException::withMessages(['visibility' => ['Só a equipa XPLENDOR escreve comentários internos.']]);
         }
 
@@ -682,6 +694,7 @@ class EditorialWorkflowService
             'company_id' => $post->company_id, 'editorial_post_id' => $post->id, 'type' => $type,
             'from_stage' => $from, 'to_stage' => $to, 'version_id' => $versionId,
             'user_id' => $user?->id, 'impersonator_user_id' => $user ? self::impersonatorId($user) : null,
+            'acting_company_id' => $user ? self::actingCompanyId($user) : null,
             'message' => $message ? mb_substr($message, 0, 500) : null, 'created_at' => now(),
         ]);
     }
@@ -692,7 +705,7 @@ class EditorialWorkflowService
     public function detail(EditorialPost $post, User $user): array
     {
         $company = Company::findOrFail($post->company_id);
-        $team = self::isTeam($user);
+        $team = self::isTeam($user, (int) $post->company_id);
         $versions = EditorialPostVersion::where('editorial_post_id', $post->id)->orderByDesc('number')->get();
         $people = $this->peopleNames($post);
         $creative = EditorialPostCreative::where('editorial_post_id', $post->id)->first();

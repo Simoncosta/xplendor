@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Company;
+use App\Modules\ModuleRegistry;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use App\Repositories\Contracts\CompanyRepositoryInterface;
@@ -24,6 +25,13 @@ class CompanyService extends BaseService
             ...$data,
             ...$subscriptionData,
         ]);
+
+        // Módulos pelo RAMO (Automóvel, Restauração; outro ramo ou sem ramo: base),
+        // em vez do preset automóvel em todas as empresas novas.
+        app(CompanyModuleService::class)->applyPreset(
+            $company->id,
+            ModuleRegistry::presetForSector(isset($data['content_sector_id']) ? (int) $data['content_sector_id'] : null)
+        );
 
         // se veio logo, faz upload e atualiza
         if (!empty($data['logo']) && $data['logo'] instanceof UploadedFile) {

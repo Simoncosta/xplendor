@@ -26,8 +26,7 @@ class EditorialLineController extends Controller
 
     private function authorizeCompanyAccess(int $companyId): bool
     {
-        $user = Auth::user();
-        return $user && ((int) $user->company_id === $companyId || $user->role === 'root');
+        return $this->authorizeCompany($companyId);
     }
 
     /** Folhas selecionáveis (para o ecrã de escolha de ramo). */

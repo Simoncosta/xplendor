@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Services\NextBestCarToPromoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class PromotionRankingController extends Controller
 {
@@ -17,9 +16,7 @@ class PromotionRankingController extends Controller
 
     public function index(Request $request, int $companyId): JsonResponse
     {
-        $user = Auth::user();
-
-        if (!$user || ($user->company_id !== $companyId && $user->role !== 'root')) {
+        if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 

@@ -15,7 +15,7 @@ class EditorialPostEvent extends Model
 {
     public const UPDATED_AT = null;
 
-    protected $fillable = ['company_id', 'editorial_post_id', 'type', 'from_stage', 'to_stage', 'version_id', 'user_id', 'impersonator_user_id', 'message', 'created_at'];
+    protected $fillable = ['company_id', 'editorial_post_id', 'type', 'from_stage', 'to_stage', 'version_id', 'user_id', 'impersonator_user_id', 'acting_company_id', 'message', 'created_at'];
 
     protected $casts = ['created_at' => 'datetime'];
 }
