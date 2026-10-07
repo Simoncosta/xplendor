@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { savePostContent } from "helpers/laravel_helper";
@@ -6,13 +6,22 @@ import { Network, POST_CHANNEL_META, mediaFormatLabel } from "common/models/edit
 import { PostWorkflow, VERSION_STATUS_LABEL } from "common/models/editorialWorkflow.model";
 import PostPreview from "../PostPreview";
 import VersionMediaEditor from "../VersionMediaEditor";
+import { dirtyKeys, mergeDraft } from "./draftMerge";
 
 /**
  * Conteúdo da publicação: um só texto para as redes escolhidas, com uma legenda própria
  * opcional no Facebook ("Usar uma legenda diferente no Facebook"); os ficheiros; o criativo
  * sugerido; e a pré-visualização em cada rede. Uma versão congelada cria a seguinte ao
  * guardar (o servidor decide).
+ *
+ * O que a pessoa escreve nunca se perde: os dados que chegam do servidor (depois de enviar,
+ * ordenar ou remover ficheiros) só atualizam os campos que a pessoa não alterou; o texto
+ * grava-se sozinho ao sair do campo e pouco depois de parar de escrever ("A gravar…",
+ * "Gravado"). Numa versão congelada (enviada ou aprovada), gravar cria a versão seguinte e
+ * pede nova aprovação: aí só se grava com o botão, e o texto fica guardado no painel até lá.
  */
+
+const AUTOSAVE_MS = 1200;
 
 const errorMessage = (e: any, fallback: string) => {
     const first = e?.errors ? Object.values(e.errors).flat()[0] : null;
@@ -20,50 +29,113 @@ const errorMessage = (e: any, fallback: string) => {
 };
 
 type Draft = { caption: string; fbOwn: boolean; fbCaption: string; hashtags: string; cta: string; first_comment: string };
+type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
+
+/** O conteúdo gravado na versão atual (ou o criativo aceite, antes da primeira versão). */
+function fromServer(data: PostWorkflow): Draft {
+    const current = data.versions.find((v) => v.id === data.post.current_version_id) ?? null;
+    const src = current ?? (data.creative ? { ...data.creative, first_comment: null, network_captions: {} as Record<string, string> } : null);
+    const fb = (src as any)?.network_captions?.facebook ?? "";
+    return {
+        caption: src?.caption ?? "", fbOwn: !!fb, fbCaption: fb, hashtags: (src?.hashtags ?? []).join(" "),
+        cta: src?.cta ?? "", first_comment: (src as any)?.first_comment ?? "",
+    };
+}
+
+/** O que o painel pode pedir ao separador: gravar já (ao fechar, ao mudar de etapa). */
+export type ContentHandle = { flush: () => Promise<boolean>; isDirty: () => boolean };
 
 type Props = { companyId: number; data: PostWorkflow; onChanged: (d: PostWorkflow) => void; onCreative: () => void; onDirty: (dirty: boolean) => void };
 
-export default function ContentSection({ companyId, data, onChanged, onCreative, onDirty }: Props) {
+const ContentSection = forwardRef<ContentHandle, Props>(function ContentSection({ companyId, data, onChanged, onCreative, onDirty }, ref) {
     const p = data.post;
     const current = data.versions.find((v) => v.id === p.current_version_id) ?? null;
     const networks = p.networks.filter((n) => n.state !== "skipped").map((n) => n.network);
     const both = networks.includes("instagram") && networks.includes("facebook");
-    const [draft, setDraft] = useState<Draft>({ caption: "", fbOwn: false, fbCaption: "", hashtags: "", cta: "", first_comment: "" });
-    const [dirty, setDirty] = useState(false);
-    const [busy, setBusy] = useState(false);
     const [view, setView] = useState<"edit" | "preview">("edit");
     const canEdit = data.permissions.can_edit_content;
+    const frozen = !!current?.frozen;
 
+    // Rascunho do ecrã, último valor do servidor (base) e o que está a ser gravado (sent).
+    const [draft, setDraftState] = useState<Draft>(() => fromServer(data));
+    const draftRef = useRef(draft);
+    const baseRef = useRef<Draft>(fromServer(data));
+    const sentRef = useRef<Draft | null>(null);
+    const savingRef = useRef<Promise<boolean> | null>(null);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [status, setStatus] = useState<SaveStatus>("idle");
+    const setDraft = (next: Draft) => { draftRef.current = next; setDraftState(next); };
+    const isDirty = () => dirtyKeys(draftRef.current, baseRef.current).length > 0;
+
+    // Dados novos do servidor (ficheiros, gravação, etapa): só os campos não alterados mudam.
     useEffect(() => {
-        const src = current ?? (data.creative ? { ...data.creative, first_comment: null, network_captions: {} as Record<string, string> } : null);
-        const fb = (src as any)?.network_captions?.facebook ?? "";
-        setDraft({
-            caption: src?.caption ?? "", fbOwn: !!fb, fbCaption: fb, hashtags: (src?.hashtags ?? []).join(" "),
-            cta: src?.cta ?? "", first_comment: (src as any)?.first_comment ?? "",
-        });
-        setDirty(false);
-        onDirty(false);
+        const server = fromServer(data);
+        setDraft(mergeDraft(draftRef.current, baseRef.current, server, sentRef.current));
+        baseRef.current = server;
+        sentRef.current = null;
+        const dirty = isDirty();
+        onDirty(dirty);
+        setStatus((st) => (dirty ? (st === "saving" ? st : "dirty") : st === "dirty" ? "saved" : st));
+        // Uma ação de ficheiros numa versão congelada cria a seguinte: o texto por gravar grava-se nela.
+        const nowFrozen = !!data.versions.find((v) => v.id === data.post.current_version_id)?.frozen;
+        if (dirty && data.permissions.can_edit_content && !nowFrozen && !savingRef.current) {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(() => { void saveRef.current(); }, AUTOSAVE_MS);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data]);
 
-    const set = (patch: Partial<Draft>) => { setDraft((d) => ({ ...d, ...patch })); setDirty(true); onDirty(true); };
+    const payload = (d: Draft) => ({
+        caption: d.caption, cta: d.cta, first_comment: d.first_comment,
+        hashtags: d.hashtags.split(/[\s,]+/).filter(Boolean),
+        network_captions: both && d.fbOwn && d.fbCaption.trim() ? { facebook: d.fbCaption } : {},
+    });
 
-    const save = async () => {
-        setBusy(true);
-        try {
-            const r: any = await savePostContent(companyId, p.id, {
-                caption: draft.caption, cta: draft.cta, first_comment: draft.first_comment,
-                hashtags: draft.hashtags.split(/[\s,]+/).filter(Boolean),
-                network_captions: both && draft.fbOwn && draft.fbCaption.trim() ? { facebook: draft.fbCaption } : {},
-            });
-            toast.success("Conteúdo guardado.");
-            onChanged(r.data);
-        } catch (e: any) {
-            toast.error(errorMessage(e, "Não foi possível guardar o conteúdo."));
-        } finally {
-            setBusy(false);
-        }
+    /** Grava o rascunho (uma gravação de cada vez; o que se escreveu entretanto grava-se a seguir). */
+    const save = useCallback(async (): Promise<boolean> => {
+        if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+        if (savingRef.current) { await savingRef.current; }
+        if (!canEdit || !isDirty()) return true;
+        const snapshot = { ...draftRef.current };
+        setStatus("saving");
+        const run = (async () => {
+            try {
+                const r: any = await savePostContent(companyId, p.id, payload(snapshot));
+                sentRef.current = snapshot;
+                onChanged(r.data);
+                setStatus(isDirty() ? "dirty" : "saved");
+                return true;
+            } catch (e: any) {
+                setStatus("error");
+                toast.error(errorMessage(e, "Não foi possível gravar o conteúdo. O texto continua no ecrã."));
+                return false;
+            }
+        })();
+        savingRef.current = run;
+        const ok = await run;
+        savingRef.current = null;
+        return ok;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canEdit, companyId, p.id, both]);
+
+    const saveRef = useRef(save);
+    saveRef.current = save;
+    useImperativeHandle(ref, () => ({ flush: save, isDirty }), [save]);
+
+    const set = (patch: Partial<Draft>) => {
+        setDraft({ ...draftRef.current, ...patch });
+        const dirty = isDirty();
+        onDirty(dirty);
+        if (!dirty) return;
+        setStatus("dirty");
+        // Gravação automática pouco depois de parar de escrever (não numa versão congelada).
+        if (timerRef.current) clearTimeout(timerRef.current);
+        if (canEdit && !frozen) timerRef.current = setTimeout(() => { void save(); }, AUTOSAVE_MS);
     };
+    /** Ao sair de um campo, grava logo (não numa versão congelada). */
+    const onBlur = () => { if (canEdit && !frozen && isDirty()) void save(); };
+    useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+    const dirty = isDirty();
 
     const captionFor = (n: Network) => (n === "facebook" && draft.fbOwn && draft.fbCaption.trim() ? draft.fbCaption : draft.caption);
     const coverFormat = p.networks.map((n) => n.media_format).find((f) => f && ["ig_reel", "fb_reel", "fb_video"].includes(f)) ?? p.networks[0]?.media_format ?? null;
@@ -75,9 +147,14 @@ export default function ContentSection({ companyId, data, onChanged, onCreative,
                     <Button color="primary" outline={view !== "edit"} onClick={() => setView("edit")}><i className="ri-edit-line me-1" />Editar</Button>
                     <Button color="primary" outline={view !== "preview"} onClick={() => setView("preview")}><i className="ri-smartphone-line me-1" />Pré-visualização</Button>
                 </div>
-                <span className="fs-13 text-muted">
+                <span className="fs-13 text-muted d-flex align-items-center gap-2">
                     {current ? <>Versão {current.number} <Badge color="light" className="text-body fw-normal">{VERSION_STATUS_LABEL[current.status]}</Badge></> : "Ainda sem versão"}
-                    {dirty && <span className="text-warning ms-2">Alterações por guardar</span>}
+                    <span data-save-status={status} aria-live="polite" className={status === "error" ? "text-danger" : status === "dirty" ? "text-warning" : "text-muted"}>
+                        {status === "saving" ? <><Spinner size="sm" className="me-1" />A gravar…</>
+                            : status === "saved" ? <><i className="ri-check-line me-1" />Gravado</>
+                                : status === "error" ? <><i className="ri-error-warning-line me-1" />Não gravado</>
+                                    : dirty ? (frozen ? "Alterações por gravar" : "Por gravar") : null}
+                    </span>
                 </span>
             </div>
 
@@ -104,27 +181,27 @@ export default function ContentSection({ companyId, data, onChanged, onCreative,
                     {!current && data.creative && <p className="text-muted fs-12">Pré-preenchido com o criativo aceite.</p>}
                     <div className="mb-2">
                         <div className="d-flex justify-content-between"><Label className="mb-1" for="pc-caption">Legenda{both ? " (Instagram e Facebook)" : ""}</Label><small className="text-muted">{draft.caption.length}/2200</small></div>
-                        <textarea id="pc-caption" className="form-control" rows={6} maxLength={2200} disabled={!canEdit} value={draft.caption} onChange={(e) => set({ caption: e.target.value })} />
+                        <textarea id="pc-caption" className="form-control" rows={6} maxLength={2200} disabled={!canEdit} value={draft.caption} onChange={(e) => set({ caption: e.target.value })} onBlur={onBlur} />
                     </div>
                     {both && (
                         <div className="mb-2">
                             <div className="form-check form-switch">
-                                <Input type="checkbox" role="switch" className="form-check-input" id="pc-fb-own" disabled={!canEdit} checked={draft.fbOwn} onChange={(e) => set({ fbOwn: e.target.checked })} />
+                                <Input type="checkbox" role="switch" className="form-check-input" id="pc-fb-own" disabled={!canEdit} checked={draft.fbOwn} onChange={(e) => set({ fbOwn: e.target.checked })} onBlur={onBlur} />
                                 <Label className="form-check-label fs-13" for="pc-fb-own">Usar uma legenda diferente no Facebook</Label>
                             </div>
                             {draft.fbOwn && (
                                 <textarea className="form-control mt-1" rows={4} maxLength={2200} disabled={!canEdit} aria-label="Legenda no Facebook" placeholder="Legenda só para o Facebook"
-                                    value={draft.fbCaption} onChange={(e) => set({ fbCaption: e.target.value })} />
+                                    value={draft.fbCaption} onChange={(e) => set({ fbCaption: e.target.value })} onBlur={onBlur} />
                             )}
                         </div>
                     )}
                     <Row className="g-2">
-                        <Col md={6}><Label className="mb-1" for="pc-tags">Hashtags</Label><Input id="pc-tags" value={draft.hashtags} disabled={!canEdit} onChange={(e) => set({ hashtags: e.target.value })} placeholder="#inverno #estrada" /></Col>
-                        <Col md={6}><Label className="mb-1" for="pc-cta">Chamada à ação</Label><Input id="pc-cta" value={draft.cta} maxLength={300} disabled={!canEdit} onChange={(e) => set({ cta: e.target.value })} /></Col>
-                        <Col xs={12}><Label className="mb-1" for="pc-first">Primeiro comentário</Label><Input id="pc-first" value={draft.first_comment} maxLength={2200} disabled={!canEdit} onChange={(e) => set({ first_comment: e.target.value })} /></Col>
+                        <Col md={6}><Label className="mb-1" for="pc-tags">Hashtags</Label><Input id="pc-tags" value={draft.hashtags} disabled={!canEdit} onChange={(e) => set({ hashtags: e.target.value })} onBlur={onBlur} placeholder="#inverno #estrada" /></Col>
+                        <Col md={6}><Label className="mb-1" for="pc-cta">Chamada à ação</Label><Input id="pc-cta" value={draft.cta} maxLength={300} disabled={!canEdit} onChange={(e) => set({ cta: e.target.value })} onBlur={onBlur} /></Col>
+                        <Col xs={12}><Label className="mb-1" for="pc-first">Primeiro comentário</Label><Input id="pc-first" value={draft.first_comment} maxLength={2200} disabled={!canEdit} onChange={(e) => set({ first_comment: e.target.value })} onBlur={onBlur} /></Col>
                     </Row>
                     <div className="d-flex flex-wrap gap-2 mt-2">
-                        {canEdit && <Button color="success" size="sm" disabled={busy || !dirty} onClick={() => void save()}>{busy ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar conteúdo</>}</Button>}
+                        {canEdit && <Button color="success" size="sm" disabled={status === "saving" || !dirty} onClick={() => void save()}>{status === "saving" ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />{frozen ? `Gravar (nasce a versão ${(current?.number ?? 0) + 1})` : "Gravar agora"}</>}</Button>}
                         {data.permissions.can_produce && <Button color="soft-primary" size="sm" onClick={onCreative}><i className="ri-magic-line me-1" />Criativo sugerido</Button>}
                     </div>
                     <VersionMediaEditor companyId={companyId} postId={p.id} media={current?.media ?? { items: [], cover: null }}
@@ -134,4 +211,6 @@ export default function ContentSection({ companyId, data, onChanged, onCreative,
             )}
         </div>
     );
-}
+});
+
+export default ContentSection;

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Badge, Button, Nav, NavItem, NavLink, Offcanvas, OffcanvasBody, Spinner } from "reactstrap";
+import { Badge, Button, Modal, ModalBody, ModalFooter, ModalHeader, Nav, NavItem, NavLink, Offcanvas, OffcanvasBody, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { createEditorialPost, deleteEditorialPost, getPostWorkflow, updateEditorialPost } from "helpers/laravel_helper";
 import { Network, POST_CHANNEL_META, channelIcons } from "common/models/editorialPost.model";
 import { FormatTable, PostWorkflow, STAGE_META, Stage } from "common/models/editorialWorkflow.model";
 import PlanningSection, { PlanValues, emptyPlan, planPayload } from "./panel/PlanningSection";
-import ContentSection from "./panel/ContentSection";
+import ContentSection, { ContentHandle } from "./panel/ContentSection";
+import { dirtyKeys, mergeDraft } from "./panel/draftMerge";
 import ApprovalSection from "./panel/ApprovalSection";
 import PublishSection from "./panel/PublishSection";
 import CreativeModal from "./CreativeModal";
@@ -17,6 +18,10 @@ import "./editorial.css";
  * O MESMO painel da publicação em todas as vistas (calendário, Kanban, Feed, Resultados,
  * "Para publicar hoje" e avisos): Planeamento, Conteúdo, Aprovação, e Publicação e Análise
  * (por rede). Ao criar, só o Planeamento essencial; depois de criada, o resto.
+ *
+ * O que a pessoa escreve nunca se perde: o separador Conteúdo fica montado ao trocar de
+ * separador; os dados novos do servidor só atualizam os campos que não foram alterados (no
+ * Conteúdo e no Planeamento); fechar com alterações por gravar pede confirmação.
  */
 
 export type PanelTab = "planning" | "content" | "approval" | "publish";
@@ -70,21 +75,29 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
     const [contentDirty, setContentDirty] = useState(false);
     const [creative, setCreative] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [confirmClose, setConfirmClose] = useState(false);
+    const contentRef = useRef<ContentHandle>(null);
+    // Planeamento: último valor do servidor e o que acabou de ser gravado (para a junção).
+    const planBase = useRef<PlanValues>(emptyPlan(""));
+    const planSent = useRef<PlanValues | null>(null);
 
     // As funções do pai mudam a cada atualização da página: o painel só reage à publicação aberta.
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
 
-    const apply = useCallback((d: PostWorkflow, keepTab = true) => {
+    const apply = useCallback((d: PostWorkflow, reset = false) => {
         setData(d);
-        setPlan(planFrom(d));
-        if (!keepTab) setTab(tabFor(d.post.stage));
+        const server = planFrom(d);
+        // Ao abrir, o que está no servidor; depois, só os campos que não foram alterados.
+        setPlan((current) => (reset ? server : mergeDraft(current, planBase.current, server, planSent.current)));
+        planBase.current = server;
+        planSent.current = null;
     }, []);
 
-    const load = useCallback(async (id: number, tabWanted?: PanelTab) => {
+    const load = useCallback(async (id: number, tabWanted?: PanelTab, reset = false) => {
         try {
             const r: any = await getPostWorkflow(companyId, id);
-            apply(r.data, true);
+            apply(r.data, reset);
             setTab(tabWanted ?? (r.data.post.channel === "site" ? "planning" : tabFor(r.data.post.stage)));
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível abrir a publicação.");
@@ -105,14 +118,14 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
         } else {
             setPostId(target.postId);
             setData(null);
-            void load(target.postId, target.tab);
+            void load(target.postId, target.tab, true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target]);
 
     const changed = (d: PostWorkflow) => { apply(d); onChanged(); };
 
-    const savePlan = async () => {
+    const savePlan = async (): Promise<boolean> => {
         setBusy(true);
         setErrors([]);
         try {
@@ -121,17 +134,21 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                 onCalendar(r.data);
                 toast.success("Publicação criada.");
                 const id = r.data?.created_post_id;
-                if (id) { setPostId(id); await load(id, plan.site ? "planning" : "content"); }
+                if (id) { setPostId(id); await load(id, plan.site ? "planning" : "content", true); }
                 else onClose();
+                return true;
             } else {
                 const r: any = await updateEditorialPost(companyId, postId, planPayload(plan));
                 onCalendar(r.data);
                 toast.success("Planeamento guardado.");
+                planSent.current = plan;
                 await load(postId, "planning");
                 onChanged();
+                return true;
             }
         } catch (e: any) {
             setErrors(errorList(e));
+            return false;
         } finally {
             setBusy(false);
         }
@@ -153,6 +170,24 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
         }
     };
 
+    // Fechar com alterações por gravar: pedir confirmação (e avisar ao sair da página).
+    const planDirty = !!postId && !!data && dirtyKeys(plan, planBase.current).length > 0;
+    const unsaved = contentDirty || planDirty || (!postId && !!target && plan.title.trim() !== "");
+    const requestClose = () => { if (unsaved) setConfirmClose(true); else onClose(); };
+    useEffect(() => {
+        if (!unsaved) return;
+        const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+        window.addEventListener("beforeunload", warn);
+        return () => window.removeEventListener("beforeunload", warn);
+    }, [unsaved]);
+    const saveAndClose = async () => {
+        let ok = true;
+        if (contentDirty && contentRef.current) ok = await contentRef.current.flush();
+        if (ok && (planDirty || !postId)) ok = await savePlan();
+        setConfirmClose(false);
+        if (ok) onClose();
+    };
+
     const p = data?.post;
     const creating = !postId;
     const site = creating ? plan.site : p?.channel === "site";
@@ -161,7 +196,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
     const sm = p ? STAGE_META[p.stage] : null;
 
     return (
-        <Offcanvas isOpen={!!target} toggle={onClose} direction="end" className="xp-post-panel" scrollable>
+        <Offcanvas isOpen={!!target} toggle={requestClose} direction="end" className="xp-post-panel" scrollable>
             <div className="offcanvas-header border-bottom align-items-start gap-2">
                 <div className="flex-grow-1 min-w-0">
                     {creating ? <h5 className="mb-0">Nova publicação</h5> : p ? (
@@ -184,7 +219,7 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                 {p?.stage === "scheduled" && data?.publishing.can_mark && tab !== "publish" && (
                     <Button color="success" size="sm" className="flex-shrink-0" onClick={() => setTab("publish")}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>
                 )}
-                <button type="button" className="btn-close flex-shrink-0" aria-label="Fechar" onClick={onClose} />
+                <button type="button" className="btn-close flex-shrink-0" aria-label="Fechar" onClick={requestClose} />
             </div>
             {!creating && tabs.length > 1 && (
                 <div className="xp-panel-tabs border-bottom px-2 overflow-auto">
@@ -211,10 +246,21 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                                 writeArticleUrl={p && p.channel === "site" ? `/blogs/create?${new URLSearchParams({ editorial_post_id: String(p.id), title: p.title, ...(p.keyword ? { keyword: p.keyword } : {}) }).toString()}` : null} />
                         )}
                         {tab === "planning" && !editable && !creating && <p className="text-muted fs-12 mt-2"><i className="ri-lock-2-line me-1" />{canProduce ? "O mês desta publicação está fechado: só consulta." : "A produção é feita pela equipa XPLENDOR."}</p>}
-                        {data && tab === "content" && <ContentSection companyId={companyId} data={data} onChanged={changed} onCreative={() => setCreative(true)} onDirty={setContentDirty} />}
+                        {/* O Conteúdo fica montado ao trocar de separador: o texto por gravar não se perde. */}
+                        {data && p && p.channel !== "site" && (
+                            <div className={tab === "content" ? undefined : "d-none"}>
+                                <ContentSection key={p.id} ref={contentRef} companyId={companyId} data={data} onChanged={changed} onCreative={() => setCreative(true)} onDirty={setContentDirty} />
+                            </div>
+                        )}
                         {data && tab === "approval" && (
                             <ApprovalSection companyId={companyId} data={data} onChanged={changed}
-                                beforeMove={async () => { if (contentDirty) { toast.warning("Guarde primeiro o conteúdo (separador Conteúdo)."); return false; } return true; }} />
+                                beforeMove={async () => {
+                                    // Antes de mudar de etapa, grava o texto por gravar (se não der, não muda).
+                                    if (!contentDirty || !contentRef.current) return true;
+                                    const ok = await contentRef.current.flush();
+                                    if (!ok) toast.warning("Grave primeiro o conteúdo (separador Conteúdo).");
+                                    return ok;
+                                }} />
                         )}
                         {data && tab === "publish" && <PublishSection companyId={companyId} data={data} onChanged={changed} />}
                         {data && site && p?.blog && (
@@ -223,6 +269,17 @@ export default function PostPanel({ target, onClose, companyId, anchors, pillars
                     </>
                 )}
             </OffcanvasBody>
+            <Modal isOpen={confirmClose} toggle={() => setConfirmClose(false)} centered>
+                <ModalHeader toggle={() => setConfirmClose(false)}>Alterações por gravar</ModalHeader>
+                <ModalBody className="fs-14">
+                    Há texto nesta publicação que ainda não foi gravado. Quer gravar antes de fechar?
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setConfirmClose(false)}>Continuar a editar</Button>
+                    <Button color="soft-danger" onClick={() => { setConfirmClose(false); onClose(); }}>Fechar sem gravar</Button>
+                    <Button color="primary" disabled={busy} onClick={() => void saveAndClose()}>{busy ? <Spinner size="sm" /> : "Gravar e fechar"}</Button>
+                </ModalFooter>
+            </Modal>
             {postId && p && p.channel !== "site" && (
                 <CreativeModal isOpen={creative} toggle={() => setCreative(false)} companyId={companyId} postId={postId} postTitle={p.title}
                     onSaved={() => { void load(postId, "content"); onChanged(); }} />
