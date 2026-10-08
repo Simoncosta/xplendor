@@ -77,19 +77,19 @@ class CoverManagerTest extends TestCase
     {
         $svc = app(CoverManagerService::class);
         $reservs = [
-            ['meal_shift' => 'almoço', 'for' => 4, 'status' => 'confirmed', 'user_name' => 'João', 'user_phone' => '912'],
-            ['meal_shift' => 'lunch', 'for' => 2, 'status' => 'seated', 'provenance' => 'walk in', 'email' => 'a@b.pt'],
-            ['meal_shift' => 'jantar', 'for' => 6, 'status' => 'confirmed'],
-            ['meal_shift' => 'dinner', 'for' => 3, 'status' => '-cancelled'], // cancelada
-            ['meal_shift' => 'qualquer', 'for' => 1, 'status' => 'confirmed'], // other
+            ['meal_shift' => 'almoço', 'for' => 4, 'status' => '3', 'user_name' => 'João', 'user_phone' => '912'],
+            ['meal_shift' => 'lunch', 'for' => 2, 'status' => '4', 'provenance' => 'walk in', 'email' => 'a@b.pt'],
+            ['meal_shift' => 'jantar', 'for' => 6, 'status' => '3'],
+            ['meal_shift' => 'dinner', 'for' => 3, 'status' => '-2'], // cancelada
+            ['meal_shift' => 'qualquer', 'for' => 1, 'status' => '3'], // other
         ];
 
         $agg = $svc->aggregate($reservs);
 
         // Almoço: 2 reservas, 6 pessoas, 1 walk-in, 0 canceladas.
-        $this->assertSame(['guests_total' => 6, 'reservations_count' => 2, 'walk_ins_count' => 1, 'cancelled_count' => 0, 'no_show_count' => 0], $agg['lunch']);
+        $this->assertSame(['guests_total' => 6, 'reservations_count' => 2, 'walk_ins_count' => 1, 'cancelled_count' => 0, 'no_show_count' => 0, 'unclassified_count' => 0], $agg['lunch']);
         // Jantar: 1 reserva/6 pessoas + 1 cancelada (não conta em guests/reservations).
-        $this->assertSame(['guests_total' => 6, 'reservations_count' => 1, 'walk_ins_count' => 0, 'cancelled_count' => 1, 'no_show_count' => 0], $agg['dinner']);
+        $this->assertSame(['guests_total' => 6, 'reservations_count' => 1, 'walk_ins_count' => 0, 'cancelled_count' => 1, 'no_show_count' => 0, 'unclassified_count' => 0], $agg['dinner']);
         $this->assertSame(1, $agg['other']['reservations_count']);
     }
 
@@ -100,8 +100,8 @@ class CoverManagerTest extends TestCase
         Http::fake([
             '*' => Http::response([
                 'reservs' => [
-                    ['meal_shift' => 'lunch', 'for' => 4, 'status' => 'confirmed', 'user_name' => 'Maria Silva', 'email' => 'maria@x.pt', 'user_phone' => '911222333'],
-                    ['meal_shift' => 'dinner', 'for' => 2, 'status' => 'confirmed', 'user_name' => 'Rui'],
+                    ['meal_shift' => 'lunch', 'for' => 4, 'status' => '3', 'user_name' => 'Maria Silva', 'email' => 'maria@x.pt', 'user_phone' => '911222333'],
+                    ['meal_shift' => 'dinner', 'for' => 2, 'status' => '3', 'user_name' => 'Rui'],
                 ],
             ], 200),
         ]);
@@ -129,7 +129,7 @@ class CoverManagerTest extends TestCase
     {
         $loc = $this->location();
         Http::fake(['*' => Http::response(['reservs' => [
-            ['meal_shift' => 'lunch', 'for' => 4, 'status' => 'confirmed'],
+            ['meal_shift' => 'lunch', 'for' => 4, 'status' => '3'],
         ]], 200)]);
 
         app(CoverManagerService::class)->sync($this->resto->id, '2026-09-18');
@@ -145,7 +145,7 @@ class CoverManagerTest extends TestCase
 
         // A loja "bad-slug" devolve 500; a "good-slug" devolve reservas.
         Http::fake([
-            '*good-slug*' => Http::response(['reservs' => [['meal_shift' => 'lunch', 'for' => 3, 'status' => 'ok']]], 200),
+            '*good-slug*' => Http::response(['reservs' => [['meal_shift' => 'lunch', 'for' => 3, 'status' => '3']]], 200),
             '*bad-slug*' => Http::response('erro', 500),
         ]);
 
@@ -272,7 +272,7 @@ class CoverManagerTest extends TestCase
         $captured = null;
         Http::fake(function ($request) use (&$captured) {
             $captured = $request->header('apikey')[0] ?? null;
-            return Http::response(['reservs' => [['meal_shift' => 'lunch', 'for' => 3, 'status' => 'ok']]], 200);
+            return Http::response(['reservs' => [['meal_shift' => 'lunch', 'for' => 3, 'status' => '3']]], 200);
         });
 
         app(CoverManagerService::class)->sync($this->resto->id, '2026-09-18');

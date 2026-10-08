@@ -61,7 +61,7 @@ class CoverManagerHistoryCommand extends Command
 
         $started = microtime(true);
         $failedDays = [];
-        $totals = ['reservations' => 0, 'guests' => 0, 'cancelled' => 0, 'no_shows' => 0];
+        $totals = ['reservations' => 0, 'guests' => 0, 'cancelled' => 0, 'no_shows' => 0, 'unclassified' => 0];
         $i = 0;
         foreach (CarbonPeriod::create($from, $to) as $day) {
             if ($i++ > 0) {
@@ -77,12 +77,16 @@ class CoverManagerHistoryCommand extends Command
                     $totals['guests'] += $s['guests_total'];
                     $totals['cancelled'] += $s['cancelled_count'];
                     $totals['no_shows'] += $s['no_show_count'] ?? 0;
+                    $totals['unclassified'] += $s['unclassified_count'] ?? 0;
                 }
             }
         }
 
-        $this->line(sprintf('Reservas válidas: %d; pessoas: %d; anuladas: %d; faltas: %d.',
-            $totals['reservations'], $totals['guests'], $totals['cancelled'], $totals['no_shows']));
+        $this->line(sprintf('Reservas válidas: %d; pessoas: %d; anuladas: %d; faltas: %d; por classificar: %d.',
+            $totals['reservations'], $totals['guests'], $totals['cancelled'], $totals['no_shows'], $totals['unclassified']));
+        if ($totals['unclassified'] > 0) {
+            $this->warn('Há reservas com códigos de estado fora do mapa: não contam nas válidas nem nas anuladas (ver o cartão "Dados para o marketing").');
+        }
         $this->line('Tempo: ' . round(microtime(true) - $started) . ' s.');
         if ($failedDays !== []) {
             $this->warn('Dias com falhas: ' . implode('; ', $failedDays));

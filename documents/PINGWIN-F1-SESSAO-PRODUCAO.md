@@ -40,7 +40,8 @@ Regras que continuam a valer:
 | `9223545` | Registos fora do git (`docker/scraper/scraper.log`) |
 | `1b13120` | F2: vendas por hora, agregados das reservas, mapa da semana |
 | `6314808` | F3: "O que publicar e quando" |
-| (este) | Guia da sessão em produção e lista de deploy |
+| `8e497da` | Guia da sessão em produção e lista de deploy |
+| (seguinte) | Mapa dos códigos de estado do CoverManager e reservas "por classificar" |
 
 ### 1.3 Passo prévio obrigatório: o registo do scraper
 
@@ -68,6 +69,7 @@ Se o pull falhar na mesma (o scraper escreveu entre os dois passos), repetir o `
 | `2026_12_06_100000_create_restaurant_family_categories_and_quality` | Tabelas `restaurant_family_categories` e `restaurant_data_quality` |
 | `2026_12_07_100000_create_f2_hourly_and_reservation_aggregates` | Tabelas `pingwin_hourly_sales`, `pingwin_hourly_sales_days`, `cm_reservation_hourly`, `cm_reservation_channel_daily`, `cm_reservation_leadtime_daily`, `cm_reservation_status_daily`; colunas `pingwin_locations.hourly_history_complete_at` e `cm_reservation_shift_summary.no_show_count` |
 | `2026_12_08_100000_create_restaurant_signals` | Tabelas `restaurant_signals` e `restaurant_signal_actions`; colunas `restaurant_data_quality.signals_computed_at` e `signals_availability` |
+| `2026_12_09_100000_add_unclassified_count_to_cm_reservation_shift_summary` | Coluna `cm_reservation_shift_summary.unclassified_count` (reservas com códigos fora do mapa) |
 
 Todas criam tabelas novas ou acrescentam colunas com valor por omissão; nenhuma altera nem apaga dados existentes. Todas têm `down`, testado numa cópia da base de dev.
 
@@ -91,7 +93,7 @@ Não é preciso acrescentá-las ao `.env` de produção. Não há variáveis nov
 
 ### 1.7 O que muda para os clientes com o interruptor desligado
 
-- **Reservas do CoverManager:** as faltas (código "-3") deixam de contar como anulações e passam a `no_show_count`. Nos dias sincronizados depois do deploy, o número de anuladas pode descer um pouco; os dias anteriores ficam como estavam.
+- **Reservas do CoverManager:** passa a valer o mapa dos códigos de estado (`documents/PINGWIN-F1-DESENHO.md` §11). As faltas (código "-3") deixam de contar como anulações e passam a `no_show_count`; nos dias sincronizados depois do deploy, o número de anuladas pode descer um pouco. Um código fora do mapa (ou um estado vazio) deixa de contar como válida ou anulada e passa a "por classificar". Os códigos vistos na Yuko estão todos no mapa. Os dias anteriores ao deploy ficam como estavam.
 - **Menu Marketing:** as empresas com o módulo PingWin passam a ver "O que publicar e quando". Com o interruptor desligado, a página diz só que a leitura está desligada. O mapa da semana e o resumo no dashboard não aparecem.
 - **Integrações (root):** o cartão "Dados para o marketing" na integração PingWin, com o interruptor desligado.
 - Nenhuma chamada nova ao PingWin, ao CoverManager nem à IA enquanto o interruptor estiver desligado.
@@ -102,7 +104,7 @@ Não é preciso acrescentá-las ao `.env` de produção. Não há variáveis nov
 cd /home/xplendor
 docker exec xplendor-php php artisan migrate:status | grep 2026_12_0
 ```
-As cinco migrações devem aparecer como "Ran".
+As seis migrações devem aparecer como "Ran".
 
 **Interruptor desligado em todas as empresas** (deve devolver 0):
 ```
@@ -203,7 +205,7 @@ Depois, confirmar o mapa dos códigos de estado (só contagens):
 ```
 art tinker --execute='DB::table("cm_reservation_status_daily")->where("company_id", <ID>)->selectRaw("status_code, SUM(reservations_count) n")->groupBy("status_code")->orderByDesc("n")->get()->each(fn ($r) => print($r->status_code." ".$r->n.PHP_EOL));'
 ```
-Esperado: sobretudo "3" e "5", alguns "-2" e "-3". Outros códigos: registar quais e quantos, sem mexer no mapa durante a sessão.
+Esperado: sobretudo "3" e "5", alguns "-2" e "-3", e poucos "1", "-1", "4", "-11" e "2" (todos no mapa, `documents/PINGWIN-F1-DESENHO.md` §11). O comando mostra "por classificar: 0" e o cartão "Dados para o marketing" mostra "Reservas por classificar: Nenhuma". Se aparecer um código novo, registar qual e quantos, sem mexer no mapa durante a sessão.
 
 **F2-5. Conferir no ecrã:** no painel de restauração, o cartão "Mapa da semana" por loja, com "Vendas" e "Pessoas"; as horas mais escuras no almoço e no jantar.
 

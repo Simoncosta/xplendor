@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services\Restaurant;
 
+use App\Models\CmReservationShiftSummary;
+use App\Models\CmReservationStatusDaily;
 use App\Models\PingwinItemSale;
 use App\Models\PingwinItemSalesDay;
 use App\Models\PingwinLocation;
 use App\Models\RestaurantDataQuality;
 use App\Models\RestaurantFamilyCategory;
+use App\Services\CoverManagerService;
 use App\Services\PingwinItemHistoryService;
 use App\Services\PingwinItemSalesService;
 use Carbon\CarbonImmutable;
@@ -21,7 +24,8 @@ use Illuminate\Support\Facades\DB;
  *    preenchida, decisão 1) e aviso quando diferem mais de 7 dias; dias lidos; histórico;
  *  · conferência com o líquido diário nos últimos 90 dias;
  *  · cobertura do catálogo (artigos vendidos nos últimos 90 dias que estão no catálogo);
- *  · famílias com vendas (todo o histórico) por confirmar e o seu peso na faturação.
+ *  · famílias com vendas (todo o histórico) por confirmar e o seu peso na faturação;
+ *  · reservas do CoverManager com um código de estado fora do mapa ("por classificar").
  */
 class RestaurantDataQualityService
 {
@@ -109,7 +113,28 @@ class RestaurantDataQualityService
             'days' => ['checked' => $q->days_checked, 'ok' => $q->days_ok, 'marked' => $q->days_marked],
             'families' => ['total' => $q->families_total, 'unconfirmed' => $q->families_unconfirmed, 'revenue_unconfirmed_pct' => $q->revenue_unconfirmed_pct],
             'locations' => $q->locations ?? [],
+            'reservations' => $this->unclassifiedReservations($companyId),
             'computed_at' => $q->computed_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * Reservas com um código de estado fora do mapa nos últimos 90 dias (não contam nas
+     * válidas nem nas anuladas). Os códigos vêm dos agregados por código, que só existem
+     * com o interruptor ligado; o total vem do resumo por turno, que existe sempre.
+     */
+    private function unclassifiedReservations(int $companyId): array
+    {
+        $from = CarbonImmutable::today()->subDays(self::WINDOW_DAYS)->toDateString();
+        $codes = CmReservationStatusDaily::where('company_id', $companyId)->where('business_date', '>=', $from)
+            ->whereNotIn('status_code', array_map('strval', array_keys(CoverManagerService::STATUS_MAP)))
+            ->select('status_code', DB::raw('SUM(reservations_count) as n'))->groupBy('status_code')
+            ->orderByDesc('n')->pluck('n', 'status_code')->map(fn ($n) => (int) $n)->all();
+
+        return [
+            'days' => self::WINDOW_DAYS,
+            'unclassified' => (int) CmReservationShiftSummary::where('company_id', $companyId)->where('business_date', '>=', $from)->sum('unclassified_count'),
+            'codes' => $codes,
         ];
     }
 }

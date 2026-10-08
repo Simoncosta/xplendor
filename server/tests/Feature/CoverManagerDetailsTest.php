@@ -14,9 +14,11 @@ use App\Models\CompanyIntegration;
 use App\Models\PingwinLocation;
 use App\Services\CompanyModuleService;
 use App\Services\CoverManagerService;
+use App\Services\Restaurant\RestaurantDataQualityService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Sleep;
 use Tests\TestCase;
@@ -24,8 +26,8 @@ use Tests\TestCase;
 /**
  * XPLENDOR — F2: agregados do CoverManager tirados da leitura que já se faz (hora, canal,
  * antecedência, códigos de estado) e faltas separadas das anulações. Sem dados pessoais.
- * Os campos e os códigos seguem o projeto yukotavern ("3" confirmada, "5" concluída,
- * "-2" anulada, "-3" falta).
+ * Mapa dos códigos (documents/PINGWIN-F1-DESENHO.md §11): "1", "2", "3", "4", "5" válidas;
+ * "-1", "-2", "-11" anuladas; "-3" falta; qualquer outro código fica "por classificar".
  */
 class CoverManagerDetailsTest extends TestCase
 {
@@ -65,7 +67,7 @@ class CoverManagerDetailsTest extends TestCase
     {
         $agg = app(CoverManagerService::class)->aggregate($this->reservs());
 
-        $this->assertSame(['guests_total' => 9, 'reservations_count' => 3, 'walk_ins_count' => 1, 'cancelled_count' => 1, 'no_show_count' => 1], $agg['dinner']);
+        $this->assertSame(['guests_total' => 9, 'reservations_count' => 3, 'walk_ins_count' => 1, 'cancelled_count' => 1, 'no_show_count' => 1, 'unclassified_count' => 0], $agg['dinner']);
         $this->assertSame(1, $agg['lunch']['reservations_count']);
         $this->assertSame('cancelled', app(CoverManagerService::class)->statusKind('-1')); // outros "-": anulação, como até aqui
     }
@@ -127,5 +129,88 @@ class CoverManagerDetailsTest extends TestCase
         Sleep::assertSleptTimes(2);
         $this->assertSame(['2026-10-05', '2026-10-06', '2026-10-07'], CmReservationHourly::distinct()->orderBy('business_date')->pluck('business_date')
             ->map(fn ($d) => substr((string) $d, 0, 10))->all());
+    }
+
+    public function test_status_map_confirmed_on_the_covermanager_screen(): void
+    {
+        $svc = app(CoverManagerService::class);
+        // Confirmados no ecrã: "1" e "2" reserva confirmada, "4" chegada, "-1" reserva cancelada.
+        foreach (['1', '2', '3', '4', '5'] as $code) {
+            $this->assertSame('valid', $svc->statusKind($code), "código {$code}");
+        }
+        foreach (['-1', '-2', '-11'] as $code) {
+            $this->assertSame('cancelled', $svc->statusKind($code), "código {$code}");
+        }
+        $this->assertSame('no_show', $svc->statusKind('-3'));
+        $this->assertSame('valid', $svc->statusKind(4)); // número em vez de texto
+        // Fora do mapa: nunca contado às cegas (nem válida, nem anulada).
+        foreach (['7', '-4', '-12', '01', '', null, 'confirmed'] as $code) {
+            $this->assertSame('unclassified', $svc->statusKind($code), 'código ' . var_export($code, true));
+        }
+    }
+
+    public function test_unknown_codes_stay_apart_from_valid_and_cancelled(): void
+    {
+        $r = fn (array $x) => $x + ['date' => '2026-10-06', 'meal_shift' => 'Jantar', 'provenance' => 'Online', 'date_add' => '2026-10-06', 'user_name' => 'Maria Silva'];
+        $reservs = [...$this->reservs(),
+            $r(['time' => '20:00', 'for' => 7, 'status' => '7']),
+            $r(['time' => '21:00', 'for' => 3]), // sem estado
+            $r(['time' => '21:30', 'for' => 2, 'status' => '1']),
+            $r(['time' => '22:30', 'for' => 4, 'status' => '-11']),
+        ];
+        $svc = app(CoverManagerService::class);
+
+        $agg = $svc->aggregate($reservs);
+        // Jantar: as 3 válidas de antes + o "1"; anuladas "-2" e "-11"; os dois desconhecidos à parte.
+        $this->assertSame(['guests_total' => 11, 'reservations_count' => 4, 'walk_ins_count' => 1, 'cancelled_count' => 2, 'no_show_count' => 1, 'unclassified_count' => 2], $agg['dinner']);
+
+        $d = $svc->details($reservs, '2026-10-06');
+        $this->assertSame(5, array_sum(array_column($d['channels'], 'reservations_count'))); // só as válidas
+        $this->assertSame(1, $d['statuses']['7']);
+        $this->assertSame(1, $d['statuses']['(vazio)']);
+    }
+
+    public function test_sync_logs_only_unknown_codes_and_the_card_shows_them(): void
+    {
+        $r = fn (array $x) => $x + ['date' => '2026-10-06', 'meal_shift' => 'Jantar', 'time' => '20:00', 'for' => 2, 'provenance' => 'Online', 'date_add' => '2026-10-06', 'user_name' => 'Maria Silva', 'email' => 'maria@x.pt'];
+        Http::fake(['*' => Http::response(['reservs' => [...$this->reservs(), $r(['status' => '7']), $r(['status' => '7']), $r(['status' => '9'])]], 200)]);
+        Log::spy();
+        $this->company->forceFill(['pingwin_item_sales_enabled' => true])->save();
+
+        app(CoverManagerService::class)->sync($this->company->id, '2026-10-06');
+
+        $this->assertSame(3, (int) CmReservationShiftSummary::sum('unclassified_count'));
+        $this->assertSame(4, (int) CmReservationShiftSummary::sum('reservations_count')); // os desconhecidos não entram
+        Log::shouldHaveReceived('warning')->withArgs(function ($message, $context) {
+            $dump = json_encode($context);
+
+            return str_contains($message, 'por classificar') && $context['codes'] === ['7' => 2, '9' => 1]
+                && ! str_contains($dump, 'Maria') && ! str_contains($dump, 'maria@x.pt');
+        })->once();
+
+        $card = app(RestaurantDataQualityService::class)->card($this->company->id);
+        $this->assertSame(['days' => 90, 'unclassified' => 3, 'codes' => ['7' => 2, '9' => 1]], $card['reservations']);
+    }
+
+    public function test_card_shows_nothing_to_classify_when_every_code_is_mapped(): void
+    {
+        Http::fake(['*' => Http::response(['reservs' => $this->reservs()], 200)]);
+        $this->company->forceFill(['pingwin_item_sales_enabled' => true])->save();
+        app(CoverManagerService::class)->sync($this->company->id, '2026-10-06');
+
+        $card = app(RestaurantDataQualityService::class)->card($this->company->id);
+        $this->assertSame(['days' => 90, 'unclassified' => 0, 'codes' => []], $card['reservations']);
+    }
+
+    public function test_history_command_reports_unclassified_reservations(): void
+    {
+        $r = fn (array $x) => $x + ['date' => '2026-10-06', 'meal_shift' => 'Jantar', 'time' => '20:00', 'for' => 2, 'provenance' => 'Online', 'date_add' => '2026-10-06'];
+        Http::fake(['*' => Http::response(['reservs' => [...$this->reservs(), $r(['status' => '7'])]], 200)]);
+        $this->company->forceFill(['pingwin_item_sales_enabled' => true])->save();
+
+        $this->artisan('covermanager:history', ['company' => $this->company->id, '--days' => 1])
+            ->expectsOutputToContain('por classificar: 1')
+            ->expectsOutputToContain('fora do mapa')
+            ->assertSuccessful();
     }
 }

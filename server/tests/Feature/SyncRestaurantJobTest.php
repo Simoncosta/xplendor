@@ -67,7 +67,7 @@ class SyncRestaurantJobTest extends TestCase
     public function test_runs_both_and_notifies_once_on_success(): void
     {
         Http::fake(['*' => Http::response(['reservs' => [
-            ['meal_shift' => 'dinner', 'for' => 4, 'status' => 'ok'],
+            ['meal_shift' => 'dinner', 'for' => 4, 'status' => '3'],
         ]], 200)]);
 
         (new SyncRestaurantJob($this->company->id, '2026-09-18'))

@@ -95,7 +95,41 @@ Outras respostas do utilizador:
 ## 10. F2: períodos fracos (construída a 8 de outubro de 2026)
 
 - **Vendas por hora** (PingWin, relatório `1023875499019`): tabela loja × dia × hora (sem IVA), leitura noturna dos 7 dias anteriores (depois das vendas por artigo, 20 s depois), histórico pelo mesmo mecanismo (até ao primeiro dia com vendas de cada loja, no mesmo orçamento de 10 pedidos por noite) e conferência da soma das horas com o líquido diário (1%, com releitura do resumo). A lógica do espelho é partilhada com as vendas por artigo (`PingwinDailyMirrorService`).
-- **CoverManager, sem chamadas novas:** da leitura que já se faz guardam-se também os agregados por hora de chegada, por canal (provenance), por antecedência (no próprio dia, 1 a 2, 3 a 7, 8 a 30, mais de 30 dias; sem walk-ins) e a contagem por código de estado. As faltas ("-3") passam a contar à parte das anulações. Mapa dos códigos: o do projeto yukotavern ("3" confirmada, "5" concluída, "-2" anulada, "-3" falta), a confirmar na sessão acompanhada com a contagem por código. Histórico de 90 dias só em sessão acompanhada (`covermanager:history`).
+- **CoverManager, sem chamadas novas:** da leitura que já se faz guardam-se também os agregados por hora de chegada, por canal (provenance), por antecedência (no próprio dia, 1 a 2, 3 a 7, 8 a 30, mais de 30 dias; sem walk-ins) e a contagem por código de estado. As faltas ("-3") passam a contar à parte das anulações. Mapa dos códigos fechado na sessão de 8 de outubro (secção 11). Histórico de 90 dias só em sessão acompanhada (`covermanager:history`).
 - **Mapa da semana** (dia × hora, vendas e pessoas, por loja): últimas 12 semanas a partir do início efetivo da loja, no painel de restauração.
 - Tudo atrás do mesmo interruptor por empresa, desligado por omissão.
+
+## 11. Mapa dos códigos de estado do CoverManager (fechado a 8 de outubro de 2026)
+
+Contagem por código nos 90 dias de 10/07 a 07/10/2026 (Yuko, as duas lojas), lida na sessão acompanhada de dev. Os códigos fora do mapa foram vistos numa leitura acompanhada de 04/10 e 26/09 (Costa Cabral) e 05/10 (Baixa), sem gravar nada e mostrando só a hora, as pessoas e o código. A correspondência com os estados foi feita pelo utilizador no ecrã do CoverManager.
+
+| Código | Estado no CoverManager | Grupo | Conta como | Reservas (90 dias) | Fonte |
+|---|---|---|---|---|---|
+| "1" | Reserva confirmada | CONFIRMADA | válida | 87 | Ecrã do CoverManager (8/10/2026) |
+| "2" | Reserva confirmada | CONFIRMADA | válida | 1 | Ecrã do CoverManager (8/10/2026) |
+| "3" | Confirmada | CONFIRMADA | válida | 7 515 | Projeto yukotavern (`lib/metrics.php`) |
+| "4" | Chegada | VEIO | válida | 3 | Ecrã do CoverManager (8/10/2026) |
+| "5" | Concluída | VEIO | válida | 1 267 | Projeto yukotavern (`lib/metrics.php`) |
+| "-1" | Reserva cancelada | NÃO ACONTECEU | anulada | 11 | Ecrã do CoverManager (8/10/2026) |
+| "-2" | Anulada | NÃO ACONTECEU | anulada | 686 | Projeto yukotavern (`lib/metrics.php`) |
+| "-11" | (não visto) | NÃO ACONTECEU | anulada | 2 | **Deduzido, não confirmado** |
+| "-3" | Falta | NO SHOW | falta | 136 | Projeto yukotavern (`lib/metrics.php`) |
+
+Grupos usados no mapa:
+- **VEIO** (Chegada, Chegada Balcão, Sentado, Sobremesa, Conta solicitada, Limpar) e **CONFIRMADA** contam como válidas.
+- **NUNCA CONFIRMADA** (Pendente de confirmação, Reserva para revisão) fica à parte. Nenhum código visto até agora pertence a este grupo.
+- **NÃO ACONTECEU** (Cancelada, Liberta, Cartão não inserido) conta como anulada.
+- **NO SHOW** conta como falta.
+
+**Códigos fora do mapa ("por classificar"):** qualquer código que não esteja na tabela, incluindo um estado vazio, não conta nas válidas nem nas anuladas, para nunca ser contado às cegas.
+- Fica em `cm_reservation_shift_summary.unclassified_count` (migração `2026_12_09_100000`).
+- Fica com o código em `cm_reservation_status_daily`, só com o interruptor ligado.
+- Não entra na hora, no canal nem na antecedência, nem, por isso, nos sinais da F3.
+- Deixa um aviso no registo, só com os códigos e as contagens.
+- Aparece no cartão "Dados para o marketing" como "Reservas por classificar (90 dias)", com os códigos.
+- O comando `covermanager:history` mostra o total "por classificar".
+
+Quando aparecer um código novo, confirma-se no ecrã do CoverManager e acrescenta-se a `CoverManagerService::STATUS_MAP`, com a fonte nesta tabela.
+
+O mapa é aplicado em `CoverManagerService::STATUS_MAP` e testado em `tests/Feature/CoverManagerDetailsTest.php`. Com este mapa, os números já gravados em dev não mudam, porque "1", "2" e "4" já contavam como válidas e "-1" e "-11" como anuladas.
 

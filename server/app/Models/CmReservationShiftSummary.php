@@ -17,7 +17,7 @@ class CmReservationShiftSummary extends Model
 
     protected $fillable = [
         'company_id', 'location_id', 'business_date', 'shift',
-        'guests_total', 'reservations_count', 'walk_ins_count', 'cancelled_count', 'no_show_count', 'synced_at',
+        'guests_total', 'reservations_count', 'walk_ins_count', 'cancelled_count', 'no_show_count', 'unclassified_count', 'synced_at',
     ];
 
     protected $casts = [
@@ -27,6 +27,7 @@ class CmReservationShiftSummary extends Model
         'walk_ins_count'     => 'integer',
         'cancelled_count'    => 'integer',
         'no_show_count'      => 'integer',
+        'unclassified_count' => 'integer',
         'synced_at'          => 'datetime',
     ];
 

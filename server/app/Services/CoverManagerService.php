@@ -85,26 +85,28 @@ class CoverManagerService
     }
 
     /**
-     * Código de estado do CoverManager que é uma falta (o cliente não apareceu). Mapa usado
-     * no projeto yukotavern (lib/metrics.php): "3" confirmada, "5" concluída, "-2" anulada,
-     * "-3" falta. Os outros códigos começados por "-" contam como anulação; os restantes,
-     * como reserva válida (como até aqui). Por confirmar na sessão acompanhada, com a
-     * contagem por código guardada em cm_reservation_status_daily.
+     * Mapa dos códigos de estado do CoverManager (documents/PINGWIN-F1-DESENHO.md §11).
+     * Confirmados no ecrã do CoverManager a 8 de outubro de 2026: "1" e "2" reserva
+     * confirmada, "4" chegada, "-1" reserva cancelada. Do projeto yukotavern (lib/metrics.php):
+     * "3" confirmada, "5" concluída, "-2" anulada, "-3" falta. Deduzido (por confirmar):
+     * "-11" anulada. Qualquer outro código (ou estado vazio) fica "por classificar": não
+     * conta nas válidas nem nas anuladas, para nunca ser contado às cegas.
      */
+    public const STATUS_MAP = [
+        '1' => 'valid', '2' => 'valid', '3' => 'valid', '4' => 'valid', '5' => 'valid',
+        '-1' => 'cancelled', '-2' => 'cancelled', '-11' => 'cancelled',
+        '-3' => 'no_show',
+    ];
+
     public const STATUS_NO_SHOW = '-3';
 
     /** Escalões de antecedência (dias entre a criação da reserva e o dia da reserva). */
     public const LEAD_BUCKETS = ['same_day' => [0, 0], 'd1_2' => [1, 2], 'd3_7' => [3, 7], 'd8_30' => [8, 30], 'd31_plus' => [31, PHP_INT_MAX]];
 
-    /** cancelled | no_show | valid, a partir do código de estado. */
+    /** valid | cancelled | no_show | unclassified, a partir do código de estado. */
     public function statusKind($status): string
     {
-        $code = trim((string) ($status ?? ''));
-        if ($code === self::STATUS_NO_SHOW) {
-            return 'no_show';
-        }
-
-        return str_starts_with($code, '-') ? 'cancelled' : 'valid';
+        return self::STATUS_MAP[trim((string) ($status ?? ''))] ?? 'unclassified';
     }
 
     private function isWalkIn(array $r): bool
@@ -114,13 +116,13 @@ class CoverManagerService
 
     /**
      * Agrega a lista de reservas por turno — SÓ números (o PII fica de fora).
-     * Regras: anulada (status começa por "-", exceto a falta "-3") → só cancelled_count++;
-     * falta ("-3") → só no_show_count++; as outras → reservations_count++ e guests_total
-     * += "for"; walk-in (provenance walk in/walk-in/walkin) → também walk_ins_count++.
+     * Regras (STATUS_MAP): anulada → só cancelled_count++; falta ("-3") → só no_show_count++;
+     * código fora do mapa → só unclassified_count++; válida → reservations_count++ e
+     * guests_total += "for"; walk-in (provenance walk in/walk-in/walkin) → também walk_ins_count++.
      */
     public function aggregate(array $reservs): array
     {
-        $blank = fn () => ['guests_total' => 0, 'reservations_count' => 0, 'walk_ins_count' => 0, 'cancelled_count' => 0, 'no_show_count' => 0];
+        $blank = fn () => ['guests_total' => 0, 'reservations_count' => 0, 'walk_ins_count' => 0, 'cancelled_count' => 0, 'no_show_count' => 0, 'unclassified_count' => 0];
         $out = ['lunch' => $blank(), 'dinner' => $blank(), 'other' => $blank()];
 
         foreach ($reservs as $r) {
@@ -138,6 +140,10 @@ class CoverManagerService
                 $out[$shift]['no_show_count']++;
                 continue;
             }
+            if ($kind === 'unclassified') {
+                $out[$shift]['unclassified_count']++;
+                continue;
+            }
 
             $out[$shift]['reservations_count']++;
             $out[$shift]['guests_total'] += (int) ($r['for'] ?? 0);
@@ -153,7 +159,7 @@ class CoverManagerService
     /**
      * F2: agregados por hora (hora da reserva), por canal (provenance), por antecedência e por
      * código de estado — SÓ números. Hora, canal e antecedência contam só as reservas válidas
-     * (sem anuladas nem faltas); a antecedência deixa de fora os walk-ins (não reservam). Os
+     * (sem anuladas, faltas nem códigos por classificar); a antecedência deixa de fora os walk-ins (não reservam). Os
      * códigos de estado contam todas as reservas.
      */
     public function details(array $reservs, string $businessDate): array
@@ -253,6 +259,19 @@ class CoverManagerService
 
         $agg = $this->aggregate($reservs);
         $now = now();
+        $unknown = [];
+        foreach ($reservs as $r) {
+            if (is_array($r) && $this->statusKind($r['status'] ?? null) === 'unclassified') {
+                $code = mb_substr(trim((string) ($r['status'] ?? '')), 0, 12);
+                $unknown[$code === '' ? '(vazio)' : $code] = ($unknown[$code === '' ? '(vazio)' : $code] ?? 0) + 1;
+            }
+        }
+        if ($unknown !== []) {
+            // Só códigos e contagens (nenhum dado pessoal).
+            Log::warning('[CoverManager] códigos de estado por classificar', [
+                'company_id' => $location->company_id, 'location_id' => $location->id, 'date' => $date, 'codes' => $unknown,
+            ]);
+        }
 
         foreach ($agg as $shift => $counts) {
             // Turno sem qualquer atividade → não cria linha (evita ruído).

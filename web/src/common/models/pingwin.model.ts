@@ -330,6 +330,8 @@ export interface MarketingData {
     days: { checked: number; ok: number; marked: number };
     families: { total: number; unconfirmed: number; revenue_unconfirmed_pct: number | null };
     locations: MarketingDataLocation[];
+    /** Reservas do CoverManager com um código de estado fora do mapa (não contam nas válidas nem nas anuladas). */
+    reservations?: { days: number; unclassified: number; codes: Record<string, number> };
     computed_at: string | null;
     can_manage: boolean;
     /** Postos de venda do relatório anual: só o root os vê e edita. */

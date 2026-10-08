@@ -109,7 +109,7 @@ export default function MarketingDataCard({ companyId }: { companyId: number }) 
     useEffect(() => { load(); }, [load]);
 
     const tile = (title: string, value: React.ReactNode, note: React.ReactNode) => (
-        <Col xs={12} md={4}>
+        <Col xs={12} md={6} xl={3}>
             <div className="p-3 rounded h-100" style={{ background: "var(--vz-tertiary-bg)", border: "1px solid var(--vz-border-color)" }}>
                 <div className="text-muted fs-12 mb-1">{title}</div>
                 <div className="fs-16 fw-semibold text-body mb-1">{value}</div>
@@ -164,6 +164,18 @@ export default function MarketingDataCard({ companyId }: { companyId: number }) 
                                     "Categorias das famílias",
                                     data.families.total === 0 ? "Sem famílias com vendas" : data.families.unconfirmed > 0 ? `${data.families.unconfirmed} de ${data.families.total} por confirmar` : "Todas confirmadas",
                                     <Link to="/restauracao/categorias">Ver as categorias</Link>,
+                                )}
+                                {data.reservations && tile(
+                                    `Reservas por classificar (${data.reservations.days} dias)`,
+                                    data.reservations.unclassified === 0
+                                        ? "Nenhuma"
+                                        : <span className="text-warning">{data.reservations.unclassified} {pl(data.reservations.unclassified, "reserva", "reservas")}</span>,
+                                    data.reservations.unclassified === 0
+                                        ? "Todos os códigos de estado do CoverManager estão no mapa"
+                                        : <>
+                                            {Object.keys(data.reservations.codes).length > 0 && <>Códigos fora do mapa: {Object.entries(data.reservations.codes).map(([c, n]) => `"${c}" (${n})`).join(", ")}. </>}
+                                            Não contam nas válidas nem nas anuladas.
+                                        </>,
                                 )}
                             </div>
 
