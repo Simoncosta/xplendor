@@ -310,6 +310,11 @@ Route::prefix('v1')->group(function () {
                     // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
                     Route::get('/integrations/pingwin/marketing-data', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'show']);
                     Route::get('/integrations/pingwin/heatmap', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'heatmap']);
+                    // F3: "O que publicar e quando" (sinais, ignorar, criar publicação).
+                    Route::get('/integrations/pingwin/signals', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'index']);
+                    Route::post('/integrations/pingwin/signals/ignore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'ignore']);
+                    Route::post('/integrations/pingwin/signals/restore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'restore']);
+                    Route::post('/integrations/pingwin/signals/post', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'createPost']);
                     Route::get('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'families']);
                     Route::post('/integrations/pingwin/family-categories/ai-suggest', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'suggest'])->middleware('throttle:10,1');
                     Route::put('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'confirm']);

@@ -355,6 +355,8 @@ class PingwinItemHistoryTest extends TestCase
         $this->assertNotNull($this->baixa->fresh()->history_complete_at);
         // F1-3: o retrato da qualidade dos dados fica atualizado na mesma noite.
         $this->assertSame(1, \App\Models\RestaurantDataQuality::where('company_id', $this->company->id)->count());
+        // F3: os sinais de "O que publicar e quando" calculados no fim da noite.
+        $this->assertNotNull(\App\Models\RestaurantDataQuality::where('company_id', $this->company->id)->value('signals_computed_at'));
     }
 
     public function test_nightly_job_without_sunday_skips_catalog_and_switch_off_skips_everything(): void

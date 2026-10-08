@@ -623,6 +623,16 @@ export const getPingwinMarketingData = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
 export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}) });
+// F3: "O que publicar e quando".
+export const getRestaurantSignals = (companyId: number, locationId?: number | null, showIgnored?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals`, { ...(locationId ? { location_id: locationId } : {}), ...(showIgnored ? { show_ignored: 1 } : {}) });
+// Em JSON (o POST por omissão vai em multipart): a lista das redes chega como lista.
+export const ignoreRestaurantSignal = (companyId: number, key: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/ignore`, { key }, JSON_BODY);
+export const restoreRestaurantSignal = (companyId: number, key: string) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/restore`, { key }, JSON_BODY);
+export const createPostFromSignal = (companyId: number, data: { key: string; title: string; publish_date: string; networks: string[]; format: string }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/post`, data, JSON_BODY);
 export const getFamilyCategories = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`);
 export const suggestFamilyCategories = (companyId: number) =>

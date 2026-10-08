@@ -69,6 +69,13 @@ class SyncItemSalesPeriodJob implements ShouldQueue
             return;
         }
 
+        // F3: os sinais refletem já o período relido.
+        try {
+            app(\App\Services\Restaurant\RestaurantSignalService::class)->compute($this->companyId);
+        } catch (\Throwable $e) {
+            Log::warning('[Restauração Sinais] cálculo depois do período falhou', ['company_id' => $this->companyId, 'error' => $e->getMessage()]);
+        }
+
         $marked = count(array_filter($result['days'], fn ($d) => in_array($d['status'], ['mismatch', 'empty_protected'], true)));
         Log::info('[PingWin Vendas por artigo] período relido', [
             'company_id' => $this->companyId, 'from' => $this->from, 'to' => $to, 'pedidos' => $result['calls'], 'dias_marcados' => $marked,

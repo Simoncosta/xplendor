@@ -17,7 +17,7 @@ class RestaurantDataQuality extends Model
     protected $fillable = [
         'company_id', 'catalog_sold_count', 'catalog_missing_count', 'catalog_coverage_pct',
         'days_checked', 'days_ok', 'days_marked', 'families_total', 'families_unconfirmed',
-        'revenue_unconfirmed_pct', 'locations', 'computed_at',
+        'revenue_unconfirmed_pct', 'locations', 'computed_at', 'signals_computed_at', 'signals_availability',
     ];
 
     protected $casts = [
@@ -25,5 +25,7 @@ class RestaurantDataQuality extends Model
         'revenue_unconfirmed_pct' => 'float',
         'locations' => 'array',
         'computed_at' => 'datetime',
+        'signals_computed_at' => 'datetime',
+        'signals_availability' => 'array',
     ];
 }

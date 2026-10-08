@@ -12,6 +12,7 @@ use App\Services\PingwinHourlySalesService;
 use App\Services\PingwinItemHistoryService;
 use App\Services\PingwinItemSalesService;
 use App\Services\Restaurant\RestaurantDataQualityService;
+use App\Services\Restaurant\RestaurantSignalService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -124,6 +125,14 @@ class ScheduledRestaurantSyncJob implements ShouldQueue
                             'company_id' => $companyId, 'error' => $e->getMessage(),
                         ]);
                     }
+                }
+                // F3: os sinais de "O que publicar e quando", com os dados da noite (só leitura
+                // da base de dados; nenhum pedido ao PingWin).
+                try {
+                    app(RestaurantSignalService::class)->compute($companyId);
+                } catch (\Throwable $e) {
+                    $failed[$companyId] = trim(($failed[$companyId] ?? '') . ' sinais: ' . mb_substr($e->getMessage(), 0, 150));
+                    Log::warning('[Scheduled Restaurant Sync] sinais falharam', ['company_id' => $companyId, 'error' => $e->getMessage()]);
                 }
             }
         }

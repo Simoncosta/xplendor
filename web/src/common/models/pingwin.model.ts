@@ -362,3 +362,56 @@ export interface FamilyCategoriesData {
     pending: number;
     can_manage: boolean;
 }
+
+/** F3: um sinal de "O que publicar e quando" (GET .../pingwin/signals). */
+export interface RestaurantSignalItem {
+    key: string;
+    type: "top_items" | "top_categories" | "item_up" | "item_down" | "weak_period" | "stale_item" | "lead_time" | "delivery_share" | "channels";
+    kind: "suggestion" | "info";
+    location_id: number | null;
+    location: string | null;
+    confidence: "alta" | "media";
+    title: string;
+    sentence: string;
+    numbers: Record<string, any>;
+    sample: Record<string, any>;
+    theme: string | null;
+    suggested_date: string | null;
+    priority: number;
+    hidden: boolean;
+    hidden_until: string | null;
+    post: { id: number; title: string; publish_date: string; stage: string } | null;
+}
+
+export interface SignalAvailability {
+    location_id: number;
+    name: string;
+    start: string | null;
+    yoy_from: string | null;
+    signals: Record<string, { available: boolean; from: string | null; reason: string | null; mode?: string }>;
+}
+
+export interface RestaurantSignalsData {
+    enabled: boolean;
+    computed_at: string | null;
+    locations: { id: number; name: string }[];
+    location_id: number | null;
+    can_act: boolean;
+    can_act_reason: string | null;
+    formats: string[];
+    networks: string[];
+    /** Dias especiais dos próximos 90 dias (data => nome): o modal sugere "Sazonal" nessas datas. */
+    special_days: Record<string, string>;
+    ignore_days: number;
+    show_ignored: boolean;
+    suggestions: RestaurantSignalItem[];
+    changes: RestaurantSignalItem[];
+    top_items: RestaurantSignalItem[];
+    top_categories: RestaurantSignalItem[];
+    lead_time: RestaurantSignalItem[];
+    delivery: RestaurantSignalItem[];
+    channels: RestaurantSignalItem[];
+    availability: SignalAvailability[];
+    hidden_count: number;
+    categories_pending: number;
+}

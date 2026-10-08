@@ -6,14 +6,15 @@ import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ReasonButton from "Components/Common/ReasonButton";
 import ConfirmModal from "Components/Common/ConfirmModal";
-import { getPingwinDashboard, queuePingwinSync } from "helpers/laravel_helper";
-import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod } from "common/models/pingwin.model";
+import { getPingwinDashboard, getRestaurantSignals, queuePingwinSync } from "helpers/laravel_helper";
+import { PingwinDashboard as PingwinDashboardData, PingwinMoneyPair, PingwinOccupancyPeriod, RestaurantSignalsData } from "common/models/pingwin.model";
 import DashboardSectionHeader from "./components/DashboardSectionHeader";
 import MonthlyBillingChart from "./components/MonthlyBillingChart";
 import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
 import { useRecommendations } from "./components/RecommendationsCard";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import HeatmapCard from "pages/Restauracao/HeatmapCard";
+import SignalsSummaryCard from "./components/SignalsSummaryCard";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -391,7 +392,7 @@ const tabFromSearch = (value: string | null): RestaurantTab => (value === "marke
  * link (?tab=…), por isso recarregar ou partilhar o URL abre no mesmo sítio.
  * Em mobile, scroll horizontal se não couber.
  */
-function RestaurantTabsNav({ active, highCount }: { active: RestaurantTab; highCount: number }) {
+function RestaurantTabsNav({ active, highCount, signalsCount = 0 }: { active: RestaurantTab; highCount: number; signalsCount?: number }) {
     return (
         <div style={{ overflowX: "auto" }} className="mb-3">
             <Nav tabs className="nav-border-top nav-border-top-primary flex-nowrap" style={{ minWidth: "max-content" }}>
@@ -417,6 +418,16 @@ function RestaurantTabsNav({ active, highCount }: { active: RestaurantTab; highC
                                         aria-label={`${highCount} ${highCount === 1 ? "recomendação" : "recomendações"} de prioridade alta`}
                                     >
                                         {highCount}
+                                    </span>
+                                )}
+                                {/* F3: sugestões de "O que publicar e quando". */}
+                                {t.key === "marketing" && signalsCount > 0 && (
+                                    <span
+                                        className="badge rounded-pill bg-primary-subtle text-primary fs-11"
+                                        title={`${signalsCount} ${signalsCount === 1 ? "sugestão" : "sugestões"} de publicação`}
+                                        aria-label={`${signalsCount} ${signalsCount === 1 ? "sugestão" : "sugestões"} de publicação`}
+                                    >
+                                        {signalsCount}
                                     </span>
                                 )}
                             </NavLink>
@@ -446,10 +457,19 @@ export function PingwinDashboardContent() {
     const recommendations = useRecommendations(companyId, "restaurant", companyId > 0);
     const highCount = (recommendations.data?.recommendations ?? []).filter((r) => r.level === "high").length;
 
+    // F3: as sugestões de "O que publicar e quando" (contador do separador e resumo).
+    const [signals, setSignals] = useState<RestaurantSignalsData | null>(null);
+    useEffect(() => {
+        if (!companyId) return;
+        let alive = true;
+        getRestaurantSignals(companyId).then((r: any) => { if (alive) setSignals(r?.data ?? null); }).catch(() => { if (alive) setSignals(null); });
+        return () => { alive = false; };
+    }, [companyId]);
+
     return (
         <>
             <ToastContainer />
-            <RestaurantTabsNav active={tab} highCount={highCount} />
+            <RestaurantTabsNav active={tab} highCount={highCount} signalsCount={signals?.enabled ? signals.suggestions.length : 0} />
 
             {opened.vendas && (
                 <div className={tab === "vendas" ? undefined : "d-none"}>
@@ -458,6 +478,7 @@ export function PingwinDashboardContent() {
             )}
             {opened.marketing && companyId > 0 && (
                 <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
+                    <SignalsSummaryCard data={signals} />
                     <RestaurantMarketingBlock companyId={companyId} recommendations={recommendations} />
                 </div>
             )}

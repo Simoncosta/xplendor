@@ -14,6 +14,7 @@ import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import ManagementRequestPage from "pages/ManagementRequest";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
 import CategoriasFamiliasPage from "pages/Restauracao/CategoriasFamiliasPage";
+import OQuePublicarPage from "pages/Marketing/OQuePublicarPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
 import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
@@ -153,6 +154,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin"><CategoriasFamiliasPage /></RequireModule> },
+    // F3 do marketing: "O que publicar e quando" (módulo pingwin, como o backend).
+    { path: "/marketing/o-que-publicar", component: <RequireModule module="pingwin"><OQuePublicarPage /></RequireModule> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
     { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },
     { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },
