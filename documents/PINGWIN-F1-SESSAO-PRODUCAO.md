@@ -2,7 +2,8 @@
 
 Escrito a 8 de outubro de 2026, depois da F3. Este documento tem duas partes:
 - a **lista de deploy** desde o último deploy (secção 1);
-- o **guia da primeira leitura real em produção**, na Yuko, numa sessão acompanhada (secção 2).
+- o **guia da primeira leitura real em produção**, na Yuko, numa sessão acompanhada (secção 2);
+- a alternativa escolhida para a Yuko: **ligar o interruptor no deploy** e completar o histórico na manhã seguinte (secção 3).
 
 O guia segue o da sessão de dev (`documents/F1-RELATORIO-MANHA.md` §5 e §6), já com as correções dessa sessão. Os desenhos estão em `documents/PINGWIN-F1-DESENHO.md` (F1 e F2) e `documents/PINGWIN-F3-DESENHO.md` (F3).
 
@@ -10,7 +11,7 @@ Regras que continuam a valer:
 - No PingWin, só leituras autorizadas, à noite ou fora de serviço, em série e com espaçamento. Nunca escrever no PingWin nem no CoverManager.
 - Nunca usar a chamada `/service/report/<ID>/params`, porque devolve clientes e funcionários com nomes.
 - Nenhum dado pessoal: só agregados.
-- **O interruptor `companies.pingwin_item_sales_enabled` fica DESLIGADO em todas as empresas depois do deploy.** Só se liga na sessão acompanhada, empresa a empresa.
+- **O interruptor `companies.pingwin_item_sales_enabled` fica DESLIGADO em todas as empresas depois do deploy.** Liga-se empresa a empresa: na Yuko, na noite do deploy (secção 3); nas outras, só depois de validadas.
 
 ## 1. Lista de deploy
 
@@ -245,3 +246,143 @@ Decidir se o interruptor da Yuko fica ligado (o job das 05:00 continua sozinho, 
 art pingwin:item-sales-switch <ID> off
 ```
 Nas outras empresas, continua desligado até cada uma ser validada.
+
+## 3. Ligar no deploy (Yuko)
+
+Em vez da sessão acompanhada da secção 2, o interruptor da Yuko liga-se na noite do deploy e o job das 05:00 faz a primeira leitura. Na manhã seguinte, antes das 11h, completa-se o histórico de uma vez. Valem as mesmas regras: só leituras, em série, um comando de cada vez, e parar se algum resultado não bater.
+
+Os comandos correm a partir de `/home/xplendor`, num contentor à parte do serviço `worker`, removido no fim:
+```
+cd /home/xplendor
+art() { docker compose -f docker-compose.prod.yml run --rm --no-deps worker php artisan "$@"; }
+```
+Nos comandos, `<ID>` é o ID da Yuko em produção, confirmado no passo 3.1.
+
+### 3.0 Confirmado no código: ligar o interruptor não lê nada
+
+- O comando `pingwin:item-sales-switch` só grava a coluna `companies.pingwin_item_sales_enabled` e escreve uma linha no registo (`app/Console/Commands/PingwinItemSalesSwitchCommand.php`). Não chama o PingWin, o CoverManager nem a IA, e não põe nenhum job na fila.
+- O `CompanyObserver` só reage à criação de uma empresa (`creating` e `created`), não às alterações. Não há outros observadores nem ouvintes de eventos da empresa.
+- Nenhum ecrã nem rota da API altera o interruptor: só o comando.
+- Com o interruptor ligado, as leituras só acontecem: no job das 05:00 (`ScheduledRestaurantSyncJob`); nos comandos manuais desta secção e da secção 2; e no botão "Sincronizar período" do cartão "Dados para o marketing" (`SyncItemSalesPeriodJob`, só o root). **Não usar esse botão na noite do deploy.**
+- A leitura diária do CoverManager (já existente, no job das 05:00) passa a guardar também os agregados por hora, canal, antecedência e estado, tirados da mesma leitura: nenhum pedido a mais.
+
+### 3.1 Na noite do deploy, depois das verificações da secção 1.8 (sem chamadas ao PingWin)
+
+**a) ID da Yuko e estado do interruptor** (só leitura):
+```
+art tinker --execute='App\Models\Company::where("fiscal_name", "like", "%Yuko%")->get(["id", "fiscal_name", "pingwin_item_sales_enabled"])->each(fn ($c) => print($c->id." ".$c->fiscal_name." interruptor=".($c->pingwin_item_sales_enabled ? "ligado" : "desligado").PHP_EOL));'
+```
+Deve aparecer uma só empresa, com `interruptor=desligado`.
+
+**b) Lojas e data de abertura de cada uma** (só leitura):
+```
+art tinker --execute='App\Models\PingwinLocation::where("company_id", <ID>)->orderBy("id")->get()->each(fn ($l) => print($l->id." ".($l->display_name ?: $l->winrest_name)." | loja PingWin ".$l->winrest_store_id." | ativa ".($l->is_active ? "sim" : "não")." | abertura ".($l->opened_on?->toDateString() ?? "vazia")." | CoverManager ".($l->cm_slug ? "sim" : "não").PHP_EOL));'
+```
+Esperado: as duas lojas ativas, com CoverManager; abertura da Baixa a 2026-03-13 e da Costa Cabral a 2026-06-09 (os primeiros dias com vendas lidos na sessão de dev).
+- Se uma abertura estiver vazia ou diferente, corrigir em Restauração › Lojas antes de ligar o interruptor. Gravar uma loja não chama o PingWin.
+- A abertura indicada é a que os sinais usam como início da loja. O cartão "Dados para o marketing" avisa quando difere do início detetado.
+
+**c) Ativar a Linha Editorial** (permite "Criar publicação" a partir da Bússola). Primeiro, o estado:
+```
+art tinker --execute='echo app(App\Services\CompanyModuleService::class)->isEnabled(<ID>, "linha_editorial") ? "Linha Editorial ativa" : "Linha Editorial inativa", PHP_EOL;'
+```
+Se estiver inativa:
+```
+art tinker --execute='app(App\Services\CompanyModuleService::class)->enable(<ID>, "linha_editorial", "manual", null, "Deploy da Bússola"); echo "ok", PHP_EOL;'
+```
+- Fica registado no histórico de módulos da empresa.
+- O mesmo pode fazer-se no ecrã dos módulos da empresa, como root.
+- Ativar o módulo não chama a IA nem cria ideias. "Criar publicação" só funciona com o mês aberto na Linha Editorial, e o mês nunca se abre sozinho.
+
+**d) Ligar o interruptor:**
+```
+art pingwin:item-sales-switch <ID> on
+```
+Deve dizer "vendas por artigo LIGADAS". Nada é lido nesse momento (3.0).
+
+**O que o job das 05:00 vai fazer nessa noite** (na Yuko, depois da leitura diária de sempre do PingWin e do CoverManager, que não muda):
+
+| Passo | Pedidos ao PingWin |
+|---|---|
+| Vendas por artigo dos 7 dias anteriores | 1 |
+| Vendas por hora dos mesmos 7 dias (20 s depois) | 1 |
+| Início de cada loja: relatório anual, um ano por loja (as duas abriram em 2026, por isso basta o ano corrente) | 2 (no máximo 5 por loja) |
+| Histórico das vendas por artigo: 10 blocos de 7 dias para trás, 20 s entre eles | 10 |
+| Histórico por hora e releitura dos dias marcados | 0 (o orçamento de 10 pedidos fica gasto no histórico por artigo; o histórico por hora só começa quando se conhece o primeiro dia com vendas) |
+| Só se a noite for de sábado para domingo: catálogo completo | 1 |
+| Qualidade dos dados e sinais da Bússola | 0 (só a base de dados) |
+
+- **Total: 14 pedidos novos ao PingWin (15 ao domingo), em série, com 20 s entre eles: cerca de 8 a 10 minutos.**
+- No fim, o cálculo dos sinais põe na fila a geração das frases "O quê" das jogadas (`GenerateCompassTextsJob`): **1 pedido à IA** (função `bussola_jogadas`, cerca de 0,02 USD em dev), se a chave do fornecedor estiver no `.env` de produção. Sem chave, ficam os modelos de frase.
+- O CoverManager continua com a leitura de sempre (o dia anterior), sem pedidos a mais.
+- Se a deteção do início der "não fiável", nada se grava para essa loja, o histórico não avança e a falha entra no resumo ao dono. Na manhã seguinte, tratar como no passo P4 da secção 2, antes de continuar.
+- Depois dessa noite, há cerca de 11 semanas de vendas por artigo e 7 dias de vendas por hora. Os sinais dessa manhã são parciais (os períodos fracos precisam de 8 semanas de vendas por hora). Ficam completos com o passo 3.2.
+
+### 3.2 Na manhã seguinte, antes das 11h
+
+**a) O job das 05:00 acabou sem erros:**
+```
+docker exec xplendor-php sh -lc 'grep -h "Scheduled Restaurant Sync\|PingWin Histórico\|Restauração Sinais" storage/logs/laravel-$(date +%F).log | cut -c1-300'
+```
+Esperado: "[PingWin Histórico] início detetado" para as duas lojas, "[PingWin Histórico] noite" com `"pedidos":10`, "[Restauração Sinais] calculados" e "[Scheduled Restaurant Sync] fim" com `"falhas":0`. Sem "vendas por artigo falharam" nem "sinais falharam".
+
+**b) No cartão "Dados para o marketing"** (Empresas › Yuko › Integrações › PingWin, como root):
+- o distintivo "Leitura ligada";
+- "Conferência com o líquido diário (90 dias)": todos os dias lidos batem ("N de N dias batem") e "Sem dias marcados" (ou poucos, que se releem nas noites seguintes);
+- "Catálogo": a percentagem dos artigos vendidos. Abaixo de 100% é normal antes do primeiro domingo. Se se quiser já, `art pingwin:catalog-complete <ID>` (1 pedido, 1 a 2 minutos);
+- "Categorias das famílias": todas por confirmar (as confirmações de dev não passam para produção);
+- "Reservas por classificar": "Nenhuma";
+- "Por loja": Baixa com início a 13/03/2026 (abertura indicada) e "Detetado: março de 2026"; Costa Cabral com 09/06/2026 e "Detetado: junho de 2026"; sem o aviso "Difere … da abertura indicada"; cerca de 77 dias lidos em cada loja; o histórico "A importar".
+
+Se alguma coisa não bater, parar aqui e ir a 3.3.
+
+**c) Completar o histórico, um comando de cada vez, pela ordem** (cerca de 45 a 55 minutos no total; começar até às 10h00):
+
+1. **Vendas por artigo** (cerca de 21 pedidos, 20 s entre eles; 12 a 15 minutos):
+   ```
+   art pingwin:item-history <ID> --calls=40
+   ```
+   Esperado: "ok" nos dias com líquido diário, "empty_protected" só em dias fechados, "Histórico completo." e, na tabela, as duas lojas "completo", com o "1.º dia com vendas" preenchido. O limite de 40 pedidos deixa margem; o comando pára quando chega ao início.
+
+2. **Vendas por hora** (só depois do 1, porque precisa do primeiro dia com vendas de cada loja; cerca de 30 pedidos, 20 s entre eles; 15 a 20 minutos):
+   ```
+   art pingwin:hourly-history <ID> --calls=40
+   ```
+   Esperado: "Histórico por hora completo." e as duas lojas "completo".
+
+3. **Reservas dos últimos 90 dias do CoverManager** (um pedido por loja e por dia, 5 s entre dias; 10 a 15 minutos; nenhum pedido ao PingWin):
+   ```
+   art covermanager:history <ID> --days=90
+   ```
+   Esperado: "por classificar: 0". Um código de estado novo regista-se (qual e quantos), sem mexer no mapa.
+
+4. **Recálculo da qualidade dos dados e dos sinais** (só a base de dados; segundos):
+   ```
+   art tinker --execute='app(App\Services\Restaurant\RestaurantDataQualityService::class)->compute(<ID>); $r = app(App\Services\Restaurant\RestaurantSignalService::class)->compute(<ID>); echo json_encode(["calculado" => $r["computed"], "sinais" => $r["signals"]]), PHP_EOL;'
+   ```
+   Esperado: `"calculado":true` e algumas dezenas de sinais. Tal como à noite, põe na fila 1 pedido à IA para as frases das jogadas (se houver chave).
+
+**d) No ecrã:** o cartão "Dados para o marketing" com as duas lojas "Completo"; a Bússola (Marketing › Bússola) com o topo da semana, as 3 jogadas e os blocos; no painel de restauração, o "Mapa da semana" e, no separador "Marketing e resultados", as jogadas no fim. A nota "Há N famílias de artigos por confirmar" aparece até a equipa confirmar as categorias.
+
+A partir daqui, o job das 05:00 continua sozinho: os 7 dias anteriores, a releitura dos dias marcados, o catálogo ao domingo e os sinais.
+
+### 3.3 Desligar o interruptor, se algo não bater
+
+```
+art pingwin:item-sales-switch <ID> off
+```
+Deve dizer "vendas por artigo desligadas". O efeito é imediato:
+- o job das 05:00 volta a fazer só o que fazia antes do deploy (sem vendas por artigo, por hora, histórico, catálogo nem sinais);
+- a leitura diária do CoverManager deixa de guardar os agregados novos;
+- os comandos desta secção recusam-se a correr ("O interruptor está desligado");
+- um "Sincronizar período" ainda na fila não lê nada, e a geração das frases da IA não corre;
+- a Bússola e o cartão mostram "A leitura das vendas por artigo está desligada nesta empresa".
+
+Nada é apagado. O que já foi lido fica guardado e, ao voltar a ligar, o histórico continua de onde parou.
+
+Um comando que já esteja a correr só verifica o interruptor no início. O mais seguro é deixá-lo acabar (cada um tem o seu limite de pedidos). Se for preciso pará-lo, Ctrl+C termina o contentor; nesse caso, registar a hora e o último bloco mostrado antes de voltar a ligar.
+
+A Linha Editorial pode ficar ativa (não lê nada). Para a desativar:
+```
+art tinker --execute='app(App\Services\CompanyModuleService::class)->disable(<ID>, "linha_editorial"); echo "ok", PHP_EOL;'
+```
