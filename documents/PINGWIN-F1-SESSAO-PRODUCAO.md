@@ -43,22 +43,30 @@ Regras que continuam a valer:
 | `8e497da` | Guia da sessão em produção e lista de deploy |
 | (seguinte) | Mapa dos códigos de estado do CoverManager e reservas "por classificar" |
 
-### 1.3 Passo prévio obrigatório: o registo do scraper
+### 1.3 O pull antes do down, e o registo do scraper
 
-O commit `9223545` retirou `docker/scraper/scraper.log` do git. Em produção, o scraper corre com `WORKDIR /app`, montado em `./docker/scraper`, e escreve nesse ficheiro. O ficheiro tem por isso alterações locais no servidor. O `git pull` do `deploy.sh` recusa-se a apagá-lo ("Your local changes … would be overwritten") e pára. Como o `deploy.sh` faz o `docker compose down` antes do pull, **a produção ficaria em baixo**.
+O commit `9223545` retirou `docker/scraper/scraper.log` do git. Em produção, o scraper corre com `WORKDIR /app`, montado em `./docker/scraper`, e escreve nesse ficheiro. O ficheiro tem por isso alterações locais no servidor, e um `git pull` simples recusa-se a apagá-lo ("Your local changes … would be overwritten").
 
-Imediatamente antes de correr o `deploy.sh`:
+**O `deploy.sh` novo** trata disto:
+- faz o `git pull --ff-only` **antes** do `docker compose down`; se o pull falhar, pára sem desligar nada;
+- antes do pull, se o registo do scraper ainda estiver seguido pelo git e tiver alterações, guarda uma cópia, repõe a versão do git, faz o pull e devolve a cópia (o ficheiro passa a ficar fora do git);
+- se o pull falhar, devolve o registo como estava;
+- o `down` vem logo a seguir ao pull, porque o código está montado nos contentores e não pode ficar a correr com a base de dados antiga mais do que o necessário.
+- Testado numa réplica local com três casos: o servidor com o registo alterado, o pull que falha e o deploy seguinte já atualizado.
+
+**Só no primeiro deploy:** o servidor ainda tem o `deploy.sh` antigo, que faz o `down` antes do pull. Por isso, desta vez, o pull faz-se à mão antes de correr o script:
 ```
 cd /home/xplendor
 cp docker/scraper/scraper.log /home/scraper.log.antes-do-deploy
 git checkout -- docker/scraper/scraper.log
-git status --short          # não deve aparecer o scraper.log
-```
-Depois do deploy, devolver o registo ao sítio (passa a ficar fora do git):
-```
+git pull --ff-only origin main
 cp /home/scraper.log.antes-do-deploy docker/scraper/scraper.log
+git status --short          # não deve aparecer nada
+bash deploy-scripts/deploy.sh   # ou como o deploy é corrido habitualmente
 ```
-Se o pull falhar na mesma (o scraper escreveu entre os dois passos), repetir o `git checkout` e voltar a correr o `deploy.sh`.
+- Se o `git pull` falhar, nada foi desligado: devolver o registo (`cp /home/scraper.log.antes-do-deploy docker/scraper/scraper.log`) e ver o motivo antes de continuar.
+- O `deploy.sh` corrido a seguir já é o novo; o pull dele não traz nada.
+- Nos deploys seguintes, basta o `deploy.sh`.
 
 ### 1.4 Migrações (correm no `deploy.sh`, pela ordem)
 
@@ -116,7 +124,7 @@ Outras verificações:
 - `docker exec xplendor-php php artisan schedule:list | grep restaurant-daily-sync`: o job das 05:00 continua agendado.
 - No dia seguinte, os registos do job das 05:00 sem erros novos (`storage/logs`, "[Scheduled Restaurant Sync] fim"), e o resumo ao dono só se houver falhas, como até aqui.
 - No ecrã, com uma empresa de restauração: o dashboard de restauração abre como antes; "O que publicar e quando" mostra "A leitura das vendas por artigo está desligada nesta empresa".
-- O registo do scraper de volta ao sítio (passo 1.3) e `git status --short` sem alterações.
+- O registo do scraper no sítio e fora do git (`git check-ignore docker/scraper/scraper.log` devolve o caminho) e `git status --short` sem alterações.
 
 ## 2. Sessão acompanhada em produção (Yuko)
 
