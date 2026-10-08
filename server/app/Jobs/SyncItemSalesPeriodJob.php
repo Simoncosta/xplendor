@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Services\AlertService;
+use App\Services\PingwinHourlySalesService;
 use App\Services\PingwinItemSalesService;
 use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
@@ -14,10 +15,11 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
- * XPLENDOR — F1-2: o "Sincronizar período" manual relê também as vendas por artigo do
- * período (blocos de 7 dias, 20 s entre pedidos). Despachado no fim do batch dos dias,
+ * XPLENDOR — F1-2: o "Sincronizar período" manual relê também as vendas por artigo (e,
+ * desde a F2, as vendas por hora) do período (blocos de 7 dias, 20 s entre pedidos). Despachado no fim do batch dos dias,
  * para a conferência já ter os líquidos diários, e só com o interruptor ligado. Corre no
  * worker (docker socket), serializado com as outras sincronizações PingWin da empresa.
  */
@@ -28,7 +30,7 @@ class SyncItemSalesPeriodJob implements ShouldQueue
     /** Esperar pela vez (WithoutOverlapping) não gasta a tentativa; uma exceção sim. */
     public int $tries = 100;
     public int $maxExceptions = 1;
-    public int $timeout = 1500; // até 14 pedidos de 7 dias (92 dias), com espaçamento
+    public int $timeout = 2400; // até 28 pedidos de 7 dias (92 dias, artigos e horas), com espaçamento
 
     public function __construct(public int $companyId, public string $from, public string $to) {}
 
@@ -50,6 +52,9 @@ class SyncItemSalesPeriodJob implements ShouldQueue
 
         try {
             $result = $service->sync($this->companyId, $this->from, $to, false, 92);
+            // F2: as vendas por hora do mesmo período (20 s depois do último pedido).
+            Sleep::for(PingwinItemSalesService::SPACING_SECONDS)->seconds();
+            app(PingwinHourlySalesService::class)->sync($this->companyId, $this->from, $to, false, 92);
         } catch (\Throwable $e) {
             Log::warning('[PingWin Vendas por artigo] período falhou', ['company_id' => $this->companyId, 'error' => $e->getMessage()]);
             $alerts->createSystemAlert(

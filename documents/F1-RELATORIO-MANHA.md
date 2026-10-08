@@ -190,3 +190,46 @@ FROM pingwin_locations l LEFT JOIN pingwin_item_sales_days d ON d.location_id = 
 docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5 off
 ```
 Em produção continua tudo desligado até decidir ligá-lo, empresa a empresa, depois de validado.
+
+## 6. Passos da F2 na sessão acompanhada (períodos fracos)
+
+Depois do passo 3 (interruptor ligado), numa hora fora de serviço. Os comandos correm a partir da raiz do repositório, como os anteriores. Só leituras: "Vendas por hora" no PingWin (relatório já validado nas capturas h3 e h3b) e a leitura de reservas que já se faz no CoverManager.
+
+**F2-1. Simulação das vendas por hora dos últimos 7 dias** (1 pedido, nada gravado; cerca de 10 a 40 s):
+```
+docker compose run --rm --no-deps worker php artisan pingwin:hourly-sales 5 --dry-run
+```
+O que deve aparecer:
+- 14 linhas (2 lojas × 7 dias), todas "OK";
+- a "Soma das horas" igual, ao cêntimo, ao líquido diário (os mesmos valores da conferência das vendas por artigo);
+- uma linha "Peso de cada hora" com as horas de almoço e de jantar à frente.
+
+**F2-2. Gravar os mesmos 7 dias:**
+```
+docker compose run --rm --no-deps worker php artisan pingwin:hourly-sales 5
+```
+Deve terminar com "Concluído: vendas por hora gravadas."
+
+**F2-3. Histórico por hora** (até ao primeiro dia com vendas de cada loja: Baixa 13/03, Costa Cabral 09/06). São cerca de 30 pedidos com 20 s entre eles, de 15 a 20 minutos:
+```
+docker compose run --rm --no-deps worker php artisan pingwin:hourly-history 5 --calls=40
+```
+O que deve aparecer:
+- um bloco por linha, com "ok" onde há líquido diário espelhado e "unverified" onde não há;
+- nenhum "mismatch" que fique (os que não batem releem primeiro o resumo do dia);
+- no fim, "Histórico por hora completo." e as duas lojas como "completo".
+
+**F2-4. Reservas dos últimos 90 dias no CoverManager** (a mesma leitura do job das 05:00, um pedido por loja e por dia, 5 s entre dias; cerca de 10 a 15 minutos):
+```
+docker compose run --rm --no-deps worker php artisan covermanager:history 5 --days=90
+```
+O que deve aparecer: os totais de reservas válidas, pessoas, anuladas e faltas, e "Concluído". Depois, confirmar o mapa dos códigos de estado no MariaDB de dev (só contagens, sem dados pessoais):
+```sql
+SELECT status_code, SUM(reservations_count) reservas FROM cm_reservation_status_daily WHERE company_id = 5 GROUP BY status_code ORDER BY reservas DESC;
+SELECT channel, SUM(reservations_count) reservas FROM cm_reservation_channel_daily WHERE company_id = 5 GROUP BY channel ORDER BY reservas DESC;
+SELECT bucket, SUM(reservations_count) reservas FROM cm_reservation_leadtime_daily WHERE company_id = 5 GROUP BY bucket;
+```
+- Esperado nos códigos: sobretudo "3" (confirmada) e "5" (concluída), alguns "-2" (anulada) e "-3" (falta).
+- **Se aparecerem outros códigos**, registar quais e quantos: hoje contam como reserva válida, exceto os começados por "-", que contam como anulação. O mapa (em `CoverManagerService`) ajusta-se depois da sessão.
+
+**F2-5. Conferir no ecrã:** em Restauração (painel `/restauracao`), o cartão "Mapa da semana" por loja, com "Vendas" e "Pessoas". As horas mais escuras devem coincidir com o almoço e o jantar de cada loja, e "Dias com dados" deve mostrar perto de 12 em cada dia da semana (12 semanas).

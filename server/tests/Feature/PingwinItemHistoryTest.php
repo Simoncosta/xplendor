@@ -74,6 +74,13 @@ class PingwinItemHistoryTest extends TestCase
                 return array_values(array_filter($this->t->pingwinRows, fn ($r) => $r['date'] >= $start && $r['date'] <= $end));
             }
 
+            public function fetchHourlySales(int $companyId, string $start, string $end): array
+            {
+                $this->t->calls[] = ['hourly_sales', $start, $end];
+
+                return [];
+            }
+
             public function fetchStoreYear(int $companyId, string $storeId, int $year, string $locals = ''): array
             {
                 $this->t->calls[] = ['year', $storeId, $year, $locals];

@@ -13,6 +13,7 @@ import MonthlyBillingChart from "./components/MonthlyBillingChart";
 import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
 import { useRecommendations } from "./components/RecommendationsCard";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import HeatmapCard from "pages/Restauracao/HeatmapCard";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -305,6 +306,11 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
             {/* Gráfico de faturação mensal por restaurante (acima da tabela). */}
             <Row className="g-3 mb-3">
                 <MonthlyBillingChart />
+            </Row>
+
+            {/* F2: mapa da semana (dia × hora), só com o interruptor das vendas por artigo ligado. */}
+            <Row className="g-3 mb-3">
+                <HeatmapCard companyId={companyId} />
             </Row>
 
             {/* Tabela de lojas — Card + CardHeader + tabela no estilo do sistema. */}

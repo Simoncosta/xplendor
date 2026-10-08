@@ -107,7 +107,7 @@ class PingwinItemSalesCommand extends Command
         return number_format($cents / 100, 2, ',', ' ') . ' €';
     }
 
-    private static function label(string $status): string
+    public static function label(string $status): string
     {
         return [
             'ok' => 'OK',

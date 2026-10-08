@@ -19,7 +19,7 @@ class PingwinLocation extends Model
 {
     protected $fillable = [
         'company_id', 'winrest_store_id', 'winrest_name', 'display_name', 'opened_on', 'is_active',
-        'sales_first_month', 'sales_since', 'sales_start_checked_at', 'history_complete_at',
+        'sales_first_month', 'sales_since', 'sales_start_checked_at', 'history_complete_at', 'hourly_history_complete_at',
         'cm_slug', 'cm_token', 'cm_base_url',
     ];
 
@@ -30,6 +30,7 @@ class PingwinLocation extends Model
         'sales_since'            => 'date',
         'sales_start_checked_at' => 'datetime',
         'history_complete_at'    => 'datetime',
+        'hourly_history_complete_at' => 'datetime',
         'is_active' => 'boolean',
         'cm_token'  => EncryptedLegacy::class, // cifrado em repouso
     ];

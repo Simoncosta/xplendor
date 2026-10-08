@@ -11,6 +11,7 @@ use App\Services\CollaboratorService;
 use App\Services\PingwinService;
 use App\Services\Restaurant\RestaurantDataQualityService;
 use App\Services\Restaurant\RestaurantFamilyCategoryService;
+use App\Services\Restaurant\RestaurantHeatmapService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -20,7 +21,8 @@ use Illuminate\Support\Facades\Log;
  *  · "Categorias das famílias": ver (qualquer utilizador), pedir sugestões à IA e
  *    confirmar (só quem configura integrações: administrador da empresa, administrador
  *    da agência gestora ou root). Nada fica confirmado sem uma pessoa;
- *  · postos de venda do relatório anual (início de cada loja): só o root.
+ *  · postos de venda do relatório anual (início de cada loja): só o root;
+ *  · F2: mapa de calor da semana por loja (qualquer utilizador da empresa).
  */
 class RestaurantMarketingDataController extends Controller
 {
@@ -61,6 +63,24 @@ class RestaurantMarketingDataController extends Controller
         Log::info('[PingWin] postos de venda do relatório anual alterados', ['company_id' => $companyId, 'user_id' => $request->user()->id]);
 
         return ApiResponse::success(['annual_locals' => $locals], $locals === '' ? 'Postos de venda limpos: o relatório anual soma todos.' : 'Postos de venda guardados.');
+    }
+
+    // GET /companies/{id}/integrations/pingwin/heatmap?location_id=&weeks=   (F2, qualquer utilizador)
+    public function heatmap(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $data = $request->validate([
+            'location_id' => ['nullable', 'integer'],
+            'weeks' => ['nullable', 'integer', 'min:4', 'max:26'],
+        ]);
+
+        return ApiResponse::success(app(RestaurantHeatmapService::class)->build(
+            $companyId,
+            isset($data['location_id']) ? (int) $data['location_id'] : null,
+            (int) ($data['weeks'] ?? RestaurantHeatmapService::DEFAULT_WEEKS),
+        ), 'Mapa de calor da semana.');
     }
 
     // GET /companies/{id}/integrations/pingwin/family-categories

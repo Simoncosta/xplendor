@@ -91,3 +91,11 @@ Outras respostas do utilizador:
 - Histórico: todo o disponível, por loja, detetado pelo primeiro dia com vendas. A comparação com o ano anterior só aparece com 12 meses dessa loja; até lá, semanas contra semanas, com a confiança indicada (F3).
 - Margem (F4): do relatório de margem só o custo; a margem calcula-se com o líquido realmente vendido.
 - As lojas da Yuko não estão trocadas.
+
+## 10. F2: períodos fracos (construída a 8 de outubro de 2026)
+
+- **Vendas por hora** (PingWin, relatório `1023875499019`): tabela loja × dia × hora (sem IVA), leitura noturna dos 7 dias anteriores (depois das vendas por artigo, 20 s depois), histórico pelo mesmo mecanismo (até ao primeiro dia com vendas de cada loja, no mesmo orçamento de 10 pedidos por noite) e conferência da soma das horas com o líquido diário (1%, com releitura do resumo). A lógica do espelho é partilhada com as vendas por artigo (`PingwinDailyMirrorService`).
+- **CoverManager, sem chamadas novas:** da leitura que já se faz guardam-se também os agregados por hora de chegada, por canal (provenance), por antecedência (no próprio dia, 1 a 2, 3 a 7, 8 a 30, mais de 30 dias; sem walk-ins) e a contagem por código de estado. As faltas ("-3") passam a contar à parte das anulações. Mapa dos códigos: o do projeto yukotavern ("3" confirmada, "5" concluída, "-2" anulada, "-3" falta), a confirmar na sessão acompanhada com a contagem por código. Histórico de 90 dias só em sessão acompanhada (`covermanager:history`).
+- **Mapa da semana** (dia × hora, vendas e pessoas, por loja): últimas 12 semanas a partir do início efetivo da loja, no painel de restauração.
+- Tudo atrás do mesmo interruptor por empresa, desligado por omissão.
+

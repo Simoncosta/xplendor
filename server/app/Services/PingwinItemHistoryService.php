@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\PingwinCatalogItem;
 use App\Models\PingwinDailySale;
 use App\Models\PingwinItemSale;
+use App\Models\PingwinHourlySalesDay;
 use App\Models\PingwinItemSalesDay;
 use App\Models\PingwinLocation;
 use App\Services\Restaurant\FamilyCategoryRules;
@@ -22,7 +23,8 @@ use Illuminate\Support\Sleep;
  *    primeiro mês com vendas, até 10 pedidos por noite, 20 s entre eles;
  *  · releitura dos dias marcados (não batem ou vazios protegidos), até 3 leituras; os dias
  *    antes do primeiro dia com vendas de cada loja não ficam marcados;
- *  · catálogo completo: leitura completa; os vendidos em falta procuram-se nos anulados.
+ *  · catálogo completo: leitura completa; os vendidos em falta procuram-se nos anulados;
+ *  · F2: histórico das vendas por hora, pelo mesmo mecanismo, depois do histórico por artigo.
  *
  * Só leituras no PingWin, em série. Quem chama verifica o interruptor da empresa.
  */
@@ -40,11 +42,13 @@ class PingwinItemHistoryService
     public function __construct(
         private readonly PingwinService $pingwin,
         private readonly PingwinItemSalesService $sales,
+        private readonly PingwinHourlySalesService $hours,
     ) {}
 
     /**
-     * Noite de uma empresa: deteta o início das lojas por detetar, importa o histórico
-     * (até $budget pedidos) e, com o orçamento que sobrar, relê os dias marcados.
+     * Noite de uma empresa: deteta o início das lojas por detetar, importa o histórico por
+     * artigo e depois o por hora (até $budget pedidos ao todo) e, com o orçamento que
+     * sobrar, relê os dias marcados (artigos, depois horas).
      * $afterAnotherCall: houve um pedido ao PingWin imediatamente antes (espaçamento).
      */
     public function nightly(int $companyId, int $budget = self::CALLS_PER_NIGHT, bool $afterAnotherCall = true): array
@@ -52,9 +56,15 @@ class PingwinItemHistoryService
         $this->callsMade = $afterAnotherCall ? 1 : 0;
         $detection = $this->detectStarts($companyId);
         $backfill = $this->backfill($companyId, $budget);
-        $reread = $this->rereadMarked($companyId, $budget - $backfill['calls']);
+        $left = $budget - $backfill['calls'];
+        // F2: o histórico por hora usa o mesmo orçamento, depois do histórico por artigo.
+        $hourly = $this->backfillHourly($companyId, $left);
+        $left -= $hourly['calls'];
+        $reread = $this->rereadMarked($companyId, $left);
+        $left -= $reread['calls'];
+        $rereadHours = $this->rereadMarked($companyId, $left, true);
 
-        return ['detection' => $detection, 'backfill' => $backfill, 'reread' => $reread];
+        return ['detection' => $detection, 'backfill' => $backfill, 'hourly' => $hourly, 'reread' => $reread, 'reread_hours' => $rereadHours];
     }
 
     // ── Início de cada loja ────────────────────────────────────────────────────
@@ -194,18 +204,69 @@ class PingwinItemHistoryService
     }
 
     /**
+     * F2: histórico das vendas por hora, pelo mesmo mecanismo (blocos de 7 dias para trás,
+     * espaçamento), desde o dia mais antigo já lido até ao primeiro dia com vendas de cada
+     * loja. Só depois de conhecido esse dia (histórico por artigo completo).
+     */
+    public function backfillHourly(int $companyId, int $budget = self::CALLS_PER_NIGHT): array
+    {
+        $active = PingwinLocation::where('company_id', $companyId)->where('is_active', true)->get();
+        $pending = $active->filter(fn (PingwinLocation $l) => $l->sales_since !== null && $l->hourly_history_complete_at === null);
+        if ($pending->isEmpty() || $budget <= 0) {
+            return ['calls' => 0, 'blocks' => [], 'complete' => $pending->isEmpty(), 'target' => null, 'reached' => null];
+        }
+
+        $target = CarbonImmutable::parse($pending->min(fn (PingwinLocation $l) => $l->sales_since->toDateString()));
+        $oldest = PingwinHourlySalesDay::whereIn('location_id', $active->pluck('id'))->min('business_date');
+        $cursor = $oldest ? CarbonImmutable::parse(substr((string) $oldest, 0, 10)) : CarbonImmutable::today();
+
+        $calls = 0;
+        $blocks = [];
+        while ($calls < $budget && $cursor->gt($target)) {
+            $end = $cursor->subDay();
+            $start = $end->subDays(PingwinHourlySalesService::DAYS_PER_CALL - 1)->max($target);
+            $this->pause();
+            $result = $this->hours->sync($companyId, $start->toDateString(), $end->toDateString());
+            $this->callsMade++;
+            $calls++;
+            $blocks[] = [
+                'from' => $start->toDateString(), 'to' => $end->toDateString(),
+                'statuses' => array_count_values(array_column($result['days'], 'status')),
+            ];
+            $cursor = $start;
+        }
+
+        $complete = $cursor->lte($target);
+        if ($complete) {
+            foreach ($pending as $location) {
+                $location->forceFill(['hourly_history_complete_at' => now()])->save();
+            }
+            $this->settlePreStartDays($companyId);
+        }
+        Log::info('[PingWin Histórico por hora] noite', [
+            'company_id' => $companyId, 'pedidos' => $calls, 'chegou_a' => $cursor->toDateString(),
+            'alvo' => $target->toDateString(), 'completo' => $complete,
+        ]);
+
+        return ['calls' => $calls, 'blocks' => $blocks, 'complete' => $complete,
+            'target' => $target->toDateString(), 'reached' => $cursor->toDateString()];
+    }
+
+    /**
      * Relê os dias marcados (não batem ou vazios protegidos) anteriores à janela da noite,
      * lidos antes de hoje e com menos de 3 leituras, em blocos de até 7 dias, dentro do
-     * orçamento.
+     * orçamento. Com $hours, os das vendas por hora.
      */
-    public function rereadMarked(int $companyId, int $budget): array
+    public function rereadMarked(int $companyId, int $budget, bool $hours = false): array
     {
         $this->settlePreStartDays($companyId);
         if ($budget <= 0) {
             return ['calls' => 0, 'blocks' => []];
         }
+        $dayModel = $hours ? PingwinHourlySalesDay::class : PingwinItemSalesDay::class;
+        $service = $hours ? $this->hours : $this->sales;
         [$windowStart] = PingwinItemSalesService::nightlyWindow();
-        $dates = PingwinItemSalesDay::where('company_id', $companyId)
+        $dates = $dayModel::where('company_id', $companyId)
             ->whereIn('status', PingwinItemSalesDay::STATUSES_TO_REREAD)
             ->where('reads_count', '<', PingwinItemSalesDay::MAX_READS)
             ->where('business_date', '<', $windowStart)
@@ -229,7 +290,7 @@ class PingwinItemHistoryService
             $start = CarbonImmutable::parse($date);
             $end = $start->addDays(PingwinItemSalesService::DAYS_PER_CALL - 1)->min($lastAllowed);
             $this->pause();
-            $this->sales->sync($companyId, $start->toDateString(), $end->toDateString());
+            $service->sync($companyId, $start->toDateString(), $end->toDateString());
             $this->callsMade++;
             $calls++;
             $coveredUntil = $end->toDateString();
@@ -248,10 +309,12 @@ class PingwinItemHistoryService
         $changed = 0;
         $locations = PingwinLocation::where('company_id', $companyId)->whereNotNull('sales_since')->get();
         foreach ($locations as $location) {
-            $changed += PingwinItemSalesDay::where('location_id', $location->id)
-                ->where('business_date', '<', $location->sales_since->toDateString())
-                ->where('status', PingwinItemSalesDay::STATUS_EMPTY_PROTECTED)
-                ->update(['status' => PingwinItemSalesDay::STATUS_EMPTY]);
+            foreach ([PingwinItemSalesDay::class, PingwinHourlySalesDay::class] as $dayModel) {
+                $changed += $dayModel::where('location_id', $location->id)
+                    ->where('business_date', '<', $location->sales_since->toDateString())
+                    ->where('status', PingwinItemSalesDay::STATUS_EMPTY_PROTECTED)
+                    ->update(['status' => PingwinItemSalesDay::STATUS_EMPTY]);
+            }
         }
 
         return $changed;

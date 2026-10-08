@@ -621,6 +621,8 @@ export const acceptEditorialIdea = (companyId: number, id: number, payload: { in
 // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
 export const getPingwinMarketingData = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
+export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}) });
 export const getFamilyCategories = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`);
 export const suggestFamilyCategories = (companyId: number) =>

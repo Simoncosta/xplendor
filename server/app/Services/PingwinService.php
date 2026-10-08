@@ -1896,6 +1896,37 @@ class PingwinService
     }
 
     /**
+     * Vendas por hora (F2 do marketing, SÓ LEITURA): loja × dia × hora (sem IVA) de um
+     * intervalo de até 7 dias, das lojas ATIVAS cadastradas. Não olha ao interruptor: quem
+     * chama decide.
+     *
+     * @return array<int, array{store_id: string, date: string, hour: int, net: float}>
+     */
+    public function fetchHourlySales(int $companyId, string $start, string $end): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode' => 'hourly_sales',
+            'stores' => $this->activeStoreIds($companyId)->implode(','),
+            'start' => $start,
+            'end' => $end,
+        ]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Vendas por hora PingWin falharam: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return is_array($result['rows'] ?? null) ? $result['rows'] : [];
+    }
+
+    /**
      * Acumulado mês a mês (sem IVA) de UMA loja num ano, do relatório anual (F1-2, SÓ
      * LEITURA): 12 valores, de janeiro a dezembro. $locals: os postos de venda a pedir
      * (vazio salvo indicação; ver documents/F1-NOITE-PERGUNTAS.md).

@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\CmReservationChannelDaily;
+use App\Models\CmReservationHourly;
+use App\Models\CmReservationLeadtimeDaily;
 use App\Models\CmReservationShiftSummary;
+use App\Models\CmReservationStatusDaily;
 use App\Models\CompanyIntegration;
 use App\Models\PingwinLocation;
 use Illuminate\Support\Facades\Log;
@@ -81,14 +85,42 @@ class CoverManagerService
     }
 
     /**
+     * Código de estado do CoverManager que é uma falta (o cliente não apareceu). Mapa usado
+     * no projeto yukotavern (lib/metrics.php): "3" confirmada, "5" concluída, "-2" anulada,
+     * "-3" falta. Os outros códigos começados por "-" contam como anulação; os restantes,
+     * como reserva válida (como até aqui). Por confirmar na sessão acompanhada, com a
+     * contagem por código guardada em cm_reservation_status_daily.
+     */
+    public const STATUS_NO_SHOW = '-3';
+
+    /** Escalões de antecedência (dias entre a criação da reserva e o dia da reserva). */
+    public const LEAD_BUCKETS = ['same_day' => [0, 0], 'd1_2' => [1, 2], 'd3_7' => [3, 7], 'd8_30' => [8, 30], 'd31_plus' => [31, PHP_INT_MAX]];
+
+    /** cancelled | no_show | valid, a partir do código de estado. */
+    public function statusKind($status): string
+    {
+        $code = trim((string) ($status ?? ''));
+        if ($code === self::STATUS_NO_SHOW) {
+            return 'no_show';
+        }
+
+        return str_starts_with($code, '-') ? 'cancelled' : 'valid';
+    }
+
+    private function isWalkIn(array $r): bool
+    {
+        return str_replace([' ', '-', '_'], '', mb_strtolower((string) ($r['provenance'] ?? ''))) === 'walkin';
+    }
+
+    /**
      * Agrega a lista de reservas por turno — SÓ números (o PII fica de fora).
-     * Regras (spike): cancelada (status começa por "-") → só cancelled_count++;
-     * não-cancelada → reservations_count++ e guests_total += "for"; walk-in
-     * (provenance walk in/walk-in/walkin) → também walk_ins_count++.
+     * Regras: anulada (status começa por "-", exceto a falta "-3") → só cancelled_count++;
+     * falta ("-3") → só no_show_count++; as outras → reservations_count++ e guests_total
+     * += "for"; walk-in (provenance walk in/walk-in/walkin) → também walk_ins_count++.
      */
     public function aggregate(array $reservs): array
     {
-        $blank = fn () => ['guests_total' => 0, 'reservations_count' => 0, 'walk_ins_count' => 0, 'cancelled_count' => 0];
+        $blank = fn () => ['guests_total' => 0, 'reservations_count' => 0, 'walk_ins_count' => 0, 'cancelled_count' => 0, 'no_show_count' => 0];
         $out = ['lunch' => $blank(), 'dinner' => $blank(), 'other' => $blank()];
 
         foreach ($reservs as $r) {
@@ -97,22 +129,107 @@ class CoverManagerService
             }
             $shift = $this->normalizeShift($r['meal_shift'] ?? null);
 
-            // Cancelada: status a começar por "-" → só conta como cancelada.
-            if (str_starts_with(trim((string) ($r['status'] ?? '')), '-')) {
+            $kind = $this->statusKind($r['status'] ?? null);
+            if ($kind === 'cancelled') {
                 $out[$shift]['cancelled_count']++;
+                continue;
+            }
+            if ($kind === 'no_show') {
+                $out[$shift]['no_show_count']++;
                 continue;
             }
 
             $out[$shift]['reservations_count']++;
             $out[$shift]['guests_total'] += (int) ($r['for'] ?? 0);
 
-            $prov = str_replace([' ', '-', '_'], '', mb_strtolower((string) ($r['provenance'] ?? '')));
-            if ($prov === 'walkin') {
+            if ($this->isWalkIn($r)) {
                 $out[$shift]['walk_ins_count']++;
             }
         }
 
         return $out;
+    }
+
+    /**
+     * F2: agregados por hora (hora da reserva), por canal (provenance), por antecedência e por
+     * código de estado — SÓ números. Hora, canal e antecedência contam só as reservas válidas
+     * (sem anuladas nem faltas); a antecedência deixa de fora os walk-ins (não reservam). Os
+     * códigos de estado contam todas as reservas.
+     */
+    public function details(array $reservs, string $businessDate): array
+    {
+        $hourly = [];
+        $channels = [];
+        $lead = [];
+        $statuses = [];
+        $day = \DateTimeImmutable::createFromFormat('!Y-m-d', $businessDate) ?: null;
+
+        foreach ($reservs as $r) {
+            if (! is_array($r)) {
+                continue;
+            }
+            $code = mb_substr(trim((string) ($r['status'] ?? '')), 0, 12);
+            $statuses[$code === '' ? '(vazio)' : $code] = ($statuses[$code === '' ? '(vazio)' : $code] ?? 0) + 1;
+            if ($this->statusKind($r['status'] ?? null) !== 'valid') {
+                continue;
+            }
+            $guests = (int) ($r['for'] ?? 0);
+            $walkIn = $this->isWalkIn($r);
+
+            if (preg_match('/^(\d{1,2}):\d{2}/', trim((string) ($r['time'] ?? '')), $m) && (int) $m[1] <= 23) {
+                $h = (int) $m[1];
+                $hourly[$h] ??= ['reservations_count' => 0, 'guests_total' => 0, 'walk_ins_count' => 0];
+                $hourly[$h]['reservations_count']++;
+                $hourly[$h]['guests_total'] += $guests;
+                $hourly[$h]['walk_ins_count'] += $walkIn ? 1 : 0;
+            }
+
+            $channel = $walkIn ? 'walk in' : mb_substr(trim((string) preg_replace('/\s+/', ' ', mb_strtolower((string) ($r['provenance'] ?? '')))), 0, 40);
+            $channel = $channel === '' ? 'sem canal' : $channel;
+            $channels[$channel] ??= ['reservations_count' => 0, 'guests_total' => 0];
+            $channels[$channel]['reservations_count']++;
+            $channels[$channel]['guests_total'] += $guests;
+
+            $added = \DateTimeImmutable::createFromFormat('!Y-m-d', substr(trim((string) ($r['date_add'] ?? '')), 0, 10)) ?: null;
+            if (! $walkIn && $day && $added && $added <= $day) {
+                $days = (int) $added->diff($day)->days;
+                foreach (self::LEAD_BUCKETS as $bucket => [$min, $max]) {
+                    if ($days >= $min && $days <= $max) {
+                        $lead[$bucket] ??= ['reservations_count' => 0, 'guests_total' => 0];
+                        $lead[$bucket]['reservations_count']++;
+                        $lead[$bucket]['guests_total'] += $guests;
+                        break;
+                    }
+                }
+            }
+        }
+        ksort($hourly);
+
+        return ['hourly' => $hourly, 'channels' => $channels, 'lead' => $lead, 'statuses' => $statuses];
+    }
+
+    /** Substitui os agregados F2 de uma loja × dia (só com o interruptor da empresa ligado). */
+    private function storeDetails(PingwinLocation $location, string $date, array $details): void
+    {
+        $now = now();
+        $base = ['company_id' => $location->company_id, 'location_id' => $location->id, 'business_date' => $date, 'synced_at' => $now, 'created_at' => $now, 'updated_at' => $now];
+        \Illuminate\Support\Facades\DB::transaction(function () use ($location, $date, $details, $base) {
+            foreach ([CmReservationHourly::class, CmReservationChannelDaily::class, CmReservationLeadtimeDaily::class, CmReservationStatusDaily::class] as $model) {
+                $model::where('location_id', $location->id)->where('business_date', $date)->delete();
+            }
+            foreach ($details['hourly'] as $hour => $v) {
+                CmReservationHourly::insert($base + ['hour' => $hour] + $v);
+            }
+            foreach ($details['channels'] as $channel => $v) {
+                CmReservationChannelDaily::insert($base + ['channel' => $channel] + $v);
+            }
+            foreach ($details['lead'] as $bucket => $v) {
+                CmReservationLeadtimeDaily::insert($base + ['bucket' => $bucket] + $v);
+            }
+            foreach ($details['statuses'] as $code => $n) {
+                CmReservationStatusDaily::insert($base + ['status_code' => (string) $code, 'reservations_count' => $n]);
+            }
+        });
     }
 
     /**
@@ -146,6 +263,12 @@ class CoverManagerService
                 ['location_id' => $location->id, 'business_date' => $date, 'shift' => $shift],
                 array_merge($counts, ['company_id' => $location->company_id, 'synced_at' => $now]),
             );
+        }
+
+        // F2: com o interruptor da empresa ligado, guarda também os agregados por hora,
+        // canal, antecedência e código de estado (tirados desta mesma leitura).
+        if (PingwinItemSalesService::isEnabled((int) $location->company_id)) {
+            $this->storeDetails($location, $date, $this->details($reservs, $date));
         }
 
         // ⚠️ Devolve só números — o $reservs (com PII) fica em memória e é descartado.

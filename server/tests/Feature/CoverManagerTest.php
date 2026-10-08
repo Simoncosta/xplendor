@@ -87,9 +87,9 @@ class CoverManagerTest extends TestCase
         $agg = $svc->aggregate($reservs);
 
         // Almoço: 2 reservas, 6 pessoas, 1 walk-in, 0 canceladas.
-        $this->assertSame(['guests_total' => 6, 'reservations_count' => 2, 'walk_ins_count' => 1, 'cancelled_count' => 0], $agg['lunch']);
+        $this->assertSame(['guests_total' => 6, 'reservations_count' => 2, 'walk_ins_count' => 1, 'cancelled_count' => 0, 'no_show_count' => 0], $agg['lunch']);
         // Jantar: 1 reserva/6 pessoas + 1 cancelada (não conta em guests/reservations).
-        $this->assertSame(['guests_total' => 6, 'reservations_count' => 1, 'walk_ins_count' => 0, 'cancelled_count' => 1], $agg['dinner']);
+        $this->assertSame(['guests_total' => 6, 'reservations_count' => 1, 'walk_ins_count' => 0, 'cancelled_count' => 1, 'no_show_count' => 0], $agg['dinner']);
         $this->assertSame(1, $agg['other']['reservations_count']);
     }
 

@@ -10,7 +10,8 @@ Ciclo (LOGOUT GARANTIDO pelo `with`):
   · mode="validate" → login + logout (teste de ligação antes de gravar credenciais);
   · mode="sync"     → login → descobrir lojas → resumo de vendas por loja → logout;
   · mode="item_sales" → login → Vendas por artigo (até 7 dias) → logout;
-  · mode="store_year" → login → acumulado mensal de uma loja num ano → logout.
+  · mode="store_year" → login → acumulado mensal de uma loja num ano → logout;
+  · mode="hourly_sales" → login → Vendas por hora (até 7 dias) → logout.
 
 Segurança:
   · PINGWIN_ALLOWED_HOSTS (allowlist) — mitiga o SSL fraco apontar a outro host;
@@ -337,6 +338,19 @@ def run(cfg: dict) -> dict:
                 return {"ok": False, "error": "year em falta ou inválido."}
             months = client.fetch_store_year(report_id, store, year, str(cfg.get("annual_locals") or ""))
             return {"ok": True, "mode": "store_year", "store": store, "year": year, "months": months}
+
+        if mode == "hourly_sales":
+            # READ-ONLY (F2): Vendas por hora, loja × dia × hora (sem IVA), até 7 dias por pedido.
+            report_id = str(cfg.get("hourly_sales_report_id") or "")
+            stores_csv = str(cfg.get("stores") or "")
+            try:
+                start = datetime.strptime(str(cfg.get("start") or ""), "%Y-%m-%d")
+                end = datetime.strptime(str(cfg.get("end") or ""), "%Y-%m-%d")
+            except ValueError:
+                return {"ok": False, "error": "start/end em falta ou inválidos (AAAA-MM-DD)."}
+            rows = client.fetch_hourly_sales(report_id, stores_csv, start, end)
+            return {"ok": True, "mode": "hourly_sales", "start": start.strftime("%Y-%m-%d"),
+                    "end": end.strftime("%Y-%m-%d"), "rows": rows}
 
         if mode == "item_sales":
             # READ-ONLY (F1): Vendas por artigo, loja × dia × artigo, até 7 dias por pedido.

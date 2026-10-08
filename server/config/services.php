@@ -100,6 +100,8 @@ return [
         'item_sales_report_id' => env('PINGWIN_REPORT_ID_ITEM_SALES') ?: '919525121217',
         // Relatório "Análise de vendas anual" (início de cada loja, F1-2). Global, como o anterior.
         'annual_report_id' => env('PINGWIN_REPORT_ID_ANNUAL') ?: '1093764095994',
+        // Relatório "Vendas por hora" (loja × dia × hora, F2). Global, como os anteriores.
+        'hourly_sales_report_id' => env('PINGWIN_REPORT_ID_HOURLY_SALES') ?: '1023875499019',
         // ⚠️ As 3 chaves seguintes são DIFERENTES (não confundir — ver .env.example):
         'stores'            => env('PINGWIN_STORES', ''),       // CSV de winrest_store_id (filtro do relatório); o sync sobrepõe-no com as lojas cadastradas. NÃO é um dataset.
         'stores_dataset_id' => env('PINGWIN_STORES_DATASET_ID', ''), // dataset (browserdataset) de descoberta de lojas — fetch_stores (Yuko: 1099511639262)

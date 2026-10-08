@@ -8,6 +8,7 @@ use App\Models\Company;
 use App\Models\CompanyIntegration;
 use App\Models\User;
 use App\Services\AlertService;
+use App\Services\PingwinHourlySalesService;
 use App\Services\PingwinItemHistoryService;
 use App\Services\PingwinItemSalesService;
 use App\Services\Restaurant\RestaurantDataQualityService;
@@ -18,6 +19,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Sleep;
 
 /**
  * XPLENDOR — SYNC AUTOMÁTICO diário (05:00 Lisboa) das vendas/reservas do DIA ANTERIOR,
@@ -102,6 +104,9 @@ class ScheduledRestaurantSyncJob implements ShouldQueue
                 try {
                     [$from, $to] = PingwinItemSalesService::nightlyWindow($this->date);
                     app(PingwinItemSalesService::class)->sync($companyId, $from, $to);
+                    // F2: as vendas por hora dos mesmos 7 dias (20 s depois do pedido anterior).
+                    Sleep::for(PingwinItemSalesService::SPACING_SECONDS)->seconds();
+                    app(PingwinHourlySalesService::class)->sync($companyId, $from, $to);
                     app(PingwinItemHistoryService::class)->nightly($companyId);
                     app(RestaurantDataQualityService::class)->compute($companyId);
                 } catch (\Throwable $e) {

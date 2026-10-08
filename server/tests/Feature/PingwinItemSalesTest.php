@@ -363,6 +363,7 @@ class PingwinItemSalesTest extends TestCase
         $this->mock(PingwinService::class, function ($m) {
             $m->shouldReceive('sync')->andReturn([]);
             $m->shouldNotReceive('fetchItemSales');
+            $m->shouldNotReceive('fetchHourlySales');
         });
 
         (new ScheduledRestaurantSyncJob())->handle(app(AlertService::class));
@@ -377,6 +378,7 @@ class PingwinItemSalesTest extends TestCase
             $m->shouldReceive('sync')->andReturn([]);
             $m->shouldReceive('fetchItemSales')->once()->with($this->company->id, '2026-09-30', '2026-10-06')
                 ->andReturn([$this->row('1099845342604', '2026-10-06', '1', 10)]);
+            $m->shouldReceive('fetchHourlySales')->once()->with($this->company->id, '2026-09-30', '2026-10-06')->andReturn([]);
         });
 
         (new ScheduledRestaurantSyncJob())->handle(app(AlertService::class));

@@ -186,6 +186,33 @@ ANNUAL_MONTHS = ["january", "february", "march", "april", "may", "june", "july",
                  "august", "september", "october", "november", "december"]
 
 
+def shape_hourly_sales(grid: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """grid_data das Vendas por hora → [{store_id, date, hour, net}] (só as colunas
+    <n>\\amount, com a hora tirada do group_label; sem homólogo nem variação)."""
+    info = grid.get("info") or {}
+    hours: Dict[str, int] = {}
+    for key, meta in info.items():
+        if not key.endswith("\\amount") or not isinstance(meta, dict):
+            continue
+        label = str(meta.get("group_label") or "").strip()
+        if label.isdigit() and 0 <= int(label) <= 23:
+            hours[key] = int(label)
+    out: List[Dict[str, Any]] = []
+    for row in grid.get("data") or []:
+        if not isinstance(row, dict):
+            continue
+        store_id = str(row.get("store_id") or "").strip()
+        dday = str(row.get("dday") or "").strip()
+        if not store_id or len(dday) < 8 or not dday[:8].isdigit():
+            continue
+        date = f"{dday[0:4]}-{dday[4:6]}-{dday[6:8]}"
+        for key, hour in hours.items():
+            value = row.get(key)
+            if isinstance(value, (int, float)) and value != 0:
+                out.append({"store_id": store_id, "date": date, "hour": hour, "net": float(value)})
+    return out
+
+
 def custom_pbkdf2(password: str, salt_hex: str) -> str:
     """
     PBKDF2 customizado do PingWin BO (GrupoPIE): 1000 iterações de MD5 com XOR.
@@ -523,6 +550,42 @@ class MyCloudPieClient:
                 return [0.0] * 12  # ano sem vendas: o relatório vem sem linhas
             raise RuntimeError("Relatório anual sem a linha Acumulado.")
         return [_num(acc.get(f"band_2\\{m}")) for m in ANNUAL_MONTHS]
+
+    # ------------------------------------------- VENDAS POR HORA (F2, só leitura)
+    # Relatório "Vendas por hora" (h3/h3b, documents/PINGWIN-RELATORIOS-F0.md §4): uma linha
+    # por loja e dia, com uma coluna <n>\\amount por hora com vendas (a hora lê-se no
+    # group_label do info). Valor sem IVA. O "homólogo" (dia anterior) não se guarda.
+    HOURLY_MAX_DAYS = 7
+    _HOURLY_PERIODS = {
+        "Tit1": "5h - 10h", "Tit2": "11h - 15h", "Tit3": "16h - 19h", "Tit4": "20h - 21h", "Tit5": "22h - 4h",
+        "Periodo1": "10,5,6,7,8,9", "Periodo2": "11,12,13,14,15", "Periodo3": "16,17,18,19",
+        "Periodo4": "20,21", "Periodo5": "0,1,2,22,23,3,4",
+    }
+
+    def fetch_hourly_sales(self, report_id: str, stores: str, start: datetime, end: datetime) -> List[Dict[str, Any]]:
+        if not report_id:
+            raise ValueError("report_id das Vendas por hora em falta.")
+        if not stores:
+            raise ValueError("Lojas em falta para as Vendas por hora.")
+        if end < start:
+            raise ValueError("Intervalo inválido: o fim é anterior ao início.")
+        if (end - start).days + 1 > self.HOURLY_MAX_DAYS:
+            raise ValueError(f"Intervalo acima de {self.HOURLY_MAX_DAYS} dias por pedido.")
+
+        row = self.run_report(report_id, {
+            "START_DATE": start.strftime("%Y%m%dT00:00:00"),
+            "END_DATE": end.strftime("%Y%m%dT00:00:00"),
+            "Period": "1",
+            "WithTax": 0,
+            "Stores": stores,
+            "GroupHours": 0,
+            "FilterHours": 0,
+            **self._HOURLY_PERIODS,
+        }, "Vendas por hora")
+        payload = decode_reportdata(row["reportdata"])
+        out = shape_hourly_sales(payload.get("grid_data") or {})
+        log.info(f"Vendas por hora: {len(out)} linha(s) de {start:%Y-%m-%d} a {end:%Y-%m-%d}")
+        return out
 
     # ------------------------------------------- VENDAS POR ARTIGO (F1, só leitura)
     # Relatório "Vendas por artigo" (ID global da cloud GrupoPIE, ver
