@@ -105,7 +105,7 @@ class AiRequestLifecycle
         [$doneTitle, $errorTitle, $path] = match ($r->mode) {
             AiRequest::MODE_BRAND_PROFILE => ['A sugestão do Perfil da Marca está pronta', 'Não foi possível gerar a sugestão do Perfil da Marca', '/brand-profile?suggestion=' . $r->id],
             AiRequest::MODE_CREATIVE      => ['A sugestão de criativo está pronta', 'Não foi possível gerar a sugestão de criativo', '/editorial?creative=' . $r->editorial_post_id],
-            AiRequest::MODE_CAPTION       => ['As propostas de legenda estão prontas', 'Não foi possível gerar as propostas de legenda', '/editorial?publicacao=' . $r->editorial_post_id],
+            AiRequest::MODE_CAPTION       => ['As propostas de legenda estão prontas', 'Não foi possível gerar as propostas de legenda', $r->editorial_post_id ? '/editorial?publicacao=' . $r->editorial_post_id : '/marketing/bussola'],
             AiRequest::MODE_IDEAS         => ['As ideias do mês estão prontas', 'Não foi possível gerar as ideias do mês', sprintf('/editorial?ideas=%04d-%02d', (int) ($r->input['year'] ?? 0), (int) ($r->input['month'] ?? 0))],
             default                       => ['O rascunho do artigo está pronto', 'Não foi possível gerar o rascunho do artigo', $r->blog_id ? "/blogs/{$r->blog_id}?ai=1" : '/blogs/create?ai_request=' . $r->id],
         };

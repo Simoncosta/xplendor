@@ -14,7 +14,7 @@ import AgencyPanelPage from "pages/Agency/AgencyPanelPage";
 import ManagementRequestPage from "pages/ManagementRequest";
 import FamiliasPage from "pages/Restauracao/FamiliasPage";
 import CategoriasFamiliasPage from "pages/Restauracao/CategoriasFamiliasPage";
-import OQuePublicarPage from "pages/Marketing/OQuePublicarPage";
+import BussolaPage from "pages/Marketing/bussola/BussolaPage";
 import FornecedoresPage from "pages/Restauracao/FornecedoresPage";
 import FaturasPage from "pages/Restauracao/FaturasPage";
 import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
@@ -155,7 +155,9 @@ const authProtectedRoutes = [
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
     { path: "/restauracao/categorias", component: <RequireModule module="pingwin"><CategoriasFamiliasPage /></RequireModule> },
     // F3 do marketing: "O que publicar e quando" (módulo pingwin, como o backend).
-    { path: "/marketing/o-que-publicar", component: <RequireModule module="pingwin"><OQuePublicarPage /></RequireModule> },
+    { path: "/marketing/bussola", component: <RequireModule module="pingwin"><BussolaPage /></RequireModule> },
+    // Endereço antigo da Bússola ("O que publicar e quando").
+    { path: "/marketing/o-que-publicar", component: <Navigate to="/marketing/bussola" replace /> },
     { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
     { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },
     { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },

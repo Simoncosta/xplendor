@@ -27,7 +27,8 @@ class AiRequest extends Model
     public const MODE_CAR_DESCRIPTION = 'car_description';
     public const MODE_CAR_ANALYSIS = 'car_analysis';
     public const MODE_FAMILY_CATEGORIES = 'family_categories';
-    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS, self::MODE_FAMILY_CATEGORIES];
+    public const MODE_BUSSOLA = 'bussola_jogadas';
+    public const MODES = [self::MODE_BLOG, self::MODE_BRAND_PROFILE, self::MODE_CREATIVE, self::MODE_IDEAS, self::MODE_CAPTION, self::MODE_CAR_DESCRIPTION, self::MODE_CAR_ANALYSIS, self::MODE_FAMILY_CATEGORIES, self::MODE_BUSSOLA];
 
     /** Subtipos do modo blog. */
     public const VARIANT_TOPIC = 'topic';

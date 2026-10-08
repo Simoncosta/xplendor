@@ -621,8 +621,15 @@ export const acceptEditorialIdea = (companyId: number, id: number, payload: { in
 // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
 export const getPingwinMarketingData = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
-export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number) =>
-    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}) });
+export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number, excludeSpecial?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}) });
+// Bússola (marketing da restauração): a página, criar publicação e sugerir texto a partir de uma jogada.
+export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}) });
+export const createPostFromPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/post`, data);
+export const requestPlayCaption = (companyId: number, data: { play_key: string; location_id?: number | null; networks: string[] }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption`, data);
+export const getPlayCaption = (companyId: number, id: number) => api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption/${id}`);
 // F3: "O que publicar e quando".
 export const getRestaurantSignals = (companyId: number, locationId?: number | null, showIgnored?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals`, { ...(locationId ? { location_id: locationId } : {}), ...(showIgnored ? { show_ignored: 1 } : {}) });

@@ -312,7 +312,7 @@ class AiProvidersTest extends TestCase
         $data = $this->as($this->root)->getJson('/api/v1/admin/ai-models')->assertOk()->json('data');
         // Valores iniciais: claude-opus-5-5, esforço baixo nas funções curtas e médio nas ideias, no blog e na análise. Sem o OCR.
         $this->assertSame([
-            'caption' => 'low', 'creative' => 'low', 'ideas' => 'medium', 'blog' => 'medium', 'brand_profile' => 'low', 'car_description' => 'low', 'car_analysis' => 'medium', 'family_categories' => 'low',
+            'caption' => 'low', 'creative' => 'low', 'ideas' => 'medium', 'blog' => 'medium', 'brand_profile' => 'low', 'car_description' => 'low', 'car_analysis' => 'medium', 'family_categories' => 'low', 'bussola_jogadas' => 'low',
         ], collect($data['functions'])->pluck('effort', 'key')->all());
         $this->assertSame(['claude-opus-5-5'], collect($data['functions'])->pluck('model')->unique()->values()->all());
         $this->assertSame(['anthropic' => true, 'openai' => true], collect($data['providers'])->pluck('configured', 'key')->all());
@@ -325,8 +325,8 @@ class AiProvidersTest extends TestCase
 
         $all = $this->as($this->root)->postJson('/api/v1/admin/ai-models/apply-all', ['model' => 'claude-sonnet-5-5', 'effort' => 'medium'])->assertOk()->json('data');
         $this->assertSame(['claude-sonnet-5-5'], collect($all['functions'])->pluck('model')->unique()->values()->all());
-        $this->assertSame(1 + 8, DB::table('ai_function_setting_changes')->count());
-        $this->assertSame(8, DB::table('ai_function_setting_changes')->where('applied_to_all', true)->where('user_id', $this->root->id)->count());
+        $this->assertSame(1 + 9, DB::table('ai_function_setting_changes')->count());
+        $this->assertSame(9, DB::table('ai_function_setting_changes')->where('applied_to_all', true)->where('user_id', $this->root->id)->count());
         $this->assertSame(['function' => 'blog', 'from' => 'claude-opus-5-5 (medium)', 'to' => 'gpt-6.1-sol (high)'],
             array_intersect_key(collect($all['history'])->last(), array_flip(['function', 'from', 'to'])));
 

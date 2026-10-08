@@ -21,6 +21,8 @@ use Carbon\CarbonImmutable;
  * Média = soma ÷ número de dias desse dia da semana com dados (um dia lido sem vendas conta
  * como zero). Janela: as últimas N semanas completas até ontem, a partir do início efetivo
  * da loja (a abertura indicada, se houver; senão o primeiro dia com vendas). Só agregados.
+ * "Ontem" é sempre o de Lisboa (o dia do restaurante). Com $excludeSpecial (a Bússola: 8
+ * semanas, como os períodos fracos), os feriados e as datas especiais ficam fora da média.
  */
 class RestaurantHeatmapService
 {
@@ -28,7 +30,7 @@ class RestaurantHeatmapService
     /** Ordem das horas no mapa: o dia do restaurante começa às 5h e acaba às 4h. */
     public const HOUR_ORDER = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4];
 
-    public function build(int $companyId, ?int $locationId = null, int $weeks = self::DEFAULT_WEEKS): array
+    public function build(int $companyId, ?int $locationId = null, int $weeks = self::DEFAULT_WEEKS, bool $excludeSpecial = false): array
     {
         $locations = PingwinLocation::where('company_id', $companyId)->where('is_active', true)->orderBy('id')->get();
         $enabled = PingwinItemSalesService::isEnabled($companyId);
@@ -41,25 +43,26 @@ class RestaurantHeatmapService
             return $base + ['location_id' => $location?->id, 'weeks' => $weeks, 'hours' => [], 'sales' => null, 'guests' => null];
         }
 
-        $to = CarbonImmutable::yesterday();
+        $to = CarbonImmutable::now('Europe/Lisbon')->startOfDay()->subDay();
         $from = $to->subDays($weeks * 7 - 1);
         $start = $location->opened_on ?? $location->sales_since;
         if ($start && CarbonImmutable::parse($start)->gt($from)) {
             $from = CarbonImmutable::parse($start)->startOfDay();
         }
         [$f, $t] = [$from->toDateString(), $to->toDateString()];
+        $special = $excludeSpecial ? app(RestaurantSpecialDays::class)->between(\App\Models\Company::findOrFail($companyId), $f, $t) : [];
 
         // Vendas: dias lidos (com ou sem vendas), sem os vazios por confirmar.
         $salesDays = PingwinHourlySalesDay::where('location_id', $location->id)->whereBetween('business_date', [$f, $t])
             ->whereNotIn('status', PingwinItemSalesDay::STATUSES_TO_REREAD)->pluck('business_date')
-            ->map(fn ($d) => substr((string) $d, 0, 10))->all();
+            ->map(fn ($d) => substr((string) $d, 0, 10))->reject(fn ($d) => isset($special[$d]))->values()->all();
         $salesRows = PingwinHourlySale::where('location_id', $location->id)->whereIn('business_date', $salesDays)
             ->get(['business_date', 'hour', 'net_cents'])
             ->map(fn ($r) => [substr((string) $r->business_date, 0, 10), (int) $r->hour, (int) $r->net_cents])->all();
 
         // Pessoas: dias com reservas lidas (há resumo por turno) e as pessoas por hora de chegada.
         $guestDays = CmReservationShiftSummary::where('location_id', $location->id)->whereBetween('business_date', [$f, $t])
-            ->distinct()->pluck('business_date')->map(fn ($d) => substr((string) $d, 0, 10))->unique()->values()->all();
+            ->distinct()->pluck('business_date')->map(fn ($d) => substr((string) $d, 0, 10))->unique()->reject(fn ($d) => isset($special[$d]))->values()->all();
         $guestRows = CmReservationHourly::where('location_id', $location->id)->whereIn('business_date', $guestDays)
             ->get(['business_date', 'hour', 'guests_total'])
             ->map(fn ($r) => [substr((string) $r->business_date, 0, 10), (int) $r->hour, (int) $r->guests_total])->all();
@@ -72,6 +75,7 @@ class RestaurantHeatmapService
         return $base + [
             'location_id' => $location->id,
             'weeks' => $weeks,
+            'special_excluded' => count($special),
             'from' => $f,
             'to' => $t,
             'hours' => $hours,

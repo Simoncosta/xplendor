@@ -28,6 +28,10 @@
              cenário com config:cache (incidente 2026-06-09, CLAUDE.md 14.3). -->
         <env name="DB_CONNECTION" value="sqlite" force="true"/>
         <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- As chaves da IA nunca chegam aos testes (os fornecedores são sempre simulados):
+             sem isto, uma chave no .env deixava um teste sem Http::fake chamar a API real. -->
+        <env name="ANTHROPIC_API_KEY" value="" force="true"/>
+        <env name="OPENAI_KEY" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

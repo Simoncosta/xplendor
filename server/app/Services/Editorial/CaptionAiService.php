@@ -84,6 +84,41 @@ class CaptionAiService
         return $request->refresh();
     }
 
+    /**
+     * Bússola, "Sugerir texto": propostas a partir dos dados de uma jogada, SEM criar
+     * publicação (a escolhida abre o "Criar publicação" já preenchido). Conta para o limite
+     * mensal das legendas.
+     *
+     * @param array{theme: string, brief: string, date: string, networks: string[], formats?: array<string, string>, play_key?: string} $draft
+     */
+    public function requestDraft(Company $company, User $actor, array $draft): AiRequest
+    {
+        $networks = array_values(array_intersect(EditorialPost::NETWORKS, (array) ($draft['networks'] ?? [])));
+        if ($networks === []) {
+            throw new HttpException(422, 'Escolha pelo menos uma rede (Instagram ou Facebook).');
+        }
+        $draft['networks'] = $networks;
+
+        $request = DB::transaction(function () use ($company, $actor, $draft) {
+            Company::whereKey($company->id)->lockForUpdate()->first();
+            if (AiRequestQuota::exhausted($company->id, AiRequest::MODE_CAPTION)) {
+                $cap = AiRequestQuota::cap(AiRequest::MODE_CAPTION);
+                throw new HttpException(429, "Limite mensal de legendas geradas atingido ({$cap}). Volta a estar disponível no início do próximo mês.");
+            }
+            $settings = AiFunctionSettings::for('caption');
+
+            return AiRequest::create([
+                'company_id' => $company->id, 'editorial_post_id' => null, 'user_id' => $actor->id, 'mode' => AiRequest::MODE_CAPTION,
+                'status' => AiRequest::QUEUED, 'variant' => 'bussola', 'input' => ['draft' => $draft, 'networks' => $draft['networks']],
+                'model' => $settings['model'], 'provider' => $settings['provider'], 'effort' => $settings['effort'], 'prompt_version' => self::PROMPT_VERSION,
+            ]);
+        });
+
+        ProcessAiRequestJob::dispatch($request->id);
+
+        return $request->refresh();
+    }
+
     public function process(int $requestId): void
     {
         $request = AiRequest::where('mode', AiRequest::MODE_CAPTION)->find($requestId);
@@ -93,13 +128,18 @@ class CaptionAiService
         $request->update(['status' => AiRequest::PROCESSING]);
 
         try {
-            $post = EditorialPost::with(['anchor', 'ownAnchor', 'networks'])
-                ->where('company_id', $request->company_id)
-                ->findOrFail($request->editorial_post_id);
             $company = Company::with('contentSector')->findOrFail($request->company_id);
-            $networks = (array) ($request->input['networks'] ?? $post->networkNames());
-
-            $context = $this->buildContext($company, $post, $networks);
+            if ($request->editorial_post_id === null && isset($request->input['draft'])) {
+                // Sem publicação (Bússola): o contexto vem da jogada; sem imagens.
+                $networks = (array) $request->input['networks'];
+                $context = $this->buildDraftContext($company, (array) $request->input['draft'], $networks);
+            } else {
+                $post = EditorialPost::with(['anchor', 'ownAnchor', 'networks'])
+                    ->where('company_id', $request->company_id)
+                    ->findOrFail($request->editorial_post_id);
+                $networks = (array) ($request->input['networks'] ?? $post->networkNames());
+                $context = $this->buildContext($company, $post, $networks);
+            }
             $images = $this->images($context['media_asset_ids']);
             $context['images_sent'] = count($images);
 
@@ -144,6 +184,27 @@ class CaptionAiService
                 ? array_intersect_key($profile->toArray(), array_flip(['tone_of_voice', 'audience', 'words_to_use', 'words_to_avoid', 'topics_to_avoid', 'hashtags_default', 'cta_default', 'emoji_policy']))
                 : null,
             'media_asset_ids' => $assetIds,
+        ];
+    }
+
+    /** O contexto de uma proposta sem publicação (a jogada da Bússola). */
+    public function buildDraftContext(Company $company, array $draft, array $networks): array
+    {
+        $profile = CompanyBrandProfile::where('company_id', $company->id)->first();
+
+        return [
+            'post' => [
+                'id' => 0, 'date' => (string) ($draft['date'] ?? now()->toDateString()), 'theme' => (string) ($draft['theme'] ?? ''),
+                'keyword' => null, 'content_type' => null, 'formats' => (array) ($draft['formats'] ?? []),
+                'brief' => (string) ($draft['brief'] ?? ''),
+            ],
+            'networks' => $networks,
+            'anchor' => null,
+            'company' => ['name' => (string) ($company->trade_name ?: $company->fiscal_name), 'sector' => $company->contentSector?->name],
+            'profile' => $profile && ! $profile->isEmpty()
+                ? array_intersect_key($profile->toArray(), array_flip(['tone_of_voice', 'audience', 'words_to_use', 'words_to_avoid', 'topics_to_avoid', 'hashtags_default', 'cta_default', 'emoji_policy']))
+                : null,
+            'media_asset_ids' => [],
         ];
     }
 
@@ -233,6 +294,7 @@ class CaptionAiService
                 'Tema: ' . AiText::clean((string) $p['theme'], 255),
                 $p['content_type'] ? 'Tipo de conteúdo: ' . AiText::clean((string) $p['content_type'], 60) : null,
                 $p['keyword'] ? 'Palavra-chave: ' . AiText::clean((string) $p['keyword'], 100) : null,
+                ! empty($p['brief']) ? 'O que publicar: ' . AiText::clean((string) $p['brief'], 300) : null,
                 $context['anchor'] ? 'Âncora: ' . AiText::clean((string) $context['anchor']['title'], 200) : null,
                 $context['anchor'] && $context['anchor']['notes'] ? 'Notas da âncora: ' . AiText::clean((string) $context['anchor']['notes'], 500) : null,
             ]))),

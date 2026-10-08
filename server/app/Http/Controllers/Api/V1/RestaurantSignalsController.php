@@ -68,13 +68,14 @@ class RestaurantSignalsController extends Controller
         $data = $request->validate([
             'key' => ['required', 'string', 'max:160'],
             'title' => ['required', 'string', 'max:255'],
-            'publish_date' => ['required', 'date_format:Y-m-d'],
+            'publish_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:' . \Carbon\CarbonImmutable::now('Europe/Lisbon')->toDateString()],
             'networks' => ['required', 'array', 'min:1', 'max:2'],
             'networks.*' => ['string', Rule::in(EditorialPost::NETWORKS)],
             'format' => ['required', 'string', Rule::in(EditorialPost::FORMATS)],
         ], [
             'networks.required' => 'Escolha pelo menos uma rede.',
             'format.required' => 'Escolha o tipo de conteúdo.',
+            'publish_date.after_or_equal' => 'A data de publicação não pode ser anterior a hoje.',
         ]);
 
         $post = $this->panel->createPost(Company::findOrFail($companyId), $data, $request->user());

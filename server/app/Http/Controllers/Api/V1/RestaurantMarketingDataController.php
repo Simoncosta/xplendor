@@ -65,7 +65,7 @@ class RestaurantMarketingDataController extends Controller
         return ApiResponse::success(['annual_locals' => $locals], $locals === '' ? 'Postos de venda limpos: o relatório anual soma todos.' : 'Postos de venda guardados.');
     }
 
-    // GET /companies/{id}/integrations/pingwin/heatmap?location_id=&weeks=   (F2, qualquer utilizador)
+    // GET /companies/{id}/integrations/pingwin/heatmap?location_id=&weeks=&exclude_special=   (F2, qualquer utilizador)
     public function heatmap(Request $request, int $companyId)
     {
         if (! $this->authorizeCompany($companyId)) {
@@ -74,12 +74,14 @@ class RestaurantMarketingDataController extends Controller
         $data = $request->validate([
             'location_id' => ['nullable', 'integer'],
             'weeks' => ['nullable', 'integer', 'min:4', 'max:26'],
+            'exclude_special' => ['nullable', 'boolean'],
         ]);
 
         return ApiResponse::success(app(RestaurantHeatmapService::class)->build(
             $companyId,
             isset($data['location_id']) ? (int) $data['location_id'] : null,
             (int) ($data['weeks'] ?? RestaurantHeatmapService::DEFAULT_WEEKS),
+            (bool) ($data['exclude_special'] ?? false),
         ), 'Mapa de calor da semana.');
     }
 
@@ -122,6 +124,8 @@ class RestaurantMarketingDataController extends Controller
         ]);
 
         $count = $this->categories->confirm($companyId, $data['items'], $request->user());
+        // Os sinais (e a Bússola) dependem das categorias: recalculam-se a seguir, fora do pedido.
+        \App\Jobs\RecomputeRestaurantSignalsJob::dispatch($companyId)->afterCommit();
 
         return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true],
             $count === 1 ? 'Categoria confirmada.' : "{$count} categorias confirmadas.");

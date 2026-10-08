@@ -195,13 +195,24 @@ class RestaurantSignalPanelService
     }
 
     /**
-     * Cria uma ideia na Linha Editorial a partir de uma sugestão (o tema e a data vêm do
-     * modal, revistos pela pessoa). O mês tem de estar aberto: nunca se abre sozinho.
+     * Cria uma ideia na Linha Editorial a partir de uma sugestão, ou de uma jogada da Bússola
+     * (vários sinais; o formato de cada rede e, se vier, o texto da legenda escolhida). O tema
+     * e a data vêm do modal, revistos pela pessoa. Nunca uma data passada. O mês tem de estar
+     * aberto: nunca se abre sozinho.
+     *
+     * @param string[]|null $signalKeys os sinais da jogada (por omissão, o sinal de $data['key'])
+     * @param array{media_formats?: array<string, string>, content?: array} $extra
      */
-    public function createPost(Company $company, array $data, User $user): EditorialPost
+    public function createPost(Company $company, array $data, User $user, ?array $signalKeys = null, array $extra = []): EditorialPost
     {
-        $this->findSignal($company->id, $data['key']);
+        $signalKeys ??= [$data['key']];
+        foreach ($signalKeys as $key) {
+            $this->findSignal($company->id, $key);
+        }
         $date = CarbonImmutable::parse($data['publish_date']);
+        if ($date->lt(CarbonImmutable::now('Europe/Lisbon')->startOfDay())) {
+            throw ValidationException::withMessages(['publish_date' => ['A data de publicação não pode ser anterior a hoje.']]);
+        }
         $open = EditorialMonth::where('company_id', $company->id)->where('year', (int) $date->year)->where('month', (int) $date->month)
             ->where('state', EditorialMonth::OPEN)->exists();
         if (! $open) {
@@ -215,7 +226,7 @@ class RestaurantSignalPanelService
             throw ValidationException::withMessages(['title' => ['Já existe uma publicação com este título nesse mês.']]);
         }
 
-        return DB::transaction(function () use ($company, $data, $user) {
+        return DB::transaction(function () use ($company, $data, $user, $signalKeys, $extra) {
             $post = $this->posts->createPostRecord($company, [
                 'title' => trim($data['title']),
                 'publish_date' => $data['publish_date'],
@@ -224,10 +235,23 @@ class RestaurantSignalPanelService
                 'format' => $data['format'],
                 'stage' => EditorialPost::STAGE_IDEA, // entra em "Ideia", como as ideias aceites da IA
             ]);
-            RestaurantSignalAction::create(['company_id' => $company->id, 'signal_key' => $data['key'], 'action' => RestaurantSignalAction::POST_CREATED,
-                'editorial_post_id' => $post->id, 'user_id' => $user->id]);
+            $workflow = app(EditorialWorkflowService::class);
+            if (! empty($extra['media_formats'])) {
+                $networks = [];
+                foreach (array_values(array_unique($data['networks'])) as $n) {
+                    $networks[$n] = $extra['media_formats'][$n] ?? null;
+                }
+                $workflow->setNetworks($post->fresh('networks'), $user, $networks);
+            }
+            if (! empty($extra['content'])) {
+                $workflow->saveContent($post->fresh(), $user, $extra['content']);
+            }
+            foreach ($signalKeys as $key) {
+                RestaurantSignalAction::create(['company_id' => $company->id, 'signal_key' => $key, 'action' => RestaurantSignalAction::POST_CREATED,
+                    'editorial_post_id' => $post->id, 'user_id' => $user->id]);
+            }
 
-            return $post;
+            return $post->fresh();
         });
     }
 }

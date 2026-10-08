@@ -14,7 +14,7 @@ import RestaurantMarketingBlock from "./components/RestaurantMarketingBlock";
 import { useRecommendations } from "./components/RecommendationsCard";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import HeatmapCard from "pages/Restauracao/HeatmapCard";
-import SignalsSummaryCard from "./components/SignalsSummaryCard";
+import BussolaDashboardSummary from "pages/Marketing/bussola/BussolaDashboardSummary";
 
 /**
  * XPLENDOR — Dashboard de restauração (empresas com o módulo pingwin), com dados
@@ -457,7 +457,7 @@ export function PingwinDashboardContent() {
     const recommendations = useRecommendations(companyId, "restaurant", companyId > 0);
     const highCount = (recommendations.data?.recommendations ?? []).filter((r) => r.level === "high").length;
 
-    // F3: as sugestões de "O que publicar e quando" (contador do separador e resumo).
+    // F3: as sugestões da Bússola (o contador do separador; o resumo carrega no separador).
     const [signals, setSignals] = useState<RestaurantSignalsData | null>(null);
     useEffect(() => {
         if (!companyId) return;
@@ -478,7 +478,7 @@ export function PingwinDashboardContent() {
             )}
             {opened.marketing && companyId > 0 && (
                 <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
-                    <SignalsSummaryCard data={signals} />
+                    <BussolaDashboardSummary companyId={companyId} />
                     <RestaurantMarketingBlock companyId={companyId} recommendations={recommendations} />
                 </div>
             )}

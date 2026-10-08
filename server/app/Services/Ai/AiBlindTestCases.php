@@ -140,6 +140,25 @@ final class AiBlindTestCases
 
                 return ['input' => ['famílias' => implode('; ', $paths)], 'prompt' => app(\App\Services\Restaurant\FamilyCategoryAiSuggester::class)->prompt($paths)];
             })(),
+            'bussola_jogadas' => (function () use ($b) {
+                // Duas jogadas fictícias (um período fraco e um artigo a subir) de um restaurante.
+                $weak = new \App\Models\RestaurantSignal(['location_id' => 1, 'type' => 'weak_period', 'confidence' => 'alta',
+                    'numbers' => ['weekday' => 3, 'shift' => 'almoco', 'pct_below' => 30, 'avg_cents' => 40000, 'mean_cents' => 57000],
+                    'sentence' => 'Os almoços de quarta na loja ' . $b['name'] . ' ficaram 30% abaixo da média dos almoços da semana (em 8 quartas).']);
+                $up = new \App\Models\RestaurantSignal(['location_id' => 1, 'type' => 'item_up', 'confidence' => 'media',
+                    'numbers' => ['product_id' => '1', 'name' => 'Arroz de pato', 'qty_now' => 60, 'qty_before' => 40],
+                    'sentence' => 'Arroz de pato vendeu 60 unidades nas últimas 4 semanas, contra 40 nas 4 anteriores.']);
+                $facts = [1 => ['top_items' => [['name' => 'Arroz de pato'], ['name' => 'Bacalhau à Brás'], ['name' => 'Bitoque']]]];
+                $names = [1 => $b['name']];
+                $plays = [
+                    'weak_period:wd3' => ['group' => ['key' => 'weak_period:wd3', 'type' => 'weak_period', 'members' => collect([$weak])], 'facts' => $facts, 'names' => $names],
+                    'item_up:prod:1' => ['group' => ['key' => 'item_up:prod:1', 'type' => 'item_up', 'members' => collect([$up])], 'facts' => $facts, 'names' => $names],
+                ];
+                $company = new \App\Models\Company(['trade_name' => $b['name']]);
+
+                return ['input' => ['restaurante' => $b['name'], 'jogadas' => 'Encher o almoço de quarta; Dar palco a Arroz de pato'],
+                    'prompt' => app(\App\Services\Restaurant\RestaurantCompassService::class)->textPrompt($company, $plays)];
+            })(),
             default => throw new \InvalidArgumentException("Função sem casos de teste: {$function}."),
         };
     }

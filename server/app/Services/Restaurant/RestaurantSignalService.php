@@ -104,17 +104,7 @@ class RestaurantSignalService
         if (! PingwinItemSalesService::isEnabled($companyId)) {
             return ['computed' => false, 'signals' => 0];
         }
-        $this->company = Company::findOrFail($companyId);
-        $this->today = CarbonImmutable::now('Europe/Lisbon')->startOfDay();
-        $this->end = $this->today->subDay();
-        $this->categories = RestaurantFamilyCategory::where('company_id', $companyId)->whereNotNull('category')
-            ->pluck('category', 'family_pingwin_id')->map(fn ($c) => (string) $c)->all();
-        // Por precaução, enquanto uma família não está confirmada, a sugestão das regras
-        // ("Entrega" ou "Excluir") também a deixa fora dos rankings (nada fica confirmado).
-        app(RestaurantFamilyCategoryService::class)->refresh($companyId);
-        $this->suggested = RestaurantFamilyCategory::where('company_id', $companyId)->whereNull('category')->whereNotNull('suggested_category')
-            ->pluck('suggested_category', 'family_pingwin_id')->map(fn ($c) => (string) $c)->all();
-        $this->special = $this->specialDays->between($this->company, $this->end->subDays(self::STALE_BEFORE_DAYS + self::STALE_DAYS)->toDateString(), $this->end->toDateString());
+        $this->init($companyId, true);
 
         $signals = [];
         $availability = [];
@@ -133,8 +123,31 @@ class RestaurantSignalService
             RestaurantDataQuality::updateOrCreate(['company_id' => $companyId], ['signals_computed_at' => $now, 'signals_availability' => $availability]);
         });
         Log::info('[Restauração Sinais] calculados', ['company_id' => $companyId, 'sinais' => count($signals)]);
+        // Bússola: as frases "O quê" das jogadas geram-se depois, fora deste pedido.
+        \App\Jobs\GenerateCompassTextsJob::dispatch($companyId)->afterCommit();
 
         return ['computed' => true, 'signals' => count($signals), 'availability' => $availability];
+    }
+
+    /**
+     * O contexto de um cálculo: hoje e ontem (Lisboa), as categorias confirmadas e sugeridas e
+     * as datas especiais. Partilhado pelo cálculo dos sinais e pela Bússola (a mesma janela).
+     */
+    private function init(int $companyId, bool $refreshCategories = false): void
+    {
+        $this->company = Company::findOrFail($companyId);
+        $this->today = CarbonImmutable::now('Europe/Lisbon')->startOfDay();
+        $this->end = $this->today->subDay();
+        $this->categories = RestaurantFamilyCategory::where('company_id', $companyId)->whereNotNull('category')
+            ->pluck('category', 'family_pingwin_id')->map(fn ($c) => (string) $c)->all();
+        // Por precaução, enquanto uma família não está confirmada, a sugestão das regras
+        // ("Entrega" ou "Excluir") também a deixa fora dos rankings (nada fica confirmado).
+        if ($refreshCategories) {
+            app(RestaurantFamilyCategoryService::class)->refresh($companyId);
+        }
+        $this->suggested = RestaurantFamilyCategory::where('company_id', $companyId)->whereNull('category')->whereNotNull('suggested_category')
+            ->pluck('suggested_category', 'family_pingwin_id')->map(fn ($c) => (string) $c)->all();
+        $this->special = $this->specialDays->between($this->company, $this->end->subDays(self::STALE_BEFORE_DAYS + self::STALE_DAYS)->toDateString(), $this->end->toDateString());
     }
 
     /** Recalcula se o último cálculo tiver mais de 24 horas (ou nunca tiver sido feito). */
@@ -191,10 +204,8 @@ class RestaurantSignalService
     /** @return array{0: array<int, array>, 1: array} sinais e disponibilidade de uma loja */
     private function forLocation(PingwinLocation $location): array
     {
-        $name = $location->display_name ?: $location->winrest_name ?: (string) $location->winrest_store_id;
-        $firstSale = PingwinItemSale::where('location_id', $location->id)->where('net_cents', '>', 0)->min('business_date');
-        $start = $location->opened_on ?? $location->sales_since ?? ($firstSale ? CarbonImmutable::parse(substr((string) $firstSale, 0, 10)) : null);
-        $start = $start ? CarbonImmutable::parse($start)->startOfDay() : null;
+        $name = self::locationName($location);
+        $start = $this->locationStart($location);
 
         $availability = ['location_id' => $location->id, 'name' => $name, 'start' => $start?->toDateString(),
             'yoy_from' => $start?->addYear()->toDateString(), 'signals' => []];
@@ -219,6 +230,20 @@ class RestaurantSignalService
         $this->channels($ctx, $signals, $availability);
 
         return [$signals, $availability];
+    }
+
+    public static function locationName(PingwinLocation $location): string
+    {
+        return $location->display_name ?: $location->winrest_name ?: (string) $location->winrest_store_id;
+    }
+
+    /** Início efetivo da loja: a abertura indicada, o início das vendas, ou a primeira venda lida. */
+    private function locationStart(PingwinLocation $location): ?CarbonImmutable
+    {
+        $firstSale = PingwinItemSale::where('location_id', $location->id)->where('net_cents', '>', 0)->min('business_date');
+        $start = $location->opened_on ?? $location->sales_since ?? ($firstSale ? CarbonImmutable::parse(substr((string) $firstSale, 0, 10)) : null);
+
+        return $start ? CarbonImmutable::parse($start)->startOfDay() : null;
     }
 
     // ── S1: os mais vendidos ───────────────────────────────────────────────────
@@ -379,47 +404,7 @@ class RestaurantSignalService
             return;
         }
 
-        // Por hora (turnos) se houver vendas por hora lidas em 90% dos dias; senão, por dia.
-        $hourDays = PingwinHourlySalesDay::where('location_id', $locId)->whereBetween('business_date', [$from->toDateString(), $to->toDateString()])
-            ->whereIn('status', ['ok', 'unverified', 'empty'])->pluck('business_date')->map(fn ($d) => substr((string) $d, 0, 10))->all();
-        $span = (int) $from->diffInDays($to) + 1;
-        $values = []; // [shift][date] => cêntimos
-        if (count($hourDays) / $span >= self::MIN_COVERAGE) {
-            $mode = 'hours';
-            $days = array_values(array_filter($hourDays, fn ($d) => ! isset($this->special[$d])));
-            $hours = PingwinHourlySale::where('location_id', $locId)->whereIn('business_date', $days)->get(['business_date', 'hour', 'net_cents']);
-            $byDate = [];
-            foreach ($hours as $h) {
-                $byDate[substr((string) $h->business_date, 0, 10)][(int) $h->hour] = (int) $h->net_cents;
-            }
-            $total = 0;
-            $afternoon = 0;
-            foreach ($days as $d) {
-                foreach (self::SHIFTS as $shift => $shiftHours) {
-                    $v = 0;
-                    foreach ($shiftHours as $h) {
-                        $v += $byDate[$d][$h] ?? 0;
-                    }
-                    $values[$shift][$d] = $v;
-                }
-                $total += array_sum($byDate[$d] ?? []);
-                $afternoon += $values['tarde'][$d];
-            }
-            // Ajuste 2: a tarde só conta onde vale pelo menos 10% das vendas do dia.
-            if ($total <= 0 || $afternoon / $total < self::AFTERNOON_MIN_SHARE) {
-                unset($values['tarde']);
-            }
-        } else {
-            $mode = 'days';
-            $rows = PingwinDailySale::where('location_id', $locId)->whereRaw('DATE(business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
-                ->get(['business_date', 'net_cents']);
-            foreach ($rows as $r) {
-                $d = substr((string) $r->business_date, 0, 10);
-                if (! isset($this->special[$d])) {
-                    $values['dia'][$d] = (int) $r->net_cents;
-                }
-            }
-        }
+        [$mode, $values] = $this->shiftValues($locId, $from, $to);
         $availability['signals']['weak_periods'] = ['available' => true, 'from' => null, 'reason' => null, 'mode' => $mode];
 
         foreach ($values as $shift => $byDate) {
@@ -482,19 +467,192 @@ class RestaurantSignalService
         }
     }
 
+    /**
+     * As vendas de cada turno em cada dia, sem os dias especiais: por hora (turnos) se houver
+     * vendas por hora lidas em 90% dos dias; senão, por dia. A tarde só conta onde vale 10%.
+     *
+     * @return array{0: string, 1: array<string, array<string, int>>} modo e [turno][dia] => cêntimos
+     */
+    private function shiftValues(int $locId, CarbonImmutable $from, CarbonImmutable $to): array
+    {
+        // Por hora (turnos) se houver vendas por hora lidas em 90% dos dias; senão, por dia.
+        $hourDays = PingwinHourlySalesDay::where('location_id', $locId)->whereBetween('business_date', [$from->toDateString(), $to->toDateString()])
+            ->whereIn('status', ['ok', 'unverified', 'empty'])->pluck('business_date')->map(fn ($d) => substr((string) $d, 0, 10))->all();
+        $span = (int) $from->diffInDays($to) + 1;
+        $values = []; // [shift][date] => cêntimos
+        if (count($hourDays) / $span >= self::MIN_COVERAGE) {
+            $mode = 'hours';
+            $days = array_values(array_filter($hourDays, fn ($d) => ! isset($this->special[$d])));
+            $hours = PingwinHourlySale::where('location_id', $locId)->whereIn('business_date', $days)->get(['business_date', 'hour', 'net_cents']);
+            $byDate = [];
+            foreach ($hours as $h) {
+                $byDate[substr((string) $h->business_date, 0, 10)][(int) $h->hour] = (int) $h->net_cents;
+            }
+            $total = 0;
+            $afternoon = 0;
+            foreach ($days as $d) {
+                foreach (self::SHIFTS as $shift => $shiftHours) {
+                    $v = 0;
+                    foreach ($shiftHours as $h) {
+                        $v += $byDate[$d][$h] ?? 0;
+                    }
+                    $values[$shift][$d] = $v;
+                }
+                $total += array_sum($byDate[$d] ?? []);
+                $afternoon += $values['tarde'][$d];
+            }
+            // Ajuste 2: a tarde só conta onde vale pelo menos 10% das vendas do dia.
+            if ($total <= 0 || $afternoon / $total < self::AFTERNOON_MIN_SHARE) {
+                unset($values['tarde']);
+            }
+        } else {
+            $mode = 'days';
+            $rows = PingwinDailySale::where('location_id', $locId)->whereRaw('DATE(business_date) BETWEEN ? AND ?', [$from->toDateString(), $to->toDateString()])
+                ->get(['business_date', 'net_cents']);
+            foreach ($rows as $r) {
+                $d = substr((string) $r->business_date, 0, 10);
+                if (! isset($this->special[$d])) {
+                    $values['dia'][$d] = (int) $r->net_cents;
+                }
+            }
+        }
+
+        return [$mode, $values];
+    }
+
+    /**
+     * Bússola, "Dias para encher": a grelha dia da semana × turno de uma loja, com a MESMA
+     * janela e as mesmas regras dos períodos fracos (8 semanas até ontem, a partir do início da
+     * loja, sem os dias especiais): a média de cada dia, a média do turno e se é fraco.
+     */
+    public function shiftGrid(int $companyId, PingwinLocation $location): ?array
+    {
+        $this->init($companyId);
+        $start = $this->locationStart($location);
+        if (! $start || $this->end->lt($start->addDays(7 * self::MIN_OCCURRENCES - 1))) {
+            return null;
+        }
+        [$from, $to] = $this->window(self::COMPARE_DAYS);
+        $from = $from->max($start);
+        [$mode, $values] = $this->shiftValues($location->id, $from, $to);
+        $shifts = [];
+        foreach ($values as $shift => $byDate) {
+            if ($byDate === []) {
+                continue;
+            }
+            $mean = array_sum($byDate) / count($byDate);
+            $days = [];
+            foreach (range(1, 7) as $wd) {
+                $occ = array_filter($byDate, fn ($d) => CarbonImmutable::parse($d)->dayOfWeekIso === $wd, ARRAY_FILTER_USE_KEY);
+                $n = count($occ);
+                $avg = $n > 0 ? array_sum($occ) / $n : 0.0;
+                $zeros = count(array_filter($occ, fn ($v) => $v <= 0));
+                $closed = $n === 0 || $zeros * 2 >= $n;
+                $days[$wd] = [
+                    'avg_cents' => (int) round($avg), 'occurrences' => $n, 'closed' => $closed,
+                    'pct_vs_mean' => $mean > 0 && ! $closed ? (int) round(($avg / $mean - 1) * 100) : null,
+                    'weak' => ! $closed && $mean > 0 && $n >= self::MIN_OCCURRENCES && $avg <= self::WEAK_THRESHOLD * $mean,
+                ];
+            }
+            $shifts[$shift] = ['mean_cents' => (int) round($mean), 'days' => $days];
+        }
+
+        return [
+            'from' => $from->toDateString(), 'to' => $to->toDateString(), 'mode' => $mode, 'shifts' => $shifts,
+            'special_excluded' => count(array_filter(array_keys($this->special), fn ($d) => $d >= $from->toDateString() && $d <= $to->toDateString())),
+        ];
+    }
+
+    /**
+     * A regra de datas dos períodos fracos, a partir de hoje: o próximo dia fraco cuja data de
+     * publicação (o dia menos a antecedência típica das reservas) não seja anterior a hoje.
+     * Calculada na leitura, nunca dá uma data passada.
+     *
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable} dia fraco e data de publicação
+     */
+    public static function nextPublishDate(int $weekday, int $offset, CarbonImmutable $today): array
+    {
+        $target = $today->addDay();
+        while ($target->dayOfWeekIso !== $weekday) {
+            $target = $target->addDay();
+        }
+        while ($target->subDays($offset)->lt($today)) {
+            $target = $target->addWeek();
+        }
+
+        return [$target, $target->subDays($offset)];
+    }
+
+    /**
+     * Bússola, topo e blocos: das vendas por artigo das últimas 4 semanas contra as 4
+     * anteriores, a variação da loja, quantos artigos desceram com ela, os 10 mais vendidos e o
+     * peso de cada família (sem as categorias "Excluir" e "Entrega"), e a categoria confirmada
+     * de cada artigo.
+     */
+    public function compassFacts(int $companyId, PingwinLocation $location): array
+    {
+        $this->init($companyId);
+        [$from, $to] = $this->window(self::WINDOW_DAYS);
+        $prevTo = $from->subDay();
+        $prevFrom = $prevTo->subDays(self::WINDOW_DAYS - 1);
+        $now = $this->itemTotals($location->id, $from, $to);
+        $before = $this->itemTotals($location->id, $prevFrom, $prevTo);
+        $storeNow = array_sum(array_column($now, 'net'));
+        $storeBefore = array_sum(array_column($before, 'net'));
+        $variation = $storeBefore > 0 ? ($storeNow - $storeBefore) / $storeBefore : null;
+
+        $moving = 0;
+        $down = 0;
+        foreach ($now as $product => $i) {
+            $b = $before[$product] ?? null;
+            if ($b && $this->countsForRanking($i) && $i['qty'] >= 20 && $b['qty'] >= 20) {
+                $moving++;
+                $down += $i['qty'] < $b['qty'] ? 1 : 0;
+            }
+        }
+        $ranked = array_values(array_filter($now, fn ($i) => $this->countsForRanking($i) && $i['net'] >= self::MIN_NET_CENTS && $i['qty'] >= 10));
+        usort($ranked, fn ($a, $b) => $b['net'] <=> $a['net']);
+        $top = array_map(fn ($i) => ['product_id' => $i['product'], 'name' => $i['name'], 'qty' => (int) round($i['qty']), 'net_cents' => $i['net'],
+            'share_pct' => $storeNow > 0 ? round($i['net'] / $storeNow * 100, 1) : 0.0], array_slice($ranked, 0, 10));
+
+        $byFamily = [];
+        foreach ($now as $i) {
+            if ($i['family'] !== null && $this->countsForRanking($i)) {
+                $byFamily[$i['family']] = ($byFamily[$i['family']] ?? 0) + $i['net'];
+            }
+        }
+        arsort($byFamily);
+        $families = [];
+        foreach (array_slice($byFamily, 0, 5, true) as $fid => $net) {
+            $path = (string) PingwinItemSale::where('location_id', $location->id)->where('family_pingwin_id', (string) $fid)->whereNotNull('family_path')->value('family_path');
+            $name = trim((string) last(preg_split('#\s*[/>|\\\\]\s*#', $path) ?: [])) ?: (string) $fid;
+            $families[] = ['family_pingwin_id' => (string) $fid, 'name' => $name, 'net_cents' => $net,
+                'share_pct' => $storeNow > 0 ? round($net / $storeNow * 100, 1) : 0.0];
+        }
+
+        $categoryOf = [];
+        foreach ($now + $before as $product => $i) {
+            $categoryOf[$product] = $i['family'] !== null ? ($this->categories[$i['family']] ?? null) : null;
+        }
+
+        return [
+            'from' => $from->toDateString(), 'to' => $to->toDateString(), 'prev_from' => $prevFrom->toDateString(), 'prev_to' => $prevTo->toDateString(),
+            'store_now_cents' => $storeNow, 'store_before_cents' => $storeBefore,
+            'variation_pct' => $variation === null ? null : round($variation * 100, 1),
+            'moving_items' => $moving, 'down_items' => $down,
+            'top_items' => $top, 'families' => $families, 'product_category' => $categoryOf,
+            'special_days' => array_values(array_unique(array_values(array_filter($this->special,
+                fn ($d) => $d >= $prevFrom->toDateString() && $d <= $to->toDateString(), ARRAY_FILTER_USE_KEY)))),
+        ];
+    }
+
     /** @return array{0: CarbonImmutable, 1: CarbonImmutable, 2: int} dia fraco seguinte, data de publicação e antecedência */
     private function publishDate(int $weekday, ?array $lead): array
     {
         $offset = $lead ? self::LEAD_OFFSET[$lead['mode']] : self::DEFAULT_OFFSET;
-        $target = $this->today->addDay();
-        while ($target->dayOfWeekIso !== $weekday) {
-            $target = $target->addDay();
-        }
-        while ($target->subDays($offset)->lt($this->today)) {
-            $target = $target->addWeek();
-        }
+        [$target, $publish] = self::nextPublishDate($weekday, $offset, $this->today);
 
-        return [$target, $target->subDays($offset), $offset];
+        return [$target, $publish, $offset];
     }
 
     // ── S4: artigos parados ────────────────────────────────────────────────────

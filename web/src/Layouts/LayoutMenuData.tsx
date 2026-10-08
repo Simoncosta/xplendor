@@ -203,7 +203,7 @@ const Navdata = () => {
                 // Linha Editorial — transversal (qualquer ramo). Gated pelo SEU módulo.
                 { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial" },
                 // F3 do marketing da restauração: só com o PingWin (pelos módulos da empresa).
-                { id: "o-que-publicar", label: "O que publicar e quando", link: "/marketing/o-que-publicar", parentId: "analytics", module: "pingwin" },
+                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", module: "pingwin" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem

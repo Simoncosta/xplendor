@@ -315,6 +315,11 @@ Route::prefix('v1')->group(function () {
                     Route::post('/integrations/pingwin/signals/ignore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'ignore']);
                     Route::post('/integrations/pingwin/signals/restore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'restore']);
                     Route::post('/integrations/pingwin/signals/post', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'createPost']);
+                    // Bússola (antes "O que publicar e quando"): página, criar publicação e sugerir texto a partir de uma jogada.
+                    Route::get('/marketing/bussola', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'show']);
+                    Route::post('/marketing/bussola/post', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'createPost']);
+                    Route::post('/marketing/bussola/caption', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'caption'])->middleware('throttle:20,1');
+                    Route::get('/marketing/bussola/caption/{requestId}', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'captionStatus'])->whereNumber('requestId');
                     Route::get('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'families']);
                     Route::post('/integrations/pingwin/family-categories/ai-suggest', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'suggest'])->middleware('throttle:10,1');
                     Route::put('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'confirm']);
