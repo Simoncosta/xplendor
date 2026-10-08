@@ -1,3 +1,5 @@
+# Ficheiros de registo (logs) dos contentores: ficam no disco, nunca no git.
 docker/scraper/scraper.log
+docker/**/*.log
 # Dados locais do Redis (dev): o contentor escreve aqui; nunca no git.
 docker/redis/db/dump.rdb
