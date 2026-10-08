@@ -23,7 +23,8 @@ export interface CompassPlay {
     number: { value: string; caption: string };
     bars: { label: string; value: string; pct: number; color: string }[];
     what: { text: string; source: "ai" | "template" };
-    where: { networks: { network: string; label: string; format_key: string; format_label: string; format_source: string | null }[]; note: string | null };
+    /** Sempre Instagram e Facebook (multicanal); "connected": as redes da empresa estão ligadas. */
+    where: { networks: { network: string; label: string; format_key: string; format_label: string; format_source: string | null }[]; connected: boolean };
     when: { date: string; is_today: boolean; label: string; target: string | null };
     detail: { sentences: string[]; sample: string; confidence: { title: string; confidence: "alta" | "media" }[] };
     signal_keys: string[];

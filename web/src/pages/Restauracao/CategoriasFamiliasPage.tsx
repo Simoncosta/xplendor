@@ -6,7 +6,8 @@ import ReasonButton from "Components/Common/ReasonButton";
 import XSelect from "pages/Editorial/XSelect";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
-import { confirmFamilyCategories, getFamilyCategories, suggestFamilyCategories } from "helpers/laravel_helper";
+import { confirmFamilyCategories, getFamilyCategories, includeRestaurantItem, suggestFamilyCategories } from "helpers/laravel_helper";
+import { confirmAction } from "helpers/swal";
 import { FamilyCategoriesData, FamilyCategoryRow } from "common/models/pingwin.model";
 
 /**
@@ -32,6 +33,7 @@ export default function CategoriasFamiliasPage() {
     const [saving, setSaving] = useState(false);
     const [suggesting, setSuggesting] = useState(false);
     const [olderOpen, setOlderOpen] = useState(false);
+    const [including, setIncluding] = useState<number | null>(null);
 
     const apply = (d: FamilyCategoriesData) => {
         setData(d);
@@ -54,6 +56,26 @@ export default function CategoriasFamiliasPage() {
     }, [companyId]);
 
     useEffect(() => { load(); }, [load]);
+
+    const includeAgain = async (item: { id: number; name: string }) => {
+        if (!companyId) return;
+        const ok = await confirmAction({
+            title: `Voltar a incluir ${item.name}?`,
+            text: "O artigo volta a entrar nas jogadas e nos rankings da Bússola no próximo cálculo.",
+            confirmText: "Voltar a incluir", icon: "question",
+        });
+        if (!ok) return;
+        setIncluding(item.id);
+        try {
+            const res: any = await includeRestaurantItem(companyId, item.id);
+            apply(res?.data);
+            toast.success(`${item.name} volta a ser sugerido.`);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível voltar a incluir o artigo.");
+        } finally {
+            setIncluding(null);
+        }
+    };
 
     const labelOf = useMemo(() => {
         const m: Record<string, string> = {};
@@ -259,6 +281,33 @@ export default function CategoriasFamiliasPage() {
                         )}
                     </CardBody>
                 </Card>
+
+                {data && (data.excluded_items ?? []).length > 0 && (
+                    <Card className="mb-3" data-testid="excluded-items">
+                        <CardHeader>
+                            <h5 className="card-title mb-1">Artigos que não voltam a ser sugeridos</h5>
+                            <p className="text-muted fs-13 mb-0">Ficam fora das jogadas e dos rankings da Bússola, sem mudar a categoria da família.</p>
+                        </CardHeader>
+                        <CardBody>
+                            <ul className="list-unstyled mb-0 vstack gap-2">
+                                {(data.excluded_items ?? []).map((it, i, all) => (
+                                    <li key={it.id} className={`d-flex flex-wrap align-items-center justify-content-between gap-2${i < all.length - 1 ? " border-bottom pb-2" : ""}`}>
+                                        <div className="min-w-0">
+                                            <div className="fw-medium text-break">{it.name}</div>
+                                            <div className="text-muted fs-12">
+                                                Excluído{it.excluded_by ? ` por ${it.excluded_by}` : ""}{it.excluded_at ? ` a ${new Date(it.excluded_at).toLocaleDateString("pt-PT")}` : ""}
+                                            </div>
+                                        </div>
+                                        <ReasonButton color="outline-primary" size="sm" onClick={() => includeAgain(it)} disabled={including === it.id}
+                                            reason={canManage ? null : "Só o administrador da empresa ou da agência gestora pode voltar a incluir."}>
+                                            {including === it.id ? <><Spinner size="sm" className="me-1" /> A incluir</> : "Voltar a incluir"}
+                                        </ReasonButton>
+                                    </li>
+                                ))}
+                            </ul>
+                        </CardBody>
+                    </Card>
+                )}
             </Container>
         </div>
     );

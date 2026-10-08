@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from "react";
 import { Badge, Button, Card, CardBody, CardHeader, Col, Progress, Row, Table } from "reactstrap";
 import ReasonButton from "Components/Common/ReasonButton";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import HeatmapCard from "pages/Restauracao/HeatmapCard";
 import { ChangeRow, CompassData, fmtDm, fmtEur, fmtPct } from "common/models/bussola.model";
 
@@ -167,7 +168,15 @@ export function StarsCard({ block }: { block: Blocks["stars"] }) {
 
 // ── A ganhar e a perder força ────────────────────────────────────────────────
 
-function ChangeList({ title, rows, visible, up }: { title: string; rows: ChangeRow[]; visible: number; up: boolean }) {
+/** Ignorar durante 4 semanas, ou não voltar a sugerir o artigo (permanente). */
+export type IgnoreFn = (key: string, permanent: boolean, name: string) => void;
+
+const ignoreItems = (key: string, name: string, onIgnore: IgnoreFn) => [
+    { label: "Ignorar durante 4 semanas", icon: "ri-eye-off-line", onClick: () => onIgnore(key, false, name) },
+    { label: "Não voltar a sugerir este artigo", icon: "ri-forbid-2-line", onClick: () => onIgnore(key, true, name) },
+];
+
+function ChangeList({ title, rows, visible, up, canAct, onIgnore }: { title: string; rows: ChangeRow[]; visible: number; up: boolean; canAct: boolean; onIgnore: IgnoreFn }) {
     const [more, setMore] = useState(false);
     const shown = more ? rows : rows.slice(0, visible);
     const groups = useMemo(() => {
@@ -192,6 +201,7 @@ function ChangeList({ title, rows, visible, up }: { title: string; rows: ChangeR
                                         </div>
                                         <span className="text-muted fs-12 text-nowrap">{r.before.toLocaleString("pt-PT")} → {r.now.toLocaleString("pt-PT")} un.</span>
                                         <Badge color={up ? "success-subtle" : "danger-subtle"} className={`text-${up ? "success" : "danger"} fw-medium`} style={{ minWidth: 52 }}>{fmtPct(r.variation_pct, true)}</Badge>
+                                        <ActionsMenu size="sm" label={`Mais ações: ${r.name}`} disabled={!canAct} items={ignoreItems(r.key, r.name, onIgnore)} />
                                     </li>
                                 ))}
                             </ul>
@@ -206,7 +216,7 @@ function ChangeList({ title, rows, visible, up }: { title: string; rows: ChangeR
     );
 }
 
-export function ChangesCard({ block }: { block: Blocks["changes"] }) {
+export function ChangesCard({ block, canAct, onIgnore }: { block: Blocks["changes"]; canAct: boolean; onIgnore: IgnoreFn }) {
     const ctx = block.context;
     return (
         <Card data-testid="bussola-changes">
@@ -219,8 +229,8 @@ export function ChangesCard({ block }: { block: Blocks["changes"] }) {
                     {ctx.special_days.length > 0 && <p className="mb-0 text-muted">Inclui datas especiais: {ctx.special_days.join(", ")}.</p>}
                 </div>
                 <Row className="g-4">
-                    <Col md={6}><ChangeList title="A ganhar força" rows={block.up} visible={block.visible} up /></Col>
-                    <Col md={6}><ChangeList title="A perder força" rows={block.down} visible={block.visible} up={false} /></Col>
+                    <Col md={6}><ChangeList title="A ganhar força" rows={block.up} visible={block.visible} up canAct={canAct} onIgnore={onIgnore} /></Col>
+                    <Col md={6}><ChangeList title="A perder força" rows={block.down} visible={block.visible} up={false} canAct={canAct} onIgnore={onIgnore} /></Col>
                 </Row>
             </CardBody>
         </Card>
@@ -284,7 +294,7 @@ export function ChannelsCard({ block }: { block: Blocks["channels"] }) {
 
 export function ForgottenCard({ block, canAct, canActReason, onCreate, onIgnore }: {
     block: Blocks["forgotten"]; canAct: boolean; canActReason?: string | null;
-    onCreate: (item: Blocks["forgotten"]["items"][number]) => void; onIgnore: (key: string) => void;
+    onCreate: (item: Blocks["forgotten"]["items"][number]) => void; onIgnore: IgnoreFn;
 }) {
     return (
         <Card data-testid="bussola-forgotten">
@@ -302,7 +312,7 @@ export function ForgottenCard({ block, canAct, canActReason, onCreate, onIgnore 
                                 <div className="text-muted fs-12 mb-2">{it.location}, {it.qty_before.toLocaleString("pt-PT")} un. nas 8 semanas anteriores</div>
                                 <div className="d-flex gap-2">
                                     <ReasonButton color="outline-primary" size="sm" onClick={() => onCreate(it)} reason={canAct ? null : canActReason || "Sem permissão."}>Criar publicação</ReasonButton>
-                                    <ReasonButton color="light" size="sm" onClick={() => onIgnore(it.key)} reason={canAct ? null : canActReason || "Sem permissão."}>Ignorar</ReasonButton>
+                                    <ActionsMenu size="sm" label={`Mais ações: ${it.name}`} disabled={!canAct} items={ignoreItems(it.key, it.name, onIgnore)} />
                                 </div>
                             </li>
                         ))}
@@ -324,7 +334,7 @@ export function ForgottenCard({ block, canAct, canActReason, onCreate, onIgnore 
                                         <td className="text-end">
                                             <div className="d-inline-flex gap-2">
                                                 <ReasonButton color="outline-primary" size="sm" onClick={() => onCreate(it)} reason={canAct ? null : canActReason || "Sem permissão."}>Criar publicação</ReasonButton>
-                                                <ReasonButton color="light" size="sm" onClick={() => onIgnore(it.key)} reason={canAct ? null : canActReason || "Sem permissão."}>Ignorar</ReasonButton>
+                                                <ActionsMenu size="sm" label={`Mais ações: ${it.name}`} disabled={!canAct} items={ignoreItems(it.key, it.name, onIgnore)} />
                                             </div>
                                         </td>
                                     </tr>
@@ -342,13 +352,13 @@ export function ForgottenCard({ block, canAct, canActReason, onCreate, onIgnore 
 
 export function BussolaFooter({ computedAt }: { computedAt: string | null }) {
     return (
-        <div className="text-muted fs-12 mt-1 mb-3" data-testid="bussola-footer">
+        <Card data-testid="bussola-footer"><CardBody className="text-muted fs-12">
             <p className="mb-1">Os números descrevem o que aconteceu; não dizem porquê.</p>
             <p className="mb-1">
                 <Badge color="success-subtle" className="text-success fw-normal me-1">Confiança alta</Badge> amostra grande e desvio claro.{" "}
                 <Badge color="info-subtle" className="text-info fw-normal mx-1">Confiança média</Badge> amostra mais pequena ou desvio menor. Os sinais de confiança baixa não aparecem.
             </p>
             {computedAt && <p className="mb-0">Calculado a {new Date(computedAt).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}. Recalcula-se todas as noites e quando as categorias são confirmadas.</p>}
-        </div>
+        </CardBody></Card>
     );
 }

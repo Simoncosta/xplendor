@@ -38,10 +38,10 @@ class RestaurantCompassController extends Controller
         if (! $this->authorizeCompany($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
-        $data = $request->validate(['location_id' => ['nullable', 'integer'], 'summary' => ['nullable', 'boolean']]);
+        $data = $request->validate(['location_id' => ['nullable', 'integer'], 'summary' => ['nullable', 'boolean'], 'plays_only' => ['nullable', 'boolean']]);
         [$can, $reason] = $this->panel->canAct($request->user(), $companyId);
 
-        return ApiResponse::success($this->compass->payload($companyId, isset($data['location_id']) ? (int) $data['location_id'] : null, (bool) ($data['summary'] ?? false))
+        return ApiResponse::success($this->compass->payload($companyId, isset($data['location_id']) ? (int) $data['location_id'] : null, (bool) ($data['summary'] ?? false), (bool) ($data['plays_only'] ?? false))
             + ['can_act' => $can, 'can_act_reason' => $reason, 'formats' => EditorialPost::FORMATS], 'Bússola.');
     }
 

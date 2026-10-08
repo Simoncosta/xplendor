@@ -113,6 +113,15 @@ class RestaurantMarketingDataController extends Controller
             $count > 0 ? "A IA sugeriu {$count} categoria(s). Confirme-as antes de contarem." : 'Não há famílias sem sugestão.');
     }
 
+    // POST /companies/{id}/integrations/pingwin/excluded-items/{itemId}/include   ("Voltar a incluir" um artigo excluído das sugestões)
+    public function includeItem(Request $request, int $companyId, int $itemId)
+    {
+        $this->assertCanManage($request, $companyId);
+        app(\App\Services\Restaurant\RestaurantSignalPanelService::class)->includeItem($companyId, $itemId, $request->user());
+
+        return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true], 'Artigo incluído de novo nas sugestões.');
+    }
+
     // PUT /companies/{id}/integrations/pingwin/family-categories   Body: { items: [{ family_pingwin_id, category }] }
     public function confirm(Request $request, int $companyId)
     {

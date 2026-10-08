@@ -140,6 +140,8 @@ class AgencyTenancySweepTest extends TestCase
         // F1-3 do marketing da restauração: confirmar as categorias das famílias e pedir sugestões à IA.
         'POST api/v1/companies/{id}/integrations/pingwin/family-categories/ai-suggest',
         'PUT api/v1/companies/{id}/integrations/pingwin/family-categories',
+        // Bússola: voltar a incluir um artigo excluído das sugestões (página das categorias).
+        'POST api/v1/companies/{id}/integrations/pingwin/excluded-items/{itemId}/include',
     ];
 
     private Company $agency;

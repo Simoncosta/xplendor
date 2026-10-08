@@ -93,6 +93,8 @@ class RestaurantSignalService
     private array $suggested = [];
     /** @var array<string, string> datas especiais (feriados e âncoras) */
     private array $special = [];
+    /** @var array<string, true> artigos excluídos das sugestões ("Não voltar a sugerir este artigo") */
+    private array $excludedProducts = [];
 
     public function __construct(private readonly RestaurantSpecialDays $specialDays) {}
 
@@ -148,6 +150,7 @@ class RestaurantSignalService
         $this->suggested = RestaurantFamilyCategory::where('company_id', $companyId)->whereNull('category')->whereNotNull('suggested_category')
             ->pluck('suggested_category', 'family_pingwin_id')->map(fn ($c) => (string) $c)->all();
         $this->special = $this->specialDays->between($this->company, $this->end->subDays(self::STALE_BEFORE_DAYS + self::STALE_DAYS)->toDateString(), $this->end->toDateString());
+        $this->excludedProducts = \App\Models\RestaurantExcludedItem::activeIds($companyId);
     }
 
     /** Recalcula se o último cálculo tiver mais de 24 horas (ou nunca tiver sido feito). */
@@ -859,6 +862,9 @@ class RestaurantSignalService
      */
     private function countsForRanking(array $item): bool
     {
+        if (isset($this->excludedProducts[(string) $item['product']])) {
+            return false; // excluído das sugestões pela equipa (ex.: o Couvert), sem mexer na família
+        }
         $family = $item['family'];
         $category = $family !== null ? ($this->categories[$family] ?? $this->suggested[$family] ?? null) : null;
 

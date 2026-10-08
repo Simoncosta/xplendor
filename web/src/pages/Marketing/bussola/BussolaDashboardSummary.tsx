@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import { Spinner } from "reactstrap";
 import { getBussola } from "helpers/laravel_helper";
 import type { CompassData } from "common/models/bussola.model";
-import BussolaSummary from "./BussolaSummary";
+import BussolaPlays from "./BussolaPlays";
 
 /**
- * Dashboard do restaurante, separador "Marketing e resultados": abre com o resumo da Bússola
- * (o topo e as 3 jogadas, o MESMO componente da página) e "Abrir a Bússola completa".
+ * Dashboard do restaurante, fim do separador "Marketing e resultados" (junto às
+ * Recomendações): "As 3 jogadas da semana", o MESMO cartão da página da Bússola, com o seletor
+ * de loja no cabeçalho. O topo da semana (vendas, família, reservas) já está no separador Vendas.
  */
 export default function BussolaDashboardSummary({ companyId }: { companyId: number }) {
     const [locationId, setLocationId] = useState(0);
@@ -16,19 +15,15 @@ export default function BussolaDashboardSummary({ companyId }: { companyId: numb
 
     const load = useCallback(() => {
         setLoading(true);
-        getBussola(companyId, locationId || null, true).then((r: any) => setData(r?.data ?? null)).catch(() => setData(null)).finally(() => setLoading(false));
+        getBussola(companyId, locationId || null, false, true).then((r: any) => setData(r?.data ?? null)).catch(() => setData(null)).finally(() => setLoading(false));
     }, [companyId, locationId]);
     useEffect(() => { load(); }, [load]);
 
-    if (!data) return loading ? <div className="text-center py-4"><Spinner color="primary" size="sm" /></div> : null;
-    if (!data.enabled || !data.top) return null;
+    if (!data || !data.enabled) return null;
 
     return (
-        <div className={`mb-4${loading ? " opacity-50" : ""}`} data-testid="dashboard-bussola">
-            <BussolaSummary companyId={companyId} data={data} onLocation={setLocationId} onChanged={load} />
-            <div className="text-end">
-                <Link to="/marketing/bussola" className="btn btn-outline-primary btn-sm"><i className="ri-compass-3-line me-1" aria-hidden />Abrir a Bússola completa</Link>
-            </div>
+        <div className={loading ? "opacity-50" : undefined} data-testid="dashboard-bussola">
+            <BussolaPlays companyId={companyId} data={data} onLocation={setLocationId} onChanged={load} />
         </div>
     );
 }

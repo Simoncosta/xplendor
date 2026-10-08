@@ -125,6 +125,8 @@ class RestaurantFamilyCategoryService
             'families' => $rows,
             'total_net_cents_90d' => $total,
             'pending' => count(array_filter($rows, fn ($r) => $r['category'] === null)),
+            // Artigos excluídos das sugestões ("Não voltar a sugerir este artigo"), com "Voltar a incluir".
+            'excluded_items' => RestaurantSignalPanelService::excludedItems($companyId),
         ];
     }
 

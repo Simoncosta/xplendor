@@ -87,8 +87,11 @@ class RestaurantCompassService
 
     // ── Página ───────────────────────────────────────────────────────────────
 
-    /** A página completa, ou só o topo e as jogadas ($summary, para o dashboard). */
-    public function payload(int $companyId, ?int $locationId = null, bool $summary = false): array
+    /**
+     * A página completa; com $summary, só o topo e as jogadas; com $playsOnly (o dashboard do
+     * restaurante), só as jogadas (o topo já está no separador Vendas).
+     */
+    public function payload(int $companyId, ?int $locationId = null, bool $summary = false, bool $playsOnly = false): array
     {
         $this->signals->ensureFresh($companyId);
         $company = Company::findOrFail($companyId);
@@ -108,8 +111,10 @@ class RestaurantCompassService
         $today = CarbonImmutable::now('Europe/Lisbon')->startOfDay();
 
         $facts = [];
+        // A cache muda com o recálculo, com o dia e com os artigos excluídos das sugestões.
+        $version = md5((string) $computedAt . $today->toDateString() . json_encode(array_keys(\App\Models\RestaurantExcludedItem::activeIds($companyId))));
         foreach ($scope as $loc) {
-            $facts[$loc->id] = Cache::remember("bussola:facts:{$companyId}:{$loc->id}:" . md5((string) $computedAt . $today->toDateString()), now()->addHours(12),
+            $facts[$loc->id] = Cache::remember("bussola:facts:{$companyId}:{$loc->id}:{$version}", now()->addHours(12),
                 fn () => $this->signals->compassFacts($companyId, $loc));
         }
         $names = $scope->mapWithKeys(fn ($l) => [$l->id => RestaurantSignalService::locationName($l)])->all();
@@ -118,10 +123,10 @@ class RestaurantCompassService
         $out = $base + [
             'computed_at' => $computedAt ? CarbonImmutable::parse($computedAt)->toIso8601String() : null,
             'data_until' => $today->subDay()->toDateString(),
-            'top' => $this->top($company, $scope, $names, $facts, $signals),
+            'top' => $playsOnly ? null : $this->top($company, $scope, $names, $facts, $signals),
             'plays' => $this->plays($companyId, $signals, $facts, $names, $today),
         ];
-        if ($summary) {
+        if ($summary || $playsOnly) {
             return $out;
         }
 
@@ -136,10 +141,12 @@ class RestaurantCompassService
     private function visibleSignals(int $companyId, array $locationIds, CarbonImmutable $today, array $facts): Collection
     {
         $hidden = array_flip(RestaurantSignalAction::hiddenKeys($companyId, $today->toDateString()));
+        $excluded = \App\Models\RestaurantExcludedItem::activeIds($companyId);
 
         return RestaurantSignal::where('company_id', $companyId)->whereIn('location_id', $locationIds)
             ->orderByDesc('priority')->orderBy('id')->get()
             ->reject(fn (RestaurantSignal $s) => isset($hidden[$s->signal_key]))
+            ->reject(fn (RestaurantSignal $s) => isset($excluded[(string) ($s->numbers['product_id'] ?? '')]))
             ->reject(function (RestaurantSignal $s) use ($facts) {
                 $product = $s->numbers['product_id'] ?? null;
                 $category = $product !== null ? ($facts[$s->location_id]['product_category'][(string) $product] ?? null) : null;
@@ -487,20 +494,17 @@ class RestaurantCompassService
         ];
     }
 
-    /** O "Onde": as redes ligadas da empresa e o formato das regras de formato. */
-    private function where(int $companyId): array
+    /**
+     * O "Onde": a publicação é multicanal, sempre Instagram e Facebook, cada uma com o formato
+     * das regras de formato; "connected" diz se as redes da empresa estão ligadas (o ecrã
+     * mostra uma nota com a ligação às Integrações quando não estão).
+     */
+    public function where(int $companyId): array
     {
         $connection = SocialConnection::with('accounts')->where('company_id', $companyId)->first();
-        $networks = $connection && in_array($connection->status, SocialConnection::READABLE, true)
-            ? array_values(array_intersect(EditorialPost::NETWORKS, $connection->accounts->pluck('platform')->unique()->all()))
-            : [];
-        $note = null;
-        if ($networks === []) {
-            $networks = ['instagram'];
-            $note = 'Sem redes ligadas: a proposta é para o Instagram. As redes ligam-se nas Integrações.';
-        }
+        $connected = $connection && in_array($connection->status, SocialConnection::READABLE, true) && $connection->accounts->isNotEmpty();
         $out = [];
-        foreach ($networks as $network) {
+        foreach (EditorialPost::NETWORKS as $network) {
             $rec = $this->formats->recommend($companyId, $network);
             $key = $rec['ranked'][0]['format_key'] ?? self::DEFAULT_FORMAT[$network];
             $out[] = ['network' => $network, 'label' => $network === 'instagram' ? 'Instagram' : 'Facebook', 'format_key' => $key,
@@ -508,7 +512,7 @@ class RestaurantCompassService
                 'format_source' => $rec['ranked'] !== [] ? ($rec['source_label'] ?? null) : null];
         }
 
-        return ['networks' => $out, 'note' => $note];
+        return ['networks' => $out, 'connected' => $connected];
     }
 
     private function sampleText(RestaurantSignal $s): string

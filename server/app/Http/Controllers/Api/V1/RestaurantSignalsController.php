@@ -51,6 +51,16 @@ class RestaurantSignalsController extends Controller
         return ApiResponse::success(['hidden_until' => $until], 'Sugestão escondida durante 4 semanas.');
     }
 
+    // POST /companies/{id}/integrations/pingwin/signals/exclude-item   Body: { key }  ("Não voltar a sugerir este artigo")
+    public function excludeItem(Request $request, int $companyId)
+    {
+        $this->assertCanAct($request, $companyId);
+        $data = $request->validate(['key' => ['required', 'string', 'max:160']]);
+        $item = $this->panel->excludeItem($companyId, $data['key'], $request->user());
+
+        return ApiResponse::success(['item' => ['id' => $item->id, 'name' => $item->product_name]], "{$item->product_name} não volta a ser sugerido. Pode voltar a incluí-lo na página das categorias.");
+    }
+
     // POST /companies/{id}/integrations/pingwin/signals/restore   Body: { key }
     public function restore(Request $request, int $companyId)
     {

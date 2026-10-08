@@ -363,6 +363,8 @@ export interface FamilyCategoriesData {
     total_net_cents_90d: number;
     pending: number;
     can_manage: boolean;
+    /** Artigos que não voltam a ser sugeridos (Bússola), com quem e quando. */
+    excluded_items?: { id: number; product_pingwin_id: string; name: string; excluded_by: string | null; excluded_at: string | null }[];
 }
 
 /** F3: um sinal de "O que publicar e quando" (GET .../pingwin/signals). */

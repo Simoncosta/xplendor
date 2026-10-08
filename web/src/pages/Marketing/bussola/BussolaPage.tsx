@@ -3,17 +3,19 @@ import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
-import { getBussola, ignoreRestaurantSignal } from "helpers/laravel_helper";
+import { confirmAction } from "helpers/swal";
+import { excludeRestaurantItem, getBussola, ignoreRestaurantSignal } from "helpers/laravel_helper";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import type { CompassData } from "common/models/bussola.model";
 import CreatePostModal from "../CreatePostModal";
-import BussolaSummary from "./BussolaSummary";
+import BussolaTop from "./BussolaTop";
+import BussolaPlays from "./BussolaPlays";
 import { BussolaFooter, ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard } from "./BussolaBlocks";
 
 /**
- * Bússola (antes "O que publicar e quando"): o topo da semana, as 3 jogadas e os blocos
- * (dias para encher, estrelas, a ganhar e a perder força, quando o cliente decide, por onde
- * chegam, esquecidos), a partir das vendas (PingWin) e das reservas (CoverManager).
+ * Bússola (antes "O que publicar e quando"): o cartão do topo da semana, as 3 jogadas e os
+ * blocos (dias para encher, estrelas, a ganhar e a perder força, quando o cliente decide, por
+ * onde chegam, esquecidos), a partir das vendas (PingWin) e das reservas (CoverManager).
  */
 export default function BussolaPage() {
     document.title = "Bússola | Xplendor";
@@ -36,10 +38,18 @@ export default function BussolaPage() {
     }, [companyId, locationId]);
     useEffect(() => { void load(); }, [load]);
 
-    const ignore = async (key: string) => {
+    const ignore = async (key: string, permanent: boolean, name: string) => {
+        if (permanent) {
+            const ok = await confirmAction({
+                title: `Não voltar a sugerir ${name}?`,
+                text: "O artigo deixa de entrar nas jogadas e nos rankings, sem mudar a categoria da família. Pode voltar a incluí-lo na página das categorias.",
+                confirmText: "Não voltar a sugerir", icon: "question",
+            });
+            if (!ok) return;
+        }
         try {
-            await ignoreRestaurantSignal(companyId, key);
-            toast.success("Artigo escondido durante 4 semanas.");
+            if (permanent) await excludeRestaurantItem(companyId, key); else await ignoreRestaurantSignal(companyId, key);
+            toast.success(permanent ? `${name} não volta a ser sugerido.` : "Escondido durante 4 semanas.");
             void load();
         } catch (e: any) { toast.error(e?.message ?? "Não foi possível ignorar."); }
     };
@@ -48,8 +58,7 @@ export default function BussolaPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <PageHeader title="Bússola" breadcrumbs={[{ label: "Marketing" }]}
-                    description="O que publicar e quando, a partir das vendas e das reservas do restaurante." />
+                <PageHeader title="Bússola" breadcrumbs={[{ label: "Marketing" }]} />
                 {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
                 {data && !data.enabled && (
                     <Card><CardBody className="text-muted">A leitura das vendas por artigo está desligada nesta empresa. Quando for ligada, a Bússola aparece aqui.</CardBody></Card>
@@ -62,12 +71,13 @@ export default function BussolaPage() {
                             </div>
                         )}
                         <div className={loading ? "opacity-50" : undefined}>
-                            <BussolaSummary companyId={companyId} data={data} onLocation={setLocationId} onChanged={load} />
+                            <BussolaTop data={data} onLocation={setLocationId} />
+                            <BussolaPlays companyId={companyId} data={data} onChanged={load} />
                             {data.blocks && (
                                 <>
                                     <DaysCard companyId={companyId} block={data.blocks.days} key={`days-${data.location_id}`} />
                                     <StarsCard block={data.blocks.stars} />
-                                    <ChangesCard block={data.blocks.changes} />
+                                    <ChangesCard block={data.blocks.changes} canAct={!!data.can_act} onIgnore={ignore} />
                                     <Row className="g-3 mb-3">
                                         <Col xl={6}><DecideCard block={data.blocks.decide} /></Col>
                                         <Col xl={6}><ChannelsCard block={data.blocks.channels} /></Col>

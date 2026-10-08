@@ -211,23 +211,30 @@ export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse }
 /** "Ver detalhe": as frases descritivas completas, a amostra e a confiança. */
 export function PlayDetailModal({ play, onClose }: { play: CompassPlay | null; onClose: () => void }) {
     return (
-        <Modal isOpen={!!play} toggle={onClose} centered scrollable data-testid="play-detail-modal">
+        <Modal isOpen={!!play} toggle={onClose} size="lg" centered scrollable data-testid="play-detail-modal">
             <ModalHeader toggle={onClose}>{play?.title}</ModalHeader>
             <ModalBody>
                 {play && (
                     <>
-                        <ul className="ps-3 fs-13 mb-3">
+                        <h6 className="text-uppercase text-muted fs-12 mb-2">O que os números dizem</h6>
+                        <ul className="ps-3 fs-14 lh-base mb-3">
                             {play.detail.sentences.map((s, i) => <li key={i} className="mb-2">{s}</li>)}
                         </ul>
-                        {play.detail.sample && <p className="text-muted fs-12 mb-2">Amostra: {play.detail.sample}</p>}
+                        {play.detail.sample && (
+                            <>
+                                <h6 className="text-uppercase text-muted fs-12 mb-1">Amostra</h6>
+                                <p className="fs-14 mb-3">{play.detail.sample}</p>
+                            </>
+                        )}
+                        <h6 className="text-uppercase text-muted fs-12 mb-2">Confiança</h6>
                         <div className="d-flex flex-wrap gap-2 mb-3">
                             {play.detail.confidence.map((c, i) => (
-                                <Badge key={i} color={c.confidence === "alta" ? "success-subtle" : "info-subtle"} className={`fw-normal text-${c.confidence === "alta" ? "success" : "info"}`}>
+                                <Badge key={i} style={{ fontSize: 13 }} color={c.confidence === "alta" ? "success-subtle" : "info-subtle"} className={`fw-normal text-${c.confidence === "alta" ? "success" : "info"}`}>
                                     {c.title.replace(/^Período fraco: |^Em subida: |^Em descida: |^Parado: /, "")}: confiança {c.confidence === "alta" ? "alta" : "média"}
                                 </Badge>
                             ))}
                         </div>
-                        <p className="text-muted fs-12 mb-0">Os números descrevem o que aconteceu; não dizem porquê.{play.what.source === "ai" ? " A frase \"O quê\" foi escrita pela IA a partir destes dados." : ""}</p>
+                        <p className="text-muted fs-13 mb-0">Os números descrevem o que aconteceu; não dizem porquê.{play.what.source === "ai" ? " A frase \"O quê\" foi escrita pela IA a partir destes dados." : ""}</p>
                     </>
                 )}
             </ModalBody>

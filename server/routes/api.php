@@ -314,6 +314,8 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/signals', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'index']);
                     Route::post('/integrations/pingwin/signals/ignore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'ignore']);
                     Route::post('/integrations/pingwin/signals/restore', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'restore']);
+                    Route::post('/integrations/pingwin/signals/exclude-item', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'excludeItem']);
+                    Route::post('/integrations/pingwin/excluded-items/{itemId}/include', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'includeItem'])->whereNumber('itemId');
                     Route::post('/integrations/pingwin/signals/post', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'createPost']);
                     // Bússola (antes "O que publicar e quando"): página, criar publicação e sugerir texto a partir de uma jogada.
                     Route::get('/marketing/bussola', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'show']);

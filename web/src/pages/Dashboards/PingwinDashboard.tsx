@@ -248,22 +248,20 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
 
             {/* Descrição + controlos do separador (data + atualizar), junto do conteúdo
                 que controlam. Sem título: o separador "Vendas" já o diz. */}
-            <DashboardSectionHeader subtitle="Faturação, ticket médio e lotação, segundo o sistema de vendas e as reservas.">
-                <div>
-                    <label htmlFor="pingwin-sales-date" className="form-label fs-12 text-muted mb-1">Data</label>
-                    <input
-                        id="pingwin-sales-date"
-                        type="date"
-                        className="form-control"
-                        value={date}
-                        max={todayIso()}
-                        onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
-                        style={{ minWidth: 160 }}
-                    />
-                </div>
+            <DashboardSectionHeader controlsStart subtitle="Faturação, ticket médio e lotação, segundo o sistema de vendas e as reservas.">
+                <input
+                    id="pingwin-sales-date"
+                    type="date"
+                    className="form-control w-auto"
+                    aria-label="Data"
+                    value={date}
+                    max={todayIso()}
+                    onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
+                    style={{ minWidth: 170 }}
+                />
                 <ReasonButton color="outline-primary" onClick={() => setConfirmOpen(true)} disabled={queuing}
                     reason={!companyId ? "Escolha primeiro a empresa." : !date ? "Indique a data." : null}>
-                    {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" /> Buscar dados atualizados</>}
+                    {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar</> : <><i className="ri-refresh-line me-1" /> <span className="d-none d-sm-inline">Buscar dados atualizados</span><span className="d-sm-none">Atualizar</span></>}
                 </ReasonButton>
             </DashboardSectionHeader>
 
@@ -478,8 +476,9 @@ export function PingwinDashboardContent() {
             )}
             {opened.marketing && companyId > 0 && (
                 <div className={tab === "marketing" ? "pb-5 mb-5" : "d-none"}>
-                    <BussolaDashboardSummary companyId={companyId} />
                     <RestaurantMarketingBlock companyId={companyId} recommendations={recommendations} />
+                    {/* No fim, junto às Recomendações: as 3 jogadas da semana (também são recomendações). */}
+                    <BussolaDashboardSummary companyId={companyId} />
                 </div>
             )}
         </>

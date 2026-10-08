@@ -9,13 +9,27 @@ import { Card, CardBody } from "reactstrap";
  * Dentro de um separador o título pode ser omitido (o separador já o diz).
  */
 export default function DashboardSectionHeader({
-    title, subtitle, children, className = "",
+    title, subtitle, children, className = "", controlsStart = false,
 }: {
     title?: string;
     subtitle?: string;
     children?: ReactNode;
     className?: string;
+    /** Os controlos (filtros) por baixo do texto, alinhados à esquerda, como as barras de filtros da app. */
+    controlsStart?: boolean;
 }) {
+    if (controlsStart) {
+        return (
+            <Card className={`mb-3 ${className}`}>
+                <CardBody className="py-3">
+                    {title && <h5 className="mb-1 fw-semibold">{title}</h5>}
+                    {subtitle && <p className="text-muted fs-13 mb-2">{subtitle}</p>}
+                    {children && <div className="d-flex flex-wrap align-items-center justify-content-start gap-2">{children}</div>}
+                </CardBody>
+            </Card>
+        );
+    }
+
     return (
         <Card className={`mb-3 ${className}`}>
             <CardBody className="py-3">

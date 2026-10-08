@@ -188,6 +188,45 @@ class RestaurantSignalPanelService
         return $until;
     }
 
+    /**
+     * "Não voltar a sugerir este artigo": exclui o artigo da sugestão de todas as sugestões e
+     * rankings (permanente, com registo de quem e quando), sem mexer na categoria da família.
+     * Os sinais recalculam-se a seguir.
+     */
+    public function excludeItem(int $companyId, string $key, User $user): \App\Models\RestaurantExcludedItem
+    {
+        $signal = $this->findSignal($companyId, $key);
+        $product = (string) ($signal->numbers['product_id'] ?? '');
+        if ($product === '') {
+            throw ValidationException::withMessages(['key' => ['Esta sugestão não é de um artigo.']]);
+        }
+        $item = \App\Models\RestaurantExcludedItem::where('company_id', $companyId)->where('product_pingwin_id', $product)->active()->first()
+            ?? \App\Models\RestaurantExcludedItem::create(['company_id' => $companyId, 'product_pingwin_id' => $product,
+                'product_name' => mb_substr((string) ($signal->numbers['name'] ?? $product), 0, 255), 'excluded_by_user_id' => $user->id, 'excluded_at' => now()]);
+        \App\Jobs\RecomputeRestaurantSignalsJob::dispatch($companyId)->afterCommit();
+
+        return $item;
+    }
+
+    /** "Voltar a incluir" um artigo excluído (com registo de quem e quando). */
+    public function includeItem(int $companyId, int $itemId, User $user): void
+    {
+        $item = \App\Models\RestaurantExcludedItem::where('company_id', $companyId)->active()->find($itemId);
+        if (! $item) {
+            throw ValidationException::withMessages(['item' => ['Este artigo já não está excluído.']]);
+        }
+        $item->update(['included_by_user_id' => $user->id, 'included_at' => now()]);
+        \App\Jobs\RecomputeRestaurantSignalsJob::dispatch($companyId)->afterCommit();
+    }
+
+    /** Os artigos excluídos agora (para a página das categorias). */
+    public static function excludedItems(int $companyId): array
+    {
+        return \App\Models\RestaurantExcludedItem::with('excludedBy:id,name')->where('company_id', $companyId)->active()->orderBy('product_name')->get()
+            ->map(fn ($i) => ['id' => $i->id, 'product_pingwin_id' => $i->product_pingwin_id, 'name' => $i->product_name,
+                'excluded_by' => $i->excludedBy?->name, 'excluded_at' => $i->excluded_at?->toIso8601String()])->all();
+    }
+
     /** Volta a mostrar uma sugestão ignorada (com registo). */
     public function restore(int $companyId, string $key, User $user): void
     {

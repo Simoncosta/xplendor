@@ -339,6 +339,78 @@ class RestaurantCompassTest extends TestCase
         $this->assertSame(75.0, $p['blocks']['decide']['same_day_pct']);
     }
 
+    // ── "Onde", exclusão permanente e o resumo do dashboard ──────────────────
+
+    public function test_where_is_always_instagram_and_facebook_and_says_if_the_networks_are_connected(): void
+    {
+        $this->weak($this->baixa, 3, 'almoco', 'alta', 30);
+        $this->fresh();
+
+        $where = $this->payload(null, true)['plays'][0]['where'];
+        $this->assertSame(['instagram', 'facebook'], array_column($where['networks'], 'network'));
+        $this->assertSame(['ig_feed_image', 'fb_photos'], array_column($where['networks'], 'format_key'));
+        $this->assertFalse($where['connected']);
+        $this->assertArrayNotHasKey('note', $where);
+
+        // Com uma regra de formato e as redes ligadas.
+        \App\Models\SocialFollowerSnapshot::create(['company_id' => $this->company->id, 'platform' => 'instagram', 'snapshot_date' => '2026-10-07', 'followers_count' => 4000, 'source' => 'manual']);
+        \App\Models\CreativeFormatRule::query()->delete();
+        \App\Models\CreativeFormatRule::create(['channel' => 'instagram', 'followers_min' => 0, 'followers_max' => null, 'format_key' => 'ig_carousel', 'rank' => 1,
+            'source_label' => 'Estudo de teste', 'is_active' => true]);
+        $conn = \App\Models\SocialConnection::create(['company_id' => $this->company->id, 'status' => 'active', 'access_token' => 'x', 'connected_at' => now()]);
+        \App\Models\SocialConnectionAccount::create(['company_id' => $this->company->id, 'social_connection_id' => $conn->id, 'platform' => 'facebook', 'external_id' => '1', 'page_id' => '1', 'name' => 'Yuko', 'page_access_token' => 'p']);
+        $where = $this->payload(null, true)['plays'][0]['where'];
+        $this->assertTrue($where['connected']);
+        $this->assertSame(['instagram', 'facebook'], array_column($where['networks'], 'network'));
+        $this->assertSame('ig_carousel', $where['networks'][0]['format_key']);
+    }
+
+    public function test_an_item_excluded_for_good_leaves_plays_and_rankings_and_can_be_included_again(): void
+    {
+        $this->sales($this->baixa, 'C1', 'Couvert', 'PAO', 100, 160, 300);
+        $this->sales($this->baixa, 'F1', 'Francesinha', 'FRANC', 200, 200, 1200);
+        $this->confirm('PAO', 'petiscos'); // a família continua "Petiscos": não se mexe na categoria
+        $this->confirm('FRANC', 'pratos');
+        $couvert = $this->item($this->baixa, 'item_up', 'C1', 'Couvert', 'alta', 100, 160);
+        $this->fresh();
+        $this->assertSame('Dar palco a Couvert', $this->payload(null, true)['plays'][0]['title']);
+
+        $base = "/api/v1/companies/{$this->company->id}/integrations/pingwin";
+        Queue::fake();
+        $this->actingAs($this->admin, 'sanctum')->postJson("{$base}/signals/exclude-item", ['key' => $couvert->signal_key])->assertOk()
+            ->assertJsonPath('data.item.name', 'Couvert');
+        Queue::assertPushed(\App\Jobs\RecomputeRestaurantSignalsJob::class);
+        $row = \App\Models\RestaurantExcludedItem::sole();
+        $this->assertSame([$this->admin->id, 'C1'], [$row->excluded_by_user_id, $row->product_pingwin_id]);
+        $this->assertNotNull($row->excluded_at);
+
+        $p = $this->payload();
+        $this->assertSame([], $p['plays']);
+        $this->assertSame([], $p['blocks']['changes']['up']);
+        $this->assertSame(['Francesinha'], array_column($p['blocks']['stars']['stores'][0]['items'], 'name'));
+        $this->assertSame('petiscos', RestaurantFamilyCategory::where('family_pingwin_id', 'PAO')->value('category'));
+        $list = $this->getJson("{$base}/family-categories")->assertOk()->json('data.excluded_items');
+        $this->assertSame(['Couvert'], array_column($list, 'name'));
+
+        // Voltar a incluir (com registo).
+        $this->postJson("{$base}/excluded-items/{$row->id}/include")->assertOk()->assertJsonPath('data.excluded_items', []);
+        $this->assertSame($this->admin->id, $row->fresh()->included_by_user_id);
+        $this->assertNotNull($row->fresh()->included_at);
+        $this->assertSame('Dar palco a Couvert', $this->payload(null, true)['plays'][0]['title']);
+        $this->postJson("{$base}/excluded-items/{$row->id}/include")->assertStatus(422);
+    }
+
+    public function test_the_dashboard_gets_only_the_plays_without_the_sales_top(): void
+    {
+        $this->weak($this->baixa, 3, 'almoco', 'alta', 30);
+        $this->fresh();
+        $data = $this->actingAs($this->admin, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/marketing/bussola?plays_only=1")->assertOk()->json('data');
+        $this->assertNull($data['top']);
+        $this->assertArrayNotHasKey('blocks', $data);
+        $this->assertCount(1, $data['plays']);
+        $this->assertSame(['Baixa', 'Costa'], array_column($data['locations'], 'name'));
+    }
+
     // ── Criar publicação e sugerir texto ─────────────────────────────────────
 
     public function test_create_post_from_a_play_links_its_signals_and_never_takes_a_past_date(): void

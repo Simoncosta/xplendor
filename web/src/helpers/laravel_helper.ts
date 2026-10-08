@@ -624,8 +624,11 @@ export const getPingwinMarketingData = (companyId: number) =>
 export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number, excludeSpecial?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}) });
 // Bússola (marketing da restauração): a página, criar publicação e sugerir texto a partir de uma jogada.
-export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean) =>
-    api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}) });
+export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean, playsOnly?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}), ...(playsOnly ? { plays_only: 1 } : {}) });
+// "Não voltar a sugerir este artigo" (permanente) e "Voltar a incluir" (página das categorias).
+export const excludeRestaurantItem = (companyId: number, key: string) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/signals/exclude-item`, { key });
+export const includeRestaurantItem = (companyId: number, itemId: number) => api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/excluded-items/${itemId}/include`, {});
 export const createPostFromPlay = (companyId: number, data: any) => api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/post`, data);
 export const requestPlayCaption = (companyId: number, data: { play_key: string; location_id?: number | null; networks: string[] }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/marketing/bussola/caption`, data);
