@@ -332,6 +332,9 @@ export interface MarketingData {
     locations: MarketingDataLocation[];
     computed_at: string | null;
     can_manage: boolean;
+    /** Postos de venda do relatório anual: só o root os vê e edita. */
+    can_edit_locals: boolean;
+    annual_locals: string | null;
 }
 
 /** F1-3: categorias das famílias (GET .../pingwin/family-categories). */
@@ -339,7 +342,11 @@ export interface FamilyCategoryRow {
     family_pingwin_id: string;
     family_path: string | null;
     family: string;
+    /** Teve vendas nos últimos 90 dias (as outras ficam numa secção à parte). */
+    recent: boolean;
     net_cents_90d: number;
+    net_cents_total: number;
+    last_sale_date: string | null;
     share_pct: number;
     suggested_category: string | null;
     suggested_by: "rules" | "ai" | null;

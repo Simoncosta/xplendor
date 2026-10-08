@@ -30,13 +30,14 @@ final class FamilyCategoryRules
     ];
 
     /**
-     * Palavras por categoria, por ordem de prioridade (a entrega primeiro: "Uber Eats \
-     * Comida" é Entrega, decisão 3). Uma palavra com 4 ou mais letras apanha as palavras
+     * Palavras por categoria, por ordem de prioridade (primeiro a exclusão na família folha,
+     * depois a entrega: "Uber Eats \ Comida" é Entrega, decisão 3; "Uber Eats \ Taxas" é
+     * Excluir). Uma palavra com 4 ou mais letras apanha as palavras
      * que começam por ela ("cerv" → "cerveja"); as mais curtas têm de ser exatas.
      */
     private const KEYWORDS = [
         'entrega' => ['uber', 'glovo', 'bolt', 'takeaway', 'entrega', 'delivery'],
-        'excluir' => ['staff', 'producao', 'fornecimentos', 'interno', 'taxa', 'sacos'],
+        'excluir' => ['staff', 'producao', 'fornecimentos', 'interno', 'taxa', 'sacos', 'fatura'],
         'infantil' => ['crianca', 'criancas', 'infantil', 'kids'],
         'sobremesas' => ['sobremesa', 'doces', 'gelado'],
         'cafetaria' => ['cafetaria', 'cafe', 'cafes', 'cha', 'chas'],
@@ -60,14 +61,19 @@ final class FamilyCategoryRules
     }
 
     /**
-     * Categoria sugerida pelas regras, ou null. Procura primeiro na família folha e depois
-     * nos níveis acima (sem a raiz "Família"); a entrega vale em qualquer nível.
+     * Categoria sugerida pelas regras, ou null. Primeiro a exclusão na família folha; depois a
+     * entrega, em qualquer nível; depois as outras, da folha para cima (sem a raiz "Família").
      */
     public static function suggest(?string $familyPath): ?string
     {
         $segments = self::segments($familyPath);
         if ($segments === []) {
             return null;
+        }
+        // Taxas, faturas e afins na família folha são excluídas, mesmo dentro da entrega
+        // ("Uber Eats \ Taxas"); o resto da entrega ("Uber Eats \ Comida") é Entrega.
+        if (self::matches(end($segments), self::KEYWORDS['excluir'])) {
+            return 'excluir';
         }
         foreach ($segments as $segment) {
             if (self::matches($segment, self::KEYWORDS['entrega'])) {

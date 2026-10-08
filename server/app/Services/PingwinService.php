@@ -32,14 +32,25 @@ class PingwinService
     // vem do .env (config('services.pingwin')) — igual a todos os restaurantes.
     private const CONFIG_KEYS = ['username', 'database'];
 
+    /**
+     * Postos de venda do relatório anual (IDs separados por vírgulas), por empresa, na
+     * config da integração. Só o root os define (escritos à mão, a partir de uma captura);
+     * NUNCA se obtêm pela chamada que lista os parâmetros do relatório, que devolve dados
+     * pessoais (clientes e funcionários). Não vão no buildPayload: só no pedido anual.
+     */
+    public const ANNUAL_LOCALS_KEY = 'annual_locals';
+
     /** Invoca o entrypoint Python, passando a config+senha por STDIN. */
     /** Timeout (s) do docker exec. Default 180; operações pesadas (leitura rica de
      *  documentos) sobem-no antes de invocar. Propriedade (não parâmetro) para manter
      *  a assinatura de invoke() compatível com os fakes de teste que a fazem override. */
     protected int $invokeTimeout = 180;
 
-    /** Diagnóstico da última leitura completa do catálogo (páginas, total anunciado, famílias). */
+    /** Diagnóstico da última leitura completa do catálogo (páginas, total anunciado). */
     public ?array $lastCatalogDiagnostics = null;
+
+    /** IDs dos artigos anulados devolvidos pela última leitura do catálogo. */
+    public array $lastCatalogDeletedIds = [];
 
     protected function invoke(array $payload): array
     {
@@ -108,11 +119,15 @@ class PingwinService
      */
     public function saveCredentials(int $companyId, array $config, string $password): CompanyIntegration
     {
+        // Os postos de venda do relatório anual (definidos pelo root) não vêm do formulário
+        // das credenciais: mantêm-se ao voltar a ligar.
+        $locals = $this->annualLocals($companyId);
+
         return CompanyIntegration::updateOrCreate(
             ['company_id' => $companyId, 'platform' => self::PLATFORM],
             [
                 'access_token' => $password,           // cifrado pelo cast EncryptedLegacy
-                'config' => $this->pickConfig($config),
+                'config' => $this->pickConfig($config) + ($locals !== '' ? [self::ANNUAL_LOCALS_KEY => $locals] : []),
                 'status' => 'validating',
                 'error_message' => null,
             ]
@@ -535,7 +550,7 @@ class PingwinService
      * pingwin_catalog_items por (company_id, pingwin_id). Preços em CÊNTIMOS.
      * São muitos → grava em lotes. Devolve o nº de artigos guardados.
      */
-    public function syncCatalog(int $companyId, bool $complete = false, bool $byFamily = false): int
+    public function syncCatalog(int $companyId, bool $complete = false): int
     {
         $integration = CompanyIntegration::where('company_id', $companyId)
             ->where('platform', self::PLATFORM)
@@ -548,24 +563,19 @@ class PingwinService
         $password = (string) $integration->access_token; // o cast decifra
         $config = $integration->config;
 
-        // F1-2: $complete pede a leitura completa (não para numa página curta) e $byFamily
-        // junta a leitura família a família. Só com o interruptor da empresa ligado (quem
-        // chama decide); por omissão, a leitura de sempre.
+        // F1-2: $complete pede a leitura completa (não para numa página curta). Só com o
+        // interruptor da empresa ligado (quem chama decide); por omissão, a leitura de sempre.
         $extra = ['mode' => 'catalog'];
         if ($complete) {
             $extra['catalog_complete'] = true;
-            $extra['catalog_by_family'] = $byFamily;
         }
-        $previousTimeout = $this->invokeTimeout;
-        if ($byFamily) {
-            $this->invokeTimeout = max($this->invokeTimeout, 900); // uma leitura por família
-        }
-        try {
-            $result = $this->invoke($this->buildPayload($config, $password, $extra));
-        } finally {
-            $this->invokeTimeout = $previousTimeout;
-        }
+        $result = $this->invoke($this->buildPayload($config, $password, $extra));
         $this->lastCatalogDiagnostics = is_array($result['diagnostics'] ?? null) ? $result['diagnostics'] : null;
+        // Os anulados (STATE:1) da mesma leitura: os vendidos que faltam procuram-se aqui.
+        $this->lastCatalogDeletedIds = array_values(array_filter(array_map(
+            static fn ($v) => (string) $v,
+            (array) ($result['deleted_ids'] ?? [])
+        ), static fn ($s) => $s !== ''));
 
         if (! ($result['ok'] ?? false)) {
             throw new \RuntimeException('Sincronização de artigos PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
@@ -1918,6 +1928,32 @@ class PingwinService
         }
 
         return $months;
+    }
+
+    /** Postos de venda do relatório anual da empresa ("" se não definidos). */
+    public function annualLocals(int $companyId): string
+    {
+        $config = CompanyIntegration::where('company_id', $companyId)->where('platform', self::PLATFORM)->value('config');
+        $config = is_string($config) ? (json_decode($config, true) ?: []) : (array) $config;
+
+        return trim((string) ($config[self::ANNUAL_LOCALS_KEY] ?? ''));
+    }
+
+    /** Define (ou limpa, com null/"") os postos de venda do relatório anual. Só o root chama. */
+    public function setAnnualLocals(int $companyId, ?string $locals): void
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)->where('platform', self::PLATFORM)->first();
+        if (! $integration) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+        $config = (array) $integration->config;
+        $locals = trim((string) $locals);
+        if ($locals === '') {
+            unset($config[self::ANNUAL_LOCALS_KEY]);
+        } else {
+            $config[self::ANNUAL_LOCALS_KEY] = $locals;
+        }
+        $integration->forceFill(['config' => $config])->save();
     }
 
     /**

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Spinner } from "reactstrap";
-import { getPingwinMarketingData } from "helpers/laravel_helper";
+import { getPingwinMarketingData, updateAnnualLocals } from "helpers/laravel_helper";
+import { toast } from "react-toastify";
+import ReasonButton from "Components/Common/ReasonButton";
 import { MarketingData, MarketingDataLocation } from "common/models/pingwin.model";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 
@@ -20,6 +22,8 @@ const fmtDate = (d: string | null, monthOnly = false) => {
         ? date.toLocaleDateString("pt-PT", { month: "long", year: "numeric" })
         : date.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
 };
+/** Singular ou plural pelo número ("1 dia marcado", "2 dias marcados"). */
+const pl = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const fmtPct = (v: number | null) => (v === null ? "" : `${v.toLocaleString("pt-PT", { maximumFractionDigits: 1 })}%`);
 
 function StartCell({ l }: { l: MarketingDataLocation }) {
@@ -34,7 +38,7 @@ function StartCell({ l }: { l: MarketingDataLocation }) {
             )}
             {!l.opened_on && l.detected_is_month && <div className="text-muted fs-12">Mês detetado; o dia exato fica no fim do histórico.</div>}
             {l.start_warning && (
-                <div className="text-warning fs-12"><i className="ri-error-warning-line me-1" />Difere {l.start_difference_days} dias da abertura indicada.</div>
+                <div className="text-warning fs-12"><i className="ri-error-warning-line me-1" />Difere {l.start_difference_days} {pl(l.start_difference_days ?? 0, "dia", "dias")} da abertura indicada.</div>
             )}
         </div>
     );
@@ -44,6 +48,43 @@ function HistoryCell({ l }: { l: MarketingDataLocation }) {
     if (l.history_complete) return <span className="badge bg-success-subtle text-success">Completo</span>;
     if (l.days_read > 0) return <span className="badge bg-warning-subtle text-warning">A importar</span>;
     return <span className="badge bg-light text-muted">Por começar</span>;
+}
+
+/**
+ * Só o root: postos de venda do relatório anual (início de cada loja), escritos à mão a
+ * partir de uma captura. Vazio = o relatório soma todos os postos de venda.
+ */
+function LocalsField({ companyId, initial }: { companyId: number; initial: string }) {
+    const [value, setValue] = useState(initial);
+    const [saved, setSaved] = useState(initial);
+    const [saving, setSaving] = useState(false);
+    const save = async () => {
+        setSaving(true);
+        try {
+            const res: any = await updateAnnualLocals(companyId, value.trim());
+            setSaved(res?.data?.annual_locals ?? value.trim());
+            setValue(res?.data?.annual_locals ?? value.trim());
+            toast.success(res?.message ?? "Postos de venda guardados.");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível guardar os postos de venda.");
+        } finally {
+            setSaving(false);
+        }
+    };
+    return (
+        <div className="mb-3 p-3 rounded" style={{ background: "var(--vz-tertiary-bg)", border: "1px dashed var(--vz-border-color)" }}>
+            <label htmlFor="pingwin-annual-locals" className="form-label fs-13 fw-semibold mb-1">Postos de venda do relatório anual (só root)</label>
+            <p className="text-muted fs-12 mb-2">IDs separados por vírgulas, copiados de uma captura do back-office. Vazio: o relatório soma todos os postos de venda.</p>
+            <div className="d-flex flex-wrap gap-2">
+                <input id="pingwin-annual-locals" className="form-control form-control-sm" style={{ maxWidth: 520 }} value={value}
+                    onChange={(e) => setValue(e.target.value)} placeholder="Todos os postos de venda" inputMode="numeric" />
+                <ReasonButton size="sm" color="outline-primary" onClick={save} disabled={saving}
+                    reason={saving ? null : value.trim() === saved ? "Sem alterações para guardar." : null}>
+                    {saving ? <Spinner size="sm" /> : "Guardar"}
+                </ReasonButton>
+            </div>
+        </div>
+    );
 }
 
 export default function MarketingDataCard({ companyId }: { companyId: number }) {
@@ -111,13 +152,13 @@ export default function MarketingDataCard({ companyId }: { companyId: number }) 
                             <div className="row g-3 mb-3">
                                 {tile(
                                     "Conferência com o líquido diário (90 dias)",
-                                    data.days.checked > 0 ? `${data.days.ok} de ${data.days.checked} dias batem` : "Sem dias lidos",
-                                    data.days.marked > 0 ? `${data.days.marked} dias marcados para voltar a ler` : "Sem dias marcados",
+                                    data.days.checked > 0 ? `${data.days.ok} de ${data.days.checked} ${pl(data.days.checked, "dia", "dias")} ${pl(data.days.ok, "bate", "batem")}` : "Sem dias lidos",
+                                    data.days.marked > 0 ? `${data.days.marked} ${pl(data.days.marked, "dia marcado", "dias marcados")} para voltar a ler` : "Sem dias marcados",
                                 )}
                                 {tile(
                                     "Catálogo",
                                     data.catalog.coverage_pct === null ? "Sem vendas por artigo" : `${fmtPct(data.catalog.coverage_pct)} dos artigos vendidos`,
-                                    data.catalog.sold > 0 ? `${data.catalog.missing} de ${data.catalog.sold} artigos vendidos (90 dias) fora do catálogo` : "Conta os artigos vendidos nos últimos 90 dias",
+                                    data.catalog.sold > 0 ? `${data.catalog.missing} de ${data.catalog.sold} ${pl(data.catalog.sold, "artigo vendido", "artigos vendidos")} (90 dias) fora do catálogo` : "Conta os artigos vendidos nos últimos 90 dias",
                                 )}
                                 {tile(
                                     "Categorias das famílias",
@@ -125,6 +166,8 @@ export default function MarketingDataCard({ companyId }: { companyId: number }) 
                                     <Link to="/restauracao/categorias">Ver as categorias</Link>,
                                 )}
                             </div>
+
+                            {data.can_edit_locals && <LocalsField companyId={companyId} initial={data.annual_locals ?? ""} />}
 
                             <h6 className="fs-13 fw-semibold mb-2">Por loja</h6>
                             {data.locations.length === 0 ? (
@@ -139,7 +182,7 @@ export default function MarketingDataCard({ companyId }: { companyId: number }) 
                                             </div>
                                             <div className="fs-13"><StartCell l={l} /></div>
                                             <div className="text-muted fs-12 mt-1">
-                                                {l.days_read} dias lidos{l.oldest_day_read ? `, desde ${fmtDate(l.oldest_day_read)}` : ""}
+                                                {l.days_read} {pl(l.days_read, "dia lido", "dias lidos")}{l.oldest_day_read ? `, desde ${fmtDate(l.oldest_day_read)}` : ""}
                                             </div>
                                         </div>
                                     ))}

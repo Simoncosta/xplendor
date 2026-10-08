@@ -89,18 +89,28 @@ class RestaurantFamilyCategoryService
             ->groupBy('family_pingwin_id')
             ->pluck('net', 'family_pingwin_id');
         $total = max(0, (int) $revenue->sum());
+        // Todo o histórico: total e último dia com vendas de cada família (as que não venderam
+        // nos últimos 90 dias ficam à parte na página).
+        $history = PingwinItemSale::where('company_id', $companyId)->whereNotNull('family_pingwin_id')
+            ->select('family_pingwin_id', DB::raw('SUM(net_cents) as net'), DB::raw('MAX(business_date) as last_sale'))
+            ->groupBy('family_pingwin_id')
+            ->get()->keyBy('family_pingwin_id');
 
         $users = User::whereIn('id', RestaurantFamilyCategory::where('company_id', $companyId)->whereNotNull('confirmed_by_user_id')->pluck('confirmed_by_user_id'))
             ->pluck('name', 'id');
 
-        $rows = RestaurantFamilyCategory::where('company_id', $companyId)->get()->map(function (RestaurantFamilyCategory $r) use ($revenue, $total, $users) {
+        $rows = RestaurantFamilyCategory::where('company_id', $companyId)->get()->map(function (RestaurantFamilyCategory $r) use ($revenue, $total, $users, $history) {
             $net = (int) ($revenue[$r->family_pingwin_id] ?? 0);
+            $h = $history->get($r->family_pingwin_id);
 
             return [
                 'family_pingwin_id' => $r->family_pingwin_id,
                 'family_path' => $r->family_path,
                 'family' => FamilyCategoryRules::leaf($r->family_path),
+                'recent' => $revenue->has($r->family_pingwin_id),
                 'net_cents_90d' => $net,
+                'net_cents_total' => (int) ($h->net ?? 0),
+                'last_sale_date' => $h?->last_sale ? substr((string) $h->last_sale, 0, 10) : null,
                 'share_pct' => $total > 0 ? round($net / $total * 100, 1) : 0.0,
                 'suggested_category' => $r->suggested_category,
                 'suggested_by' => $r->suggested_by,
@@ -108,7 +118,7 @@ class RestaurantFamilyCategoryService
                 'confirmed_by' => $r->confirmed_by_user_id ? ($users[$r->confirmed_by_user_id] ?? null) : null,
                 'confirmed_at' => $r->confirmed_at?->toIso8601String(),
             ];
-        })->sortByDesc('net_cents_90d')->values()->all();
+        })->sortBy([['recent', 'desc'], ['net_cents_90d', 'desc'], ['net_cents_total', 'desc']])->values()->all();
 
         return [
             'categories' => array_map(fn ($k, $v) => ['value' => $k, 'label' => $v], array_keys(FamilyCategoryRules::CATEGORIES), FamilyCategoryRules::CATEGORIES),

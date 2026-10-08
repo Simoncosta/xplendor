@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, CardHeader, Container, Spinner } from "reactstrap";
+import { Card, CardBody, CardHeader, Collapse, Container, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ReasonButton from "Components/Common/ReasonButton";
@@ -13,7 +13,8 @@ import { FamilyCategoriesData, FamilyCategoryRow } from "common/models/pingwin.m
  * XPLENDOR — F1-3 do marketing da restauração: categoria de marketing de cada família do
  * PingWin com vendas (documents/PINGWIN-F1-DESENHO.md §5). As regras e a IA só sugerem;
  * uma categoria só conta depois de uma pessoa da equipa a confirmar. Escolha com o
- * react-select (XSelect), tema claro e escuro, e lista empilhada no telemóvel.
+ * react-select (XSelect), tema claro e escuro, e lista empilhada no telemóvel. Todo o
+ * histórico: as famílias sem vendas nos últimos 90 dias ficam numa secção recolhida.
  */
 
 const pct = (v: number) => `${v.toLocaleString("pt-PT", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
@@ -30,6 +31,7 @@ export default function CategoriasFamiliasPage() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [suggesting, setSuggesting] = useState(false);
+    const [olderOpen, setOlderOpen] = useState(false);
 
     const apply = (d: FamilyCategoriesData) => {
         setData(d);
@@ -60,7 +62,13 @@ export default function CategoriasFamiliasPage() {
     }, [data]);
 
     const families = data?.families ?? [];
-    const changed = families.filter((f) => choices[f.family_pingwin_id] && choices[f.family_pingwin_id] !== f.category);
+    // Todo o histórico: as famílias sem vendas nos últimos 90 dias ficam numa secção à parte,
+    // recolhida. "Confirmar" só leva as escolhas visíveis (a secção recolhida só quando aberta).
+    const recent = families.filter((f) => f.recent);
+    const older = families.filter((f) => !f.recent);
+    const visible = olderOpen ? families : recent;
+    const changed = visible.filter((f) => choices[f.family_pingwin_id] && choices[f.family_pingwin_id] !== f.category);
+    const olderPending = older.filter((f) => !f.category).length;
     const withoutSuggestion = families.filter((f) => !f.category && !f.suggested_category).length;
     const canManage = !!data?.can_manage;
 
@@ -132,6 +140,64 @@ export default function CategoriasFamiliasPage() {
         />
     );
 
+    /** Lista (telemóvel) ou tabela (computador). Nas famílias antigas, a última venda em vez do peso. */
+    const rows = (list: FamilyCategoryRow[], olderRows: boolean) => isMobile ? (
+        <div className="d-flex flex-column gap-3">
+            {list.map((f) => (
+                <div key={f.family_pingwin_id} className="border rounded p-3" style={{ borderColor: "var(--vz-border-color)" }}>
+                    <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
+                        <span className="fw-semibold text-body" style={{ wordBreak: "break-word" }}>{f.family}</span>
+                        <span className="text-muted fs-12 text-nowrap">{olderRows ? `Última venda: ${fmtDate(f.last_sale_date)}` : pct(f.share_pct)}</span>
+                    </div>
+                    <div className="text-muted fs-12 mb-2" style={{ wordBreak: "break-word" }}>{f.family_path}</div>
+                    <div className="fs-13 mb-2">Sugestão: {suggestionCell(f)}</div>
+                    <div className="mb-2">{select(f)}</div>
+                    <div>{statusCell(f)}</div>
+                </div>
+            ))}
+        </div>
+    ) : (
+        <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0">
+                <thead className="table-light">
+                    <tr>
+                        <th>Família</th>
+                        <th className="text-end">{olderRows ? "Última venda" : "Peso (90 dias)"}</th>
+                        <th>Sugestão</th>
+                        <th>Categoria</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {list.map((f) => (
+                        <tr key={f.family_pingwin_id}>
+                            <td>
+                                <div className="fw-semibold text-body">{f.family}</div>
+                                <div className="text-muted fs-12">{f.family_path}</div>
+                            </td>
+                            <td className="text-end text-nowrap">
+                                {olderRows ? (
+                                    <>
+                                        <div>{fmtDate(f.last_sale_date)}</div>
+                                        <div className="text-muted fs-12">{eur(f.net_cents_total)} no total</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div>{pct(f.share_pct)}</div>
+                                        <div className="text-muted fs-12">{eur(f.net_cents_90d)}</div>
+                                    </>
+                                )}
+                            </td>
+                            <td>{suggestionCell(f)}</td>
+                            <td>{select(f)}</td>
+                            <td>{statusCell(f)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -173,52 +239,23 @@ export default function CategoriasFamiliasPage() {
                             <div className="text-center text-muted py-4">
                                 Ainda não há vendas por artigo. As famílias aparecem depois da primeira leitura das vendas por artigo do PingWin.
                             </div>
-                        ) : isMobile ? (
-                            <div className="d-flex flex-column gap-3">
-                                {families.map((f) => (
-                                    <div key={f.family_pingwin_id} className="border rounded p-3" style={{ borderColor: "var(--vz-border-color)" }}>
-                                        <div className="d-flex justify-content-between align-items-start gap-2 mb-1">
-                                            <span className="fw-semibold text-body" style={{ wordBreak: "break-word" }}>{f.family}</span>
-                                            <span className="text-muted fs-12 text-nowrap">{pct(f.share_pct)}</span>
-                                        </div>
-                                        <div className="text-muted fs-12 mb-2" style={{ wordBreak: "break-word" }}>{f.family_path}</div>
-                                        <div className="fs-13 mb-2">Sugestão: {suggestionCell(f)}</div>
-                                        <div className="mb-2">{select(f)}</div>
-                                        <div>{statusCell(f)}</div>
-                                    </div>
-                                ))}
-                            </div>
                         ) : (
-                            <div className="table-responsive">
-                                <table className="table table-sm align-middle mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th>Família</th>
-                                            <th className="text-end">Peso (90 dias)</th>
-                                            <th>Sugestão</th>
-                                            <th>Categoria</th>
-                                            <th>Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {families.map((f) => (
-                                            <tr key={f.family_pingwin_id}>
-                                                <td>
-                                                    <div className="fw-semibold text-body">{f.family}</div>
-                                                    <div className="text-muted fs-12">{f.family_path}</div>
-                                                </td>
-                                                <td className="text-end text-nowrap">
-                                                    <div>{pct(f.share_pct)}</div>
-                                                    <div className="text-muted fs-12">{eur(f.net_cents_90d)}</div>
-                                                </td>
-                                                <td>{suggestionCell(f)}</td>
-                                                <td>{select(f)}</td>
-                                                <td>{statusCell(f)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <>
+                                {rows(recent, false)}
+                                {older.length > 0 && (
+                                    <div className="mt-3 border-top pt-3" style={{ borderColor: "var(--vz-border-color)" }}>
+                                        <button type="button" className="btn btn-link p-0 text-body fw-semibold text-decoration-none d-inline-flex align-items-center gap-1"
+                                            aria-expanded={olderOpen} onClick={() => setOlderOpen((v) => !v)}>
+                                            <i className={olderOpen ? "ri-arrow-down-s-line" : "ri-arrow-right-s-line"} />
+                                            Sem vendas nos últimos 90 dias ({older.length})
+                                            {olderPending > 0 && <span className="badge bg-warning-subtle text-warning ms-1">{olderPending} por confirmar</span>}
+                                        </button>
+                                        <Collapse isOpen={olderOpen}>
+                                            <div className="pt-3">{rows(older, true)}</div>
+                                        </Collapse>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </CardBody>
                 </Card>

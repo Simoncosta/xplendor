@@ -26,7 +26,7 @@ Fonte seguida: `documents/PINGWIN-F1-DESENHO.md`. Durante a noite não houve nen
 - **Histórico:** blocos de 7 dias, para trás, até ao primeiro mês com vendas. São até 10 pedidos por noite, com 20 s entre eles. No fim, cada loja fica com `sales_since` (o primeiro dia com vendas) e `history_complete_at`. Os dias antes do início da loja não se leem nem se marcam.
 - **Releitura:** os dias marcados (não batem, ou vazios protegidos) voltam a ler-se até 3 vezes, nunca no mesmo dia em que foram lidos.
 - **Catálogo completo:** a leitura nova avança pelo número de itens recebidos, por isso já não para nem salta numa página curta (o caso da Yuko).
-  - Se ainda faltarem artigos vendidos nos últimos 90 dias, lê família a família.
+  - Se ainda faltarem artigos vendidos nos últimos 90 dias, lê família a família. **Substituído na correção da sessão:** os vendidos em falta procuram-se nos anulados (a leitura que já existe) e a leitura família a família deixou de ser usada.
   - A leitura de sempre (o botão "Sincronizar artigos") ficou exatamente igual, porque a nova só se usa com o interruptor ligado.
 - **Job das 05:00:** histórico todas as noites e catálogo completo ao domingo (hora de Lisboa), só com o interruptor ligado.
 - **"Sincronizar período" manual:** no fim do batch dos dias, relê também as vendas por artigo do período (até 92 dias), só com o interruptor ligado.
@@ -75,7 +75,7 @@ Fonte seguida: `documents/PINGWIN-F1-DESENHO.md`. Durante a noite não houve nen
 2. **Histórico até ao início detetado:** o histórico importa-se até ao início detetado, mesmo que a abertura indicada seja posterior. A abertura indicada só decide o início efetivo (mostrado e usado), como na decisão 1.
 3. **Relatório anual:** `GROUPBY` "1" (o capturado) e `Locals` vazio, com a salvaguarda; ver a pergunta 1.
 4. **Releitura dos dias marcados:** até 3 leituras e nunca no mesmo dia; os dias sem líquido diário e sem linhas ficam "vazios protegidos".
-5. **Leitura família a família:** 2 s entre os pedidos ao catálogo (são leves) e limite de 15 minutos por execução; só corre quando faltam artigos vendidos.
+5. **Leitura família a família:** 2 s entre os pedidos ao catálogo (são leves) e limite de 15 minutos por execução; só corre quando faltam artigos vendidos. **Retirada na correção da sessão** (era pesada: 200 famílias, e o filtro já inclui as subfamílias).
 6. **Período manual:** as vendas por artigo releem-se no fim do batch dos dias, para a conferência já ter os líquidos diários.
 7. **Função de IA `family_categories`:** modelo por omissão `claude-opus-5-5`, esforço baixo. Quando não houver categoria clara, a IA responde "outros". O root muda o modelo no ecrã dos modelos de IA.
 8. **Regras das categorias:** lista de palavras por categoria (em `FamilyCategoryRules`). Sangria, Pão e Sandwiches ficam de propósito para a IA ou para a equipa.
@@ -94,23 +94,29 @@ Estão em `documents/F1-NOITE-PERGUNTAS.md`:
 
 ## 5. A sessão real de hoje, passo a passo
 
-Numa hora fora de serviço do restaurante. Todos os comandos correm no contentor `xplendor-worker`, que tem o socket do Docker. Só fazem leituras no PingWin (e, no passo 1, no CoverManager, como o job de todas as noites).
+Numa hora fora de serviço do restaurante. Só fazem leituras no PingWin (e, no passo 1, no CoverManager, como o job de todas as noites).
 
-**0. Verificar o ambiente** (devem aparecer `xplendor-worker`, `xplendor-scraper` e `xplendor-db`):
+**Atualizado depois da sessão real de 8 de outubro.** Os comandos correm, a partir da raiz do repositório, num contentor à parte do serviço `worker` (`docker compose run --rm --no-deps worker …`), que tem o socket do Docker e é removido no fim. O `xplendor-worker` reinicia de hora a hora (`queue:work --max-time=3600`) e esse reinício matou o passo 6 a meio. Mudou também:
+- um dia que não bate relê primeiro o Resumo de Vendas desse dia e só fica marcado se continuar a não bater;
+- os dias antes do primeiro dia com vendas de cada loja ficam como "sem vendas" e não voltam a ler-se;
+- o catálogo procura os vendidos em falta nos anulados, sem leitura família a família;
+- os postos de venda do relatório anual ficam na configuração da integração (só o root os edita, no cartão "Dados para o marketing"); o `--locals` do comando sobrepõe-se.
+
+**0. Verificar o ambiente** (devem aparecer `xplendor-scraper` e `xplendor-db`; o `xplendor-worker` não é preciso para os comandos manuais):
 ```
 docker ps --format '{{.Names}}' | grep xplendor
-docker exec xplendor-worker php artisan pingwin:item-sales-switch 5
+docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5
 ```
 Deve dizer "vendas por artigo desligadas".
 
 **1. Pôr o líquido diário em dia** (o espelho de dev acaba a 2 de outubro). Sem isto, a conferência dos últimos dias aparece como "sem resumo para conferir". Faz as mesmas leituras do job das 05:00, um dia de cada vez, com 20 s entre dias (cerca de 3 minutos):
 ```
-docker exec xplendor-worker php artisan tinker --execute='foreach (Carbon\CarbonPeriod::create("2026-10-03", "2026-10-07") as $d) { App\Jobs\SyncRestaurantJob::dispatchSync(5, $d->toDateString(), false); sleep(20); } echo "ok";'
+docker compose run --rm --no-deps worker php artisan tinker --execute='foreach (Carbon\CarbonPeriod::create("2026-10-03", "2026-10-07") as $d) { App\Jobs\SyncRestaurantJob::dispatchSync(5, $d->toDateString(), false); sleep(20); } echo "ok";'
 ```
 
 **2. Simulação dos últimos 7 dias** (1 pedido, nada gravado; cerca de 10 a 40 s):
 ```
-docker exec xplendor-worker php artisan pingwin:item-sales 5 --dry-run
+docker compose run --rm --no-deps worker php artisan pingwin:item-sales 5 --dry-run
 ```
 O que deve aparecer:
 - 14 linhas (2 lojas × 7 dias, de 01/10 a 07/10), todas "OK", sem "NÃO BATE" nem "VAZIO (protegido)";
@@ -120,14 +126,14 @@ O que deve aparecer:
 
 **3. Ligar o interruptor e gravar os 7 dias:**
 ```
-docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 on
-docker exec xplendor-worker php artisan pingwin:item-sales 5
+docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5 on
+docker compose run --rm --no-deps worker php artisan pingwin:item-sales 5
 ```
 Deve aparecer o mesmo resultado, a terminar com "Concluído: vendas por artigo gravadas."
 
 **4. Detetar o início de cada loja** (2 a 4 pedidos ao relatório anual, 20 s entre eles; cerca de 1 a 2 minutos):
 ```
-docker exec xplendor-worker php artisan pingwin:item-history 5 --detect-only
+docker compose run --rm --no-deps worker php artisan pingwin:item-history 5 --detect-only
 ```
 O que deve aparecer:
 - por loja, o primeiro mês com vendas e os acumulados de cada ano lido;
@@ -136,12 +142,12 @@ O que deve aparecer:
 
 Se aparecer "Deteção do início não fiável", nada foi gravado: repita com os postos de venda da captura (pergunta 1):
 ```
-docker exec xplendor-worker php artisan pingwin:item-history 5 --detect-only --redetect --locals=584955579139621602,62590524561075475,1649601157548,1649601157547,1649601156521,56161405118316322
+docker compose run --rm --no-deps worker php artisan pingwin:item-history 5 --detect-only --redetect --locals=584955579139621602,62590524561075475,1649601157548,1649601157547,1649601156521,56161405118316322
 ```
 
 **5. Importar o histórico completo:**
 ```
-docker exec xplendor-worker php artisan pingwin:item-history 5 --calls=40
+docker compose run --rm --no-deps worker php artisan pingwin:item-history 5 --calls=40
 ```
 - **Quantos pedidos:** com início em março, cerca de 30 blocos de 7 dias (com início em maio, cerca de 22).
 - **Quanto tempo:** cada pedido leva 5 a 15 s, mais 20 s de espaçamento, por isso conte com 15 a 20 minutos. Pode dividir (por exemplo `--calls=15` e repetir); o comando continua de onde parou.
@@ -151,13 +157,13 @@ docker exec xplendor-worker php artisan pingwin:item-history 5 --calls=40
   - "empty_protected" só em dias em que a loja esteve fechada;
   - no fim, "Histórico completo." e uma tabela por loja com o primeiro mês detetado, o primeiro dia com vendas, os dias lidos e "completo".
 
-**6. Catálogo completo** (1 a 2 minutos; até cerca de 5 se precisar de ler família a família):
+**6. Catálogo completo** (1 a 2 minutos, um pedido):
 ```
-docker exec xplendor-worker php artisan pingwin:catalog-complete 5
+docker compose run --rm --no-deps worker php artisan pingwin:catalog-complete 5
 ```
 O que deve aparecer:
 - as páginas lidas, com "parou por: página vazia" (ou "total anunciado") e mais de 1012 artigos;
-- se ainda faltarem artigos vendidos, a linha "Leitura família a família";
+- se houver vendidos que estão anulados no PingWin, a linha "Vendidos encontrados nos anulados (entram como anulados)" (na Yuko, os três Soalheiro, se forem de facto anulados);
 - no fim, "fora do catálogo depois: 0", "cobertura 100%" e "Catálogo completo."
 
 **7. Conferir no MariaDB de dev:**
@@ -181,6 +187,6 @@ FROM pingwin_locations l LEFT JOIN pingwin_item_sales_days d ON d.location_id = 
 
 **9. No fim:** decidir se o interruptor fica ligado em dev (o job das 05:00 do Mac continua sozinho, com o histórico e, ao domingo, o catálogo) ou se o desliga:
 ```
-docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 off
+docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5 off
 ```
 Em produção continua tudo desligado até decidir ligá-lo, empresa a empresa, depois de validado.

@@ -8,6 +8,7 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Services\Ai\AiProviderException;
 use App\Services\CollaboratorService;
+use App\Services\PingwinService;
 use App\Services\Restaurant\RestaurantDataQualityService;
 use App\Services\Restaurant\RestaurantFamilyCategoryService;
 use Illuminate\Http\Request;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\Log;
  *  · cartão "Dados para o marketing" nas Integrações (qualquer utilizador da empresa vê);
  *  · "Categorias das famílias": ver (qualquer utilizador), pedir sugestões à IA e
  *    confirmar (só quem configura integrações: administrador da empresa, administrador
- *    da agência gestora ou root). Nada fica confirmado sem uma pessoa.
+ *    da agência gestora ou root). Nada fica confirmado sem uma pessoa;
+ *  · postos de venda do relatório anual (início de cada loja): só o root.
  */
 class RestaurantMarketingDataController extends Controller
 {
@@ -34,9 +36,31 @@ class RestaurantMarketingDataController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
+        $isRoot = $this->isRoot($request);
+
         return ApiResponse::success($this->quality->card($companyId) + [
             'can_manage' => CollaboratorService::canConfigureIntegrations($request->user(), $companyId),
+            // Postos de venda do relatório anual: só o root os vê e edita.
+            'can_edit_locals' => $isRoot,
+            'annual_locals' => $isRoot ? app(PingwinService::class)->annualLocals($companyId) : null,
         ], 'Dados para o marketing.');
+    }
+
+    // PUT /companies/{id}/integrations/pingwin/annual-locals   Body: { locals: "id,id" | "" } (só root)
+    public function annualLocals(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompany($companyId) || ! $this->isRoot($request)) {
+            abort(403, 'Só o root define os postos de venda do relatório anual.');
+        }
+        $data = $request->validate([
+            'locals' => ['present', 'nullable', 'string', 'max:500', 'regex:/^\s*(\d{1,20}\s*(,\s*\d{1,20}\s*)*)?$/'],
+        ], ['locals.regex' => 'Indique os IDs dos postos de venda (só números), separados por vírgulas.']);
+
+        $locals = implode(',', array_filter(array_map('trim', explode(',', (string) ($data['locals'] ?? ''))), fn ($v) => $v !== ''));
+        app(PingwinService::class)->setAnnualLocals($companyId, $locals);
+        Log::info('[PingWin] postos de venda do relatório anual alterados', ['company_id' => $companyId, 'user_id' => $request->user()->id]);
+
+        return ApiResponse::success(['annual_locals' => $locals], $locals === '' ? 'Postos de venda limpos: o relatório anual soma todos.' : 'Postos de venda guardados.');
     }
 
     // GET /companies/{id}/integrations/pingwin/family-categories
@@ -81,6 +105,12 @@ class RestaurantMarketingDataController extends Controller
 
         return ApiResponse::success($this->categories->list($companyId) + ['can_manage' => true],
             $count === 1 ? 'Categoria confirmada.' : "{$count} categorias confirmadas.");
+    }
+
+    /** Regra da plataforma: os postos de venda do relatório anual são só do root. */
+    private function isRoot(Request $request): bool
+    {
+        return $request->user()->role === 'root';
     }
 
     private function assertCanManage(Request $request, int $companyId): void

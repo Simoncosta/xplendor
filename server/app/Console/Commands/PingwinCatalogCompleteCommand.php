@@ -11,12 +11,14 @@ use Illuminate\Console\Command;
 
 /**
  * XPLENDOR — F1-2, MANUAL: catálogo completo do PingWin (leitura que não para numa página
- * curta e, se faltarem artigos vendidos, família a família). Mostra o diagnóstico da
- * paginação e a cobertura dos artigos vendidos nos últimos 90 dias. Só leitura no
- * PingWin; exige o interruptor da empresa ligado.
+ * curta; os vendidos em falta procuram-se nos anulados, da mesma leitura). Mostra o
+ * diagnóstico da paginação e a cobertura dos artigos vendidos nos últimos 90 dias. Só
+ * leitura no PingWin; exige o interruptor da empresa ligado.
  *
- * ⚠️ Corre no worker (docker socket):
- *   docker exec xplendor-worker php artisan pingwin:catalog-complete 5
+ * ⚠️ Precisa do socket Docker (o invoke() faz `docker exec` ao scraper) e pode demorar:
+ * corre num contentor à parte do worker, que não reinicia de hora a hora como o
+ * xplendor-worker (queue:work --max-time=3600), a partir da raiz do repositório:
+ *   docker compose run --rm --no-deps worker php artisan pingwin:catalog-complete 5
  */
 class PingwinCatalogCompleteCommand extends Command
 {
@@ -58,9 +60,9 @@ class PingwinCatalogCompleteCommand extends Command
         foreach ($d['pages'] ?? [] as $p) {
             $this->line("  {$p['range']}: {$p['items']} itens ({$p['new']} novos)");
         }
-        if ($r['by_family']) {
-            $bf = $d['by_family'] ?? [];
-            $this->line('Leitura família a família: ' . ($bf['families'] ?? '?') . ' famílias, ' . ($bf['added'] ?? '?') . ' artigos acrescentados.');
+        if ($r['annulled_added'] > 0) {
+            $this->line("Vendidos encontrados nos anulados (entram como anulados): {$r['annulled_added']} ("
+                . implode(', ', $r['annulled_sample']) . ')');
         }
         $coverage = $r['sold'] > 0 ? round(($r['sold'] - $r['missing_after']) / $r['sold'] * 100, 1) : null;
         $this->line("Artigos vendidos (90 dias): {$r['sold']}; fora do catálogo depois: {$r['missing_after']}"

@@ -26,6 +26,7 @@ class TenancyArchitectureTest extends TestCase
         'CompanyManagementController.php' => 2, // o root também convida o primeiro admin
         'ImpersonationController.php' => 1,     // um root não é impersonado
         'PlanController.php' => 1,              // planos da plataforma
+        'RestaurantMarketingDataController.php' => 1, // postos de venda do relatório anual do PingWin (só o root)
         'SupportTicketController.php' => 1,     // mensagens da equipa da plataforma
         'UserController.php' => 1,              // marca do browser da equipa
     ];

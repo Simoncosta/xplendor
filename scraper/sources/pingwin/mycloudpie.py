@@ -1379,12 +1379,11 @@ class MyCloudPieClient:
     # F1-2: o catálogo da Yuko parou aos 1012 artigos (página de 1000 + página de 12),
     # deixando de fora todos os códigos seguintes por ordem de texto (F0 §7). A leitura
     # completa (fetch_catalog_complete) usa fetch_browserdataset_complete (não para numa
-    # página curta) e, se ainda faltarem artigos, lê família a família (by_family). Só é
-    # usada quando o Laravel a pede (catalog_complete, com o interruptor da empresa
-    # ligado); fetch_catalog e o helper antigo ficam iguais para o resto.
+    # página curta). Os vendidos que ainda faltem procuram-se nos anulados (a leitura que já
+    # existe). Só é usada quando o Laravel a pede (catalog_complete, com o interruptor da
+    # empresa ligado); fetch_catalog e o helper antigo ficam iguais para o resto.
     CATALOG_PAGE_SIZE = 500
     CATALOG_MAX_PAGES = 60
-    CATALOG_FAMILY_PAUSE_S = 2.0
 
     def fetch_browserdataset_complete(
         self,
@@ -1467,31 +1466,15 @@ class MyCloudPieClient:
         log.info(f"Catálogo: {len(items)} artigos")
         return items
 
-    def fetch_catalog_complete(self, dataset_id: str, by_family: bool = False) -> List[Dict[str, Any]]:
+    def fetch_catalog_complete(self, dataset_id: str) -> List[Dict[str, Any]]:
         """
-        Catálogo COMPLETO de artigos ativos (STATE:0) via browserdataset (porta 8136).
-        Com by_family, junta ainda a leitura de cada família (FAMILY_ID), para apanhar o
-        que a paginação geral não devolver. O diagnóstico fica em self.last_catalog_diag.
-        Requer login. READ-ONLY.
+        Catálogo COMPLETO de artigos ativos (STATE:0) via browserdataset (porta 8136), com a
+        leitura que não para numa página curta. O diagnóstico fica em self.last_catalog_diag.
+        Os artigos vendidos que ainda faltem procuram-se nos anulados
+        (fetch_catalog_deleted_ids_complete), do lado do Laravel. Requer login. READ-ONLY.
         """
         items, diag = self.fetch_browserdataset_complete(
             dataset_id, self._catalog_body("0"), self.CATALOG_PAGE_SIZE, self.CATALOG_MAX_PAGES)
-        diag["by_family"] = None
-        if by_family:
-            seen = {item_key(it) for it in items}
-            families = [f for f in self.fetch_families() if int(f.get("deleted") or 0) != 1 and f.get("id")]
-            added = 0
-            for i, fam in enumerate(families):
-                if i > 0:
-                    time.sleep(self.CATALOG_FAMILY_PAUSE_S)
-                fam_items, _ = self.fetch_browserdataset_complete(
-                    dataset_id, self._catalog_body("0", str(fam["id"])), self.CATALOG_PAGE_SIZE, self.CATALOG_MAX_PAGES)
-                for it in fam_items:
-                    if item_key(it) not in seen:
-                        seen.add(item_key(it))
-                        items.append(it)
-                        added += 1
-            diag["by_family"] = {"families": len(families), "added": added}
         self.last_catalog_diag = diag
         log.info(f"Catálogo: {len(items)} artigos")
         return items

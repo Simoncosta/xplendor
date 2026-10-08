@@ -26,7 +26,8 @@ use Illuminate\Validation\ValidationException;
  *  · relatório sem linhas num dia que tem (ou pode ter) vendas → não se apaga nada
  *    (o servidor GrupoPIE devolve vazios ao acaso); só se apaga com o líquido diário a 0;
  *  · a soma dos artigos é conferida com o líquido diário do Resumo de Vendas
- *    (tolerância de 1%); os dias que não batem ficam marcados para voltar a ler.
+ *    (tolerância de 1%); um dia que não bate relê primeiro o Resumo de Vendas desse dia e
+ *    só fica marcado se continuar a não bater.
  *
  * Só leituras no PingWin, em série, um pedido por bloco de até 7 dias, com espaçamento.
  * A sincronização automática só corre com o interruptor da empresa ligado.
@@ -179,10 +180,14 @@ class PingwinItemSalesService
         $now = now();
         $days = [];
         $families = [];
+        $reread = []; // dias cujo Resumo de Vendas já se releu nesta leitura
         foreach ($locations as $location) {
             // F1-2: antes do primeiro mês com vendas detetado, a loja não existia no
             // PingWin; esses dias não se leem nem se marcam.
             $firstMonth = $location->sales_first_month?->toDateString();
+            // Correção da sessão: antes do primeiro dia com vendas, um dia sem linhas é um
+            // dia sem vendas (não fica marcado para voltar a ler).
+            $firstSale = $location->sales_since?->toDateString();
             foreach (CarbonPeriod::create($from, $to) as $day) {
                 $date = $day->toDateString();
                 if ($firstMonth !== null && $date < $firstMonth) {
@@ -191,7 +196,19 @@ class PingwinItemSalesService
                 $items = $grouped[$location->id][$date] ?? [];
                 $daily = $dailyNet[$location->id][$date] ?? null;
                 $itemsNet = array_sum(array_column($items, 'net_cents'));
-                $status = $this->status($items, $itemsNet, $daily);
+                $status = $this->status($items, $itemsNet, $daily, $firstSale !== null && $date < $firstSale);
+
+                // Correção da sessão: antes de marcar um dia que não bate, relê-se o Resumo
+                // de Vendas desse dia (um pedido, para todas as lojas) e volta-se a conferir.
+                // Um resumo lido antes de o restaurante fechar fica curto (caso de 20/09).
+                $dailyReread = false;
+                if ($status === PingwinItemSalesDay::STATUS_MISMATCH && ! $dryRun && ! isset($reread[$date])) {
+                    $reread[$date] = true;
+                    $this->rereadDailyNet($companyId, $date, $locations, $dailyNet);
+                    $daily = $dailyNet[$location->id][$date] ?? null;
+                    $status = $this->status($items, $itemsNet, $daily, false);
+                    $dailyReread = true;
+                }
 
                 if (! $dryRun) {
                     DB::transaction(function () use ($companyId, $location, $date, $items, $status, $itemsNet, $daily, $now) {
@@ -225,6 +242,7 @@ class PingwinItemSalesService
                     'items_net_cents' => $itemsNet,
                     'daily_net_cents' => $daily,
                     'status' => $status,
+                    'daily_reread' => $dailyReread,
                 ];
             }
         }
@@ -232,12 +250,37 @@ class PingwinItemSalesService
         return ['days' => $days, 'ignored_stores' => array_values(array_unique($ignored)), 'families' => $families];
     }
 
+    /**
+     * Relê o Resumo de Vendas de um dia (o mesmo pedido do job das 05:00) e atualiza o
+     * líquido diário desse dia em $dailyNet. Uma falha não pára a leitura: o dia fica como
+     * estava (e marcado).
+     */
+    private function rereadDailyNet(int $companyId, string $date, $locations, array &$dailyNet): void
+    {
+        try {
+            Sleep::for(self::SPACING_SECONDS)->seconds();
+            $this->pingwin->sync($companyId, $date);
+        } catch (\Throwable $e) {
+            Log::warning('[PingWin Vendas por artigo] releitura do resumo falhou', ['company_id' => $companyId, 'date' => $date, 'error' => $e->getMessage()]);
+
+            return;
+        }
+        PingwinDailySale::where('company_id', $companyId)
+            ->whereIn('location_id', $locations->pluck('id'))
+            ->whereRaw('DATE(business_date) = ?', [$date])
+            ->get(['location_id', 'net_cents'])
+            ->each(function ($s) use (&$dailyNet, $date) {
+                $dailyNet[$s->location_id][$date] = (int) $s->net_cents;
+            });
+    }
+
     /** Estado de uma loja × dia (ver as constantes de PingwinItemSalesDay). */
-    private function status(array $items, int $itemsNet, ?int $daily): string
+    private function status(array $items, int $itemsNet, ?int $daily, bool $beforeFirstSale = false): string
     {
         if ($items === []) {
-            // Só um líquido diário a zero confirma que o dia não teve vendas.
-            return $daily === 0 ? PingwinItemSalesDay::STATUS_EMPTY : PingwinItemSalesDay::STATUS_EMPTY_PROTECTED;
+            // Só um líquido diário a zero (ou estar antes do primeiro dia com vendas da
+            // loja) confirma que o dia não teve vendas.
+            return ($daily === 0 || $beforeFirstSale) ? PingwinItemSalesDay::STATUS_EMPTY : PingwinItemSalesDay::STATUS_EMPTY_PROTECTED;
         }
         if ($daily === null) {
             return PingwinItemSalesDay::STATUS_UNVERIFIED;

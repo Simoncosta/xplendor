@@ -16,9 +16,11 @@ use Illuminate\Console\Command;
  * histórico das vendas por artigo em blocos de 7 dias, 20 s entre pedidos (só leitura
  * no PingWin). Exige o interruptor da empresa ligado.
  *
- * ⚠️ Corre no worker (docker socket):
- *   docker exec xplendor-worker php artisan pingwin:item-history 5 --detect-only
- *   docker exec xplendor-worker php artisan pingwin:item-history 5 --calls=40
+ * ⚠️ Precisa do socket Docker (o invoke() faz `docker exec` ao scraper) e pode demorar:
+ * corre num contentor à parte do worker, que não reinicia de hora a hora como o
+ * xplendor-worker (queue:work --max-time=3600), a partir da raiz do repositório:
+ *   docker compose run --rm --no-deps worker php artisan pingwin:item-history 5 --detect-only
+ *   docker compose run --rm --no-deps worker php artisan pingwin:item-history 5 --calls=40
  */
 class PingwinItemHistoryCommand extends Command
 {

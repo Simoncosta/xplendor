@@ -107,6 +107,12 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',
     ];
 
+    /** Só o root (a agência recebe sempre 403, mesmo os administradores). */
+    private const ROOT_ONLY = [
+        // Postos de venda do relatório anual do PingWin (início de cada loja).
+        'PUT api/v1/companies/{id}/integrations/pingwin/annual-locals',
+    ];
+
     /** Ligar, alterar e desligar integrações e credenciais: só os ADMINS da agência (um membro comum recebe 403). */
     private const AGENCY_ADMIN_ONLY = [
         'GET api/v1/companies/{id}/integrations/social/auth-url',
@@ -264,12 +270,12 @@ class AgencyTenancySweepTest extends TestCase
 
     public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
     {
-        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY]);
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY]);
     }
 
     public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
     {
-        $this->assertActiveMatrix($this->agencyAdmin, self::CLIENT_ONLY);
+        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY]);
     }
 
     /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */

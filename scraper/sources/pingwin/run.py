@@ -170,10 +170,9 @@ def run(cfg: dict) -> dict:
             if not dataset_id:
                 return {"ok": False, "error": "catalog_dataset_id em falta (definir PINGWIN_CATALOG_DATASET_ID)."}
             # F1-2: catalog_complete (só com o interruptor da empresa ligado) usa a leitura
-            # completa, que não para numa página curta; catalog_by_family junta a leitura
-            # família a família. Sem ele, a leitura é a de sempre.
+            # completa, que não para numa página curta. Sem ele, a leitura é a de sempre.
             if cfg.get("catalog_complete"):
-                articles = client.fetch_catalog_complete(dataset_id, by_family=bool(cfg.get("catalog_by_family")))
+                articles = client.fetch_catalog_complete(dataset_id)
             else:
                 articles = client.fetch_catalog(dataset_id)
             # Também os ANULADOS (STATE:1) → para marcar is_active=false no espelho.

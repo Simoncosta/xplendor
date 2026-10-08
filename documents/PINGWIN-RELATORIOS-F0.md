@@ -155,17 +155,17 @@ Hoje a integração faz 1 relatório por noite. Com a F1 passa a 2, e a 3 com a 
 
 ## 9. F1-1: primeira execução manual (dev, fora de serviço)
 
-A sincronização nova está atrás do interruptor `companies.pingwin_item_sales_enabled`, desligado por omissão. O job das 05:00 só lê as vendas por artigo nas empresas com o interruptor ligado. Os comandos correm no contentor `xplendor-worker` (é o que tem o socket do Docker).
+A sincronização nova está atrás do interruptor `companies.pingwin_item_sales_enabled`, desligado por omissão. O job das 05:00 só lê as vendas por artigo nas empresas com o interruptor ligado. Os comandos correm, a partir da raiz do repositório, num contentor à parte do serviço `worker` (`docker compose run --rm --no-deps worker …`): tem o socket do Docker e, ao contrário do `xplendor-worker`, não reinicia de hora a hora (`queue:work --max-time=3600`), que matava os comandos longos.
 
 1. Estado do interruptor (deve dizer "desligadas"):
-   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5`
+   `docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5`
 2. Simulação: lê e confere, não grava nada. Um só pedido ao PingWin, o mesmo período da captura h1b:
-   `docker exec xplendor-worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06 --dry-run`
+   `docker compose run --rm --no-deps worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06 --dry-run`
 3. Se a simulação estiver como abaixo, ligar o interruptor e gravar o mesmo período:
-   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 on`
-   `docker exec xplendor-worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06`
+   `docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5 on`
+   `docker compose run --rm --no-deps worker php artisan pingwin:item-sales 5 --from=2026-09-30 --to=2026-10-06`
 4. No fim da sessão, desligar, se não quiser que o job das 05:00 do Mac leia sozinho:
-   `docker exec xplendor-worker php artisan pingwin:item-sales-switch 5 off`
+   `docker compose run --rm --no-deps worker php artisan pingwin:item-sales-switch 5 off`
 
 O que deve aparecer na simulação:
 

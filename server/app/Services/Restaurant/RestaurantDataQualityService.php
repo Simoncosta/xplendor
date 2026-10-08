@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  *    preenchida, decisão 1) e aviso quando diferem mais de 7 dias; dias lidos; histórico;
  *  · conferência com o líquido diário nos últimos 90 dias;
  *  · cobertura do catálogo (artigos vendidos nos últimos 90 dias que estão no catálogo);
- *  · famílias com vendas por confirmar e o seu peso na faturação.
+ *  · famílias com vendas (todo o histórico) por confirmar e o seu peso na faturação.
  */
 class RestaurantDataQualityService
 {
@@ -43,7 +43,8 @@ class RestaurantDataQualityService
             $marked += (int) ($days[$status] ?? 0);
         }
 
-        $revenue = PingwinItemSale::where('company_id', $companyId)->where('business_date', '>=', $from)
+        // Famílias: todo o histórico (como a página "Categorias das famílias").
+        $revenue = PingwinItemSale::where('company_id', $companyId)
             ->whereNotNull('family_pingwin_id')
             ->select('family_pingwin_id', DB::raw('SUM(net_cents) as net'))->groupBy('family_pingwin_id')
             ->pluck('net', 'family_pingwin_id');

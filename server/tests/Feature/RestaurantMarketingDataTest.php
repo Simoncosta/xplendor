@@ -119,6 +119,9 @@ class RestaurantMarketingDataTest extends TestCase
             $this->assertSame($expected[$leaf], FamilyCategoryRules::suggest($path), $path);
         }
         $this->assertSame('entrega', FamilyCategoryRules::suggest('Família \\ Uber Eats \\ Bebidas'));
+        // Taxas e faturas da Uber não são vendas de produto: Excluir.
+        $this->assertSame('excluir', FamilyCategoryRules::suggest('Família \\ Uber Eats \\ Taxas'));
+        $this->assertSame('excluir', FamilyCategoryRules::suggest('Família \\ Uber Eats \\ Faturas'));
         $this->assertSame('excluir', FamilyCategoryRules::suggest('Família \\ Diversos \\ Staff Meal'));
         $this->assertNull(FamilyCategoryRules::suggest(''));
         $this->assertNull(FamilyCategoryRules::suggest('Família'));
@@ -209,6 +212,61 @@ class RestaurantMarketingDataTest extends TestCase
         $first = collect($data['families'])->firstWhere('family_pingwin_id', '10');
         $this->assertSame('pratos', $first['category']);
         $this->assertSame($this->admin->name, $first['confirmed_by']);
+    }
+
+    public function test_families_cover_the_whole_history_in_card_and_list(): void
+    {
+        $this->seedYukoSales();
+        // Uma família que só vendeu em maio (fora dos 90 dias).
+        PingwinItemSale::insert(['company_id' => $this->company->id, 'location_id' => $this->baixa->id, 'business_date' => '2026-05-10',
+            'product_pingwin_id' => 'P90', 'product_name' => 'Taxa de entrega', 'family_pingwin_id' => '90',
+            'family_path' => 'Família \\ Uber Eats \\ Taxas', 'quantity' => 1, 'net_cents' => 1500, 'tax_cents' => 0, 'gross_cents' => 1500]);
+
+        $list = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('family-categories'))->assertOk()->json('data');
+        $this->assertSame(24, $list['pending']);
+        $old = collect($list['families'])->firstWhere('family_pingwin_id', '90');
+        $this->assertFalse($old['recent']);
+        $this->assertSame('2026-05-10', $old['last_sale_date']);
+        $this->assertSame(1500, $old['net_cents_total']);
+        $this->assertSame('excluir', $old['suggested_category']);
+        $this->assertSame('90', collect($list['families'])->last()['family_pingwin_id']); // as antigas no fim
+        $this->assertTrue($list['families'][0]['recent']);
+
+        $card = $this->actingAs($this->admin, 'sanctum')->getJson($this->url('marketing-data'))->assertOk()->json('data');
+        $this->assertSame(24, $card['families']['total']);      // o mesmo número nos dois ecrãs
+        $this->assertSame(24, $card['families']['unconfirmed']);
+    }
+
+    // ── Postos de venda do relatório anual (só root) ───────────────────────────
+
+    public function test_only_root_sets_the_annual_locals_and_they_survive_a_reconnect(): void
+    {
+        $root = User::factory()->create(['company_id' => $this->other->id, 'role' => 'root']);
+        \App\Models\CompanyIntegration::create(['company_id' => $this->company->id, 'platform' => 'pingwin', 'status' => 'active',
+            'access_token' => 'x', 'config' => ['username' => 'u', 'database' => 'yuko']]);
+        $body = ['locals' => '584955579139621602, 62590524561075475'];
+
+        $this->actingAs($this->admin, 'sanctum')->putJson($this->url('annual-locals'), $body)->assertStatus(403);
+        $this->actingAs($this->user, 'sanctum')->putJson($this->url('annual-locals'), $body)->assertStatus(403);
+        $this->actingAs($root, 'sanctum')->putJson($this->url('annual-locals'), ['locals' => 'Yuko, Uber'])->assertStatus(422);
+        $this->actingAs($root, 'sanctum')->putJson($this->url('annual-locals'), $body)->assertOk()
+            ->assertJsonPath('data.annual_locals', '584955579139621602,62590524561075475');
+
+        $pingwin = app(\App\Services\PingwinService::class);
+        $this->assertSame('584955579139621602,62590524561075475', $pingwin->annualLocals($this->company->id));
+        // Só o root vê o valor no cartão.
+        $this->actingAs($root, 'sanctum')->getJson($this->url('marketing-data'))->assertJsonPath('data.can_edit_locals', true)
+            ->assertJsonPath('data.annual_locals', '584955579139621602,62590524561075475');
+        $this->actingAs($this->admin, 'sanctum')->getJson($this->url('marketing-data'))->assertJsonPath('data.can_edit_locals', false)
+            ->assertJsonPath('data.annual_locals', null);
+
+        // Voltar a ligar o PingWin (novas credenciais) não apaga os postos de venda.
+        $pingwin->saveCredentials($this->company->id, ['username' => 'novo', 'database' => 'yuko', 'annual_locals' => 'injetado'], 'senha');
+        $this->assertSame('584955579139621602,62590524561075475', $pingwin->annualLocals($this->company->id));
+
+        // Limpar: vazio = todos os postos de venda.
+        $this->actingAs($root, 'sanctum')->putJson($this->url('annual-locals'), ['locals' => ''])->assertOk();
+        $this->assertSame('', $pingwin->annualLocals($this->company->id));
     }
 
     // ── Dados para o marketing ─────────────────────────────────────────────────

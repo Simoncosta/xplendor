@@ -625,6 +625,8 @@ export const getFamilyCategories = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`);
 export const suggestFamilyCategories = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories/ai-suggest`, {});
+export const updateAnnualLocals = (companyId: number, locals: string) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/annual-locals`, { locals });
 export const confirmFamilyCategories = (companyId: number, items: { family_pingwin_id: string; category: string }[]) =>
     api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/family-categories`, { items });
 export const getPingwinFamilies = (companyId: number) =>

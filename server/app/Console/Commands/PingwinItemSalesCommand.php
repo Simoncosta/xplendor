@@ -14,9 +14,10 @@ use Illuminate\Console\Command;
  * leitura no PingWin). Com --dry-run lê e confere mas não grava nada; gravar exige o
  * interruptor da empresa ligado (pingwin:item-sales-switch).
  *
- * ⚠️ O invoke() faz `docker exec` ao container do scraper → este comando TEM de
- * correr no container QUE TEM o socket Docker (o worker):
- *   docker exec xplendor-worker php artisan pingwin:item-sales 5 --dry-run
+ * ⚠️ Precisa do socket Docker (o invoke() faz `docker exec` ao scraper) e pode demorar:
+ * corre num contentor à parte do worker, que não reinicia de hora a hora como o
+ * xplendor-worker (queue:work --max-time=3600), a partir da raiz do repositório:
+ *   docker compose run --rm --no-deps worker php artisan pingwin:item-sales 5 --dry-run
  */
 class PingwinItemSalesCommand extends Command
 {
@@ -78,7 +79,7 @@ class PingwinItemSalesCommand extends Command
                 self::eur($d['items_net_cents']),
                 $d['daily_net_cents'] === null ? '(sem resumo)' : self::eur($d['daily_net_cents']),
                 $d['daily_net_cents'] === null ? '' : self::eur($d['items_net_cents'] - $d['daily_net_cents']),
-                self::label($d['status']),
+                self::label($d['status']) . (($d['daily_reread'] ?? false) ? ' (resumo relido)' : ''),
             ], $result['days'])
         );
 
@@ -86,7 +87,7 @@ class PingwinItemSalesCommand extends Command
         if ($total > 0) {
             $this->line('Famílias com mais peso (sem IVA):');
             foreach (array_slice($result['families'], 0, 8, true) as $path => $cents) {
-                $this->line(sprintf('  %5.1f%%  %s', $cents / $total * 100, $path));
+                $this->line(sprintf('  %6s  %s', number_format($cents / $total * 100, 1, ',', ' ') . '%', $path));
             }
         }
         if ($result['ignored_stores'] !== []) {

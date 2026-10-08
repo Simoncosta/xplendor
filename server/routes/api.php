@@ -312,6 +312,7 @@ Route::prefix('v1')->group(function () {
                     Route::get('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'families']);
                     Route::post('/integrations/pingwin/family-categories/ai-suggest', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'suggest'])->middleware('throttle:10,1');
                     Route::put('/integrations/pingwin/family-categories', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'confirm']);
+                    Route::put('/integrations/pingwin/annual-locals', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'annualLocals']);
                     // Cadastro manual de lojas (desbloqueia o "Stores" do relatório).
                     Route::get('/integrations/pingwin/locations', [CompanyPingwinController::class, 'listLocations']);
                     Route::post('/integrations/pingwin/locations', [CompanyPingwinController::class, 'storeLocation']);

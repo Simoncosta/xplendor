@@ -58,6 +58,11 @@ class PingwinItemSalesTest extends TestCase
             {
                 return $this->test->fakeFetch($start, $end);
             }
+
+            public function sync(int $companyId, ?string $date = null): array
+            {
+                return $this->test->fakeSummary($companyId, (string) $date);
+            }
         });
     }
 
@@ -67,6 +72,25 @@ class PingwinItemSalesTest extends TestCase
         $this->calls[] = [$start, $end];
 
         return array_values(array_filter($this->pingwinRows, fn ($r) => $r['date'] >= $start && $r['date'] <= $end));
+    }
+
+    /** Releituras do Resumo de Vendas pedidas e o que cada uma traz (loja => líquido em cêntimos). */
+    public array $summaryCalls = [];
+    public array $summaryUpdates = [];
+    public bool $summaryFails = false;
+
+    /** Chamado pelo PingWin simulado na releitura do Resumo de Vendas de um dia. */
+    public function fakeSummary(int $companyId, string $date): array
+    {
+        $this->summaryCalls[] = $date;
+        if ($this->summaryFails) {
+            throw new \RuntimeException('servidor vazio');
+        }
+        foreach ($this->summaryUpdates[$date] ?? [] as $locationId => $cents) {
+            PingwinDailySale::updateOrCreate(['location_id' => $locationId, 'business_date' => $date], ['company_id' => $companyId, 'net_cents' => $cents]);
+        }
+
+        return ['ok' => true];
     }
 
     private function row(string $store, string $date, string $product, float $net, array $extra = []): array
@@ -208,8 +232,57 @@ class PingwinItemSalesTest extends TestCase
         $this->assertSame(PingwinItemSalesDay::STATUS_OK, $this->dayStatus($this->baixa, '2026-09-30'));
         $this->assertSame(PingwinItemSalesDay::STATUS_MISMATCH, $this->dayStatus($this->baixa, '2026-10-01'));
         $this->assertSame(PingwinItemSalesDay::STATUS_UNVERIFIED, $this->dayStatus($this->baixa, '2026-10-02'));
+        // Antes de marcar, releu-se o Resumo de Vendas desse dia (uma vez); continuou a não bater.
+        $this->assertSame(['2026-10-01'], $this->summaryCalls);
         // Mesmo sem bater, o espelho guarda o que o PingWin tem (o dia fica marcado).
         $this->assertSame(1, PingwinItemSale::where('location_id', $this->baixa->id)->where('business_date', '2026-10-01')->count());
+    }
+
+    public function test_mismatch_rereads_the_daily_summary_once_and_rechecks(): void
+    {
+        // O resumo foi lido antes de o restaurante fechar (caso de 20/09): faltam 107,86 €.
+        $this->dailyNet($this->baixa, '2026-09-20', 474783);
+        $this->dailyNet($this->costa, '2026-09-20', 100000);
+        $this->pingwinRows = [
+            $this->row('1099845342604', '2026-09-20', '1', 4855.69),
+            $this->row('584955579139649880', '2026-09-20', '2', 1200.00), // também não bate
+        ];
+        $this->summaryUpdates['2026-09-20'] = [$this->baixa->id => 485569, $this->costa->id => 120000];
+
+        $result = $this->service()->sync($this->company->id, '2026-09-20', '2026-09-20');
+
+        $this->assertSame(['2026-09-20'], $this->summaryCalls); // um só pedido para as duas lojas
+        $this->assertSame(PingwinItemSalesDay::STATUS_OK, $this->dayStatus($this->baixa, '2026-09-20'));
+        $this->assertSame(PingwinItemSalesDay::STATUS_OK, $this->dayStatus($this->costa, '2026-09-20'));
+        $this->assertSame(485569, PingwinItemSalesDay::where('location_id', $this->baixa->id)->value('daily_net_cents'));
+        $this->assertTrue(collect($result['days'])->firstWhere('location_id', $this->baixa->id)['daily_reread']);
+        Sleep::assertSleptTimes(1); // 20 s antes da releitura
+    }
+
+    public function test_mismatch_stays_marked_when_the_reread_fails_and_dry_run_never_rereads(): void
+    {
+        $this->dailyNet($this->baixa, '2026-09-20', 474783);
+        $this->pingwinRows = [$this->row('1099845342604', '2026-09-20', '1', 4855.69)];
+
+        $dry = $this->service()->sync($this->company->id, '2026-09-20', '2026-09-20', true);
+        $this->assertSame('mismatch', $dry['days'][0]['status']);
+        $this->assertSame([], $this->summaryCalls);
+
+        $this->summaryFails = true;
+        $this->service()->sync($this->company->id, '2026-09-20', '2026-09-20');
+        $this->assertSame(['2026-09-20'], $this->summaryCalls);
+        $this->assertSame(PingwinItemSalesDay::STATUS_MISMATCH, $this->dayStatus($this->baixa, '2026-09-20'));
+    }
+
+    public function test_empty_day_before_the_first_sale_is_a_day_without_sales(): void
+    {
+        $this->baixa->forceFill(['sales_first_month' => '2026-03-01', 'sales_since' => '2026-03-13'])->save();
+
+        $this->service()->sync($this->company->id, '2026-03-10', '2026-03-14');
+
+        $this->assertSame(PingwinItemSalesDay::STATUS_EMPTY, $this->dayStatus($this->baixa, '2026-03-12'));
+        $this->assertSame(PingwinItemSalesDay::STATUS_EMPTY_PROTECTED, $this->dayStatus($this->baixa, '2026-03-13'));
+        $this->assertSame(PingwinItemSalesDay::STATUS_EMPTY_PROTECTED, $this->dayStatus($this->baixa, '2026-03-14'));
     }
 
     public function test_unknown_stores_out_of_range_days_and_repeated_keys(): void

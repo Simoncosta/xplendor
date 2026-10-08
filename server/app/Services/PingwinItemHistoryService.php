@@ -9,6 +9,7 @@ use App\Models\PingwinDailySale;
 use App\Models\PingwinItemSale;
 use App\Models\PingwinItemSalesDay;
 use App\Models\PingwinLocation;
+use App\Services\Restaurant\FamilyCategoryRules;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -19,8 +20,9 @@ use Illuminate\Support\Sleep;
  *    mês com vendas; o dia exato é o primeiro dia com vendas, no fim do histórico;
  *  · histórico: recua em blocos de 7 dias desde o dia mais antigo já espelhado até ao
  *    primeiro mês com vendas, até 10 pedidos por noite, 20 s entre eles;
- *  · releitura dos dias marcados (não batem ou vazios protegidos), até 3 leituras;
- *  · catálogo completo: leitura completa e, se faltarem artigos vendidos, família a família.
+ *  · releitura dos dias marcados (não batem ou vazios protegidos), até 3 leituras; os dias
+ *    antes do primeiro dia com vendas de cada loja não ficam marcados;
+ *  · catálogo completo: leitura completa; os vendidos em falta procuram-se nos anulados.
  *
  * Só leituras no PingWin, em série. Quem chama verifica o interruptor da empresa.
  */
@@ -68,6 +70,9 @@ class PingwinItemHistoryService
             ->when(! $force, fn ($q) => $q->whereNull('sales_start_checked_at'))
             ->orderBy('id')->get();
 
+        // Postos de venda: os indicados no comando, senão os da configuração da integração
+        // (definidos pelo root); vazio = sem filtro (soma todos, confirmado na sessão real).
+        $locals = $locals !== '' ? $locals : $this->pingwin->annualLocals($companyId);
         $out = [];
         foreach ($locations as $location) {
             $year = (int) CarbonImmutable::now('Europe/Lisbon')->year;
@@ -177,6 +182,7 @@ class PingwinItemHistoryService
                     'sales_since' => $since ? substr((string) $since, 0, 10) : null,
                 ])->save();
             }
+            $this->settlePreStartDays($companyId);
         }
         Log::info('[PingWin Histórico] noite', [
             'company_id' => $companyId, 'pedidos' => $calls, 'chegou_a' => $cursor->toDateString(),
@@ -194,6 +200,7 @@ class PingwinItemHistoryService
      */
     public function rereadMarked(int $companyId, int $budget): array
     {
+        $this->settlePreStartDays($companyId);
         if ($budget <= 0) {
             return ['calls' => 0, 'blocks' => []];
         }
@@ -232,37 +239,69 @@ class PingwinItemHistoryService
         return ['calls' => $calls, 'blocks' => $blocks];
     }
 
+    /**
+     * Os dias vazios antes do primeiro dia com vendas de cada loja são dias sem vendas: saem
+     * de "vazio protegido" para "sem vendas" e não voltam a ler-se. Devolve quantos mudaram.
+     */
+    public function settlePreStartDays(int $companyId): int
+    {
+        $changed = 0;
+        $locations = PingwinLocation::where('company_id', $companyId)->whereNotNull('sales_since')->get();
+        foreach ($locations as $location) {
+            $changed += PingwinItemSalesDay::where('location_id', $location->id)
+                ->where('business_date', '<', $location->sales_since->toDateString())
+                ->where('status', PingwinItemSalesDay::STATUS_EMPTY_PROTECTED)
+                ->update(['status' => PingwinItemSalesDay::STATUS_EMPTY]);
+        }
+
+        return $changed;
+    }
+
     // ── Catálogo completo ──────────────────────────────────────────────────────
 
     /**
-     * Catálogo completo: leitura completa; se ainda faltarem artigos vendidos nos últimos
-     * 90 dias, nova leitura família a família. Devolve a cobertura antes e depois.
+     * Catálogo completo: a leitura completa (um pedido, que traz também os anulados). Os
+     * artigos vendidos nos últimos 90 dias que não estão entre os ativos procuram-se nos
+     * anulados: os que lá estiverem entram no espelho como anulados (is_active = false),
+     * com o nome, o código e a família das vendas, e contam como cobertos. Sem leitura
+     * família a família.
      */
     public function syncCatalogComplete(int $companyId): array
     {
+        $missingBefore = self::missingSoldProductIds($companyId);
         $this->pause();
         $count = $this->pingwin->syncCatalog($companyId, true);
         $this->callsMade++;
         $diagnostics = $this->pingwin->lastCatalogDiagnostics;
-        $missing = self::missingSoldProductIds($companyId);
-        $byFamily = false;
 
-        if ($missing !== []) {
-            $byFamily = true;
-            $this->pause();
-            $count = $this->pingwin->syncCatalog($companyId, true, true);
-            $this->callsMade++;
-            $diagnostics = $this->pingwin->lastCatalogDiagnostics;
+        $deleted = array_flip($this->pingwin->lastCatalogDeletedIds);
+        $annulled = array_values(array_filter(self::missingSoldProductIds($companyId), fn ($id) => isset($deleted[$id])));
+        $now = now();
+        foreach ($annulled as $productId) {
+            $last = PingwinItemSale::where('company_id', $companyId)->where('product_pingwin_id', $productId)
+                ->orderByDesc('business_date')->first();
+            PingwinCatalogItem::updateOrCreate(
+                ['company_id' => $companyId, 'pingwin_id' => $productId],
+                [
+                    'code' => $last?->product_code,
+                    'description' => $last?->product_name,
+                    'family' => $last?->family_path ? FamilyCategoryRules::leaf($last->family_path) : null,
+                    'family_pingwin_id' => $last?->family_pingwin_id,
+                    'is_active' => false, // anulado no PingWin
+                    'synced_at' => $now,
+                ],
+            );
         }
         $missingAfter = self::missingSoldProductIds($companyId);
         $sold = self::soldProductIds($companyId);
 
         $result = [
             'count' => $count,
-            'by_family' => $byFamily,
             'diagnostics' => $diagnostics,
             'sold' => count($sold),
-            'missing_before' => count($missing),
+            'missing_before' => count($missingBefore),
+            'annulled_added' => count($annulled),
+            'annulled_sample' => array_slice($annulled, 0, 10),
             'missing_after' => count($missingAfter),
             'missing_sample' => array_slice($missingAfter, 0, 10),
         ];

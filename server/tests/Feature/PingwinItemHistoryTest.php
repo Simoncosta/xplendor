@@ -43,9 +43,9 @@ class PingwinItemHistoryTest extends TestCase
     public array $pingwinRows = [];
     /** [store][year] => 12 acumulados. */
     public array $years = [];
-    /** IDs que a leitura geral do catálogo devolve, e os que só a leitura por família devolve. */
+    /** IDs dos artigos ativos e dos anulados que a leitura do catálogo devolve. */
     public array $catalogPlain = [];
-    public array $catalogByFamily = [];
+    public array $catalogDeleted = [];
 
     protected function setUp(): void
     {
@@ -81,17 +81,16 @@ class PingwinItemHistoryTest extends TestCase
                 return $this->t->years[$storeId][$year] ?? array_fill(0, 12, 0.0);
             }
 
-            public function syncCatalog(int $companyId, bool $complete = false, bool $byFamily = false): int
+            public function syncCatalog(int $companyId, bool $complete = false): int
             {
-                $this->t->calls[] = ['catalog', $complete, $byFamily];
-                $ids = $byFamily ? [...$this->t->catalogPlain, ...$this->t->catalogByFamily] : $this->t->catalogPlain;
-                foreach ($ids as $id) {
+                $this->t->calls[] = ['catalog', $complete];
+                foreach ($this->t->catalogPlain as $id) {
                     PingwinCatalogItem::updateOrCreate(['company_id' => $companyId, 'pingwin_id' => (string) $id], ['description' => "Artigo {$id}", 'is_active' => true]);
                 }
-                $this->lastCatalogDiagnostics = ['pages' => [], 'announced_total' => null, 'stopped' => 'página vazia', 'collected' => count($ids),
-                    'by_family' => $byFamily ? ['families' => 2, 'added' => count($this->t->catalogByFamily)] : null];
+                $this->lastCatalogDiagnostics = ['pages' => [], 'announced_total' => null, 'stopped' => 'página vazia', 'collected' => count($this->t->catalogPlain)];
+                $this->lastCatalogDeletedIds = $this->t->catalogDeleted;
 
-                return count($ids);
+                return count($this->t->catalogPlain);
             }
         });
     }
@@ -167,6 +166,19 @@ class PingwinItemHistoryTest extends TestCase
         $this->assertNull($this->costa->fresh()->sales_start_checked_at);
     }
 
+    public function test_detection_uses_the_locals_from_the_integration_config_unless_given(): void
+    {
+        CompanyIntegration::create(['company_id' => $this->company->id, 'platform' => 'pingwin', 'status' => 'active', 'access_token' => 'x',
+            'config' => ['username' => 'u', 'database' => 'd', 'annual_locals' => '584955579139621602,1649601157547']]);
+
+        $this->history()->detectStarts($this->company->id);
+        $this->assertSame('584955579139621602,1649601157547', $this->calls[0][3]);
+
+        $this->calls = [];
+        $this->history()->detectStarts($this->company->id, '11,22', true); // o comando sobrepõe-se
+        $this->assertSame('11,22', $this->calls[0][3]);
+    }
+
     public function test_passes_explicit_locals_and_store_without_sales_has_no_start(): void
     {
         $this->history()->detectStarts($this->company->id, '11,22');
@@ -206,6 +218,11 @@ class PingwinItemHistoryTest extends TestCase
         $this->assertNotNull($this->costa->fresh()->history_complete_at);
         // A Costa Cabral não tem dias marcados antes do seu primeiro mês (20/09).
         $this->assertSame(0, PingwinItemSalesDay::where('location_id', $this->costa->id)->where('business_date', '<', '2026-09-20')->count());
+        // E os dias antes do primeiro dia com vendas (20/09 na Costa, 01/09 e 02/09 na Baixa)
+        // ficam como "sem vendas", não como vazios protegidos para voltar a ler.
+        $this->assertSame('empty', PingwinItemSalesDay::where('location_id', $this->costa->id)->where('business_date', '2026-09-20')->value('status'));
+        $this->assertSame(['empty', 'empty'], PingwinItemSalesDay::where('location_id', $this->baixa->id)->whereIn('business_date', ['2026-09-01', '2026-09-02'])->orderBy('business_date')->pluck('status')->all());
+        $this->assertSame('empty_protected', PingwinItemSalesDay::where('location_id', $this->baixa->id)->where('business_date', '2026-09-04')->value('status'));
         $this->assertSame(36, PingwinItemSalesDay::where('location_id', $this->baixa->id)->count()); // 01/09 a 06/10
     }
 
@@ -254,31 +271,52 @@ class PingwinItemHistoryTest extends TestCase
         $this->assertSame(3, PingwinItemSalesDay::where('location_id', $this->costa->id)->where('business_date', '2026-09-12')->value('reads_count'));
     }
 
+    public function test_days_before_the_first_sale_are_not_reread(): void
+    {
+        $this->baixa->forceFill(['sales_first_month' => '2026-03-01', 'sales_since' => '2026-03-13', 'history_complete_at' => now()])->save();
+        foreach (['2026-03-05', '2026-03-12', '2026-03-15'] as $d) {
+            PingwinItemSalesDay::create(['company_id' => $this->company->id, 'location_id' => $this->baixa->id, 'business_date' => $d,
+                'status' => 'empty_protected', 'reads_count' => 1, 'synced_at' => '2026-10-01 05:00:00']);
+        }
+
+        $result = $this->history()->rereadMarked($this->company->id, 5);
+
+        $this->assertSame([['item_sales', '2026-03-15', '2026-03-21']], $this->calls); // só o dia depois da primeira venda
+        $this->assertSame(1, $result['calls']);
+        $this->assertSame(['empty', 'empty'], PingwinItemSalesDay::where('location_id', $this->baixa->id)->whereIn('business_date', ['2026-03-05', '2026-03-12'])->pluck('status')->all());
+    }
+
     // ── Catálogo completo ──────────────────────────────────────────────────────
 
-    public function test_catalog_reads_by_family_only_when_sold_articles_are_missing(): void
+    public function test_sold_articles_missing_are_looked_up_in_the_annulled_ones(): void
     {
+        $sale = fn (string $id, string $date, string $name) => ['company_id' => $this->company->id, 'location_id' => $this->baixa->id,
+            'business_date' => $date, 'product_pingwin_id' => $id, 'product_code' => "C{$id}", 'product_name' => $name,
+            'family_pingwin_id' => '7', 'family_path' => 'Família \\ Bebidas \\ Vinho Branco', 'net_cents' => 100, 'quantity' => 1];
         PingwinItemSale::insert([
-            ['company_id' => $this->company->id, 'location_id' => $this->baixa->id, 'business_date' => '2026-09-01', 'product_pingwin_id' => '1', 'net_cents' => 100, 'quantity' => 1],
-            ['company_id' => $this->company->id, 'location_id' => $this->baixa->id, 'business_date' => '2026-09-01', 'product_pingwin_id' => '225', 'net_cents' => 1500, 'quantity' => 1],
-            ['company_id' => $this->company->id, 'location_id' => $this->baixa->id, 'business_date' => '2026-05-01', 'product_pingwin_id' => '999', 'net_cents' => 100, 'quantity' => 1], // fora dos 90 dias
+            $sale('1', '2026-09-01', 'Cerveja'),
+            $sale('56161405156018077', '2026-08-17', 'Soalheiro'),   // anulado no PingWin
+            $sale('777', '2026-09-02', 'Desconhecido'),              // nem ativo nem anulado
+            $sale('999', '2026-05-01', 'Antigo'),                    // fora dos 90 dias
         ]);
         $this->catalogPlain = ['1', '100'];
-        $this->catalogByFamily = ['225'];
+        $this->catalogDeleted = ['56161405156018077', '888'];
 
         $r = $this->history()->syncCatalogComplete($this->company->id);
 
-        $this->assertSame([['catalog', true, false], ['catalog', true, true]], $this->calls);
-        $this->assertTrue($r['by_family']);
-        $this->assertSame(2, $r['sold']);
-        $this->assertSame(1, $r['missing_before']);
-        $this->assertSame(0, $r['missing_after']);
-
-        // Com o catálogo já completo, uma só leitura.
-        $this->calls = [];
-        $this->catalogPlain = ['1', '100', '225'];
-        $this->history()->syncCatalogComplete($this->company->id);
-        $this->assertSame([['catalog', true, false]], $this->calls);
+        $this->assertSame([['catalog', true]], $this->calls); // um só pedido, sem leitura por família
+        $this->assertSame(3, $r['sold']);
+        $this->assertSame(3, $r['missing_before']);
+        $this->assertSame(1, $r['annulled_added']);
+        $this->assertSame(1, $r['missing_after']);
+        $this->assertSame(['777'], $r['missing_sample']);
+        $item = PingwinCatalogItem::where('pingwin_id', '56161405156018077')->first();
+        $this->assertFalse((bool) $item->is_active); // entra como anulado
+        $this->assertSame('Soalheiro', $item->description);
+        $this->assertSame('C56161405156018077', $item->code);
+        $this->assertSame('Vinho Branco', $item->family);
+        $this->assertNull(PingwinCatalogItem::where('pingwin_id', '888')->first()); // anulados não vendidos não entram
+        $this->assertSame(['777'], PingwinItemHistoryService::missingSoldProductIds($this->company->id));
     }
 
     // ── Job das 05:00 ──────────────────────────────────────────────────────────
@@ -306,7 +344,7 @@ class PingwinItemHistoryTest extends TestCase
         $this->assertSame([['item_sales', '2026-09-27', '2026-10-03'], ['item_sales', '2026-09-20', '2026-09-26'],
             ['item_sales', '2026-09-13', '2026-09-19'], ['item_sales', '2026-09-06', '2026-09-12'], ['item_sales', '2026-09-01', '2026-09-05']],
             $this->callsOf('item_sales'));
-        $this->assertSame([['catalog', true, false]], $this->callsOf('catalog'));
+        $this->assertSame([['catalog', true]], $this->callsOf('catalog'));
         $this->assertNotNull($this->baixa->fresh()->history_complete_at);
         // F1-3: o retrato da qualidade dos dados fica atualizado na mesma noite.
         $this->assertSame(1, \App\Models\RestaurantDataQuality::where('company_id', $this->company->id)->count());

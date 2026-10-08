@@ -1,12 +1,12 @@
 """
-XPLENDOR — F1-2: catálogo completo (fetch_browserdataset_complete + by_family) e o
+XPLENDOR — F1-2: catálogo completo (fetch_browserdataset_complete) e o
 acumulado mensal de uma loja (fetch_store_year), sem rede (sessões falsas).
 
 Prova que:
   · a leitura completa do catálogo NÃO para numa página curta (o caso da Yuko: 1000 + 12 e o
     resto a seguir) e para numa página vazia;
   · para quando o servidor ignora o Range (só repetidos) ou no total do Content-Range;
-  · by_family junta os artigos que a paginação geral não devolveu, sem repetir;
+  · a leitura família a família deixou de existir (os vendidos em falta procuram-se nos anulados);
   · o relatório anual vai com uma loja, o ano e GROUPBY 1, e lê a linha Acumulado.
 """
 import base64
@@ -134,16 +134,13 @@ def test_stops_at_announced_total():
     assert len(s.posts) == 3  # sem pedir uma página vazia a mais
 
 
-def test_by_family_adds_missing_articles_without_repeating():
-    # A paginação geral só devolve 0-1011 (como na Yuko); as famílias trazem o resto.
-    s = CatalogSession(total=1012, families={"F1": list(range(1000, 1100)), "F2": list(range(1100, 1340))})
+def test_complete_reader_no_longer_reads_family_by_family():
+    s = CatalogSession(total=1012, families={"F1": list(range(1000, 1100))})
     c = _client(s)
-    items = c.fetch_catalog_complete("DS", by_family=True)
-    ids = [it["id"] for it in items]
-    assert len(ids) == len(set(ids)) == 1340
-    assert c.last_catalog_diag["by_family"] == {"families": 2, "added": 328}
-    # A família anulada (999) não é lida.
-    assert all((b.get("params") or {}).get("FAMILY_ID") != "999" for _, b in s.posts)
+    items = c.fetch_catalog_complete("DS")
+    assert len(items) == 1012
+    assert all(not (b.get("params") or {}).get("FAMILY_ID") for _, b in s.posts)
+    assert "by_family" not in c.last_catalog_diag
 
 
 def test_old_catalog_reader_is_unchanged():
@@ -173,12 +170,18 @@ class AnnualSession:
     def __init__(self, rows):
         self.rows = rows
         self.posts = []
+        self.urls = []
         self.headers = {}
 
     def mount(self, *_):
         pass
 
+    def get(self, url, *args, **kwargs):
+        self.urls.append(("GET", url))
+        raise AssertionError("o relatório anual não faz GET")
+
     def post(self, url, *args, **kwargs):
+        self.urls.append(("POST", url))
         self.posts.append(kwargs.get("json"))
         text = json.dumps({"dados": {"label": "Analise", "info": {}, "data": self.rows}})
         rd = base64.b64encode(text.encode("utf-8")).decode("ascii")
@@ -219,3 +222,10 @@ def test_store_year_without_rows_is_a_year_without_sales():
 def test_store_year_without_accumulated_row_fails():
     with pytest.raises(RuntimeError, match="Acumulado"):
         _client(AnnualSession([{"band_0\\idx": 0, "band_1\\group_description": "Artigo"}])).fetch_store_year("R", "1", 2026)
+
+
+def test_store_year_never_calls_the_params_listing():
+    # A chamada /service/report/<ID>/params devolve clientes e funcionários com nomes: nunca.
+    s = AnnualSession([ACUMULADO])
+    _client(s).fetch_store_year("1093764095994", "1", 2026, "11,22")
+    assert s.urls == [("POST", "https://api.example/service/report/*/report")]
