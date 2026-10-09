@@ -226,6 +226,7 @@ const Navdata = () => {
                 { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario" },
                 { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos" },
                 { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas" },
+                { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente" },
             ],
         },
         // ── Cadastros — base/registos da restauração. (Nome distinto de "Configurações".)

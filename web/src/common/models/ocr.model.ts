@@ -1,9 +1,13 @@
 // XPLENDOR — OCR de faturas de fornecedor (Fase A). Valores em EUROS na API
 // (a BD guarda cêntimos). NÃO escreve no PingWin (synced_to_pingwin=false).
 
-export type OcrInvoiceStatus = "processing" | "por_validar" | "validada" | "erro";
+export type OcrInvoiceStatus = "processing" | "por_validar" | "validada" | "erro" | "nao_desta_empresa";
+// F2a: origem das linhas e conferência pelo QR da AT.
+export type OcrSource = "qr+texto" | "qr+imagem" | "sem_qr" | "qr";
+export type OcrCheckStatus = "confere" | "nao_confere" | "sem_qr";
 
 export interface OcrInvoiceLine {
+    supplier_code: string | null; // código do artigo na fatura do fornecedor
     item: string | null;
     quantity: number | null;
     unit: string | null;
@@ -44,8 +48,31 @@ export interface OcrInvoiceDetail {
     number: string | null;
     issue_date: string | null;
     lines_total: number;          // soma das linhas calculada pela Xplendor (referência)
+    // F2a — QR primeiro + conferência
+    buyer_nif: string | null;
+    atcud: string | null;
+    doc_type: string | null;
+    qr_ok: boolean | null;        // null = fatura anterior ao F2a
+    source: OcrSource | null;
+    lines_source: "texto" | "imagem" | null;
+    pages: number | null;
+    attempts: number | null;
+    tokens_in: number | null;
+    tokens_out: number | null;
+    cost_usd: number | null;
+    duration_ms: number | null;
+    check_status: OcrCheckStatus | null;
+    check_diff: OcrCheckDiffRow[];
     lines: OcrInvoiceLine[];
     summary: OcrInvoiceSummary | null;
+}
+
+export interface OcrCheckDiffRow {
+    rate: number | null; // null = linhas sem taxa
+    qr: number;          // base do QR (euros)
+    lines: number;       // soma das linhas (euros)
+    diff: number;        // linhas − QR
+    ok: boolean;
 }
 
 export interface OcrInvoiceListRow {
@@ -56,6 +83,8 @@ export interface OcrInvoiceListRow {
     issue_date: string | null;
     status: OcrInvoiceStatus;
     confidence: number;
+    source: OcrSource | null;
+    check_status: OcrCheckStatus | null;
     total: number | null;
     created_at: string | null;
 }

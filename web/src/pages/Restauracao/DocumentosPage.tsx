@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Card, Container, Row, Col, Spinner, Label, Input, Button, FormGroup,
-    Modal, ModalHeader, ModalBody, ModalFooter, Nav, NavItem, NavLink, TabContent, TabPane, Badge,
+    Modal, ModalHeader, ModalBody, ModalFooter, Nav, NavItem, NavLink, TabContent, TabPane, Badge, UncontrolledTooltip,
 } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -33,10 +33,11 @@ const DOC_SELECTS: { opt: string; field: string; label: string }[] = [
     { opt: "productgroup", field: "productgroup_id", label: "Grupo de produto" },
     { opt: "report", field: "report_id", label: "Template de impressão" },
 ];
-// D1 — flags booleanos editáveis (0/1).
+// D1 — flags booleanos editáveis (0/1). ⚠️ "settled" ("Pago" no PingWin) SAIU daqui na S2:
+// é ele que a Conta Corrente usa para separar os documentos auto-pagos (Saldo real), por
+// isso fica SÓ DE LEITURA (PagoReadOnly) até haver uma fatia própria para o editar.
 const DOC_FLAGS: { field: string; label: string }[] = [
     { field: "pending_qnt", label: "Qtd. pendente" },
-    { field: "settled", label: "Liquidado" },
     { field: "allowfifo", label: "Permite FIFO" },
     { field: "islocal", label: "É local" },
     { field: "notvalued", label: "Não valorizado" },
@@ -49,6 +50,19 @@ const DOC_FLAGS: { field: string; label: string }[] = [
     { field: "required_docsource", label: "Origem obrigatória" },
     { field: "account_use_totalpaid", label: "Usa total pago" },
 ];
+/** "Pago" (maindataset.settled) — só leitura nesta fase; nunca vai na escrita. */
+function PagoReadOnly({ value, idSuffix }: { value: any; idSuffix: string }) {
+    const on = value === 1 || value === "1" || value === true;
+    const id = `pago-ro-${idSuffix}`;
+    return (
+        <div id={id} className="form-check mb-1" style={{ cursor: "not-allowed" }}>
+            <Input type="checkbox" className="form-check-input" id={`${id}-input`} checked={on} disabled readOnly />
+            <Label check for={`${id}-input`} className="fs-13 text-muted">Pago</Label>
+            <UncontrolledTooltip target={id}>Editável numa fase futura</UncontrolledTooltip>
+        </div>
+    );
+}
+
 const DOC_EDITABLE_FIELDS = ["description", "shortname", "number_copies",
     ...DOC_SELECTS.map((s) => s.field), ...DOC_FLAGS.map((f) => f.field)];
 
@@ -713,6 +727,7 @@ export default function DocumentosPage() {
                                                     <Field label="Cond. pagamento (default)" value={r.default_paycond_id_descr || detailDoc.default_paycond_id || "—"} />
                                                     <Field label="Nº de cópias" value={r.number_copies} />
                                                     <Field label="Estado" value={detailDoc.deleted ? "Inativo (anulado)" : "Ativo"} />
+                                                    <Col md={4} className="mb-2"><PagoReadOnly value={r.settled} idSuffix="view" /></Col>
                                                 </Row>
                                             ); })()}
                                             <div className="text-muted fs-12 mt-2">maindataset: {Object.keys(detailDoc.raw || {}).length} campos · snapshot de options: {Object.keys(detailDoc.options || {}).length} selects.</div>
@@ -767,6 +782,7 @@ export default function DocumentosPage() {
                                                         </FormGroup>
                                                     </Col>
                                                 ))}
+                                                <Col md={4}><PagoReadOnly value={detailDoc?.raw?.settled} idSuffix="edit" /></Col>
                                             </Row>
                                         </>
                                     )}

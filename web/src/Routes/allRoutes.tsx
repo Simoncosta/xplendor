@@ -20,6 +20,8 @@ import FaturasPage from "pages/Restauracao/FaturasPage";
 import FaturaValidacaoPage from "pages/Restauracao/FaturaValidacaoPage";
 import UnidadesPage from "pages/Restauracao/UnidadesPage";
 import CondicoesPagamentoPage from "pages/Restauracao/CondicoesPagamentoPage";
+import ContaCorrenteFornecedoresPage from "pages/Restauracao/ContaCorrenteFornecedoresPage";
+import ContaCorrenteFornecedorPage from "pages/Restauracao/ContaCorrenteFornecedorPage";
 
 // login
 import ForgetPasswordPage from "../pages/Authentication/ForgetPassword";
@@ -163,6 +165,8 @@ const authProtectedRoutes = [
     { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },
     { path: "/restauracao/unidades", component: <RequireModule module="restauracao_unidades"><UnidadesPage /></RequireModule> },
     { path: "/restauracao/condicoes-pagamento", component: <RequireModule module="restauracao_condicoes_pagamento"><CondicoesPagamentoPage /></RequireModule> },
+    { path: "/restauracao/conta-corrente", component: <RequireModule module="restauracao_conta_corrente"><ContaCorrenteFornecedoresPage /></RequireModule> },
+    { path: "/restauracao/conta-corrente/:supplierId", component: <RequireModule module="restauracao_conta_corrente"><ContaCorrenteFornecedorPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },

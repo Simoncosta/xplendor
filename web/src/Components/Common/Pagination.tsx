@@ -10,6 +10,8 @@ interface XPaginationProps {
     from: number;
     to: number;
     onPageChange: (page: number) => void;
+    /** Classes do bloco (por omissão "mb-4", como sempre; dentro de um cartão usa-se "mb-0"). */
+    className?: string;
 }
 
 const Pagination = ({
@@ -20,6 +22,7 @@ const Pagination = ({
     from,
     to,
     onPageChange,
+    className = "mb-4",
 }: XPaginationProps) => {
     const handleClick = (page: number) => {
         if (page < 1 || page > lastPage || page === currentPage) return;
@@ -54,7 +57,7 @@ const Pagination = ({
     }
 
     return (
-        <Row className="g-0 text-center text-sm-start align-items-center mb-4">
+        <Row className={`g-0 text-center text-sm-start align-items-center ${className}`} data-testid="pagination">
             <div className="col-sm-6">
                 <div>
                     <p className="mb-sm-0 text-muted">

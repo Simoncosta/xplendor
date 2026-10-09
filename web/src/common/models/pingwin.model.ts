@@ -202,6 +202,35 @@ export interface PingwinSupplier {
     email: string | null;
     is_active: boolean;
     synced_at: string | null;
+    // FN — campos do formulário que só vêm da releitura viva (após uma escrita).
+    country_pingwin_id?: string | null;
+    paycond_pingwin_id?: string | null;
+    obs?: string | null;
+}
+
+/** FN — formulário de criar/editar fornecedor (chaves do PingWin). */
+export interface PingwinSupplierForm {
+    description: string;
+    fiscalname: string;
+    tax_number: string;
+    paycond_id: string;
+    address: string;
+    postalcode: string;
+    postalcode_description: string;
+    country_id: string;
+    obs: string;
+}
+
+/** FN — estado de uma escrita de fornecedor (polling). */
+export interface PingwinSupplierWriteState {
+    write_id: number;
+    action: "criar" | "editar" | "anular";
+    status: "pendente" | "ok" | "erro" | "duplicado";
+    error_message: string | null;
+    supplier_id: number | null;
+    pingwin_id: string | null;
+    existing: { id?: string; code?: string; name?: string; tax_number?: string }[] | null;
+    finished_at: string | null;
 }
 
 /** Unidade PingWin (base de conversão), só leitura. A conversão vem pronta a ler. */

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Card, CardBody, Container, Row, Col, Spinner, Label, Alert } from "reactstrap";
+import { Button, Card, CardBody, Container, Row, Col, Spinner, Label, Alert, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import PageHeader, { Crumb } from "Components/Common/PageHeader";
-import { getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob } from "helpers/laravel_helper";
+import { getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice } from "helpers/laravel_helper";
 import { OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
@@ -14,14 +14,18 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * a IA leu (linhas + sumário) EDITÁVEL, com a imagem ao lado para conferir, e
  * avisa quando os totais não fecham (não bloqueia — o utilizador decide). Ao
  * guardar, valida NA XPLENDOR. ⚠️ NÃO escreve no PingWin.
+ *
+ * F2a: com QR da AT o cabeçalho (NIFs, nº, data, ATCUD) vem do QR — só leitura — e as
+ * linhas são conferidas por taxa de IVA contra as bases do QR. "Reprocessar" volta a ler
+ * (async, mesmo polling).
  */
 
-const VAT_OPTS = [6, 13, 23].map((v) => ({ value: v, label: `${v}%` }));
+const VAT_OPTS = [0, 6, 13, 23].map((v) => ({ value: v, label: v === 0 ? "Isento" : `${v}%` }));
 const num = (v: any): number | null => (v === "" || v === null || v === undefined || isNaN(Number(v)) ? null : Number(v));
 const eur = (n?: number | null) => (n ?? 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
 const approx = (a: number, b: number) => Math.abs(a - b) <= Math.max(0.05, Math.abs(b) * 0.01);
 
-const emptyLine = (): OcrInvoiceLine => ({ item: "", quantity: null, unit: "", unit_price: null, discount_pct: null, line_total: null, vat_rate: null });
+const emptyLine = (): OcrInvoiceLine => ({ supplier_code: "", item: "", quantity: null, unit: "", unit_price: null, discount_pct: null, line_total: null, vat_rate: null });
 const emptySummary = (): OcrInvoiceSummary => ({ goods_total: 0, commercial_discount: 0, taxable_base: 0, vat_total: 0, withholding: 0, financial_discount: 0, total: 0, vat_breakdown: [] });
 
 export default function FaturaValidacaoPage() {
@@ -38,6 +42,8 @@ export default function FaturaValidacaoPage() {
     const [saving, setSaving] = useState(false);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [imageIsPdf, setImageIsPdf] = useState(false);
+    const [confirmReprocess, setConfirmReprocess] = useState(false);
+    const [reprocessing, setReprocessing] = useState(false);
 
     // Estado editável
     const [supplierId, setSupplierId] = useState<number | null>(null);
@@ -114,10 +120,12 @@ export default function FaturaValidacaoPage() {
     const linesSum = useMemo(() => lines.reduce((a, l) => a + (l.line_total ?? 0), 0), [lines]);
     const round2 = (n: number) => Math.round(n * 100) / 100;
 
-    // Avisos de coerência (não bloqueiam).
+    // Avisos de coerência (não bloqueiam). Com QR a conferência por taxa (abaixo) substitui
+    // o aviso "linhas vs base".
+    const hasQr = !!inv?.qr_ok;
     const warnings = useMemo(() => {
         const w: string[] = [];
-        if (lines.length > 0 && !approx(linesSum, summary.taxable_base))
+        if (!hasQr && lines.length > 0 && !approx(linesSum, summary.taxable_base))
             w.push(`As linhas somam ${eur(linesSum)}, mas o sumário da IA diz base tributável ${eur(summary.taxable_base)}. Confira.`);
         if (!approx(summary.goods_total - summary.commercial_discount, summary.taxable_base))
             w.push(`Mercadorias − desconto comercial (${eur(summary.goods_total - summary.commercial_discount)}) ≠ base tributável (${eur(summary.taxable_base)}).`);
@@ -125,7 +133,21 @@ export default function FaturaValidacaoPage() {
         if (!approx(chain, summary.total))
             w.push(`Base + IVA − retenção − desc. financeiro (${eur(chain)}) ≠ total (${eur(summary.total)}).`);
         return w;
-    }, [lines.length, linesSum, summary]);
+    }, [hasQr, lines.length, linesSum, summary]);
+
+    // Reprocessar (async): a fatura volta a 'processing' e o polling acima faz o resto.
+    const reprocess = async () => {
+        setReprocessing(true);
+        try {
+            await reprocessOcrInvoice(companyId, invoiceId);
+            setConfirmReprocess(false);
+            setInv((prev) => (prev ? { ...prev, status: "processing" } : prev));
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível reprocessar a fatura.");
+        } finally {
+            setReprocessing(false);
+        }
+    };
 
     const save = async () => {
         setSaving(true);
@@ -134,7 +156,7 @@ export default function FaturaValidacaoPage() {
                 supplier_id: supplierId, supplier_name: supplierName || null, supplier_nif: supplierNif || null,
                 number: number || null, issue_date: issueDate || null,
                 lines: lines.map((l) => ({
-                    item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
+                    supplier_code: l.supplier_code || null, item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
                     unit_price: num(l.unit_price), discount_pct: num(l.discount_pct), line_total: num(l.line_total), vat_rate: l.vat_rate ?? null,
                 })),
                 summary: {
@@ -173,6 +195,21 @@ export default function FaturaValidacaoPage() {
         );
     }
 
+    const reprocessModal = (
+        <Modal isOpen={confirmReprocess} toggle={() => !reprocessing && setConfirmReprocess(false)} centered>
+            <ModalHeader toggle={() => !reprocessing && setConfirmReprocess(false)}>Reprocessar a fatura?</ModalHeader>
+            <ModalBody>
+                A fatura volta a ser lida (QR e linhas). O que está neste ecrã e ainda não foi guardado é substituído pela nova leitura.
+            </ModalBody>
+            <ModalFooter>
+                <Button color="light" onClick={() => setConfirmReprocess(false)} disabled={reprocessing}>Cancelar</Button>
+                <Button color="primary" onClick={reprocess} disabled={reprocessing}>
+                    {reprocessing ? <><Spinner size="sm" className="me-1" /> A pedir…</> : <><i className="ri-refresh-line me-1" />Reprocessar</>}
+                </Button>
+            </ModalFooter>
+        </Modal>
+    );
+
     if (inv?.status === "erro") {
         return (
             <div className="page-content"><ToastContainer /><Container fluid>
@@ -180,11 +217,33 @@ export default function FaturaValidacaoPage() {
                 <Alert color="danger" className="mt-3">
                     <h5 className="alert-heading">Não foi possível ler a fatura</h5>
                     <p className="mb-2">{inv.error_message || "Erro ao processar. Tente enviar uma imagem mais nítida."}</p>
+                    <div className="d-flex gap-2">
+                        <Button size="sm" color="primary" onClick={() => setConfirmReprocess(true)}><i className="ri-refresh-line me-1" />Reprocessar</Button>
+                        <Button size="sm" color="outline-primary" onClick={() => navigate("/restauracao/faturas")}>Voltar às faturas</Button>
+                    </div>
+                </Alert>
+                {reprocessModal}
+            </Container></div>
+        );
+    }
+
+    if (inv?.status === "nao_desta_empresa") {
+        return (
+            <div className="page-content"><ToastContainer /><Container fluid>
+                <PageHeader title={pageTitle} breadcrumbs={crumbs} crumbLabel="Validar" />
+                <Alert color="secondary" className="mt-3">
+                    <h5 className="alert-heading"><i className="ri-qr-code-line me-1" />Esta fatura não é desta empresa</h5>
+                    <p className="mb-2">{inv.error_message}</p>
+                    <p className="mb-2 fs-13 text-muted">Lido do QR (sem IA): emitente {inv.supplier_nif ?? "—"} · adquirente {inv.buyer_nif ?? "—"} · {inv.doc_type ?? ""} {inv.number ?? ""} · {inv.issue_date ?? ""} · ATCUD {inv.atcud ?? "—"}</p>
                     <Button size="sm" color="primary" onClick={() => navigate("/restauracao/faturas")}>Voltar às faturas</Button>
                 </Alert>
             </Container></div>
         );
     }
+
+    // Campos do QR: só leitura, com tooltip "lido do QR".
+    const qrLocked = hasQr ? { readOnly: true, title: "lido do QR", className: "form-control form-control-sm bg-light" } : {};
+    const qrMark = hasQr ? <i className="ri-qr-code-line ms-1 text-success" title="lido do QR" aria-label="lido do QR" /> : null;
 
     const numInput = (value: number | null, onChange: (v: number | null) => void, extra: any = {}) => (
         <input type="number" step="0.01" className="form-control form-control-sm text-end"
@@ -201,11 +260,26 @@ export default function FaturaValidacaoPage() {
                     breadcrumbs={crumbs}
                     description={<>
                         <span className="badge bg-info-subtle text-info me-2"><i className="ri-robot-2-line me-1" />Lido por IA: verifique os dados</span>
+                        {inv?.qr_ok !== null && inv?.qr_ok !== undefined && (
+                            inv.qr_ok
+                                ? <span className="badge bg-success-subtle text-success me-2" title="Cabeçalho e totais lidos do QR da AT, sem IA"><i className="ri-qr-code-line me-1" />QR ✓</span>
+                                : <span className="badge bg-warning-subtle text-warning me-2" title="Sem QR legível: o cabeçalho foi lido pela IA"><i className="ri-qr-code-line me-1" />QR ✗</span>
+                        )}
+                        {inv?.lines_source && (
+                            <span className="badge bg-light text-body me-2">
+                                <i className={`${inv.lines_source === "texto" ? "ri-file-text-line" : "ri-image-line"} me-1`} />
+                                Linhas {inv.lines_source === "texto" ? "do texto do PDF" : "da imagem"}
+                            </span>
+                        )}
                         {inv?.confidence ? `${inv.confidence}% confiança` : ""}
                         {inv?.model ? ` · ${inv.model}` : ""}
+                        {inv?.attempts && inv.attempts > 1 ? ` · ${inv.attempts} tentativas` : ""}
                     </>}
                     actions={<>
                         <Button color="outline-primary" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</Button>
+                        {inv?.status !== "validada" && (
+                            <Button color="outline-secondary" onClick={() => setConfirmReprocess(true)} disabled={saving}><i className="ri-refresh-line me-1" />Reprocessar</Button>
+                        )}
                         <Button color="primary" onClick={save} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-check-double-line me-1" /> Validar e guardar</>}
                         </Button>
@@ -220,6 +294,32 @@ export default function FaturaValidacaoPage() {
                         <strong><i className="ri-error-warning-line me-1" />Os totais não fecham:</strong>
                         <ul className="mb-0 mt-1">{warnings.map((w, i) => <li key={i} className="fs-13">{w}</li>)}</ul>
                     </Alert>
+                )}
+
+                {inv?.check_status === "confere" && (
+                    <Alert color="success" className="py-2"><i className="ri-checkbox-circle-line me-1" /><strong>Confere com o QR:</strong> a soma das linhas por taxa de IVA bate com as bases do QR da AT.</Alert>
+                )}
+                {inv?.check_status === "nao_confere" && (
+                    <Alert color="warning" className="py-2">
+                        <strong><i className="ri-error-warning-line me-1" />As linhas não conferem com o QR</strong>
+                        <span className="fs-13"> — verifique as linhas contra a imagem (falta, sobra ou valor mal lido).</span>
+                        <table className="table table-sm table-borderless mb-0 mt-1 fs-13" style={{ maxWidth: 520 }}>
+                            <thead><tr className="text-muted"><th>Taxa</th><th className="text-end">Base no QR</th><th className="text-end">Soma das linhas</th><th className="text-end">Diferença</th></tr></thead>
+                            <tbody>
+                                {inv.check_diff.map((r, i) => (
+                                    <tr key={i} className={r.ok ? "text-muted" : "fw-semibold"}>
+                                        <td>{r.rate === null ? "Sem taxa" : r.rate === 0 ? "Isento" : `${r.rate}%`}</td>
+                                        <td className="text-end">{eur(r.qr)}</td>
+                                        <td className="text-end">{eur(r.lines)}</td>
+                                        <td className="text-end">{r.ok ? "✓" : `${r.diff > 0 ? "+" : ""}${eur(r.diff)}`}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </Alert>
+                )}
+                {inv?.check_status === "sem_qr" && (
+                    <Alert color="info" className="py-2"><i className="ri-qr-code-line me-1" />Sem QR legível: o cabeçalho foi lido pela IA e não há conferência automática. Confira com a imagem.</Alert>
                 )}
 
                 <Row className="g-3">
@@ -238,9 +338,13 @@ export default function FaturaValidacaoPage() {
                                             placeholder="Escolher fornecedor…" />
                                     </Col>
                                     <Col md={6}><Label className="fs-12 text-muted mb-1">Nome (lido)</Label><input className="form-control form-control-sm" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">NIF</Label><input className="form-control form-control-sm" value={supplierNif} onChange={(e) => setSupplierNif(e.target.value)} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Nº fatura</Label><input className="form-control form-control-sm" value={number} onChange={(e) => setNumber(e.target.value)} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Data emissão</Label><input type="date" className="form-control form-control-sm" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></Col>
+                                    <Col md={6}><Label className="fs-12 text-muted mb-1">NIF{qrMark}</Label><input className="form-control form-control-sm" value={supplierNif} onChange={(e) => setSupplierNif(e.target.value)} {...qrLocked} /></Col>
+                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Nº fatura{qrMark}</Label><input className="form-control form-control-sm" value={number} onChange={(e) => setNumber(e.target.value)} {...qrLocked} /></Col>
+                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Data emissão{qrMark}</Label><input type="date" className="form-control form-control-sm" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} {...qrLocked} /></Col>
+                                    {(inv?.buyer_nif || inv?.atcud) && <>
+                                        <Col md={6}><Label className="fs-12 text-muted mb-1">NIF adquirente{qrMark}</Label><input className="form-control form-control-sm bg-light" value={inv?.buyer_nif ?? ""} readOnly title="lido do QR" /></Col>
+                                        <Col md={6}><Label className="fs-12 text-muted mb-1">ATCUD{qrMark}</Label><input className="form-control form-control-sm bg-light" value={inv?.atcud ?? ""} readOnly title="lido do QR" /></Col>
+                                    </>}
                                 </Row>
                             </CardBody>
                         </Card>
@@ -251,24 +355,25 @@ export default function FaturaValidacaoPage() {
                                 <Button size="sm" color="outline-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</Button>
                             </div>
                             <div className="table-responsive">
-                                <table className="table table-bordered align-middle mb-0" style={{ minWidth: 720 }}>
+                                <table className="table table-bordered align-middle mb-0" style={{ minWidth: 940 }}>
                                     <thead className="text-muted table-light">
                                         <tr>
-                                            <th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th>IVA</th><th></th>
+                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th>IVA</th><th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {lines.length === 0 ? (
-                                            <tr><td colSpan={8} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
+                                            <tr><td colSpan={9} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
                                         ) : lines.map((l, i) => (
                                             <tr key={i}>
+                                                <td style={{ width: 110 }}><input className="form-control form-control-sm" value={l.supplier_code ?? ""} onChange={(e) => setLine(i, { supplier_code: e.target.value })} aria-label={`Código do fornecedor, linha ${i + 1}`} /></td>
                                                 <td><input className="form-control form-control-sm" value={l.item ?? ""} onChange={(e) => setLine(i, { item: e.target.value })} /></td>
                                                 <td style={{ width: 80 }}>{numInput(l.quantity, (v) => setLine(i, { quantity: v }))}</td>
                                                 <td style={{ width: 70 }}><input className="form-control form-control-sm" value={l.unit ?? ""} onChange={(e) => setLine(i, { unit: e.target.value })} /></td>
                                                 <td style={{ width: 100 }}>{numInput(l.unit_price, (v) => setLine(i, { unit_price: v }))}</td>
                                                 <td style={{ width: 80 }}>{numInput(l.discount_pct, (v) => setLine(i, { discount_pct: v }))}</td>
                                                 <td style={{ width: 100 }}>{numInput(l.line_total, (v) => setLine(i, { line_total: v }))}</td>
-                                                <td style={{ width: 90 }}>
+                                                <td style={{ width: 120, minWidth: 120 }}>
                                                     <Select styles={reactSelectTheme} menuPortalTarget={document.body} isClearable
                                                         options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === l.vat_rate) ?? null}
                                                         onChange={(o: any) => setLine(i, { vat_rate: o?.value ?? null })} placeholder="Taxa" aria-label="Taxa de IVA" />
@@ -348,6 +453,7 @@ export default function FaturaValidacaoPage() {
                         </Card>
                     </Col>
                 </Row>
+                {reprocessModal}
             </Container>
         </div>
     );

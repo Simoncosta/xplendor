@@ -681,6 +681,15 @@ export const getPingwinSuppliers = (
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, params);
 export const syncPingwinSuppliers = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/sync`, {});
+// FN — ⚠️ ESCRITA de fornecedores no PingWin (assíncrona: devolve write_id → polling).
+export const createPingwinSupplier = (companyId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers`, data);
+export const updatePingwinSupplier = (companyId: number, supplierId: number, data: Record<string, any>) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/${supplierId}`, data);
+export const voidPingwinSupplier = (companyId: number, supplierId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/${supplierId}`);
+export const getPingwinSupplierWrite = (companyId: number, writeId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/suppliers/writes/${writeId}`);
 // Condições de Pagamento PingWin (Fatia 1, só leitura): lista paginada + sincronizar.
 export const getPingwinPaymentConditions = (
     companyId: number,
@@ -715,6 +724,17 @@ export const getOcrInvoices = (
     companyId: number,
     params?: { page?: number; perPage?: number; status?: string }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, params);
+// S2 — Conta Corrente de Fornecedor (só leitura no PingWin). Valores em cêntimos.
+export const getSupplierCcOverview = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc`);
+export const getSupplierCc = (companyId: number, supplierId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}`);
+export const getSupplierCcStatement = (companyId: number, supplierId: number, params: { from?: string; to?: string; store?: string }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/statement`, params);
+export const refreshSupplierCc = (companyId: number, supplierId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/refresh`, {});
+export const getSupplierCcStatus = (companyId: number, supplierId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-cc/${supplierId}/status`);
 // F1 — Documentos de fornecedor do PingWin (só leitura): lista, sync por período (async) e estado do run.
 export const getPingwinSupplierDocuments = (
     companyId: number,
@@ -733,6 +753,9 @@ export const getOcrInvoice = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
 export const updateOcrInvoice = (companyId: number, invoiceId: number, data: Record<string, any>) =>
     api.update(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`, data);
+// F2a: reprocessar (async — volta a 'processing'; a página faz polling como no upload).
+export const reprocessOcrInvoice = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, {});
 // A imagem está num disco privado (atrás de auth) → buscar como blob (o axios põe o token).
 export const getOcrInvoiceImageBlob = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/image`, { responseType: "blob" } as any);

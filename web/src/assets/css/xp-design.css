@@ -37,3 +37,48 @@
 .logo-light-img { display: none; }
 [data-bs-theme="dark"] .logo-dark-img { display: none; }
 [data-bs-theme="dark"] .logo-light-img { display: inline; }
+
+/* ── (i): explicação curta ao lado de um título (InfoTip) ─────────────────────────── */
+.xp-infotip { border: 0; background: transparent; padding: 0 2px; line-height: 1; color: var(--vz-secondary-color); font-size: 1rem; cursor: help; border-radius: 50%; flex-shrink: 0; }
+.xp-infotip:hover, .xp-infotip[aria-expanded="true"] { color: var(--vz-primary); }
+.xp-infotip:focus-visible { outline: 2px solid var(--vz-primary); outline-offset: 1px; }
+.xp-infotip-text { max-width: 320px; text-align: left; font-size: 0.8125rem; }
+.xp-page-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+/* ── PageCard: título, (i) e estado à esquerda; ações à direita ───────────────────── */
+.xp-card-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+.xp-card-heading { flex: 1 1 260px; min-width: 0; }
+.xp-card-status { margin-top: 2px; font-size: 0.75rem; color: var(--vz-secondary-color); }
+.xp-card-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-left: auto; }
+@media (max-width: 575.98px) {
+    .xp-card-actions { width: 100%; justify-content: flex-start; margin-left: 0; }
+}
+
+/* ── DataTable ────────────────────────────────────────────────────────────────── */
+.xp-dt-sort { border: 0; background: transparent; padding: 0; color: inherit; font-weight: inherit; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.xp-dt-sort i { font-size: 0.85rem; opacity: 0.45; }
+.xp-dt-sort.on i, .xp-dt-sort:hover i { opacity: 1; color: var(--vz-primary); }
+.xp-dt-sort:focus-visible { outline: 2px solid var(--vz-primary); outline-offset: 2px; border-radius: 2px; }
+.xp-dt-empty { text-align: center; color: var(--vz-secondary-color); padding: 2rem 1rem; }
+.xp-dt-footer { padding: 0.75rem 1rem; border-top: 1px solid var(--vz-border-color); }
+.xp-dt-card { border: 1px solid var(--vz-border-color); border-radius: 12px; padding: 12px 14px; background: var(--vz-card-bg, var(--vz-secondary-bg)); }
+.xp-dt-card[role="button"] { cursor: pointer; }
+.xp-dt-pairs { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 0.8125rem; }
+.xp-dt-pairs dt { font-weight: 500; color: var(--vz-secondary-color); }
+.xp-dt-pairs dd { margin: 0; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+
+/* ── Impressão das tabelas (generaliza a da Conta Corrente) ──────────────────────── */
+@media print {
+    @page { size: A4; margin: 12mm; }
+    #page-topbar, .app-menu, .navbar-menu, .Toastify, .xp-no-print, .xp-infotip, .xplndor-cookie-banner, a[aria-label="Suporte"] { display: none !important; }
+    html, body, #layout-wrapper, .main-content, .page-content { background: #fff !important; }
+    .main-content { margin-left: 0 !important; }
+    .page-content { padding: 0 !important; }
+    .xp-page-card { border: 0 !important; box-shadow: none !important; }
+    .xp-dt .table-responsive { overflow: visible !important; }
+    .xp-dt table { font-size: 10px; }
+    .xp-dt thead { display: table-header-group; }
+    .xp-dt tr { break-inside: avoid; }
+    .xp-dt .badge { border: 1px solid #999; }
+}
+.xp-dt td.xp-col-wrap, .xp-dt th.xp-col-wrap { min-width: 180px; max-width: 280px; white-space: normal; }

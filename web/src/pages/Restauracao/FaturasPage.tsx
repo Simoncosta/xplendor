@@ -1,25 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Container, Row, Col, Spinner, Nav, NavItem, NavLink } from "reactstrap";
+import { Button, Container, Row, Col, Spinner, Nav, NavItem, NavLink, Label } from "reactstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import classnames from "classnames";
 import { toast, ToastContainer } from "react-toastify";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import Pagination from "Components/Common/Pagination";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import XSelect from "Components/Common/Select";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
 import { OcrInvoiceListRow, OcrInvoiceStatus } from "common/models/ocr.model";
-import { LaravelPaginator } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
 
 /**
- * XPLENDOR — Restauração › Faturas (OCR, Fase A). Carrega uma fatura de fornecedor
- * (imagem/PDF) → a IA lê (fila) → o utilizador VALIDA no ecrã de detalhe. ⚠️ NÃO
- * escreve no PingWin. Só módulo pingwin. Enquanto houver faturas "a processar",
- * a lista faz polling leve.
+ * XPLENDOR — Restauração › Faturas (OCR). Carrega uma fatura de fornecedor (imagem/PDF) → a IA
+ * lê (fila) → o utilizador VALIDA no ecrã de detalhe. ⚠️ NÃO escreve no PingWin. Só módulo
+ * pingwin. Enquanto houver faturas "a processar", a lista faz polling leve.
  *
- * F1: separador "Documentos PingWin" — documentos de fornecedor lançados no PingWin
- * (só leitura). O separador ativo fica no URL (?tab=pingwin).
+ * F1: separador "Documentos PingWin" — documentos de fornecedor lançados no PingWin (só
+ * leitura). O separador ativo fica no URL (?tab=pingwin).
+ *
+ * UI-1: cada separador é um PageCard (ações e estado no cabeçalho) com um DataTable. A lista
+ * lê todas as faturas (poucas por mês) e a tabela ordena, pesquisa e pagina no browser.
  */
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("pt-PT") : "—");
@@ -30,13 +33,49 @@ const STATUS: Record<OcrInvoiceStatus, { label: string; cls: string }> = {
     por_validar: { label: "Por validar", cls: "bg-warning-subtle text-warning" },
     validada: { label: "Validada", cls: "bg-success-subtle text-success" },
     erro: { label: "Erro", cls: "bg-danger-subtle text-danger" },
+    nao_desta_empresa: { label: "Não é desta empresa", cls: "bg-secondary-subtle text-secondary" },
 };
 
-const PER_PAGE = 20;
+/** Tipos de documento do QR da AT (campo D). */
+const DOC_TYPES: Record<string, string> = {
+    FT: "Fatura", FS: "Fatura simplificada", FR: "Fatura-recibo", NC: "Nota de crédito", ND: "Nota de débito",
+    VD: "Venda a dinheiro", GT: "Guia de transporte", GR: "Guia de remessa", RC: "Recibo",
+};
+
+/** A lista ainda não traz o tipo (só o detalhe): fica preparada para quando o trouxer. */
+type InvoiceRow = OcrInvoiceListRow & { doc_type?: string | null };
+
+const SOURCE: Record<string, string> = { "qr+texto": "QR e texto do PDF", "qr+imagem": "QR e imagem", sem_qr: "Sem QR (só IA)", qr: "QR" };
+
+const NOT_LINKED = "Aparece quando a fatura estiver ligada ao documento do PingWin.";
+
+function StatusBadge({ s }: { s: OcrInvoiceStatus }) {
+    const st = STATUS[s] ?? { label: s, cls: "bg-secondary-subtle text-secondary" };
+    return (
+        <span className={`badge ${st.cls}`}>
+            {s === "processing" && <Spinner size="sm" style={{ width: 10, height: 10 }} className="me-1" />}
+            {st.label}
+        </span>
+    );
+}
+
+function QrCheck({ r }: { r: InvoiceRow }) {
+    if (r.check_status === "confere") return <span className="badge bg-success-subtle text-success" title="As linhas batem com o QR da fatura"><i className="ri-check-line me-1" />Confere</span>;
+    if (r.check_status === "nao_confere") return <span className="badge bg-warning-subtle text-warning" title="As linhas não batem com o QR da fatura: veja no detalhe"><i className="ri-error-warning-line me-1" />Diferença</span>;
+    if (r.check_status === "sem_qr") return <span className="text-muted" title="A fatura não tem QR legível">Sem QR</span>;
+    return <span className="text-muted">—</span>;
+}
+
+type StatusFilter = "" | OcrInvoiceStatus;
+const statusOptions: { value: StatusFilter; label: string }[] = [
+    { value: "", label: "Todos" },
+    ...(Object.keys(STATUS) as OcrInvoiceStatus[]).map((k) => ({ value: k as StatusFilter, label: STATUS[k].label })),
+];
+
+const API_PER_PAGE = 100;
 
 export default function FaturasPage() {
     document.title = "Faturas | Restauração | Xplendor";
-    const isMobile = useIsMobile();
     const navigate = useNavigate();
     const fileRef = useRef<HTMLInputElement>(null);
 
@@ -45,38 +84,41 @@ export default function FaturasPage() {
     const tab: "ocr" | "pingwin" = searchParams.get("tab") === "pingwin" ? "pingwin" : "ocr";
     const setTab = (t: "ocr" | "pingwin") => setSearchParams(t === "ocr" ? {} : { tab: t }, { replace: true });
 
-    const [page, setPage] = useState(1);
-    const [meta, setMeta] = useState<Omit<LaravelPaginator<OcrInvoiceListRow>, "data"> | null>(null);
-    const [rows, setRows] = useState<OcrInvoiceListRow[]>([]);
+    const [rows, setRows] = useState<InvoiceRow[]>([]);
     const [cap, setCap] = useState<{ used: number; cap: number } | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [search, setSearch] = useState("");
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
 
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
         try {
-            const res: any = await getOcrInvoices(companyId, { page, perPage: PER_PAGE });
-            const paginator = res?.data?.invoices;
-            setRows(paginator?.data ?? []);
-            const { data: _omit, ...m } = paginator ?? {};
-            setMeta(paginator ? (m as any) : null);
-            setCap({ used: res?.data?.used_this_month ?? 0, cap: res?.data?.monthly_cap ?? 0 });
+            const first: any = await getOcrInvoices(companyId, { page: 1, perPage: API_PER_PAGE });
+            const paginator = first?.data?.invoices;
+            let all: InvoiceRow[] = paginator?.data ?? [];
+            for (let p = 2; p <= (paginator?.last_page ?? 1); p++) {
+                const next: any = await getOcrInvoices(companyId, { page: p, perPage: API_PER_PAGE });
+                all = all.concat(next?.data?.invoices?.data ?? []);
+            }
+            setRows(all);
+            setCap({ used: first?.data?.used_this_month ?? 0, cap: first?.data?.monthly_cap ?? 0 });
         } catch {
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [companyId, page]);
+    }, [companyId]);
 
-    useEffect(() => { fetchRows(); }, [fetchRows]);
+    useEffect(() => { if (tab === "ocr") fetchRows(); }, [fetchRows, tab]);
 
     // Polling leve enquanto houver faturas "a processar".
     useEffect(() => {
-        if (!rows.some((r) => r.status === "processing")) return;
+        if (tab !== "ocr" || !rows.some((r) => r.status === "processing")) return;
         const t = setInterval(fetchRows, 4000);
         return () => clearInterval(t);
-    }, [rows, fetchRows]);
+    }, [rows, fetchRows, tab]);
 
     const onPickFile = () => fileRef.current?.click();
 
@@ -88,7 +130,6 @@ export default function FaturasPage() {
         try {
             await uploadOcrInvoice(companyId, file);
             toast.info("A ler a fatura… será notificado no sino quando terminar.");
-            setPage(1);
             await fetchRows();
         } catch (err: any) {
             toast.error(err?.message ?? "Não foi possível carregar a fatura.");
@@ -97,14 +138,27 @@ export default function FaturasPage() {
         }
     };
 
-    const StatusBadge = ({ s }: { s: OcrInvoiceStatus }) => (
-        <span className={`badge ${STATUS[s].cls}`}>
-            {s === "processing" && <Spinner size="sm" style={{ width: 10, height: 10 }} className="me-1" />}
-            {STATUS[s].label}
-        </span>
-    );
+    const hasDocType = rows.some((r) => !!r.doc_type);
+    const columns: DTColumn<InvoiceRow>[] = [
+        { id: "date", header: "Data", value: (r) => r.issue_date, cell: (r) => fmtDate(r.issue_date), nowrap: true, mobile: "subtitle" },
+        { id: "number", header: "Documento", value: (r) => r.number, cell: (r) => <span className="fw-medium">{r.number || "—"}</span>, nowrap: true, mobile: "subtitle" },
+        {
+            id: "type", header: "Tipo", value: (r) => (r.doc_type ? DOC_TYPES[r.doc_type] ?? r.doc_type : null),
+            unavailable: hasDocType ? null : "Aparece quando a lista trouxer o tipo do documento (vem do QR).",
+        },
+        { id: "supplier", header: "Fornecedor", value: (r) => r.supplier_name, cell: (r) => r.supplier_name || <span className="text-muted">Por identificar</span>, mobile: "title" },
+        { id: "nif", header: "NIF", value: (r) => r.supplier_nif, nowrap: true },
+        { id: "total", header: "Total", value: (r) => r.total, cell: (r) => euro(r.total), align: "end", nowrap: true },
+        { id: "status", header: "Estado", value: (r) => STATUS[r.status]?.label ?? r.status, cell: (r) => <StatusBadge s={r.status} />, align: "center" },
+        { id: "qr", header: "QR", value: (r) => r.check_status, cell: (r) => <QrCheck r={r} />, align: "center" },
+        { id: "paid", header: "Liquidado", unavailable: NOT_LINKED },
+        { id: "store", header: "Loja", unavailable: NOT_LINKED },
+        { id: "confidence", header: "Confiança", value: (r) => r.confidence || null, cell: (r) => (r.confidence ? `${r.confidence}%` : "—"), align: "center", defaultVisible: false },
+        { id: "source", header: "Leitura", value: (r) => (r.source ? SOURCE[r.source] ?? r.source : null), defaultVisible: false },
+    ];
+    const cols = useDataColumns("restauracao.faturas.carregadas", columns);
 
-    const goTo = (r: OcrInvoiceListRow) => navigate(`/restauracao/faturas/${r.id}`);
+    const shown = statusFilter ? rows.filter((r) => r.status === statusFilter) : rows;
 
     return (
         <div className="page-content">
@@ -113,16 +167,7 @@ export default function FaturasPage() {
                 <PageHeader
                     title="Faturas"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description={tab === "ocr" ? <>
-                        Faturas de fornecedor lidas com IA, para validar. Não são enviadas ao PingWin.
-                        {cap && <> · {cap.used}/{cap.cap} este mês</>}
-                    </> : <>Documentos de fornecedor lançados no PingWin (só leitura).</>}
-                    actions={tab === "ocr" ? <>
-                        <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
-                        <Button color="primary" onClick={onPickFile} disabled={uploading}>
-                            {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
-                        </Button>
-                    </> : undefined}
+                    info="As faturas de fornecedor: as que carrega para a IA ler e validar, e as que já estão lançadas no PingWin."
                 />
 
                 <Nav tabs className="nav-tabs-custom mb-3">
@@ -136,77 +181,53 @@ export default function FaturasPage() {
 
                 {tab === "ocr" && <Row>
                     <Col xs={12}>
-                        <Card className="mb-3">
-                            <div className="card-header">
-                                <h5 className="card-title mb-0">Faturas carregadas {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                            </div>
-
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? (
-                                        <div className="text-center text-muted py-4">Sem faturas. Use <strong>“Carregar fatura”</strong>.</div>
-                                    ) : rows.map((r) => (
-                                        <div key={r.id} role="button" onClick={() => goTo(r)}
-                                            style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)", cursor: "pointer" }}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">{r.supplier_name || "Fornecedor por identificar"}</div>
-                                                    <div className="text-muted fs-12">{r.number || "—"} · {fmtDate(r.issue_date)}</div>
-                                                </div>
-                                                <StatusBadge s={r.status} />
-                                            </div>
-                                            <div className="d-flex justify-content-between mt-2">
-                                                <span className="fw-semibold">{euro(r.total)}</span>
-                                                <span className="text-muted fs-12">{r.confidence ? `${r.confidence}% confiança` : ""}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Fornecedor</th>
-                                                <th>Nº</th>
-                                                <th>Data</th>
-                                                <th className="text-end">Total</th>
-                                                <th className="text-center">Confiança</th>
-                                                <th className="text-center">Estado</th>
-                                                <th className="text-end">Ação</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={7} className="text-center text-muted py-4">Sem faturas. Use <strong>“Carregar fatura”</strong>.</td></tr>
-                                            ) : rows.map((r) => (
-                                                <tr key={r.id}>
-                                                    <td className="fw-medium">{r.supplier_name || <span className="text-muted">Por identificar</span>}</td>
-                                                    <td>{r.number || "—"}</td>
-                                                    <td>{fmtDate(r.issue_date)}</td>
-                                                    <td className="text-end">{euro(r.total)}</td>
-                                                    <td className="text-center">{r.confidence ? `${r.confidence}%` : "—"}</td>
-                                                    <td className="text-center"><StatusBadge s={r.status} /></td>
-                                                    <td className="text-end">
-                                                        <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-outline-primary">
-                                                            {r.status === "validada" ? <><i className="ri-eye-line me-1" />Ver</> : <><i className="ri-check-double-line me-1" />Validar</>}
-                                                        </Link>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
-
-                        {meta && meta.total > 0 && (
-                            <Pagination
-                                currentPage={meta.current_page} lastPage={meta.last_page} total={meta.total}
-                                perPage={meta.per_page} from={meta.from ?? 0} to={meta.to ?? 0}
-                                onPageChange={(p) => setPage(p)}
+                        <PageCard
+                            title="Faturas carregadas"
+                            info="Faturas de fornecedor lidas com IA, para validar aqui. Não são enviadas ao PingWin."
+                            status={cap && cap.cap > 0 ? <>{cap.used} de {cap.cap} leituras este mês</> : undefined}
+                            loading={loading && rows.length > 0}
+                            actions={<>
+                                {cols.selector}
+                                <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
+                                <Button color="primary" onClick={onPickFile} disabled={uploading}>
+                                    {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
+                                </Button>
+                            </>}
+                            filters={
+                                <RestFilterBar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Pesquisar (fornecedor, NIF, documento)…"
+                                    activeCount={statusFilter ? 1 : 0}
+                                    onClear={() => { setSearch(""); setStatusFilter(""); }}
+                                >
+                                    <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                                        <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
+                                        <XSelect ariaLabel="Estado" small options={statusOptions} value={statusFilter} onChange={(v) => setStatusFilter(v)} searchable={false} placeholder="Todos" />
+                                    </div>
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={shown}
+                                rowKey={(r) => r.id}
+                                loading={loading}
+                                search={search}
+                                initialSort={{ id: "date", desc: true }}
+                                onRowClick={(r) => navigate(`/restauracao/faturas/${r.id}`)}
+                                caption="Faturas carregadas"
+                                empty={{
+                                    message: statusFilter ? "Sem faturas neste estado." : "Ainda não carregou nenhuma fatura.",
+                                    action: !statusFilter ? <Button color="outline-primary" size="sm" onClick={onPickFile}><i className="ri-upload-2-line me-1" />Carregar fatura</Button> : undefined,
+                                }}
+                                rowActions={(r) => (
+                                    <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-outline-primary">
+                                        {r.status === "validada" ? <><i className="ri-eye-line me-1" />Ver</> : <><i className="ri-check-double-line me-1" />Validar</>}
+                                    </Link>
+                                )}
                             />
-                        )}
+                        </PageCard>
                     </Col>
                 </Row>}
             </Container>
