@@ -89,7 +89,7 @@ class PingwinDocumentConfigUpdateTest extends TestCase
         Bus::fake();
         $resp = $this->actingAs($this->restoUser, 'sanctum')->putJson(
             "/api/v1/companies/{$this->resto->id}/integrations/pingwin/documents/1226",
-            ['fields' => ['description' => 'Auto Fatura UP EDIT', 'number_copies' => 3, 'code' => 'HACK', 'lixo' => 'x']]
+            ['fields' => ['description' => 'Auto Fatura UP EDIT', 'number_copies' => 3, 'code' => 'HACK', 'lixo' => 'x', 'settled' => 0]]
         )->assertStatus(200)->assertJsonPath('data.status', 'a_criar');
 
         $write = PingwinDocconfigWrite::find($resp->json('data.write_id'));
@@ -100,6 +100,8 @@ class PingwinDocumentConfigUpdateTest extends TestCase
         $this->assertArrayHasKey('number_copies', $write->fields);
         $this->assertArrayNotHasKey('code', $write->fields);
         $this->assertArrayNotHasKey('lixo', $write->fields);
+        // S2: "Pago" (settled) é só de leitura — a Conta Corrente depende dele; nunca vai na escrita.
+        $this->assertArrayNotHasKey('settled', $write->fields);
         Bus::assertDispatched(UpdatePingwinDocumentConfigJob::class, fn ($j) => $j->companyId === $this->resto->id);
     }
 

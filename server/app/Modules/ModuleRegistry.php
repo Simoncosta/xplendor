@@ -124,13 +124,19 @@ class ModuleRegistry
             'car_specific' => false,
             'depends_on' => ['pingwin'],
         ],
+        // S2 — Conta corrente dos fornecedores (saldo real vs saldo PingWin, extrato).
+        'restauracao_conta_corrente' => [
+            'label' => 'Restauração: Conta Corrente Fornecedores',
+            'car_specific' => false,
+            'depends_on' => ['pingwin'],
+        ],
     ];
 
-    /** As 9 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
+    /** As 10 secções de restauração (operação + cadastros), todas sob 'pingwin'. */
     public const RESTAURANT_SECTIONS = [
         'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
         'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
-        'restauracao_condicoes_pagamento',
+        'restauracao_condicoes_pagamento', 'restauracao_conta_corrente',
     ];
 
     /** Presets por ramo: um atalho que liga um conjunto (ajustável depois). */
@@ -143,7 +149,7 @@ class ModuleRegistry
             'marketing_analytics', 'support_tasks', 'pingwin',
             'restauracao_lojas', 'restauracao_calendario', 'restauracao_artigos', 'restauracao_faturas',
             'restauracao_documentos', 'restauracao_familias', 'restauracao_fornecedores', 'restauracao_unidades',
-            'restauracao_condicoes_pagamento',
+            'restauracao_condicoes_pagamento', 'restauracao_conta_corrente',
         ],
     ];
 

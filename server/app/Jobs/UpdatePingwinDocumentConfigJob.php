@@ -97,6 +97,7 @@ class UpdatePingwinDocumentConfigJob implements ShouldQueue
             'docfiscaltype_id'   => $s($main['docfiscaltype_id'] ?? null),
             'default_paycond_id' => $s($main['default_paycond_id'] ?? null),
             'stock_signal'       => $s($main['stock_signal'] ?? null),
+            'settled'            => (int) ($main['settled'] ?? 0) === 1,
             'docseries_id'       => $s($main['docseries_id'] ?? null),
             'raw'                => $main,              // cast array → re-encode
             'rich_synced_at'     => now(),

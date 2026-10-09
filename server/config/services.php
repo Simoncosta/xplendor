@@ -52,6 +52,28 @@ return [
         // OCR de faturas de fornecedor (Fase A).
         'ocr_disk' => env('OCR_INVOICE_DISK', 'local'),        // disco onde a imagem original é guardada
         'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
+        // F2a: QR da AT primeiro (cabeçalho sem IA) + linhas pela IA, com o modelo POR VIA.
+        'ocr' => [
+            'model_text'             => env('OCR_MODEL_TEXT'),   // PDF com camada de texto
+            'model_image'            => env('OCR_MODEL_IMAGE'),  // digitalizado / fotografia (e 2.ª tentativa do texto)
+            'reasoning_effort'       => env('OCR_REASONING_EFFORT', 'low'),
+            'retry_reasoning_effort' => env('OCR_RETRY_REASONING_EFFORT', 'medium'),
+            // Modelos de raciocínio: sem temperature, com reasoning_effort (prefixos, separados por vírgula).
+            'reasoning_model_prefixes' => env('OCR_REASONING_MODEL_PREFIXES', 'o1,o3,o4,gpt-5,gpt-6'),
+            'max_pages'              => (int) env('OCR_MAX_PAGES', 10),
+            'text_min_chars'         => (int) env('OCR_TEXT_MIN_CHARS', 200), // carateres alfanuméricos úteis
+            'check_tolerance_cents'  => (int) env('OCR_CHECK_TOLERANCE_CENTS', 2), // por taxa de IVA
+            'max_output_tokens'      => (int) env('OCR_MAX_OUTPUT_TOKENS', 16000),
+            'http_timeout'           => (int) env('OCR_HTTP_TIMEOUT', 240),
+            // Preço USD por 1M tokens "modelo=entrada/saída;…" (custo estimado por fatura).
+            'prices'                 => env('OCR_PRICES', 'gpt-4o-mini=0.15/0.60;gpt-6.1-sol=2.00/10.00'),
+            // Taxas de IVA por espaço fiscal do QR (I1/J1/K1): reduzida, intermédia, normal.
+            'vat_rates'              => [
+                'PT'    => [6, 13, 23],
+                'PT-AC' => array_map('intval', explode(',', (string) env('OCR_VAT_RATES_AC', '4,9,16'))),
+                'PT-MA' => array_map('intval', explode(',', (string) env('OCR_VAT_RATES_MA', '4,12,22'))),
+            ],
+        ],
         // Blog: "Ajudar a escrever" / "a partir de uma publicação".
         'blog_ai_model' => env('BLOG_AI_MODEL', 'gpt-4o'),
         // Limite mensal de pedidos à IA por empresa, POR MODO (um modo não gasta o de outro).
@@ -108,6 +130,9 @@ return [
         'catalog_dataset_id' => env('PINGWIN_CATALOG_DATASET_ID', ''), // dataset (browserdataset) do catálogo de artigos — fetch_catalog (Yuko: 1099511639254)
         'suppliers_dataset_id' => env('PINGWIN_SUPPLIERS_DATASET_ID', ''), // dataset (browserdataset) de fornecedores — fetch_suppliers (Yuko: 1099511639252)
         'paycond_dataset_id' => env('PINGWIN_PAYCOND_DATASET_ID', ''), // dataset (browserdataset) de condições de pagamento — fetch_payment_conditions (Yuko: 1099511639195)
+        // F1 — lista "Documentos" do BO (browserdataset), filtrada por DOCTYPE 2002 = documentos de
+        // fornecedores. Default = o id do HAR da Yuko (só confirmado na Yuko; noutra instalação, definir no .env).
+        'supplier_documents_dataset_id' => env('PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID', '1099511639269'),
         // ⚠️ As UNIDADES vivem numa PORTA DIFERENTE (8138, não a 8136). Override
         // explícito opcional; vazio → o cliente deriva do api_url trocando a porta.
         'units_url' => env('PINGWIN_UNITS_URL', ''),

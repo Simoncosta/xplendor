@@ -342,7 +342,15 @@ class AiProvidersTest extends TestCase
         $this->assertNotContains('ocr', array_keys((array) config('ai.functions')));
 
         Storage::fake('local');
-        config(['services.openai.key' => 'test-ocr']);
+        // F2a: o modelo do OCR vem do .env (OCR_MODEL_TEXT/IMAGE), não do interruptor global.
+        config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
+        // Leitura local (scraper) fora do teste: fotografia sem QR → caminho "sem QR".
+        $this->app->instance(InvoiceOcrService::class, new class extends InvoiceOcrService {
+            protected function analyzeFile(string $bytes, string $mime, string $images): array
+            {
+                return ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
+            }
+        });
         app(CompanyModuleService::class)->applyPreset($this->a->id, 'restaurant');
         $invoice = OcrInvoice::create(['company_id' => $this->a->id, 'image_path' => "ocr-invoices/{$this->a->id}/x.jpg", 'image_mime' => 'image/jpeg', 'status' => 'processing']);
         Storage::disk('local')->put($invoice->image_path, 'fake-image-bytes');
@@ -355,7 +363,7 @@ class AiProvidersTest extends TestCase
         // Continua igual: chat/completions com o gpt-4o-mini e a chave da OpenAI; nunca a Anthropic nem a Responses API.
         Http::assertSent(fn (Request $req) => $req->url() === 'https://api.openai.com/v1/chat/completions' && $req['model'] === 'gpt-4o-mini' && $req->hasHeader('Authorization', 'Bearer test-ocr'));
         Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'anthropic') || str_contains($req->url(), '/v1/responses'));
-        $this->assertSame(InvoiceOcrService::MODEL, $invoice->fresh()->model);
+        $this->assertSame('gpt-4o-mini', $invoice->fresh()->model);
         $this->assertSame(0, AiRequest::count());
     }
 

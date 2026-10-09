@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Company;
 use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
 use App\Models\OcrInvoiceSummary;
@@ -15,36 +16,48 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 
 /**
- * XPLENDOR — OCR de faturas de fornecedor (Fase A). Reaproveita o MOTOR do XFIN
- * (gpt-4o-mini + JSON mode + prompt com schema embutido + anti-alucinação +
- * coerção aritmética + validação humana), MAS com prompt B2B (cadeia completa da
- * fatura, não o "total pago" B2C) e extração das LINHAS (o XFIN descartava-as).
+ * XPLENDOR — OCR de faturas de fornecedor. Reaproveita o MOTOR do XFIN (JSON mode +
+ * prompt com schema embutido + anti-alucinação + validação humana), com prompt B2B
+ * e extração das LINHAS.
  *
- * ⚠️ SÓ LÊ/EXTRAI. NÃO escreve no PingWin (Fase B). A gravação final só acontece
- * quando o utilizador VALIDA no ecrã (controller::update). Aqui só cria o rascunho
- * (status 'por_validar') a partir do que a IA leu.
+ * F2a — QR PRIMEIRO:
+ *  1. O scraper (Python: zxing-cpp + poppler) lê o QR da AT, a camada de texto do PDF
+ *     e, se preciso, rasteriza as páginas. SEM IA.
+ *  2. Com QR válido o CABEÇALHO vem do QR (NIFs, tipo, data, nº, ATCUD, bases/IVA por
+ *     taxa, totais). B tem de ser o NIF da empresa e A nunca o pode ser — senão a fatura
+ *     fica 'nao_desta_empresa' e a IA NÃO é chamada.
+ *  3. A IA só lê as LINHAS: pelo TEXTO (OCR_MODEL_TEXT) se o PDF tiver texto útil, senão
+ *     pelas IMAGENS de todas as páginas (OCR_MODEL_IMAGE). Recebe as bases do QR para se
+ *     auto-conferir.
+ *  4. CONFERÊNCIA: soma das linhas por taxa = base do QR por taxa (tolerância configurável).
+ *     Não confere → 1 nova tentativa (modelo de imagem se a 1.ª foi texto; mais esforço se
+ *     já foi imagem). Fica sempre a melhor tentativa ('por_validar'), nunca se descarta.
+ *  Sem QR legível → como antes (cabeçalho + linhas pela IA), marcado 'sem_qr'.
  *
- * PDF-scan → imagem: delegado ao scraper (Python/poppler) via docker exec (worker
- * tem o socket), como o PingWin. Imagens vão direto. OpenAI é chamado em PHP
- * (mesmo padrão do CarAiAnalysesService — Http + retry).
+ * ⚠️ SÓ LÊ/EXTRAI. NÃO escreve no PingWin. A gravação final só acontece quando o
+ * utilizador VALIDA no ecrã (controller::update).
  */
 class InvoiceOcrService
 {
-    public const MODEL = 'gpt-4o-mini';
-    // b2b-v2: NIF do EMISSOR (não do cliente) + reforço da coerência do sumário
-    // (omitir se incerto). A soma das linhas é calculada/conferida pela Xplendor.
-    public const PROMPT_VERSION = 'b2b-v2';
+    // b2b-v3: + código do artigo do fornecedor nas linhas (caminho sem QR).
+    public const PROMPT_VERSION = 'b2b-v3';
+    // Caminho com QR: a IA só lê as linhas (o cabeçalho vem do QR).
+    // linhas-v2 (F3): + guias referidas na fatura (para a ligação de faturas de guias ao PingWin).
+    public const LINES_PROMPT_VERSION = 'linhas-v2';
 
-    private const VALID_VAT = [6, 13, 23];
-    private const OPENAI_TIMEOUT = 120;
+    public const STATUS_NOT_OURS = 'nao_desta_empresa';
+    public const CHECK_OK = 'confere';
+    public const CHECK_MISMATCH = 'nao_confere';
+    public const CHECK_NO_QR = 'sem_qr';
+
     private const OPENAI_CONNECT_TIMEOUT = 15;
     private const OPENAI_MAX_ATTEMPTS = 3;
     private const OPENAI_BACKOFF_MS = [500, 1500];
+    private const MAX_TEXT_CHARS = 60000;
 
     /**
-     * Processa uma fatura (chamado pela fila): lê a imagem do storage, converte
-     * PDF→imagem se preciso, chama a IA, sanitiza e persiste linhas+sumário. Marca
-     * a fatura 'por_validar' (ou 'erro'). NÃO escreve no PingWin.
+     * Processa uma fatura (chamado pela fila). Ver o fluxo no topo. Marca a fatura
+     * 'por_validar', 'nao_desta_empresa' ou 'erro'. NÃO escreve no PingWin.
      */
     public function process(int $invoiceId): void
     {
@@ -52,6 +65,7 @@ class InvoiceOcrService
         if (! $invoice) {
             return;
         }
+        $started = hrtime(true);
 
         try {
             $bytes = Storage::disk($this->disk())->get($invoice->image_path);
@@ -59,35 +73,246 @@ class InvoiceOcrService
                 throw new \RuntimeException('Ficheiro da fatura não encontrado no storage.');
             }
             $mime = (string) ($invoice->image_mime ?? 'image/jpeg');
+            $isPdf = $this->isPdf($mime, $invoice->image_path);
+            $cfg = $this->cfg();
 
-            // PDF → imagem (scraper Python/poppler). Imagens vão direto.
-            if ($this->isPdf($mime, $invoice->image_path)) {
-                $bytes = $this->rasterizePdf($bytes);
-                $mime = 'image/png';
+            // 1) Leitura local (sem IA): QR + texto + (se o texto não chegar) imagens.
+            $an = $this->analyzeFile($bytes, $mime, 'auto');
+            $qr = AtInvoiceQr::parse($an['qr']['raw'] ?? null);
+            $qrOk = $qr !== null && $qr['valid'];
+            $pages = (int) ($an['pages'] ?? 1);
+
+            // 2) Validações do QR contra a empresa — antes de gastar IA.
+            if ($qrOk && ($problem = $this->notOursProblem($qr, (int) $invoice->company_id))) {
+                $this->persistNotOurs($invoice, $qr, $pages, $problem, $this->elapsedMs($started));
+
+                return;
             }
 
-            $dataUri = 'data:' . $mime . ';base64,' . base64_encode($bytes);
-            $raw = $this->rawExtract($dataUri);
-            $parsed = $this->decodeJson($raw);
-            $clean = $this->sanitize($parsed);
-            // ⚠️ O NIF do fornecedor NUNCA é o da própria empresa (esse é o cliente).
-            // Se a IA trouxe o NIF/nome da própria empresa por engano, descarta-o.
-            $clean = $this->dropOwnCompanyIdentity($clean, $invoice->company_id);
+            // 3) Linhas pela IA: texto se houver texto útil, senão imagens.
+            $textOk = $isPdf && (int) ($an['text_chars'] ?? 0) >= $cfg['text_min_chars'];
+            $images = $isPdf ? ($an['images'] ?? []) : [['page' => 1, 'mime' => $mime, 'base64' => base64_encode($bytes)]];
+            $plan = $textOk
+                ? ['lines_source' => 'texto', 'model' => $cfg['model_text'], 'effort' => $cfg['effort']]
+                : ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['effort']];
 
-            $this->persist($invoice, $clean);
+            $attempts = [];
+            $best = $this->attempt($plan, $qrOk ? $qr : null, $an['text'] ?? '', $images, $invoice->company_id);
+            $attempts[] = $best;
+
+            // 4) Conferência pelo QR (+ 1 nova tentativa se não conferir).
+            if ($qrOk && ! $best['check']['ok']) {
+                $retry = $plan['lines_source'] === 'texto'
+                    ? ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['effort']]
+                    : ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['retry_effort']];
+                try {
+                    if ($retry['lines_source'] === 'imagem' && $images === []) {
+                        $images = $this->analyzeFile($bytes, $mime, 'always')['images'] ?? [];
+                    }
+                    $second = $this->attempt($retry, $qr, $an['text'] ?? '', $images, $invoice->company_id);
+                    $attempts[] = $second;
+                    if ($second['check']['ok'] || $second['check']['abs_cents'] < $best['check']['abs_cents']) {
+                        $best = $second;
+                    }
+                } catch (\Throwable $e) {
+                    // A 2.ª tentativa falhou: fica a 1.ª (nunca se descarta o resultado).
+                    Log::warning('[OCR Fatura] 2.ª tentativa falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
+                    $attempts[] = ['model' => $retry['model'], 'lines_source' => $retry['lines_source'], 'effort' => $retry['effort'],
+                        'tokens_in' => 0, 'tokens_out' => 0, 'cost_usd' => 0.0, 'ms' => 0, 'error' => mb_substr($e->getMessage(), 0, 300)];
+                }
+            }
+
+            // Guias referidas (F3): do texto do PDF e/ou lidas pela IA (imagens).
+            $best['clean']['guides'] = $this->mergeGuides(
+                OcrPingwinLinkService::extractGuides((string) ($an['text'] ?? '')),
+                (array) ($best['clean']['guides'] ?? [])
+            );
+
+            $this->persist($invoice, $best, $attempts, $qrOk ? $qr : null, $an, $this->elapsedMs($started));
         } catch (\Throwable $e) {
             Log::warning('[OCR Fatura] Falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
-            $invoice->update(['status' => 'erro', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);
+            // Query direta: o modelo pode ter ficado "sujo" com a escrita que falhou.
+            OcrInvoice::whereKey($invoiceId)->update(['status' => 'erro', 'error_message' => mb_substr($e->getMessage(), 0, 500)]);
             throw $e; // deixa o Job notificar/registar
+        }
+
+        // F3: liga ao documento do PingWin (espelhos; pesquisa viva do fornecedor por NIF, só
+        // leitura — o processamento corre no worker). Uma falha aqui nunca estraga a leitura.
+        try {
+            app(OcrPingwinLinkService::class)->link($invoice->fresh(), true);
+        } catch (\Throwable $e) {
+            Log::warning('[OCR Fatura] ligação ao PingWin falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
         }
     }
 
-    /** Chama a OpenAI (visão) com o prompt B2B. Devolve o conteúdo (JSON string). */
-    protected function rawExtract(string $dataUri): string
+    /** Guias únicas pela referência (a data lida no texto ganha à da IA). */
+    private function mergeGuides(array $fromText, array $fromAi): array
+    {
+        $out = [];
+        foreach (array_merge($fromText, $fromAi) as $g) {
+            $ref = trim((string) ($g['ref'] ?? ''));
+            if ($ref === '') {
+                continue;
+            }
+            $out[$ref] ??= ['ref' => $ref, 'date' => null];
+            $out[$ref]['date'] ??= $g['date'] ?? null;
+        }
+
+        return array_values($out);
+    }
+
+    /**
+     * Uma tentativa de leitura: chama a IA (texto ou imagens), sanitiza e confere com o QR.
+     * Devolve o resultado + registo de custo (tokens, USD, ms).
+     */
+    private function attempt(array $plan, ?array $qr, string $text, array $images, int $companyId): array
+    {
+        if ($plan['model'] === null || $plan['model'] === '') {
+            throw new \RuntimeException('Modelo de OCR não configurado (OCR_MODEL_' . ($plan['lines_source'] === 'texto' ? 'TEXT' : 'IMAGE') . ').');
+        }
+        if ($plan['lines_source'] === 'imagem' && $images === []) {
+            throw new \RuntimeException('Sem imagens da fatura para a IA ler.');
+        }
+
+        $t0 = hrtime(true);
+        $system = $qr ? $this->linesPrompt() : $this->prompt();
+        $user = $this->userContent($plan['lines_source'], $qr, $text, $images);
+        $res = $this->callModel($plan['model'], $system, $user, $plan['effort']);
+        $clean = $this->sanitize($this->decodeJson($res['content']));
+        if (! $qr) {
+            // ⚠️ O NIF do fornecedor NUNCA é o da própria empresa (esse é o cliente).
+            $clean = $this->dropOwnCompanyIdentity($clean, $companyId);
+        }
+
+        return [
+            'model'        => $plan['model'],
+            'lines_source' => $plan['lines_source'],
+            'effort'       => $this->isReasoningModel($plan['model']) ? $plan['effort'] : null,
+            'clean'        => $clean,
+            'tokens_in'    => $res['tokens_in'],
+            'tokens_out'   => $res['tokens_out'],
+            'cost_usd'     => $this->costUsd($plan['model'], $res['tokens_in'], $res['tokens_out']),
+            'ms'           => $this->elapsedMs($t0),
+            'check'        => $qr ? $this->conference($clean['lines'], $qr) : ['ok' => false, 'abs_cents' => 0, 'rows' => []],
+        ];
+    }
+
+    /** Mensagem do utilizador: texto do PDF ou imagens + (com QR) as bases para se conferir. */
+    private function userContent(string $source, ?array $qr, string $text, array $images): array
+    {
+        $intro = $qr
+            ? "Lê as LINHAS desta fatura de fornecedor para o JSON pedido.\n\n" . $this->qrHint($qr)
+            : 'Extrai os dados desta fatura de fornecedor para o JSON pedido.';
+
+        if ($source === 'texto') {
+            $pages = array_values(array_filter(explode("\f", $text), fn ($p) => trim($p) !== ''));
+            $body = '';
+            foreach ($pages as $i => $p) {
+                $body .= "\n--- página " . ($i + 1) . " ---\n" . rtrim($p) . "\n";
+            }
+
+            return [['type' => 'text', 'text' => $intro . "\n\nTEXTO DA FATURA (extraído do PDF, layout preservado):\n" . mb_substr($body, 0, self::MAX_TEXT_CHARS)]];
+        }
+
+        $parts = [['type' => 'text', 'text' => $intro . "\n\nA fatura segue em " . count($images) . ' imagem(ns), uma por página, por ordem.']];
+        foreach ($images as $img) {
+            $parts[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . ($img['mime'] ?? 'image/jpeg') . ';base64,' . $img['base64'], 'detail' => 'high']];
+        }
+
+        return $parts;
+    }
+
+    /** As bases do QR por taxa, para a IA se auto-conferir (não para as copiar). */
+    private function qrHint(array $qr): string
+    {
+        $rows = array_map(fn ($r) => sprintf('  · IVA %s%%: base %s €', $r['rate'], number_format($r['base_cents'] / 100, 2, '.', '')), $qr['by_rate']);
+
+        return "AUTO-CONFERÊNCIA — o QR oficial desta fatura (AT) diz que a soma das linhas (totalLinha, sem IVA) por taxa de IVA é:\n"
+            . implode("\n", $rows)
+            . "\nUsa isto para confirmares que não te faltou nem sobrou nenhuma linha. NÃO alteres valores lidos para forçar a soma: se não fechar, devolve o que está escrito na fatura.";
+    }
+
+    /**
+     * Conferência POR TAXA: soma de line_total_cents das linhas vs base do QR. Linhas sem
+     * taxa contam como divergência. Tolerância por taxa em config (cêntimos).
+     */
+    public function conference(array $lines, array $qr): array
+    {
+        $tol = (int) $this->cfg()['tolerance_cents'];
+        $sums = [];
+        foreach ($lines as $l) {
+            $key = $l['vat_rate'] === null ? 'sem_taxa' : (string) $l['vat_rate'];
+            $sums[$key] = ($sums[$key] ?? 0) + (int) ($l['line_total_cents'] ?? 0);
+        }
+        $qrBases = [];
+        foreach ($qr['by_rate'] as $r) {
+            $qrBases[(string) $r['rate']] = (int) $r['base_cents'];
+        }
+
+        $rows = [];
+        $ok = true;
+        $abs = 0;
+        $keys = array_unique(array_merge(array_keys($qrBases), array_keys($sums)));
+        usort($keys, fn ($a, $b) => (float) $a <=> (float) $b);
+        foreach ($keys as $k) {
+            $q = $qrBases[$k] ?? 0;
+            $s = $sums[$k] ?? 0;
+            $diff = $s - $q;
+            if ($k === 'sem_taxa' && $s === 0) {
+                continue;
+            }
+            $rowOk = abs($diff) <= $tol && $k !== 'sem_taxa';
+            $ok = $ok && $rowOk;
+            $abs += abs($diff);
+            $rows[] = ['rate' => $k === 'sem_taxa' ? null : (int) $k, 'qr_cents' => $q, 'lines_cents' => $s, 'diff_cents' => $diff, 'ok' => $rowOk];
+        }
+
+        return ['ok' => $ok && $rows !== [], 'abs_cents' => $abs, 'rows' => $rows];
+    }
+
+    /** B tem de ser o NIF da empresa; A nunca o pode ser. Devolve a mensagem ou null. */
+    private function notOursProblem(array $qr, int $companyId): ?string
+    {
+        $ownNif = preg_replace('/\D+/', '', (string) Company::where('id', $companyId)->value('nipc'));
+        if ($ownNif === '') {
+            return null; // empresa sem NIF configurado: não há com que comparar
+        }
+        if ($qr['issuer_nif'] === $ownNif) {
+            return "Esta fatura foi emitida pela própria empresa (NIF emitente {$ownNif} no QR) — não é uma fatura de fornecedor.";
+        }
+        if ($qr['buyer_nif'] !== $ownNif) {
+            return "Esta fatura não é desta empresa: o NIF do adquirente no QR é {$qr['buyer_nif']}, o da empresa é {$ownNif}.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Chama a OpenAI (chat completions, JSON mode). Modelos de raciocínio levam
+     * reasoning_effort e não levam temperature. Devolve conteúdo + tokens.
+     */
+    protected function callModel(string $model, string $system, array $userContent, ?string $effort): array
     {
         $apiKey = (string) config('services.openai.key');
         if ($apiKey === '') {
             throw new \RuntimeException('OPENAI_KEY não configurada.');
+        }
+
+        $payload = [
+            'model'                 => $model,
+            'max_completion_tokens' => $this->cfg()['max_output_tokens'],
+            'response_format'       => ['type' => 'json_object'], // JSON mode
+            'messages'              => [
+                ['role' => 'system', 'content' => $system],
+                ['role' => 'user', 'content' => $userContent],
+            ],
+        ];
+        if ($this->isReasoningModel($model)) {
+            if ($effort) {
+                $payload['reasoning_effort'] = $effort;
+            }
+        } else {
+            $payload['temperature'] = 0;
         }
 
         $lastException = null;
@@ -95,21 +320,9 @@ class InvoiceOcrService
             try {
                 $response = Http::withToken($apiKey)
                     ->connectTimeout(self::OPENAI_CONNECT_TIMEOUT)
-                    ->timeout(self::OPENAI_TIMEOUT)
+                    ->timeout($this->cfg()['http_timeout'])
                     ->acceptJson()
-                    ->post('https://api.openai.com/v1/chat/completions', [
-                        'model'           => self::MODEL,
-                        'temperature'     => 0.1,
-                        'max_tokens'      => 4000,
-                        'response_format' => ['type' => 'json_object'], // JSON mode
-                        'messages'        => [
-                            ['role' => 'system', 'content' => $this->prompt()],
-                            ['role' => 'user', 'content' => [
-                                ['type' => 'text', 'text' => 'Extrai os dados desta fatura de fornecedor para o JSON pedido.'],
-                                ['type' => 'image_url', 'image_url' => ['url' => $dataUri]],
-                            ]],
-                        ],
-                    ]);
+                    ->post('https://api.openai.com/v1/chat/completions', $payload);
 
                 if ($response->failed()) {
                     $status = $response->status();
@@ -117,53 +330,119 @@ class InvoiceOcrService
                         usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
                         continue;
                     }
-                    $response->throw();
+                    throw new \RuntimeException("OpenAI HTTP {$status}: " . mb_substr((string) $response->json('error.message', $response->body()), 0, 300));
                 }
 
                 $content = $response->json('choices.0.message.content');
                 if (! is_string($content) || trim($content) === '') {
-                    throw new \RuntimeException('OpenAI devolveu conteúdo vazio.');
+                    throw new \RuntimeException('OpenAI devolveu conteúdo vazio (finish_reason: ' . $response->json('choices.0.finish_reason') . ').');
                 }
 
-                return $content;
+                return [
+                    'content'    => $content,
+                    'tokens_in'  => (int) $response->json('usage.prompt_tokens', 0),
+                    'tokens_out' => (int) $response->json('usage.completion_tokens', 0),
+                ];
             } catch (\Throwable $e) {
                 $lastException = $e;
-                if ($attempt === self::OPENAI_MAX_ATTEMPTS) {
-                    break;
+                if ($attempt === self::OPENAI_MAX_ATTEMPTS || str_contains($e->getMessage(), 'OpenAI HTTP 4')) {
+                    break; // 4xx (exceto 429) não se repete
                 }
                 usleep(self::OPENAI_BACKOFF_MS[$attempt - 1] * 1000);
             }
         }
 
-        throw new \RuntimeException('OpenAI indisponível ao ler a fatura.', previous: $lastException);
+        throw new \RuntimeException('OpenAI indisponível ao ler a fatura: ' . ($lastException?->getMessage() ?? ''), previous: $lastException);
     }
 
     /**
-     * Converte a 1.ª página de um PDF em imagem via o scraper (Python/poppler),
-     * invocado por docker exec (worker tem o socket) — mesmo padrão do PingWin.
-     * Recebe/devolve bytes; a comunicação é base64 por STDIN/STDOUT.
+     * Leitura local do ficheiro pelo scraper (Python: zxing-cpp + poppler), por docker exec
+     * (o worker tem o socket) — mesmo padrão do PingWin. $images: auto|always|never.
      */
-    protected function rasterizePdf(string $pdfBytes): string
+    protected function analyzeFile(string $bytes, string $mime, string $images): array
     {
-        $payload = json_encode(['mode' => 'pdf_to_image', 'pdf_base64' => base64_encode($pdfBytes)]);
+        $cfg = $this->cfg();
+        $payload = json_encode([
+            'mode' => 'analyze', 'file_base64' => base64_encode($bytes), 'mime' => $mime,
+            'max_pages' => $cfg['max_pages'], 'text_min_chars' => $cfg['text_min_chars'], 'images' => $images,
+        ]);
         $process = new Process([
             'docker', 'exec', '-i', env('SCRAPER_CONTAINER', 'xplendor-scraper'),
             'python', '/scraper/sources/ocr/run.py',
         ]);
-        $process->setTimeout(120);
+        $process->setTimeout(180);
         $process->setInput($payload);
         $process->run();
 
         $out = trim($process->getOutput());
         if ($out === '') {
-            throw new \RuntimeException('Conversão de PDF falhou (scraper sem resposta): ' . mb_substr($process->getErrorOutput(), 0, 300));
+            throw new \RuntimeException('Leitura do ficheiro falhou (scraper sem resposta): ' . mb_substr($process->getErrorOutput(), 0, 300));
         }
         $data = json_decode($out, true);
-        if (! is_array($data) || ! ($data['ok'] ?? false) || empty($data['image_base64'])) {
-            throw new \RuntimeException('Conversão de PDF falhou: ' . mb_substr((string) ($data['error'] ?? $out), 0, 300));
+        if (! is_array($data) || ! ($data['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura do ficheiro falhou: ' . mb_substr((string) ($data['error'] ?? $out), 0, 300));
         }
 
-        return base64_decode($data['image_base64']);
+        return $data;
+    }
+
+    /** Só o texto do PDF (scraper, SEM IA) — para extrair guias de faturas lidas antes da F3. */
+    public function analyzeText(string $bytes): ?string
+    {
+        return $this->analyzeFile($bytes, 'application/pdf', 'never')['text'] ?? null;
+    }
+
+    /** Config do OCR (services.openai.ocr) normalizada. */
+    private function cfg(): array
+    {
+        $c = (array) config('services.openai.ocr', []);
+
+        return [
+            'model_text'        => $c['model_text'] ?? null,
+            'model_image'       => $c['model_image'] ?? null,
+            'effort'            => $c['reasoning_effort'] ?? 'low',
+            'retry_effort'      => $c['retry_reasoning_effort'] ?? 'medium',
+            'reasoning_prefixes' => array_filter(array_map('trim', explode(',', (string) ($c['reasoning_model_prefixes'] ?? '')))),
+            'max_pages'         => max(1, (int) ($c['max_pages'] ?? 10)),
+            'text_min_chars'    => (int) ($c['text_min_chars'] ?? 200),
+            'tolerance_cents'   => (int) ($c['check_tolerance_cents'] ?? 2),
+            'max_output_tokens' => (int) ($c['max_output_tokens'] ?? 16000),
+            'http_timeout'      => (int) ($c['http_timeout'] ?? 240),
+            'prices'            => (string) ($c['prices'] ?? ''),
+        ];
+    }
+
+    private function isReasoningModel(string $model): bool
+    {
+        foreach ($this->cfg()['reasoning_prefixes'] as $p) {
+            if ($p !== '' && str_starts_with($model, $p)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Custo estimado (USD) pelos preços em config "modelo=entrada/saída;…" por 1M tokens. Null se o modelo não tiver preço. */
+    public function costUsd(string $model, int $in, int $out): ?float
+    {
+        $best = null;
+        foreach (explode(';', $this->cfg()['prices']) as $entry) {
+            if (! preg_match('/^\s*([^=]+?)\s*=\s*([\d.]+)\s*\/\s*([\d.]+)\s*$/', $entry, $m)) {
+                continue;
+            }
+            // Igual ou prefixo (ex.: "gpt-4o-mini" cobre "gpt-4o-mini-2024-07-18"); o mais longo ganha.
+            if (($model === $m[1] || str_starts_with($model, $m[1] . '-')) && ($best === null || strlen($m[1]) > strlen($best[0]))) {
+                $best = [$m[1], (float) $m[2], (float) $m[3]];
+            }
+        }
+
+        return $best === null ? null : round($in * $best[1] / 1e6 + $out * $best[2] / 1e6, 6);
+    }
+
+    private function elapsedMs(int|float $t0): int
+    {
+        return (int) round((hrtime(true) - $t0) / 1e6);
     }
 
     // -------------------------------------------------------------- SANITIZAÇÃO
@@ -210,6 +489,7 @@ class InvoiceOcrService
                 continue;
             }
             $lines[] = [
+                'supplier_code'    => $this->code($l['codigo'] ?? null),
                 'item'             => $item,
                 'quantity'         => $qty,
                 'unit'             => $this->str($l['unidade'] ?? null),
@@ -237,11 +517,12 @@ class InvoiceOcrService
         }
 
         return [
-            'supplier_name' => $this->str($forn['nome'] ?? null),
+            'supplier_name' => $this->str($forn['nome'] ?? ($raw['fornecedorNome'] ?? null)),
             'supplier_nif'  => $this->nif($forn['nif'] ?? null),
             'number'        => $this->str($raw['numeroFatura'] ?? null),
             'issue_date'    => $this->date($raw['dataEmissao'] ?? null),
             'lines'         => $lines,
+            'guides'        => $this->guides($raw['guias'] ?? []),
             'summary'       => [
                 'goods_total_cents'         => (int) $this->cents($sum['totalMercadorias'] ?? 0),
                 'commercial_discount_cents' => (int) $this->cents($sum['descontoComercial'] ?? 0),
@@ -283,13 +564,27 @@ class InvoiceOcrService
 
     // ------------------------------------------------------------- PERSISTÊNCIA
 
-    /** Persiste linhas + sumário + campos da fatura. Marca 'por_validar'. */
-    private function persist(OcrInvoice $invoice, array $clean): void
+    /**
+     * Persiste o resultado ESCOLHIDO (a melhor tentativa) + registo de custo/origem/conferência.
+     * Com QR: cabeçalho e sumário vêm do QR (a IA só deu as linhas e o nome). Marca 'por_validar'.
+     */
+    private function persist(OcrInvoice $invoice, array $best, array $attempts, ?array $qr, array $an, int $ms): void
     {
-        $confidence = $this->confidence($clean);
+        $clean = $best['clean'];
+        if ($qr) {
+            $clean['supplier_nif'] = $qr['issuer_nif'];
+            $clean['number'] = $qr['number'];
+            $clean['issue_date'] = $qr['issue_date'];
+            $clean['summary'] = $this->summaryFromQr($qr);
+        }
         $supplierId = $this->matchSupplier($invoice->company_id, $clean['supplier_nif'], $clean['supplier_name']);
+        if ($qr && $clean['supplier_name'] === null && $supplierId) {
+            $clean['supplier_name'] = PingwinSupplier::whereKey($supplierId)->value('name');
+        }
+        $confidence = $this->confidence($clean);
+        $check = $best['check'];
 
-        DB::transaction(function () use ($invoice, $clean, $confidence, $supplierId) {
+        DB::transaction(function () use ($invoice, $clean, $confidence, $supplierId, $best, $attempts, $qr, $an, $ms, $check) {
             $invoice->lines()->delete();
             $invoice->summary()->delete();
 
@@ -297,13 +592,31 @@ class InvoiceOcrService
                 'supplier_id'    => $supplierId,
                 'supplier_name'  => $clean['supplier_name'],
                 'supplier_nif'   => $clean['supplier_nif'],
+                'buyer_nif'      => $qr['buyer_nif'] ?? null,
                 'number'         => $clean['number'],
+                'atcud'          => $qr['atcud'] ?? null,
+                'doc_type'       => $qr['doc_type'] ?? null,
                 'issue_date'     => $clean['issue_date'],
-                'model'          => self::MODEL,
-                'prompt_version' => self::PROMPT_VERSION,
+                'model'          => $best['model'],
+                'prompt_version' => $qr ? self::LINES_PROMPT_VERSION : self::PROMPT_VERSION,
                 'confidence'     => $confidence,
                 'status'         => 'por_validar',
                 'error_message'  => null,
+                'qr_raw'         => $an['qr']['raw'] ?? null,
+                'qr_ok'          => $qr !== null,
+                'qr_data'        => $qr ? $this->qrData($qr, $an) : null,
+                'source'         => $qr ? 'qr+' . $best['lines_source'] : 'sem_qr',
+                'lines_source'   => $best['lines_source'],
+                'pages'          => (int) ($an['pages'] ?? 1),
+                'tokens_in'      => array_sum(array_column($attempts, 'tokens_in')),
+                'tokens_out'     => array_sum(array_column($attempts, 'tokens_out')),
+                'cost_usd'       => $this->sumCost($attempts),
+                'duration_ms'    => $ms,
+                'attempts'       => count($attempts),
+                'attempts_log'   => $this->attemptsLog($attempts, $best),
+                'check_status'   => $qr ? ($check['ok'] ? self::CHECK_OK : self::CHECK_MISMATCH) : self::CHECK_NO_QR,
+                'check_diff'     => $qr ? $check['rows'] : null,
+                'guide_refs'     => ($clean['guides'] ?? []) ?: null,
             ]);
 
             $pos = 0;
@@ -320,6 +633,103 @@ class InvoiceOcrService
                 'company_id'     => $invoice->company_id,
             ]));
         });
+    }
+
+    /** QR de outra empresa (ou emitido pela própria): cabeçalho do QR, sem linhas, sem IA. */
+    private function persistNotOurs(OcrInvoice $invoice, array $qr, int $pages, string $message, int $ms): void
+    {
+        DB::transaction(function () use ($invoice, $qr, $pages, $message, $ms) {
+            $invoice->lines()->delete();
+            $invoice->summary()->delete();
+            $invoice->update([
+                'supplier_id'   => null,
+                'supplier_nif'  => $qr['issuer_nif'],
+                'buyer_nif'     => $qr['buyer_nif'],
+                'number'        => $qr['number'],
+                'atcud'         => $qr['atcud'],
+                'doc_type'      => $qr['doc_type'],
+                'issue_date'    => $qr['issue_date'],
+                'model'         => null,
+                'confidence'    => 0,
+                'status'        => self::STATUS_NOT_OURS,
+                'error_message' => $message,
+                'qr_raw'        => $qr['raw'],
+                'qr_ok'         => true,
+                'qr_data'       => $this->qrData($qr, []),
+                'source'        => 'qr',
+                'lines_source'  => null,
+                'pages'         => $pages,
+                'tokens_in'     => 0,
+                'tokens_out'    => 0,
+                'cost_usd'      => 0,
+                'duration_ms'   => $ms,
+                'attempts'      => 0,
+                'attempts_log'  => [],
+                'check_status'  => null,
+                'check_diff'    => null,
+            ]);
+        });
+        Log::info('[OCR Fatura] Não é desta empresa — parado antes da IA', ['invoice_id' => $invoice->id, 'buyer_nif' => $qr['buyer_nif']]);
+    }
+
+    /** Sumário (cêntimos) a partir do QR: bases/IVA por taxa, total IVA (N), total (O), retenção (P). */
+    private function summaryFromQr(array $qr): array
+    {
+        $base = AtInvoiceQr::taxableBaseCents($qr);
+
+        return [
+            'goods_total_cents'         => $base,
+            'commercial_discount_cents' => 0,
+            'taxable_base_cents'        => $base,
+            'vat_total_cents'           => (int) ($qr['vat_total_cents'] ?? array_sum(array_column($qr['by_rate'], 'vat_cents'))),
+            'withholding_cents'         => (int) ($qr['withholding_cents'] ?? 0),
+            'financial_discount_cents'  => 0,
+            'total_cents'               => (int) $qr['total_cents'],
+            'vat_breakdown'             => array_map(fn ($r) => ['rate' => $r['rate'], 'base_cents' => $r['base_cents'], 'vat_cents' => $r['vat_cents']], $qr['by_rate']),
+        ];
+    }
+
+    /** O que se guarda do QR (campos crus + derivados + onde foi lido). */
+    private function qrData(array $qr, array $an): array
+    {
+        return [
+            'fields'  => $qr['fields'],
+            'by_rate' => $qr['by_rate'],
+            'spaces'  => $qr['spaces'],
+            'page'    => $an['qr']['page'] ?? null,
+            'dpi'     => $an['qr']['dpi'] ?? null,
+            'copies_dropped' => $an['copies_dropped'] ?? [],
+            'truncated' => (bool) ($an['truncated'] ?? false),
+        ];
+    }
+
+    private function sumCost(array $attempts): ?float
+    {
+        $costs = array_column($attempts, 'cost_usd');
+        if (in_array(null, $costs, true)) {
+            return null; // há um modelo sem preço configurado → custo desconhecido
+        }
+
+        return round(array_sum($costs), 6);
+    }
+
+    private function attemptsLog(array $attempts, array $best): array
+    {
+        return array_values(array_map(fn ($a, $i) => [
+            'n'            => $i + 1,
+            'model'        => $a['model'],
+            'lines_source' => $a['lines_source'],
+            'effort'       => $a['effort'] ?? null,
+            'tokens_in'    => $a['tokens_in'],
+            'tokens_out'   => $a['tokens_out'],
+            'cost_usd'     => $a['cost_usd'],
+            'ms'           => $a['ms'],
+            'lines'        => isset($a['clean']) ? count($a['clean']['lines']) : null,
+            'check_ok'     => $a['check']['ok'] ?? null,
+            'diff_abs_cents' => $a['check']['abs_cents'] ?? null,
+            'chosen'       => $a === $best,
+            'error'        => $a['error'] ?? null,
+        ], $attempts, array_keys($attempts)));
     }
 
     /**
@@ -444,7 +854,45 @@ class InvoiceOcrService
         return max(0.0, min(100.0, $n));
     }
 
-    /** Taxa de IVA ∈ {6,13,23} ou null (descarta lixo). */
+    /**
+     * Taxas válidas: as dos espaços fiscais em config (PT 6/13/23, Açores, Madeira) + 0
+     * (isento). Usado também pela validação do controller.
+     */
+    public static function validVatRates(): array
+    {
+        $rates = [0];
+        foreach ((array) config('services.openai.ocr.vat_rates', ['PT' => [6, 13, 23]]) as $list) {
+            $rates = array_merge($rates, array_map('intval', (array) $list));
+        }
+        $rates = array_values(array_unique($rates));
+        sort($rates);
+
+        return $rates;
+    }
+
+    /** Guias lidas pela IA: [{"numero": "GT 3105/2026", "data": "2026-05-02"}] → [{ref, date}]. */
+    private function guides($raw): array
+    {
+        $out = [];
+        foreach (is_array($raw) ? $raw : [] as $g) {
+            $ref = is_array($g) ? $this->str($g['numero'] ?? null) : $this->str($g);
+            if ($ref !== null) {
+                $out[] = ['ref' => mb_substr($ref, 0, 60), 'date' => is_array($g) ? $this->date($g['data'] ?? null) : null];
+            }
+        }
+
+        return $out;
+    }
+
+    /** Código do artigo do fornecedor (texto curto) ou null. */
+    private function code($v): ?string
+    {
+        $s = $this->str(is_int($v) || is_float($v) ? (string) $v : $v);
+
+        return $s === null ? null : mb_substr($s, 0, 60);
+    }
+
+    /** Taxa de IVA válida (ver validVatRates) ou null (descarta lixo). */
     private function vat($v): ?int
     {
         if (! is_numeric($v)) {
@@ -452,7 +900,7 @@ class InvoiceOcrService
         }
         $r = (int) round((float) $v);
 
-        return in_array($r, self::VALID_VAT, true) ? $r : null;
+        return in_array($r, self::validVatRates(), true) ? $r : null;
     }
 
     /**
@@ -470,7 +918,7 @@ class InvoiceOcrService
   "numeroFatura": "string",
   "dataEmissao": "YYYY-MM-DD",
   "linhas": [
-    {"item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 6|13|23}
+    {"codigo": "string (código do artigo do fornecedor)", "item": "string", "quantidade": number, "unidade": "string (un/kg/cx/L...)", "precoUnitario": number, "descontoPct": number, "totalLinha": number, "taxaIva": 6|13|23}
   ],
   "sumario": {
     "totalMercadorias": number, "descontoComercial": number, "baseTributavel": number,
@@ -487,6 +935,8 @@ class InvoiceOcrService
 
 REGRAS:
 - Extrai a fatura COMPLETA: TODAS as linhas de artigos (uma entrada por linha) e a cadeia de valores toda. NÃO é o "total pago" — é o detalhe B2B. As LINHAS são o mais importante — extrai-as sempre, com atenção.
+- "codigo" é o código/referência do artigo NA FATURA do fornecedor (coluna "Artigo"/"Código"/"Ref."). Se não houver, omite.
+- Se a fatura vier repetida (ORIGINAL/DUPLICADO/TRIPLICADO), lê só UMA via. "A transportar"/"Transportado" e referências a guias NÃO são linhas.
 - ⚠️ Se NÃO souberes um campo, OMITE-O (ou usa null). NUNCA INVENTES valores, NIFs, datas ou linhas. É melhor faltar do que estar errado.
 - ⚠️ SUMÁRIO: só o preenches se conseguires LÊ-LO com confiança na fatura. Se os valores do sumário não forem legíveis ou não fecharem com as linhas, OMITE os campos do sumário (deixa-os fora/null) em vez de pôres valores errados — a Xplendor calcula a soma das linhas do seu lado.
 - Valores como NÚMEROS (ponto decimal, sem símbolo €, sem separador de milhares). Ex.: 1234.56.
@@ -503,8 +953,8 @@ EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é
   "numeroFatura": "FT 2024A/12345",
   "dataEmissao": "2024-03-15",
   "linhas": [
-    {"item": "Arroz Agulha 5kg", "quantidade": 10, "unidade": "un", "precoUnitario": 4.20, "descontoPct": 0, "totalLinha": 42.00, "taxaIva": 6},
-    {"item": "Detergente Loiça 5L", "quantidade": 2, "unidade": "un", "precoUnitario": 6.50, "descontoPct": 10, "totalLinha": 11.70, "taxaIva": 23}
+    {"codigo": "100231", "item": "Arroz Agulha 5kg", "quantidade": 10, "unidade": "un", "precoUnitario": 4.20, "descontoPct": 0, "totalLinha": 42.00, "taxaIva": 6},
+    {"codigo": "300718", "item": "Detergente Loiça 5L", "quantidade": 2, "unidade": "un", "precoUnitario": 6.50, "descontoPct": 10, "totalLinha": 11.70, "taxaIva": 23}
   ],
   "sumario": {
     "totalMercadorias": 53.70, "descontoComercial": 0, "baseTributavel": 53.70,
@@ -512,6 +962,42 @@ EXEMPLO (fatura de fornecedor PT, ilustrativo — repara: "Forno Tradicional" é
     "valorIvaTotal": 5.21, "retencaoFonte": 0, "descontoFinanceiro": 0, "total": 58.91
   }
 }
+
+Devolve APENAS o JSON.
+PROMPT;
+    }
+
+    /**
+     * PROMPT DAS LINHAS (caminho com QR): o cabeçalho e os totais já vêm do QR da AT, a IA
+     * só lê as LINHAS (+ o nome do fornecedor, que o QR não tem).
+     */
+    public function linesPrompt(): string
+    {
+        return <<<'PROMPT'
+És um extrator de LINHAS de FATURAS DE FORNECEDOR portuguesas (B2B). O cabeçalho e os totais da fatura já são conhecidos (vêm do QR oficial da AT) — só precisas das LINHAS de artigos. Recebes o TEXTO da fatura (extraído do PDF) ou as IMAGENS das páginas, e devolves SÓ um objeto JSON válido com este schema EXATO:
+
+{
+  "fornecedorNome": "string (nome do EMISSOR, no topo — nunca o cliente/adquirente)",
+  "linhas": [
+    {"codigo": "string", "item": "string", "quantidade": number, "unidade": "string", "precoUnitario": number, "descontoPct": number, "taxaIva": number, "totalLinha": number}
+  ],
+  "guias": [{"numero": "string (ex.: GT 3105/2026)", "data": "YYYY-MM-DD"}]
+}
+
+CAMPOS DE CADA LINHA:
+- codigo: código/referência do artigo do fornecedor (coluna "Artigo"/"Código"/"Ref."/"Cód."). Copia-o tal como está. Se não houver, omite.
+- item: descrição do artigo.
+- quantidade, unidade (UN, KG, CX, L…), precoUnitario (sem IVA), descontoPct (0 se não houver).
+- taxaIva: a taxa de IVA da linha em % (ex.: 6, 13, 23; 0 se isento). Se a fatura usar códigos de taxa, converte-os para a percentagem.
+- totalLinha: valor da linha SEM IVA, já com o desconto da linha (a coluna "Valor"/"Total"/"Líquido").
+
+REGRAS:
+- TODAS as linhas de artigos, de TODAS as páginas, uma entrada por linha, pela ordem da fatura. Inclui portes, taras, ecovalor e outras linhas com valor se aparecerem como linhas.
+- Se a fatura vier repetida (ORIGINAL / DUPLICADO / TRIPLICADO / QUADRUPLICADO), lê só UMA via.
+- NÃO são linhas: "A transportar", "Transportado", subtotais, resumo/quadro de IVA, totais, referências a guias de remessa/transporte (ex.: "GT 3105/2026 de 02/05/2026"), cabeçalhos de coluna.
+- guias: se a fatura referir guias de transporte/remessa (GT, GR, GD…), lista-as em "guias" com o número e a data, se legível. Se não houver, devolve [].
+- Valores como NÚMEROS (ponto decimal, sem € nem separador de milhares): "1 214,92" → 1214.92; "1.504,07" → 1504.07.
+- ⚠️ NUNCA inventes linhas nem valores. Se um campo não for legível, omite-o. Não alteres o que está escrito para fazer bater os totais.
 
 Devolve APENAS o JSON.
 PROMPT;

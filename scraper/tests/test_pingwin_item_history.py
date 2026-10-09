@@ -44,8 +44,9 @@ class CatalogSession:
     """Catálogo de `total` artigos. `short_after`: a página que começa nesse índice vem
     curta (12 itens), mas as seguintes continuam (o caso da Yuko). `ignore_range`: devolve
     sempre a primeira página. `families`: {family_id: [ids]} para os pedidos por família."""
-    def __init__(self, total, short_after=None, ignore_range=False, announce=False, families=None):
+    def __init__(self, total, short_after=None, ignore_range=False, announce=False, families=None, exclusive=False):
         self.total = total
+        self.exclusive = exclusive  # S2: semântica REAL do Range ([a, b), provada ao vivo)
         self.short_after = short_after
         self.ignore_range = ignore_range
         self.announce = announce
@@ -72,7 +73,7 @@ class CatalogSession:
             return FakeResponse({"browser": {"browserdataset": page}})
         if self.ignore_range:
             start, end = 0, end - start
-        stop = min(end + 1, self.total)
+        stop = min(end if self.exclusive else end + 1, self.total)
         if self.short_after is not None and start == self.short_after:
             stop = min(start + 12, self.total)
         headers = {"Content-Range": f"items {start}-{end}/{self.total}"} if self.announce else {}
@@ -143,11 +144,15 @@ def test_complete_reader_no_longer_reads_family_by_family():
     assert "by_family" not in c.last_catalog_diag
 
 
-def test_old_catalog_reader_is_unchanged():
-    # Sem catalog_complete, a leitura de sempre (para na página curta, como antes).
-    s = CatalogSession(total=1340, short_after=1000)
+def test_catalog_reader_normal_le_para_la_dos_999():
+    # S2: o leitor normal (sem catalog_complete) foi CORRIGIDO. O Range real é [a, b):
+    # antes pedia items=0-999, recebia 999 e parava — o "catálogo preso nos 999". Provado
+    # ao vivo (Yuko): o leitor corrigido traz 1467 artigos, o MESMO que o leitor completo.
+    s = CatalogSession(total=1340, exclusive=True)
     c = _client(s)
-    assert len(c.fetch_catalog("DS")) == 1012
+    out = c.fetch_catalog("DS")
+    assert [int(x["id"]) for x in out] == list(range(1340))
+    assert [rng for rng, _ in s.posts] == ["items=0-1000", "items=1000-2000"]
 
 
 def test_deleted_ids_use_the_complete_reader():

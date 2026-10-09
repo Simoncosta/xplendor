@@ -11,3 +11,5 @@ openpyxl==3.1.5
 # poppler-utils no sistema (ver docker/scraper/Dockerfile). A chamada à IA é em PHP.
 pdf2image==1.17.0
 Pillow==10.4.0
+# F2a: QR da AT nas faturas (PDF renderizado ou imagem).
+zxing-cpp==3.1.1

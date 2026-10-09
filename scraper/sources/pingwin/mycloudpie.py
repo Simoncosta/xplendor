@@ -27,7 +27,7 @@ import ssl
 import sys
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List
 from urllib.parse import quote, urlparse
 
@@ -229,6 +229,11 @@ def custom_pbkdf2(password: str, salt_hex: str) -> str:
         digest = hashlib.md5(pwd + digest).digest()
         d_xor = bytes(a ^ b for a, b in zip(d_xor, digest))
     return d_xor.hex()
+
+
+class BrowserDatasetLimitError(RuntimeError):
+    """O browserdataset atingiu a trava de páginas com a última página ainda completa:
+    os dados podem estar cortados, por isso a leitura é recusada (nunca silenciosa)."""
 
 
 class MyCloudPieClient:
@@ -740,35 +745,57 @@ class MyCloudPieClient:
         max_pages: int = 30,
     ) -> List[Dict[str, Any]]:
         """
-        Helper ÚNICO de leitura paginada de um browserdataset (mesmo endpoint do
-        fetch_stores/fetch_document_configs/fetch_catalog). ITERA o header Range
-        (items=0-999, 1000-1999, …), ACUMULA os itens e PARA quando a página vem
-        curta (len < page_size). `max_pages` é a trava §8.2 (nunca paginar sem fim).
+        Helper ÚNICO de leitura paginada de um browserdataset (fetch_document_configs,
+        fetch_catalog, fornecedores, condições de pagamento, documentos de fornecedor…).
         Aceita HTTP 200 E 206 (Partial Content). Lê resposta["browser"]["browserdataset"].
         READ-ONLY (Action OPEN,GET,INFO,CLOSE — não escreve). Requer login feito.
+
+        ⚠️ Semântica do Range PROVADA ao vivo (2026-10-09): "items=a-b" devolve [a, b) —
+        o b NÃO vem (items=0-999 → 999 linhas; items=0-1000 → 1000). Antes pedíamos
+        items=0-999, recebíamos 999 < page_size e parávamos: tudo o que passasse a
+        linha 999 nunca chegava (o "catálogo preso nos 999"). Agora:
+          · pede items=start-(start+page_size) → uma página completa tem page_size linhas;
+          · avança pelo nº de linhas RECEBIDAS (não salta nem repete);
+          · para numa página incompleta (< page_size);
+          · deduplica por id (o servidor pode repetir uma linha entre páginas);
+          · max_pages é a trava de segurança: se a última página ainda vier completa,
+            levanta BrowserDatasetLimitError — NUNCA devolve uma lista possivelmente cortada.
 
         `body` é o corpo COMPLETO do POST (muda só entre datasets: os documentos
         levam {"filter":{},"params":{…}}, o catálogo {"orderby":"code","params":{…}}).
         """
         url = f"{self.api_url}/service/browser/{dataset_id}/browserdataset"
         out: List[Dict[str, Any]] = []
+        seen: set = set()
+        start = 0
         pages = 0
         for page in range(max_pages):
             pages = page + 1
-            start = page * page_size
             headers = {
                 "Action": "OPEN,GET,INFO,CLOSE",
                 "Content-Type": "application/json;charset=UTF-8",
-                "Range": f"items={start}-{start + page_size - 1}",
+                "Range": f"items={start}-{start + page_size}",
             }
             r = self.session.post(url, json=body, headers=headers)
             if r.status_code not in (200, 206):
                 log.error(f"fetch_browserdataset({dataset_id}) falhou: HTTP {r.status_code} body={r.text[:1000]}")
                 r.raise_for_status()
             items = r.json().get("browser", {}).get("browserdataset", [])
-            out.extend(items)
-            if len(items) < page_size:  # página curta → última página; para
+            for it in items:
+                rid = it.get("id") if isinstance(it, dict) else None
+                if rid not in (None, ""):
+                    if str(rid) in seen:
+                        continue
+                    seen.add(str(rid))
+                out.append(it)
+            if len(items) < page_size:  # página incompleta → última; para
                 break
+            start += len(items)
+        else:
+            raise BrowserDatasetLimitError(
+                f"browserdataset {dataset_id}: {max_pages} página(s) de {page_size} sem chegar ao fim "
+                f"({len(out)} linhas) — leitura possivelmente cortada, recusada"
+            )
         log.info(f"browserdataset {dataset_id}: {len(out)} item(s) em {pages} página(s)")
         return out
 
@@ -1609,6 +1636,262 @@ class MyCloudPieClient:
         items = self.fetch_browserdataset(dataset_id, body, page_size=page_size, max_pages=max_pages)
         log.info(f"Fornecedores: {len(items)}")
         return items
+
+    # ═══════════════════ FORNECEDORES — ESCRITA (FN): criar / editar / anular ═══════════════════
+    # ⚠️ ESCRITA NO PINGWIN. Protocolo do HAR do Simon, confirmado na nossa sessão (Passo 0):
+    #   CRIAR : POST /service/entity  Action NEW  {"params":{"entitytype":"supplier"}} → ObjectID
+    #           GET,INFO dos blocos → MERGE (linhas COMPLETAS do modelo + os nossos campos)
+    #           → SAVE → CLOSE (SEMPRE, também em erro). Mesmo ObjectID em todos os passos.
+    #   EDITAR: POST /service/entity/{id}  Action OPEN  (mesmo body) → ObjectID → GET,INFO (VIVO)
+    #           → MERGE (sem o storerelation, como o BO) → SAVE → CLOSE.
+    #   ANULAR: POST /service/supplier/{id}  Action DELETE,CLOSE (sem body, sem ObjectID).
+    # datasetclient (deleted 1) e datasetemployee (deleted 1, is_user 1) seguem SEMPRE tal e
+    # qual vieram — mudar o deleted criaria um CLIENTE ou um UTILIZADOR. O NIF duplicado NÃO é
+    # bloqueado pelo PingWin (tax_number_count = nº de OUTRAS entidades com o mesmo NIF): a
+    # guarda é nossa (espelho + browserdataset por TAX_NUMBER + tax_number_count antes do SAVE).
+    _ENTITY_READ_DATASETS = (
+        "maindataset,datasetclient,datasetemployee,datasetsupplier,address.defaultaddress,"
+        "storerelation.storedata,additionalfields.fieldsinfo,additionalfields.maindataset"
+    )
+    _ENTITY_WRITE_CREATE = (
+        "maindataset,storerelation.storedata,datasetclient,datasetemployee,datasetsupplier,"
+        "address.defaultaddress,additionalfields.maindataset"
+    )
+    _ENTITY_WRITE_UPDATE = (
+        "maindataset,datasetclient,datasetemployee,datasetsupplier,address.defaultaddress,"
+        "additionalfields.maindataset"
+    )
+    _ENTITY_BODY = {"params": {"entitytype": "supplier"}}
+    SUPPLIER_DEFAULT_COUNTRY = "30000"   # Portugal
+    SUPPLIER_DEFAULT_CURRENCY = "5001"   # Euro
+    SUPPLIER_CONTACT_TYPE = "6001"
+
+    def _entity_headers(self, action: str, object_id: str | None = None) -> Dict[str, str]:
+        return self._paycond_headers(action, object_id)  # mesmos headers SOA (X-Database, ObjectID…)
+
+    def _entity_form(self, session: requests.Session, supplier_id: str | None = None) -> tuple[str, Dict[str, Any]]:
+        """Abre o form (NEW para criar; OPEN pelo id para editar) e lê os blocos VIVOS
+        (GET,INFO). Devolve (object_id, body). NÃO fecha — quem chama fecha (finally)."""
+        base = self.api_url
+        if supplier_id:
+            r = session.post(f"{base}/service/entity/{supplier_id}", json=self._ENTITY_BODY, headers=self._entity_headers("OPEN"))
+        else:
+            r = session.post(f"{base}/service/entity", json=self._ENTITY_BODY, headers=self._entity_headers("NEW"))
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"entity {'OPEN' if supplier_id else 'NEW'} falhou: HTTP {r.status_code} — {r.text[:400]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError("entity: header 'ObjectID' ausente na abertura do form.")
+        try:
+            g = session.post(f"{base}/service/entity/{self._ENTITY_READ_DATASETS}", data=b"",
+                             headers=self._entity_headers("GET,INFO", object_id))
+            if g.status_code not in (200, 206):
+                raise RuntimeError(f"entity GET,INFO falhou: HTTP {g.status_code} — {g.text[:400]}")
+            body = g.json().get("entity") or g.json()
+        except Exception:
+            self._entity_close(session, object_id)
+            raise
+        for k in ("maindataset", "datasetclient", "datasetemployee", "datasetsupplier", "address.defaultaddress"):
+            if not body.get(k):
+                self._entity_close(session, object_id)
+                raise RuntimeError(f"entity: bloco '{k}' vazio no form — protocolo contrariado, abortado.")
+        return object_id, body
+
+    def _entity_close(self, session: requests.Session, object_id: str) -> None:
+        """CLOSE best-effort (descarta o que não foi SAVE). Nunca levanta."""
+        try:
+            session.post(f"{self.api_url}/service/entity", data=b"", headers=self._entity_headers("CLOSE", object_id))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("entity CLOSE falhou (ignorado): %s", type(exc).__name__)
+
+    @staticmethod
+    def _cut(value: Any, size: int) -> str:
+        return str(value if value is not None else "").strip()[:size]
+
+    def _supplier_payload(self, body: Dict[str, Any], fields: Dict[str, Any], create: bool) -> Dict[str, Any]:
+        """Blocos do MERGE: linhas COMPLETAS do form + os nossos campos. Campo ausente em
+        `fields` mantém o valor vivo. datasetclient/datasetemployee/additionalfields seguem
+        INTACTOS (as mesmas listas que vieram)."""
+        def pick(key: str, cur: Any) -> Any:
+            return fields[key] if key in fields and fields[key] is not None else cur
+
+        main = dict(body["maindataset"][0])
+        main["description"] = self._cut(pick("description", main.get("description")), 50)
+        main["fiscalname"] = self._cut(pick("fiscalname", main.get("fiscalname")), 100)
+        main["tax_number"] = self._cut(pick("tax_number", main.get("tax_number")), 21)
+        main["issupplier"] = 1
+        main["currency_id"] = str(main.get("currency_id") or self.SUPPLIER_DEFAULT_CURRENCY)
+
+        sup = dict(body["datasetsupplier"][0])
+        sup["deleted"] = 0
+        sup["paycond_id"] = str(pick("paycond_id", sup.get("paycond_id")) or "")
+
+        addr = dict(body["address.defaultaddress"][0])
+        addr["address"] = self._cut(pick("address", addr.get("address")), 150)
+        addr["postalcode"] = self._cut(pick("postalcode", addr.get("postalcode")), 20)
+        addr["postalcode_description"] = self._cut(pick("postalcode_description", addr.get("postalcode_description")), 75)
+        addr["country_id"] = str(pick("country_id", addr.get("country_id")) or self.SUPPLIER_DEFAULT_COUNTRY)
+        addr["contact_type_id"] = str(addr.get("contact_type_id") or self.SUPPLIER_CONTACT_TYPE)
+        addr["isdefault"] = 1
+        addr["obs"] = self._cut(pick("obs", addr.get("obs")), 250)
+
+        payload = {
+            "maindataset": [main],
+            "datasetclient": body["datasetclient"],          # INTACTO (deleted 1)
+            "datasetemployee": body["datasetemployee"],      # INTACTO (deleted 1)
+            "datasetsupplier": [sup],
+            "address.defaultaddress": [addr],
+            "additionalfields.maindataset": body.get("additionalfields.maindataset") or [],
+        }
+        if create:
+            # As lojas como o BO faz por omissão: todas ativas.
+            payload["storerelation.storedata"] = [dict(s, deleted=0) for s in (body.get("storerelation.storedata") or [])]
+        return payload
+
+    @staticmethod
+    def _deleted_flags(blocks: Dict[str, Any]) -> Dict[str, Any]:
+        """deleted de cada linha de datasetclient/datasetemployee (para provar que não mudaram)."""
+        return {k: [int(x.get("deleted") or 0) for x in (blocks.get(k) or [])] for k in ("datasetclient", "datasetemployee")}
+
+    def _supplier_write(self, session: requests.Session, supplier_id: str | None, fields: Dict[str, Any],
+                        allow_duplicate_nif: bool) -> Dict[str, Any]:
+        """Passos comuns de criar/editar: form → MERGE → (guarda NIF) → SAVE → CLOSE (finally)
+        → confirmação por releitura. Devolve {ok, persisted, pingwin_id, code, capture, confirm}."""
+        create = supplier_id is None
+        object_id, body = self._entity_form(session, supplier_id)
+        capture: Dict[str, Any] = {"op": "create" if create else "update"}
+        try:
+            cur_main = body["maindataset"][0]
+            if not create:
+                if int(cur_main.get("deleted") or 0) != 0 or int(body["datasetsupplier"][0].get("deleted") or 0) != 0:
+                    return {"ok": False, "persisted": False, "error": "Fornecedor anulado — editar recusado.", "capture": capture}
+            payload = self._supplier_payload(body, fields, create)
+            # Guarda forte: os dois blocos sensíveis são os OBJETOS que vieram (nada mudou).
+            if payload["datasetclient"] is not body["datasetclient"] or payload["datasetemployee"] is not body["datasetemployee"]:
+                raise RuntimeError("guarda: datasetclient/datasetemployee alterados — abortado.")
+            capture["deleted_before"] = self._deleted_flags(body)
+            capture["merge_payload"] = payload
+            write_ds = self._ENTITY_WRITE_CREATE if create else self._ENTITY_WRITE_UPDATE
+            rm = session.post(f"{self.api_url}/service/entity/{write_ds}", json=payload,
+                              headers=self._entity_headers("MERGE", object_id))
+            capture["merge_http"] = rm.status_code
+            if rm.status_code not in (200, 206):
+                return {"ok": False, "persisted": False, "aborted_before_commit": True, "capture": capture,
+                        "error": f"MERGE falhou (HTTP {rm.status_code}) — {self._soa_message(rm.text)}"}
+            mmain = ((rm.json().get("entity") or rm.json()).get("maindataset") or [{}])[0]
+            pid = str(mmain.get("id") or cur_main.get("id") or supplier_id or "")
+            capture["tax_number_count"] = mmain.get("tax_number_count")
+            # Terceira guarda de NIF (a do servidor): outras entidades com o mesmo NIF. Na edição
+            # só conta se o NIF MUDOU (há fornecedores antigos que já partilham NIF).
+            new_nif = payload["maindataset"][0]["tax_number"]
+            nif_changed = create or new_nif != str(cur_main.get("tax_number") or "").strip()
+            if not allow_duplicate_nif and new_nif and nif_changed and int(mmain.get("tax_number_count") or 0) > 0:
+                return {"ok": False, "persisted": False, "aborted_before_commit": True, "duplicate_nif": True, "capture": capture,
+                        "error": f"NIF {payload['maindataset'][0]['tax_number']} já existe noutra entidade do PingWin (tax_number_count={mmain.get('tax_number_count')}). Não gravado."}
+            rs = session.post(f"{self.api_url}/service/entity", data=b"", headers=self._entity_headers("SAVE", object_id))
+            capture["save_http"] = rs.status_code
+            if rs.status_code not in (200, 206):
+                return {"ok": False, "persisted": False, "capture": capture,
+                        "error": f"SAVE falhou (HTTP {rs.status_code}) — {self._soa_message(rs.text)}"}
+        finally:
+            self._entity_close(session, object_id)
+
+        confirm = self._supplier_read_on(session, pid)
+        sent_main = payload["maindataset"][0]
+        sent_sup = payload["datasetsupplier"][0]
+        sent_addr = payload["address.defaultaddress"][0]
+        checks = {
+            "description": confirm.get("description") == sent_main["description"],
+            "fiscalname": (confirm.get("fiscalname") or "") == sent_main["fiscalname"],
+            "tax_number": (confirm.get("tax_number") or "") == sent_main["tax_number"],
+            "paycond_id": (confirm.get("paycond_id") or "") == sent_sup["paycond_id"],
+            "address": (confirm.get("address") or "") == sent_addr["address"],
+            "postalcode": (confirm.get("postalcode") or "") == sent_addr["postalcode"],
+            "postalcode_description": (confirm.get("postalcode_description") or "") == sent_addr["postalcode_description"],
+            "issupplier_ativo": confirm.get("supplier_deleted") == 0 and confirm.get("deleted") == 0,
+            "cliente_e_utilizador_intactos": confirm.get("deleted_flags") == capture["deleted_before"],
+        }
+        persisted = all(checks.values())
+        if not persisted:
+            log.error("supplier write NÃO confirmado: %s", {k: v for k, v in checks.items() if not v})
+        return {"ok": persisted, "persisted": persisted, "pingwin_id": pid, "code": confirm.get("code"),
+                "checks": checks, "confirm": confirm, "capture": capture}
+
+    @staticmethod
+    def _soa_message(text: str) -> str:
+        try:
+            return str(json.loads(text).get("message") or text)[:300]
+        except Exception:  # noqa: BLE001
+            return (text or "")[:300]
+
+    def _supplier_read_on(self, session: requests.Session, supplier_id: str) -> Dict[str, Any]:
+        """Releitura VIVA de um fornecedor (OPEN → GET,INFO → CLOSE, sem SAVE): os campos
+        do formulário + os deleted dos blocos sensíveis."""
+        object_id, body = self._entity_form(session, str(supplier_id))
+        try:
+            m = body["maindataset"][0]
+            s = body["datasetsupplier"][0]
+            a = body["address.defaultaddress"][0]
+            return {
+                "id": str(m.get("id") or supplier_id), "code": m.get("code"), "description": m.get("description"),
+                "fiscalname": m.get("fiscalname"), "tax_number": m.get("tax_number"), "deleted": int(m.get("deleted") or 0),
+                "issupplier": int(m.get("issupplier") or 0), "paycond_id": str(s.get("paycond_id") or ""),
+                "paycond_id_descr": s.get("paycond_id_descr"), "supplier_deleted": int(s.get("deleted") or 0),
+                "address": a.get("address"), "postalcode": a.get("postalcode"),
+                "postalcode_description": a.get("postalcode_description"), "country_id": str(a.get("country_id") or ""),
+                "country_id_descr": a.get("country_id_descr"), "obs": a.get("obs"),
+                "deleted_flags": self._deleted_flags(body),
+            }
+        finally:
+            self._entity_close(session, object_id)
+
+    def read_supplier(self, supplier_id: str) -> Dict[str, Any]:
+        """SÓ LEITURA: o formulário VIVO de um fornecedor (para editar com dados frescos)."""
+        return self._supplier_read_on(self.session, str(supplier_id))
+
+    def create_supplier(self, fields: Dict[str, Any], allow_duplicate_nif: bool = False) -> Dict[str, Any]:
+        """⚠️ ESCRITA: cria UM fornecedor. fields = {description, fiscalname, tax_number,
+        paycond_id, address, postalcode, postalcode_description, country_id, obs}."""
+        if not str(fields.get("description") or "").strip():
+            return {"ok": False, "persisted": False, "error": "Nome (description) obrigatório."}
+        return self._supplier_write(self.session, None, fields, allow_duplicate_nif)
+
+    def update_supplier(self, supplier_id: str, fields: Dict[str, Any], allow_duplicate_nif: bool = False) -> Dict[str, Any]:
+        """⚠️ ESCRITA: edita UM fornecedor ATIVO (releitura viva; o code não muda)."""
+        return self._supplier_write(self.session, str(supplier_id), fields, allow_duplicate_nif)
+
+    def find_suppliers_by_nif(self, dataset_id: str, nif: str) -> Dict[str, List[Dict[str, Any]]]:
+        """SÓ LEITURA: fornecedores com o NIF (filtro TAX_NUMBER no servidor), ativos e anulados."""
+        out = {}
+        for state in ("0", "1"):
+            body = {"params": {"CODE": "", "DESCRIPTION": "", "TAX_NUMBER": str(nif), "CONTACT": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": state}}
+            rows = self.fetch_browserdataset(dataset_id, body)
+            out["active" if state == "0" else "voided"] = [r for r in rows if str(r.get("tax_number") or "").strip() == str(nif).strip()]
+        return out
+
+    def _supplier_state(self, dataset_id: str, supplier_id: str) -> tuple[bool, bool]:
+        """(está em STATE 0, está em STATE 1) — por id."""
+        def has(state: str) -> bool:
+            body = {"params": {"CODE": "", "DESCRIPTION": "", "TAX_NUMBER": "", "CONTACT": "", "STORE_ID": "", "SHOWATTR": "0", "STATE": state}}
+            return any(str(r.get("id")) == str(supplier_id) for r in self.fetch_browserdataset(dataset_id, body))
+        return has("0"), has("1")
+
+    def void_supplier(self, supplier_id: str, dataset_id: str) -> Dict[str, Any]:
+        """⚠️ ESCRITA: anula UM fornecedor ATIVO. Só voided_confirmed=True se sair do STATE 0
+        e aparecer no STATE 1. ⚠️ caminho /service/supplier (não /entity)."""
+        sid = str(supplier_id)
+        in0, _ = self._supplier_state(dataset_id, sid)
+        if not in0:
+            return {"ok": False, "voided_confirmed": False, "error": "Fornecedor não está ativo (STATE 0) — anular recusado."}
+        r = self.session.post(f"{self.api_url}/service/supplier/{sid}", data=b"",
+                              headers={"Action": "DELETE,CLOSE", "X-Database": self.database, "X-AppGrupoPie": self.app_grupopie})
+        if r.status_code not in (200, 206):
+            return {"ok": False, "voided_confirmed": False, "void_http": r.status_code,
+                    "error": f"Anular falhou (HTTP {r.status_code}) — {self._soa_message(r.text)}"}
+        in0, in1 = self._supplier_state(dataset_id, sid)
+        voided = (not in0) and in1
+        return {"ok": voided, "voided_confirmed": voided, "void_http": r.status_code,
+                "in_state0_ativos": in0, "in_state1_anulados": in1, "pingwin_id": sid}
 
     # --------------------------------------------------- BROWSER: FAMÍLIAS
     def fetch_families(self) -> List[Dict[str, Any]]:
@@ -2927,6 +3210,235 @@ class MyCloudPieClient:
             "still_present": (still is not None),
         }
 
+    # ===================== CONTA CORRENTE DE FORNECEDOR (S1, SÓ LEITURA) =====================
+    # POST /service/suppliercc/*/ccdocuments e */ccbalance, Action OPEN,GET,CLOSE (o caminho
+    # sem "*/" dá 500: o servidor lê "ccdocuments" como id). Período largo fixo: o spike
+    # provou que ccbalance(21001231) == Σ topay×ca_signal de 20000101 em 184/184 fornecedores.
+    # Repetição limitada: HTTP 5xx, ou lista vazia com saldo ≠ 0 (incoerente — o servidor
+    # GrupoPIE tem intermitência conhecida, cf. Resumo de Vendas).
+    CC_START_DATE = "20000101T00:00:00"
+    CC_END_DATE = "21001231T00:00:00"
+    CC_ATTEMPTS = 3
+    CC_RETRY_DELAY_S = 2.0
+
+    def _cc_post(self, dataset: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Um pedido suppliercc com repetição em 5xx. Devolve suppliercc.<dataset> (lista)."""
+        url = f"{self.api_url}/service/suppliercc/*/{dataset}"
+        headers = {"Action": "OPEN,GET,CLOSE", "Content-Type": "application/json;charset=UTF-8"}
+        for attempt in range(1, self.CC_ATTEMPTS + 1):
+            r = self.session.post(url, json={"params": params}, headers=headers)
+            if r.status_code >= 500 and attempt < self.CC_ATTEMPTS:
+                log.warning("suppliercc %s HTTP %s (tentativa %d/%d) — a repetir", dataset, r.status_code, attempt, self.CC_ATTEMPTS)
+                time.sleep(self.CC_RETRY_DELAY_S)
+                continue
+            if r.status_code != 200:
+                raise RuntimeError(f"suppliercc {dataset}: HTTP {r.status_code} — {r.text[:200]}")
+            rows = (r.json().get("suppliercc") or {}).get(dataset)
+            if not isinstance(rows, list):
+                raise RuntimeError(f"suppliercc {dataset}: estrutura inesperada — {r.text[:200]}")
+            return rows
+        raise RuntimeError(f"suppliercc {dataset}: sem resposta válida")  # inalcançável
+
+    def fetch_supplier_cc(self, entity_ids: List[str]) -> List[Dict[str, Any]]:
+        """Conta corrente (documentos + saldo) de uma LISTA de fornecedores. Um fornecedor
+        que falhe NÃO aborta o lote: devolve {entity_id, ok:false, error} e segue."""
+        out: List[Dict[str, Any]] = []
+        for eid in entity_ids:
+            eid = str(eid)
+            try:
+                for attempt in range(1, self.CC_ATTEMPTS + 1):
+                    docs = self._cc_post("ccdocuments", {"entity_id": eid, "start_date": self.CC_START_DATE,
+                                                         "end_date": self.CC_END_DATE})
+                    bal_rows = self._cc_post("ccbalance", {"entity_id": eid, "cc_date": self.CC_END_DATE})
+                    if not bal_rows:
+                        raise RuntimeError("ccbalance sem linhas")
+                    balance = float(bal_rows[0].get("balance") or 0)
+                    if not docs and abs(balance) >= 0.005:
+                        if attempt < self.CC_ATTEMPTS:
+                            log.warning("suppliercc %s: lista vazia com saldo %.2f (tentativa %d/%d) — a repetir",
+                                        eid, balance, attempt, self.CC_ATTEMPTS)
+                            time.sleep(self.CC_RETRY_DELAY_S)
+                            continue
+                        raise RuntimeError(f"lista vazia incoerente: ccbalance={balance:.2f} sem documentos")
+                    out.append({"entity_id": eid, "ok": True, "documents": docs,
+                                "balance": bal_rows[0], "attempts": attempt})
+                    break
+            except Exception as exc:  # noqa: BLE001 — isola o fornecedor; o lote continua
+                log.warning("suppliercc %s falhou: %s", eid, exc)
+                out.append({"entity_id": eid, "ok": False, "error": f"{type(exc).__name__}: {exc}"[:300]})
+        return out
+
+    # ================= DOCUMENTOS DE FORNECEDOR (F1, SÓ LEITURA, lista "Documentos") =================
+    # POST /service/browser/<dataset>/browserdataset (HAR: dataset 1099511639269), Action
+    # OPEN,GET,INFO,CLOSE, DOCTYPE "2002" = "Documentos de fornecedores", FILTER_DATE_BY "0"
+    # = data de caixa (doc_date; provado: "1" filtra por fiscal_date).
+    # Cada bloco usa a paginação CORRIGIDA do fetch_browserdataset (páginas de
+    # SUPDOCS_PAGE_SIZE, até SUPDOCS_MAX_PAGES). Se um bloco bater na trava de páginas
+    # (BrowserDatasetLimitError = possivelmente cortado), divide-se ao meio.
+    SUPDOCS_DOCTYPE = "2002"
+    SUPDOCS_BLOCK_DAYS = 7
+    SUPDOCS_PAGE_SIZE = 1000
+    SUPDOCS_MAX_PAGES = 10
+    SUPDOCS_ATTEMPTS = 3
+    SUPDOCS_RETRY_DELAY_S = 2.0
+
+    @staticmethod
+    def _supdocs_body(start: date, end: date) -> Dict[str, Any]:
+        return {"params": {
+            "DOCTYPE": MyCloudPieClient.SUPDOCS_DOCTYPE, "DOCCONFIG_ID": "", "STORE_ID": "", "DOCSTATUS_ID": "",
+            "DOCNUMBER": "", "REFDOC_NUMBER": "", "ATM_REFERENCE": "", "SEARCHTEXT": "", "HIDE_CONV_DOCS": "0",
+            "DOCUMENT_ID": "", "START_DATE": start.strftime("%Y%m%dT00:00:00"),
+            "END_DATE": end.strftime("%Y%m%dT00:00:00"), "FILTER_DATE_BY": "0", "TAX_NUMBER": "",
+        }}
+
+    def _supdocs_block(self, dataset_id: str, start: date, end: date) -> List[Dict[str, Any]]:
+        """Um bloco, paginado (até SUPDOCS_MAX_PAGES × SUPDOCS_PAGE_SIZE), com repetição em
+        5xx. Levanta BrowserDatasetLimitError se o bloco não couber (quem chama divide-o)."""
+        for attempt in range(1, self.SUPDOCS_ATTEMPTS + 1):
+            try:
+                return self.fetch_browserdataset(dataset_id, self._supdocs_body(start, end),
+                                                 page_size=self.SUPDOCS_PAGE_SIZE, max_pages=self.SUPDOCS_MAX_PAGES)
+            except requests.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else 0
+                if status >= 500 and attempt < self.SUPDOCS_ATTEMPTS:
+                    log.warning("documentos de fornecedor %s→%s: HTTP %s (tentativa %d/%d) — a repetir",
+                                start, end, status, attempt, self.SUPDOCS_ATTEMPTS)
+                    time.sleep(self.SUPDOCS_RETRY_DELAY_S)
+                    continue
+                raise
+        raise RuntimeError("documentos de fornecedor: sem resposta válida")  # inalcançável
+
+    def fetch_supplier_documents(self, dataset_id: str, start: date, end: date) -> Dict[str, Any]:
+        """Documentos de fornecedor (DOCTYPE 2002) de [start, end], em blocos de
+        SUPDOCS_BLOCK_DAYS dias. Um bloco que bata na trava de páginas divide-se ao meio até
+        caber; nunca se aceita um bloco possivelmente cortado. Devolve documentos + estatística."""
+        if end < start:
+            raise ValueError("fim antes do início")
+        queue: List[tuple] = []
+        cur = start
+        while cur <= end:
+            block_end = min(cur + timedelta(days=self.SUPDOCS_BLOCK_DAYS - 1), end)
+            queue.append((cur, block_end))
+            cur = block_end + timedelta(days=1)
+
+        docs: Dict[str, Dict[str, Any]] = {}
+        blocks = splits = 0
+        while queue:
+            b_start, b_end = queue.pop(0)
+            blocks += 1
+            try:
+                rows = self._supdocs_block(dataset_id, b_start, b_end)
+            except BrowserDatasetLimitError:
+                if b_start == b_end:
+                    raise RuntimeError(f"documentos de fornecedor: o dia {b_start} não cabe na trava de páginas — impossível dividir")
+                mid = b_start + timedelta(days=(b_end - b_start).days // 2)
+                queue[0:0] = [(b_start, mid), (mid + timedelta(days=1), b_end)]
+                splits += 1
+                log.info("documentos de fornecedor %s→%s: bateu na trava de páginas — dividido ao meio", b_start, b_end)
+                continue
+            for r in rows:
+                rid = str(r.get("id") or "")
+                if rid:
+                    docs[rid] = r
+        return {"documents": list(docs.values()), "blocks": blocks, "splits": splits}
+
+    # ============ LINHAS DOS DOCUMENTOS DE FORNECEDOR (F4, SÓ LEITURA, um documento de cada vez) ============
+    # Protocolo (HAR do BO + Passo 0 da F4, provado na Yuko):
+    #   1. POST /service/{docconfig_id}/{docheader_id}  Action OPEN  (sem body) → ObjectID no HEADER
+    #   2. POST /service/{docconfig_id}/header,details  Action GET   (com o ObjectID)
+    #      · só "header,details" e GET sem INFO: ~4 KB em vez de ~100 KB (sem as listas de
+    #        lookups nem o service.datasetinfo); o BO pede 12 blocos com GET,INFO.
+    #   3. POST /service/{docconfig_id}                  Action CLOSE (com o ObjectID)
+    #      · provado: depois do CLOSE um GET com o mesmo ObjectID dá 404 "Object … not found".
+    #      · o BO não fecha; NÓS FECHAMOS SEMPRE (finally), também em erro — um documento
+    #        aberto pode ficar bloqueado para edição no BO.
+    # A resposta vem embrulhada pelo docconfig: {"1209": {"header": [...], "details": [...]}}.
+    DOCLINES_BLOCKS = "header,details"
+    DOCLINES_ATTEMPTS = 2
+    DOCLINES_RETRY_DELAY_S = 2.0
+    DOCLINES_HEADER_FIELDS = (
+        "id", "docconfig_id", "store_id", "doc_prefix", "doc_number", "entity_id", "entity_name",
+        "entity_taxnum", "entity_code", "doc_date", "due_date", "paycond_id", "docreference_id",
+        "docreference_number", "docreference_date", "currency_id", "discount1", "discount2_add",
+        "discount2_mul", "shipping_value", "adjustment", "withholding", "total_products", "total_tax",
+        "total", "docstatus_id", "taxscenario_id", "tax_round_mode", "taxincluded", "paid", "total_paid",
+        "employee_id",
+        # total_products é BRUTO (Σ qnt × preço); os descontos ficam nestes campos (prova F4).
+        "subtotal", "gross_total", "detail_discount_value", "header_discount_value", "discount_value",
+        "global_discount", "global_adjustment",
+    )
+    DOCLINES_DETAIL_FIELDS = (
+        "id", "line_number", "product_id", "product_code", "entity_product_id", "description", "qnt",
+        "unit_id", "unit_code", "unit_desc", "price", "discount1", "discount_value", "total",
+        "taxgroup_id", "tax_description", "tax_value", "price_w_tax", "total_w_tax", "warehouse_id",
+    )
+
+    def _doc_close(self, docconfig_id: str, object_id: str) -> bool:
+        """CLOSE do documento (sempre). Nunca levanta; devolve se fechou (HTTP 2xx)."""
+        try:
+            r = self.session.post(f"{self.api_url}/service/{docconfig_id}", data=b"",
+                                  headers=self._paycond_headers("CLOSE", object_id))
+            if r.status_code in (200, 204, 206):
+                return True
+            log.warning("documento %s CLOSE: HTTP %s — %s", docconfig_id, r.status_code, r.text[:200])
+        except Exception as exc:  # noqa: BLE001
+            log.warning("documento %s CLOSE falhou: %s", docconfig_id, type(exc).__name__)
+        return False
+
+    def _doc_read_once(self, docconfig_id: str, docheader_id: str) -> Dict[str, Any]:
+        """OPEN → GET header,details → CLOSE (finally). Devolve {header, details, closed}."""
+        base = self.api_url
+        r = self.session.post(f"{base}/service/{docconfig_id}/{docheader_id}", data=b"",
+                              headers=self._paycond_headers("OPEN"))
+        if r.status_code not in (200, 206):
+            r.raise_for_status()
+            raise RuntimeError(f"OPEN: HTTP {r.status_code} — {r.text[:300]}")
+        object_id = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if not object_id:
+            raise RuntimeError("OPEN: header 'ObjectID' ausente — protocolo contrariado.")
+        closed = False
+        try:
+            g = self.session.post(f"{base}/service/{docconfig_id}/{self.DOCLINES_BLOCKS}", data=b"",
+                                  headers=self._paycond_headers("GET", object_id))
+            if g.status_code not in (200, 206):
+                g.raise_for_status()
+                raise RuntimeError(f"GET: HTTP {g.status_code} — {g.text[:300]}")
+            body = g.json()
+        finally:
+            closed = self._doc_close(docconfig_id, object_id)
+        return {**parse_document_lines(body, docconfig_id, docheader_id), "closed": closed}
+
+    def fetch_supplier_document_lines(self, docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Lê o header + as linhas de cada documento ({docconfig_id, docheader_id}), um de cada
+        vez, fechando-o logo. Um documento que falha vem {ok:false, error} sem abortar o lote;
+        5xx/erros de rede repetem DOCLINES_ATTEMPTS vezes."""
+        out: List[Dict[str, Any]] = []
+        for d in docs:
+            dc = str(d.get("docconfig_id") or "").strip()
+            dh = str(d.get("docheader_id") or "").strip()
+            if not dc or not dh:
+                out.append({"docheader_id": dh, "docconfig_id": dc, "ok": False, "error": "docconfig_id/docheader_id em falta"})
+                continue
+            t0 = time.time()
+            for attempt in range(1, self.DOCLINES_ATTEMPTS + 1):
+                try:
+                    res = self._doc_read_once(dc, dh)
+                    out.append({"docheader_id": dh, "docconfig_id": dc, "ok": True, "attempts": attempt,
+                                "ms": int((time.time() - t0) * 1000), **res})
+                    break
+                except Exception as exc:  # noqa: BLE001 — isola o documento; o lote continua
+                    status = getattr(getattr(exc, "response", None), "status_code", 0) or 0
+                    transient = status >= 500 or isinstance(exc, (requests.ConnectionError, requests.Timeout))
+                    if transient and attempt < self.DOCLINES_ATTEMPTS:
+                        log.warning("documento %s/%s: %s (tentativa %d) — a repetir", dc, dh, type(exc).__name__, attempt)
+                        time.sleep(self.DOCLINES_RETRY_DELAY_S)
+                        continue
+                    log.warning("documento %s/%s falhou: %s", dc, dh, exc)
+                    out.append({"docheader_id": dh, "docconfig_id": dc, "ok": False, "attempts": attempt,
+                                "ms": int((time.time() - t0) * 1000), "error": f"{type(exc).__name__}: {exc}"[:300]})
+                    break
+        return out
+
     # ------------------------------------------------------------- PARSE
     def fetch_sales_report(self, target_date: datetime) -> pd.DataFrame:
         row = self.trigger_report(target_date)
@@ -2978,6 +3490,34 @@ class MyCloudPieClient:
 
         log.info(f"Lojas extraídas: {len(results)}")
         return results
+
+
+def parse_document_lines(body: Any, docconfig_id: str, docheader_id: str) -> Dict[str, Any]:
+    """Resposta de GET header,details → {header (campos úteis), details (campos úteis + raw)}.
+    Guarda: o header tem de ser o documento pedido (id) — nunca se gravam linhas de outro."""
+    if not isinstance(body, dict):
+        raise RuntimeError("resposta do documento não é um objeto JSON")
+    inner = body.get(str(docconfig_id), body)
+    if not isinstance(inner, dict):
+        raise RuntimeError("resposta do documento sem o bloco do docconfig")
+    headers = inner.get("header") or []
+    if not isinstance(headers, list) or len(headers) != 1:
+        raise RuntimeError(f"header inesperado ({len(headers) if isinstance(headers, list) else type(headers).__name__})")
+    h = headers[0]
+    if str(h.get("id") or "") != str(docheader_id):
+        raise RuntimeError(f"o header devolvido ({h.get('id')}) não é o documento pedido ({docheader_id})")
+    details = inner.get("details")
+    if not isinstance(details, list):
+        raise RuntimeError("bloco 'details' ausente")
+    header = {k: h.get(k) for k in MyCloudPieClient.DOCLINES_HEADER_FIELDS}
+    lines = []
+    for d in details:
+        if not isinstance(d, dict):
+            continue
+        row = {k: d.get(k) for k in MyCloudPieClient.DOCLINES_DETAIL_FIELDS}
+        row["raw"] = d
+        lines.append(row)
+    return {"header": header, "details": lines}
 
 
 def build_client(**kwargs) -> MyCloudPieClient:

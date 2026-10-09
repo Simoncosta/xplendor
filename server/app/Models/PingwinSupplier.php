@@ -22,6 +22,8 @@ class PingwinSupplier extends Model
     protected $fillable = [
         'company_id', 'source', 'pingwin_id', 'code', 'name', 'fiscal_name', 'tax_number',
         'address', 'city', 'postal_code', 'phone', 'email', 'is_active', 'synced_at',
+        // FN — campos do formulário que a lista do PingWin não traz (vêm da releitura viva).
+        'country_pingwin_id', 'paycond_pingwin_id', 'obs',
     ];
 
     protected $casts = [

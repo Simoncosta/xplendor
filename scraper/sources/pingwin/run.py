@@ -250,6 +250,76 @@ def run(cfg: dict) -> dict:
             suppliers = client.fetch_suppliers(dataset_id)
             return {"ok": True, "mode": "suppliers", "suppliers": suppliers}
 
+        # ── FORNECEDORES — ESCRITA (FN). Confirmação por releitura no cliente. ──
+        if mode == "read_supplier":
+            sid = str(cfg.get("supplier_id") or "")
+            if not sid:
+                return {"ok": False, "error": "supplier_id em falta."}
+            return {"ok": True, "mode": "read_supplier", "supplier": client.read_supplier(sid)}
+
+        if mode == "find_supplier_by_nif":
+            dataset_id = cfg.get("suppliers_dataset_id")
+            nif = str(cfg.get("nif") or "").strip()
+            if not dataset_id or not nif:
+                return {"ok": False, "error": "suppliers_dataset_id e nif obrigatórios."}
+            return {"ok": True, "mode": "find_supplier_by_nif", "nif": nif, **client.find_suppliers_by_nif(dataset_id, nif)}
+
+        if mode == "create_supplier":
+            # ⚠️ ESCRITA: NEW → GET,INFO → MERGE → SAVE → CLOSE (sempre) → releitura.
+            res = client.create_supplier(cfg.get("supplier") or {}, bool(cfg.get("allow_duplicate_nif")))
+            return {"mode": "create_supplier", **res, "ok": bool(res.get("ok"))}
+
+        if mode == "update_supplier":
+            # ⚠️ ESCRITA: OPEN → GET,INFO (vivo) → MERGE → SAVE → CLOSE (sempre) → releitura.
+            sid = str(cfg.get("supplier_id") or "")
+            if not sid:
+                return {"ok": False, "error": "supplier_id em falta."}
+            res = client.update_supplier(sid, cfg.get("supplier") or {}, bool(cfg.get("allow_duplicate_nif")))
+            return {"mode": "update_supplier", **res, "ok": bool(res.get("ok"))}
+
+        if mode == "void_supplier":
+            # ⚠️ ESCRITA: /service/supplier/{id} DELETE,CLOSE → confirma STATE 0 → STATE 1.
+            sid = str(cfg.get("supplier_id") or "")
+            dataset_id = cfg.get("suppliers_dataset_id")
+            if not sid or not dataset_id:
+                return {"ok": False, "error": "supplier_id e suppliers_dataset_id obrigatórios."}
+            res = client.void_supplier(sid, dataset_id)
+            return {"mode": "void_supplier", **res, "ok": bool(res.get("ok"))}
+
+        if mode == "supplier_cc":
+            # READ-ONLY (S1): CONTA CORRENTE de uma lista de fornecedores (entity_ids =
+            # pingwin_id). Documentos (período largo) + saldo por fornecedor; uma falha
+            # num fornecedor vem como {entity_id, ok:false, error} sem abortar o lote.
+            entity_ids = [str(e) for e in (cfg.get("entity_ids") or []) if str(e).strip()]
+            if not entity_ids:
+                return {"ok": False, "error": "entity_ids em falta (lista de pingwin_id de fornecedores)."}
+            return {"ok": True, "mode": "supplier_cc", "suppliers": client.fetch_supplier_cc(entity_ids)}
+
+        if mode == "supplier_document_lines":
+            # READ-ONLY (F4): header + LINHAS de uma lista de documentos de fornecedor
+            # ({docconfig_id, docheader_id}). OPEN → GET header,details → CLOSE (sempre),
+            # um documento de cada vez; uma falha vem {ok:false, error} sem abortar o lote.
+            docs = [d for d in (cfg.get("docs") or []) if isinstance(d, dict)]
+            if not docs:
+                return {"ok": False, "error": "docs em falta (lista de {docconfig_id, docheader_id})."}
+            return {"ok": True, "mode": "supplier_document_lines", "documents": client.fetch_supplier_document_lines(docs)}
+
+        if mode == "supplier_documents":
+            # READ-ONLY (F1): DOCUMENTOS DE FORNECEDOR da lista "Documentos" (DOCTYPE 2002),
+            # de start a end (AAAA-MM-DD), em blocos de 7 dias divididos se baterem no teto.
+            dataset_id = str(cfg.get("supplier_documents_dataset_id") or "")
+            if not dataset_id:
+                return {"ok": False, "error": "supplier_documents_dataset_id em falta (PINGWIN_SUPPLIER_DOCUMENTS_DATASET_ID)."}
+            try:
+                start = datetime.strptime(str(cfg.get("start") or ""), "%Y-%m-%d").date()
+                end = datetime.strptime(str(cfg.get("end") or ""), "%Y-%m-%d").date()
+            except ValueError:
+                return {"ok": False, "error": "start/end em falta ou inválidos (AAAA-MM-DD)."}
+            if end < start:
+                return {"ok": False, "error": "end antes de start."}
+            res = client.fetch_supplier_documents(dataset_id, start, end)
+            return {"ok": True, "mode": "supplier_documents", "start": start.isoformat(), "end": end.isoformat(), **res}
+
         if mode == "units":
             # READ-ONLY: UNIDADES (base de conversão) na PORTA 8138. Usa só o
             # maindataset (ignora o baseunit "radio conv." = lixo). Login PRÓPRIO

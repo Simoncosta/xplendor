@@ -281,6 +281,13 @@ Route::prefix('v1')->group(function () {
                     // Fornecedores PingWin (Fase 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/suppliers', [CompanyPingwinController::class, 'suppliers']);
                     Route::post('/integrations/pingwin/suppliers/sync', [CompanyPingwinController::class, 'syncSuppliers']);
+                    // FN — ⚠️ ESCRITA de fornecedores no PingWin (criar / editar / anular) + polling da escrita.
+                    Route::middleware('ensure_module:restauracao_fornecedores')->group(function () {
+                        Route::post('/integrations/pingwin/suppliers', [\App\Http\Controllers\Api\V1\CompanyPingwinSupplierWriteController::class, 'store']);
+                        Route::get('/integrations/pingwin/suppliers/writes/{writeId}', [\App\Http\Controllers\Api\V1\CompanyPingwinSupplierWriteController::class, 'write'])->whereNumber('writeId');
+                        Route::match(['put', 'patch'], '/integrations/pingwin/suppliers/{supplierId}', [\App\Http\Controllers\Api\V1\CompanyPingwinSupplierWriteController::class, 'update'])->whereNumber('supplierId');
+                        Route::delete('/integrations/pingwin/suppliers/{supplierId}', [\App\Http\Controllers\Api\V1\CompanyPingwinSupplierWriteController::class, 'destroy'])->whereNumber('supplierId')->middleware('block_when_impersonating');
+                    });
                     // Condições de Pagamento PingWin (Fatia 1, só leitura): lista paginada + sincronizar.
                     Route::get('/integrations/pingwin/payment-conditions', [CompanyPingwinController::class, 'paymentConditions']);
                     Route::post('/integrations/pingwin/payment-conditions/sync', [CompanyPingwinController::class, 'syncPaymentConditions']);
@@ -307,6 +314,23 @@ Route::prefix('v1')->group(function () {
                     Route::get('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'show']);
                     Route::get('/ocr/invoices/{invoiceId}/image', [CompanyInvoiceOcrController::class, 'image']);
                     Route::put('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'update']);
+                    Route::post('/ocr/invoices/{invoiceId}/reprocess', [CompanyInvoiceOcrController::class, 'reprocess']);
+                    // F3: ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos; nunca escreve no PingWin)
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinSearch']);
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-link/confirm', [CompanyInvoiceOcrController::class, 'pingwinConfirm']);
+                    Route::delete('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinUnlink']);
+                    // F1 — documentos de fornecedor do PingWin (SÓ LEITURA): lista, sync por período e estado do run.
+                    Route::get('/integrations/pingwin/supplier-documents', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'index']);
+                    Route::post('/integrations/pingwin/supplier-documents/sync', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'sync']);
+                    Route::get('/integrations/pingwin/supplier-documents/sync-runs/{runId}', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'run'])->whereNumber('runId');
+                    // S2 — Conta corrente de fornecedor (SÓ LEITURA no PingWin): visão geral, fornecedor, extrato, atualizar.
+                    Route::middleware('ensure_module:restauracao_conta_corrente')->group(function () {
+                        Route::get('/integrations/pingwin/supplier-cc', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'index']);
+                        Route::get('/integrations/pingwin/supplier-cc/{supplierId}', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'show'])->whereNumber('supplierId');
+                        Route::get('/integrations/pingwin/supplier-cc/{supplierId}/statement', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'statement'])->whereNumber('supplierId');
+                        Route::post('/integrations/pingwin/supplier-cc/{supplierId}/refresh', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'refresh'])->whereNumber('supplierId');
+                        Route::get('/integrations/pingwin/supplier-cc/{supplierId}/status', [\App\Http\Controllers\Api\V1\CompanySupplierCcController::class, 'status'])->whereNumber('supplierId');
+                    });
                     // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
                     Route::get('/integrations/pingwin/marketing-data', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'show']);
                     Route::get('/integrations/pingwin/heatmap', [\App\Http\Controllers\Api\V1\RestaurantMarketingDataController::class, 'heatmap']);

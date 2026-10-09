@@ -20,12 +20,29 @@ class OcrInvoice extends Model
         'company_id', 'supplier_id', 'supplier_name', 'supplier_nif', 'number', 'issue_date',
         'image_path', 'image_mime', 'model', 'prompt_version', 'confidence', 'status',
         'error_message', 'synced_to_pingwin',
+        // F2a: QR + origem + custo + conferência
+        'qr_raw', 'qr_ok', 'qr_data', 'buyer_nif', 'atcud', 'doc_type', 'source', 'lines_source', 'pages',
+        'tokens_in', 'tokens_out', 'cost_usd', 'duration_ms', 'attempts', 'attempts_log', 'check_status', 'check_diff',
+        // F3: ligação ao PingWin
+        'link_status', 'link_diff_cents', 'link_checked_at', 'link_note', 'link_candidates', 'link_rejected',
+        'link_search_pending', 'duplicate_of_id', 'guide_refs',
     ];
 
     protected $casts = [
         'issue_date'        => 'date',
         'confidence'        => 'integer',
         'synced_to_pingwin' => 'boolean',
+        'qr_ok'             => 'boolean',
+        'qr_data'           => 'array',
+        'attempts_log'      => 'array',
+        'check_diff'        => 'array',
+        'cost_usd'          => 'float',
+        'link_diff_cents'   => 'integer',
+        'link_checked_at'   => 'datetime',
+        'link_candidates'   => 'array',
+        'link_rejected'     => 'array',
+        'link_search_pending' => 'boolean',
+        'guide_refs'        => 'array',
     ];
 
     public function company(): BelongsTo
@@ -41,6 +58,12 @@ class OcrInvoice extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(OcrInvoiceLine::class)->orderBy('position');
+    }
+
+    /** F3: documentos do PingWin ligados (N na fatura de guias). */
+    public function pingwinLinks(): HasMany
+    {
+        return $this->hasMany(OcrInvoicePingwinLink::class, 'ocr_invoice_id');
     }
 
     public function summary(): HasOne

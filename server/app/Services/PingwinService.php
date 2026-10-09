@@ -294,6 +294,8 @@ class PingwinService
                 'docfiscaltype_id'   => $enriched ? $this->str($main['docfiscaltype_id'] ?? null) : null,
                 'default_paycond_id' => $enriched ? $this->str($main['default_paycond_id'] ?? null) : null,
                 'stock_signal'       => $enriched ? $this->str($main['stock_signal'] ?? null) : null,
+                // S1 conta corrente: flag "Pago" (auto-pago). Anulados sem maindataset → false.
+                'settled'            => $enriched && (int) ($main['settled'] ?? 0) === 1,
                 'docseries_id'       => $enriched ? $this->str($main['docseries_id'] ?? null) : null,
                 'raw'                => $enriched ? $jsonCol($doc['raw'] ?? $main) : null,
                 'options'            => $enriched ? $jsonCol($doc['options'] ?? null) : null,
@@ -342,7 +344,9 @@ class PingwinService
         'contacttype_id', 'report_id', 'reportlayout_id', 'reportparam_id', 'printzone_id', 'docseries_id',
         'default_docstatus_id', 'default_paycond_id', 'default_detailstatus_id',
         // flags booleanos (0/1)
-        'pending_qnt', 'settled', 'allowfifo', 'islocal', 'notvalued', 'set_price', 'set_qnt',
+        // ⚠️ 'settled' ('Pago') SAIU do whitelist na S2: a Conta Corrente depende dele (auto-pagos);
+        // fica só de leitura até haver uma fatia própria. Enviado pelo frontend → ignorado.
+        'pending_qnt', 'allowfifo', 'islocal', 'notvalued', 'set_price', 'set_qnt',
         'move_product', 'move_document', 'required_docreference', 'required_docmovreason',
         'required_docsource', 'account_use_totalpaid',
     ];
@@ -1171,6 +1175,164 @@ class PingwinService
      * pingwin_suppliers por (company_id, pingwin_id). Mapeamento tolerante a
      * aliases (o HAR confirma os nomes exatos). Devolve o nº de fornecedores.
      */
+    /**
+     * CONTA CORRENTE DE FORNECEDOR (S1, SÓ LEITURA): documentos + saldo de um LOTE de
+     * fornecedores (entity_ids = pingwin_id), num único docker exec. Devolve a lista
+     * por fornecedor tal como o Python a dá: {entity_id, ok, documents, balance} ou
+     * {entity_id, ok:false, error}. A persistência e as guardas vivem no SupplierCcService.
+     *
+     * @param  list<string>  $entityIds
+     * @return list<array<string, mixed>>
+     */
+    public function fetchSupplierCc(int $companyId, array $entityIds): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+            'mode'       => 'supplier_cc',
+            'entity_ids' => array_values(array_map('strval', $entityIds)),
+        ]));
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Conta corrente PingWin falhou: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return array_values($result['suppliers'] ?? []);
+    }
+
+    /**
+     * F4 (SÓ LEITURA): header + linhas de uma lista de documentos de fornecedor
+     * ([{docconfig_id, docheader_id}]). Um docker exec por lote; no Python cada documento é
+     * aberto (OPEN), lido (GET header,details) e FECHADO (CLOSE, sempre). Uma falha num
+     * documento vem {ok:false, error} sem abortar o lote.
+     */
+    public function fetchSupplierDocumentLines(int $companyId, array $docs): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $this->invokeTimeout = 300; // ~1,3 s por documento × 50 + login/logout
+        try {
+            $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+                'mode' => 'supplier_document_lines',
+                'docs' => array_values($docs),
+            ]));
+        } finally {
+            $this->invokeTimeout = 180;
+        }
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Linhas de documentos PingWin falharam: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return array_values($result['documents'] ?? []);
+    }
+
+    /**
+     * DOCUMENTOS DE FORNECEDOR (F1, SÓ LEITURA): lista "Documentos" do BO com DOCTYPE 2002,
+     * de $from a $to (Y-m-d), em blocos de 7 dias no Python. Devolve {documents, blocks, splits}.
+     * Períodos largos são dezenas de blocos → timeout do docker exec subido (como a leitura rica).
+     *
+     * @return array{documents: list<array<string,mixed>>, blocks: int, splits: int}
+     */
+    public function fetchSupplierDocuments(int $companyId, string $from, string $to): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        $this->invokeTimeout = 600;
+        try {
+            $result = $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, [
+                'mode'  => 'supplier_documents',
+                'start' => $from,
+                'end'   => $to,
+            ]));
+        } finally {
+            $this->invokeTimeout = 180;
+        }
+
+        if (! ($result['ok'] ?? false)) {
+            throw new \RuntimeException('Documentos de fornecedor PingWin falharam: ' . ($result['error'] ?? 'erro desconhecido'));
+        }
+
+        return [
+            'documents' => array_values($result['documents'] ?? []),
+            'blocks'    => (int) ($result['blocks'] ?? 0),
+            'splits'    => (int) ($result['splits'] ?? 0),
+        ];
+    }
+
+    // ═══════════════ FORNECEDORES — ESCRITA (FN) ═══════════════
+    // ⚠️ Escritas no PingWin. O Python confirma por releitura (persisted / voided_confirmed);
+    // estes métodos devolvem o resultado tal como vem (quem chama decide o espelho).
+
+    /** @return array{ok:bool, persisted?:bool, pingwin_id?:string, code?:string, confirm?:array, checks?:array, capture?:array, error?:string, duplicate_nif?:bool} */
+    public function createSupplier(int $companyId, array $fields, bool $allowDuplicateNif = false): array
+    {
+        return $this->supplierCall($companyId, ['mode' => 'create_supplier', 'supplier' => $fields, 'allow_duplicate_nif' => $allowDuplicateNif]);
+    }
+
+    public function updateSupplier(int $companyId, string $pingwinId, array $fields, bool $allowDuplicateNif = false): array
+    {
+        return $this->supplierCall($companyId, ['mode' => 'update_supplier', 'supplier_id' => $pingwinId, 'supplier' => $fields, 'allow_duplicate_nif' => $allowDuplicateNif]);
+    }
+
+    public function voidSupplier(int $companyId, string $pingwinId): array
+    {
+        return $this->supplierCall($companyId, ['mode' => 'void_supplier', 'supplier_id' => $pingwinId]);
+    }
+
+    /** SÓ LEITURA: o formulário vivo de um fornecedor. */
+    public function readSupplier(int $companyId, string $pingwinId): array
+    {
+        $res = $this->supplierCall($companyId, ['mode' => 'read_supplier', 'supplier_id' => $pingwinId]);
+        if (! ($res['ok'] ?? false)) {
+            throw new \RuntimeException('Leitura do fornecedor falhou: ' . ($res['error'] ?? 'erro desconhecido'));
+        }
+
+        return (array) ($res['supplier'] ?? []);
+    }
+
+    /** SÓ LEITURA: fornecedores do PingWin com este NIF. @return array{active: list<array>, voided: list<array>} */
+    public function findSuppliersByNif(int $companyId, string $nif): array
+    {
+        $res = $this->supplierCall($companyId, ['mode' => 'find_supplier_by_nif', 'nif' => $nif]);
+        if (! ($res['ok'] ?? false)) {
+            throw new \RuntimeException('Pesquisa por NIF no PingWin falhou: ' . ($res['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['active' => array_values($res['active'] ?? []), 'voided' => array_values($res['voided'] ?? [])];
+    }
+
+    private function supplierCall(int $companyId, array $extra): array
+    {
+        $integration = CompanyIntegration::where('company_id', $companyId)
+            ->where('platform', self::PLATFORM)
+            ->first();
+
+        if (! $integration || $integration->status === 'revoked' || empty($integration->config)) {
+            throw ValidationException::withMessages(['pingwin' => ['PingWin não está ligado para esta empresa.']]);
+        }
+
+        return $this->invoke($this->buildPayload($integration->config, (string) $integration->access_token, $extra));
+    }
+
     public function syncSuppliers(int $companyId): int
     {
         $integration = CompanyIntegration::where('company_id', $companyId)

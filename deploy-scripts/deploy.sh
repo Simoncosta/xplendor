@@ -4,41 +4,11 @@ set -e
 APP_DIR="/home/xplendor"
 SCRAPER_LOG="docker/scraper/scraper.log"
 
-# O código novo vem ANTES de desligar: se o pull falhar, o deploy pára sem desligar nada.
-# O registo do scraper esteve seguido pelo git (até ao commit 9223545) e o scraper escreve
-# nele; com alterações locais, o pull recusa-se a apagá-lo. Guarda-se uma cópia, repõe-se a
-# versão do git, faz-se o pull e devolve-se a cópia (o ficheiro passa a ficar fora do git).
-pull_code() {
-  local backup=""
-  if git ls-files --error-unmatch "$SCRAPER_LOG" > /dev/null 2>&1 && ! git diff --quiet -- "$SCRAPER_LOG"; then
-    backup="$(mktemp /tmp/scraper.log.XXXXXX)"
-    cp "$SCRAPER_LOG" "$backup"
-    git checkout -- "$SCRAPER_LOG"
-    echo "   Registo do scraper guardado em $backup antes do pull."
-  fi
-
-  if ! git pull --ff-only origin main; then
-    if [ -n "$backup" ]; then
-      cp "$backup" "$SCRAPER_LOG"
-      rm -f "$backup"
-    fi
-    echo "❌ O git pull falhou: deploy parado, nada foi desligado."
-    return 1
-  fi
-
-  if [ -n "$backup" ]; then
-    mkdir -p "$(dirname "$SCRAPER_LOG")"
-    cp "$backup" "$SCRAPER_LOG"
-    rm -f "$backup"
-    echo "   Registo do scraper devolvido (agora fora do git)."
-  fi
-}
-
 echo "🔄 Deploy Xplendor (prod)"
 cd "$APP_DIR"
 
 echo "📥 Git pull (antes de desligar)"
-pull_code || exit 1
+git pull origin main
 
 # Logo a seguir ao pull: o código está montado nos contentores e não pode ficar a correr
 # com a base de dados antiga mais do que o necessário.

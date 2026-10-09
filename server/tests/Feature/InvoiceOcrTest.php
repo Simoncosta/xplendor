@@ -22,7 +22,7 @@ use Tests\TestCase;
  * XPLENDOR — OCR de faturas de fornecedor (Fase A): a IA é chamada com o prompt
  * B2B (mock da resposta), sanitização, gravação (cêntimos, linhas+sumário, status
  * por_validar, model+prompt_version), NÃO escreve no PingWin, teto de custo, gate
- * + tenancy. O limite OpenAI é substituído por um fake (override rawExtract).
+ * + tenancy. A OpenAI e o scraper são substituídos por fakes (override callModel/analyzeFile).
  */
 class InvoiceOcrTest extends TestCase
 {
@@ -64,14 +64,22 @@ class InvoiceOcrTest extends TestCase
         ]);
     }
 
-    /** Serviço com a IA substituída por um fake (não chama a OpenAI de verdade). */
+    /**
+     * Serviço com a IA e a leitura local substituídas por fakes (não chama a OpenAI nem o
+     * scraper). Ficheiro sem QR → caminho "sem QR" (cabeçalho + linhas pela IA).
+     */
     private function bindFakeOcr(string $json): void
     {
+        config(['services.openai.ocr.model_text' => 'gpt-4o-mini', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
         $this->app->instance(InvoiceOcrService::class, new class($json) extends InvoiceOcrService {
             public function __construct(private string $json) {}
-            protected function rawExtract(string $dataUri): string
+            protected function analyzeFile(string $bytes, string $mime, string $images): array
             {
-                return $this->json;
+                return ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
+            }
+            protected function callModel(string $model, string $system, array $userContent, ?string $effort): array
+            {
+                return ['content' => $this->json, 'tokens_in' => 1000, 'tokens_out' => 200];
             }
         });
     }
@@ -111,7 +119,9 @@ class InvoiceOcrTest extends TestCase
 
         $invoice->refresh();
         $this->assertSame('por_validar', $invoice->status);
-        $this->assertSame(InvoiceOcrService::MODEL, $invoice->model);
+        $this->assertSame('gpt-4o-mini', $invoice->model);
+        $this->assertSame('sem_qr', $invoice->source);           // sem QR → como antes
+        $this->assertSame('sem_qr', $invoice->check_status);
         $this->assertSame(InvoiceOcrService::PROMPT_VERSION, $invoice->prompt_version);
         $this->assertFalse((bool) $invoice->synced_to_pingwin); // ⚠️ NÃO escreve no PingWin
         $this->assertSame($supplier->id, $invoice->supplier_id); // religado por NIF
@@ -196,7 +206,7 @@ class InvoiceOcrTest extends TestCase
         $prompt = app(InvoiceOcrService::class)->prompt();
         $this->assertStringContainsStringIgnoringCase('EMISSOR', $prompt);
         $this->assertStringContainsStringIgnoringCase('adquirente', $prompt); // distingue do cliente
-        $this->assertSame('b2b-v2', InvoiceOcrService::PROMPT_VERSION);        // bump da versão
+        $this->assertSame('b2b-v3', InvoiceOcrService::PROMPT_VERSION);        // bump da versão (+ código do artigo)
     }
 
     public function test_own_company_nif_is_dropped_it_is_the_client_not_the_supplier(): void

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OcrInvoiceLine extends Model
 {
     protected $fillable = [
-        'ocr_invoice_id', 'company_id', 'position', 'item', 'quantity', 'unit',
+        'ocr_invoice_id', 'company_id', 'position', 'supplier_code', 'item', 'quantity', 'unit',
         'unit_price_cents', 'discount_pct', 'line_total_cents', 'vat_rate',
     ];
 

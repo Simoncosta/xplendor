@@ -122,6 +122,55 @@ Schedule::job(new ScheduledRestaurantSyncJob())
         \Illuminate\Support\Facades\Log::error('[Restaurant Daily Sync] Job falhou no scheduler');
     });
 
+// 06:30 (Lisboa) — conta corrente dos fornecedores PingWin (S1, SÓ LEITURA). Depois da
+// sync de vendas das 05:00 (~7 min; mais ao domingo com o catálogo completo): margem
+// de 1h30. Só despacha lotes de 40 fornecedores para a queue; com um único worker,
+// os lotes correm em série e nunca em cima da sync de vendas.
+Schedule::job(new \App\Jobs\DispatchSupplierCcSyncJob())
+    ->dailyAt('06:30')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-supplier-cc-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin CC] Despacho noturno falhou no scheduler');
+    });
+
+// 07:00 (Lisboa) — documentos de fornecedor do PingWin (F1, SÓ LEITURA): os últimos 7 dias
+// (lançamentos atrasados e anulações recentes). Depois da conta corrente das 06:30 (~1 min
+// em lotes); com um único worker, nada corre em cima de outra sync PingWin.
+Schedule::job(new \App\Jobs\DispatchSupplierDocumentsSyncJob())
+    ->dailyAt('07:00')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-supplier-documents-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Documentos] Despacho noturno falhou no scheduler');
+    });
+
+// 07:15 (Lisboa) — LINHAS dos documentos de fornecedor (F4, SÓ LEITURA): os documentos
+// fechados novos ou mudados (incremental), em lotes de 50, até 300 por madrugada. Depois da
+// lista de documentos das 07:00 (~1 min); o job ainda espera se o run da F1 estiver ativo.
+Schedule::job(new \App\Jobs\DispatchSupplierDocumentLinesSyncJob())
+    ->dailyAt('07:15')
+    ->timezone('Europe/Lisbon')
+    ->name('pingwin-supplier-document-lines-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[PingWin Linhas] Despacho noturno falhou no scheduler');
+    });
+
+// 07:45 (Lisboa) — F3: volta a ligar as faturas OCR dos últimos 90 dias aos documentos do
+// PingWin, DEPOIS da lista de documentos (07:00) e das linhas (07:15, até ~6 min). Só espelhos
+// (+ pesquisa de fornecedor por NIF, só leitura).
+Schedule::job(new \App\Jobs\RelinkOcrInvoicesJob())
+    ->dailyAt('07:45')
+    ->timezone('Europe/Lisbon')
+    ->name('ocr-pingwin-relink-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[OCR↔PingWin] Verificação noturna falhou no scheduler');
+    });
+
 // 00:15 (Lisboa): expira os orçamentos enviados com a validade de 30 dias ultrapassada.
 // Rascunhos nunca expiram.
 Schedule::job(new \App\Jobs\ExpireQuotesJob())

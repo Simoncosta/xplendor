@@ -35,6 +35,8 @@ class PingwinDocumentConfig extends Model
         'entitytype', 'fiscaltype', 'fiscaltype_description', 'deleted', 'synced_at',
         // D0 — _id-chave (híbrido) + marca de sync rica
         'taxscenario_id', 'doctype_id', 'docfiscaltype_id', 'default_paycond_id', 'stock_signal', 'docseries_id',
+        // S1 conta corrente — flag "Pago" (maindataset.settled): documento auto-pago
+        'settled',
         'rich_synced_at',
         // D0 — colunas JSON ricas
         'raw', 'options', 'additionalfields_maindataset', 'additionalfields_storedataset',
@@ -47,6 +49,7 @@ class PingwinDocumentConfig extends Model
 
     protected $casts = [
         'deleted'                       => 'boolean',
+        'settled'                       => 'boolean',
         'synced_at'                     => 'datetime',
         'rich_synced_at'                => 'datetime',
         'raw'                           => 'array',

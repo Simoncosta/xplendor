@@ -1,5 +1,7 @@
 # Inventário do padrão visual
 
+> **Substituído em parte (UI-1, 9 de outubro de 2026):** as ações e a descrição no `PageHeader` (coluna "Depois: ações do cabeçalho") deixaram de ser o padrão. As ações passam para o cabeçalho do cartão (`PageCard`) e a descrição para o (i) ao lado do título (`documents/design-system.md` §1 a §3). As páginas abaixo migram na UI-2.
+
 Levantamento dos cabeçalhos e dos botões de todas as páginas da aplicação, antes e depois da aplicação do padrão de `documents/design-system.md`.
 
 - **Antes:** lido do código no commit anterior a esta fatia (elemento do título, breadcrumbs, variantes de botão encontradas no ficheiro da página, `<select>` nativos).

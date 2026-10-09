@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\AlertService;
+use App\Models\OcrInvoice;
 use App\Services\InvoiceOcrService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,7 @@ class ProcessInvoiceOcrJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
-    public int $timeout = 180;
+    public int $timeout = 900; // até 2 tentativas da IA com várias páginas (OCR_HTTP_TIMEOUT cada)
 
     public function __construct(public int $companyId, public int $invoiceId) {}
 
@@ -42,6 +43,19 @@ class ProcessInvoiceOcrJob implements ShouldQueue
             );
 
             return; // o estado 'erro' já foi gravado no serviço
+        }
+
+        if (OcrInvoice::where('id', $this->invoiceId)->value('status') === InvoiceOcrService::STATUS_NOT_OURS) {
+            $alerts->createSystemAlert(
+                companyId: $this->companyId,
+                type: 'warning',
+                title: 'Fatura não é desta empresa',
+                message: 'O QR da fatura indica outro adquirente (ou a própria empresa como emitente). Não foi lida pela IA.',
+                severity: 'medium',
+                detailPath: "/restauracao/faturas/{$this->invoiceId}",
+            );
+
+            return;
         }
 
         $alerts->createSystemAlert(
