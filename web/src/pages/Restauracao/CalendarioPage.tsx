@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, Container, Row, Col, Spinner } from "reactstrap";
+import { Container, Row, Col } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import ptLocale from "@fullcalendar/core/locales/pt";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
-import XSelect from "../Editorial/XSelect";
+import XSelect from "Components/Common/Select";
+import PageCard from "Components/Common/PageCard";
 import { getPingwinCalendar } from "helpers/laravel_helper";
 import { PingwinCalendarDay, PingwinCalendarResponse } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -15,6 +16,9 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * do Velzon) SÓ LEITURA: cada dia mostra faturação + pessoas + ticket médio (dados
  * que já existem). Filtro por loja (default: todas somadas). Em PT. Sem criar/
  * arrastar/editar. Dias sem dados → célula vazia (portão de honestidade).
+ *
+ * UI-2a: o filtro de loja vale para a página inteira (fica nos filtros do PageHeader); o
+ * calendário fica num PageCard.
  */
 
 const euro = (cents: number) =>
@@ -83,9 +87,8 @@ export default function CalendarioPage() {
                 <PageHeader
                     title="Calendário de faturação"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description="Faturação (c/IVA), pessoas que reservaram e ticket médio por dia. Só leitura: os dias sem dados sincronizados ficam vazios e o ticket médio só aparece com faturação e reservas."
-                    actions={<>
-                        {loading && <Spinner size="sm" />}
+                    info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios; o ticket médio só aparece com faturação e reservas."
+                    filters={<>
                         {/* Filtro por loja: por omissão "Todas as lojas" (somadas). */}
                         <XSelect
                             ariaLabel="Loja"
@@ -101,8 +104,7 @@ export default function CalendarioPage() {
 
                 <Row className="pb-5 mb-5">
                     <Col xs={12}>
-                        <Card>
-                            <CardBody>
+                        <PageCard title="Faturação por dia" flush={false} loading={loading} className="mb-0">
                                 <FullCalendar
                                     plugins={[dayGridPlugin]}
                                     initialView="dayGridMonth"
@@ -134,8 +136,7 @@ export default function CalendarioPage() {
                                         );
                                     }}
                                 />
-                            </CardBody>
-                        </Card>
+                        </PageCard>
                     </Col>
                 </Row>
             </Container>

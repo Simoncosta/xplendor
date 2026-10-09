@@ -85,6 +85,10 @@ export interface OcrInvoiceListRow {
     confidence: number;
     source: OcrSource | null;
     check_status: OcrCheckStatus | null;
+    doc_type: string | null;              // F3: tipo do QR (D)
+    link_status: OcrLinkStatus | null;    // F3: estado no PingWin
+    paid: boolean | null;                 // F3: do(s) documento(s) ligado(s)
+    store: string | null;                 // F3: do(s) documento(s) ligado(s)
     total: number | null;
     created_at: string | null;
 }
@@ -94,3 +98,65 @@ export interface OcrSupplierOption {
     name: string | null;
     tax_number: string | null;
 }
+
+// ── F3: ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos) ─────────────
+export type OcrLinkStatus = "fornecedor_em_falta" | "nao_lancada" | "possivel" | "lancada" | "lancada_guias" | "duplicada";
+export type OcrLinkMethod = "numero" | "total_data" | "guias" | "manual";
+
+export interface OcrPingwinDoc {
+    docheader_id: string;
+    document: string | null;
+    doctype: string | null;
+    doc_date: string | null;             // data de LANÇAMENTO
+    docreference_number: string | null;
+    docreference_date: string | null;
+    total: number;                       // euros
+    paid: boolean;
+    store_name: string | null;
+    voided: boolean;
+    linked_to_invoice: number | null;    // já ligado a OUTRA fatura carregada
+}
+
+export interface OcrPingwinLinkedDoc extends OcrPingwinDoc {
+    method: OcrLinkMethod;
+    confirmed: boolean;
+    confirmed_at: string | null;
+}
+
+export interface OcrPingwinCompareLine {
+    code: string | null;
+    description: string | null;
+    quantity: number | null;
+    total: number;
+}
+
+export interface OcrPingwinBlock {
+    status: OcrLinkStatus | null;
+    diff: number | null;                 // Σ documentos − total da fatura (euros)
+    invoice_total: number | null;
+    checked_at: string | null;
+    note: string | null;
+    search_pending: boolean;
+    supplier: { nif: string | null; own_nif: boolean; name: string | null; id: number | null; found: boolean; prefill: { nif: string | null; name: string | null } };
+    linked: OcrPingwinLinkedDoc[];
+    candidates_mode: "total_data" | "guias" | null;
+    candidates: OcrPingwinDoc[];
+    period: { from: string; to: string; source: "guias" | "35_dias" } | null;
+    guides: { ref: string; date: string | null }[];
+    choices: OcrPingwinDoc[];
+    duplicate_of: { id: number; number: string | null; status: string } | null;
+    compare: {
+        ocr_count: number; pw_count: number; ocr_sum: number; pw_sum: number; pw_synced: boolean;
+        unmatched_ocr: OcrPingwinCompareLine[]; unmatched_pw: OcrPingwinCompareLine[];
+    } | null;
+}
+
+/** F3: estado da fatura no PingWin (badges da lista e da validação). */
+export const OCR_LINK_STATUS: Record<OcrLinkStatus, { label: string; cls: string; title: string }> = {
+    lancada: { label: "Lançada", cls: "bg-success-subtle text-success", title: "Está lançada no PingWin" },
+    lancada_guias: { label: "Lançada (guias)", cls: "bg-success-subtle text-success", title: "Lançada no PingWin em vários documentos (guias)" },
+    possivel: { label: "Possível", cls: "bg-info-subtle text-info", title: "Há documentos no PingWin que podem ser esta fatura: escolha no detalhe" },
+    nao_lancada: { label: "Falta lançar", cls: "bg-warning-subtle text-warning", title: "Não foi encontrada no PingWin" },
+    fornecedor_em_falta: { label: "Fornecedor em falta", cls: "bg-danger-subtle text-danger", title: "O fornecedor (NIF) não existe no PingWin" },
+    duplicada: { label: "Duplicada", cls: "bg-secondary-subtle text-secondary", title: "Esta fatura já foi carregada antes" },
+};

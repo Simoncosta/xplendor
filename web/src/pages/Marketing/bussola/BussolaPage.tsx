@@ -5,17 +5,21 @@ import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import { confirmAction } from "helpers/swal";
 import { excludeRestaurantItem, getBussola, ignoreRestaurantSignal } from "helpers/laravel_helper";
+import { Badge } from "reactstrap";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import type { CompassData } from "common/models/bussola.model";
 import CreatePostModal from "../CreatePostModal";
 import BussolaTop from "./BussolaTop";
-import BussolaPlays from "./BussolaPlays";
-import { BussolaFooter, ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard } from "./BussolaBlocks";
+import BussolaPlays, { StoreSelector } from "./BussolaPlays";
+import { ChangesCard, ChannelsCard, DaysCard, DecideCard, ForgottenCard, StarsCard } from "./BussolaBlocks";
 
 /**
  * Bússola (antes "O que publicar e quando"): o cartão do topo da semana, as 3 jogadas e os
  * blocos (dias para encher, estrelas, a ganhar e a perder força, quando o cliente decide, por
  * onde chegam, esquecidos), a partir das vendas (PingWin) e das reservas (CoverManager).
+ *
+ * UI-2a: o subtítulo e o antigo rodapé (como ler os números e a confiança) passaram para o (i)
+ * da página; o seletor de loja ficou nos filtros do PageHeader (vale para a página inteira).
  */
 export default function BussolaPage() {
     document.title = "Bússola | Xplendor";
@@ -58,7 +62,16 @@ export default function BussolaPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <PageHeader title="Bússola" breadcrumbs={[{ label: "Marketing" }]} />
+                <PageHeader
+                    title="Bússola"
+                    breadcrumbs={[{ label: "Marketing" }]}
+                    info={<>
+                        <p className="mb-1">O que fazer esta semana, a partir das vendas e das reservas do restaurante. Os números descrevem o que aconteceu; não dizem porquê.</p>
+                        <p className="mb-1"><Badge color="success-subtle" className="text-success fw-normal me-1">Confiança alta</Badge>amostra grande e desvio claro. <Badge color="info-subtle" className="text-info fw-normal me-1">Confiança média</Badge>amostra mais pequena ou desvio menor. Os sinais de confiança baixa não aparecem.</p>
+                        <p className="mb-0">Recalcula-se todas as noites e quando as categorias são confirmadas.</p>
+                    </>}
+                    filters={data?.enabled ? <StoreSelector data={data} onLocation={setLocationId} /> : undefined}
+                />
                 {!data && loading && <div className="text-center py-5"><Spinner color="primary" /></div>}
                 {data && !data.enabled && (
                     <Card><CardBody className="text-muted">A leitura das vendas por artigo está desligada nesta empresa. Quando for ligada, a Bússola aparece aqui.</CardBody></Card>
@@ -71,7 +84,7 @@ export default function BussolaPage() {
                             </div>
                         )}
                         <div className={loading ? "opacity-50" : undefined}>
-                            <BussolaTop data={data} onLocation={setLocationId} />
+                            <BussolaTop data={data} />
                             <BussolaPlays companyId={companyId} data={data} onChanged={load} />
                             {data.blocks && (
                                 <>
@@ -85,7 +98,6 @@ export default function BussolaPage() {
                                     <ForgottenCard block={data.blocks.forgotten} canAct={!!data.can_act} canActReason={data.can_act_reason}
                                         onCreate={(it) => setForgotten({ key: it.key, theme: it.theme ?? `Voltar a mostrar: ${it.name}`, title: it.name, suggested_date: it.date })}
                                         onIgnore={ignore} />
-                                    <BussolaFooter computedAt={data.computed_at} />
                                 </>
                             )}
                         </div>

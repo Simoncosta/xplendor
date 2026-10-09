@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Button, Card, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import { Button, Container, Row, Col, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import { useIsMobile } from "../../hooks/useIsMobile";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { confirmAction } from "helpers/swal";
@@ -29,13 +30,14 @@ const fmtDateTime = (d?: string | null) =>
  * formulário (adicionar/editar) vive num MODAL. O botão "Sincronizar reservas"
  * sincroniza TODAS as lojas (CoverManagerService::sync) e a tabela mostra a
  * última sincronização por loja. (A flag do ticket médio vive em Integrações.)
+ *
+ * UI-2a: PageCard (ações no cabeçalho) + DataTable (modo cliente: são poucas lojas).
  */
 
 const emptyForm = () => ({ winrest_store_id: "", winrest_name: "", display_name: "", opened_on: "", is_active: true, cm_slug: "", cm_token: "" });
 
 export default function LojasPage() {
     document.title = "Lojas | Restauração | Xplendor";
-    const isMobile = useIsMobile();
 
     const companyId = useWorkingCompanyId();
 
@@ -181,6 +183,23 @@ export default function LojasPage() {
         </>
     );
 
+    const columns: DTColumn<PingwinLocationEntity>[] = [
+        { id: "store_id", header: "ID PingWin", value: (l) => l.winrest_store_id, cell: (l) => <span className="fw-medium text-break">{l.winrest_store_id}</span>, className: "xp-col-wrap", mobile: "subtitle" },
+        { id: "pingwin_name", header: "Nome PingWin", value: (l) => l.winrest_name },
+        { id: "display_name", header: "Nome amigável", value: (l) => l.display_name, mobile: "title" },
+        { id: "opened_on", header: "Abertura", value: (l) => (l.opened_on ? l.opened_on.slice(0, 10) : null), nowrap: true },
+        {
+            id: "active", header: "Estado", value: (l) => (l.is_active ? 1 : 0),
+            cell: (l) => l.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>,
+        },
+        {
+            id: "cm", header: "Reservas", value: (l) => (l.cm_connected ? 1 : 0),
+            cell: (l) => l.cm_connected ? <span className="badge bg-success-subtle text-success">CoverManager</span> : <span className="badge bg-secondary-subtle text-secondary">—</span>,
+        },
+        { id: "synced", header: "Última sincronização", value: (l) => l.cm_last_synced_at, cell: (l) => <span className="text-muted fs-12">{fmtDateTime(l.cm_last_synced_at)}</span>, nowrap: true },
+    ];
+    const cols = useDataColumns("restauracao.lojas", columns);
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -188,91 +207,35 @@ export default function LojasPage() {
                 <PageHeader
                     title="Lojas"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description="As lojas da empresa e a última sincronização de reservas de cada uma."
-                    actions={<>
-                        <Button color="outline-primary" onClick={openSync} disabled={syncBusy}>
-                            {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
-                        </Button>
-                        <Button color="primary" onClick={openAdd}>
-                            <i className="ri-add-line me-1" /> Adicionar loja
-                        </Button>
-                    </>}
+                    info="As lojas da empresa e a última sincronização das reservas de cada uma."
                 />
 
-                {/* Tabela limpa (só lista + ações). */}
                 <Row className="g-3 pb-5 mb-5">
                     <Col xs={12}>
-                        <Card className="mb-0">
-                            <div className="card-header">
-                                <h5 className="card-title mb-0">Lojas cadastradas {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                            </div>
-                            {/* MOBILE: cards empilhados (sem overflow horizontal). */}
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? (
-                                        <div className="text-center text-muted py-4">Sem lojas. Use <strong>“Adicionar loja”</strong>.</div>
-                                    ) : rows.map((loc) => (
-                                        <div key={loc.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">{loc.display_name || loc.winrest_name || "—"}</div>
-                                                    <div className="text-muted fs-12 text-break">ID: {loc.winrest_store_id}</div>
-                                                </div>
-                                                <div className="d-flex gap-1 flex-shrink-0">
-                                                    {rowActions(loc)}
-                                                </div>
-                                            </div>
-                                            <div className="d-flex flex-wrap align-items-center gap-1 mt-2">
-                                                {loc.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>}
-                                                {loc.cm_connected && <span className="badge bg-success-subtle text-success">CoverManager</span>}
-                                                {loc.opened_on && <span className="badge bg-light text-muted">Abertura {loc.opened_on.slice(0, 10)}</span>}
-                                            </div>
-                                            <div className="text-muted fs-12 mt-2">Última sincronização: {fmtDateTime(loc.cm_last_synced_at)}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    {/* Mesmo mecanismo das tabelas que funcionam (Carros/Leads):
-                                        table-bordered + thead "text-muted table-light" → header visível
-                                        (claro e escuro). Sem table-light o thead fica transparente. */}
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>ID PingWin</th>
-                                                <th>Nome PingWin</th>
-                                                <th>Nome amigável</th>
-                                                <th>Abertura</th>
-                                                <th>Estado</th>
-                                                <th>Reservas</th>
-                                                <th>Última sincronização</th>
-                                                <th className="text-end">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={8} className="text-center text-muted py-4">Sem lojas. Use <strong>“Adicionar loja”</strong>.</td></tr>
-                                            ) : rows.map((loc) => (
-                                                <tr key={loc.id}>
-                                                    <td className="fw-medium text-break" style={{ maxWidth: 180 }}>{loc.winrest_store_id}</td>
-                                                    <td>{loc.winrest_name || "—"}</td>
-                                                    <td>{loc.display_name || "—"}</td>
-                                                    <td>{loc.opened_on ? loc.opened_on.slice(0, 10) : "—"}</td>
-                                                    {/* Badges no padrão que já funciona (LeadStatusBadge): bg-{cor}-subtle + text-{cor}
-                                                        — legível em claro e escuro. O 'badge-soft-*' não pintava fundo → texto branco invisível. */}
-                                                    <td>{loc.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Inativa</span>}</td>
-                                                    <td>{loc.cm_connected ? <span className="badge bg-success-subtle text-success">CoverManager</span> : <span className="badge bg-secondary-subtle text-secondary">—</span>}</td>
-                                                    <td className="text-muted fs-12">{fmtDateTime(loc.cm_last_synced_at)}</td>
-                                                    <td className="text-end">
-                                                        <div className="d-inline-flex gap-1">{rowActions(loc)}</div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
+                        <PageCard
+                            title="Lojas"
+                            className="mb-0"
+                            loading={loading && rows.length > 0}
+                            actions={<>
+                                {cols.selector}
+                                <Button color="outline-primary" onClick={openSync} disabled={syncBusy}>
+                                    {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
+                                </Button>
+                                <Button color="primary" onClick={openAdd}>
+                                    <i className="ri-add-line me-1" /> Adicionar loja
+                                </Button>
+                            </>}
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={rows}
+                                rowKey={(l) => l.id}
+                                loading={loading}
+                                rowActions={rowActions}
+                                caption="Lojas"
+                                empty={{ message: "Ainda não há lojas.", action: <Button color="outline-primary" size="sm" onClick={openAdd}><i className="ri-add-line me-1" />Adicionar loja</Button> }}
+                            />
+                        </PageCard>
                     </Col>
                 </Row>
 

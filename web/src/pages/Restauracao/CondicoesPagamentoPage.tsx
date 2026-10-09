@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Card, Container, Row, Col, Spinner, Label, Input, Button, Form, FormGroup,
+    Container, Row, Col, Spinner, Label, Input, Button, Form, FormGroup,
     Modal, ModalHeader, ModalBody, ModalFooter,
 } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "../Editorial/XSelect";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import Pagination from "Components/Common/Pagination";
+import XSelect from "Components/Common/Select";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import RestFilterBar from "Components/Common/RestFilterBar";
+import { fetchAllPages } from "helpers/fetchAllPages";
 import {
     getPingwinPaymentConditions,
     syncPingwinPaymentConditions,
@@ -23,7 +24,6 @@ import {
 import {
     PingwinPaymentCondition,
     PingwinPaymentConditionDoc,
-    LaravelPaginator,
 } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
@@ -33,12 +33,15 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * financeiro (%), dias de vencimento, estado e os documentos vinculados (tbdocs).
  * Exibição PAGINADA (paginação Laravel), off-canvas em mobile, tabela colapsa em
  * cards no telemóvel. Só módulo pingwin.
+ *
+ * UI-2a: PageCard + DataTable. A pesquisa e o estado vão à API (como antes); a lista lê todas
+ * as páginas do resultado e a tabela ordena e pagina no browser.
  */
 
 const fmtDateTime = (d?: string | null) =>
     d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
-const PER_PAGE = 20;
+const API_PER_PAGE = 200;
 
 /** Desconto em percentagem (vem como string decimal, ex.: "2.50"). */
 const fmtDiscount = (d?: string | null): string => {
@@ -68,12 +71,9 @@ const activeOptions: { value: ActiveFilter; label: string }[] = [
 
 export default function CondicoesPagamentoPage() {
     document.title = "Condições de Pagamento | Restauração | Xplendor";
-    const isMobile = useIsMobile();
 
     const companyId = useWorkingCompanyId();
 
-    const [page, setPage] = useState(1);
-    const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinPaymentCondition>, "data"> | null>(null);
     const [rows, setRows] = useState<PingwinPaymentCondition[]>([]);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -107,32 +107,26 @@ export default function CondicoesPagamentoPage() {
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
+        const params = {
+            search: search.trim() || undefined,
+            active: activeFilter === "active" ? 1 : activeFilter === "inactive" ? 0 : undefined,
+        };
         try {
-            const res: any = await getPingwinPaymentConditions(companyId, {
-                page,
-                perPage: PER_PAGE,
-                search: search.trim() || undefined,
-                active: activeFilter === "active" ? 1 : activeFilter === "inactive" ? 0 : undefined,
-            });
-            const paginator = res?.data?.payment_conditions;
-            setRows(paginator?.data ?? []);
-            const { data: _omit, ...m } = paginator ?? {};
-            setMeta(paginator ? (m as any) : null);
-            setLastSynced(res?.data?.last_synced_at ?? null);
+            const { rows: all, first } = await fetchAllPages<PingwinPaymentCondition>(
+                (page) => getPingwinPaymentConditions(companyId, { ...params, page, perPage: API_PER_PAGE }), (r) => r?.data?.payment_conditions);
+            setRows(all);
+            setLastSynced(first?.data?.last_synced_at ?? null);
         } catch {
             setRows([]);
-            setMeta(null);
         } finally {
             setLoading(false);
         }
-    }, [companyId, page, search, activeFilter]);
+    }, [companyId, search, activeFilter]);
 
     useEffect(() => {
         const t = setTimeout(() => fetchRows(), 250);
         return () => clearTimeout(t);
     }, [fetchRows]);
-
-    useEffect(() => { setPage(1); }, [search, activeFilter]);
 
     const clearFilters = () => { setSearch(""); setActiveFilter(""); };
 
@@ -306,19 +300,16 @@ export default function CondicoesPagamentoPage() {
         }
     };
 
-    const emptyRow = (
-        <div className="text-center text-muted py-4">
-            {!search && !activeFilter
-                ? <>Sem condições de pagamento. Use <strong>“Sincronizar”</strong> para as obter do PingWin.</>
-                : "Nenhum resultado para o filtro."}
-        </div>
-    );
+    const emptyMessage = !search && !activeFilter
+        ? "Ainda não há condições de pagamento. Sincronize para as obter do PingWin."
+        : "Nenhum resultado para o filtro.";
 
     const filterFields = (
         <div style={{ flex: "1 1 180px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
             <XSelect
                 ariaLabel="Estado"
+                small
                 options={activeOptions}
                 value={activeFilter}
                 onChange={(v) => setActiveFilter(v)}
@@ -337,6 +328,19 @@ export default function CondicoesPagamentoPage() {
         </>
     );
 
+    const columns: DTColumn<PingwinPaymentCondition>[] = [
+        { id: "code", header: "Código", value: (c) => c.code, cell: (c) => <span className="fw-medium">{c.code || "—"}</span>, mobile: "subtitle" },
+        { id: "description", header: "Descrição", value: (c) => c.description, mobile: "title" },
+        { id: "discount", header: "Desconto", value: (c) => (c.discount === null || c.discount === undefined || c.discount === "" ? null : Number(c.discount)), cell: (c) => fmtDiscount(c.discount), align: "end" },
+        { id: "days", header: "Vencimento", value: (c) => c.days, cell: (c) => fmtDays(c.days), align: "end" },
+        { id: "docs", header: "Documentos", value: (c) => countLinkedDocs(c.tbdocs), align: "center" },
+        {
+            id: "active", header: "Estado", value: (c) => (c.is_active ? 1 : 0), align: "center",
+            cell: (c) => c.is_active ? <span className="badge bg-success-subtle text-success">Ativo</span> : <span className="badge bg-secondary-subtle text-secondary">Inativo</span>,
+        },
+    ];
+    const cols = useDataColumns("restauracao.condicoes-pagamento", columns);
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -344,113 +348,50 @@ export default function CondicoesPagamentoPage() {
                 <PageHeader
                     title="Condições de Pagamento"
                     breadcrumbs={[{ label: "Cadastros" }]}
-                    description={<>Condições de pagamento do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
-                    actions={<>
-                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
-                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                        </Button>
-                        <Button color="primary" onClick={openNew} disabled={creating}>
-                            <i className="ri-add-line me-1" /> Nova condição
-                        </Button>
-                    </>}
+                    info="As condições de pagamento do PingWin: desconto financeiro, dias de vencimento e documentos vinculados."
                 />
 
                 <Row>
                     <Col xs={12}>
-                        <Card className="mb-3">
-                            <div className="card-header">
-                                <div className="d-flex flex-column gap-3">
-                                    <h5 className="card-title mb-0">Condições de Pagamento {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                    <RestFilterBar
-                                        search={search}
-                                        onSearchChange={setSearch}
-                                        searchPlaceholder="Pesquisar (descrição ou código)…"
-                                        activeCount={activeFilterCount}
-                                        onClear={clearFilters}
-                                    >
-                                        {filterFields}
-                                    </RestFilterBar>
-                                </div>
-                            </div>
-
-                            {/* MOBILE: cards empilhados (sem overflow horizontal). */}
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? emptyRow : rows.map((c) => (
-                                        <div key={c.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }} className={c.is_active ? "" : "opacity-75"}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">{c.description || "—"}</div>
-                                                    <div className="text-muted fs-12">Código {c.code || "—"}</div>
-                                                </div>
-                                                {c.is_active
-                                                    ? (
-                                                        <div className="d-flex gap-1 flex-shrink-0">{rowActions(c)}</div>
-                                                    )
-                                                    : <span className="badge bg-secondary-subtle text-secondary flex-shrink-0">Inativo</span>}
-                                            </div>
-                                            <div className="text-muted fs-12 mt-1">
-                                                Desconto: {fmtDiscount(c.discount)} · Vencimento: {fmtDays(c.days)}
-                                            </div>
-                                            <div className="text-muted fs-12 mt-1">
-                                                <i className="ri-file-list-3-line me-1" />{countLinkedDocs(c.tbdocs)} documento(s) vinculado(s)
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Código</th>
-                                                <th>Descrição</th>
-                                                <th className="text-end">Desconto</th>
-                                                <th className="text-end">Vencimento</th>
-                                                <th className="text-center">Documentos</th>
-                                                <th className="text-center">Estado</th>
-                                                <th className="text-center">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={7}>{emptyRow}</td></tr>
-                                            ) : rows.map((c) => (
-                                                <tr key={c.id} className={c.is_active ? "" : "text-muted"}>
-                                                    <td className="fw-medium">{c.code || "—"}</td>
-                                                    <td>{c.description || "—"}</td>
-                                                    <td className="text-end">{fmtDiscount(c.discount)}</td>
-                                                    <td className="text-end">{fmtDays(c.days)}</td>
-                                                    <td className="text-center" title="Documentos vinculados (ver detalhe em Editar)">{countLinkedDocs(c.tbdocs)}</td>
-                                                    <td className="text-center">
-                                                        {c.is_active
-                                                            ? <span className="badge bg-success-subtle text-success">Ativo</span>
-                                                            : <span className="badge bg-secondary-subtle text-secondary">Inativo</span>}
-                                                    </td>
-                                                    <td className="text-center">
-                                                        {c.is_active && (
-                                                            <div className="d-flex gap-1 justify-content-center">{rowActions(c)}</div>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
-
-                        {meta && meta.total > 0 && (
-                            <Pagination
-                                currentPage={meta.current_page}
-                                lastPage={meta.last_page}
-                                total={meta.total}
-                                perPage={meta.per_page}
-                                from={meta.from ?? 0}
-                                to={meta.to ?? 0}
-                                onPageChange={(p) => setPage(p)}
+                        <PageCard
+                            title="Condições de Pagamento"
+                            loading={loading && rows.length > 0}
+                            status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
+                            actions={<>
+                                {cols.selector}
+                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                                </Button>
+                                <Button color="primary" onClick={openNew} disabled={creating}>
+                                    <i className="ri-add-line me-1" /> Nova condição
+                                </Button>
+                            </>}
+                            filters={
+                                <RestFilterBar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Pesquisar (descrição ou código)…"
+                                    activeCount={activeFilterCount}
+                                    onClear={clearFilters}
+                                >
+                                    {filterFields}
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={rows}
+                                rowKey={(c) => c.id}
+                                loading={loading}
+                                rowClassName={(c) => (c.is_active ? undefined : "text-muted")}
+                                rowActions={(c) => (c.is_active ? rowActions(c) : null)}
+                                caption="Condições de pagamento"
+                                empty={{
+                                    message: emptyMessage,
+                                    action: !search && !activeFilter ? <Button color="outline-primary" size="sm" onClick={runSync} disabled={syncing}><i className="ri-refresh-line me-1" />Sincronizar</Button> : undefined,
+                                }}
                             />
-                        )}
+                        </PageCard>
                     </Col>
                 </Row>
             </Container>

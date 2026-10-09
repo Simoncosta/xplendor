@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Container, Row, Col, Spinner, Label, Input, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
+import { useSearchParams } from "react-router-dom";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
@@ -190,6 +191,25 @@ export default function FornecedoresPage() {
         resetGuards();
         setModal({ mode: "create" });
     };
+    // F3: "Criar fornecedor" a partir de uma fatura carregada → modal de criação pré-preenchido
+    // (?novo=1&nif=…&nome=…&morada=…). Os parâmetros saem do URL depois de usados.
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        if (searchParams.get("novo") !== "1") return;
+        const f: PingwinSupplierForm = {
+            ...EMPTY_FORM,
+            description: (searchParams.get("nome") ?? "").slice(0, 50),
+            fiscalname: (searchParams.get("nome") ?? "").slice(0, 100),
+            tax_number: searchParams.get("nif") ?? "",
+            address: (searchParams.get("morada") ?? "").slice(0, 150),
+        };
+        setForm(f); setInitial(EMPTY_FORM);
+        resetGuards();
+        setModal({ mode: "create" });
+        setSearchParams({}, { replace: true });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams]);
+
     const openEdit = (s: PingwinSupplier) => {
         const f = formFrom(s);
         setForm(f); setInitial(f);

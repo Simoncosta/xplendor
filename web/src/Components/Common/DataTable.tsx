@@ -92,6 +92,14 @@ export function useDataColumns<T>(key: string, defs: DTColumn<T>[]): DataColumns
     return { key, defs, isVisible, selector };
 }
 
+/** Linha especial (saldo anterior, totais): o rótulo ocupa as colunas antes da primeira célula. */
+export type DTSpecialRow = {
+    label: React.ReactNode;
+    /** Valores por id de coluna (só os das colunas visíveis aparecem). */
+    cells?: Record<string, React.ReactNode>;
+    className?: string;
+};
+
 type ServerProps = {
     page: number;
     lastPage: number;
@@ -120,6 +128,12 @@ type Props<T> = {
     search?: string;
     /** Linhas por página no modo "client" (por omissão 25). */
     pageSize?: number;
+    /** false: mostra todas as linhas (extratos para imprimir); o rodapé só conta. */
+    paginate?: boolean;
+    /** Linha especial antes das linhas (por exemplo, "Saldo anterior"). */
+    leadingRow?: DTSpecialRow;
+    /** Linha especial no fim (totais), no tfoot. */
+    footerRow?: DTSpecialRow;
     initialSort?: { id: string; desc?: boolean };
     server?: ServerProps;
     /** Cartão próprio no telemóvel (por omissão: título + pares rótulo/valor). */
@@ -142,7 +156,7 @@ const alignClass = (a?: DTAlign) => (a === "end" ? "text-end" : a === "center" ?
 
 export default function DataTable<T>({
     columns, data, rowKey, mode = "client", loading, empty, rowActions, rowClassName, onRowClick,
-    search = "", pageSize = 25, initialSort, server, mobileCard, caption, ...rest
+    search = "", pageSize = 25, paginate = true, leadingRow, footerRow, initialSort, server, mobileCard, caption, ...rest
 }: Props<T>) {
     const isMobile = useIsMobile();
     const isServer = mode === "server";
@@ -202,7 +216,7 @@ export default function DataTable<T>({
         manualPagination: isServer,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: isServer ? undefined : getSortedRowModel(),
-        getPaginationRowModel: isServer ? undefined : getPaginationRowModel(),
+        getPaginationRowModel: isServer || !paginate ? undefined : getPaginationRowModel(),
         enableSortingRemoval: true,
     });
 
@@ -221,6 +235,7 @@ export default function DataTable<T>({
             return { current: server.page, last: server.lastPage, total: server.total, perPage: server.perPage, from: server.from, to: server.to, go: server.onPageChange };
         }
         const total = rows.length;
+        if (!paginate) return total > 0 ? { current: 1, last: 1, total, perPage: total, from: 1, to: total, go: () => undefined } : null;
         if (total <= pagination.pageSize) return total > 0 ? { current: 1, last: 1, total, perPage: pagination.pageSize, from: 1, to: total, go: () => undefined } : null;
         const current = pagination.pageIndex + 1;
         const from = pagination.pageIndex * pagination.pageSize + 1;
@@ -248,6 +263,35 @@ export default function DataTable<T>({
         </div>
     );
 
+    // Linhas especiais: o rótulo ocupa as colunas visíveis antes da primeira com valor.
+    const specialTr = (sr: DTSpecialRow, key: string) => {
+        const first = visibleDefs.findIndex((d) => sr.cells && d.id in sr.cells);
+        const span = first <= 0 ? (first === -1 ? visibleDefs.length : 1) : first;
+        const rest = visibleDefs.slice(span);
+        return (
+            <tr key={key} className={sr.className ?? "table-light"} data-testid={`dt-special-${key}`}>
+                <td colSpan={span} className="fw-semibold">{sr.label}</td>
+                {rest.map((d) => (
+                    <td key={d.id} className={`${alignClass(d.align)} ${d.nowrap ? "text-nowrap" : ""} fw-semibold`}>{sr.cells?.[d.id] ?? ""}</td>
+                ))}
+                {rowActions && <td className="xp-no-print" />}
+            </tr>
+        );
+    };
+    const specialCard = (sr: DTSpecialRow, key: string) => (
+        <div key={key} className="xp-dt-card" style={{ background: "var(--vz-light-bg-subtle, var(--vz-tertiary-bg))" }} data-testid={`dt-special-${key}`}>
+            <div className="fw-semibold text-body">{sr.label}</div>
+            {visibleDefs.some((d) => sr.cells && d.id in sr.cells) && (
+                <dl className="xp-dt-pairs mb-0 mt-1">
+                    {visibleDefs.filter((d) => sr.cells && d.id in sr.cells).map((d) => (
+                        <React.Fragment key={d.id}><dt>{d.header}</dt><dd className="fw-semibold">{sr.cells![d.id]}</dd></React.Fragment>
+                    ))}
+                </dl>
+            )}
+        </div>
+    );
+    const showSpecials = !showSkeleton && (data.length > 0 || !!leadingRow);
+
     // ── Telemóvel: cartões ───────────────────────────────────────────────
     if (isMobile) {
         const titleDef = visibleDefs.find((d) => d.mobile === "title") ?? visibleDefs[0];
@@ -257,6 +301,7 @@ export default function DataTable<T>({
         return (
             <div className="xp-dt xp-dt-mobile" data-testid={rest["data-testid"] ?? "datatable"} aria-busy={!!loading}>
                 <div className="p-3 d-flex flex-column gap-2" style={loading && data.length > 0 ? { opacity: 0.55 } : undefined}>
+                    {showSpecials && leadingRow && specialCard(leadingRow, "leading")}
                     {showSkeleton ? Array.from({ length: 4 }).map((_, i) => (
                         <div key={i} className="xp-dt-card placeholder-glow" data-testid="dt-skeleton">
                             <span className="placeholder col-7 mb-2" /><span className="placeholder col-4" />
@@ -284,6 +329,7 @@ export default function DataTable<T>({
                             </div>
                         );
                     })}
+                    {showSpecials && footerRow && specialCard(footerRow, "footer")}
                 </div>
                 {footer}
             </div>
@@ -321,6 +367,7 @@ export default function DataTable<T>({
                         ))}
                     </thead>
                     <tbody style={loading && data.length > 0 ? { opacity: 0.55 } : undefined}>
+                        {showSpecials && leadingRow && specialTr(leadingRow, "leading")}
                         {showSkeleton ? Array.from({ length: 5 }).map((_, i) => (
                             <tr key={i} className="placeholder-glow" data-testid="dt-skeleton">
                                 {Array.from({ length: colCount }).map((__, j) => (
@@ -352,6 +399,7 @@ export default function DataTable<T>({
                             );
                         })}
                     </tbody>
+                    {showSpecials && footerRow && <tfoot className="table-light">{specialTr(footerRow, "footer")}</tfoot>}
                 </table>
             </div>
             {footer}

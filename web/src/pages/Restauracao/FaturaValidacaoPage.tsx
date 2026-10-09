@@ -5,8 +5,15 @@ import { toast, ToastContainer } from "react-toastify";
 import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import PageHeader, { Crumb } from "Components/Common/PageHeader";
-import { getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice } from "helpers/laravel_helper";
-import { OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption } from "common/models/ocr.model";
+import PageCard from "Components/Common/PageCard";
+import {
+    getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
+    searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
+} from "helpers/laravel_helper";
+import {
+    OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
+    OcrPingwinBlock, OcrPingwinDoc, OcrLinkMethod, OCR_LINK_STATUS,
+} from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
@@ -18,6 +25,9 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * F2a: com QR da AT o cabeçalho (NIFs, nº, data, ATCUD) vem do QR — só leitura — e as
  * linhas são conferidas por taxa de IVA contra as bases do QR. "Reprocessar" volta a ler
  * (async, mesmo polling).
+ *
+ * F3: bloco "No PingWin" — o documento lançado no PingWin a que a fatura está ligada (ou os
+ * candidatos, ou o modo guias com seleção e soma). Só lê os espelhos: nada é gravado no PingWin.
  */
 
 const VAT_OPTS = [0, 6, 13, 23].map((v) => ({ value: v, label: v === 0 ? "Isento" : `${v}%` }));
@@ -44,6 +54,7 @@ export default function FaturaValidacaoPage() {
     const [imageIsPdf, setImageIsPdf] = useState(false);
     const [confirmReprocess, setConfirmReprocess] = useState(false);
     const [reprocessing, setReprocessing] = useState(false);
+    const [pingwin, setPingwin] = useState<OcrPingwinBlock | null>(null);
 
     // Estado editável
     const [supplierId, setSupplierId] = useState<number | null>(null);
@@ -70,6 +81,7 @@ export default function FaturaValidacaoPage() {
         try {
             const res: any = await getOcrInvoice(companyId, invoiceId);
             setSuppliers(res?.data?.suppliers ?? []);
+            setPingwin(res?.data?.pingwin ?? null);
             const d: OcrInvoiceDetail = res?.data?.invoice;
             if (d) hydrate(d);
         } catch {
@@ -87,6 +99,21 @@ export default function FaturaValidacaoPage() {
         const t = setInterval(fetchInvoice, 3000);
         return () => clearInterval(t);
     }, [inv?.status, fetchInvoice]);
+
+    // F3: só o bloco "No PingWin" (sem tocar no formulário) — polling da pesquisa no worker.
+    const refreshPingwin = useCallback(async () => {
+        if (!companyId || !invoiceId) return;
+        try {
+            const res: any = await getOcrInvoice(companyId, invoiceId);
+            setPingwin(res?.data?.pingwin ?? null);
+        } catch { /* fica o que está */ }
+    }, [companyId, invoiceId]);
+
+    useEffect(() => {
+        if (!pingwin?.search_pending) return;
+        const t = setInterval(refreshPingwin, 3000);
+        return () => clearInterval(t);
+    }, [pingwin?.search_pending, refreshPingwin]);
 
     // Imagem (disco privado → blob).
     useEffect(() => {
@@ -435,6 +462,12 @@ export default function FaturaValidacaoPage() {
                                 ))}
                             </CardBody>
                         </Card>
+
+                        {pingwin && (
+                            <PingwinLinkCard companyId={companyId} invoiceId={invoiceId} block={pingwin} onBlock={setPingwin}
+                                onCreateSupplier={(nif, name) => navigate(`/restauracao/fornecedores?${new URLSearchParams({ novo: "1", nif: nif ?? "", nome: name ?? "" }).toString()}`)}
+                                onOpenInvoice={(id) => navigate(`/restauracao/faturas/${id}`)} />
+                        )}
                     </Col>
 
                     {/* Coluna imagem */}
@@ -455,6 +488,297 @@ export default function FaturaValidacaoPage() {
                 </Row>
                 {reprocessModal}
             </Container>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// F3 — bloco "No PingWin"
+// ─────────────────────────────────────────────────────────────────────────────
+
+const METHOD_LABEL: Record<OcrLinkMethod, string> = {
+    numero: "Pelo nº da fatura",
+    total_data: "Pelo total e pela data",
+    guias: "Fatura de guias",
+    manual: "Escolhido à mão",
+};
+const fmtDay = (d?: string | null) => (d ? d.split("-").reverse().join("/") : "—");
+const signedEur = (n: number) => `${n > 0 ? "+" : ""}${eur(n)}`;
+
+type PingwinLinkCardProps = {
+    companyId: number;
+    invoiceId: number;
+    block: OcrPingwinBlock;
+    onBlock: (b: OcrPingwinBlock) => void;
+    onCreateSupplier: (nif: string | null, name: string | null) => void;
+    onOpenInvoice: (id: number) => void;
+};
+
+/** Tabela de documentos do PingWin, com escolha única (radio) ou múltipla (checkbox). */
+function PingwinDocsTable({ docs, select, selected, onToggle, caption }: {
+    docs: OcrPingwinDoc[];
+    select?: "radio" | "checkbox";
+    selected?: string[];
+    onToggle?: (id: string) => void;
+    caption: string;
+}) {
+    return (
+        <div className="table-responsive">
+            <table className="table table-sm align-middle mb-0 fs-13">
+                <caption className="visually-hidden">{caption}</caption>
+                <thead className="text-muted table-light">
+                    <tr>
+                        {select && <th style={{ width: 32 }}><span className="visually-hidden">Escolher</span></th>}
+                        <th>Documento</th><th>Lançado em</th><th>Nº doc. fornecedor</th><th className="text-end">Total</th><th className="text-center">Liquidado</th><th>Loja</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {docs.map((d) => {
+                        const taken = d.linked_to_invoice !== null;
+                        const checked = !!selected?.includes(d.docheader_id);
+                        return (
+                            <tr key={d.docheader_id} className={checked ? "table-primary" : undefined}>
+                                {select && (
+                                    <td>
+                                        <input type={select} className="form-check-input" checked={checked} disabled={taken}
+                                            name={select === "radio" ? `pw-${caption}` : undefined}
+                                            onChange={() => onToggle?.(d.docheader_id)} aria-label={`Escolher ${d.document ?? d.docheader_id}`} />
+                                    </td>
+                                )}
+                                <td className="fw-medium text-nowrap">
+                                    {d.document ?? d.docheader_id}
+                                    {taken && <span className="badge bg-secondary-subtle text-secondary ms-1" title="Já está ligado a outra fatura carregada">fatura #{d.linked_to_invoice}</span>}
+                                </td>
+                                <td className="text-nowrap">{fmtDay(d.doc_date)}</td>
+                                <td>{d.docreference_number || <span className="text-muted">—</span>}</td>
+                                <td className="text-end text-nowrap">{eur(d.total)}</td>
+                                <td className="text-center">{d.paid ? <span className="badge bg-success-subtle text-success">Sim</span> : <span className="text-muted">Não</span>}</td>
+                                <td>{d.store_name ?? "—"}</td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function PingwinLinkCard({ companyId, invoiceId, block, onBlock, onCreateSupplier, onOpenInvoice }: PingwinLinkCardProps) {
+    const [busy, setBusy] = useState<string | null>(null);
+    const [choosing, setChoosing] = useState(false);
+    const [choice, setChoice] = useState<string | null>(null);
+    const [guidesOpen, setGuidesOpen] = useState(false);
+    const [guideSel, setGuideSel] = useState<string[]>([]);
+
+    const st = block.status ? OCR_LINK_STATUS[block.status] : null;
+    const linked = block.linked;
+    const unconfirmed = linked.some((l) => !l.confirmed);
+    const guideMode = block.candidates_mode === "guias";
+    const total = block.invoice_total ?? 0;
+
+    // Modo guias: por omissão escolhe todos os candidatos livres.
+    useEffect(() => {
+        setGuideSel(guideMode ? block.candidates.filter((d) => d.linked_to_invoice === null).map((d) => d.docheader_id) : []);
+        setGuidesOpen(block.status === "possivel" && guideMode);
+        setChoosing(false);
+        setChoice(null);
+    }, [block.status, block.candidates_mode, block.candidates, guideMode]);
+
+    const run = async (key: string, fn: () => Promise<any>, ok: string) => {
+        setBusy(key);
+        try {
+            const res: any = await fn();
+            if (res?.data?.pingwin) onBlock(res.data.pingwin);
+            toast.success(ok);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível concluir.");
+        } finally {
+            setBusy(null);
+        }
+    };
+    const search = () => run("search", () => searchOcrPingwinLink(companyId, invoiceId), "Ligação ao PingWin verificada.");
+    const confirm = (ids?: string[], method?: string) =>
+        run("confirm", () => confirmOcrPingwinLink(companyId, invoiceId, ids ? { docheader_ids: ids, method } : {}), "Ligação ao PingWin guardada.");
+    const unlink = () => run("unlink", () => unlinkOcrPingwinLink(companyId, invoiceId), "Documento desligado.");
+
+    const guideDocs = block.candidates;
+    const guideSum = guideDocs.filter((d) => guideSel.includes(d.docheader_id)).reduce((a, d) => a + d.total, 0);
+    const toggleGuide = (id: string) => setGuideSel((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+    const statusLine = (
+        <span>
+            {st && <span className={`badge ${st.cls} me-2`} title={st.title}>{st.label}</span>}
+            {block.checked_at && <span className="text-muted">Verificado {new Date(block.checked_at).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" })}</span>}
+        </span>
+    );
+
+    return (
+        <PageCard
+            title="No PingWin"
+            info="A fatura ligada ao documento lançado no PingWin. Só lê os dados do PingWin já sincronizados: nada é gravado no PingWin."
+            status={statusLine}
+            flush={false}
+            data-testid="pingwin-link-card"
+            actions={<Button size="sm" color="outline-primary" onClick={search} disabled={!!busy || block.search_pending}>
+                {busy === "search" || block.search_pending ? <><Spinner size="sm" className="me-1" />A procurar…</> : <><i className="ri-search-line me-1" />Procurar no PingWin</>}
+            </Button>}
+        >
+            {block.note && <Alert color="warning" className="py-2 fs-13"><i className="ri-error-warning-line me-1" />{block.note}</Alert>}
+
+            {block.search_pending && (
+                <div className="text-muted fs-13 mb-2"><Spinner size="sm" className="me-1" />A procurar o fornecedor (NIF {block.supplier.nif}) no PingWin…</div>
+            )}
+
+            {block.status === "duplicada" && block.duplicate_of && (
+                <p className="mb-0 fs-13">
+                    Esta fatura já foi carregada antes ({block.duplicate_of.number ?? `fatura #${block.duplicate_of.id}`}).{" "}
+                    <Button size="sm" color="link" className="p-0 align-baseline" onClick={() => onOpenInvoice(block.duplicate_of!.id)}>Abrir a original</Button>
+                </p>
+            )}
+
+            {block.status === "fornecedor_em_falta" && !block.search_pending && (
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <span className="fs-13">
+                        {block.supplier.nif
+                            ? <>O fornecedor com NIF <strong>{block.supplier.nif}</strong> não existe no PingWin.</>
+                            : block.supplier.own_nif
+                                ? <>O NIF lido como fornecedor é o da própria empresa: corrija o NIF do fornecedor e valide, ou reprocesse a fatura.</>
+                                : <>A fatura não tem o NIF do fornecedor.</>}
+                    </span>
+                    {block.supplier.nif && (
+                        <Button size="sm" color="primary" onClick={() => onCreateSupplier(block.supplier.prefill.nif, block.supplier.prefill.name)}>
+                            <i className="ri-user-add-line me-1" />Criar fornecedor
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            {/* Documento(s) ligado(s) */}
+            {linked.length > 0 && (
+                <>
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                        <span className="fs-13">
+                            {METHOD_LABEL[linked[0].method]}
+                            {unconfirmed && <span className="badge bg-warning-subtle text-warning ms-2" title="Ligado automaticamente: confirme que é este o documento">Por confirmar</span>}
+                            {!unconfirmed && <span className="badge bg-success-subtle text-success ms-2">Confirmado</span>}
+                        </span>
+                        <div className="d-flex gap-2">
+                            {unconfirmed && <Button size="sm" color="primary" onClick={() => confirm()} disabled={!!busy}><i className="ri-check-line me-1" />Confirmar</Button>}
+                            <Button size="sm" color="outline-secondary" onClick={() => setChoosing((v) => !v)} disabled={!!busy}>Escolher outro</Button>
+                            <Button size="sm" color="outline-danger" onClick={unlink} disabled={!!busy}>Desligar</Button>
+                        </div>
+                    </div>
+                    <PingwinDocsTable docs={linked} caption="Documentos ligados" />
+                    {(linked.length > 1 || (block.diff !== null && block.diff !== 0)) && (
+                        <div className="fs-13 mt-2">
+                            {linked.length > 1 && <>Soma dos documentos: <strong>{eur(linked.reduce((a, d) => a + d.total, 0))}</strong> · </>}
+                            Total da fatura: {eur(total)}
+                            {block.diff !== null && block.diff !== 0 && <> · <span className="text-warning fw-semibold">Diferença {signedEur(block.diff)}</span></>}
+                        </div>
+                    )}
+                    {block.compare && <PingwinCompare c={block.compare} />}
+                </>
+            )}
+
+            {/* Possível: vários documentos com o mesmo total e data */}
+            {block.status === "possivel" && block.candidates_mode === "total_data" && (
+                <>
+                    <p className="fs-13 mb-2">Há {block.candidates.length} documentos do fornecedor com o mesmo total e data próxima. Escolha o que corresponde a esta fatura:</p>
+                    <PingwinDocsTable docs={block.candidates} select="radio" selected={choice ? [choice] : []} onToggle={setChoice} caption="Candidatos" />
+                    <div className="text-end mt-2">
+                        <Button size="sm" color="primary" disabled={!choice || !!busy} onClick={() => choice && confirm([choice], "total_data")}>Ligar a este documento</Button>
+                    </div>
+                </>
+            )}
+
+            {/* Sem ligação: escolher um documento à mão, ou várias guias */}
+            {linked.length === 0 && ["nao_lancada", "possivel"].includes(block.status ?? "") && !guidesOpen && block.candidates_mode !== "total_data" && (
+                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                    <span className="fs-13">{block.status === "nao_lancada" ? "Não foi encontrada no PingWin: falta lançar, ou escolha o documento à mão." : ""}</span>
+                    <div className="d-flex gap-2">
+                        {block.choices.length > 0 && <Button size="sm" color="outline-secondary" onClick={() => setChoosing((v) => !v)}>Escolher documento</Button>}
+                        {guideMode && guideDocs.length > 0 && <Button size="sm" color="outline-secondary" onClick={() => setGuidesOpen(true)}>Fatura de guias…</Button>}
+                    </div>
+                </div>
+            )}
+
+            {/* Modo guias */}
+            {linked.length === 0 && guideMode && guidesOpen && guideDocs.length > 0 && (
+                <>
+                    <p className="fs-13 mb-2">
+                        {block.guides.length > 0
+                            ? <>A fatura refere <strong>{block.guides.length} guias</strong> ({fmtDay(block.period?.from)} a {fmtDay(block.period?.to)}). </>
+                            : <>Documentos do fornecedor nos 35 dias até à data da fatura ({fmtDay(block.period?.from)} a {fmtDay(block.period?.to)}). </>}
+                        Escolha os documentos que esta fatura junta:
+                    </p>
+                    <PingwinDocsTable docs={guideDocs} select="checkbox" selected={guideSel} onToggle={toggleGuide} caption="Guias" />
+                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mt-2">
+                        <span className="fs-13" data-testid="guides-sum">
+                            {guideSel.length} escolhidos · soma <strong>{eur(guideSel.length ? guideSum : 0)}</strong> · fatura {eur(total)} ·{" "}
+                            <span className={Math.abs(guideSum - total) < 0.005 ? "text-success fw-semibold" : "text-warning fw-semibold"}>
+                                diferença {signedEur(Math.round((guideSum - total) * 100) / 100)}
+                            </span>
+                        </span>
+                        <div className="d-flex gap-2">
+                            {block.status !== "possivel" && <Button size="sm" color="light" onClick={() => setGuidesOpen(false)}>Cancelar</Button>}
+                            <Button size="sm" color="primary" disabled={guideSel.length === 0 || !!busy} onClick={() => confirm(guideSel, "guias")}>
+                                <i className="ri-check-double-line me-1" />Confirmar guias
+                            </Button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Escolher outro / escolher à mão */}
+            {choosing && (
+                <div className="mt-3">
+                    {block.choices.length === 0 ? (
+                        <p className="text-muted fs-13 mb-0">Sem documentos deste fornecedor perto da data da fatura.</p>
+                    ) : (
+                        <>
+                            <p className="fs-13 mb-2">Documentos do fornecedor perto da data da fatura:</p>
+                            <PingwinDocsTable docs={block.choices} select="radio" selected={choice ? [choice] : []} onToggle={setChoice} caption="Escolher documento" />
+                            <div className="text-end mt-2 d-flex justify-content-end gap-2">
+                                <Button size="sm" color="light" onClick={() => setChoosing(false)}>Cancelar</Button>
+                                <Button size="sm" color="primary" disabled={!choice || !!busy} onClick={() => choice && confirm([choice], "manual")}>Ligar a este documento</Button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </PageCard>
+    );
+}
+
+/** Linhas OCR × PingWin (só informativo, com 1 documento ligado). */
+function PingwinCompare({ c }: { c: NonNullable<OcrPingwinBlock["compare"]> }) {
+    if (!c.pw_synced) {
+        return <p className="text-muted fs-13 mt-3 mb-0">As linhas deste documento do PingWin ainda não foram sincronizadas.</p>;
+    }
+    const same = c.unmatched_ocr.length === 0 && c.unmatched_pw.length === 0;
+    return (
+        <div className="mt-3 p-2" style={{ border: "1px solid var(--vz-border-color)", borderRadius: 8 }} data-testid="pingwin-compare">
+            <div className="fs-12 text-muted text-uppercase fw-semibold mb-1">Linhas: fatura × PingWin (informativo)</div>
+            <div className="fs-13">
+                Fatura: {c.ocr_count} linhas, {eur(c.ocr_sum)} · PingWin: {c.pw_count} linhas, {eur(c.pw_sum)}
+                {same && <span className="badge bg-success-subtle text-success ms-2">Todas as linhas batem</span>}
+            </div>
+            {!same && (
+                <Row className="g-2 mt-1 fs-13">
+                    <Col md={6}>
+                        <div className="fw-semibold mb-1">Só na fatura ({c.unmatched_ocr.length})</div>
+                        {c.unmatched_ocr.length === 0 ? <span className="text-muted">—</span> : (
+                            <ul className="mb-0 ps-3">{c.unmatched_ocr.map((l, i) => <li key={i}>{l.code ? `${l.code} · ` : ""}{l.description ?? "—"} — {eur(l.total)}</li>)}</ul>
+                        )}
+                    </Col>
+                    <Col md={6}>
+                        <div className="fw-semibold mb-1">Só no PingWin ({c.unmatched_pw.length})</div>
+                        {c.unmatched_pw.length === 0 ? <span className="text-muted">—</span> : (
+                            <ul className="mb-0 ps-3">{c.unmatched_pw.map((l, i) => <li key={i}>{l.code ? `${l.code} · ` : ""}{l.description ?? "—"} — {eur(l.total)}</li>)}</ul>
+                        )}
+                    </Col>
+                </Row>
+            )}
         </div>
     );
 }

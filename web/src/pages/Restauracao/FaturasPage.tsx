@@ -9,7 +9,7 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import XSelect from "Components/Common/Select";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
-import { OcrInvoiceListRow, OcrInvoiceStatus } from "common/models/ocr.model";
+import { OcrInvoiceListRow, OcrInvoiceStatus, OcrLinkStatus, OCR_LINK_STATUS as LINK_STATUS } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
 
@@ -23,6 +23,9 @@ import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
  *
  * UI-1: cada separador é um PageCard (ações e estado no cabeçalho) com um DataTable. A lista
  * lê todas as faturas (poucas por mês) e a tabela ordena, pesquisa e pagina no browser.
+ *
+ * F3: coluna "PingWin" (a fatura está lançada? por que documento?). Liquidado e Loja vêm do
+ * documento do PingWin ligado; o Tipo vem do QR.
  */
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("pt-PT") : "—");
@@ -42,12 +45,16 @@ const DOC_TYPES: Record<string, string> = {
     VD: "Venda a dinheiro", GT: "Guia de transporte", GR: "Guia de remessa", RC: "Recibo",
 };
 
-/** A lista ainda não traz o tipo (só o detalhe): fica preparada para quando o trouxer. */
-type InvoiceRow = OcrInvoiceListRow & { doc_type?: string | null };
+type InvoiceRow = OcrInvoiceListRow;
+
+function LinkBadge({ s }: { s: OcrLinkStatus | null }) {
+    if (!s) return <span className="text-muted">—</span>;
+    const st = LINK_STATUS[s];
+    return <span className={`badge ${st.cls}`} title={st.title}>{st.label}</span>;
+}
 
 const SOURCE: Record<string, string> = { "qr+texto": "QR e texto do PDF", "qr+imagem": "QR e imagem", sem_qr: "Sem QR (só IA)", qr: "QR" };
 
-const NOT_LINKED = "Aparece quando a fatura estiver ligada ao documento do PingWin.";
 
 function StatusBadge({ s }: { s: OcrInvoiceStatus }) {
     const st = STATUS[s] ?? { label: s, cls: "bg-secondary-subtle text-secondary" };
@@ -138,21 +145,22 @@ export default function FaturasPage() {
         }
     };
 
-    const hasDocType = rows.some((r) => !!r.doc_type);
     const columns: DTColumn<InvoiceRow>[] = [
         { id: "date", header: "Data", value: (r) => r.issue_date, cell: (r) => fmtDate(r.issue_date), nowrap: true, mobile: "subtitle" },
         { id: "number", header: "Documento", value: (r) => r.number, cell: (r) => <span className="fw-medium">{r.number || "—"}</span>, nowrap: true, mobile: "subtitle" },
-        {
-            id: "type", header: "Tipo", value: (r) => (r.doc_type ? DOC_TYPES[r.doc_type] ?? r.doc_type : null),
-            unavailable: hasDocType ? null : "Aparece quando a lista trouxer o tipo do documento (vem do QR).",
-        },
+        { id: "type", header: "Tipo", value: (r) => (r.doc_type ? DOC_TYPES[r.doc_type] ?? r.doc_type : null) },
         { id: "supplier", header: "Fornecedor", value: (r) => r.supplier_name, cell: (r) => r.supplier_name || <span className="text-muted">Por identificar</span>, mobile: "title" },
         { id: "nif", header: "NIF", value: (r) => r.supplier_nif, nowrap: true },
         { id: "total", header: "Total", value: (r) => r.total, cell: (r) => euro(r.total), align: "end", nowrap: true },
         { id: "status", header: "Estado", value: (r) => STATUS[r.status]?.label ?? r.status, cell: (r) => <StatusBadge s={r.status} />, align: "center" },
         { id: "qr", header: "QR", value: (r) => r.check_status, cell: (r) => <QrCheck r={r} />, align: "center" },
-        { id: "paid", header: "Liquidado", unavailable: NOT_LINKED },
-        { id: "store", header: "Loja", unavailable: NOT_LINKED },
+        { id: "pingwin", header: "PingWin", value: (r) => (r.link_status ? LINK_STATUS[r.link_status]?.label : null), cell: (r) => <LinkBadge s={r.link_status} />, align: "center" },
+        {
+            id: "paid", header: "Liquidado", value: (r) => (r.paid === null ? null : r.paid ? 1 : 0), align: "center",
+            cell: (r) => (r.paid === null ? <span className="text-muted" title="Sem documento do PingWin ligado">—</span>
+                : r.paid ? <span className="badge bg-success-subtle text-success">Sim</span> : <span className="text-muted">Não</span>),
+        },
+        { id: "store", header: "Loja", value: (r) => r.store },
         { id: "confidence", header: "Confiança", value: (r) => r.confidence || null, cell: (r) => (r.confidence ? `${r.confidence}%` : "—"), align: "center", defaultVisible: false },
         { id: "source", header: "Leitura", value: (r) => (r.source ? SOURCE[r.source] ?? r.source : null), defaultVisible: false },
     ];

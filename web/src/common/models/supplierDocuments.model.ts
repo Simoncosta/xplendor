@@ -17,6 +17,7 @@ export interface SupplierDocumentRow {
     docstatus_description: string | null;
     employee_name: string | null;
     store_name: string | null;
+    ocr_invoice_id: number | null; // F3: fatura carregada (OCR) ligada a este documento
 }
 
 export type SupplierDocumentsRunStatus = "queued" | "running" | "ok" | "failed";

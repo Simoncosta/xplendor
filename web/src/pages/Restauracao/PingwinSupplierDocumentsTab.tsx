@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, Col, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
 import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import XSelect from "Components/Common/Select";
@@ -28,6 +29,8 @@ import {
  * UI-1: PageCard (ações e estado no cabeçalho) + DataTable. Os filtros (período, tipos,
  * fornecedor) vão à API; a tabela ordena, pesquisa e pagina no browser. Com mais de 500
  * documentos no período, a tabela pagina no servidor e a ordenação fica desligada.
+ *
+ * F3: coluna "OCR" (escondida por omissão): ✓ quando há uma fatura carregada ligada.
  */
 
 const API_PER_PAGE = 100;
@@ -92,6 +95,13 @@ const COLUMNS: DTColumn<SupplierDocumentRow>[] = [
         cellClassName: (r) => (r.docreference_number ? undefined : "bg-warning-subtle"),
     },
     { id: "employee", header: "Lançado por", value: (r) => r.employee_name, defaultVisible: false },
+    {
+        // F3: há uma fatura carregada (OCR) ligada a este documento.
+        id: "ocr", header: "OCR", value: (r) => (r.ocr_invoice_id ? 1 : 0), align: "center", defaultVisible: false,
+        cell: (r) => (r.ocr_invoice_id
+            ? <Link to={`/restauracao/faturas/${r.ocr_invoice_id}`} className="text-success" title="Fatura carregada ligada a este documento" aria-label="Abrir a fatura carregada" onClick={(e) => e.stopPropagation()}><i className="ri-check-line fs-16" /></Link>
+            : <span className="text-muted">—</span>),
+    },
 ];
 
 type Meta = Omit<LaravelPaginator<SupplierDocumentRow>, "data">;

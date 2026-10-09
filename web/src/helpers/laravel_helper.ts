@@ -1035,3 +1035,11 @@ export const getScraperExecutionApi = (companyId: number, runId: number) =>
 // MUNICIPALITIES
 export const getMunicipalities = (districtId: number) => api.get(`${url.GET_DISTRICTS}/${districtId}/municipalities`);
 export const getParishes = (municipalityId: number) => api.get(`/municipalities/${municipalityId}/parishes`);
+
+// F3 — Ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos; nunca escreve no PingWin).
+export const searchOcrPingwinLink = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`, {});
+export const confirmOcrPingwinLink = (companyId: number, invoiceId: number, data: { docheader_ids?: string[]; method?: string }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link/confirm`, data);
+export const unlinkOcrPingwinLink = (companyId: number, invoiceId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`);

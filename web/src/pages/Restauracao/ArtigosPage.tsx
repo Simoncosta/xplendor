@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button, Card, Container, Row, Col, Spinner, Label } from "reactstrap";
+import { Button, Container, Row, Col, Spinner, Label } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
-import XSelect from "../Editorial/XSelect";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import Pagination from "Components/Common/Pagination";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import XSelect from "Components/Common/Select";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import { getPingwinCatalog, syncPingwinCatalog } from "helpers/laravel_helper";
 import { PingwinCatalogItem, LaravelPaginator } from "common/models/pingwin.model";
@@ -16,6 +16,9 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * (produtos) do PingWin. São MUITOS → exibição PAGINADA (paginação Laravel).
  * Filtros com react-select (padrão do sistema), off-canvas em mobile, e a tabela
  * colapsa em cards no telemóvel (sem overflow horizontal). Só módulo pingwin.
+ *
+ * UI-2a: PageCard + DataTable em modo SERVIDOR (o catálogo tem mais de mil artigos e a API já
+ * pagina e pesquisa). A API ainda não ordena: as colunas não são ordenáveis até lá.
  */
 
 const fmtDateTime = (d?: string | null) =>
@@ -41,7 +44,6 @@ const YesNo = ({ v, color }: { v: boolean; color: string }) =>
 
 export default function ArtigosPage() {
     document.title = "Artigos | Restauração | Xplendor";
-    const isMobile = useIsMobile();
     const navigate = useNavigate();
 
     // ⚠️ Abrir um artigo: navega com o pingwin_id no URL (para LER) + o id local no
@@ -117,13 +119,8 @@ export default function ArtigosPage() {
         }
     };
 
-    const emptyRow = (
-        <div className="text-center text-muted py-4">
-            {!search && !familyFilter && !saleFilter
-                ? <>Sem artigos. Use <strong>“Sincronizar”</strong> para os obter do PingWin.</>
-                : "Nenhum resultado para o filtro."}
-        </div>
-    );
+    const noFilters = !search && !familyFilter && !saleFilter;
+    const emptyMessage = noFilters ? "Ainda não há artigos. Sincronize para os obter do PingWin." : "Nenhum resultado para o filtro.";
 
     // Campos de filtro (react-select) — partilhados entre desktop e off-canvas mobile.
     const filterFields = (
@@ -132,6 +129,7 @@ export default function ArtigosPage() {
                 <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Família</Label>
                 <XSelect
                     ariaLabel="Família"
+                    small
                     options={familyOptions}
                     value={familyFilter}
                     onChange={(v) => setFamilyFilter(v)}
@@ -143,6 +141,7 @@ export default function ArtigosPage() {
                 <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Tipo</Label>
                 <XSelect<SaleFilter>
                     ariaLabel="Tipo"
+                    small
                     options={saleOptions}
                     value={saleFilter}
                     onChange={(v) => setSaleFilter(v)}
@@ -153,6 +152,21 @@ export default function ArtigosPage() {
         </>
     );
 
+    const columns: DTColumn<PingwinCatalogItem>[] = [
+        { id: "code", header: "Código", value: (a) => a.code, cell: (a) => <span className="fw-medium">{a.code || "—"}</span>, mobile: "subtitle" },
+        {
+            id: "description", header: "Descrição", value: (a) => a.description, mobile: "title",
+            cell: (a) => <>{a.description || "—"}{!a.is_active && <span className="badge bg-secondary-subtle text-secondary ms-2">Inativo</span>}</>,
+        },
+        { id: "family", header: "Família", value: (a) => a.family, cell: (a) => (a.family ? <span className="badge bg-info-subtle text-info">{a.family}</span> : <span className="text-muted">—</span>) },
+        { id: "sale_price", header: "Preço venda", value: (a) => a.saleprice_cents, cell: (a) => fmtCents(a.saleprice_cents), align: "end", nowrap: true },
+        { id: "purchase_price", header: "Preço compra", value: (a) => a.purchaseprice_cents, cell: (a) => fmtCents(a.purchaseprice_cents), align: "end", nowrap: true },
+        { id: "forsale", header: "Venda", value: (a) => (a.forsale ? 1 : 0), cell: (a) => <YesNo v={a.forsale} color="success" />, align: "center" },
+        { id: "forpurchase", header: "Compra", value: (a) => (a.forpurchase ? 1 : 0), cell: (a) => <YesNo v={a.forpurchase} color="primary" />, align: "center" },
+        { id: "bom", header: "Ficha", value: (a) => (a.has_bom ? 1 : 0), cell: (a) => <YesNo v={a.has_bom} color="warning" />, align: "center" },
+    ];
+    const cols = useDataColumns("restauracao.artigos", columns);
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -160,118 +174,60 @@ export default function ArtigosPage() {
                 <PageHeader
                     title="Artigos"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description={<>Catálogo de artigos do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
-                    actions={<>
-                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
-                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                        </Button>
-                        <Button color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
-                            <i className="ri-add-line me-1" /> Novo artigo
-                        </Button>
-                    </>}
+                    info="O catálogo de artigos do PingWin."
                 />
 
                 <Row>
                     <Col xs={12}>
-                        <Card className="mb-3">
-                            <div className="card-header">
-                                <div className="d-flex flex-column gap-3">
-                                    <h5 className="card-title mb-0">Catálogo {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                    <RestFilterBar
-                                        search={search}
-                                        onSearchChange={setSearch}
-                                        searchPlaceholder="Pesquisar (código ou descrição)…"
-                                        activeCount={activeFilterCount}
-                                        onClear={clearFilters}
-                                    >
-                                        {filterFields}
-                                    </RestFilterBar>
-                                </div>
-                            </div>
-
-                            {/* MOBILE: cards empilhados (sem overflow horizontal). */}
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? emptyRow : rows.map((a) => (
-                                        <div key={a.id} onClick={() => openArticle(a)} role="button" style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)", cursor: "pointer" }} className={a.is_active ? "" : "opacity-75"}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">{a.description || "—"}</div>
-                                                    <div className="text-muted fs-12">{a.code || "—"}</div>
-                                                </div>
-                                                {a.family && <span className="badge bg-info-subtle text-info flex-shrink-0">{a.family}</span>}
-                                            </div>
-                                            <div className="d-flex align-items-center justify-content-between mt-2">
-                                                <div className="d-flex gap-3">
-                                                    <div><div className="text-muted fs-11 text-uppercase">Venda</div><div className="fw-semibold fs-13">{fmtCents(a.saleprice_cents)}</div></div>
-                                                    <div><div className="text-muted fs-11 text-uppercase">Compra</div><div className="fw-semibold fs-13">{fmtCents(a.purchaseprice_cents)}</div></div>
-                                                </div>
-                                                <div className="d-flex gap-1 flex-wrap justify-content-end">
-                                                    {a.forsale && <span className="badge bg-success-subtle text-success">Venda</span>}
-                                                    {a.forpurchase && <span className="badge bg-primary-subtle text-primary">Compra</span>}
-                                                    {a.has_bom && <span className="badge bg-warning-subtle text-warning">Ficha</span>}
-                                                    {!a.is_active && <span className="badge bg-secondary-subtle text-secondary">Inativo</span>}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Código</th>
-                                                <th>Descrição</th>
-                                                <th>Família</th>
-                                                <th className="text-end">Preço venda</th>
-                                                <th className="text-end">Preço compra</th>
-                                                <th className="text-center">Venda</th>
-                                                <th className="text-center">Compra</th>
-                                                <th className="text-center">Ficha</th>
-                                                <th className="text-end">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={9}>{emptyRow}</td></tr>
-                                            ) : rows.map((a) => (
-                                                <tr key={a.id} className={a.is_active ? "" : "text-muted"}>
-                                                    <td className="fw-medium">{a.code || "—"}</td>
-                                                    <td>
-                                                        {a.description || "—"}
-                                                        {!a.is_active && <span className="badge bg-secondary-subtle text-secondary ms-2">Inativo</span>}
-                                                    </td>
-                                                    <td>{a.family ? <span className="badge bg-info-subtle text-info">{a.family}</span> : <span className="text-muted">—</span>}</td>
-                                                    <td className="text-end">{fmtCents(a.saleprice_cents)}</td>
-                                                    <td className="text-end">{fmtCents(a.purchaseprice_cents)}</td>
-                                                    <td className="text-center"><YesNo v={a.forsale} color="success" /></td>
-                                                    <td className="text-center"><YesNo v={a.forpurchase} color="primary" /></td>
-                                                    <td className="text-center"><YesNo v={a.has_bom} color="warning" /></td>
-                                                    <td className="text-end">
-                                                        <Button size="sm" color="outline-primary" onClick={() => openArticle(a)}>
-                                                            <i className="ri-pencil-line me-1" /> Abrir
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
-
-                        {meta && meta.total > 0 && (
-                            <Pagination
-                                currentPage={meta.current_page}
-                                lastPage={meta.last_page}
-                                total={meta.total}
-                                perPage={meta.per_page}
-                                from={meta.from ?? 0}
-                                to={meta.to ?? 0}
-                                onPageChange={(p) => setPage(p)}
+                        <PageCard
+                            title="Catálogo"
+                            loading={loading && rows.length > 0}
+                            status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
+                            actions={<>
+                                {cols.selector}
+                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                                </Button>
+                                <Button color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
+                                    <i className="ri-add-line me-1" /> Novo artigo
+                                </Button>
+                            </>}
+                            filters={
+                                <RestFilterBar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Pesquisar (código ou descrição)…"
+                                    activeCount={activeFilterCount}
+                                    onClear={clearFilters}
+                                >
+                                    {filterFields}
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={rows}
+                                rowKey={(a) => a.id}
+                                mode="server"
+                                loading={loading}
+                                rowClassName={(a) => (a.is_active ? undefined : "text-muted")}
+                                onRowClick={openArticle}
+                                rowActions={(a) => (
+                                    <Button size="sm" color="outline-primary" onClick={() => openArticle(a)}>
+                                        <i className="ri-pencil-line me-1" /> Abrir
+                                    </Button>
+                                )}
+                                caption="Catálogo de artigos"
+                                empty={{
+                                    message: emptyMessage,
+                                    action: noFilters ? <Button color="outline-primary" size="sm" onClick={runSync} disabled={syncing}><i className="ri-refresh-line me-1" />Sincronizar</Button> : undefined,
+                                }}
+                                server={meta ? {
+                                    page: meta.current_page, lastPage: meta.last_page, total: meta.total, perPage: meta.per_page,
+                                    from: meta.from ?? 0, to: meta.to ?? 0, onPageChange: setPage,
+                                } : undefined}
                             />
-                        )}
+                        </PageCard>
                     </Col>
                 </Row>
             </Container>

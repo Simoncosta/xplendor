@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, Card, Container, Row, Col, Spinner, Label, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
+import { Button, Container, Row, Col, Spinner, Label, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "../Editorial/XSelect";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import Pagination from "Components/Common/Pagination";
+import XSelect from "Components/Common/Select";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import RestFilterBar from "Components/Common/RestFilterBar";
+import { fetchAllPages } from "helpers/fetchAllPages";
 import { getPingwinUnits, syncPingwinUnits, createPingwinUnit, getPingwinUnitCreation, editPingwinUnit, anularPingwinUnit, getPingwinUnitUsage } from "helpers/laravel_helper";
-import { PingwinUnitRow, LaravelPaginator } from "common/models/pingwin.model";
+import { PingwinUnitRow } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 /**
@@ -17,12 +18,15 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  * são a base de conversão (Barril 50lt = 50 Litros) e são um caos lá — aqui a
  * conversão é mostrada LEGÍVEL ("1 Barril 50lt = 50 Litros"). Exibição paginada
  * (Laravel), pesquisa + filtro (ativas/anuladas) em react-select, mobile em cards.
+ *
+ * UI-2a: PageCard + DataTable. A pesquisa e o estado vão à API (como antes); a lista lê todas
+ * as páginas do resultado e a tabela ordena e pagina no browser.
  */
 
 const fmtDateTime = (d?: string | null) =>
     d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
-const PER_PAGE = 20;
+const API_PER_PAGE = 200;
 
 type ActiveFilter = "active" | "inactive" | "all";
 const activeOptions: { value: ActiveFilter; label: string }[] = [
@@ -33,12 +37,9 @@ const activeOptions: { value: ActiveFilter; label: string }[] = [
 
 export default function UnidadesPage() {
     document.title = "Unidades | Restauração | Xplendor";
-    const isMobile = useIsMobile();
 
     const companyId = useWorkingCompanyId();
 
-    const [page, setPage] = useState(1);
-    const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinUnitRow>, "data"> | null>(null);
     const [rows, setRows] = useState<PingwinUnitRow[]>([]);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
@@ -71,32 +72,26 @@ export default function UnidadesPage() {
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
+        const params = {
+            search: search.trim() || undefined,
+            active: activeFilter === "active" ? 1 : activeFilter === "inactive" ? 0 : undefined,
+        };
         try {
-            const res: any = await getPingwinUnits(companyId, {
-                page,
-                perPage: PER_PAGE,
-                search: search.trim() || undefined,
-                active: activeFilter === "active" ? 1 : activeFilter === "inactive" ? 0 : undefined,
-            });
-            const paginator = res?.data?.units;
-            setRows(paginator?.data ?? []);
-            const { data: _omit, ...m } = paginator ?? {};
-            setMeta(paginator ? (m as any) : null);
-            setLastSynced(res?.data?.last_synced_at ?? null);
+            const { rows: all, first } = await fetchAllPages<PingwinUnitRow>(
+                (page) => getPingwinUnits(companyId, { ...params, page, perPage: API_PER_PAGE }), (r) => r?.data?.units);
+            setRows(all);
+            setLastSynced(first?.data?.last_synced_at ?? null);
         } catch {
             setRows([]);
-            setMeta(null);
         } finally {
             setLoading(false);
         }
-    }, [companyId, page, search, activeFilter]);
+    }, [companyId, search, activeFilter]);
 
     useEffect(() => {
         const t = setTimeout(() => fetchRows(), 250);
         return () => clearTimeout(t);
     }, [fetchRows]);
-
-    useEffect(() => { setPage(1); }, [search, activeFilter]);
 
     const clearFilters = () => { setSearch(""); setActiveFilter("active"); };
 
@@ -194,7 +189,7 @@ export default function UnidadesPage() {
             await pollWrite(creationId, editingId ? "Unidade alterada no PingWin." : "Unidade criada no PingWin (id {id}).");
 
             setCreateOpen(false);
-            if (!editingId) { setActiveFilter("active"); setSearch(""); setPage(1); }
+            if (!editingId) { setActiveFilter("active"); setSearch(""); }
             await fetchRows(); // reflete na lista
         } catch (e: any) {
             toast.error(e?.message ?? "Não foi possível gravar a unidade.");
@@ -233,13 +228,9 @@ export default function UnidadesPage() {
 
     useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
-    const emptyRow = (
-        <div className="text-center text-muted py-4">
-            {!search && activeFilter === "active"
-                ? <>Sem unidades. Use <strong>“Sincronizar”</strong> para as obter do PingWin.</>
-                : "Nenhum resultado para o filtro."}
-        </div>
-    );
+    const emptyMessage = !search && activeFilter === "active"
+        ? "Ainda não há unidades. Sincronize para as obter do PingWin."
+        : "Nenhum resultado para o filtro.";
 
     const Conversion = ({ u }: { u: PingwinUnitRow }) =>
         u.conversion_label
@@ -260,6 +251,7 @@ export default function UnidadesPage() {
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
             <XSelect
                 ariaLabel="Estado"
+                small
                 options={activeOptions}
                 value={activeFilter}
                 onChange={(v) => setActiveFilter(v)}
@@ -277,6 +269,21 @@ export default function UnidadesPage() {
         </>
     );
 
+    const columns: DTColumn<PingwinUnitRow>[] = [
+        {
+            id: "unit", header: "Unidade", value: (u) => u.description, mobile: "title",
+            cell: (u) => <span className="fw-medium">{u.description || "—"}{!u.is_global && <span className="badge bg-warning-subtle text-warning ms-2" title="Específica de um artigo">Artigo</span>}</span>,
+        },
+        { id: "short", header: "Abrev.", value: (u) => u.shortname, mobile: "subtitle" },
+        { id: "conversion", header: "Conversão", value: (u) => u.conversion_label, cell: (u) => <Conversion u={u} /> },
+        { id: "uses", header: "Usos", value: (u) => [u.purchase && "Compra", u.sale && "Venda", u.stock && "Stock"].filter(Boolean).join(" ") || null, cell: (u) => <Uses u={u} /> },
+        {
+            id: "active", header: "Estado", value: (u) => (u.is_active ? 1 : 0), align: "center",
+            cell: (u) => u.is_active ? <span className="badge bg-success-subtle text-success">Ativa</span> : <span className="badge bg-secondary-subtle text-secondary">Anulada</span>,
+        },
+    ];
+    const cols = useDataColumns("restauracao.unidades", columns);
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -284,104 +291,50 @@ export default function UnidadesPage() {
                 <PageHeader
                     title="Unidades"
                     breadcrumbs={[{ label: "Cadastros" }]}
-                    description={<>Unidades e conversões do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
-                    actions={<>
-                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
-                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
-                        </Button>
-                        <Button color="primary" onClick={openCreate}>
-                            <i className="ri-add-line me-1" /> Criar unidade
-                        </Button>
-                    </>}
+                    info="As unidades e as conversões do PingWin, escritas de forma legível (por exemplo, 1 Barril 50lt = 50 Litros)."
                 />
 
                 <Row>
                     <Col xs={12}>
-                        <Card className="mb-3">
-                            <div className="card-header">
-                                <div className="d-flex flex-column gap-3">
-                                    <h5 className="card-title mb-0">Unidades {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                    <RestFilterBar
-                                        search={search}
-                                        onSearchChange={setSearch}
-                                        searchPlaceholder="Pesquisar (nome ou abreviatura)…"
-                                        activeCount={activeFilterCount}
-                                        onClear={clearFilters}
-                                    >
-                                        {filterFields}
-                                    </RestFilterBar>
-                                </div>
-                            </div>
-
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? emptyRow : rows.map((u) => (
-                                        <div key={u.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }} className={u.is_active ? "" : "opacity-75"}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">
-                                                        {u.description || "—"}
-                                                        {u.shortname && <span className="badge bg-light text-muted ms-2">{u.shortname}</span>}
-                                                    </div>
-                                                </div>
-                                                {!u.is_active && <span className="badge bg-secondary-subtle text-secondary flex-shrink-0">Anulada</span>}
-                                            </div>
-                                            <div className="mt-1"><Conversion u={u} /></div>
-                                            <div className="mt-2 d-flex align-items-center justify-content-between">
-                                                <Uses u={u} />
-                                                <div className="d-flex gap-1">{rowActions(u)}</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Unidade</th>
-                                                <th>Abrev.</th>
-                                                <th>Conversão</th>
-                                                <th>Usos</th>
-                                                <th className="text-center">Estado</th>
-                                                <th className="text-end">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={6}>{emptyRow}</td></tr>
-                                            ) : rows.map((u) => (
-                                                <tr key={u.id} className={u.is_active ? "" : "text-muted"}>
-                                                    <td className="fw-medium">
-                                                        {u.description || "—"}
-                                                        {!u.is_global && <span className="badge bg-warning-subtle text-warning ms-2" title="Específica de um artigo">Artigo</span>}
-                                                    </td>
-                                                    <td>{u.shortname || "—"}</td>
-                                                    <td><Conversion u={u} /></td>
-                                                    <td><Uses u={u} /></td>
-                                                    <td className="text-center">
-                                                        {u.is_active
-                                                            ? <span className="badge bg-success-subtle text-success">Ativa</span>
-                                                            : <span className="badge bg-secondary-subtle text-secondary">Anulada</span>}
-                                                    </td>
-                                                    <td className="text-end">
-                                                        <div className="d-inline-flex gap-1">{rowActions(u)}</div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
-
-                        {meta && meta.total > 0 && (
-                            <Pagination
-                                currentPage={meta.current_page} lastPage={meta.last_page} total={meta.total}
-                                perPage={meta.per_page} from={meta.from ?? 0} to={meta.to ?? 0}
-                                onPageChange={(p) => setPage(p)}
+                        <PageCard
+                            title="Unidades"
+                            loading={loading && rows.length > 0}
+                            status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
+                            actions={<>
+                                {cols.selector}
+                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
+                                </Button>
+                                <Button color="primary" onClick={openCreate}>
+                                    <i className="ri-add-line me-1" /> Criar unidade
+                                </Button>
+                            </>}
+                            filters={
+                                <RestFilterBar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Pesquisar (nome ou abreviatura)…"
+                                    activeCount={activeFilterCount}
+                                    onClear={clearFilters}
+                                >
+                                    {filterFields}
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={rows}
+                                rowKey={(u) => u.id}
+                                loading={loading}
+                                rowClassName={(u) => (u.is_active ? undefined : "text-muted")}
+                                rowActions={rowActions}
+                                caption="Unidades"
+                                empty={{
+                                    message: emptyMessage,
+                                    action: !search && activeFilter === "active" ? <Button color="outline-primary" size="sm" onClick={runSync} disabled={syncing}><i className="ri-refresh-line me-1" />Sincronizar</Button> : undefined,
+                                }}
                             />
-                        )}
+                        </PageCard>
                     </Col>
                 </Row>
 

@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Card, Container, Row, Col, Spinner, Label, Input, Button, FormGroup,
+    Container, Row, Col, Spinner, Label, Input, Button, FormGroup,
     Modal, ModalHeader, ModalBody, ModalFooter, Nav, NavItem, NavLink, TabContent, TabPane, Badge, UncontrolledTooltip,
 } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import { useIsMobile } from "../../hooks/useIsMobile";
-import Pagination from "Components/Common/Pagination";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import { fetchAllPages } from "helpers/fetchAllPages";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "../Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import RestFilterBar from "Components/Common/RestFilterBar";
 import {
     getPingwinDocuments, syncPingwinDocuments,
@@ -17,7 +18,7 @@ import {
     updatePingwinDocumentConfig, getPingwinDocumentConfigWrite, createPingwinDocumentConfig,
     voidPingwinDocumentConfig,
 } from "helpers/laravel_helper";
-import { PingwinDocumentConfig, PingwinDocPaycondLink, LaravelPaginator } from "common/models/pingwin.model";
+import { PingwinDocumentConfig, PingwinDocPaycondLink } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
 // D1 — selects editáveis do maindataset: {opção no snapshot, campo _id a gravar, label}.
@@ -94,12 +95,15 @@ const normTxt = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]
  * do PingWin numa tabela limpa e filtrável. Exibição PAGINADA (paginação
  * Laravel). Filtro com react-select (padrão do sistema), off-canvas em mobile, e
  * a tabela colapsa em cards no telemóvel (sem overflow horizontal).
+ *
+ * UI-2a: PageCard + DataTable. A pesquisa e o tipo de entidade vão à API (como antes); a lista
+ * lê todas as páginas do resultado e a tabela ordena e pagina no browser.
  */
 
 const fmtDateTime = (d?: string | null) =>
     d ? new Date(d).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—";
 
-const PER_PAGE = 20;
+const API_PER_PAGE = 200;
 type Opt = { value: string; label: string };
 
 type Rowish = Record<string, any>;
@@ -145,12 +149,9 @@ const ChildBlock = ({ title, rows, showAccount = false }: { title: string; rows?
 
 export default function DocumentosPage() {
     document.title = "Documentos | Restauração | Xplendor";
-    const isMobile = useIsMobile();
 
     const companyId = useWorkingCompanyId();
 
-    const [page, setPage] = useState(1);
-    const [meta, setMeta] = useState<Omit<LaravelPaginator<PingwinDocumentConfig>, "data"> | null>(null);
     const [rows, setRows] = useState<PingwinDocumentConfig[]>([]);
     const [entityTypes, setEntityTypes] = useState<string[]>([]);
     const [lastSynced, setLastSynced] = useState<string | null>(null);
@@ -197,33 +198,24 @@ export default function DocumentosPage() {
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
+        const params = { search: search.trim() || undefined, entitytype: entityFilter || undefined };
         try {
-            const res: any = await getPingwinDocuments(companyId, {
-                page,
-                perPage: PER_PAGE,
-                search: search.trim() || undefined,
-                entitytype: entityFilter || undefined,
-            });
-            const paginator = res?.data?.documents;
-            setRows(paginator?.data ?? []);
-            const { data: _omit, ...m } = paginator ?? {};
-            setMeta(paginator ? (m as any) : null);
-            setEntityTypes(res?.data?.entitytypes ?? []);
-            setLastSynced(res?.data?.last_synced_at ?? null);
+            const { rows: all, first } = await fetchAllPages<PingwinDocumentConfig>(
+                (page) => getPingwinDocuments(companyId, { ...params, page, perPage: API_PER_PAGE }), (r) => r?.data?.documents);
+            setRows(all);
+            setEntityTypes(first?.data?.entitytypes ?? []);
+            setLastSynced(first?.data?.last_synced_at ?? null);
         } catch {
             setRows([]);
-            setMeta(null);
         } finally {
             setLoading(false);
         }
-    }, [companyId, page, search, entityFilter]);
+    }, [companyId, search, entityFilter]);
 
     useEffect(() => {
         const t = setTimeout(() => fetchRows(), 250);
         return () => clearTimeout(t);
     }, [fetchRows]);
-
-    useEffect(() => { setPage(1); }, [search, entityFilter]);
 
     const clearFilters = () => { setSearch(""); setEntityFilter(""); };
 
@@ -537,19 +529,16 @@ export default function DocumentosPage() {
         }
     };
 
-    const emptyRow = (
-        <div className="text-center text-muted py-4">
-            {!search && !entityFilter
-                ? <>Sem documentos. Use <strong>“Sincronizar lista”</strong> para os obter do PingWin.</>
-                : "Nenhum resultado para o filtro."}
-        </div>
-    );
+    const emptyMessage = !search && !entityFilter
+        ? "Ainda não há documentos. Sincronize a lista para os obter do PingWin."
+        : "Nenhum resultado para o filtro.";
 
     const filterFields = (
         <div style={{ flex: "1 1 220px", minWidth: 0 }}>
             <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Tipo de entidade</Label>
             <XSelect
                 ariaLabel="Tipo de entidade"
+                small
                 options={entityOptions}
                 value={entityFilter}
                 onChange={(v) => setEntityFilter(v)}
@@ -566,6 +555,27 @@ export default function DocumentosPage() {
         ]} />
     );
 
+    const columns: DTColumn<PingwinDocumentConfig>[] = [
+        { id: "code", header: "Código", value: (d) => d.code, cell: (d) => <span className="fw-medium">{d.code || "—"}</span>, mobile: "subtitle" },
+        { id: "description", header: "Descrição", value: (d) => d.description, mobile: "title" },
+        {
+            id: "entity", header: "Tipo de entidade", value: (d) => d.entitytype,
+            cell: (d) => d.entitytype ? <span className="badge bg-info-subtle text-info">{d.entitytype}</span> : <span className="text-muted">—</span>,
+        },
+        { id: "fiscal", header: "Tipo fiscal", value: (d) => d.fiscaltype_description || d.fiscaltype || null },
+    ];
+    const cols = useDataColumns("restauracao.documentos", columns);
+
+    // Ações por linha: "Ver detalhe" visível; "Anular" (destrutiva) só no menu "...".
+    const rowActions = (d: PingwinDocumentConfig) => (
+        <>
+            <Button size="sm" color="outline-primary" onClick={() => openDetail(d.external_id)} title="Ver config completa" aria-label={`Ver detalhe: ${d.description || d.code}`}>
+                <i className="ri-eye-line" />
+            </Button>
+            {rowMenu(d)}
+        </>
+    );
+
     return (
         <div className="page-content">
             <ToastContainer />
@@ -573,113 +583,55 @@ export default function DocumentosPage() {
                 <PageHeader
                     title="Documentos"
                     breadcrumbs={[{ label: "Cadastros" }]}
-                    description={<>Tipos de documento do PingWin. Última sincronização: {fmtDateTime(lastSynced)}</>}
-                    actions={<>
-                        <Button color="outline-primary" onClick={runSync} disabled={syncing}>
-                            {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar lista</>}
-                        </Button>
-                        <ActionsMenu label="Mais ações: Documentos" items={[
-                            {
-                                label: syncingRich ? "A obter detalhe…" : "Sincronizar detalhe", icon: "ri-stack-line", onClick: runSyncRich,
-                                disabledReason: syncingRich ? "A sincronização do detalhe já está a correr." : null,
-                            },
-                        ]} />
-                        <Button color="primary" onClick={openCreate} disabled={creating2}>
-                            <i className="ri-add-line me-1" /> Novo documento
-                        </Button>
-                    </>}
+                    info="Os tipos de documento do PingWin e a configuração de cada um."
                 />
 
                 <Row>
                     <Col xs={12}>
-                        <Card className="mb-3">
-                            <div className="card-header">
-                                <div className="d-flex flex-column gap-3">
-                                    <h5 className="card-title mb-0">Tipos de documento {loading && <Spinner size="sm" className="ms-1" />}</h5>
-                                    <RestFilterBar
-                                        search={search}
-                                        onSearchChange={setSearch}
-                                        searchPlaceholder="Pesquisar (código ou descrição)…"
-                                        activeCount={activeFilterCount}
-                                        onClear={clearFilters}
-                                    >
-                                        {filterFields}
-                                    </RestFilterBar>
-                                </div>
-                            </div>
-
-                            {/* MOBILE: cards empilhados (sem overflow horizontal). */}
-                            {isMobile ? (
-                                <div className="p-3 d-flex flex-column gap-2">
-                                    {!loading && rows.length === 0 ? emptyRow : rows.map((d) => (
-                                        <div key={d.id} style={{ border: "1px solid var(--vz-border-color)", borderRadius: 12, padding: "12px 14px", background: "var(--vz-card-bg)" }}>
-                                            <div className="d-flex align-items-start justify-content-between gap-2 mb-1">
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div className="fw-semibold text-body text-truncate">{d.description || "—"}</div>
-                                                    <div className="text-muted fs-12">{d.code || "—"}</div>
-                                                </div>
-                                                {d.entitytype && <span className="badge bg-info-subtle text-info flex-shrink-0">{d.entitytype}</span>}
-                                            </div>
-                                            <div className="text-muted fs-12 mt-1">
-                                                Tipo fiscal: <span className="text-body">{d.fiscaltype_description || d.fiscaltype || "—"}</span>
-                                            </div>
-                                            <div className="d-flex gap-2 mt-2">
-                                                <Button size="sm" color="outline-primary" onClick={() => openDetail(d.external_id)}>
-                                                    <i className="ri-eye-line me-1" /> Ver detalhe
-                                                </Button>
-                                                {rowMenu(d)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Código</th>
-                                                <th>Descrição</th>
-                                                <th>Tipo de entidade</th>
-                                                <th>Tipo fiscal</th>
-                                                <th className="text-center">Detalhe</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {!loading && rows.length === 0 ? (
-                                                <tr><td colSpan={5}>{emptyRow}</td></tr>
-                                            ) : rows.map((d) => (
-                                                <tr key={d.id}>
-                                                    <td className="fw-medium">{d.code || "—"}</td>
-                                                    <td>{d.description || "—"}</td>
-                                                    <td>{d.entitytype ? <span className="badge bg-info-subtle text-info">{d.entitytype}</span> : <span className="text-muted">—</span>}</td>
-                                                    <td>{d.fiscaltype_description || d.fiscaltype || "—"}</td>
-                                                    <td className="text-center">
-                                                        <div className="d-flex gap-1 justify-content-center">
-                                                            <Button size="sm" color="outline-primary" onClick={() => openDetail(d.external_id)} title="Ver config completa" aria-label={`Ver detalhe: ${d.description || d.code}`}>
-                                                                <i className="ri-eye-line" />
-                                                            </Button>
-                                                            {rowMenu(d)}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </Card>
-
-                        {meta && meta.total > 0 && (
-                            <Pagination
-                                currentPage={meta.current_page}
-                                lastPage={meta.last_page}
-                                total={meta.total}
-                                perPage={meta.per_page}
-                                from={meta.from ?? 0}
-                                to={meta.to ?? 0}
-                                onPageChange={(p) => setPage(p)}
+                        <PageCard
+                            title="Tipos de documento"
+                            loading={loading && rows.length > 0}
+                            status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
+                            actions={<>
+                                {cols.selector}
+                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                    {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar lista</>}
+                                </Button>
+                                <ActionsMenu label="Mais ações: Documentos" items={[
+                                    {
+                                        label: syncingRich ? "A obter detalhe…" : "Sincronizar detalhe", icon: "ri-stack-line", onClick: runSyncRich,
+                                        disabledReason: syncingRich ? "A sincronização do detalhe já está a correr." : null,
+                                    },
+                                ]} />
+                                <Button color="primary" onClick={openCreate} disabled={creating2}>
+                                    <i className="ri-add-line me-1" /> Novo documento
+                                </Button>
+                            </>}
+                            filters={
+                                <RestFilterBar
+                                    search={search}
+                                    onSearchChange={setSearch}
+                                    searchPlaceholder="Pesquisar (código ou descrição)…"
+                                    activeCount={activeFilterCount}
+                                    onClear={clearFilters}
+                                >
+                                    {filterFields}
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={rows}
+                                rowKey={(d) => d.id}
+                                loading={loading}
+                                rowActions={rowActions}
+                                caption="Tipos de documento"
+                                empty={{
+                                    message: emptyMessage,
+                                    action: !search && !entityFilter ? <Button color="outline-primary" size="sm" onClick={runSync} disabled={syncing}><i className="ri-refresh-line me-1" />Sincronizar lista</Button> : undefined,
+                                }}
                             />
-                        )}
+                        </PageCard>
                     </Col>
                 </Row>
             </Container>

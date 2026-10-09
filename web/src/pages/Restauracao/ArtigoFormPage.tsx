@@ -6,9 +6,10 @@ import {
     Modal, ModalHeader, ModalBody, ModalFooter,
 } from "reactstrap";
 import classnames from "classnames";
-import Select from "react-select";
 import { toast, ToastContainer } from "react-toastify";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import XSelect from "Components/Common/Select";
+import PageCard from "Components/Common/PageCard";
+import InfoTip from "Components/Common/InfoTip";
 import {
     getArticleFormLookups, getArticle, getArticleRead,
     createArticle, getArticleCreation, updateArticle, getArticleEdition,
@@ -324,15 +325,7 @@ export default function ArtigoFormPage() {
                     title={isCreate ? "Novo artigo" : (f.description || "Editar artigo")}
                     crumbLabel={isCreate ? "Novo artigo" : "Editar"}
                     breadcrumbs={[{ label: "Restauração" }, { label: "Artigos", to: "/restauracao/artigos" }]}
-                    description={isCreate ? "Criar um artigo no PingWin." : "Alterar o artigo no PingWin (inclui o Estado)."}
-                    actions={!isCreate ? (
-                        <ActionsMenu label={`Mais ações: ${f.description || "artigo"}`} items={[
-                            {
-                                label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
-                                disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,
-                            },
-                        ]} />
-                    ) : undefined}
+                    info={isCreate ? "Cria um artigo no PingWin." : "Altera o artigo no PingWin, incluindo o Estado."}
                 />
 
                 {loading ? (
@@ -346,9 +339,19 @@ export default function ArtigoFormPage() {
                             </div>
                         )}
 
-                        {/* ── Cabeçalho ── */}
-                        <Card className="mb-3">
-                            <CardBody>
+                        {/* ── Cabeçalho ── (UI-2a: o menu "..." com "Anular" fica no cabeçalho do cartão) */}
+                        <PageCard
+                            title="Artigo"
+                            flush={false}
+                            actions={!isCreate ? (
+                                <ActionsMenu label={`Mais ações: ${f.description || "artigo"}`} items={[
+                                    {
+                                        label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
+                                        disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,
+                                    },
+                                ]} />
+                            ) : undefined}
+                        >
                                 <Row className="g-3">
                                     <Col md={2}>
                                         <Label className="form-label">Código</Label>
@@ -360,14 +363,12 @@ export default function ArtigoFormPage() {
                                     </Col>
                                     <Col md={4}>
                                         <Label className="form-label">Estado</Label>
-                                        <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={statusOptions}
-                                            value={sel(statusOptions, f.status)} onChange={(o: any) => set("status", o?.value ?? "")} isSearchable={false} />
+                                        <XSelect options={statusOptions} value={f.status} onChange={(v) => set("status", v)} searchable={false} />
                                     </Col>
 
                                     <Col md={4}>
                                         <Label className="form-label">Família</Label>
-                                        <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={familyOptions}
-                                            value={sel(familyOptions, f.family_id)} onChange={(o: any) => set("family_id", o?.value ?? "")} isSearchable placeholder="Escolher família…" />
+                                        <XSelect options={familyOptions} value={f.family_id} onChange={(v) => set("family_id", v)} searchable placeholder="Escolher família…" />
                                     </Col>
                                     <Col md={8}>
                                         <Label className="form-label d-block">Tipo de artigo</Label>
@@ -380,21 +381,18 @@ export default function ArtigoFormPage() {
 
                                     <Col md={4}>
                                         <Label className="form-label">Unidade base</Label>
-                                        <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={baseUnitOptions}
-                                            value={sel(baseUnitOptions, f.base_unit_id)} onChange={(o: any) => onBaseUnit(o?.value ?? "")} isSearchable placeholder="Escolher…" />
+                                        <XSelect options={baseUnitOptions} value={f.base_unit_id} onChange={(v) => onBaseUnit(v)} searchable placeholder="Escolher…" />
                                     </Col>
                                     {f.forsale && (
                                         <Col md={4}>
                                             <Label className="form-label">Unidade de venda</Label>
-                                            <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={saleUnitOptions}
-                                                value={sel(saleUnitOptions, f.sale_unit_id)} onChange={(o: any) => set("sale_unit_id", o?.value ?? "")} isSearchable placeholder="(usa a base)" />
+                                            <XSelect options={saleUnitOptions} value={f.sale_unit_id} onChange={(v) => set("sale_unit_id", v)} searchable placeholder="(usa a base)" />
                                         </Col>
                                     )}
                                     {f.forpurchase && (
                                         <Col md={4}>
                                             <Label className="form-label">Unidade de compra</Label>
-                                            <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={purchaseUnitOptions}
-                                                value={sel(purchaseUnitOptions, f.purchase_unit_id)} onChange={(o: any) => set("purchase_unit_id", o?.value ?? "")} isSearchable placeholder="(usa a base)" />
+                                            <XSelect options={purchaseUnitOptions} value={f.purchase_unit_id} onChange={(v) => set("purchase_unit_id", v)} searchable placeholder="(usa a base)" />
                                         </Col>
                                     )}
 
@@ -410,16 +408,19 @@ export default function ArtigoFormPage() {
                                         <div className="form-check mb-2"><Input type="checkbox" className="form-check-input" id="c-varprice" checked={f.change_sale_price} onChange={(e) => set("change_sale_price", e.target.checked)} /><Label className="form-check-label" for="c-varprice">Preço de venda variável</Label></div>
                                     </Col>
                                 </Row>
-                            </CardBody>
-                        </Card>
+                        </PageCard>
 
                         {/* ── Tabs ── */}
                         <Card>
                             <CardBody>
                                 <Nav tabs className="nav-tabs-custom mb-3">
                                     <NavItem><NavLink className={classnames({ active: tab === "geral" })} onClick={() => setTab("geral")} style={{ cursor: "pointer" }}>Geral</NavLink></NavItem>
-                                    <NavItem><NavLink className={classnames({ active: tab === "frontoffice" })} onClick={() => setTab("frontoffice")} style={{ cursor: "pointer" }}>FrontOffice</NavLink></NavItem>
-                                    <NavItem><NavLink className={classnames({ active: tab === "unidades" })} onClick={() => setTab("unidades")} style={{ cursor: "pointer" }}>Unidades por defeito</NavLink></NavItem>
+                                    <NavItem><NavLink className={classnames({ active: tab === "frontoffice" })} onClick={() => setTab("frontoffice")} style={{ cursor: "pointer" }}>
+                                        FrontOffice{tab === "frontoffice" && <InfoTip className="ms-1" label="Sobre o FrontOffice" text="A cor, a ordem e a zona de impressão chegam numa fase seguinte." />}
+                                    </NavLink></NavItem>
+                                    <NavItem><NavLink className={classnames({ active: tab === "unidades" })} onClick={() => setTab("unidades")} style={{ cursor: "pointer" }}>
+                                        Unidades por defeito{tab === "unidades" && <InfoTip className="ms-1" label="Sobre as unidades por defeito" text="Por omissão, herdam a unidade base do cabeçalho; ajuste se precisar." />}
+                                    </NavLink></NavItem>
                                     <NavItem><NavLink className={classnames({ active: tab === "compras" })} onClick={() => setTab("compras")} style={{ cursor: "pointer" }}>
                                         Compras{compras.hasPending && <span className="badge bg-warning-subtle text-warning ms-1">•</span>}
                                     </NavLink></NavItem>
@@ -432,11 +433,11 @@ export default function ArtigoFormPage() {
                                     <TabPane tabId="geral">
                                         <Row className="g-3">
                                             <Col md={3}><Label className="form-label">Tipo de artigo</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={typeOptions} value={sel(typeOptions, f.product_type)} onChange={(o: any) => set("product_type", o?.value ?? "")} isSearchable={false} /></Col>
+                                                <XSelect options={typeOptions} value={f.product_type} onChange={(v) => set("product_type", v)} searchable={false} /></Col>
                                             <Col md={3}><Label className="form-label">Taxa (IVA)</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={taxOptions} value={sel(taxOptions, f.taxgroup_id)} onChange={(o: any) => set("taxgroup_id", o?.value ?? "")} isSearchable={false} /></Col>
+                                                <XSelect options={taxOptions} value={f.taxgroup_id} onChange={(v) => set("taxgroup_id", v)} searchable={false} /></Col>
                                             <Col md={3}><Label className="form-label">Stocks</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={stockOptions} value={sel(stockOptions, f.stockconfig_id)} onChange={(o: any) => set("stockconfig_id", o?.value ?? "")} isSearchable={false} /></Col>
+                                                <XSelect options={stockOptions} value={f.stockconfig_id} onChange={(v) => set("stockconfig_id", v)} searchable={false} /></Col>
                                             <Col md={3}><Label className="form-label">Validade (dias)</Label>
                                                 <Input type="number" min={0} value={f.setexpireday} onChange={(e) => set("setexpireday", e.target.value)} placeholder="0" /></Col>
                                         </Row>
@@ -451,18 +452,16 @@ export default function ArtigoFormPage() {
                                                 <Input value={f.button_name} onChange={(e) => { mark("button_name"); set("button_name", e.target.value); }} maxLength={BUTTON_MAX} placeholder="(da descrição)" />
                                                 <small className="text-muted">Máx. {BUTTON_MAX} caracteres.</small></Col>
                                         </Row>
-                                        <p className="text-muted fs-13 mt-3 mb-0"><i className="ri-information-line me-1" />Cor, ordem e zona de impressão chegam numa fase seguinte.</p>
                                     </TabPane>
 
                                     <TabPane tabId="unidades">
-                                        <p className="text-muted fs-13">Por defeito herdam a unidade base do cabeçalho; ajuste se precisar.</p>
                                         <Row className="g-3">
                                             <Col md={4}><Label className="form-label">Stock</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={baseUnitOptions} value={sel(baseUnitOptions, f.stock_unit_id)} onChange={(o: any) => { mark("stock_unit_id"); set("stock_unit_id", o?.value ?? ""); }} isSearchable placeholder="(usa a base)" /></Col>
+                                                <XSelect options={baseUnitOptions} value={f.stock_unit_id} onChange={(v) => { mark("stock_unit_id"); set("stock_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
                                             <Col md={4}><Label className="form-label">Legenda</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={baseUnitOptions} value={sel(baseUnitOptions, f.label_unit_id)} onChange={(o: any) => { mark("label_unit_id"); set("label_unit_id", o?.value ?? ""); }} isSearchable placeholder="(usa a base)" /></Col>
+                                                <XSelect options={baseUnitOptions} value={f.label_unit_id} onChange={(v) => { mark("label_unit_id"); set("label_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
                                             <Col md={4}><Label className="form-label">Volume</Label>
-                                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={baseUnitOptions} value={sel(baseUnitOptions, f.volume_unit_id)} onChange={(o: any) => { mark("volume_unit_id"); set("volume_unit_id", o?.value ?? ""); }} isSearchable placeholder="(usa a base)" /></Col>
+                                                <XSelect options={baseUnitOptions} value={f.volume_unit_id} onChange={(v) => { mark("volume_unit_id"); set("volume_unit_id", v); }} searchable placeholder="(usa a base)" /></Col>
                                             <Col md={4}><Label className="form-label">Peso</Label>
                                                 <Input value={f.weight} onChange={(e) => set("weight", e.target.value)} inputMode="decimal" placeholder="0,000" /></Col>
                                         </Row>
@@ -479,24 +478,24 @@ export default function ArtigoFormPage() {
                                     </TabPane>
                                 </TabContent>
                             </CardBody>
-                        </Card>
-
-                        {compras.hasPending && (
-                            <div className="alert alert-warning d-flex align-items-center gap-2 mt-3 mb-0" role="alert">
-                                <i className="ri-error-warning-line fs-5" />
-                                <span>Tem alterações de fornecedores por guardar. Clique em <strong>Guardar</strong> para as aplicar.</span>
+                            {/* UI-2a: as ações do formulário ficam dentro do cartão (rodapé), não soltas por baixo. */}
+                            <div className="card-footer d-flex flex-wrap align-items-center justify-content-end gap-2" data-testid="form-actions">
+                                {compras.hasPending && (
+                                    <span className="text-warning fs-13 me-auto" role="status">
+                                        <i className="ri-error-warning-line me-1" />Tem alterações de fornecedores por guardar. Clique em <strong>Guardar</strong> para as aplicar.
+                                    </span>
+                                )}
+                                <Button type="button" color="outline-primary" onClick={goBack}>
+                                    <i className="ri-arrow-left-line me-1" /> Voltar
+                                </Button>
+                                <Button type="submit" color="primary" disabled={busy}>
+                                    {busy
+                                        ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
+                                        : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}
+                                </Button>
                             </div>
-                        )}
-                        <div className="d-flex justify-content-end gap-2 mt-3 mb-5">
-                            <Button type="button" color="outline-primary" onClick={goBack}>
-                                <i className="ri-arrow-left-line me-1" /> Voltar
-                            </Button>
-                            <Button type="submit" color="primary" disabled={busy}>
-                                {busy
-                                    ? <><Spinner size="sm" className="me-1" /> {isCreate ? "A criar no PingWin…" : "A gravar no PingWin…"}</>
-                                    : <><i className="ri-save-line me-1" /> {isCreate ? "Criar artigo" : "Guardar"}</>}
-                            </Button>
-                        </div>
+                        </Card>
+                        <div className="mb-5" />
                     </Form>
                 )}
 
