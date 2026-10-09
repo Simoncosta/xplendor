@@ -715,6 +715,15 @@ export const getOcrInvoices = (
     companyId: number,
     params?: { page?: number; perPage?: number; status?: string }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, params);
+// F1 — Documentos de fornecedor do PingWin (só leitura): lista, sync por período (async) e estado do run.
+export const getPingwinSupplierDocuments = (
+    companyId: number,
+    params?: { page?: number; perPage?: number; from?: string; to?: string; types?: string; supplier?: string; missing_ref?: number }
+) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents`, params);
+export const syncPingwinSupplierDocuments = (companyId: number, period: { from: string; to: string }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/sync`, period);
+export const getPingwinSupplierDocumentsRun = (companyId: number, runId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/supplier-documents/sync-runs/${runId}`);
 export const uploadOcrInvoice = (companyId: number, file: File) => {
     const fd = new FormData();
     fd.append("file", file);

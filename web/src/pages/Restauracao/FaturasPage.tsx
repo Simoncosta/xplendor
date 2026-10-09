@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Card, Container, Row, Col, Spinner } from "reactstrap";
-import { Link, useNavigate } from "react-router-dom";
+import { Button, Card, Container, Row, Col, Spinner, Nav, NavItem, NavLink } from "reactstrap";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import classnames from "classnames";
 import { toast, ToastContainer } from "react-toastify";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import Pagination from "Components/Common/Pagination";
@@ -9,12 +10,16 @@ import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
 import { OcrInvoiceListRow, OcrInvoiceStatus } from "common/models/ocr.model";
 import { LaravelPaginator } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
+import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
 
 /**
  * XPLENDOR — Restauração › Faturas (OCR, Fase A). Carrega uma fatura de fornecedor
  * (imagem/PDF) → a IA lê (fila) → o utilizador VALIDA no ecrã de detalhe. ⚠️ NÃO
  * escreve no PingWin. Só módulo pingwin. Enquanto houver faturas "a processar",
  * a lista faz polling leve.
+ *
+ * F1: separador "Documentos PingWin" — documentos de fornecedor lançados no PingWin
+ * (só leitura). O separador ativo fica no URL (?tab=pingwin).
  */
 
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("pt-PT") : "—");
@@ -36,6 +41,9 @@ export default function FaturasPage() {
     const fileRef = useRef<HTMLInputElement>(null);
 
     const companyId = useWorkingCompanyId();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tab: "ocr" | "pingwin" = searchParams.get("tab") === "pingwin" ? "pingwin" : "ocr";
+    const setTab = (t: "ocr" | "pingwin") => setSearchParams(t === "ocr" ? {} : { tab: t }, { replace: true });
 
     const [page, setPage] = useState(1);
     const [meta, setMeta] = useState<Omit<LaravelPaginator<OcrInvoiceListRow>, "data"> | null>(null);
@@ -105,19 +113,28 @@ export default function FaturasPage() {
                 <PageHeader
                     title="Faturas"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description={<>
+                    description={tab === "ocr" ? <>
                         Faturas de fornecedor lidas com IA, para validar. Não são enviadas ao PingWin.
                         {cap && <> · {cap.used}/{cap.cap} este mês</>}
-                    </>}
-                    actions={<>
+                    </> : <>Documentos de fornecedor lançados no PingWin (só leitura).</>}
+                    actions={tab === "ocr" ? <>
                         <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
                         <Button color="primary" onClick={onPickFile} disabled={uploading}>
                             {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
                         </Button>
-                    </>}
+                    </> : undefined}
                 />
 
-                <Row>
+                <Nav tabs className="nav-tabs-custom mb-3">
+                    <NavItem><NavLink className={classnames({ active: tab === "ocr" })} onClick={() => setTab("ocr")} style={{ cursor: "pointer" }}>Faturas carregadas</NavLink></NavItem>
+                    <NavItem><NavLink className={classnames({ active: tab === "pingwin" })} onClick={() => setTab("pingwin")} style={{ cursor: "pointer" }}>Documentos PingWin</NavLink></NavItem>
+                </Nav>
+
+                {tab === "pingwin" && (
+                    <Row><Col xs={12}><PingwinSupplierDocumentsTab companyId={companyId} /></Col></Row>
+                )}
+
+                {tab === "ocr" && <Row>
                     <Col xs={12}>
                         <Card className="mb-3">
                             <div className="card-header">
@@ -191,7 +208,7 @@ export default function FaturasPage() {
                             />
                         )}
                     </Col>
-                </Row>
+                </Row>}
             </Container>
         </div>
     );
