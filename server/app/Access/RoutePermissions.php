@@ -122,6 +122,7 @@ final class RoutePermissions
         'GET {id}/editorial/media/uploads/{uploadId}' => 'editorial.ver',
         'POST {id}/editorial/media/uploads/{uploadId}/chunk' => 'editorial.criar',
         'GET {id}/editorial/media/{assetId}' => 'editorial.ver',
+        'POST {id}/editorial/media/from-file' => 'editorial.criar', // e ficheiros.ver, no controlador
         'POST {id}/editorial/months/{year}/{month}/close' => 'editorial.editar',
         'POST {id}/editorial/months/{year}/{month}/open' => 'editorial.editar',
         'DELETE {id}/editorial/own-anchors/{ownAnchorId}' => 'editorial.editar',

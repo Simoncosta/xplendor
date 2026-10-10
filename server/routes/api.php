@@ -541,6 +541,7 @@ Route::prefix('v1')->group(function () {
                     Route::post('/editorial/media/uploads', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'startUpload'])->middleware('throttle:60,1');
                     Route::get('/editorial/media/uploads/{uploadId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'uploadStatus'])->whereUuid('uploadId');
                     Route::post('/editorial/media/uploads/{uploadId}/chunk', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'chunk'])->whereUuid('uploadId')->middleware('throttle:240,1');
+                    Route::post('/editorial/media/from-file', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'fromFile'])->middleware('throttle:60,1');
                     Route::get('/editorial/media/{assetId}', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'asset'])->whereNumber('assetId');
                     Route::put('/editorial/posts/{postId}/media', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'setPostMedia'])->whereNumber('postId');
                     Route::get('/editorial/grid', [\App\Http\Controllers\Api\V1\EditorialMediaController::class, 'grid']);

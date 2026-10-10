@@ -110,7 +110,10 @@ final class StorageMigration
     /** @return string[] */
     private function assetPaths(MediaAsset $asset): array
     {
-        return array_values(array_filter(array_map(fn ($v) => $asset->pathFor($v), ['original', 'thumb', 'preview', 'poster'])));
+        // Um original de outro módulo (Ficheiros, original_path) não é desta media: não se copia.
+        $variants = $asset->original_path ? ['thumb', 'preview', 'poster'] : ['original', 'thumb', 'preview', 'poster'];
+
+        return array_values(array_filter(array_map(fn ($v) => $asset->pathFor($v), $variants)));
     }
 
     private function one(string $kind, string $sourceDisk, string $path, bool $execute): string

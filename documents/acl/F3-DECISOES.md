@@ -149,6 +149,8 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 - **Administrador e membro da agência:** 403 em mudar o nome, mover, apagar e restaurar (o teto dá ver e criar).
 - **Empresa sem módulos:** 403 em todas (módulo desligado).
 
+**Na F4 (a Linha Editorial nos dois sentidos):** mais uma rota, `POST {id}/editorial/media/from-file` ("Escolher dos Ficheiros"), com a permissão `editorial.criar` (como o envio de media da Linha Editorial) e, dentro, o módulo "Ficheiros" e `ficheiros.ver`. Na fotografia comporta-se como `editorial/media/uploads`, ator a ator: 403 só na empresa sem módulos; os restantes recebem 422 (o pedido da fotografia vai vazio).
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
 | Ator | Antes | Depois (com o pré-deploy e o complemento) |
@@ -163,6 +165,6 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 | Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 67 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
 | Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 241 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 242 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

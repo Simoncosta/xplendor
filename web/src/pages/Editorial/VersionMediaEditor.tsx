@@ -2,7 +2,10 @@ import { useRef, useState } from "react";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { Badge, Button, Progress, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import { setPostMedia } from "helpers/laravel_helper";
+import { getMediaAsset, pickMediaFromFile, setPostMedia } from "helpers/laravel_helper";
+import { useModules } from "contexts/ModulesContext";
+import FilePickerModal from "pages/Files/FilePickerModal";
+import type { StoredFileDto } from "common/models/files.model";
 import { uploadMediaFile } from "helpers/mediaUpload";
 import { MediaAssetDto, PostWorkflow, VersionMedia, fmtDuration, mediaSrc } from "common/models/editorialWorkflow.model";
 import ReasonButton from "Components/Common/ReasonButton";
@@ -40,6 +43,10 @@ export default function VersionMediaEditor({ companyId, postId, media, validatio
     itemsRef.current = media.items;
     const fileInput = useRef<HTMLInputElement>(null);
     const coverInput = useRef<HTMLInputElement>(null);
+    const { has, can } = useModules();
+    const filesOn = has("ficheiros") && can("ficheiros.ver");
+    const [picking, setPicking] = useState(false);
+    const [pickBusy, setPickBusy] = useState(false);
 
     const save = async (items: number[], coverId: number | null) => {
         setSaving(true);
@@ -77,6 +84,28 @@ export default function VersionMediaEditor({ companyId, postId, media, validatio
         }
     };
 
+    /** "Escolher dos Ficheiros": a mesma media do ficheiro (sem cópia), à espera das miniaturas. */
+    const pickFromFiles = async (file: StoredFileDto) => {
+        setPickBusy(true);
+        try {
+            const r: any = await pickMediaFromFile(companyId, file.id);
+            let asset: MediaAssetDto = r.data;
+            for (let i = 0; i < 90 && asset.status === "processing"; i++) {
+                await new Promise((ok) => setTimeout(ok, 2000));
+                asset = (await getMediaAsset(companyId, asset.id) as any).data as MediaAssetDto;
+            }
+            if (asset.status === "rejected") throw new Error(asset.error ?? "Ficheiro recusado.");
+            if (!itemsRef.current.some((a) => a.id === asset.id)) {
+                await save([...ids(itemsRef.current), asset.id], media.cover?.id ?? null);
+            }
+            setPicking(false);
+        } catch (e: any) {
+            toast.error(errorMessage(e, "Não foi possível usar este ficheiro."));
+        } finally {
+            setPickBusy(false);
+        }
+    };
+
     const onDragEnd = (r: DropResult) => {
         if (!r.destination || r.destination.index === r.source.index) return;
         const list = [...media.items];
@@ -94,9 +123,17 @@ export default function VersionMediaEditor({ companyId, postId, media, validatio
                 {canEdit && (
                     <>
                         <input ref={fileInput} type="file" multiple accept={ACCEPT} className="d-none" onChange={(e) => { void upload(e.target.files); e.target.value = ""; }} />
-                        <ReasonButton color="outline-primary" size="sm" disabled={saving} reason={media.items.length >= 10 ? "No máximo 10 ficheiros por versão." : null} onClick={() => fileInput.current?.click()}>
-                            <i className="ri-upload-2-line me-1" />Adicionar ficheiros
-                        </ReasonButton>
+                        <div className="d-flex gap-2">
+                            {filesOn && (
+                                <ReasonButton color="outline-primary" size="sm" disabled={saving} reason={media.items.length >= 10 ? "No máximo 10 ficheiros por versão." : null} onClick={() => setPicking(true)}>
+                                    <i className="ri-folder-open-line me-1" />Escolher dos Ficheiros
+                                </ReasonButton>
+                            )}
+                            <ReasonButton color="outline-primary" size="sm" disabled={saving} reason={media.items.length >= 10 ? "No máximo 10 ficheiros por versão." : null} onClick={() => fileInput.current?.click()}>
+                                <i className="ri-upload-2-line me-1" />Adicionar ficheiros
+                            </ReasonButton>
+                        </div>
+                        {filesOn && <FilePickerModal isOpen={picking} companyId={companyId} busy={pickBusy} onClose={() => setPicking(false)} onPick={(f) => void pickFromFiles(f)} />}
                     </>
                 )}
             </div>

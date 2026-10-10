@@ -41,10 +41,10 @@ class MediaFileController extends Controller
     public static function serve(?MediaAsset $media, string $variant): Response
     {
         $path = $media?->pathFor($variant);
-        $disk = $media ? MediaService::diskFor($media) : null;
+        $disk = $media ? MediaService::diskForVariant($media, $variant) : null;
         abort_if(! $media || ! $path || ! $disk->exists($path), 404);
 
-        return self::file($disk, (string) ($media->disk ?: config('media.disk', 'media')), $path,
+        return self::file($disk, $media->diskNameFor($variant), $path,
             $variant === 'original' ? $media->mime : ($variant === 'poster' ? 'image/jpeg' : 'image/webp'));
     }
 

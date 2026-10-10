@@ -594,6 +594,9 @@ export const setContentApprover = (companyId: number, userId: number, value: boo
 // F3b: media (envio em partes de 8 MB, retomável), media da versão e grelha do Instagram.
 export const startMediaUpload = (companyId: number, file: { name: string; size: number; mime: string }) =>
     api.create(ED(companyId) + `/media/uploads`, file, { headers: { "Content-Type": "application/json" } });
+// Ficheiros → Linha Editorial: a media de um ficheiro, sem o copiar ("Escolher dos Ficheiros").
+export const pickMediaFromFile = (companyId: number, storedFileId: number) =>
+    api.create(ED(companyId) + `/media/from-file`, { stored_file_id: storedFileId }, { headers: { "Content-Type": "application/json" } });
 export const getMediaUpload = (companyId: number, id: string) => api.get(ED(companyId) + `/media/uploads/${id}`);
 export const sendMediaChunk = (companyId: number, id: string, offset: number, chunk: Blob, onProgress?: (loaded: number) => void) => {
     const fd = new FormData();

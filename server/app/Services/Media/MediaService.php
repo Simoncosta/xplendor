@@ -41,6 +41,12 @@ class MediaService
         return Storage::disk((string) ($asset->disk ?: config('media.disk', 'media')));
     }
 
+    /** O disco de uma variante (o original de uma media dos Ficheiros pode estar noutro disco). */
+    public static function diskForVariant(MediaAsset $asset, string $variant): \Illuminate\Contracts\Filesystem\Filesystem
+    {
+        return Storage::disk($asset->diskNameFor($variant));
+    }
+
     /**
      * Os envios em partes ficam SEMPRE no disco local "media" (num objeto S3 não se pode
      * acrescentar); no fim, o original passa para o disco configurado.
@@ -183,6 +189,7 @@ class MediaService
         $upload->forceFill(['completed_at' => now(), 'media_asset_id' => $asset->id])->save();
 
         DB::afterCommit(fn () => ProcessMediaAssetJob::dispatch($asset->id));
+        \Illuminate\Support\Facades\Cache::forget("files:catalog:{$upload->company_id}"); // aparece logo nos Ficheiros
     }
 
     // ── Processamento (fila) ─────────────────────────────────────────────────
@@ -197,7 +204,8 @@ class MediaService
 
         try {
             // Num disco S3 (R2), o ffmpeg e as miniaturas trabalham numa cópia temporária local.
-            LocalCopy::with($disk, (string) $asset->pathFor('original'), fn (string $original) => $this->processLocal($asset, $disk, $original));
+            // O original pode estar noutro disco (Ficheiros); as variantes vão para o disco da media.
+            LocalCopy::with(self::diskForVariant($asset, 'original'), (string) $asset->pathFor('original'), fn (string $original) => $this->processLocal($asset, $disk, $original));
         } catch (\Throwable $e) {
             Log::warning('[Media] Processamento falhou', ['asset_id' => $assetId, 'error' => mb_substr($e->getMessage(), 0, 300)]);
             $asset->fill(['status' => MediaAsset::REJECTED, 'error' => $e instanceof \RuntimeException && str_starts_with($e->getMessage(), 'Não foi')

@@ -64,6 +64,20 @@ class EditorialMediaController extends Controller
         return ApiResponse::success($this->presentUpload($upload), $upload->completed_at ? 'Ficheiro recebido.' : 'Parte recebida.');
     }
 
+    /**
+     * "Escolher dos Ficheiros": a media de um ficheiro de qualquer pasta a que a pessoa tem acesso,
+     * sem o copiar (o ecrã junta-a à publicação como uma media enviada). POST { stored_file_id }
+     */
+    public function fromFile(Request $request, int $companyId)
+    {
+        EditorialWorkflowService::assertProducer($request->user(), $companyId);
+        $this->authorizePermission($companyId, 'ficheiros.ver', ['modules' => ['ficheiros']]); // o módulo e a permissão dos Ficheiros
+        $data = $request->validate(['stored_file_id' => ['required', 'integer']]);
+        $asset = app(\App\Services\Files\FilesService::class)->mediaFor($request->user(), $companyId, (int) $data['stored_file_id']);
+
+        return ApiResponse::success($asset->fresh()->present(), 'Ficheiro escolhido.');
+    }
+
     public function asset(int $companyId, int $assetId)
     {
         $asset = MediaAsset::where('company_id', $companyId)->find($assetId);

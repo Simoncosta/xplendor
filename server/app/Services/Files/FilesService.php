@@ -333,6 +333,57 @@ class FilesService
         StoredFileShortcut::where('company_id', $companyId)->findOrFail($shortcutId)->forceFill(['deleted_at' => null, 'purge_after' => null])->save();
     }
 
+    // ── Linha Editorial: "Escolher dos Ficheiros" ────────────────────────────
+
+    /**
+     * A media da Linha Editorial de um ficheiro (para a usar numa publicação), sem copiar o
+     * ficheiro: a que já tem, ou uma nova com o original no sítio onde ele está (original_disk e
+     * original_path). As variantes (miniatura, pré-visualização, poster) geram-se uma vez, na
+     * fila; o vídeo passa pelo mesmo processamento.
+     */
+    public function mediaFor(User $user, int $companyId, int $fileId): MediaAsset
+    {
+        $file = $this->file($companyId, $fileId);
+        if (! $this->access->canSeeFile($user, $file)) {
+            throw new HttpException(404, 'Ficheiro não encontrado.');
+        }
+        if ($file->media_asset_id && ($asset = MediaAsset::where('company_id', $companyId)->find($file->media_asset_id)) && $asset->status !== MediaAsset::REJECTED) {
+            return $asset;
+        }
+        $mime = (string) $file->mime;
+        $kind = match (true) {
+            in_array($mime, (array) config('media.image_mimes'), true) => MediaAsset::IMAGE,
+            in_array($mime, (array) config('media.video_mimes'), true) => MediaAsset::VIDEO,
+            default => null,
+        };
+        if (! $kind) {
+            throw ValidationException::withMessages(['file' => ['Na Linha Editorial só se usam imagens (JPEG, PNG ou WebP) e vídeos (MP4 ou MOV).']]);
+        }
+        if (! Storage::disk($file->disk)->exists($file->path)) {
+            throw new HttpException(404, 'O ficheiro já não existe.');
+        }
+        $stream = Storage::disk($file->disk)->readStream($file->path);
+        $ctx = hash_init('sha256');
+        hash_update_stream($ctx, $stream);
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+        $asset = DB::transaction(function () use ($file, $user, $kind, $mime, $ctx, $companyId) {
+            $asset = MediaAsset::create([
+                'company_id' => $companyId, 'uploaded_by_user_id' => $user->id, 'kind' => $kind, 'disk' => (string) config('media.disk', 'media'),
+                'dir' => "company_{$companyId}/" . Str::uuid(), 'original_disk' => $file->disk, 'original_path' => $file->path,
+                'original_name' => $file->name, 'extension' => (string) ($file->extension === 'jpeg' ? 'jpg' : $file->extension), 'mime' => $mime,
+                'size_bytes' => (int) ($file->size_bytes ?? Storage::disk($file->disk)->size($file->path)), 'sha256' => hash_final($ctx), 'status' => MediaAsset::PROCESSING,
+            ]);
+            $file->forceFill(['media_asset_id' => $asset->id])->saveQuietly();
+
+            return $asset;
+        });
+        DB::afterCommit(fn () => \App\Jobs\ProcessMediaAssetJob::dispatch($asset->id));
+
+        return $asset;
+    }
+
     // ── Em uso ───────────────────────────────────────────────────────────────
 
     /**

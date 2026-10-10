@@ -1,6 +1,6 @@
 {
     "ator": "agencia_membro",
-    "rotas": 387,
+    "rotas": 388,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -396,6 +396,7 @@
         "POST api/v1/companies/{id}/editorial/approvals/approve-all": 403,
         "POST api/v1/companies/{id}/editorial/ideas": 422,
         "POST api/v1/companies/{id}/editorial/ideas/{requestId}/accept": 422,
+        "POST api/v1/companies/{id}/editorial/media/from-file": 422,
         "POST api/v1/companies/{id}/editorial/media/uploads": 422,
         "POST api/v1/companies/{id}/editorial/media/uploads/{uploadId}/chunk": 422,
         "POST api/v1/companies/{id}/editorial/months/{year}/{month}/close": 422,

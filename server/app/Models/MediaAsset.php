@@ -25,7 +25,7 @@ class MediaAsset extends Model
     protected $fillable = [
         'company_id', 'uploaded_by_user_id', 'impersonator_user_id', 'kind', 'disk', 'dir', 'original_name',
         'extension', 'mime', 'size_bytes', 'variants_bytes', 'width', 'height', 'duration_ms', 'codec', 'sha256', 'variants',
-        'status', 'error', 'original_deleted_at',
+        'status', 'error', 'original_deleted_at', 'original_disk', 'original_path',
     ];
 
     protected $casts = [
@@ -41,11 +41,25 @@ class MediaAsset extends Model
     public function pathFor(string $variant): ?string
     {
         if ($variant === 'original') {
+            if ($this->original_path) {
+                return $this->original_path; // Ficheiros: o original é um ficheiro que já existe noutro sítio
+            }
+
             return $this->original_deleted_at ? null : "{$this->dir}/original.{$this->extension}";
         }
         $file = $this->variants[$variant] ?? null;
 
         return $file ? "{$this->dir}/{$file}" : null;
+    }
+
+    /** O disco de uma variante: o original pode estar noutro disco (Ficheiros); as variantes, no da media. */
+    public function diskNameFor(string $variant): string
+    {
+        if ($variant === 'original' && $this->original_disk) {
+            return (string) $this->original_disk;
+        }
+
+        return (string) ($this->disk ?: config('media.disk', 'media'));
     }
 
     /** URL assinado e relativo (o ecrã junta o endereço da API). */
@@ -73,7 +87,7 @@ class MediaAsset extends Model
         if (! $path) {
             return null;
         }
-        $disk = (string) ($this->disk ?: config('media.disk', 'media'));
+        $disk = $this->diskNameFor($variant);
         $ttl = (int) config('storage_targets.external_fetch_ttl', 3600);
         if (\App\Support\Storage\SignedFileUrl::supports($disk)) {
             return \App\Support\Storage\SignedFileUrl::for($disk, $path, $ttl);
