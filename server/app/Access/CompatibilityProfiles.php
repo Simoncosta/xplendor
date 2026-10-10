@@ -40,6 +40,21 @@ final class CompatibilityProfiles
         self::CEILING => ['lado' => 'teto', 'nome' => 'Agência convidada (como hoje)'],
     ];
 
+    /**
+     * Áreas que não existiam na fotografia de antes (não há "como hoje" a derivar): o que cada
+     * perfil de compatibilidade tem, decidido explicitamente. Ficheiros (noite dos Ficheiros):
+     * o Administrador tudo; o utilizador ver, criar e editar; a Agência convidada ver e criar.
+     */
+    public const NEW_AREAS = [
+        'ficheiros' => [
+            self::CLIENT_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
+            self::CLIENT_USER => ['ver', 'criar', 'editar'],
+            self::AGENCY_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
+            self::AGENCY_MEMBER => ['ver', 'criar', 'editar'],
+            self::CEILING => ['ver', 'criar'],
+        ],
+    ];
+
     private static ?array $loaded = null;
 
     /**
@@ -135,6 +150,14 @@ final class CompatibilityProfiles
         $denied = array_flip(self::load()['perfis'][$profile]['negadas'] ?? Permissions::assignable());
         $out = [];
         foreach (Permissions::assignable() as $p) {
+            $area = Permissions::area($p);
+            if (isset(self::NEW_AREAS[$area])) {
+                if (in_array(Permissions::action($p), self::NEW_AREAS[$area][$profile] ?? [], true)) {
+                    $out[$p] = true;
+                }
+
+                continue;
+            }
             // A faturação da XPLENDOR é só do Administrador (pré-deploy): sai dos outros perfis.
             if (! isset($denied[$p]) && ($profile === self::CLIENT_ADMIN || ! Permissions::isAdminOnly($p))) {
                 $out[$p] = true;

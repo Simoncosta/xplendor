@@ -49,6 +49,9 @@ final class Permissions
         // as tarefas da equipa seguem o módulo "Suporte / Tarefas".
         'suporte' => ['label' => 'Suporte da XPLENDOR', 'module' => null, 'actions' => ['ver', 'criar']],
         'tarefas' => ['label' => 'Tarefas', 'module' => 'support_tasks', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // Ficheiros: criar = enviar e criar pastas; editar = mudar o nome e mover. As pastas do sistema
+        // seguem, além disto, a permissão da sua área (App\Services\Files\SystemFolders).
+        'ficheiros' => ['label' => 'Ficheiros', 'module' => 'ficheiros', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'agencia' => ['label' => 'Agência gestora', 'module' => null, 'actions' => ['configurar']],
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];

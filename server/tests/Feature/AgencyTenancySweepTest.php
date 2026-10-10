@@ -48,6 +48,7 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/media/{path}' => 'imagens das viaturas para o editor (só essas)',
         'GET api/files/ticket-invoice/{ticket}' => 'ficheiros privados por URL assinado',
         'GET api/files/report-photo/{photo}' => 'ficheiros privados por URL assinado',
+        'GET api/files/stored/{file}' => 'Ficheiros: abrir ou descarregar por endereço assinado (gerado depois do ACL e da regra da pasta)',
         'GET api/oauth/meta/callback' => 'OAuth (empresa no nonce)',
         'GET api/oauth/meta/social/callback' => 'OAuth (empresa no nonce)',
         'GET api/social-avatar/{account}' => 'URL assinado',
@@ -116,6 +117,18 @@ class AgencyTenancySweepTest extends TestCase
         'GET api/v1/companies/{id}/xplendor-charges',
         'GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice',
         'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',
+    ];
+
+    /** Ficheiros: o teto "Agência convidada (como hoje)" dá ver e criar, sem editar nem apagar. */
+    private const FILES_ABOVE_CEILING = [
+        'PUT api/v1/companies/{id}/files/folders/{folderId}',
+        'POST api/v1/companies/{id}/files/folders/{folderId}/restore',
+        'DELETE api/v1/companies/{id}/files/folders/{folderId}',
+        'PUT api/v1/companies/{id}/files/{fileId}',
+        'POST api/v1/companies/{id}/files/{fileId}/restore',
+        'DELETE api/v1/companies/{id}/files/{fileId}',
+        'DELETE api/v1/companies/{id}/files/shortcuts/{shortcutId}',
+        'POST api/v1/companies/{id}/files/shortcuts/{shortcutId}/restore',
     ];
 
     /** Só o root (a agência recebe sempre 403, mesmo os administradores). */
@@ -283,12 +296,12 @@ class AgencyTenancySweepTest extends TestCase
 
     public function test_agency_member_with_an_active_relation_works_everywhere_except_client_decisions_and_integrations(): void
     {
-        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY]);
+        $this->assertActiveMatrix($this->member, [...self::CLIENT_ONLY, ...self::AGENCY_ADMIN_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING]);
     }
 
     public function test_agency_admin_with_an_active_relation_also_connects_integrations_but_never_decides_for_the_client(): void
     {
-        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY]);
+        $this->assertActiveMatrix($this->agencyAdmin, [...self::CLIENT_ONLY, ...self::ROOT_ONLY, ...self::FILES_ABOVE_CEILING]);
     }
 
     /** Com relação ativa: 403 exatamente nas rotas indicadas e em nenhuma outra. */

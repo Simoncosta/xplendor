@@ -13,11 +13,11 @@ import { getAdminStorageUsage } from "helpers/laravel_helper";
  * dados (o tamanho de cada ficheiro), sem listar o disco nem o bucket.
  */
 
-type Kind = "media" | "ocr" | "cobrancas" | "faturas_tickets" | "fotos_relatorios";
+type Kind = "media" | "ocr" | "cobrancas" | "faturas_tickets" | "fotos_relatorios" | "ficheiros";
 type UsageRow = { company_id: number; company: string; bytes: Record<Kind, number>; total: number; sem_tamanho: number };
 type Payload = { kinds: Record<Kind, string>; rows: UsageRow[]; totals: { bytes: Record<Kind, number>; total: number; sem_tamanho: number }; quota_bytes: number };
 
-const KIND_ORDER: Kind[] = ["media", "ocr", "cobrancas", "faturas_tickets", "fotos_relatorios"];
+const KIND_ORDER: Kind[] = ["media", "ocr", "cobrancas", "faturas_tickets", "fotos_relatorios", "ficheiros"];
 
 /** MB até 1 GB; GB a partir daí. */
 export const fmtBytes = (b: number): string => {

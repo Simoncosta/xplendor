@@ -127,20 +127,42 @@ Quem não tem a permissão de ver as Finanças (`financas.ver`) continua a abrir
 
 **Diferença na fotografia:** uma rota nova, `GET {id}/marketing/bussola/heatmap` (`bussola.ver`), aberta a todos os atores que veem a Bússola e com 403 na empresa sem módulos (como a Bússola). Nenhum ator perde nem ganha outras rotas.
 
+## 6c. Ficheiros (noite dos Ficheiros): a área nova "ficheiros"
+
+Área `ficheiros` (módulo "Ficheiros", desligado por omissão) com ver, criar (enviar e criar pastas), editar (mudar o nome e mover) e apagar. Como a área não existia na fotografia de antes, o que cada perfil de compatibilidade tem está decidido em `CompatibilityProfiles::NEW_AREAS`:
+
+- **Administrador:** tudo.
+- **Utilizador (como hoje):** ver, criar e editar.
+- **Agência convidada (como hoje):** ver e criar.
+
+Sugestões:
+- **Só leitura:** ver;
+- **Agência convidada:** ver e criar;
+- **Marketing e Financeiro:** ver, criar e editar;
+- **lado da agência:** o Gestor ver, criar e editar, e o Criativo ver e criar.
+
+As pastas do sistema seguem, além disto, a permissão da sua área (`App\Services\Files\SystemFolders`).
+
+**Diferença na fotografia:** só as 16 rotas novas (`{id}/files…`). Nenhum ator perde nem ganha outras rotas. Nas novas:
+- **Administrador do cliente, root (na própria e noutra empresa) e impersonação do administrador:** nenhum 403.
+- **Utilizador, aprovador e impersonação de um utilizador:** 403 em apagar e restaurar (pastas, ficheiros e atalhos).
+- **Administrador e membro da agência:** 403 em mudar o nome, mover, apagar e restaurar (o teto dá ver e criar).
+- **Empresa sem módulos:** 403 em todas (módulo desligado).
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
 | Ator | Antes | Depois (com o pré-deploy e o complemento) |
 |---|---|---|
 | Administrador do cliente (`cliente_admin`) | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 76 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 70 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 82 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 76 |
 | Root na própria empresa (`root_propria`) | 9 | 0 |
 | Root noutra empresa (`root_outra`) | 19 | 21 |
-| Administrador da agência (`agencia_admin`) | 28 | 36 |
-| Membro da agência (`agencia_membro`) | 52 | 60 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 59 |
+| Administrador da agência (`agencia_admin`) | 28 | 44 |
+| Membro da agência (`agencia_membro`) | 52 | 68 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 67 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 70 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 222 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 241 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

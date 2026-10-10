@@ -26,6 +26,9 @@ use Illuminate\Support\Facades\Log;
  *    miniaturas (biblioteca da marca);
  *  · media enviados e nunca usados há mais de 7 dias, e envios por concluir expirados;
  *  · um media só é apagado quando nenhuma versão o usa;
+ *  · Ficheiros: um media enviado nos Ficheiros ou guardado numa pasta das pessoas nunca é
+ *    apagado nem perde o original; um media com o original noutro sítio (original_path, por
+ *    exemplo uma imagem de viatura) nunca apaga esse original;
  *  · aviso à equipa XPLENDOR quando o disco passa dos 70% (uma vez por dia).
  */
 class MediaRetentionJob implements ShouldQueue
@@ -50,6 +53,7 @@ class MediaRetentionJob implements ShouldQueue
         // 2. Media sem nenhuma versão: apagados (os acabados de enviar têm 7 dias para serem usados).
         $orphans = MediaAsset::whereNotExists(fn ($q) => $q->select(DB::raw(1))->from('editorial_post_version_media')->whereColumn('media_asset_id', 'media_assets.id'))
             ->where(fn ($q) => $q->where('created_at', '<', now()->subDays((int) $r['orphan_days']))->orWhere('status', MediaAsset::REJECTED))
+            ->whereNotIn('id', self::keptByFiles())
             ->get();
         foreach ($orphans as $asset) {
             $media->purge($asset);
@@ -59,6 +63,8 @@ class MediaRetentionJob implements ShouldQueue
         // 3. Originais das publicações publicadas há mais de 12 meses (ficam as miniaturas).
         $cut = now()->subMonths((int) $r['published_original_months'])->toDateString();
         $published = MediaAsset::whereNull('original_deleted_at')
+            ->whereNull('original_path') // o original é de outro módulo: nunca se apaga aqui
+            ->whereNotIn('id', self::keptByFiles())
             ->whereIn('id', DB::table('editorial_post_version_media as vm')
                 ->join('editorial_posts as p', 'p.approved_version_id', '=', 'vm.version_id')
                 ->whereIn('p.stage', [EditorialPost::STAGE_PUBLISHED, EditorialPost::STAGE_ANALYSIS])
@@ -98,5 +104,14 @@ class MediaRetentionJob implements ShouldQueue
         Log::info('[Media] Retenção', $stats);
 
         return $stats;
+    }
+
+    /** As media que os Ficheiros guardam: enviadas nos Ficheiros, ou guardadas numa pasta das pessoas (atalho). */
+    public static function keptByFiles(): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('stored_files')->whereNotNull('media_asset_id')
+            ->where(fn ($q) => $q->where('source', 'upload')
+                ->orWhereExists(fn ($s) => $s->select(DB::raw(1))->from('stored_file_shortcuts')->whereColumn('stored_file_shortcuts.stored_file_id', 'stored_files.id')->whereNull('stored_file_shortcuts.deleted_at')))
+            ->select('media_asset_id');
     }
 }

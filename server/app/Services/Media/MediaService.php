@@ -257,6 +257,9 @@ class MediaService
     /** Apaga só o original (as miniaturas ficam para o histórico e a grelha). */
     public function purgeOriginal(MediaAsset $asset): void
     {
+        if ($asset->original_path !== null) {
+            return; // o original é um ficheiro de outro módulo (Ficheiros): só as variantes são desta media
+        }
         if ($path = $asset->pathFor('original')) {
             self::diskFor($asset)->delete($path);
         }

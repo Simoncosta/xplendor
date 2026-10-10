@@ -97,7 +97,7 @@ class CompanyStorageUsageTest extends TestCase
         $u = CompanyStorageUsage::forCompany($this->company->id);
         $this->assertSame([
             'media' => $asset->size_bytes + $asset->variants_bytes, 'ocr' => 3000, 'cobrancas' => 2200, 'faturas_tickets' => 900,
-            'fotos_relatorios' => (int) $photo->size_bytes,
+            'fotos_relatorios' => (int) $photo->size_bytes, 'ficheiros' => 0,
         ], $u['bytes']);
         $this->assertSame(array_sum($u['bytes']), $u['total']);
         $this->assertSame(0, $u['sem_tamanho']);

@@ -578,6 +578,26 @@ Route::prefix('v1')->group(function () {
                     Route::match(['put', 'patch'], '/document-templates/{template}', [DocumentTemplateController::class, 'update']);
                     Route::delete('/document-templates/{template}', [DocumentTemplateController::class, 'destroy']);
                 });
+                // ── Módulo FICHEIROS: o gestor de ficheiros da empresa ──
+                Route::middleware('ensure_module:ficheiros')->group(function () {
+                    $f = \App\Http\Controllers\Api\V1\FilesController::class;
+                    Route::get('/files', [$f, 'index']);
+                    Route::get('/files/trash', [$f, 'trash']);
+                    Route::post('/files/folders', [$f, 'storeFolder']);
+                    Route::put('/files/folders/{folderId}', [$f, 'updateFolder'])->whereNumber('folderId');
+                    Route::delete('/files/folders/{folderId}', [$f, 'destroyFolder'])->whereNumber('folderId');
+                    Route::post('/files/folders/{folderId}/restore', [$f, 'restoreFolder'])->whereNumber('folderId');
+                    Route::post('/files/documents', [$f, 'storeDocument'])->middleware('throttle:60,1');
+                    Route::post('/files/uploads', [$f, 'startUpload'])->middleware('throttle:60,1');
+                    Route::post('/files/uploads/{uploadId}/chunk', [$f, 'chunk'])->whereUuid('uploadId')->middleware('throttle:240,1');
+                    Route::delete('/files/shortcuts/{shortcutId}', [$f, 'destroyShortcut'])->whereNumber('shortcutId');
+                    Route::post('/files/shortcuts/{shortcutId}/restore', [$f, 'restoreShortcut'])->whereNumber('shortcutId');
+                    Route::get('/files/{fileId}', [$f, 'show'])->whereNumber('fileId');
+                    Route::put('/files/{fileId}', [$f, 'update'])->whereNumber('fileId');
+                    Route::delete('/files/{fileId}', [$f, 'destroy'])->whereNumber('fileId');
+                    Route::post('/files/{fileId}/restore', [$f, 'restore'])->whereNumber('fileId');
+                    Route::post('/files/{fileId}/shortcuts', [$f, 'saveToFolder'])->whereNumber('fileId');
+                });
                 // ── Módulo FINANÇAS — Clientes (+ ficha-hub) ──
                 Route::middleware('ensure_module:finance')->group(function () {
                     Route::get('/customers/{customer}/hub', [CustomerController::class, 'hub']);
@@ -887,6 +907,9 @@ Route::get('media/{asset}/{variant}', [\App\Http\Controllers\Api\MediaFileContro
 
 // Ficheiros privados (faturas dos pedidos de suporte e fotografias dos relatórios de
 // satisfação): só por URL assinado, gerado nas respostas que já verificaram a empresa e o ACL.
+// Ficheiros: abrir ou descarregar um ficheiro do catálogo (o endereço é gerado depois do ACL e da regra da pasta).
+Route::get('/files/stored/{file}', [\App\Http\Controllers\Api\StoredFileController::class, 'show'])
+    ->whereNumber('file')->middleware(['signed:relative', 'throttle:600,1'])->name('files.stored');
 Route::get('/files/ticket-invoice/{ticket}', [\App\Http\Controllers\Api\PrivateFileController::class, 'ticketInvoice'])
     ->whereNumber('ticket')->middleware(['signed:relative', 'throttle:600,1'])->name('files.ticket-invoice');
 Route::get('/files/report-photo/{photo}', [\App\Http\Controllers\Api\PrivateFileController::class, 'reportPhoto'])

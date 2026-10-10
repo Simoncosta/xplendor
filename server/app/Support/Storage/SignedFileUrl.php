@@ -21,7 +21,7 @@ final class SignedFileUrl
     }
 
     /** Endereço assinado válido por $seconds segundos (o R2 aceita até 7 dias). */
-    public static function for(string $disk, string $path, int $seconds, ?string $downloadName = null): string
+    public static function for(string $disk, string $path, int $seconds, ?string $downloadName = null, bool $attachment = false, ?string $contentType = null): string
     {
         $cfg = config("filesystems.disks.{$disk}");
         $endpoint = $cfg['public_endpoint'] ?? null ?: $cfg['endpoint'] ?? null;
@@ -33,8 +33,12 @@ final class SignedFileUrl
             'credentials' => ['key' => (string) $cfg['key'], 'secret' => (string) $cfg['secret']],
         ]);
         $args = ['Bucket' => $cfg['bucket'], 'Key' => ltrim(($cfg['root'] ?? '') . '/' . $path, '/')];
-        if ($downloadName !== null) {
-            $args['ResponseContentDisposition'] = 'inline; filename="' . addslashes($downloadName) . '"';
+        if ($downloadName !== null || $attachment) {
+            // attachment: o browser descarrega e nunca mostra como página (por exemplo, o SVG).
+            $args['ResponseContentDisposition'] = ($attachment ? 'attachment' : 'inline') . ($downloadName !== null ? '; filename="' . addslashes($downloadName) . '"' : '');
+        }
+        if ($contentType !== null) {
+            $args['ResponseContentType'] = $contentType;
         }
         $seconds = max(1, min($seconds, 604800));
 

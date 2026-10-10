@@ -344,6 +344,16 @@ Schedule::job(new \App\Jobs\PurgeDeletedOcrFilesJob())
         \Illuminate\Support\Facades\Log::error('[OCR] Purga dos ficheiros apagados falhou no scheduler');
     });
 
+// 04:00 (Lisboa) — Ficheiros: apaga de vez o que está na reciclagem há mais de 30 dias (interna).
+Schedule::job(new \App\Jobs\PurgeFilesRecycleJob())
+    ->dailyAt('04:00')
+    ->timezone('Europe/Lisbon')
+    ->name('files-purge-recycle')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[Ficheiros] Reciclagem falhou no scheduler');
+    });
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

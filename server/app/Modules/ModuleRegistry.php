@@ -69,6 +69,12 @@ class ModuleRegistry
         // (não é dos carros). É o "umbrella" da integração: todas as secções de
         // restauração DEPENDEM dele (a fronteira de segurança no backend continua
         // a ser ensure_module:pingwin).
+        // Ficheiros: o gestor de ficheiros da empresa. Nasce desligado em todas (fora dos presets).
+        'ficheiros' => [
+            'label' => 'Ficheiros',
+            'car_specific' => false,
+            'depends_on' => [],
+        ],
         'pingwin' => [
             'label' => 'PingWin (POS)',
             'car_specific' => false,

@@ -14,7 +14,7 @@ class MediaUpload extends Model
 
     protected $fillable = [
         'company_id', 'user_id', 'impersonator_user_id', 'kind', 'original_name', 'extension', 'mime',
-        'size_bytes', 'received_bytes', 'media_asset_id', 'completed_at', 'expires_at',
+        'size_bytes', 'received_bytes', 'media_asset_id', 'completed_at', 'expires_at', 'for_files', 'files_folder_id',
     ];
 
     protected $casts = [
