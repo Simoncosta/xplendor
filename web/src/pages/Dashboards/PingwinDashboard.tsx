@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useModules } from "contexts/ModulesContext";
 import classnames from "classnames";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardBody, CardHeader, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
@@ -390,11 +391,11 @@ const tabFromSearch = (value: string | null): RestaurantTab => (value === "marke
  * link (?tab=…), por isso recarregar ou partilhar o URL abre no mesmo sítio.
  * Em mobile, scroll horizontal se não couber.
  */
-function RestaurantTabsNav({ active, highCount, signalsCount = 0 }: { active: RestaurantTab; highCount: number; signalsCount?: number }) {
+function RestaurantTabsNav({ active, highCount, signalsCount = 0, tabs = RESTAURANT_TABS }: { active: RestaurantTab; highCount: number; signalsCount?: number; tabs?: typeof RESTAURANT_TABS }) {
     return (
         <div style={{ overflowX: "auto" }} className="mb-3">
             <Nav tabs className="nav-border-top nav-border-top-primary flex-nowrap" style={{ minWidth: "max-content" }}>
-                {RESTAURANT_TABS.map((t) => {
+                {tabs.map((t) => {
                     const isActive = t.key === active;
                     return (
                         <NavItem key={t.key}>
@@ -441,7 +442,12 @@ export function PingwinDashboardContent() {
     const companyId = useWorkingCompanyId();
 
     const [searchParams] = useSearchParams();
-    const tab = tabFromSearch(searchParams.get("tab"));
+    // As vendas da restauração são restauracao.ver: sem ela (por exemplo, o perfil Marketing), só o
+    // separador "Marketing e resultados".
+    const { can, loading: accessLoading } = useModules();
+    const salesAllowed = can("restauracao.ver");
+    const tab = salesAllowed ? tabFromSearch(searchParams.get("tab")) : "marketing";
+    const tabs = salesAllowed ? RESTAURANT_TABS : RESTAURANT_TABS.filter((t) => t.key !== "vendas");
 
     // Cada separador só monta (e só carrega os seus dados) quando é aberto pela
     // primeira vez; depois fica montado, escondido, para manter o mês/data escolhidos.
@@ -464,12 +470,15 @@ export function PingwinDashboardContent() {
         return () => { alive = false; };
     }, [companyId]);
 
+    // Enquanto as permissões carregam, nada que dependa delas aparece (ACL, F4).
+    if (accessLoading) return null;
+
     return (
         <>
             <ToastContainer />
-            <RestaurantTabsNav active={tab} highCount={highCount} signalsCount={signals?.enabled ? signals.suggestions.length : 0} />
+            <RestaurantTabsNav active={tab} highCount={highCount} signalsCount={signals?.enabled ? signals.suggestions.length : 0} tabs={tabs} />
 
-            {opened.vendas && (
+            {opened.vendas && salesAllowed && (
                 <div className={tab === "vendas" ? undefined : "d-none"}>
                     <RestaurantSalesTab companyId={companyId} />
                 </div>

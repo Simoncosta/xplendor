@@ -31,12 +31,14 @@ final class ProfileSuggestions
         $everything = array_values(array_filter(Permissions::assignable(), fn ($p) => Permissions::area($p) !== 'agencia' && ! Permissions::isAdminOnly($p)));
 
         return [
+            // Sem os ecrãs de vendas da restauração (restauracao.ver) nem as Finanças: trabalha com as
+            // jogadas e as quantidades da Bússola. O administrador pode acrescentá-los.
             self::MARKETING => [PermissionProfile::SIDE_CLIENT, 'Marketing', 'Produz e aprova os conteúdos, trata da marca e da Bússola e vê os resultados.', false, [
                 'empresa.ver', 'utilizadores.ver', 'integracoes.ver',
                 'editorial.ver', 'editorial.criar', 'editorial.editar', 'editorial.aprovar', 'editorial.apagar',
                 'blog.ver', 'blog.criar', 'blog.editar', 'blog.aprovar', 'blog.apagar',
                 'marca.ver', 'marca.criar', 'marca.editar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver',
-                'restauracao.ver', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
+                'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
             ]],
             // A faturação da XPLENDOR (orçamentos e cobranças) é só do Administrador.
             self::FINANCE => [PermissionProfile::SIDE_CLIENT, 'Financeiro', 'Trata das finanças e do back-office da restauração. A faturação da XPLENDOR é só do Administrador.', false, [

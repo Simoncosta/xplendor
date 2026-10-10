@@ -188,6 +188,7 @@ final class RoutePermissions
         'POST {id}/integrations/pingwin/signals/post' => 'bussola.criar',
         'POST {id}/integrations/pingwin/signals/restore' => 'bussola.editar',
         'GET {id}/marketing/bussola' => 'bussola.ver',
+        'GET {id}/marketing/bussola/heatmap' => 'bussola.ver',
         'POST {id}/marketing/bussola/caption' => 'bussola.criar',
         'GET {id}/marketing/bussola/caption/{requestId}' => 'bussola.ver',
         'POST {id}/marketing/bussola/post' => 'bussola.criar',

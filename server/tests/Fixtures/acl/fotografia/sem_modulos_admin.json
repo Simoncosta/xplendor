@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 367,
+    "rotas": 368,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -101,6 +101,7 @@
         "GET api/v1/companies/{id}/leads",
         "GET api/v1/companies/{id}/marketing/bussola",
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}",
+        "GET api/v1/companies/{id}/marketing/bussola/heatmap",
         "GET api/v1/companies/{id}/ocr/articles/form",
         "GET api/v1/companies/{id}/ocr/articles/search",
         "GET api/v1/companies/{id}/ocr/invoices",
@@ -324,6 +325,7 @@
         "GET api/v1/companies/{id}/leads": "Este módulo não está ativo para a empresa.",
         "GET api/v1/companies/{id}/marketing/bussola": "Este módulo não está ativo para a empresa.",
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": "Este módulo não está ativo para a empresa.",
+        "GET api/v1/companies/{id}/marketing/bussola/heatmap": "Este módulo não está ativo para a empresa.",
         "GET api/v1/companies/{id}/ocr/articles/form": "Este módulo não está ativo para a empresa.",
         "GET api/v1/companies/{id}/ocr/articles/search": "Este módulo não está ativo para a empresa.",
         "GET api/v1/companies/{id}/ocr/invoices": "Este módulo não está ativo para a empresa.",
@@ -609,6 +611,7 @@
         "GET api/v1/companies/{id}/management/requests": 200,
         "GET api/v1/companies/{id}/marketing/bussola": 403,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 403,
+        "GET api/v1/companies/{id}/marketing/bussola/heatmap": 403,
         "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 403,

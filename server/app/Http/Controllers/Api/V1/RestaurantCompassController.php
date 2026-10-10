@@ -24,6 +24,8 @@ use Illuminate\Validation\Rule;
  *  · POST .../marketing/bussola/post                     "Criar publicação" a partir de uma jogada
  *  · POST .../marketing/bussola/caption                  "Sugerir texto" (sem criar publicação)
  *  · GET  .../marketing/bussola/caption/{requestId}      estado das propostas
+ *  · GET  .../marketing/bussola/heatmap?location_id=&weeks=&exclude_special=   o mapa da semana
+ *         dentro da Bússola (sem Finanças, as vendas em intensidade, sem euros)
  * Ver: qualquer utilizador da empresa. Criar e sugerir: quem produz na Linha Editorial.
  */
 class RestaurantCompassController extends Controller
@@ -47,6 +49,32 @@ class RestaurantCompassController extends Controller
             $request->user(), $companyId);
 
         return ApiResponse::success($payload + ['can_act' => $can, 'can_act_reason' => $reason, 'formats' => EditorialPost::FORMATS], 'Bússola.');
+    }
+
+    public function heatmap(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompany($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $data = $request->validate([
+            'location_id' => ['nullable', 'integer'],
+            'weeks' => ['nullable', 'integer', 'min:4', 'max:26'],
+            'exclude_special' => ['nullable', 'boolean'],
+        ]);
+        $map = app(\App\Services\Restaurant\RestaurantHeatmapService::class)->build(
+            $companyId,
+            isset($data['location_id']) ? (int) $data['location_id'] : null,
+            (int) ($data['weeks'] ?? \App\Services\Restaurant\RestaurantHeatmapService::DEFAULT_WEEKS),
+            (bool) ($data['exclude_special'] ?? false),
+        );
+        // Sem Finanças: as vendas em intensidade (0 a 100 da hora mais forte), sem euros; as horas
+        // e os dias fortes continuam à vista.
+        if (! \App\Services\Restaurant\CompassFinancials::visibleTo($request->user(), $companyId)) {
+            $map = \App\Services\Restaurant\RestaurantHeatmapService::relativeSales($map)
+                + ['financial' => ['visible' => false, 'note' => \App\Services\Restaurant\CompassFinancials::NOTE]];
+        }
+
+        return ApiResponse::success($map, 'Mapa da semana.');
     }
 
     public function createPost(Request $request, int $companyId)

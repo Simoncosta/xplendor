@@ -367,6 +367,8 @@ Route::prefix('v1')->group(function () {
                     Route::post('/integrations/pingwin/signals/post', [\App\Http\Controllers\Api\V1\RestaurantSignalsController::class, 'createPost']);
                     // Bússola (antes "O que publicar e quando"): página, criar publicação e sugerir texto a partir de uma jogada.
                     Route::get('/marketing/bussola', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'show']);
+                    // O mapa da semana dentro da Bússola (bussola.ver; sem Finanças, sem euros).
+                    Route::get('/marketing/bussola/heatmap', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'heatmap']);
                     Route::post('/marketing/bussola/post', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'createPost']);
                     Route::post('/marketing/bussola/caption', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'caption'])->middleware('throttle:20,1');
                     Route::get('/marketing/bussola/caption/{requestId}', [\App\Http\Controllers\Api\V1\RestaurantCompassController::class, 'captionStatus'])->whereNumber('requestId');

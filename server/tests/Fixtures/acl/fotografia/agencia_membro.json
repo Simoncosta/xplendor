@@ -1,6 +1,6 @@
 {
     "ator": "agencia_membro",
-    "rotas": 367,
+    "rotas": 368,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -287,6 +287,7 @@
         "GET api/v1/companies/{id}/management/requests": 403,
         "GET api/v1/companies/{id}/marketing/bussola": 200,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 404,
+        "GET api/v1/companies/{id}/marketing/bussola/heatmap": 200,
         "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 200,

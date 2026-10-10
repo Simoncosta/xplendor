@@ -112,7 +112,7 @@ Quem não tem a permissão de ver as Finanças (`financas.ver`) continua a abrir
 - **Desfocados no ecrã** (o backend manda `null` e `hidden: true`; o ecrã mostra um número fictício desfocado e a frase "Sem acesso aos valores financeiros"): a faturação das 4 semanas, os valores por artigo (mais vendidos), por hora e por dia (a grelha dos turnos e as barras dos dias para encher), e todos os campos em cêntimos (`*_cents`: faturação, valores dos artigos, margem e custos).
 - **Visíveis:** as jogadas, as quantidades (unidades, reservas, pessoas), os mais e menos vendidos, as horas e os dias fortes, e as variações e pesos em percentagem.
 - **Textos:** os valores em euros saem das frases dos sinais e das jogadas (`App\Support\Text\MoneyText`).
-- **Onde:** a página da Bússola, o separador Marketing do dashboard do restaurante (as jogadas), o painel dos sinais (`GET {id}/integrations/pingwin/signals`) e o mapa da semana dentro da Bússola (`heatmap?for=bussola`: as vendas vão em intensidade de 0 a 100, sem euros). Não há exportes da Bússola.
+- **Onde:** a página da Bússola, o separador Marketing do dashboard do restaurante (as jogadas), o painel dos sinais (`GET {id}/integrations/pingwin/signals`) e o mapa da semana dentro da Bússola (rota própria `GET {id}/marketing/bussola/heatmap`, com `bussola.ver`: as vendas vão em intensidade de 0 a 100, sem euros). Não há exportes da Bússola.
 
 **Outros ecrãs com valores de vendas da restauração, com outra permissão (não mudaram):**
 
@@ -123,7 +123,9 @@ Quem não tem a permissão de ver as Finanças (`financas.ver`) continua a abrir
 - Cartão "Dados para o marketing" (Integrações › PingWin): `GET {id}/integrations/pingwin/marketing-data`, `restauracao.ver`;
 - Documentos, faturas e conta corrente dos fornecedores do PingWin (custos): `restauracao.ver`.
 
-A sugestão "Marketing" tem `restauracao.ver` sem `financas.ver`: vê a Bússola sem euros, mas continua a ver as vendas nestes ecrãs.
+**A sugestão "Marketing" deixou de ter `restauracao.ver`** (e não tem `financas.ver`): trabalha com as jogadas e as quantidades da Bússola, sem os ecrãs de vendas da restauração; no dashboard do restaurante vê só o separador "Marketing e resultados". O administrador pode acrescentá-los num perfil a partir da sugestão. Migração `2026_12_26_100000_marketing_suggestion_without_restaurant_sales` (só dados: atualiza a sugestão; os perfis já criados não mudam).
+
+**Diferença na fotografia:** uma rota nova, `GET {id}/marketing/bussola/heatmap` (`bussola.ver`), aberta a todos os atores que veem a Bússola e com 403 na empresa sem módulos (como a Bússola). Nenhum ator perde nem ganha outras rotas.
 
 ## 7. Antes e depois (rotas com 403 por ator)
 
@@ -139,6 +141,6 @@ A sugestão "Marketing" tem `restauracao.ver` sem `financas.ver`: vê a Bússola
 | Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 59 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
 | Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 70 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 221 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 222 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

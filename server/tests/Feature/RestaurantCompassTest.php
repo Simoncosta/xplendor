@@ -505,6 +505,16 @@ class RestaurantCompassTest extends TestCase
         $this->assertStringNotContainsString('€', $signals);
         $this->assertDoesNotMatchRegularExpression('/"[a-z_]+_cents":(?!null)/', $signals);
 
+        // O mapa da semana dentro da Bússola: rota própria (bussola.ver), em intensidade, sem euros;
+        // a rota da restauração continua a exigir restauracao.ver.
+        $map = $this->actingAs($marketing, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/marketing/bussola/heatmap?weeks=8")->assertOk()->json('data');
+        $this->assertSame(false, $map['financial']['visible']);
+        if (is_array($map['sales'])) {
+            $this->assertSame('relative', $map['sales']['unit']);
+        }
+        $this->actingAs($marketing, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/integrations/pingwin/heatmap")->assertForbidden();
+        $this->assertArrayNotHasKey('financial', $this->actingAs($this->admin, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/marketing/bussola/heatmap")->assertOk()->json('data'));
+
         // Com Finanças, os valores vêm.
         $admin = $this->actingAs($this->admin, 'sanctum')->getJson($url)->assertOk()->json('data');
         $this->assertTrue($admin['financial']['visible']);

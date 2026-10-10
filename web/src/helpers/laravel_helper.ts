@@ -639,7 +639,8 @@ export const acceptEditorialIdea = (companyId: number, id: number, payload: { in
 export const getPingwinMarketingData = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
 export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number, excludeSpecial?: boolean, forBussola?: boolean) =>
-    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}), ...(forBussola ? { for: "bussola" } : {}) });
+    // Na Bússola, a rota própria (bussola.ver; sem Finanças, as vendas em intensidade, sem euros).
+    api.get(url.GET_COMPANIES + `/${companyId}/${forBussola ? "marketing/bussola/heatmap" : "integrations/pingwin/heatmap"}`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}) });
 // Bússola (marketing da restauração): a página, criar publicação e sugerir texto a partir de uma jogada.
 export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean, playsOnly?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}), ...(playsOnly ? { plays_only: 1 } : {}) });

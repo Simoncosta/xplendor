@@ -220,4 +220,15 @@ class PermissionProfilesTest extends TestCase
         $this->assertSame('agency', app(CompanyAccess::class)->kind($creative->fresh(), $this->client->id));
         $this->assertSame([$this->client->id], app(CompanyAccess::class)->managedCompanyIds($creative->fresh()));
     }
+
+    public function test_the_marketing_suggestion_has_the_compass_but_not_the_restaurant_sales_nor_finance(): void
+    {
+        $marketing = $this->suggestion(ProfileSuggestions::MARKETING)->permissionKeys();
+        $this->assertContains('bussola.ver', $marketing);
+        $this->assertNotContains('restauracao.ver', $marketing, 'sem os ecrãs de vendas da restauração');
+        $this->assertNotContains('financas.ver', $marketing);
+        // O administrador pode acrescentá-los num perfil a partir da sugestão.
+        $data = $this->createFrom(ProfileSuggestions::MARKETING, 'Marketing com vendas', [...$marketing, 'restauracao.ver']);
+        $this->assertContains('restauracao.ver', $data['permissions']);
+    }
 }

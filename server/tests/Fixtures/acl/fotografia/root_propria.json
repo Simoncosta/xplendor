@@ -1,6 +1,6 @@
 {
     "ator": "root_propria",
-    "rotas": 367,
+    "rotas": 368,
     "proibidas": [],
     "motivos": [],
     "estados": {
@@ -165,6 +165,7 @@
         "GET api/v1/companies/{id}/management/requests": 200,
         "GET api/v1/companies/{id}/marketing/bussola": 200,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 404,
+        "GET api/v1/companies/{id}/marketing/bussola/heatmap": 200,
         "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 200,
