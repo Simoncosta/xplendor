@@ -28,7 +28,7 @@ final class ProfileSuggestions
     /** chave => [lado, nome, descrição, só clientes atribuídos, permissões] */
     public static function all(): array
     {
-        $everything = array_values(array_filter(Permissions::assignable(), fn ($p) => Permissions::area($p) !== 'agencia'));
+        $everything = array_values(array_filter(Permissions::assignable(), fn ($p) => Permissions::area($p) !== 'agencia' && ! Permissions::isAdminOnly($p)));
 
         return [
             self::MARKETING => [PermissionProfile::SIDE_CLIENT, 'Marketing', 'Produz e aprova os conteúdos, trata da marca e da Bússola e vê os resultados.', false, [
@@ -38,9 +38,10 @@ final class ProfileSuggestions
                 'marca.ver', 'marca.criar', 'marca.editar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver',
                 'restauracao.ver', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
             ]],
-            self::FINANCE => [PermissionProfile::SIDE_CLIENT, 'Financeiro', 'Trata das finanças, das cobranças e orçamentos da XPLENDOR e do back-office da restauração.', false, [
+            // A faturação da XPLENDOR (orçamentos e cobranças) é só do Administrador.
+            self::FINANCE => [PermissionProfile::SIDE_CLIENT, 'Financeiro', 'Trata das finanças e do back-office da restauração. A faturação da XPLENDOR é só do Administrador.', false, [
                 'empresa.ver', 'utilizadores.ver', 'editorial.ver', 'resultados.ver',
-                'financas.ver', 'financas.criar', 'financas.editar', 'financas.apagar', 'faturacao_xplendor.ver', 'faturacao_xplendor.aprovar',
+                'financas.ver', 'financas.criar', 'financas.editar', 'financas.apagar',
                 'restauracao.ver', 'restauracao.criar', 'restauracao.editar', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
             ]],
             // D9: vê a empresa, a Linha Editorial, o blog, a marca, a Bússola, os resultados e o
@@ -89,13 +90,22 @@ final class ProfileSuggestions
      * @param string[]|null $allowed só as áreas que fazem sentido para este lado do perfil
      * @return array<int, array{area: string, label: string, text: string, actions: string[]}>
      */
-    public static function describe(array $permissions, ?array $allowed = null): array
+    public static function describe(array $permissions, ?array $allowed = null, bool $adminProfile = false): array
     {
         $set = array_flip($permissions);
         $allowedAreas = $allowed === null ? null : array_flip(array_map(fn ($p) => Permissions::area($p), $allowed));
         $out = [];
         foreach (Permissions::AREAS as $area => $def) {
-            if (in_array($area, Permissions::NOT_ASSIGNABLE, true) || ($allowedAreas !== null && ! isset($allowedAreas[$area]))) {
+            if (in_array($area, Permissions::NOT_ASSIGNABLE, true)) {
+                continue;
+            }
+            if (in_array($area, Permissions::ADMIN_ONLY_AREAS, true) && ! $adminProfile) {
+                // Fica à vista, bloqueada: só o perfil Administrador a tem.
+                $out[] = ['area' => $area, 'label' => $def['label'], 'text' => 'Só o Administrador.', 'actions' => [], 'admin_only' => true];
+
+                continue;
+            }
+            if (! in_array($area, Permissions::ADMIN_ONLY_AREAS, true) && $allowedAreas !== null && ! isset($allowedAreas[$area])) {
                 continue;
             }
             $has = array_values(array_filter($def['actions'], fn ($a) => isset($set["{$area}.{$a}"])));

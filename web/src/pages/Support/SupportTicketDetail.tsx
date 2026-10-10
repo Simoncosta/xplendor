@@ -125,10 +125,20 @@ const SupportTicketDetail = () => {
                                         </Badge>
                                     )}
 
-                                    {ticket.quote_status === "awaiting_quote" && (
+                                    {ticket.quote_status === "awaiting_quote" && (ticket.billing_visible === false ? (
+                                        <p className="text-muted fs-13 mb-0">
+                                            O pedido está a ser analisado. O orçamento vai para o Administrador da empresa, que o aprova.
+                                        </p>
+                                    ) : (
                                         <p className="text-muted fs-13 mb-0">
                                             O teu pedido está a ser analisado. Vais receber aqui o orçamento para aprovar.
                                             Nenhum trabalho começa sem a tua aprovação e pagamento.
+                                        </p>
+                                    ))}
+
+                                    {ticket.billing_visible === false && ticket.quote_status && ticket.quote_status !== "awaiting_quote" && (
+                                        <p className="text-muted fs-13 mb-0" data-testid="quote-admin-only">
+                                            <i className="ri-lock-line me-1" />O valor e a aprovação do orçamento são do Administrador da empresa.
                                         </p>
                                     )}
 

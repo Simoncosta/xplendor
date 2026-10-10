@@ -86,32 +86,39 @@ Na fotografia, a empresa sem módulos já não tinha o PingWin, por isso a difer
 - passa a 403: `GET`, `POST`, `PUT` e `DELETE` das tarefas (`{id}/tasks…`), `GET {id}/analytics/meta/overview`, `GET {id}/analytics/meta/ad-tag-warnings`
 - o suporte com a XPLENDOR continua a abrir
 
-## 6. Antes e depois (rotas com 403 por ator)
+## 6. Faturação da XPLENDOR só do Administrador (complemento ao pré-deploy, ponto 1)
 
-| Ator | Antes | Depois (com o pré-deploy) |
+Ver e aprovar a faturação da XPLENDOR (orçamentos e cobranças) é exclusivo do perfil **Administrador** da empresa e do root na própria empresa (D1). Em código: `Permissions::ADMIN_ONLY_AREAS` e o passo 5b do `Access` (motivo `so_administrador`).
+
+- Nos perfis personalizados, nas sugestões e no teto da agência, a área aparece bloqueada com a nota "Só o Administrador"; o backend recusa gravar um perfil que a inclua (422).
+- A sugestão "Financeiro" deixou de a ter. A "Agência convidada" e os perfis da agência nunca a tiveram e continuam sem ela.
+- A lista dos orçamentos (`GET {id}/quotes`, `GET {id}/quotes/{quote}/pdf`, `GET {id}/support-tickets/quotes`) passou de `suporte.ver` a `faturacao_xplendor.ver`.
+- Os pedidos de suporte continuam base para todos: o utilizador abre o pedido e conversa; o valor, as horas e a fatura do orçamento só vão ao Administrador (nos outros, a resposta traz `null`, e os valores em euros das mensagens da equipa são retirados). O email "orçamento para aprovar" vai para os administradores ativos quando o autor não é Administrador.
+- Nas Despesas (Finanças), a despesa que espelha uma cobrança continua visível; a parte da cobrança (estado, fatura, "Já paguei") só vai ao Administrador.
+- Migração `2026_12_24_100000_admin_only_xplendor_billing` (só dados): retira a área de todos os perfis exceto o Administrador.
+
+**Quem perde o quê (diferença na fotografia):**
+
+- **Utilizador do cliente e aprovador:** passam a 403 `GET {id}/quotes`, `GET {id}/quotes/{quote}/pdf`, `GET {id}/support-tickets/quotes`, `GET {id}/xplendor-charges`, `GET {id}/xplendor-charges/{chargeId}/invoice`, `PATCH {id}/quotes/{quote}/decision`, `PATCH {id}/support-tickets/{ticket}/quote-decision`, `POST {id}/support-tickets/quotes/approve` e `POST {id}/xplendor-charges/{chargeId}/paid`.
+- **Root a impersonar um utilizador:** as mesmas (o pagamento já estava bloqueado na impersonation).
+- **Administrador e membro da agência:** passam a 403 as três listas dos orçamentos (as cobranças e as decisões já estavam bloqueadas).
+- **Root noutra empresa:** passam a 403 as três listas dos orçamentos e as cobranças (ver e a fatura). Trata a faturação no `/admin`, que não mudou.
+- **Administrador do cliente e root na própria empresa:** nada muda.
+
+## 7. Antes e depois (rotas com 403 por ator)
+
+| Ator | Antes | Depois (com o pré-deploy e o complemento) |
 |---|---|---|
 | Administrador do cliente (`cliente_admin`) | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 67 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 61 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 76 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 70 |
 | Root na própria empresa (`root_propria`) | 9 | 0 |
-| Root noutra empresa (`root_outra`) | 19 | 16 |
-| Administrador da agência (`agencia_admin`) | 28 | 33 |
-| Membro da agência (`agencia_membro`) | 52 | 57 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 56 |
+| Root noutra empresa (`root_outra`) | 19 | 21 |
+| Administrador da agência (`agencia_admin`) | 28 | 36 |
+| Membro da agência (`agencia_membro`) | 52 | 60 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 59 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 62 |
-| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 228 |
-
-Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.| Ator | Antes | Depois (com o pré-deploy) |
-|---|---|---|
-| Administrador do cliente (`cliente_admin`) | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 67 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 61 |
-| Root na própria empresa (`root_propria`) | 9 | 0 |
-| Root noutra empresa (`root_outra`) | 19 | 16 |
-| Administrador da agência (`agencia_admin`) | 28 | 33 |
-| Membro da agência (`agencia_membro`) | 52 | 57 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 56 |
-| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 62 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 70 |
 | Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 221 |
+
+Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

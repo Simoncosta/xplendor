@@ -14,7 +14,10 @@ class SupportTicketMessageResource extends JsonResource
     {
         return [
             'id'          => $this->id,
-            'body'        => $this->body,
+            // Sem a faturação da XPLENDOR, os valores em euros das mensagens da equipa ficam de fora.
+            'body'        => $this->is_staff && $request->attributes->get('support_billing_visible') === false
+                ? \App\Support\Text\MoneyText::redact($this->body)
+                : $this->body,
             'is_staff'    => (bool) $this->is_staff,
             'author_name' => $this->whenLoaded('user', fn () => $this->user?->name),
             'created_at'  => optional($this->created_at)->toIso8601String(),

@@ -240,7 +240,7 @@ const authProtectedRoutes = [
     // Suporte (lado stand) — tickets da própria empresa.
     { path: "/support", component: <RequireModule permission="suporte.ver"><SupportTicketsList /></RequireModule> },
     // Orçamentos-em-tickets do STAND (site_change): ver, somar, aprovar pacote.
-    { path: "/orcamentos", component: <RequireModule permission="suporte.ver"><OrcamentosStand /></RequireModule> },
+    { path: "/orcamentos", component: <RequireModule permission="faturacao_xplendor.ver"><OrcamentosStand /></RequireModule> },
     { path: "/support/:id", component: <RequireModule permission="suporte.ver"><SupportTicketDetail /></RequireModule> },
 
     // Tarefas — Kanban interno da equipa (partilhado por company_id).

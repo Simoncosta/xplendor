@@ -135,7 +135,8 @@ final class CompatibilityProfiles
         $denied = array_flip(self::load()['perfis'][$profile]['negadas'] ?? Permissions::assignable());
         $out = [];
         foreach (Permissions::assignable() as $p) {
-            if (! isset($denied[$p])) {
+            // A faturação da XPLENDOR é só do Administrador (pré-deploy): sai dos outros perfis.
+            if (! isset($denied[$p]) && ($profile === self::CLIENT_ADMIN || ! Permissions::isAdminOnly($p))) {
                 $out[$p] = true;
             }
         }

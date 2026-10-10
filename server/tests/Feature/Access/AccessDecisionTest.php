@@ -86,9 +86,13 @@ class AccessDecisionTest extends TestCase
         $admin = User::factory()->create(['company_id' => $this->agency->id, 'role' => 'admin']);
         $this->assertSame(Decision::PROFILE, $this->access()->can($member, $this->client->id, 'integracoes.configurar')->code);
         $this->assertTrue($this->access()->can($admin, $this->client->id, 'integracoes.configurar')->allowed);
-        $ceiling = $this->access()->can($admin, $this->client->id, 'faturacao_xplendor.ver');
+        $ceiling = $this->access()->can($admin, $this->client->id, 'utilizadores.configurar');
         $this->assertSame(Decision::CEILING, $ceiling->code);
         $this->assertStringContainsString('Cliente Lda não deu acesso a esta agência', (string) $ceiling->reason);
+        // A faturação da XPLENDOR é só do Administrador da empresa: a agência nunca a recebe.
+        $billing = $this->access()->can($admin, $this->client->id, 'faturacao_xplendor.ver');
+        $this->assertSame(Decision::ADMIN_ONLY, $billing->code);
+        $this->assertStringContainsString('Só o Administrador da empresa', (string) $billing->reason);
     }
 
     public function test_the_agency_edits_the_basics_of_a_company_it_created_while_there_is_no_admin(): void

@@ -44,7 +44,9 @@ class ExpenseResource extends JsonResource
             'notes'               => $this->notes,
             // Cobrança da XPLENDOR: só de leitura; o cliente vê a fatura e indica o pagamento.
             'is_xplendor_charge'  => $this->resource->isXplendorCharge(),
-            'charge'              => $this->resource->isXplendorCharge() && $this->resource->relationLoaded('charge') && $this->charge ? [
+            // A cobrança (estado, fatura, "Já paguei") é da faturação da XPLENDOR: só o Administrador.
+            'charge'              => $this->resource->isXplendorCharge() && $this->resource->relationLoaded('charge') && $this->charge
+                && \App\Access\XplendorBilling::visibleTo($request, (int) $this->company_id) ? [
                 'id' => $this->charge->id, 'status' => $this->charge->status, 'due_date' => $this->charge->due_date->toDateString(),
                 'overdue' => $this->charge->isOverdue(), 'can_indicate_payment' => $this->charge->status === \App\Models\ExpenseCharge::OPEN,
             ] : null,

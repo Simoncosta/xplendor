@@ -92,7 +92,11 @@ class FileExposureTest extends TestCase
         $this->assertStringStartsWith('/api/files/ticket-invoice/', $url);
         $this->get($url)->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->get("/api/files/ticket-invoice/{$ticket->id}")->assertStatus(403); // sem assinatura
-        $this->assertSame($url !== null, (new \App\Http\Resources\SupportTicketResource($ticket))->resolve()['invoice_url'] !== null);
+        // A fatura é da faturação da XPLENDOR: só o Administrador recebe o endereço.
+        $show = "/api/v1/companies/{$this->company->id}/support-tickets/{$ticket->id}";
+        $this->assertNotNull($this->actingAs($this->admin)->getJson($show)->assertOk()->json('data.invoice_url'));
+        $user = User::factory()->create(['company_id' => $this->company->id, 'role' => 'user']);
+        $this->assertNull($this->actingAs($user)->getJson($show)->assertOk()->json('data.invoice_url'));
     }
 
     public function test_the_report_photos_are_private_signed_and_deleted_for_good(): void

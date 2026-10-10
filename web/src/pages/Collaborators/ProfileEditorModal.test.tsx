@@ -50,4 +50,16 @@ describe("Novo perfil (D13)", () => {
         await waitFor(() => expect(onSaved).toHaveBeenCalled());
         expect(createPermissionProfile).toHaveBeenCalledWith(5, expect.objectContaining({ name: "Leitura com ideias", side: "cliente", from_profile_id: 9, permissions: ["editorial.ver", "editorial.criar"] }));
     });
+
+    it("mostra a faturação da XPLENDOR bloqueada, com a nota \"Só o Administrador\"", () => {
+        const faturacao = { area: "faturacao_xplendor", label: "Faturação da XPLENDOR", module: null, actions: ["ver", "aprovar"] };
+        const withBilling: ProfilesPayload = { ...data, catalog: [faturacao, editorial], admin_only: ["faturacao_xplendor.ver", "faturacao_xplendor.aprovar"] };
+        render(<ProfileEditorModal companyId={5} data={withBilling} target="new" onClose={jest.fn()} onSaved={jest.fn()} />);
+        fireEvent.click(screen.getByText("Só leitura"));
+
+        const row = screen.getByTestId("profile-area-admin-only");
+        expect(row).toHaveTextContent("Só o Administrador");
+        expect(screen.getByLabelText("Aprovar", { selector: "#pp-faturacao_xplendor\\.aprovar" })).toBeDisabled();
+        expect(screen.getByLabelText("Ver", { selector: "#pp-faturacao_xplendor\\.ver" })).not.toBeChecked();
+    });
 });

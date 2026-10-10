@@ -109,7 +109,10 @@ class AgencyTenancySweepTest extends TestCase
         'DELETE api/v1/companies/{id}/permission-profiles/{profileId}',
         'PUT api/v1/companies/{id}/users/{user}/profile',
         'PUT api/v1/companies/{id}/management/guest-profile',
-        // Cobranças da XPLENDOR: só da própria empresa (a agência gestora não as vê).
+        // Faturação da XPLENDOR (orçamentos e cobranças): só o Administrador da própria empresa.
+        'GET api/v1/companies/{id}/quotes',
+        'GET api/v1/companies/{id}/quotes/{quote}/pdf',
+        'GET api/v1/companies/{id}/support-tickets/quotes',
         'GET api/v1/companies/{id}/xplendor-charges',
         'GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice',
         'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',

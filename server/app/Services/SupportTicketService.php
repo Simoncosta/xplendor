@@ -413,9 +413,14 @@ class SupportTicketService extends BaseService
     {
         try {
             $ticket->loadMissing(['company', 'user']);
-            $to = $ticket->user?->email;
-            if (! $to) {
-                return; // sem email do autor não há a quem notificar
+            // O orçamento é da faturação da XPLENDOR: vai para o autor se for Administrador; senão,
+            // para os administradores ativos da empresa (o autor vê só o estado no pedido).
+            $to = $ticket->user && $ticket->user->isAdmin() && $ticket->user->email
+                ? [$ticket->user->email]
+                : \App\Models\User::where('company_id', $ticket->company_id)->where('role', 'admin')->whereNull('deactivated_at')
+                    ->whereNotNull('email')->pluck('email')->unique()->values()->all();
+            if ($to === []) {
+                return; // sem administrador com email não há a quem notificar
             }
             Mail::to($to)->queue(new SiteChangeQuotedMail(
                 ticketId: (int) $ticket->id,

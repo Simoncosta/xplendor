@@ -16,6 +16,7 @@ final class Decision
     public const CEILING = 'teto_da_agencia';
     public const ROOT = 'root';
     public const UNKNOWN = 'permissao_desconhecida';
+    public const ADMIN_ONLY = 'so_administrador';
 
     private function __construct(
         public readonly bool $allowed,

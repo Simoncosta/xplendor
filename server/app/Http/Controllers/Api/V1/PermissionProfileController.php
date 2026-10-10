@@ -40,6 +40,8 @@ class PermissionProfileController extends Controller
 
         return ApiResponse::success([
             'catalog' => $this->catalog(),
+            // Só o perfil Administrador: aparecem bloqueadas nos outros perfis, com a nota "Só o Administrador".
+            'admin_only' => Permissions::adminOnly(),
             'allowed' => [
                 PermissionProfile::SIDE_CLIENT => ProfileService::allowedFor(PermissionProfile::SIDE_CLIENT),
                 PermissionProfile::SIDE_AGENCY => ProfileService::allowedFor(PermissionProfile::SIDE_AGENCY),
@@ -181,7 +183,8 @@ class PermissionProfileController extends Controller
             'editable' => ! $p->is_system && (int) $p->company_id === (int) $company->id,
             'assignable' => $this->profiles->usable($company, $p) && $p->side !== PermissionProfile::SIDE_CEILING,
             'only_assigned_clients' => (bool) $p->only_assigned_clients,
-            'users' => $users, 'permissions' => $permissions, 'summary' => ProfileSuggestions::describe($permissions, ProfileService::allowedFor($p->side)),
+            'users' => $users, 'permissions' => $permissions,
+            'summary' => ProfileSuggestions::describe($permissions, ProfileService::allowedFor($p->side), $p->system_key === PermissionProfile::ADMIN),
         ];
     }
 }

@@ -13,6 +13,10 @@ class SupportTicketResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // O orçamento (valor, horas, fatura) é da faturação da XPLENDOR: só o Administrador o vê.
+        $billing = \App\Access\XplendorBilling::visibleTo($request, (int) $this->company_id);
+        $request->attributes->set('support_billing_visible', $billing);
+
         return [
             'id'             => $this->id,
             'company_id'     => $this->company_id,
@@ -25,13 +29,15 @@ class SupportTicketResource extends JsonResource
             'status'         => $this->status,
             'screenshot_url' => $this->screenshot_path,
             'resolved_at'    => optional($this->resolved_at)->toIso8601String(),
-            // Camada de orçamento — só relevante em tickets 'site_change' (null nos grátis).
+            // Camada de orçamento — só relevante em tickets 'site_change' (null nos grátis). O estado
+            // vai para todos; o valor, as horas e a fatura só para quem vê a faturação da XPLENDOR.
             'quote_status'    => $this->quote_status,
-            'estimated_hours' => $this->estimated_hours !== null ? (float) $this->estimated_hours : null,
-            'quoted_amount'   => $this->quoted_amount !== null ? (float) $this->quoted_amount : null,
+            'billing_visible' => $billing,
+            'estimated_hours' => $billing && $this->estimated_hours !== null ? (float) $this->estimated_hours : null,
+            'quoted_amount'   => $billing && $this->quoted_amount !== null ? (float) $this->quoted_amount : null,
             // Disco privado: URL assinado de curta duração (esta resposta já passou pela empresa e pelo ACL).
-            'invoice_url'     => \App\Support\Storage\PrivateFiles::ticketInvoiceUrl($this->resource),
-            'hourly_rate'     => $this->type === 'site_change' ? (float) config('tickets.site_change_hourly_rate') : null,
+            'invoice_url'     => $billing ? \App\Support\Storage\PrivateFiles::ticketInvoiceUrl($this->resource) : null,
+            'hourly_rate'     => $billing && $this->type === 'site_change' ? (float) config('tickets.site_change_hourly_rate') : null,
             'author_name'    => $this->whenLoaded('user', fn () => $this->user?->name),
             'messages_count' => $this->whenCounted('messages'),
             'messages'       => SupportTicketMessageResource::collection($this->whenLoaded('messages')),

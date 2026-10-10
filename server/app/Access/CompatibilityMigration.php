@@ -33,7 +33,7 @@ final class CompatibilityMigration
 
     public const DESCRIPTIONS = [
         PermissionProfile::ADMIN => 'Pode tudo na empresa. Perfil de sistema: não se edita, e cada empresa tem sempre pelo menos um administrador ativo.',
-        PermissionProfile::USER_COMPAT => 'Exatamente o que um utilizador podia fazer antes dos perfis. O administrador pode trocá-lo por outro perfil quando quiser.',
+        PermissionProfile::USER_COMPAT => 'O que um utilizador podia fazer antes dos perfis, exceto a faturação da XPLENDOR, que é só do Administrador. O administrador pode trocá-lo por outro perfil quando quiser.',
         PermissionProfile::AGENCY_ADMIN_COMPAT => 'Administrador da agência, como antes dos perfis: trabalha em todos os clientes, dentro do que cada cliente permite.',
         PermissionProfile::AGENCY_MEMBER_COMPAT => 'Membro da agência, como antes dos perfis: não liga nem desliga integrações.',
         PermissionProfile::CEILING_COMPAT => 'O que a agência gestora podia fazer no cliente antes dos perfis: tudo, exceto as decisões do cliente, os acessos, os dados da empresa e a faturação da XPLENDOR.',

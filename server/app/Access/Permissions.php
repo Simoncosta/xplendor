@@ -62,6 +62,13 @@ final class Permissions
     /** Áreas que nunca entram num perfil (só o root, ou só a agência). */
     public const NOT_ASSIGNABLE = ['plataforma'];
 
+    /**
+     * Só o perfil Administrador da empresa (e o root na própria empresa, D1): ver e aprovar a
+     * faturação da XPLENDOR (orçamentos e cobranças). Nunca entram noutro perfil, numa sugestão
+     * nem no teto da agência; o backend recusa gravar um perfil que as inclua.
+     */
+    public const ADMIN_ONLY_AREAS = ['faturacao_xplendor'];
+
     /** D1: decisões do cliente. Nem o root nem a agência as tomam. */
     public const CLIENT_DECISIONS = ['editorial.aprovar', 'blog.aprovar', 'faturacao_xplendor.aprovar', 'empresa.aprovar'];
 
@@ -122,6 +129,17 @@ final class Permissions
     public static function areaLabel(string $area): string
     {
         return self::AREAS[$area]['label'] ?? $area;
+    }
+
+    public static function isAdminOnly(string $permission): bool
+    {
+        return in_array(self::area($permission), self::ADMIN_ONLY_AREAS, true);
+    }
+
+    /** @return string[] as permissões só do Administrador ("faturacao_xplendor.ver", …). */
+    public static function adminOnly(): array
+    {
+        return array_values(array_filter(self::all(), fn (string $p) => self::isAdminOnly($p)));
     }
 
     public static function isClientDecision(string $permission): bool

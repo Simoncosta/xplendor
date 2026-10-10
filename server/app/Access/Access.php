@@ -6,6 +6,7 @@ namespace App\Access;
 
 use App\Models\Company;
 use App\Models\ImpersonationSession;
+use App\Models\PermissionProfile;
 use App\Models\ProfilePermission;
 use App\Models\User;
 use App\Services\CompanyModuleService;
@@ -20,7 +21,10 @@ use App\Services\Tenancy\CompanyAccess;
  *   4. impersonation: as rotas sensíveis (block_when_impersonating) ficam recusadas;
  *   5. root (D1): passa em todas as permissões; noutras empresas, as decisões do cliente
  *      (aprovar conteúdos, aceitar orçamentos, aceitar ou terminar a gestão) exigem uma pessoa
- *      do próprio cliente; na própria empresa, o root conta como administrador;
+ *      do próprio cliente, e a faturação da XPLENDOR é só do Administrador da empresa (o root
+ *      trata-a no /admin); na própria empresa, o root conta como administrador;
+ *   5b. só do Administrador (Permissions::ADMIN_ONLY_AREAS): a faturação da XPLENDOR é do
+ *      perfil Administrador da própria empresa, e de mais ninguém (nem a agência);
  *   6. perfil: own → o perfil do utilizador (users.profile_id; + editorial.aprovar se for
  *      aprovador); agency → o perfil dentro dos clientes (users.agency_profile_id) ∩ o teto
  *      que o cliente deu à agência (company_managements.guest_profile_id). Sem perfil
@@ -32,11 +36,15 @@ use App\Services\Tenancy\CompanyAccess;
  */
 class Access
 {
+    public const ADMIN_ONLY_MESSAGE = 'Só o Administrador da empresa vê e aprova a faturação da XPLENDOR.';
+
     /** @var array<string, array<string, true>> cache por pedido */
     private array $memo = [];
 
     /** @var array<int, array<string, true>> permissões de cada perfil (cache por pedido) */
     private array $profiles = [];
+
+    private ?int $adminProfileId = null;
 
     public function __construct(
         private readonly CompanyAccess $companies,
@@ -68,9 +76,19 @@ class Access
         if ($user->role === 'root') {
             // D1: noutras empresas, as decisões do cliente são do cliente. Na PRÓPRIA empresa, o
             // root conta como administrador, também nas decisões (aprovar os artigos da XPLENDOR).
+            if ($kind !== CompanyAccess::OWN && Permissions::isAdminOnly($permission)) {
+                return Decision::deny(self::ADMIN_ONLY_MESSAGE . ' A equipa XPLENDOR trata-a no /admin.', Decision::ADMIN_ONLY);
+            }
+
             return Permissions::isClientDecision($permission) && $kind !== CompanyAccess::OWN
                 ? Decision::deny('Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.', Decision::CLIENT_DECISION)
                 : Decision::allow();
+        }
+
+        if (Permissions::isAdminOnly($permission)) {
+            return $kind === CompanyAccess::OWN && $this->isCompanyAdmin($user)
+                ? Decision::allow()
+                : Decision::deny(self::ADMIN_ONLY_MESSAGE, Decision::ADMIN_ONLY);
         }
 
         if (in_array($permission, Permissions::BASE, true)) {
@@ -120,6 +138,18 @@ class Access
         return $this->memo[$key] = $set;
     }
 
+    /** Tem o perfil Administrador (sem perfil gravado, vale o papel admin, como na migração F2). */
+    public function isCompanyAdmin(User $user): bool
+    {
+        if (! $user->profile_id) {
+            return $user->role === 'admin';
+        }
+
+        $this->adminProfileId ??= (int) PermissionProfile::where('system_key', PermissionProfile::ADMIN)->value('id');
+
+        return (int) $user->profile_id === $this->adminProfileId;
+    }
+
     /** O teto que o cliente deu à agência gestora (a relação ativa). @return array<string, true> */
     public function ceilingFor(int $companyId): array
     {
@@ -164,5 +194,6 @@ class Access
     {
         $this->memo = [];
         $this->profiles = [];
+        $this->adminProfileId = null;
     }
 }

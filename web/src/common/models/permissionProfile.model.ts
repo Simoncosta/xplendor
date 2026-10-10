@@ -1,7 +1,7 @@
 /** ACL (F5): os perfis de permissão (GET /companies/{id}/permission-profiles). */
 export type ProfileSide = "cliente" | "agencia" | "teto";
 
-export interface AreaSummary { area: string; label: string; text: string; actions: string[] }
+export interface AreaSummary { area: string; label: string; text: string; actions: string[]; admin_only?: boolean }
 
 export interface PermissionProfile {
     id: number;
@@ -24,6 +24,8 @@ export interface CatalogArea { area: string; label: string; module: string | nul
 export interface ProfilesPayload {
     catalog: CatalogArea[];
     allowed: Record<ProfileSide, string[]>;
+    /** Só o perfil Administrador (a faturação da XPLENDOR): aparecem bloqueadas nos outros perfis. */
+    admin_only?: string[];
     profiles: PermissionProfile[];
     users: { id: number; name: string; email: string; is_admin: boolean; profile_id: number | null; agency_profile_id: number | null; approver: boolean; active: boolean }[];
     is_agency: boolean;

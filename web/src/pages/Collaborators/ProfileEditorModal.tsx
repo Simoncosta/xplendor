@@ -75,8 +75,10 @@ export default function ProfileEditorModal({ companyId, data, target, onClose, o
     }, [target, editing]);
 
     const allowed = useMemo(() => new Set(data.allowed[side] ?? []), [data, side]);
+    // A faturação da XPLENDOR é só do perfil Administrador: aparece bloqueada, com a nota.
+    const adminOnly = useMemo(() => new Set(data.admin_only ?? []), [data]);
     const suggestions = data.profiles.filter((p) => p.is_suggestion && p.side === side);
-    const areas = data.catalog.filter((a) => a.actions.some((act) => allowed.has(`${a.area}.${act}`)));
+    const areas = data.catalog.filter((a) => a.actions.some((act) => allowed.has(`${a.area}.${act}`) || adminOnly.has(`${a.area}.${act}`)));
 
     const startFrom = (p: PermissionProfile | null) => {
         setFrom(p);
@@ -172,26 +174,33 @@ export default function ProfileEditorModal({ companyId, data, target, onClose, o
                             {SIDE_LABEL[side]}{from ? `. A partir de "${from.name}".` : "."} Marque o que este perfil pode fazer em cada área.
                         </p>
                         <div className="vstack gap-2" data-testid="profile-areas">
-                            {areas.map((a) => (
-                                <div key={a.area} className="border rounded p-2 px-3">
-                                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                        <span className="fw-medium">{a.label}</span>
-                                        <div className="d-flex flex-wrap gap-3">
-                                            {a.actions.filter((act) => allowed.has(`${a.area}.${act}`)).map((act) => {
-                                                const key = `${a.area}.${act}`;
-                                                return (
-                                                    <div key={key} className="form-check mb-0">
-                                                        <Input type="checkbox" className="form-check-input" id={`pp-${key}`} checked={selected.has(key) || BASE.includes(key)}
-                                                            disabled={BASE.includes(key)} title={BASE.includes(key) ? "Sempre: quem trabalha na empresa vê-a." : undefined} onChange={() => toggle(key)} />
-                                                        <Label className="form-check-label fs-13" htmlFor={`pp-${key}`}>{ACTION_LABEL[act]}{BASE.includes(key) ? " (sempre)" : ""}</Label>
-                                                    </div>
-                                                );
-                                            })}
+                            {areas.map((a) => {
+                                const locked = a.actions.every((act) => adminOnly.has(`${a.area}.${act}`));
+                                return (
+                                    <div key={a.area} className={`border rounded p-2 px-3${locked ? " bg-light-subtle" : ""}`} data-testid={locked ? "profile-area-admin-only" : undefined}>
+                                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                            <span className="fw-medium">
+                                                {a.label}
+                                                {locked && <span className="badge bg-secondary-subtle text-secondary fw-normal ms-2"><i className="ri-lock-line me-1" />Só o Administrador</span>}
+                                            </span>
+                                            <div className="d-flex flex-wrap gap-3">
+                                                {a.actions.filter((act) => allowed.has(`${a.area}.${act}`) || adminOnly.has(`${a.area}.${act}`)).map((act) => {
+                                                    const key = `${a.area}.${act}`;
+                                                    const title = locked ? "Só o perfil Administrador vê e aprova a faturação da XPLENDOR." : BASE.includes(key) ? "Sempre: quem trabalha na empresa vê-a." : undefined;
+                                                    return (
+                                                        <div key={key} className="form-check mb-0">
+                                                            <Input type="checkbox" className="form-check-input" id={`pp-${key}`} checked={!locked && (selected.has(key) || BASE.includes(key))}
+                                                                disabled={locked || BASE.includes(key)} title={title} onChange={() => toggle(key)} />
+                                                            <Label className="form-check-label fs-13" htmlFor={`pp-${key}`}>{ACTION_LABEL[act]}{BASE.includes(key) ? " (sempre)" : ""}</Label>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
+                                        <div className="text-muted fs-12 mt-1">{locked ? "Só o Administrador." : describeArea(a, selected)}</div>
                                     </div>
-                                    <div className="text-muted fs-12 mt-1">{describeArea(a, selected)}</div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </>
                 )}

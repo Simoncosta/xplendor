@@ -54,6 +54,8 @@ export interface ISupportTicket {
     quoted_amount?: number | null;
     invoice_url?: string | null;
     hourly_rate?: number | null;
+    /** O valor, as horas e a fatura do orçamento só vêm a quem vê a faturação da XPLENDOR (o Administrador). */
+    billing_visible?: boolean;
     type_changes?: ISupportTicketTypeChange[]; // só no lado admin
     // Lista de tarefas (ticket de arranque).
     tasks?: ISupportTicketTask[];

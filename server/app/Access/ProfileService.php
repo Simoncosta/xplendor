@@ -29,6 +29,9 @@ final class ProfileService
     {
         return array_values(array_filter(Permissions::assignable(), function (string $p) use ($side) {
             $area = Permissions::area($p);
+            if (Permissions::isAdminOnly($p)) {
+                return false; // só o perfil Administrador (de sistema) a tem
+            }
             if ($side === PermissionProfile::SIDE_CLIENT) {
                 return $area !== 'agencia';
             }
@@ -66,6 +69,7 @@ final class ProfileService
             throw ValidationException::withMessages(['side' => ['Só uma agência tem perfis para trabalhar nos clientes.']]);
         }
         $this->assertUniqueName($company, $data['name']);
+        self::assertNoAdminOnly($data['permissions'] ?? []);
         $from = isset($data['from_profile_id']) ? PermissionProfile::find($data['from_profile_id']) : null;
 
         return DB::transaction(function () use ($company, $data, $side, $actor, $from) {
@@ -89,6 +93,7 @@ final class ProfileService
         if (isset($data['name']) && trim($data['name']) !== $profile->name) {
             $this->assertUniqueName($company, $data['name'], $profile->id);
         }
+        self::assertNoAdminOnly($data['permissions'] ?? []);
 
         return DB::transaction(function () use ($company, $profile, $data) {
             $before = $profile->permissionKeys();
@@ -182,6 +187,15 @@ final class ProfileService
             throw ValidationException::withMessages(['profile' => [$profile->system_key === PermissionProfile::ADMIN
                 ? 'O perfil Administrador é de sistema e não se edita.'
                 : 'Os perfis de sistema não se editam: crie um perfil a partir deste.']]);
+        }
+    }
+
+    /** A faturação da XPLENDOR é só do Administrador: um perfil que a inclua não se grava. */
+    public static function assertNoAdminOnly(array $permissions): void
+    {
+        $hit = array_values(array_filter($permissions, fn ($p) => is_string($p) && Permissions::isAdminOnly($p)));
+        if ($hit !== []) {
+            throw ValidationException::withMessages(['permissions' => ['A faturação da XPLENDOR é só do Administrador da empresa: não pode entrar noutro perfil.']]);
         }
     }
 

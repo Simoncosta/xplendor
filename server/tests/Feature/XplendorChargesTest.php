@@ -143,18 +143,24 @@ class XplendorChargesTest extends TestCase
         // O cliente vê nas Despesas (com Finanças), só de leitura, e nos totais.
         CompanyModule::firstOrCreate(['company_id' => $this->client->id, 'module_key' => 'finance']);
         $base = "/api/v1/companies/{$this->client->id}";
-        $row = collect($this->as($this->clientUser)->getJson("{$base}/expenses")->assertOk()->json('data.data'))->firstWhere('id', $expense->id);
+        $row = collect($this->as($this->clientAdmin)->getJson("{$base}/expenses")->assertOk()->json('data.data'))->firstWhere('id', $expense->id);
         $this->assertSame([true, false, false, 'open'], [$row['is_xplendor_charge'], $row['can_edit'], $row['can_delete'], $row['charge']['status']]);
+        // Quem vê as Finanças sem ser Administrador vê a despesa, sem a cobrança (estado, fatura, "Já paguei").
+        $row = collect($this->as($this->clientUser)->getJson("{$base}/expenses")->assertOk()->json('data.data'))->firstWhere('id', $expense->id);
+        $this->assertSame([true, null], [$row['is_xplendor_charge'], $row['charge']]);
         $this->assertEquals(350.0, $this->as($this->clientUser)->getJson("{$base}/expenses/summary")->json('data.total_amount'));
         $this->as($this->clientAdmin)->putJson("{$base}/expenses/{$expense->id}", ['description' => 'Y', 'amount' => 1, 'date' => '2026-10-01', 'is_paid' => true])->assertStatus(409);
         $this->as($this->clientAdmin)->deleteJson("{$base}/expenses/{$expense->id}")->assertStatus(409);
         foreach (['paid', 'cancel', 'refuse', 'send'] as $action) {
             $this->as($this->clientAdmin)->postJson("/api/v1/admin/charges/{$charge->id}/{$action}", ['reason' => 'x', 'note' => 'x'])->assertForbidden();
         }
-        // Sem o módulo de Finanças, a empresa vê as cobranças na mesma (e descarrega a fatura).
+        // Sem o módulo de Finanças, o Administrador vê as cobranças na mesma (e descarrega a fatura);
+        // a faturação da XPLENDOR é só do Administrador: o utilizador recebe 403.
         CompanyModule::where('company_id', $this->client->id)->where('module_key', 'finance')->delete();
-        $this->assertCount(1, $this->as($this->clientUser)->getJson("{$base}/xplendor-charges")->assertOk()->json('data.charges'));
-        $this->as($this->clientUser)->get("{$base}/xplendor-charges/{$charge->id}/invoice")->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->assertCount(1, $this->as($this->clientAdmin)->getJson("{$base}/xplendor-charges")->assertOk()->json('data.charges'));
+        $this->as($this->clientAdmin)->get("{$base}/xplendor-charges/{$charge->id}/invoice")->assertOk()->assertHeader('Content-Type', 'application/pdf');
+        $this->as($this->clientUser)->getJson("{$base}/xplendor-charges")->assertForbidden()->assertJsonPath('reason', 'so_administrador');
+        $this->as($this->clientUser)->get("{$base}/xplendor-charges/{$charge->id}/invoice")->assertForbidden();
 
         // O root marca como paga; anular uma paga é recusado.
         $this->as($this->root)->postJson("/api/v1/admin/charges/{$charge->id}/paid")->assertOk()->assertJsonPath('data.status', 'paid');
@@ -242,21 +248,21 @@ class XplendorChargesTest extends TestCase
     {
         $charge = $this->createCharge();
         $base = "/api/v1/companies/{$this->client->id}/xplendor-charges/{$charge->id}";
-        $this->as($this->clientUser)->post("{$base}/paid", ['proof' => UploadedFile::fake()->create('virus.exe', 10, 'application/x-msdownload')], ['Accept' => 'application/json'])
+        $this->as($this->clientAdmin)->post("{$base}/paid", ['proof' => UploadedFile::fake()->create('virus.exe', 10, 'application/x-msdownload')], ['Accept' => 'application/json'])
             ->assertStatus(422)->assertJsonValidationErrors('proof');
-        $this->as($this->clientUser)->post("{$base}/paid", ['proof' => UploadedFile::fake()->create('grande.pdf', 11000, 'application/pdf')], ['Accept' => 'application/json'])
+        $this->as($this->clientAdmin)->post("{$base}/paid", ['proof' => UploadedFile::fake()->create('grande.pdf', 11000, 'application/pdf')], ['Accept' => 'application/json'])
             ->assertStatus(422)->assertJsonValidationErrors('proof');
-        $this->as($this->clientUser)->post("{$base}/paid", ['note' => 'Pago por MB Way.', 'proof' => UploadedFile::fake()->image('comprovativo.png')], ['Accept' => 'application/json'])
+        $this->as($this->clientAdmin)->post("{$base}/paid", ['note' => 'Pago por MB Way.', 'proof' => UploadedFile::fake()->image('comprovativo.png')], ['Accept' => 'application/json'])
             ->assertOk()->assertJsonPath('data.status', 'payment_indicated');
 
         $charge->refresh();
-        $this->assertSame(['app', $this->clientUser->id], [$charge->payment_indicated_via, $charge->payment_indicated_by_user_id]);
+        $this->assertSame(['app', $this->clientAdmin->id], [$charge->payment_indicated_via, $charge->payment_indicated_by_user_id]);
         Storage::disk('local')->assertExists($charge->proof_path);
         $this->assertSame(1, Alert::where('company_id', $this->xplendor->id)->where('title', 'Pagamento indicado: Domiway')->count());
         Mail::assertQueued(ChargeTeamMail::class, fn ($m) => $m->hasTo('simon@xplendor.tech') && $m->hasProof && $m->via === 'app');
         $this->as($this->root)->get("/api/v1/admin/charges/{$charge->id}/proof")->assertOk();
         // Uma segunda indicação não é possível enquanto aguarda confirmação.
-        $this->as($this->clientUser)->post("{$base}/paid", [], ['Accept' => 'application/json'])->assertStatus(422);
+        $this->as($this->clientAdmin)->post("{$base}/paid", [], ['Accept' => 'application/json'])->assertStatus(422);
     }
 
     // ── Link seguro ──────────────────────────────────────────────────────────
