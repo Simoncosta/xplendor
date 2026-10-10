@@ -5,7 +5,7 @@ Escrito na noite de 10 de outubro de 2026. Nada disto foi feito em produção ne
 ## 1. O que muda no código
 
 - Disco novo `r2` (`server/config/filesystems.php`), do tipo S3, **bucket privado**.
-- `MEDIA_DISK` (Linha Editorial e fotos das contas) e `PRIVATE_FILES_DISK` (cobranças, comprovativos e faturas do OCR) escolhem o disco. **Por omissão, tudo continua nos discos locais**: o deploy não muda nada até se mudar o `.env`.
+- `MEDIA_DISK` (Linha Editorial e fotos das contas) e `PRIVATE_FILES_DISK` (cobranças, comprovativos, faturas do OCR e, desde o pré-deploy, as faturas dos tickets e as fotografias dos relatórios de satisfação) escolhem o disco. **Por omissão, tudo continua nos discos locais**: o deploy não muda nada até se mudar o `.env`.
 - Os ficheiros saem sempre por endereços assinados de curta duração, gerados pelo backend:
   - **Media:** os ecrãs recebem o URL assinado da aplicação (30 minutos), gerado atrás do tenant e do ACL. No R2, esse URL redireciona para um endereço assinado do R2 de **5 minutos**. O R2 serve por partes (Range), por isso o vídeo continua a avançar sem descarregar tudo.
   - **Cobranças e OCR:** continuam a sair em bytes pelo backend, atrás do tenant e do ACL, também no R2.
@@ -83,7 +83,7 @@ PRIVATE_FILES_DISK=local
       ```
       docker exec xplendor-php php artisan storage:migrate-to-r2 --execute
       ```
-   3. Repetir até "Falhas" dar 0 (o que já está confirmado não volta a ser copiado). Para ir por partes: `--only=media`, `--only=cobranca,ocr`, `--limit=500`.
+   3. Repetir até "Falhas" dar 0 (o que já está confirmado não volta a ser copiado). Para ir por partes: `--only=media`, `--only=cobranca,ocr`, `--only=fatura_ticket,foto_relatorio`, `--limit=500`. As faturas dos tickets e as fotografias dos relatórios só entram depois do `files:make-private --execute` (as que ainda têm o caminho público `/storage/...` ficam de fora).
    4. Os media da Linha Editorial passam a ler do R2 sozinhos, asset a asset, quando todos os ficheiros do asset estão confirmados.
    5. Mudar o `.env` para `MEDIA_DISK=r2` e `PRIVATE_FILES_DISK=r2`, e depois:
       ```
@@ -91,7 +91,7 @@ PRIVATE_FILES_DISK=local
       docker exec xplendor-php php artisan queue:restart
       ```
    6. Correr outra vez `storage:migrate-to-r2 --execute`, para os ficheiros escritos entre os passos 4.2 e 4.5.
-5. **Confirmar no ecrã:** uma publicação com imagem e uma com vídeo (o vídeo avança), enviar uma imagem nova, abrir uma fatura do OCR e o PDF de uma cobrança.
+5. **Confirmar no ecrã:** uma publicação com imagem e uma com vídeo (o vídeo avança), enviar uma imagem nova, abrir uma fatura do OCR, o PDF de uma cobrança, a fatura de um ticket pago e as fotografias de um relatório de satisfação.
 6. **Uns dias depois**, com tudo a funcionar, apagar as cópias locais (comando à parte; só apaga o que já é lido do R2):
    ```
    docker exec xplendor-php php artisan storage:purge-local

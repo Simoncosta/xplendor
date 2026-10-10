@@ -19,7 +19,7 @@ class StorageMigrateToR2Command extends Command
 {
     protected $signature = 'storage:migrate-to-r2
         {--execute : Copia de facto (sem isto, só simula)}
-        {--only= : Só estes tipos, separados por vírgulas: media, avatar, cobranca, ocr}
+        {--only= : Só estes tipos, separados por vírgulas: media, avatar, cobranca, ocr, fatura_ticket, foto_relatorio}
         {--limit= : No máximo este número de ficheiros copiados nesta execução}
         {--target=r2 : O disco de destino}';
 

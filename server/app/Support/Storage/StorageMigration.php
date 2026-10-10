@@ -7,7 +7,9 @@ namespace App\Support\Storage;
 use App\Models\ExpenseCharge;
 use App\Models\MediaAsset;
 use App\Models\OcrInvoice;
+use App\Models\SatisfactionReportPhoto;
 use App\Models\SocialConnectionAccount;
+use App\Models\SupportTicket;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -19,12 +21,18 @@ use Illuminate\Support\Facades\Storage;
  *  · CONFIRMA cada ficheiro: o tamanho e o SHA-256 lidos do destino têm de ser iguais aos do local.
  *  · NUNCA apaga o local: isso é o storage:purge-local, à parte.
  *  · Os media da Linha Editorial passam a ler do R2 (media_assets.disk) só quando todos os
- *    ficheiros do asset estão verificados. As fotos das contas, as cobranças e as faturas do OCR
- *    leem do disco configurado (MEDIA_DISK, PRIVATE_FILES_DISK), que se muda no .env depois.
+ *    ficheiros do asset estão verificados. As fotos das contas, as cobranças, as faturas do OCR,
+ *    as faturas dos tickets e as fotografias dos relatórios de satisfação leem do disco
+ *    configurado (MEDIA_DISK, PRIVATE_FILES_DISK), que se muda no .env depois. As faturas dos
+ *    tickets e as fotografias com o caminho público antigo (/storage/...) ficam de fora: passam
+ *    primeiro ao disco privado com o files:make-private.
  */
 final class StorageMigration
 {
-    public const KINDS = ['media', 'avatar', 'cobranca', 'ocr'];
+    public const KINDS = ['media', 'avatar', 'cobranca', 'ocr', 'fatura_ticket', 'foto_relatorio'];
+
+    /** Os tipos que leem do PRIVATE_FILES_DISK. */
+    private const PRIVATE_KINDS = ['cobranca', 'fatura_ticket', 'foto_relatorio'];
 
     /** @var array<string, int> */
     public array $stats = ['ficheiros' => 0, 'bytes' => 0, 'copiados' => 0, 'ja_estavam' => 0, 'em_falta' => 0, 'falhas' => 0, 'assets_no_r2' => 0];
@@ -85,6 +93,16 @@ final class StorageMigration
         if (in_array('ocr', $kinds, true)) {
             foreach (OcrInvoice::whereNotNull('image_path')->orderBy('id')->cursor() as $o) {
                 yield ['ocr', 'local', (string) $o->image_path, null];
+            }
+        }
+        if (in_array('fatura_ticket', $kinds, true)) {
+            foreach (SupportTicket::whereNotNull('invoice_path')->where('invoice_path', 'not like', '/storage/%')->orderBy('id')->cursor() as $t) {
+                yield ['fatura_ticket', 'local', (string) $t->invoice_path, null];
+            }
+        }
+        if (in_array('foto_relatorio', $kinds, true)) {
+            foreach (SatisfactionReportPhoto::where('path', 'not like', '/storage/%')->orderBy('id')->cursor() as $p) {
+                yield ['foto_relatorio', 'local', (string) $p->path, null];
             }
         }
     }
@@ -204,8 +222,11 @@ final class StorageMigration
             if ($ok && in_array($item->kind, ['avatar'], true)) {
                 $ok = (string) config('media.disk') === $this->target; // as fotos só leem do R2 depois de MEDIA_DISK=r2
             }
-            if ($ok && in_array($item->kind, ['cobranca', 'ocr'], true)) {
-                $ok = (string) config('storage_targets.private_disk') === $this->target && (string) config('services.openai.ocr_disk') === $this->target;
+            if ($ok && in_array($item->kind, self::PRIVATE_KINDS, true)) {
+                $ok = (string) config('storage_targets.private_disk') === $this->target;
+            }
+            if ($ok && $item->kind === 'ocr') {
+                $ok = (string) config('services.openai.ocr_disk') === $this->target;
             }
             if (! $ok) {
                 $stats['mantidos']++;

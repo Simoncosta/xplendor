@@ -211,6 +211,36 @@ class R2StorageTest extends TestCase
         $this->assertTrue(Storage::disk('r2')->exists('charges/company_1/x.pdf'));
     }
 
+    public function test_ticket_invoices_and_report_photos_go_to_r2_and_the_old_public_ones_stay_out(): void
+    {
+        $ticket = \App\Models\SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->user->id, 'type' => 'site_change',
+            'title' => 'Mudar o site', 'description' => 'Texto', 'status' => 'open', 'quote_status' => 'paid', 'quoted_amount' => 100,
+            'invoice_path' => "support-invoices/company_{$this->company->id}/f.pdf"]);
+        Storage::disk('local')->put($ticket->invoice_path, '%PDF-1.4 fatura do ticket');
+        \App\Models\SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->user->id, 'type' => 'site_change',
+            'title' => 'Antigo', 'description' => 'Texto', 'status' => 'open', 'quote_status' => 'paid', 'quoted_amount' => 100,
+            'invoice_path' => "/storage/company_{$this->company->id}/ticket-invoices/antiga.pdf"]);
+        $car = \App\Models\Car::factory()->create(['company_id' => $this->company->id]);
+        $sale = \App\Models\CarSale::create(['car_id' => $car->id, 'company_id' => $this->company->id, 'sale_price' => 1, 'buyer_gender' => 'male',
+            'buyer_age_range' => '31-45', 'sale_channel' => 'in_person', 'sold_at' => now()]);
+        $report = \App\Models\SatisfactionReport::create(['company_id' => $this->company->id, 'car_sale_id' => $sale->id, 'car_id' => $car->id,
+            'public_token' => \App\Models\SatisfactionReport::generateToken(), 'status' => 'pending', 'expires_at' => now()->addDays(90)]);
+        $photo = \App\Models\SatisfactionReportPhoto::create(['satisfaction_report_id' => $report->id, 'order' => 1, 'social_consent_at' => now(),
+            'path' => "satisfaction-reports/company_{$this->company->id}/{$report->id}/a.webp"]);
+        Storage::disk('local')->put($photo->path, 'webp');
+
+        $run = (new StorageMigration('r2'))->run(true, ['fatura_ticket', 'foto_relatorio']);
+        $this->assertSame(2, $run['copiados'], 'o caminho público antigo fica de fora (passa primeiro pelo files:make-private)');
+        $this->assertSame('%PDF-1.4 fatura do ticket', Storage::disk('r2')->get($ticket->invoice_path));
+        $this->assertTrue(Storage::disk('r2')->exists($photo->path));
+
+        $this->assertSame(2, (new StorageMigration('r2'))->purgeLocal(true)['mantidos'], 'ainda se lê do local');
+        config(['storage_targets.private_disk' => 'r2']);
+        $this->get(\App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket))->assertRedirect();
+        $this->assertSame(2, (new StorageMigration('r2'))->purgeLocal(true)['apagados']);
+        $this->assertFalse(Storage::disk('local')->exists($photo->path));
+    }
+
     public function test_charges_are_stored_and_read_on_the_private_disk(): void
     {
         config(['storage_targets.private_disk' => 'r2']);
