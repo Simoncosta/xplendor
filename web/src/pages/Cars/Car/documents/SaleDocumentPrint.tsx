@@ -7,7 +7,7 @@ import { getSaleDocumentData } from "helpers/laravel_helper";
 import { SaleDocumentData } from "types/api";
 import { getSaleDocument } from "./registry";
 import { buildInitialValues, type DocFieldDef } from "./types";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * DMS Fase 3 — motor PARTILHADO de impressão dos documentos de venda.

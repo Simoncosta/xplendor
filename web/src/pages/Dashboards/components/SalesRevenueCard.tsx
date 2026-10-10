@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import { Card, CardBody, Col } from "reactstrap";
+import { Col } from "reactstrap";
+import PageCard from "Components/Common/PageCard";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { useIsMobile } from "../../../hooks/useIsMobile";
 import { marginLabels } from "helpers/margin";
@@ -222,14 +223,8 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
 
     return (
         <Col xs={12}>
-            <Card className="mb-0">
-                <CardBody>
-                    <div className="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                        <div>
-                            <h6 className="text-uppercase text-muted fs-12 mb-1">Vendas no período</h6>
-                            <small className="text-muted">Valor das vendas registadas (não é lucro).</small>
-                        </div>
-                        <div className="xp-seg" role="tablist" aria-label="Período">
+            <PageCard className="mb-0" title="Vendas no período" flush={false} info="Valor das vendas registadas (não é lucro)."
+                actions={<div className="xp-seg" role="tablist" aria-label="Período">
                             {(["this_month", "last_month", "this_quarter", "this_year", "custom"] as SalesRevenuePreset[]).map((p) => (
                                 <button
                                     key={p}
@@ -242,8 +237,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                                     {PRESET_LABELS[p]}
                                 </button>
                             ))}
-                        </div>
-                    </div>
+                        </div>}>
 
                     {preset === "custom" && (
                         <div className="d-flex flex-wrap gap-2 align-items-end mb-3 p-3 rounded" style={{ background: "var(--vz-tertiary-bg)" }}>
@@ -333,8 +327,7 @@ const SalesRevenueCard = ({ data, loading = false, onRangeChange }: Props) => {
                             height={220}
                         />
                     )}
-                </CardBody>
-            </Card>
+            </PageCard>
         </Col>
     );
 };

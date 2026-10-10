@@ -67,6 +67,7 @@ export interface OcrInvoiceDetail {
     lines: (OcrInvoiceLine & OcrLineLink)[];
     summary: OcrInvoiceSummary | null;
     articles_summary: OcrArticlesSummary;
+    delete_block: string | null;          // F2c
 }
 
 export interface OcrCheckDiffRow {
@@ -91,6 +92,9 @@ export interface OcrInvoiceListRow {
     link_status: OcrLinkStatus | null;    // F3: estado no PingWin
     paid: boolean | null;                 // F3: do(s) documento(s) ligado(s)
     pingwin_doc_status: string | null;    // FB-1: lançada pela XPLENDOR → "8001" rascunho, "8002" fechada
+    deleted_at: string | null;            // F2c: apagada (lista "Mostrar apagadas")
+    delete_block: string | null;          // F2c: motivo para não se poder apagar (null = pode)
+    restore_block: string | null;         // F2c: motivo para não se poder repor (ex.: ficheiro já purgado)
     store: string | null;                 // F3: do(s) documento(s) ligado(s)
     total: number | null;
     created_at: string | null;
@@ -270,4 +274,10 @@ export interface OcrLaunchPreview {
     defaults: { store: string | null; store_code: string | null; serie: string | null; at: string | null };
     draft: { docheader_id: string; document: string | null; docstatus_id: string; docstatus_label: string; total: number; store_name: string | null; doc_date: string | null } | null;
     writes: OcrDocWrite[];
+}
+
+// ── F2c: apagar várias ───────────────────────────────────────────────────────
+export interface OcrBulkDeleteResult {
+    deleted: number[];
+    skipped: { id: number; number: string | null; reason: string }[];
 }

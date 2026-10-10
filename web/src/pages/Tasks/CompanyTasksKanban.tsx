@@ -19,7 +19,7 @@ import { confirmAction } from "helpers/swal";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * XPLENDOR — Kanban de TAREFAS internas do cliente (painel do stand). Entidade

@@ -7,7 +7,7 @@ import { ICarFormValues } from "./CarImagesDataFields";
 import { CarVatRegime } from "common/models/car.model";
 import XInput from "Components/Common/XInput";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 // DMS Fase 1a — enum extensível do regime de IVA da compra. Acrescentar aqui
 // (e no Rule::in do CarRequest.php) quando a taxonomia final for validada com

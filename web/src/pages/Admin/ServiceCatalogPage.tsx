@@ -8,7 +8,7 @@ import { ToastContainer, toast } from "react-toastify";
 import { createServiceCatalogItem, getServiceCatalog, updateServiceCatalogItem } from "helpers/laravel_helper";
 import { BILLING_LABEL, ICatalogItem, QuoteBilling, QuoteUnit, UNIT_LABEL, formatQuoteEuro } from "common/models/quote.model";
 import QuoteSelect from "./QuoteSelect";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * XPLENDOR — Catálogo de serviços (tabela padrão dos orçamentos). Só a equipa.

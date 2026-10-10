@@ -127,15 +127,22 @@ const ExpenseList = () => {
         return p;
     }, [fCategory, fSupplier, fCar, fPaid, fFrom, fTo, includeArchived]);
 
-    const fetchAll = useCallback(() => {
-        if (!companyId) return;
-        dispatch(getExpenses({ companyId, page: pagination.pageIndex + 1, perPage: pagination.pageSize, ...filterParams }));
-        dispatch(getExpensesSummary({ companyId, ...filterParams }));
-    }, [dispatch, companyId, pagination.pageIndex, pagination.pageSize, filterParams]);
+    // Ordenação no servidor (ExpenseController::sorts). Por omissão, como sempre: data, a mais recente primeiro.
+    const [sort, setSort] = useState<{ key: string; desc: boolean }>({ key: "date", desc: true });
 
-    useEffect(() => {
-        fetchAll();
-    }, [fetchAll]);
+    const fetchPage = useCallback(() => {
+        if (!companyId) return;
+        dispatch(getExpenses({ companyId, page: pagination.pageIndex + 1, perPage: pagination.pageSize, ...filterParams, sort: sort.key, dir: sort.desc ? "desc" : "asc" }));
+    }, [dispatch, companyId, pagination.pageIndex, pagination.pageSize, filterParams, sort]);
+    // Os totais não dependem da ordem nem da página.
+    const fetchSummary = useCallback(() => {
+        if (!companyId) return;
+        dispatch(getExpensesSummary({ companyId, ...filterParams }));
+    }, [dispatch, companyId, filterParams]);
+    const fetchAll = useCallback(() => { fetchPage(); fetchSummary(); }, [fetchPage, fetchSummary]);
+
+    useEffect(() => { fetchPage(); }, [fetchPage]);
+    useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
     const resetToFirstPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
@@ -193,9 +200,9 @@ const ExpenseList = () => {
     const field = (flex = "1 1 170px") => ({ flex, minWidth: 0 });
 
     const cols = useDataColumns<IExpense>("financas.despesas", [
-        { id: "date", header: "Data", value: (e) => e.date, nowrap: true },
+        { id: "date", header: "Data", sortKey: "date", value: (e) => e.date, nowrap: true },
         {
-            id: "description", header: "Descrição", value: (e) => e.description, hideable: false, mobile: "title",
+            id: "description", header: "Descrição", sortKey: "description", value: (e) => e.description, hideable: false, mobile: "title",
             cell: (e) => (
                 <span className={e.archived ? "" : "fw-medium"}>
                     {e.description}
@@ -211,7 +218,7 @@ const ExpenseList = () => {
             ),
         },
         {
-            id: "category", header: "Categoria", value: (e) => e.category_name ?? "",
+            id: "category", header: "Categoria", sortKey: "category", value: (e) => e.category_name ?? "",
             cell: (e) => e.category_name ? (
                 <span>
                     <span className="d-inline-block rounded-circle align-middle me-1" style={{ width: 10, height: 10, backgroundColor: e.category_color || "#ced4da" }} />
@@ -219,11 +226,11 @@ const ExpenseList = () => {
                 </span>
             ) : <span className="text-muted">Sem categoria</span>,
         },
-        { id: "supplier", header: "Fornecedor", value: (e) => e.supplier_name ?? "", cell: (e) => e.supplier_name || <span className="text-muted">-</span> },
-        { id: "car", header: "Viatura", value: (e) => e.car_name ?? "", cell: (e) => e.car_name || <span className="text-muted">-</span> },
-        { id: "amount", header: "Valor", value: (e) => e.amount, cell: (e) => <span className="fw-medium">{eur(e.amount)}</span>, align: "end", nowrap: true },
+        { id: "supplier", header: "Fornecedor", sortKey: "supplier", value: (e) => e.supplier_name ?? "", cell: (e) => e.supplier_name || <span className="text-muted">-</span> },
+        { id: "car", header: "Viatura", sortKey: "car", value: (e) => e.car_name ?? "", cell: (e) => e.car_name || <span className="text-muted">-</span> },
+        { id: "amount", header: "Valor", sortKey: "amount", value: (e) => e.amount, cell: (e) => <span className="fw-medium">{eur(e.amount)}</span>, align: "end", nowrap: true },
         {
-            id: "status", header: "Estado",
+            id: "status", header: "Estado", sortKey: "status", value: (e) => (e.is_paid ? 1 : 0), // paga / em aberto
             cell: (e) => e.is_xplendor_charge && e.charge ? (
                 <Badge color={CHARGE_STATUS_META[e.charge.status].color} className="fw-normal" title="A XPLENDOR confirma o pagamento">{CHARGE_STATUS_META[e.charge.status].label}</Badge>
             ) : (
@@ -363,6 +370,14 @@ const ExpenseList = () => {
                                 from: meta?.from ?? 0,
                                 to: meta?.to ?? 0,
                                 onPageChange: (page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 })),
+                                sort: { id: sort.key, desc: sort.desc },
+                                // Tirar a ordenação volta à de sempre (data, a mais recente primeiro); se já é essa,
+                                // passa a crescente, para a data também se poder ver ao contrário.
+                                onSortChange: (next) => {
+                                    const isDefault = sort.key === "date" && sort.desc;
+                                    setSort(next ? { key: next.key, desc: next.desc } : { key: "date", desc: !isDefault });
+                                    resetToFirstPage();
+                                },
                             }}
                         />
                     </PageCard>

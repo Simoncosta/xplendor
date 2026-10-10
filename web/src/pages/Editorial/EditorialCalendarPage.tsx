@@ -24,7 +24,7 @@ import IdeasModal from "./IdeasModal";
 import EditorialBoard from "./EditorialBoard";
 import FeedView from "./FeedView";
 import PostPanel, { PanelTarget } from "./PostPanel";
-import XSelect, { XOption } from "./XSelect";
+import XSelect, { XOption } from "Components/Common/Select";
 import StageLegendModal from "./StageLegendModal";
 import ReviewLinksModal from "./ReviewLinksModal";
 import TodayPanel from "./TodayPanel";

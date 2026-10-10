@@ -10,7 +10,7 @@ import { STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/ed
 import ClientMark from "Components/Common/ClientMark";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import PageCard from "Components/Common/PageCard";
-import XSelect, { XOption } from "./XSelect";
+import XSelect, { XOption } from "Components/Common/Select";
 import MonthResults from "./MonthResults";
 import CompanyPostPanel from "./CompanyPostPanel";
 import type { PanelTarget } from "./PostPanel";

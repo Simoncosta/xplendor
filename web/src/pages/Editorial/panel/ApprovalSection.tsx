@@ -3,7 +3,7 @@ import { Badge, Button, Col, Input, Label, Row, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { approvePost, commentOnPost, movePostStage, requestPostChanges } from "helpers/laravel_helper";
 import { PostWorkflow, STAGE_META, STAGE_ORDER, Stage, VERSION_STATUS_LABEL, fmtDateTimePt, mediaSrc } from "common/models/editorialWorkflow.model";
-import XSelect from "../XSelect";
+import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import useProducerLabel, { byProducer } from "../useProducerLabel";
 

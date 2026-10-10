@@ -12,7 +12,7 @@ import avatar1 from '../../../assets/images/users/avatar-company.jpg';
 import XInput from 'Components/Common/XInput';
 import PageHeader from 'Components/Common/PageHeader';
 import PageCard from 'Components/Common/PageCard';
-import XSelect from 'pages/Editorial/XSelect';
+import XSelect from 'Components/Common/Select';
 import XInputMask from 'Components/Common/XInputMask';
 
 type UserEditorProps = {

@@ -22,8 +22,8 @@ export const getCarsPaginate = createAsyncThunk(
             carModelIds?: number[];
             mincost?: number;
             maxcost?: number;
-            sort_by?: string;
-            sort_direction?: 'asc' | 'desc';
+            sort?: string;
+            dir?: 'asc' | 'desc';
         },
         { rejectWithValue }
     ) => {
@@ -39,8 +39,8 @@ export const getCarsPaginate = createAsyncThunk(
                 carModelIds: params.carModelIds,
                 mincost: params.mincost,
                 maxcost: params.maxcost,
-                sort_by: params.sort_by,
-                sort_direction: params.sort_direction,
+                sort: params.sort,
+                dir: params.dir,
             });
             return response;
         } catch (error: any) {

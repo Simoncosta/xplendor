@@ -7,6 +7,7 @@ import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import PageHeader, { Crumb } from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import XSelect from "Components/Common/Select";
+import ActionsMenu from "Components/Common/ActionsMenu";
 import ArticlePicker from "./faturas/ArticlePicker";
 import CreateArticleModal, { CreateArticleData } from "./faturas/CreateArticleModal";
 import LineArticleCell from "./faturas/LineArticleCell";
@@ -15,6 +16,7 @@ import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
     associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
+    deleteOcrInvoice,
 } from "helpers/laravel_helper";
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
@@ -68,6 +70,8 @@ export default function FaturaValidacaoPage() {
     const [imageIsPdf, setImageIsPdf] = useState(false);
     const [confirmReprocess, setConfirmReprocess] = useState(false);
     const [reprocessing, setReprocessing] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);   // F2c
+    const [deleting, setDeleting] = useState(false);
     const [pingwin, setPingwin] = useState<OcrPingwinBlock | null>(null);
     // F2b — ligação das linhas a artigos (separada do formulário: as ações não apagam edições)
     const [links, setLinks] = useState<Record<number, OcrLineLink>>({});
@@ -335,6 +339,41 @@ export default function FaturaValidacaoPage() {
         );
     }
 
+    // F2c — apagar (fica 30 dias em "Mostrar apagadas").
+    const doDelete = async () => {
+        setDeleting(true);
+        try {
+            await deleteOcrInvoice(companyId, invoiceId);
+            toast.success("Fatura apagada. Pode repô-la durante 30 dias em “Mostrar apagadas”.");
+            navigate("/restauracao/faturas");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível apagar a fatura.");
+            setDeleting(false);
+            setConfirmDelete(false);
+        }
+    };
+    const deleteMenu = (size: "sm" | "md") => (
+        <ActionsMenu size={size} label="Mais ações da fatura" items={[
+            { label: "Apagar fatura", icon: "ri-delete-bin-line", danger: true, disabledReason: inv?.delete_block ?? null, onClick: () => setConfirmDelete(true) },
+        ]} />
+    );
+    const deleteModal = (
+        <Modal isOpen={confirmDelete} toggle={() => !deleting && setConfirmDelete(false)} centered data-testid="delete-modal">
+            <ModalHeader toggle={() => !deleting && setConfirmDelete(false)}>Apagar a fatura?</ModalHeader>
+            <ModalBody>
+                <p className="mb-2">A fatura sai da lista. Pode repô-la durante 30 dias em “Mostrar apagadas”; depois o ficheiro é apagado.</p>
+                {(pingwin?.status === "lancada" || pingwin?.status === "lancada_guias") && (
+                    <p className="mb-2 fs-13 text-muted">Está ligada a um documento no PingWin: o documento no PingWin fica; só a fatura carregada é apagada e desligada.</p>
+                )}
+                <p className="mb-0 fs-13 text-muted">A leitura não volta ao limite mensal.</p>
+            </ModalBody>
+            <ModalFooter>
+                <Button color="light" onClick={() => setConfirmDelete(false)} disabled={deleting}>Cancelar</Button>
+                <Button color="danger" onClick={doDelete} disabled={deleting}>{deleting ? <Spinner size="sm" /> : "Apagar"}</Button>
+            </ModalFooter>
+        </Modal>
+    );
+
     const reprocessModal = (
         <Modal isOpen={confirmReprocess} toggle={() => !reprocessing && setConfirmReprocess(false)} centered>
             <ModalHeader toggle={() => !reprocessing && setConfirmReprocess(false)}>Reprocessar a fatura?</ModalHeader>
@@ -360,9 +399,11 @@ export default function FaturaValidacaoPage() {
                     <div className="d-flex gap-2">
                         <Button size="sm" color="primary" onClick={() => setConfirmReprocess(true)}><i className="ri-refresh-line me-1" />Reprocessar</Button>
                         <Button size="sm" color="outline-primary" onClick={() => navigate("/restauracao/faturas")}>Voltar às faturas</Button>
+                        {deleteMenu("sm")}
                     </div>
                 </Alert>
                 {reprocessModal}
+                {deleteModal}
             </Container></div>
         );
     }
@@ -399,7 +440,11 @@ export default function FaturaValidacaoPage() {
                     title={pageTitle}
                     crumbLabel="Validar"
                     breadcrumbs={crumbs}
-                    description={<>
+                />
+                {/* As ações da fatura no cabeçalho deste cartão; o estado da leitura no status (design-system §1 e §2). */}
+                <PageCard
+                    title="Fatura"
+                    status={<>
                         <span className="badge bg-info-subtle text-info me-2"><i className="ri-robot-2-line me-1" />Lido por IA: verifique os dados</span>
                         {inv?.qr_ok !== null && inv?.qr_ok !== undefined && (
                             inv.qr_ok
@@ -417,13 +462,14 @@ export default function FaturaValidacaoPage() {
                         {inv?.attempts && inv.attempts > 1 ? ` · ${inv.attempts} tentativas` : ""}
                     </>}
                     actions={<>
-                        <Button color="outline-primary" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</Button>
+                        <Button size="sm" color="outline-primary" onClick={() => navigate("/restauracao/faturas")} disabled={saving}>Voltar</Button>
                         {inv?.status !== "validada" && (
-                            <Button color="outline-secondary" onClick={() => setConfirmReprocess(true)} disabled={saving}><i className="ri-refresh-line me-1" />Reprocessar</Button>
+                            <Button size="sm" color="outline-primary" onClick={() => setConfirmReprocess(true)} disabled={saving}><i className="ri-refresh-line me-1" />Reprocessar</Button>
                         )}
-                        <Button color="primary" onClick={save} disabled={saving}>
+                        <Button size="sm" color="primary" onClick={save} disabled={saving}>
                             {saving ? <><Spinner size="sm" className="me-1" /> A guardar…</> : <><i className="ri-check-double-line me-1" /> Validar e guardar</>}
                         </Button>
+                        {deleteMenu("sm")}
                     </>}
                 />
                 {inv?.status === "por_validar" && inv.error_message && (
@@ -636,6 +682,7 @@ export default function FaturaValidacaoPage() {
                     </Col>
                 </Row>
                 {reprocessModal}
+                {deleteModal}
 
                 {/* F2b — pesquisa de artigos, criar artigo, código diferente, aceitar sugestões */}
                 <ArticlePicker

@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useModules } from "contexts/ModulesContext";
 import classnames from "classnames";
 import { Link, useSearchParams } from "react-router-dom";
-import { Card, CardBody, CardHeader, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
+import { Card, CardBody, Container, Row, Col, Nav, NavItem, NavLink, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import InfoTip from "Components/Common/InfoTip";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
 import ConfirmModal from "Components/Common/ConfirmModal";
 import { getPingwinDashboard, getRestaurantSignals, queuePingwinSync } from "helpers/laravel_helper";
@@ -122,7 +125,9 @@ const AvgTicketCard = ({ avg, enabled }: { avg?: { annual: number | null; monthl
         <Card className="h-100 mb-0" style={{ borderTop: "3px solid var(--vz-warning)" }}>
             <CardBody>
                 <div className="d-flex align-items-start justify-content-between mb-2">
-                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>Ticket Médio</p>
+                    <p className="text-muted text-uppercase fw-semibold fs-11 mb-0 d-flex align-items-center gap-1" style={{ letterSpacing: "0.08em" }}>
+                        Ticket Médio <InfoTip text="Faturação ÷ pessoas que reservaram. Requer vendas e reservas sincronizadas." label="Sobre o ticket médio" />
+                    </p>
                     <i className="ri-price-tag-3-line fs-4 text-warning" />
                 </div>
                 {!enabled ? (
@@ -140,7 +145,6 @@ const AvgTicketCard = ({ avg, enabled }: { avg?: { annual: number | null; monthl
                         ))}
                     </div>
                 )}
-                <p className="text-muted fs-11 mb-0 mt-2">Faturação ÷ pessoas que reservaram. Requer vendas e reservas sincronizadas.</p>
             </CardBody>
         </Card>
     </Col>
@@ -155,7 +159,9 @@ const OccupancyCard = ({ occ }: { occ?: { annual: PingwinOccupancyPeriod; monthl
             <CardBody>
                 <div className="d-flex align-items-start justify-content-between mb-2">
                     <div>
-                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-0" style={{ letterSpacing: "0.08em" }}>Pessoas (reservas)</p>
+                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-0 d-flex align-items-center gap-1" style={{ letterSpacing: "0.08em" }}>
+                            Pessoas (reservas) <InfoTip text="Nº de pessoas que reservaram (não é média). Requer reservas sincronizadas (CoverManager)." label="Sobre as pessoas" />
+                        </p>
                         <p className="text-muted fs-11 mb-0">Total de todas as lojas</p>
                     </div>
                     <i className="ri-group-line fs-4 text-info" />
@@ -172,7 +178,6 @@ const OccupancyCard = ({ occ }: { occ?: { annual: PingwinOccupancyPeriod; monthl
                         </div>
                     ))}
                 </div>
-                <p className="text-muted fs-11 mb-0 mt-2">Nº de pessoas que reservaram (não é média). Requer reservas sincronizadas (CoverManager).</p>
             </CardBody>
         </Card>
     </Col>
@@ -183,11 +188,11 @@ const fmtDateTime = (d: string | null) =>
 
 /** Célula de um período por loja: faturado c/IVA (cor do tema) + líquido + lotação (pessoas). */
 const PeriodCell = ({ pair, occ, color }: { pair: PingwinMoneyPair; occ?: PingwinOccupancyPeriod; color: string }) => (
-    <td className="text-end">
+    <div className="text-end">
         <div className={`fw-semibold ${color}`}>{euro(pair?.invoiced_cents ?? 0)}</div>
         <div className="text-muted fs-11">{euro(pair?.net_cents ?? 0)} líq.</div>
         <div className="text-muted fs-11">{occ?.has_data ? `${num(occ.total)} pessoas` : "sem reservas"}</div>
-    </td>
+    </div>
 );
 
 /** Separador "Vendas": faturação por período, ticket médio, lotação, gráfico e lojas, com a data e o "atualizar". */
@@ -233,6 +238,25 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
     const monthly = data?.monthly;
     const daily = data?.daily;
 
+    type Loc = PingwinDashboardData["locations"][number];
+    const storeCols = useDataColumns<Loc>("dashboard.restauracao.lojas", [
+        {
+            id: "store", header: "Loja", value: (loc) => loc.display_name, hideable: false, mobile: "title",
+            cell: (loc) => (
+                <div className="d-flex align-items-center gap-2">
+                    <span className="flex-shrink-0 rounded-circle bg-primary-subtle d-inline-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
+                        <i className="ri-store-2-line text-primary fs-14" />
+                    </span>
+                    <span className="fw-medium">{loc.display_name}</span>
+                </div>
+            ),
+        },
+        { id: "annual", header: "Anual", align: "end", value: (loc) => loc.annual?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.annual} occ={loc.occupancy?.annual} color="text-primary" /> },
+        { id: "monthly", header: "Mensal", align: "end", value: (loc) => loc.monthly?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.monthly} occ={loc.occupancy?.monthly} color="text-info" /> },
+        { id: "daily", header: "Diário", align: "end", value: (loc) => loc.daily?.invoiced_cents ?? 0, cell: (loc) => <PeriodCell pair={loc.daily} occ={loc.occupancy?.daily} color="text-success" /> },
+        { id: "synced", header: "Sincronização", align: "end", value: (loc) => loc.last_synced_at ?? undefined, cell: (loc) => <span className="text-muted fs-12">{fmtDateTime(loc.last_synced_at)}</span>, nowrap: true },
+    ] as DTColumn<Loc>[]);
+
     return (
         <>
             <ConfirmModal
@@ -253,14 +277,14 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                 <input
                     id="pingwin-sales-date"
                     type="date"
-                    className="form-control w-auto"
+                    className="form-control form-control-sm w-auto"
                     aria-label="Data"
                     value={date}
                     max={todayIso()}
                     onChange={(e) => { setDate(e.target.value); fetchDashboard(e.target.value); }}
                     style={{ minWidth: 170 }}
                 />
-                <ReasonButton color="outline-primary" onClick={() => setConfirmOpen(true)} disabled={queuing}
+                <ReasonButton size="sm" color="outline-primary" onClick={() => setConfirmOpen(true)} disabled={queuing}
                     reason={!companyId ? "Escolha primeiro a empresa." : !date ? "Indique a data." : null}>
                     {queuing ? <><Spinner size="sm" className="me-1" /> A atualizar</> : <><i className="ri-refresh-line me-1" /> <span className="d-none d-sm-inline">Buscar dados atualizados</span><span className="d-sm-none">Atualizar</span></>}
                 </ReasonButton>
@@ -313,60 +337,20 @@ function RestaurantSalesTab({ companyId }: { companyId: number }) {
                 <HeatmapCard companyId={companyId} />
             </Row>
 
-            {/* Tabela de lojas — Card + CardHeader + tabela no estilo do sistema. */}
-            {/* pb-5 mb-5: folga até ao rodapé (o footer não fica colado ao último card). */}
+            {/* Lojas: PageCard + DataTable (UI-2d). pb-5 mb-5: folga até ao rodapé. */}
             <Row className="g-3 pb-5 mb-5">
                 <Col xs={12}>
-                    <Card className="mb-0">
-                        <CardHeader className="d-flex align-items-center">
-                            <h5 className="card-title mb-0 flex-grow-1">Lojas</h5>
-                            <span className="text-muted fs-11 me-2 d-none d-md-inline">por período: faturado c/IVA · líquido · pessoas</span>
-                            {loading && <Spinner size="sm" />}
-                        </CardHeader>
-                        <CardBody className="p-0">
-                            <div className="table-responsive">
-                                {/* Header visível: mesmo mecanismo das tabelas do sistema (Carros/Leads):
-                                    table-bordered + thead "text-muted table-light". */}
-                                <table className="table table-bordered table-hover table-nowrap align-middle mb-0">
-                                    <thead className="text-muted table-light">
-                                        <tr>
-                                            <th scope="col">Loja</th>
-                                            <th scope="col">Anual</th>
-                                            <th scope="col">Mensal</th>
-                                            <th scope="col">Diário</th>
-                                            <th scope="col" className="text-end">Sincronização</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {(data?.locations?.length ?? 0) === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className="text-center text-muted py-4">
-                                                    Sem dados. Escolha uma data e use <strong>“Buscar dados atualizados”</strong>.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            data!.locations.map((loc) => (
-                                                <tr key={loc.id}>
-                                                    <td>
-                                                        <div className="d-flex align-items-center gap-2">
-                                                            <span className="flex-shrink-0 rounded-circle bg-primary-subtle d-inline-flex align-items-center justify-content-center" style={{ width: 28, height: 28 }}>
-                                                                <i className="ri-store-2-line text-primary fs-14" />
-                                                            </span>
-                                                            <span className="fw-medium">{loc.display_name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <PeriodCell pair={loc.annual} occ={loc.occupancy?.annual} color="text-primary" />
-                                                    <PeriodCell pair={loc.monthly} occ={loc.occupancy?.monthly} color="text-info" />
-                                                    <PeriodCell pair={loc.daily} occ={loc.occupancy?.daily} color="text-success" />
-                                                    <td className="text-end text-muted fs-12">{fmtDateTime(loc.last_synced_at)}</td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </CardBody>
-                    </Card>
+                    <PageCard className="mb-0" title="Lojas" info="Por período: faturado com IVA, líquido e pessoas." loading={loading && (data?.locations?.length ?? 0) > 0} actions={storeCols.selector}>
+                        <DataTable
+                            columns={storeCols}
+                            data={data?.locations ?? []}
+                            rowKey={(loc) => loc.id}
+                            loading={loading && !data}
+                            paginate={false}
+                            caption="Faturação por loja"
+                            empty={{ message: <>Sem dados. Escolha uma data e use <strong>“Buscar dados atualizados”</strong>.</> }}
+                        />
+                    </PageCard>
                 </Col>
             </Row>
         </>

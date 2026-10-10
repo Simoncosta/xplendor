@@ -8,6 +8,7 @@ import CarDecisionCard from "./components/CarDecisionCard";
 import { ActionCenterCarItem, AlertItem, CarDecisionResponse, DecisionType, GuardrailSeverity } from "./types";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 
 const decisionOrder: Record<DecisionType, number> = {
     PARAR: 1,
@@ -176,22 +177,20 @@ export default function ActionCenterPage() {
                 <PageHeader
                     title="Ações"
                     breadcrumbs={[{ label: "Comercial" }]}
-                    description="O que fazer agora, por carro: recomendações operacionais do motor, focadas na próxima ação."
-                    actions={
-                        <Button color="outline-primary" onClick={() => setRefreshKey((value) => value + 1)}>
-                            <i className="ri-refresh-line me-1" />Atualizar
-                        </Button>
-                    }
+                    info="O que fazer agora, por carro: recomendações operacionais do motor, focadas na próxima ação."
                 />
+                {/* "Atualizar" no cabeçalho do cartão do resumo (design-system §1 e §2). */}
                 <Row className="mb-4">
                     <Col>
-                        <section
-                            style={{
-                                borderRadius: 16,
-                                padding: "16px 20px",
-                                background: "var(--vz-tertiary-bg)",
-                                border: "1px solid var(--vz-border-color)",
-                            }}
+                        <PageCard
+                            className="mb-0"
+                            title="Resumo"
+                            flush={false}
+                            actions={
+                                <Button size="sm" color="outline-primary" onClick={() => setRefreshKey((value) => value + 1)}>
+                                    <i className="ri-refresh-line me-1" />Atualizar
+                                </Button>
+                            }
                         >
                             <div className="d-flex gap-2 flex-wrap">
                                 {summaryOrder.map((decision) => (
@@ -200,7 +199,7 @@ export default function ActionCenterPage() {
                                     </span>
                                 ))}
                             </div>
-                        </section>
+                        </PageCard>
                     </Col>
                 </Row>
 

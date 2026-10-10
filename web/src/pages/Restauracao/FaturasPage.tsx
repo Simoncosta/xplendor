@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, Container, Row, Col, Spinner, Nav, NavItem, NavLink, Label } from "reactstrap";
+import { Button, Container, Row, Col, Spinner, Nav, NavItem, NavLink, Label, Input, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import classnames from "classnames";
 import { toast, ToastContainer } from "react-toastify";
@@ -8,7 +8,9 @@ import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import XSelect from "Components/Common/Select";
 import RestFilterBar from "Components/Common/RestFilterBar";
-import { getOcrInvoices, uploadOcrInvoice } from "helpers/laravel_helper";
+import ActionsMenu from "Components/Common/ActionsMenu";
+import ReasonButton from "Components/Common/ReasonButton";
+import { uploadOcrInvoice, getOcrInvoicesList, deleteOcrInvoice, restoreOcrInvoice, bulkDeleteOcrInvoices } from "helpers/laravel_helper";
 import { OcrInvoiceListRow, OcrInvoiceStatus, OcrLinkStatus, OCR_LINK_STATUS as LINK_STATUS } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
@@ -23,6 +25,9 @@ import PingwinSupplierDocumentsTab from "./PingwinSupplierDocumentsTab";
  *
  * UI-1: cada separador é um PageCard (ações e estado no cabeçalho) com um DataTable. A lista
  * lê todas as faturas (poucas por mês) e a tabela ordena, pesquisa e pagina no browser.
+ *
+ * F2c: apagar (fica 30 dias; "Mostrar apagadas" + "Repor"), apagar várias (seleção) e o mesmo
+ * ficheiro recusado no carregamento ("Já carregada: abrir a fatura #N").
  *
  * F3: coluna "PingWin" (a fatura está lançada? por que documento?). Liquidado e Loja vêm do
  * documento do PingWin ligado; o Tipo vem do QR.
@@ -100,26 +105,34 @@ export default function FaturasPage() {
     const [uploading, setUploading] = useState(false);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("");
+    // F2c — apagar / repor / apagar várias
+    const [showDeleted, setShowDeleted] = useState(false);
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [deleteOne, setDeleteOne] = useState<InvoiceRow | null>(null);
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
 
     const fetchRows = useCallback(async () => {
         if (!companyId) return;
         setLoading(true);
         try {
-            const first: any = await getOcrInvoices(companyId, { page: 1, perPage: API_PER_PAGE });
+            const del = showDeleted ? { deleted: 1 as const } : {};
+            const first: any = await getOcrInvoicesList(companyId, { page: 1, perPage: API_PER_PAGE, ...del });
             const paginator = first?.data?.invoices;
             let all: InvoiceRow[] = paginator?.data ?? [];
             for (let p = 2; p <= (paginator?.last_page ?? 1); p++) {
-                const next: any = await getOcrInvoices(companyId, { page: p, perPage: API_PER_PAGE });
+                const next: any = await getOcrInvoicesList(companyId, { page: p, perPage: API_PER_PAGE, ...del });
                 all = all.concat(next?.data?.invoices?.data ?? []);
             }
             setRows(all);
+            setSelected((prev) => new Set(Array.from(prev).filter((id) => all.some((r) => r.id === id))));
             setCap({ used: first?.data?.used_this_month ?? 0, cap: first?.data?.monthly_cap ?? 0 });
         } catch {
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [companyId]);
+    }, [companyId, showDeleted]);
 
     useEffect(() => { if (tab === "ocr") fetchRows(); }, [fetchRows, tab]);
 
@@ -142,13 +155,76 @@ export default function FaturasPage() {
             toast.info("A ler a fatura… será notificado no sino quando terminar.");
             await fetchRows();
         } catch (err: any) {
-            toast.error(err?.message ?? "Não foi possível carregar a fatura.");
+            if (err?.__status === 409 && err?.errors?.code === "ficheiro_duplicado") {
+                const id = err.errors.existing_id;
+                toast.error(<span>Já carregada: <button type="button" className="btn btn-link p-0 align-baseline" onClick={() => navigate(`/restauracao/faturas/${id}`)}>abrir a fatura #{id}</button></span>);
+            } else {
+                toast.error(err?.message ?? "Não foi possível carregar a fatura.");
+            }
         } finally {
             setUploading(false);
         }
     };
 
+    // ── F2c: apagar / repor / apagar várias ────────────────────────────────
+    const toggle = (id: number) => setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        return next;
+    });
+    const doDeleteOne = async () => {
+        if (!deleteOne) return;
+        setBusy(true);
+        try {
+            await deleteOcrInvoice(companyId, deleteOne.id);
+            toast.success("Fatura apagada. Pode repô-la durante 30 dias em “Mostrar apagadas”.");
+            setDeleteOne(null);
+            await fetchRows();
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível apagar a fatura.");
+        } finally {
+            setBusy(false);
+        }
+    };
+    const doBulkDelete = async () => {
+        setBusy(true);
+        try {
+            const r: any = await bulkDeleteOcrInvoices(companyId, Array.from(selected));
+            const skipped = r?.data?.skipped ?? [];
+            toast.success(`${r?.data?.deleted?.length ?? 0} fatura(s) apagada(s).`);
+            if (skipped.length) toast.warning(<span>Ficaram de fora:<ul className="mb-0 ps-3">{skipped.map((x: any) => <li key={x.id}>{x.number ?? `#${x.id}`}: {x.reason}</li>)}</ul></span>, { autoClose: 10000 });
+            setSelected(new Set());
+            setBulkOpen(false);
+            await fetchRows();
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível apagar as faturas.");
+        } finally {
+            setBusy(false);
+        }
+    };
+    const doRestore = async (r: InvoiceRow) => {
+        setBusy(true);
+        try {
+            await restoreOcrInvoice(companyId, r.id);
+            toast.success("Fatura reposta.");
+            await fetchRows();
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível repor a fatura.");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const selectCol: DTColumn<InvoiceRow> = {
+        id: "select", header: "Selecionar", hideable: false, mobile: "hide", sortable: false, className: "text-center", cellClassName: () => "text-center",
+        cell: (r) => <input type="checkbox" className="form-check-input mt-0" aria-label={`Selecionar a fatura ${r.number ?? r.id}`} checked={selected.has(r.id)}
+            onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.id)} />,
+    };
+    const deletedCol: DTColumn<InvoiceRow> = {
+        id: "deleted_at", header: "Apagada em", value: (r) => r.deleted_at, cell: (r) => fmtDate(r.deleted_at), nowrap: true, hideable: false,
+    };
     const columns: DTColumn<InvoiceRow>[] = [
+        ...(showDeleted ? [deletedCol] : [selectCol]),
         { id: "date", header: "Data", value: (r) => r.issue_date, cell: (r) => fmtDate(r.issue_date), nowrap: true, mobile: "subtitle" },
         { id: "number", header: "Documento", value: (r) => r.number, cell: (r) => <span className="fw-medium">{r.number || "—"}</span>, nowrap: true, mobile: "subtitle" },
         { id: "type", header: "Tipo", value: (r) => (r.doc_type ? DOC_TYPES[r.doc_type] ?? r.doc_type : null) },
@@ -170,6 +246,9 @@ export default function FaturasPage() {
     const cols = useDataColumns("restauracao.faturas.carregadas", columns);
 
     const shown = statusFilter ? rows.filter((r) => r.status === statusFilter) : rows;
+    const sel = rows.filter((r) => selected.has(r.id));
+    const selDeletable = sel.filter((r) => !r.delete_block);
+    const allSelected = shown.length > 0 && shown.every((r) => selected.has(r.id));
 
     return (
         <div className="page-content">
@@ -199,6 +278,17 @@ export default function FaturasPage() {
                             loading={loading && rows.length > 0}
                             actions={<>
                                 {cols.selector}
+                                {!showDeleted && shown.length > 0 && (
+                                    <Button size="sm" color="outline-primary" onClick={() => setSelected(allSelected ? new Set() : new Set(shown.map((r) => r.id)))}>
+                                        {allSelected ? "Desmarcar todas" : "Selecionar todas"}
+                                    </Button>
+                                )}
+                                {!showDeleted && (
+                                    <ActionsMenu size="sm" label="Mais ações das faturas" items={[
+                                        { label: `Apagar selecionadas${sel.length ? ` (${sel.length})` : ""}`, icon: "ri-delete-bin-line", danger: true,
+                                            disabledReason: sel.length === 0 ? "Selecione faturas na tabela." : null, onClick: () => setBulkOpen(true) },
+                                    ]} />
+                                )}
                                 <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
                                 <Button size="sm" color="primary" onClick={onPickFile} disabled={uploading}>
                                     {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
@@ -209,12 +299,19 @@ export default function FaturasPage() {
                                     search={search}
                                     onSearchChange={setSearch}
                                     searchPlaceholder="Pesquisar (fornecedor, NIF, documento)…"
-                                    activeCount={statusFilter ? 1 : 0}
-                                    onClear={() => { setSearch(""); setStatusFilter(""); }}
+                                    activeCount={(statusFilter ? 1 : 0) + (showDeleted ? 1 : 0)}
+                                    onClear={() => { setSearch(""); setStatusFilter(""); setShowDeleted(false); }}
                                 >
                                     <div style={{ flex: "1 1 180px", minWidth: 0 }}>
                                         <Label className="text-muted fw-semibold fs-11 text-uppercase mb-1" style={{ letterSpacing: "0.05em" }}>Estado</Label>
                                         <XSelect ariaLabel="Estado" small options={statusOptions} value={statusFilter} onChange={(v) => setStatusFilter(v)} searchable={false} placeholder="Todos" />
+                                    </div>
+                                    <div className="d-flex align-items-end" style={{ flex: "0 0 auto" }}>
+                                        <div className="form-check form-switch mb-1">
+                                            <Input type="switch" role="switch" id="show-deleted" className="form-check-input" checked={showDeleted}
+                                                onChange={(e) => { setShowDeleted(e.target.checked); setSelected(new Set()); }} />
+                                            <Label className="form-check-label fs-13" for="show-deleted">Mostrar apagadas</Label>
+                                        </div>
                                     </div>
                                 </RestFilterBar>
                             }
@@ -226,21 +323,66 @@ export default function FaturasPage() {
                                 loading={loading}
                                 search={search}
                                 initialSort={{ id: "date", desc: true }}
-                                onRowClick={(r) => navigate(`/restauracao/faturas/${r.id}`)}
-                                caption="Faturas carregadas"
+                                onRowClick={showDeleted ? undefined : (r) => navigate(`/restauracao/faturas/${r.id}`)}
+                                caption={showDeleted ? "Faturas apagadas" : "Faturas carregadas"}
                                 empty={{
-                                    message: statusFilter ? "Sem faturas neste estado." : "Ainda não carregou nenhuma fatura.",
+                                    message: showDeleted ? "Não há faturas apagadas." : statusFilter ? "Sem faturas neste estado." : "Ainda não carregou nenhuma fatura.",
                                     action: !statusFilter ? <Button color="outline-primary" size="sm" onClick={onPickFile}><i className="ri-upload-2-line me-1" />Carregar fatura</Button> : undefined,
                                 }}
-                                rowActions={(r) => (
-                                    <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-outline-primary">
-                                        {r.status === "validada" ? <><i className="ri-eye-line me-1" />Ver</> : <><i className="ri-check-double-line me-1" />Validar</>}
-                                    </Link>
+                                rowActions={(r) => showDeleted ? (
+                                    <ReasonButton size="sm" color="outline-primary" reason={r.restore_block} disabled={busy} onClick={() => doRestore(r)}>
+                                        <i className="ri-arrow-go-back-line me-1" />Repor
+                                    </ReasonButton>
+                                ) : (
+                                    <div className="d-flex gap-1 justify-content-end">
+                                        <Link to={`/restauracao/faturas/${r.id}`} className="btn btn-sm btn-outline-primary">
+                                            {r.status === "validada" ? <><i className="ri-eye-line me-1" />Ver</> : <><i className="ri-check-double-line me-1" />Validar</>}
+                                        </Link>
+                                        <ActionsMenu size="sm" label={`Mais ações: fatura ${r.number ?? r.id}`} items={[
+                                            { label: "Apagar", icon: "ri-delete-bin-line", danger: true, disabledReason: r.delete_block, onClick: () => setDeleteOne(r) },
+                                        ]} />
+                                    </div>
                                 )}
                             />
                         </PageCard>
                     </Col>
                 </Row>}
+
+                {/* F2c — confirmações */}
+                <Modal isOpen={!!deleteOne} toggle={() => !busy && setDeleteOne(null)} centered data-testid="delete-modal">
+                    <ModalHeader toggle={() => !busy && setDeleteOne(null)}>Apagar a fatura {deleteOne?.number ?? `#${deleteOne?.id}`}?</ModalHeader>
+                    <ModalBody>
+                        <p className="mb-2">A fatura sai da lista. Pode repô-la durante 30 dias em “Mostrar apagadas”; depois o ficheiro é apagado.</p>
+                        {deleteOne && (deleteOne.link_status === "lancada" || deleteOne.link_status === "lancada_guias") && (
+                            <p className="mb-2 fs-13 text-muted">Está ligada a um documento no PingWin: o documento no PingWin fica; só a fatura carregada é apagada e desligada.</p>
+                        )}
+                        <p className="mb-0 fs-13 text-muted">A leitura não volta ao limite mensal.</p>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setDeleteOne(null)} disabled={busy}>Cancelar</Button>
+                        <Button color="danger" onClick={doDeleteOne} disabled={busy}>{busy ? <Spinner size="sm" /> : "Apagar"}</Button>
+                    </ModalFooter>
+                </Modal>
+                <Modal isOpen={bulkOpen} toggle={() => !busy && setBulkOpen(false)} centered data-testid="bulk-delete-modal">
+                    <ModalHeader toggle={() => !busy && setBulkOpen(false)}>Apagar {selDeletable.length} fatura(s)?</ModalHeader>
+                    <ModalBody>
+                        <p className="mb-2">Saem da lista e podem ser repostas durante 30 dias em “Mostrar apagadas”. A leitura não volta ao limite mensal.</p>
+                        {sel.length > selDeletable.length && (
+                            <>
+                                <p className="mb-1 fs-13 fw-semibold">Ficam de fora:</p>
+                                <ul className="fs-13 mb-0 ps-3">
+                                    {sel.filter((r) => r.delete_block).map((r) => <li key={r.id}>{r.number ?? `#${r.id}`}: {r.delete_block}</li>)}
+                                </ul>
+                            </>
+                        )}
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setBulkOpen(false)} disabled={busy}>Cancelar</Button>
+                        <ReasonButton color="danger" reason={selDeletable.length === 0 ? "Nenhuma das selecionadas se pode apagar." : null} disabled={busy} onClick={doBulkDelete}>
+                            {busy ? <Spinner size="sm" /> : `Apagar ${selDeletable.length}`}
+                        </ReasonButton>
+                    </ModalFooter>
+                </Modal>
             </Container>
         </div>
     );

@@ -25,9 +25,9 @@ interface PromotionToggleProps {
  * state local desta informação. O optimistic update vive no parent (que
  * já faz `setPage(prev.data.map(c => c.id === carId ? {...c, promotion} : c))`).
  *
- * Razão para ser controlado: quando a lista re-ordena/filtra, o XTanStackTable
- * reaproveita os `<tr>` (key={row.id} é índice TanStack, não car.id), e o
- * React reaproveita os StarToggle pela posição na árvore. Um `useState(initial)`
+ * Razão para ser controlado: quando a lista muda (outra página, outra ordem, outros
+ * filtros), o React pode reaproveitar os StarToggle já montados (a tabela antiga
+ * usava o índice como chave das linhas; o DataTable usa o id, mas a regra mantém-se). Um `useState(initial)`
  * interno ignoraria o novo `initial` em re-render → state local stale do car
  * anterior → UI mente sobre o estado de marcação. Sendo controlado, o
  * componente reflecte sempre o car correcto, em qualquer ordem.

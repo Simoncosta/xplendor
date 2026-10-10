@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import ReactApexChart from "react-apexcharts";
-import Select from "react-select";
-import { Card, CardBody, Col } from "reactstrap";
+import { Col } from "reactstrap";
+import PageCard from "Components/Common/PageCard";
+import XSelect from "Components/Common/Select";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getPingwinMonthlyBilling } from "helpers/laravel_helper";
-import { reactSelectThemeSm } from "helpers/reactSelectStyles";
 import { PingwinMonthlyBilling } from "common/models/pingwin.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
@@ -98,43 +98,23 @@ export default function MonthlyBillingChart() {
 
     return (
         <Col xs={12}>
-            <Card className="mb-0">
-                <CardBody>
-                    <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-                        <div>
-                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Faturação mensal</p>
-                            <h5 className="mb-0 fw-semibold">Evolução por restaurante</h5>
-                        </div>
-                        <div className="d-flex flex-wrap align-items-center gap-2">
-                            <div className="xp-seg" role="tablist" aria-label="Período">
-                                {RANGES.map((r) => (
-                                    <button
-                                        key={r.key}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={range === r.key}
-                                        className={range === r.key ? "on" : ""}
-                                        onClick={() => setRange(r.key)}
-                                    >
-                                        {r.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div style={{ minWidth: 120 }}>
-                                <Select
-                                    styles={reactSelectThemeSm}
-                                    menuPortalTarget={document.body}
-                                    options={yearOptions}
-                                    value={yearOptions.find((o) => o.value === year) ?? yearOptions[0]}
-                                    onChange={(o: any) => o && setYear(o.value)}
-                                    isSearchable={false}
-                                    isDisabled={loading}
-                                    aria-label="Ano"
-                                />
-                            </div>
-                        </div>
+            {/* Período e ano no cabeçalho do cartão (design-system §2); o ano é um filtro sm. */}
+            <PageCard
+                className="mb-0"
+                title="Faturação mensal por restaurante"
+                flush={false}
+                loading={loading}
+                actions={<>
+                    <div className="xp-seg" role="tablist" aria-label="Período">
+                        {RANGES.map((r) => (
+                            <button key={r.key} type="button" role="tab" aria-selected={range === r.key} className={range === r.key ? "on" : ""} onClick={() => setRange(r.key)}>
+                                {r.label}
+                            </button>
+                        ))}
                     </div>
-
+                    <XSelect<number> small width={120} ariaLabel="Ano" options={yearOptions} value={year} onChange={setYear} searchable={false} disabled={loading} />
+                </>}
+            >
                     {!hasSeries ? (
                         <div className="text-center text-muted py-5">
                             <i className="ri-line-chart-line fs-3 d-block mb-2" />
@@ -143,8 +123,7 @@ export default function MonthlyBillingChart() {
                     ) : (
                         <ReactApexChart options={options} series={series} type="line" height={340} />
                     )}
-                </CardBody>
-            </Card>
+            </PageCard>
         </Col>
     );
 }

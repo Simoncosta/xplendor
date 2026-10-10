@@ -80,7 +80,7 @@ const CustomerHub = () => {
         <div className="page-content">
             <Container fluid>
                 <PageHeader title={c.name} crumbLabel="Ficha" breadcrumbs={[{ label: "Comercial" }, { label: "Clientes", to: "/customers" }]}
-                    description="Vendas, leads, documentos e histórico deste cliente." />
+                    info="Vendas, leads, documentos e histórico deste cliente." />
 
                 {/* Cabeçalho do cliente */}
                 <Card>

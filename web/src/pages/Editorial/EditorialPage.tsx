@@ -7,7 +7,7 @@ import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import { getAgencyCompanies } from "helpers/laravel_helper";
 import EditorialCalendarPage from "./EditorialCalendarPage";
 import AgencyEditorialAll, { AgencyClient } from "./AgencyEditorialAll";
-import XSelect from "./XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * A rota da Linha Editorial. Numa empresa (ou a trabalhar num cliente) é a Linha Editorial

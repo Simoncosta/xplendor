@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * XPLENDOR — Fatura de fornecedor lida por OCR (Fase A, validação humana). NÃO
@@ -16,6 +17,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 class OcrInvoice extends Model
 {
+    // F2c: apagar = soft delete (sai das listas e dos jobs; repõe-se enquanto o ficheiro existir).
+    use SoftDeletes;
+
     protected $fillable = [
         'company_id', 'supplier_id', 'supplier_name', 'supplier_nif', 'number', 'issue_date',
         'image_path', 'image_size_bytes', 'image_mime', 'model', 'ai_provider', 'ai_effort', 'prompt_version', 'confidence', 'status',
@@ -28,6 +32,8 @@ class OcrInvoice extends Model
         'link_search_pending', 'duplicate_of_id', 'guide_refs',
         // FB-1: diferença das linhas face ao QR aceite pela pessoa
         'check_accepted_by', 'check_accepted_at',
+        // F2c
+        'deleted_by', 'file_purged_at', 'file_sha256',
     ];
 
     protected $casts = [
@@ -46,6 +52,7 @@ class OcrInvoice extends Model
         'link_search_pending' => 'boolean',
         'guide_refs'        => 'array',
         'check_accepted_at' => 'datetime',
+        'file_purged_at'    => 'datetime',
     ];
 
     public function company(): BelongsTo

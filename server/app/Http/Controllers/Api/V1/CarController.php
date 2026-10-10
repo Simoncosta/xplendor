@@ -24,6 +24,8 @@ use App\Services\CarSaleService;
 use App\Services\CarService;
 use App\Services\MarketSnapshotService;
 use App\Services\MetaAdsCarSyncService;
+use App\Repositories\CarRepository;
+use App\Support\ListSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -94,20 +96,24 @@ class CarController extends Controller
             $filter['price_gross'] = ['between' => [$request->input('mincost'), $request->input('maxcost')]];
         }
 
-        $orderBy = $request->filled('sort_by')
-            ? [$request->input('sort_by') => $request->input('sort_direction')]
-            : [];
+        // Ordenação: ?sort=&dir= só pelas chaves de CarRepository::sorts() (o resto dá 422).
+        // Compatibilidade com o frontend anterior (sort_by/sort_direction; "price_gross" = preço).
+        if (! $request->filled('sort') && $request->filled('sort_by')) {
+            $legacy = (string) $request->input('sort_by');
+            $request->merge(['sort' => $legacy === 'price_gross' ? 'price' : $legacy, 'dir' => $request->input('sort_direction')]);
+        }
+        $sort = fn ($q) => ListSort::apply($q, $request, CarRepository::sorts(), [], 'cars.id');
 
         $paginate = $request->input('perPage')
             ? ApiPaginate::perPage($request)
             : null;
 
-        $cars = $this->carService->getAll(
+        $cars = $this->carService->getAllWithAnalytics(
             ['*'],
             ['images', 'externalImages', 'car360ExteriorImages', 'brand', 'model', 'vehicleAttribute', 'views:id,car_id', 'leads:id,car_id', 'interactions:id,car_id', 'company:id,fiscal_name'],
             $paginate,
             $filter,
-            $orderBy
+            $sort
         );
 
         return ApiResponse::success($cars, 'Cars fetched successfully.');

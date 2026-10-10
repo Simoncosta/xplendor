@@ -11,7 +11,7 @@ import XInputTextarea from "Components/Common/XInputTextarea";
 import XInputCheckbox from "Components/Common/XInputCheckbox";
 import XButton from "Components/Common/XButton";
 import AddressFields from "Components/Common/AddressFields";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 // Redux
 import { createCustomer, updateCustomer } from "slices/customers/thunk";
 // Models

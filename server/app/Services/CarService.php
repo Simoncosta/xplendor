@@ -30,9 +30,10 @@ class CarService extends BaseService
         parent::__construct($carRepository);
     }
 
-    public function getAll(array $columns = ['*'], array $relations = [], ?int $perPage = null, array $filters = [], array $orderBy = []): mixed
+    /** Lista de viaturas com as contagens; $sort aplica a ordenação permitida (CarRepository::sorts). */
+    public function getAllWithAnalytics(array $columns = ['*'], array $relations = [], ?int $perPage = null, array $filters = [], ?\Closure $sort = null): mixed
     {
-        return $this->carRepository->getAllWithAnalytics($columns, $relations, $perPage, $filters, $orderBy);
+        return $this->carRepository->getAllWithAnalytics($columns, $relations, $perPage, $filters, $sort);
     }
 
     public function getPublicCars(int $companyId, array $filters = [], ?int $perPage = null, array $orderBy = []): mixed

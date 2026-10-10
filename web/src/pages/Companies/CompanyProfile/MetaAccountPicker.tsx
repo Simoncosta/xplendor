@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import { getMetaAdAccounts, setMetaAccountApi } from "helpers/laravel_helper";
 
 /**

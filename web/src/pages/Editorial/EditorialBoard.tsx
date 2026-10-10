@@ -4,7 +4,7 @@ import { Badge, Button, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { approveAllPosts, getEditorialBoard, movePostStage } from "helpers/laravel_helper";
 import { POST_CHANNEL_META, channelIcons, mediaFormatLabel } from "common/models/editorialPost.model";
-import XSelect from "./XSelect";
+import XSelect from "Components/Common/Select";
 import { BoardData, BoardPost, STAGE_META, STAGE_ORDER, Stage, fmtInt, fmtRate } from "common/models/editorialWorkflow.model";
 
 /**

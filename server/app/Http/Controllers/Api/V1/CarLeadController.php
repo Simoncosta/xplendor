@@ -5,12 +5,31 @@ namespace App\Http\Controllers\Api\V1;
 use App\Helpers\ApiPaginate;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\CarLead;
 use App\Services\CarLeadService;
+use App\Support\ListSort;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CarLeadController extends Controller
 {
     public function __construct(protected CarLeadService $carLeadService) {}
+
+    /** Ordenações permitidas da lista (?sort=, via ListSort): data, nome, estado e carro (marca, modelo, versão). */
+    public static function sorts(): array
+    {
+        $car = fn () => DB::table('cars')->whereColumn('cars.id', 'car_leads.car_id')->limit(1);
+
+        return [
+            'created_at' => 'car_leads.created_at',
+            'name'       => 'car_leads.name',
+            'status'     => 'car_leads.status',
+            'car'        => fn ($q, string $dir) => $q
+                ->orderBy($car()->join('car_brands', 'car_brands.id', '=', 'cars.car_brand_id')->select('car_brands.name'), $dir)
+                ->orderBy($car()->join('car_models', 'car_models.id', '=', 'cars.car_model_id')->select('car_models.name'), $dir)
+                ->orderBy($car()->select('cars.version'), $dir),
+        ];
+    }
 
     public function index(Request $request, int $companyId)
     {
@@ -18,54 +37,41 @@ class CarLeadController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $filters = ['company_id' => $companyId];
-
-        if ($request->filled('search')) {
-            $filters['name'] = ['like' => $request->input('search')];
-        }
-
-        if ($request->filled('status')) {
-            $filters['status'] = $request->input('status');
-        }
-
-        if ($request->filled('origin')) {
-            $filters['origin'] = $request->input('origin');
-        }
-
-        // $orderBy = $request->filled('sort_by')
-        //     ? [$request->input('sort_by') => $request->input('sort_direction')]
-        //     : [];
-
-        $paginate = $request->input('perPage')
-            ? ApiPaginate::perPage($request)
-            : null;
-
-        $leads = $this->carLeadService->getAll(
-            [
-                'id',
-                'name',
-                'email',
-                'phone',
-                'message',
-                'notes',
-                'status',
-                'lost_reason',
-                'created_at',
-                'channel',
-                'utm_medium',
-                'utm_source',
-                'utm_campaign',
-                'car_id'
-            ],
-            [
+        $query = CarLead::query()
+            ->select([
+                'id', 'name', 'email', 'phone', 'message', 'notes', 'status', 'lost_reason', 'created_at',
+                'channel', 'utm_medium', 'utm_source', 'utm_campaign', 'car_id',
+            ])
+            ->with([
                 'car:id,status,license_plate,version,car_brand_id,car_model_id',
                 'car.brand:id,name',
                 'car.model:id,name',
-                'car.images:id,image,is_primary,order,car_id'
-            ],
-            $paginate,
-            $filters,
-        );
+                'car.images:id,image,is_primary,order,car_id',
+            ])
+            ->where('company_id', $companyId);
+
+        // Pesquisa: cada palavra tem de aparecer no nome, telefone, email ou no carro (marca, modelo, versão),
+        // como a pesquisa que a lista fazia no browser.
+        foreach (preg_split('/\s+/', trim((string) $request->input('search', ''))) ?: [] as $word) {
+            if ($word === '') {
+                continue;
+            }
+            $like = '%' . $word . '%';
+            $query->where(fn ($w) => $w->where('name', 'like', $like)->orWhere('phone', 'like', $like)->orWhere('email', 'like', $like)
+                ->orWhereHas('car', fn ($c) => $c->where('version', 'like', $like)
+                    ->orWhereHas('brand', fn ($b) => $b->where('name', 'like', $like))
+                    ->orWhereHas('model', fn ($m) => $m->where('name', 'like', $like))));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (string) $request->input('status'));
+        }
+
+        // Paginada (a lista): por omissão as mais recentes primeiro. Sem perPage (o funil lê todas): pelo id, como antes.
+        $paginate = $request->input('perPage') ? ApiPaginate::perPage($request) : null;
+        ListSort::apply($query, $request, self::sorts(), $paginate ? [['created_at', 'desc']] : [], 'car_leads.id');
+
+        $leads = $paginate ? $query->paginate($paginate) : $query->get();
 
         return ApiResponse::success($leads, 'Leads fetched successfully.');
     }

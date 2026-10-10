@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Button, Card, CardBody, Col, Container, Row, Spinner, Input, Label } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import {
     ICompanyTask, CompanyTaskStatus, TASK_COLUMNS, TASK_STATUS_META,
 } from "common/models/companyTask.model";
@@ -158,7 +158,7 @@ const CompanyTaskDetails = () => {
             <ToastContainer />
             <Container fluid>
                 <PageHeader title={task.title} crumbLabel="Tarefa" breadcrumbs={[{ label: "Equipa" }, { label: "Tarefas", to: "/tasks" }]}
-                    description={<>Tarefa #{task.id}{task.creator_name ? `, criada por ${task.creator_name}` : ""}.</>} />
+                    info={<>Tarefa #{task.id}{task.creator_name ? `, criada por ${task.creator_name}` : ""}.</>} />
                 <Row>
                     {/* Barra lateral — estilo TimeTracking do template (sem timer/anexos). */}
                     <Col xxl={3}>

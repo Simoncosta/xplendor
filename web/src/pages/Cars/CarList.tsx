@@ -214,7 +214,8 @@ const CarList = () => {
         maxcost !== undefined,
     ].filter(Boolean).length;
 
-    // Ordenação no servidor: a API só ordena por colunas da tabela cars (hoje, o preço).
+    // Ordenação no servidor (CarRepository::sorts): carro, preço, views, leads, interações e conversão.
+    // As chaves são os ids das colunas. Sem ordenação escolhida, a ordem de sempre (pelo id).
     const handleSortChange = useCallback((next: { id: string; key: string; desc: boolean } | null) => {
         setSort(next ? { field: next.key, direction: next.desc ? "desc" : "asc" } : { field: null, direction: null });
         setPagination((p) => ({ ...p, pageIndex: 0 }));
@@ -257,8 +258,8 @@ const CarList = () => {
                         carModelIds: carModelIds,
                         mincost: mincost,
                         maxcost: maxcost,
-                        sort_by: sort.field ?? undefined,
-                        sort_direction: sort.direction ?? undefined,
+                        sort: sort.field ?? undefined,
+                        dir: sort.direction ?? undefined,
                     })
                 );
             }
@@ -291,6 +292,9 @@ const CarList = () => {
         {
             id: "car",
             header: "Carro",
+            sortKey: "car", // marca, modelo e versão
+            // (o DataTable só ordena colunas com value; em modo servidor a ordem vem da API)
+            value: (car) => [car.brand?.name, car.model?.name, car.version].filter(Boolean).join(" "),
             hideable: false,
             mobile: "title",
             cell: (car) => {
@@ -334,7 +338,7 @@ const CarList = () => {
         {
             id: "price",
             header: "Preço",
-            sortKey: "price_gross",
+            sortKey: "price",
             value: (car) => car.price_gross,
             cell: (car) => (
                 <CarPriceDisplay
@@ -347,20 +351,23 @@ const CarList = () => {
                 />
             ),
         },
-        { id: "views", header: "Views", value: (car) => getMetricCount(car.views), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.views)}</span> },
+        { id: "views", header: "Views", sortKey: "views", value: (car) => getMetricCount(car.views), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.views)}</span> },
         {
             id: "leads",
             header: "Leads",
+            sortKey: "leads",
             value: (car) => getMetricCount(car.leads),
             cell: (car) => {
                 const leads = getMetricCount(car.leads);
                 return <span className={`fw-semibold ${leads > 0 ? "text-success" : "text-body"}`}>{leads}</span>;
             },
         },
-        { id: "interactions", header: "Interações", value: (car) => getMetricCount(car.interactions), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.interactions)}</span> },
+        { id: "interactions", header: "Interações", sortKey: "interactions", value: (car) => getMetricCount(car.interactions), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.interactions)}</span> },
         {
             id: "conversion",
             header: "Conversão",
+            sortKey: "conversion",
+            value: (car) => { const v = getMetricCount(car.views); return v ? getMetricCount(car.leads) / v : 0; },
             cell: (car) => (
                 <div>
                     <div className="fw-semibold text-body">{formatConversionRate(getMetricCount(car.views), getMetricCount(car.leads))}</div>
@@ -620,7 +627,7 @@ const CarList = () => {
                             from: meta?.from ?? 0,
                             to: meta?.to ?? 0,
                             onPageChange: (p) => setPagination((s) => ({ ...s, pageIndex: p - 1 })),
-                            sort: sort.field === "price_gross" ? { id: "price", desc: sort.direction === "desc" } : null,
+                            sort: sort.field ? { id: sort.field, desc: sort.direction === "desc" } : null,
                             onSortChange: handleSortChange,
                         }}
                     />

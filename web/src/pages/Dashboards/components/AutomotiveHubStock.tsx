@@ -141,10 +141,6 @@ function FunnelCard({ companyId }: { companyId: number }) {
         return () => { alive = false; };
     }, [companyId, days, page, sort]);
 
-    const onSort = (key: FunnelSortKey) => {
-        setSort((s) => (s.by === key ? { by: key, direction: s.direction === "desc" ? "asc" : "desc" } : { by: key, direction: "desc" }));
-        setPage(1);
-    };
 
     const t = data?.totals;
     const DEFAULT_SORT = { by: "days_in_stock" as FunnelSortKey, direction: "desc" as SortDirection };

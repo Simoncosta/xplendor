@@ -325,6 +325,10 @@ Route::prefix('v1')->group(function () {
                     Route::get('/ocr/invoices/{invoiceId}/image', [CompanyInvoiceOcrController::class, 'image']);
                     Route::put('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'update']);
                     Route::post('/ocr/invoices/{invoiceId}/reprocess', [CompanyInvoiceOcrController::class, 'reprocess']);
+                    // F2c: apagar (soft) / repor / apagar várias
+                    Route::post('/ocr/invoices/bulk-delete', [CompanyInvoiceOcrController::class, 'bulkDestroy']);
+                    Route::delete('/ocr/invoices/{invoiceId}', [CompanyInvoiceOcrController::class, 'destroy'])->whereNumber('invoiceId');
+                    Route::post('/ocr/invoices/{invoiceId}/restore', [CompanyInvoiceOcrController::class, 'restore'])->whereNumber('invoiceId');
                     // F3: ligação Fatura OCR ↔ documento(s) do PingWin (só espelhos; nunca escreve no PingWin)
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinSearch']);
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link/confirm', [CompanyInvoiceOcrController::class, 'pingwinConfirm']);

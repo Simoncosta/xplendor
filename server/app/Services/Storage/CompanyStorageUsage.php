@@ -62,7 +62,8 @@ final class CompanyStorageUsage
         $add($scope(DB::table('media_assets'))->groupBy('company_id')->selectRaw(
             'company_id, SUM(CASE WHEN original_deleted_at IS NULL AND status <> ? THEN size_bytes ELSE 0 END) + SUM(COALESCE(variants_bytes, 0)) AS bytes, '
             . 'SUM(CASE WHEN status = ? AND variants_bytes IS NULL THEN 1 ELSE 0 END) AS missing', [MediaAsset::REJECTED, MediaAsset::READY])->get(), 'media');
-        $add($scope(DB::table('ocr_invoices')->whereNotNull('image_path'))->groupBy('company_id')
+        // F2c: os ficheiros das faturas apagadas ficam 30 dias; depois de purgados já não ocupam espaço.
+        $add($scope(DB::table('ocr_invoices')->whereNotNull('image_path')->whereNull('file_purged_at'))->groupBy('company_id')
             ->selectRaw('company_id, SUM(COALESCE(image_size_bytes, 0)) AS bytes, SUM(CASE WHEN image_size_bytes IS NULL THEN 1 ELSE 0 END) AS missing')->get(), 'ocr');
         $add($scope(DB::table('expense_charges'))->groupBy('company_id')->selectRaw(
             'company_id, SUM(COALESCE(invoice_size_bytes, 0)) + SUM(COALESCE(proof_size_bytes, 0)) AS bytes, '

@@ -8,9 +8,6 @@ import InfoTip from "./InfoTip";
  * em toda a app) com o (i) da explicação ao lado e os breadcrumbs à direita. Por baixo, só os
  * FILTROS que valem para a página inteira (período, loja). As ações da página ficam DENTRO dos
  * cartões (PageCard), no cabeçalho do quadro a que dizem respeito.
- *
- * Compatibilidade (até à UI-2): as páginas que ainda passam `description` e `actions` continuam
- * a desenhar a barra antiga por baixo do título, exatamente como antes.
  */
 export type Crumb = { label: string; to?: string };
 
@@ -24,15 +21,10 @@ type Props = {
     filters?: React.ReactNode;
     /** Texto do último breadcrumb, quando o título não é texto simples. */
     crumbLabel?: string;
-    /** @deprecated Usar `info`. Mantido para as páginas ainda não migradas (barra antiga). */
-    description?: React.ReactNode;
-    /** @deprecated As ações vão para o cabeçalho do PageCard. Mantido para as páginas ainda não migradas. */
-    actions?: React.ReactNode;
 };
 
-export default function PageHeader({ title, breadcrumbs = [], info, filters, description, actions, crumbLabel }: Props) {
+export default function PageHeader({ title, breadcrumbs = [], info, filters, crumbLabel }: Props) {
     const current = crumbLabel ?? (typeof title === "string" ? title : "");
-    const legacyBar = !!(description || actions);
     return (
         <>
             <Row>
@@ -59,15 +51,12 @@ export default function PageHeader({ title, breadcrumbs = [], info, filters, des
                     </div>
                 </Col>
             </Row>
-            {(legacyBar || filters) && (
+            {filters && (
                 <div className="xp-page-toolbar" data-testid="page-toolbar">
-                    <div className="xp-page-toolbar-text">{description}</div>
-                    {(filters || actions) && (
-                        <div className="xp-page-toolbar-actions">
-                            {filters && <div className="xp-page-filters" data-testid="page-filters">{filters}</div>}
-                            {actions}
-                        </div>
-                    )}
+                    <div className="xp-page-toolbar-text" />
+                    <div className="xp-page-toolbar-actions">
+                        <div className="xp-page-filters" data-testid="page-filters">{filters}</div>
+                    </div>
                 </div>
             )}
         </>

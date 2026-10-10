@@ -575,11 +575,30 @@ class OcrPingwinLinkService
             return null;
         }
 
-        return OcrInvoice::where('company_id', $inv->company_id)->where('id', '<', $inv->id)
+        $same = OcrInvoice::where('company_id', $inv->company_id)->whereKeyNot($inv->id)
             ->whereIn('status', self::LINKABLE_STATUSES)
             ->orderBy('id')->get(['id', 'supplier_nif', 'number', 'atcud', 'status'])
-            ->first(fn (OcrInvoice $o) => ($atcud !== '' && trim((string) $o->atcud) === $atcud)
+            ->filter(fn (OcrInvoice $o) => ($atcud !== '' && trim((string) $o->atcud) === $atcud)
                 || ($nif !== '' && $number !== '' && self::digits($o->supplier_nif) === $nif && preg_replace('/\s+/', '', (string) $o->number) === $number));
+        if ($same->isEmpty()) {
+            return null;
+        }
+        // A ORIGINAL é a mais adiantada (ligação confirmada/lançada pela XPLENDOR → validada → com
+        // ligação ao PingWin); só em empate, a mais antiga. Assim, reprocessar uma fatura antiga não
+        // passa a "duplicada" a que já está ligada e validada.
+        $rank = function (OcrInvoice $o): array {
+            $links = OcrInvoicePingwinLink::where('ocr_invoice_id', $o->id)->get(['method', 'confirmed_at']);
+
+            return [
+                $links->contains(fn ($l) => $l->confirmed_at !== null || $l->method === OcrInvoicePingwinLink::XPLENDOR) ? 0 : 1,
+                $o->status === 'validada' ? 0 : 1,
+                $links->isNotEmpty() ? 0 : 1,
+                $o->id,
+            ];
+        };
+        $best = $same->sortBy(fn ($o) => $rank($o))->first();
+
+        return $rank($best) < $rank($inv) ? $best : null;
     }
 
     /** @return array<string, PingwinSupplierDocument> por docheader_id */

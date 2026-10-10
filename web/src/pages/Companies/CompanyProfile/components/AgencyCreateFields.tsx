@@ -3,7 +3,7 @@ import { useFormikContext } from "formik";
 import { Col, Input, Label, Row } from "reactstrap";
 import { getAdminAgencies, getEditorialSectors } from "helpers/laravel_helper";
 import { getHomeCompanyId } from "helpers/workingCompany";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * Criar empresa (só o root): o ramo (decide os módulos à nascença), "Esta empresa é uma

@@ -3,6 +3,8 @@
 namespace App\Repositories;
 
 use App\Models\Car;
+use App\Models\CarBrand;
+use App\Models\CarModel;
 use App\Repositories\Contracts\CarRepositoryInterface;
 use App\Repositories\CarAdSpendRepository;
 use Illuminate\Support\Collection;
@@ -15,12 +17,34 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
         parent::__construct($model);
     }
 
+    /**
+     * Ordenações permitidas da lista de viaturas (?sort=, via App\Support\ListSort): chave → coluna
+     * escrita aqui, ou função. Views, leads e interações são as contagens do withCount (alias);
+     * a conversão é leads ÷ views (0 quando não há views, como no ecrã).
+     *
+     * @return array<string, string|\Closure>
+     */
+    public static function sorts(): array
+    {
+        return [
+            'car' => fn ($q, string $dir) => $q
+                ->orderBy(CarBrand::select('name')->whereColumn('car_brands.id', 'cars.car_brand_id'), $dir)
+                ->orderBy(CarModel::select('name')->whereColumn('car_models.id', 'cars.car_model_id'), $dir)
+                ->orderBy('cars.version', $dir),
+            'price'        => 'cars.price_gross',
+            'views'        => 'views_count',
+            'leads'        => 'leads_count',
+            'interactions' => 'interactions_count',
+            'conversion'   => fn ($q, string $dir) => $q->orderByRaw('COALESCE((leads_count * 1.0) / NULLIF(views_count, 0), 0) ' . ($dir === 'desc' ? 'desc' : 'asc')),
+        ];
+    }
+
     public function getAllWithAnalytics(
         array $columns = ['*'],
         array $relations = [],
         ?int $perPage = null,
         array $filters = [],
-        array $orderBy = []
+        ?\Closure $sort = null
     ): mixed {
         $query = $this->model->select($columns);
 
@@ -50,52 +74,25 @@ class CarRepository extends BaseRepository implements CarRepositoryInterface
             }
 
             if (is_array($value) && isset($value['like'])) {
-                $query->where($field, 'LIKE', '%' . $value['like'] . '%');
+                $query->where(self::column($field), 'LIKE', '%' . $value['like'] . '%');
                 continue;
             }
 
             if (is_array($value) && isset($value['between']) && is_array($value['between'])) {
-                $query->whereBetween($field, $value['between']);
+                $query->whereBetween(self::column($field), $value['between']);
                 continue;
             }
 
             if (is_array($value)) {
-                $query->whereIn($field, $value);
+                $query->whereIn(self::column($field), $value);
                 continue;
             }
 
-            $query->where($field, $value);
+            $query->where(self::column($field), $value);
         }
 
-        if (!empty($orderBy)) {
-            foreach ($orderBy as $field => $direction) {
-                $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
-
-                if ($field === 'views') {
-                    $query->orderBy('views_count', $direction);
-                    continue;
-                }
-
-                if ($field === 'leads') {
-                    $query->orderBy('leads_count', $direction);
-                    continue;
-                }
-
-                if ($field === 'interactions') {
-                    $query->orderBy('interactions_count', $direction);
-                    continue;
-                }
-
-                if ($field === 'brand') {
-                    $query
-                        ->leftJoin('car_brands', 'cars.car_brand_id', '=', 'car_brands.id')
-                        ->orderBy('car_brands.name', $direction)
-                        ->select('cars.*');
-                    continue;
-                }
-
-                $query->orderBy($field, $direction);
-            }
+        if ($sort) {
+            $sort($query);
         }
 
         return $perPage

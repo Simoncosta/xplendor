@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import Select from "react-select";
-import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner, Table } from "reactstrap";
+import { Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ClientMark from "Components/Common/ClientMark";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import {
@@ -13,8 +14,7 @@ import {
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { confirmAction } from "helpers/swal";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect, { XMultiSelect } from "Components/Common/Select";
 import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkModal";
 import { isAdminRole } from "helpers/roles";
 import { useAccess } from "contexts/ModulesContext";
@@ -76,7 +76,7 @@ export default function AgencyPanelPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <PageHeader title="Painel da agência" description="Por cliente, o que está para publicar, atrasado, à espera de aprovação e em produção." />
+                <PageHeader title="Painel da agência" info="Por cliente, o que está para publicar, atrasado, à espera de aprovação e em produção." />
                 <Nav tabs className="nav-tabs-custom mb-3 flex-nowrap overflow-auto text-nowrap">
                     {tabs.map(([k, l, i]) => (
                         <NavItem key={k}><NavLink href="#" active={tab === k} onClick={(e) => { e.preventDefault(); setTab(k); }}><i className={`${i} me-1`} />{l}</NavLink></NavItem>
@@ -108,76 +108,50 @@ function ClientsTab({ agencyId, isAgencyAdmin }: { agencyId: number; isAgencyAdm
             : <Link to={to} className="text-muted" aria-label={`${label}: 0, abrir a Linha Editorial de ${row.company.name}`}>0</Link>;
     };
     const totals = useMemo(() => (rows ?? []).reduce((a, r) => ({ today: a.today + r.today, overdue: a.overdue + r.overdue, awaiting: a.awaiting + r.awaiting, production: a.production + r.production }), { today: 0, overdue: 0, awaiting: 0, production: 0 }), [rows]);
+    const cols = useDataColumns<PanelRow>("agencia.clientes", [
+        {
+            id: "client", header: "Cliente", value: (r) => r.company.name, hideable: false, mobile: "title",
+            cell: (r) => (
+                <span className="d-inline-flex align-items-center gap-2">
+                    <ClientMark name={r.company.name} logoPath={r.company.logo_path} size={26} />
+                    <span>{r.company.name}{r.company.is_agency && <span className="text-muted fs-12 ms-1">(a agência)</span>}</span>
+                </span>
+            ),
+        },
+        { id: "today", header: "Para publicar hoje", align: "center", value: (r) => r.today, cell: (r) => cell(r, r.today, "calendario", "success", "Para publicar hoje") },
+        { id: "overdue", header: "Atrasadas", align: "center", value: (r) => r.overdue, cell: (r) => cell(r, r.overdue, "calendario", "danger", "Atrasadas") },
+        { id: "awaiting", header: "À espera de aprovação", align: "center", value: (r) => r.awaiting, cell: (r) => cell(r, r.awaiting, "kanban", "warning", "À espera de aprovação") },
+        { id: "production", header: "Em produção", align: "center", value: (r) => r.production, cell: (r) => cell(r, r.production, "kanban", "primary", "Em produção") },
+    ] as DTColumn<PanelRow>[]);
 
     if (rows === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
 
     return (
-        <Card>
-            <CardHeader className="d-flex flex-wrap align-items-center gap-2">
-                <div className="me-auto">
-                    <h5 className="card-title mb-0">Clientes</h5>
-                    <small className="text-muted">Clique num número para abrir a Linha Editorial desse cliente.</small>
-                </div>
+        <PageCard
+            title="Clientes"
+            info={<>Clique num número para abrir a Linha Editorial desse cliente. "Em produção" conta as publicações em Produção e em Revisão interna (o trabalho ainda do lado da equipa).</>}
+            status={<>{rows.length} cliente{rows.length === 1 ? "" : "s"}</>}
+            actions={<>
+                {cols.selector}
                 <Link to="/editorial?cliente=todos" className="btn btn-outline-primary btn-sm"><i className="ri-calendar-2-line me-1" />Linha Editorial de todos</Link>
-            </CardHeader>
-            <CardBody>
-                {rows.length === 0 ? (
-                    <p className="text-muted mb-0">Ainda não há clientes com a Linha Editorial ativa nesta agência.</p>
-                ) : (
-                    <div className="table-responsive">
-                        <Table className="align-middle mb-0" data-testid="agency-panel">
-                            <thead className="table-light">
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th className="text-center">Para publicar hoje</th>
-                                    <th className="text-center">Atrasadas</th>
-                                    <th className="text-center">À espera de aprovação</th>
-                                    <th className="text-center" title="Produção e Revisão interna">Em produção</th>
-                                    {isAgencyAdmin && <th aria-label="Ações" />}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((r) => (
-                                    <tr key={r.company.id}>
-                                        <td>
-                                            <span className="d-inline-flex align-items-center gap-2">
-                                                <ClientMark name={r.company.name} logoPath={r.company.logo_path} size={26} />
-                                                <span>{r.company.name}{r.company.is_agency && <span className="text-muted fs-12 ms-1">(a agência)</span>}</span>
-                                            </span>
-                                        </td>
-                                        <td className="text-center">{cell(r, r.today, "calendario", "success", "Para publicar hoje")}</td>
-                                        <td className="text-center">{cell(r, r.overdue, "calendario", "danger", "Atrasadas")}</td>
-                                        <td className="text-center">{cell(r, r.awaiting, "kanban", "warning", "À espera de aprovação")}</td>
-                                        <td className="text-center">{cell(r, r.production, "kanban", "primary", "Em produção")}</td>
-                                        {isAgencyAdmin && (
-                                            <td className="text-end">
-                                                <ActionsMenu size="sm" label={`Mais ações: ${r.company.name}`} items={[
-                                                    { label: "Enviar link de configuração", icon: "ri-send-plane-line", onClick: () => setSetupFor({ id: r.company.id, name: r.company.name }) },
-                                                ]} />
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                            {rows.length > 1 && (
-                                <tfoot>
-                                    <tr className="fw-semibold">
-                                        <td>Total</td>
-                                        <td className="text-center">{totals.today}</td>
-                                        <td className="text-center">{totals.overdue}</td>
-                                        <td className="text-center">{totals.awaiting}</td>
-                                        <td className="text-center">{totals.production}</td>
-                                        {isAgencyAdmin && <td />}
-                                    </tr>
-                                </tfoot>
-                            )}
-                        </Table>
-                    </div>
-                )}
-                <SetupLinkModal isOpen={!!setupFor} onClose={() => setSetupFor(null)} companyId={setupFor?.id ?? null} companyName={setupFor?.name} />
-                <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />"Em produção" conta as publicações em Produção e em Revisão interna (o trabalho ainda do lado da equipa).</p>
-            </CardBody>
-        </Card>
+            </>}
+        >
+            <DataTable
+                data-testid="agency-panel"
+                columns={cols}
+                data={rows}
+                rowKey={(r) => r.company.id}
+                caption="Clientes da agência"
+                empty={{ message: "Ainda não há clientes com a Linha Editorial ativa nesta agência." }}
+                footerRow={rows.length > 1 ? { label: "Total", cells: { today: totals.today, overdue: totals.overdue, awaiting: totals.awaiting, production: totals.production } } : undefined}
+                rowActions={isAgencyAdmin ? (r) => (
+                    <ActionsMenu size="sm" label={`Mais ações: ${r.company.name}`} items={[
+                        { label: "Enviar link de configuração", icon: "ri-send-plane-line", onClick: () => setSetupFor({ id: r.company.id, name: r.company.name }) },
+                    ]} />
+                ) : undefined}
+            />
+            <SetupLinkModal isOpen={!!setupFor} onClose={() => setSetupFor(null)} companyId={setupFor?.id ?? null} companyName={setupFor?.name} />
+        </PageCard>
     );
 }
 
@@ -212,42 +186,33 @@ function RequestsTab({ agencyId }: { agencyId: number }) {
         finally { setBusy(false); }
     };
 
+    const reqCols = useDataColumns<Req>("agencia.pedidos", [
+        { id: "name", header: "Empresa", value: (r) => r.name, hideable: false, mobile: "title",
+            cell: (r) => <><div className="fw-medium">{r.name}</div>{r.contact_name && <div className="text-muted fs-12">{r.contact_name}{r.contact_email ? `, ${r.contact_email}` : ""}</div>}</> },
+        { id: "sector", header: "Ramo", value: (r) => r.sector?.name ?? "", cell: (r) => r.sector?.name ?? <span className="text-muted">Sem ramo</span> },
+        { id: "requested", header: "Pedido", value: (r) => r.requested_at ?? undefined, nowrap: true, cell: (r) => <>{fmtDate(r.requested_at)}<div className="text-muted fs-12">{r.requested_by}</div></> },
+        { id: "status", header: "Estado", value: (r) => STATUS[r.status].label,
+            cell: (r) => <>
+                <Badge color={STATUS[r.status].color} className="fw-normal">{STATUS[r.status].label}</Badge>
+                {r.decided_at && <div className="text-muted fs-12">{fmtDate(r.decided_at)}</div>}
+                {r.status === "declined" && r.decline_reason && <div className="fs-12 mt-1">Motivo: {r.decline_reason}</div>}
+            </> },
+    ] as DTColumn<Req>[]);
+
     if (list === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
 
     return (
-        <Card>
-            <CardHeader className="d-flex flex-wrap align-items-center gap-2">
-                <div className="me-auto">
-                    <h5 className="card-title mb-0">Pedidos de nova empresa gerida</h5>
-                    <small className="text-muted">A XPLENDOR aprova ou recusa cada pedido. Quando aprovado, a empresa aparece no seletor "A trabalhar em".</small>
-                </div>
-                {canRequest
-                    ? <Button color="primary" size="sm" onClick={() => setOpen(true)}><i className="ri-add-line me-1" />Pedir nova empresa</Button>
-                    : <small className="text-muted"><i className="ri-information-line me-1" />Só o administrador da agência pede novas empresas.</small>}
-            </CardHeader>
-            <CardBody>
-                {list.length === 0 ? <p className="text-muted mb-0">Ainda não há pedidos.</p> : (
-                    <div className="table-responsive">
-                        <Table className="align-middle mb-0" data-testid="agency-requests">
-                            <thead className="table-light"><tr><th>Empresa</th><th>Ramo</th><th>Pedido</th><th>Estado</th></tr></thead>
-                            <tbody>
-                                {list.map((r) => (
-                                    <tr key={r.id}>
-                                        <td><div className="fw-medium">{r.name}</div>{r.contact_name && <div className="text-muted fs-12">{r.contact_name}{r.contact_email ? `, ${r.contact_email}` : ""}</div>}</td>
-                                        <td>{r.sector?.name ?? <span className="text-muted">Sem ramo</span>}</td>
-                                        <td className="text-nowrap">{fmtDate(r.requested_at)}<div className="text-muted fs-12">{r.requested_by}</div></td>
-                                        <td>
-                                            <Badge color={STATUS[r.status].color} className="fw-normal">{STATUS[r.status].label}</Badge>
-                                            {r.decided_at && <div className="text-muted fs-12">{fmtDate(r.decided_at)}</div>}
-                                            {r.status === "declined" && r.decline_reason && <div className="fs-12 mt-1">Motivo: {r.decline_reason}</div>}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    </div>
-                )}
-            </CardBody>
+        <PageCard
+            title="Pedidos de nova empresa gerida"
+            info={<>A XPLENDOR aprova ou recusa cada pedido. Quando aprovado, a empresa aparece no seletor "A trabalhar em".</>}
+            actions={<>
+                {reqCols.selector}
+                <ReasonButton color="primary" size="sm" onClick={() => setOpen(true)} reason={canRequest ? null : "Só o administrador da agência pede novas empresas."}>
+                    <i className="ri-add-line me-1" />Pedir nova empresa
+                </ReasonButton>
+            </>}
+        >
+            <DataTable data-testid="agency-requests" columns={reqCols} data={list} rowKey={(r) => r.id} caption="Pedidos de nova empresa" empty={{ message: "Ainda não há pedidos." }} />
 
             <Modal isOpen={open} toggle={() => setOpen(false)} centered>
                 <ModalHeader toggle={() => setOpen(false)}>Pedir nova empresa gerida</ModalHeader>
@@ -276,7 +241,7 @@ function RequestsTab({ agencyId }: { agencyId: number }) {
                     <Button color="primary" disabled={!!missing || busy} onClick={submit}>{busy ? <Spinner size="sm" /> : "Enviar pedido"}</Button>
                 </ModalFooter>
             </Modal>
-        </Card>
+        </PageCard>
     );
 }
 
@@ -323,12 +288,11 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
     if (rows === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
 
     return (
-        <Card>
-            <CardHeader>
-                <h5 className="card-title mb-0">Atribuições</h5>
-                <small className="text-muted">Por omissão toda a equipa vê todos os clientes. Pode limitar um cliente a pessoas escolhidas: quem não está atribuído deixa de o ver em todo o lado. Os administradores da agência veem sempre todos. Para deixar de gerir um cliente, use "Terminar relação" no menu da linha.</small>
-            </CardHeader>
-            <CardBody>
+        <PageCard
+            title="Atribuições"
+            flush={false}
+            info={<>Por omissão toda a equipa vê todos os clientes. Pode limitar um cliente a pessoas escolhidas: quem não está atribuído deixa de o ver em todo o lado. Os administradores da agência veem sempre todos. Para deixar de gerir um cliente, use "Terminar relação" no menu da linha.</>}
+        >
                 {rows.length === 0 ? <p className="text-muted mb-0">A agência ainda não gere clientes.</p> : (
                     <div className="d-flex flex-column gap-3" data-testid="agency-assignments">
                         {rows.map((r) => (
@@ -345,10 +309,8 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
                                     </Col>
                                     <Col md={4}>
                                         {r.team_scope === "assigned" ? (
-                                            <Select isMulti styles={reactSelectTheme} menuPortalTarget={document.body} aria-label={`Pessoas atribuídas a ${r.company.name}`}
-                                                placeholder="Escolher pessoas…" noOptionsMessage={() => "Sem pessoas"} options={memberOptions}
-                                                value={memberOptions.filter((o) => r.member_ids.includes(o.value))}
-                                                onChange={(v: any) => update(r.company.id, { member_ids: (v ?? []).map((o: any) => o.value) })} />
+                                            <XMultiSelect<number> small ariaLabel={`Pessoas atribuídas a ${r.company.name}`} placeholder="Escolher pessoas…" options={memberOptions}
+                                                value={r.member_ids} onChange={(ids) => update(r.company.id, { member_ids: ids })} />
                                         ) : <span className="text-muted fs-13">Toda a equipa da agência vê este cliente.</span>}
                                     </Col>
                                     <Col md={1} className="text-md-end d-flex justify-content-md-end gap-1">
@@ -366,7 +328,6 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
                         ))}
                     </div>
                 )}
-            </CardBody>
 
             <SetupLinkModal isOpen={!!setupFor} onClose={() => setSetupFor(null)} companyId={setupFor?.id ?? null} companyName={setupFor?.name} />
             <Modal isOpen={!!ending} toggle={() => !endBusy && setEnding(null)} centered>
@@ -383,7 +344,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
                     </ReasonButton>
                 </ModalFooter>
             </Modal>
-        </Card>
+        </PageCard>
     );
 }
 
@@ -435,18 +396,33 @@ function ManagementTab({ agencyId }: { agencyId: number }) {
         catch (e: any) { toast.error(errorText(e, "Não foi possível retirar o pedido.")); }
     };
 
+    const mgmtCols = useDataColumns<MgmtReq>("agencia.pedidos-gestao", [
+        {
+            id: "company", header: "Empresa", value: (r) => r.company?.name ?? r.identifier ?? "", hideable: false, mobile: "title",
+            cell: (r) => <>
+                {r.company ? <div className="fw-medium">{r.company.name}</div> : null}
+                <div className={r.company ? "text-muted fs-12" : "fw-medium"}>
+                    {r.identifier_scrubbed ? <span className="text-muted">Dados apagados</span> : <>{r.identifier_type === "nipc" ? "NIPC" : "Email"}: {r.identifier}</>}
+                </div>
+            </>,
+        },
+        { id: "requested", header: "Pedido", value: (r) => r.requested_at ?? undefined, nowrap: true, cell: (r) => <>{fmtDate(r.requested_at)}<div className="text-muted fs-12">{r.requested_by}</div></> },
+        { id: "status", header: "Estado", value: (r) => MGMT_STATUS[r.status].label,
+            cell: (r) => <>
+                <Badge color={MGMT_STATUS[r.status].color} className="fw-normal">{MGMT_STATUS[r.status].label}</Badge>
+                {r.status === "pending" && r.expires_at && <div className="text-muted fs-12">Expira a {fmtDate(r.expires_at)}</div>}
+                {r.status === "declined" && r.decline_reason && <div className="fs-12 mt-1">Motivo: {r.decline_reason}</div>}
+            </> },
+    ] as DTColumn<MgmtReq>[]);
+
     if (list === null) return <div className="text-center py-5"><Spinner color="primary" /></div>;
 
     return (
         <Row className="g-3">
             {canRequest && (
                 <Col xl={4}>
-                    <Card className="h-100" data-testid="management-request-form">
-                        <CardHeader>
-                            <h5 className="card-title mb-0">Pedir gestão de uma empresa</h5>
-                            <small className="text-muted">Para uma empresa que já usa a XPLENDOR. Os administradores dela aceitam ou recusam na app.</small>
-                        </CardHeader>
-                        <CardBody>
+                    <PageCard className="h-100" data-testid="management-request-form" title="Pedir gestão de uma empresa" flush={false}
+                        info="Para uma empresa que já usa a XPLENDOR. Os administradores dela aceitam ou recusam na app. Por privacidade, a resposta é sempre a mesma: só sabe se a empresa existe quando os administradores dela responderem.">
                             <div className="mb-3"><div className="xp-seg" role="tablist" aria-label="Identificar a empresa por">
                                 <button type="button" role="tab" aria-selected={form.by === "nipc"} className={form.by === "nipc" ? "on" : ""} onClick={() => setForm({ ...form, by: "nipc" })}>NIPC</button>
                                 <button type="button" role="tab" aria-selected={form.by === "email"} className={form.by === "email" ? "on" : ""} onClick={() => setForm({ ...form, by: "email" })}>Email de um administrador</button>
@@ -467,50 +443,23 @@ function ManagementTab({ agencyId }: { agencyId: number }) {
                             <ReasonButton color="primary" disabled={busy} onClick={submit} reason={reason}>
                                 {busy ? <Spinner size="sm" /> : "Enviar pedido"}
                             </ReasonButton>
-                            <p className="text-muted fs-12 mt-3 mb-0">Por privacidade, a resposta é sempre a mesma: só sabe se a empresa existe quando os administradores dela responderem.</p>
-                        </CardBody>
-                    </Card>
+                    </PageCard>
                 </Col>
             )}
             <Col xl={canRequest ? 8 : 12}>
-                <Card className="h-100">
-                    <CardHeader>
-                        <h5 className="card-title mb-0">Pedidos de gestão</h5>
-                        <small className="text-muted">Os pedidos expiram ao fim de 14 dias sem resposta.</small>
-                    </CardHeader>
-                    <CardBody>
-                        {list.length === 0 ? <p className="text-muted mb-0">Ainda não há pedidos de gestão.</p> : (
-                            <div className="table-responsive">
-                                <Table className="align-middle mb-0" data-testid="management-requests">
-                                    <thead className="table-light"><tr><th>Empresa</th><th>Pedido</th><th>Estado</th><th /></tr></thead>
-                                    <tbody>
-                                        {list.map((r) => (
-                                            <tr key={r.id}>
-                                                <td>
-                                                    {r.company ? <div className="fw-medium">{r.company.name}</div> : null}
-                                                    <div className={r.company ? "text-muted fs-12" : "fw-medium"}>
-                                                        {r.identifier_scrubbed ? <span className="text-muted">Dados apagados</span> : <>{r.identifier_type === "nipc" ? "NIPC" : "Email"}: {r.identifier}</>}
-                                                    </div>
-                                                </td>
-                                                <td className="text-nowrap">{fmtDate(r.requested_at)}<div className="text-muted fs-12">{r.requested_by}</div></td>
-                                                <td>
-                                                    <Badge color={MGMT_STATUS[r.status].color} className="fw-normal">{MGMT_STATUS[r.status].label}</Badge>
-                                                    {r.status === "pending" && r.expires_at && <div className="text-muted fs-12">Expira a {fmtDate(r.expires_at)}</div>}
-                                                    {r.status === "declined" && r.decline_reason && <div className="fs-12 mt-1">Motivo: {r.decline_reason}</div>}
-                                                </td>
-                                                <td className="text-end">
-                                                    {r.status === "pending" && canRequest && (
-                                                        <ActionsMenu size="sm" label="Mais ações do pedido" items={[{ label: "Retirar pedido", icon: "ri-close-circle-line", danger: true, onClick: () => withdraw(r) }]} />
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardBody>
-                </Card>
+                <PageCard className="h-100" title="Pedidos de gestão" info="Os pedidos expiram ao fim de 14 dias sem resposta." actions={mgmtCols.selector}>
+                    <DataTable
+                        data-testid="management-requests"
+                        columns={mgmtCols}
+                        data={list}
+                        rowKey={(r) => r.id}
+                        caption="Pedidos de gestão"
+                        empty={{ message: "Ainda não há pedidos de gestão." }}
+                        rowActions={(r) => (r.status === "pending" && canRequest ? (
+                            <ActionsMenu size="sm" label="Mais ações do pedido" items={[{ label: "Retirar pedido", icon: "ri-close-circle-line", danger: true, onClick: () => withdraw(r) }]} />
+                        ) : null)}
+                    />
+                </PageCard>
             </Col>
         </Row>
     );
@@ -533,47 +482,41 @@ function BillingCard({ agencyId }: { agencyId: number }) {
     useEffect(() => {
         getAgencyBilling(agencyId).then((r: any) => setB(r?.data ?? null)).catch(() => setB(null));
     }, [agencyId]);
+    type BCo = Billing["companies"][number];
+    const billCols = useDataColumns<BCo>("agencia.faturacao", [
+        { id: "name", header: "Cliente", value: (c) => c.name, hideable: false, mobile: "title" },
+        { id: "since", header: "Gerido desde", value: (c) => c.since, cell: (c) => fmtDate(c.since), nowrap: true },
+        { id: "own", header: "Situação", value: (c) => (c.pays_own ? 1 : 0), cell: (c) => (c.pays_own ? <span className="text-success">Paga a própria subscrição</span> : "Acesso pela agência") },
+        { id: "current", header: b ? monthName(b.current.month) : "Este mês", align: "center", value: (c) => (c.counts_current ? 1 : 0), cell: (c) => (c.counts_current ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>) },
+        { id: "next", header: b ? monthName(b.next.month) : "Próximo mês", align: "center", value: (c) => (c.counts_next ? 1 : 0), cell: (c) => (c.counts_next ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>) },
+    ] as DTColumn<BCo>[]);
     if (!b) return null;
 
     return (
-        <Card className="mb-3" data-testid="agency-billing">
-            <CardBody>
-                <div className="d-flex flex-wrap align-items-center gap-3">
-                    <div className="me-auto">
-                        <h5 className="card-title mb-1">Faturação da agência</h5>
-                        <small className="text-muted">Paga quem dá o acesso: cada cliente sem subscrição própria conta {euros(b.monthly_fee)} por mês, a partir do mês seguinte ao início.</small>
-                    </div>
-                    <div className="text-center px-2">
-                        <div className="fs-20 fw-semibold">{b.current.count}</div>
-                        <div className="text-muted fs-12">em {monthName(b.current.month)} ({euros(b.current.count * b.monthly_fee)})</div>
-                    </div>
-                    <div className="text-center px-2">
-                        <div className="fs-20 fw-semibold">{b.next.count}</div>
-                        <div className="text-muted fs-12">em {monthName(b.next.month)} ({euros(b.next.count * b.monthly_fee)})</div>
-                    </div>
-                    {b.companies.length > 0 && (
-                        <Button size="sm" color="outline-primary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "Esconder detalhe" : "Ver detalhe"}</Button>
-                    )}
+        <PageCard
+            data-testid="agency-billing"
+            title="Faturação da agência"
+            flush={false}
+            info={<>Paga quem dá o acesso: cada cliente sem subscrição própria conta {euros(b.monthly_fee)} por mês, a partir do mês seguinte ao início.</>}
+            actions={b.companies.length > 0 ? (
+                <Button size="sm" color="outline-primary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>{open ? "Esconder detalhe" : "Ver detalhe"}</Button>
+            ) : undefined}
+        >
+            <div className="d-flex flex-wrap align-items-center gap-4">
+                <div className="text-center px-2">
+                    <div className="fs-20 fw-semibold">{b.current.count}</div>
+                    <div className="text-muted fs-12">em {monthName(b.current.month)} ({euros(b.current.count * b.monthly_fee)})</div>
                 </div>
-                {open && (
-                    <div className="table-responsive mt-3">
-                        <Table size="sm" className="align-middle mb-0 fs-13">
-                            <thead className="table-light"><tr><th>Cliente</th><th>Gerido desde</th><th>Situação</th><th className="text-center">{monthName(b.current.month)}</th><th className="text-center">{monthName(b.next.month)}</th></tr></thead>
-                            <tbody>
-                                {b.companies.map((c) => (
-                                    <tr key={c.id}>
-                                        <td>{c.name}</td>
-                                        <td className="text-nowrap">{fmtDate(c.since)}</td>
-                                        <td>{c.pays_own ? <span className="text-success">Paga a própria subscrição</span> : "Acesso pela agência"}</td>
-                                        <td className="text-center">{c.counts_current ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>}</td>
-                                        <td className="text-center">{c.counts_next ? <i className="ri-check-line text-primary" aria-label="Conta" /> : <span className="text-muted">Não</span>}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </Table>
-                    </div>
-                )}
-            </CardBody>
-        </Card>
+                <div className="text-center px-2">
+                    <div className="fs-20 fw-semibold">{b.next.count}</div>
+                    <div className="text-muted fs-12">em {monthName(b.next.month)} ({euros(b.next.count * b.monthly_fee)})</div>
+                </div>
+            </div>
+            {open && (
+                <div className="mt-3 border rounded">
+                    <DataTable columns={billCols} data={b.companies} rowKey={(c) => c.id} paginate={false} caption="Clientes que contam para a faturação" />
+                </div>
+            )}
+        </PageCard>
     );
 }

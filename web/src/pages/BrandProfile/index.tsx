@@ -10,6 +10,7 @@ import type { BrandPillar, EmojiPolicy, IBrandProfile } from "common/models/blog
 import BrandProfileSuggestModal from "./BrandProfileSuggestModal";
 import FollowersCard from "./FollowersCard";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 /**
@@ -133,25 +134,27 @@ export default function BrandProfilePage() {
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Perfil da Marca" breadcrumbs={[{ label: "Marketing" }]}
-                    description="Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA."
+                    info="Como a marca fala e para quem. Entra nos rascunhos e nas sugestões feitas com IA." />
+
+                {/* As ações do perfil (sugerir e guardar) ficam no cabeçalho deste cartão (design-system §1 e §2). */}
+                <PageCard
+                    title="Perfil da marca"
+                    status={!loading && !canEdit ? "Só o administrador da empresa pode alterar o perfil da marca." : undefined}
                     actions={canEdit ? (<>
                         {waiting && !suggestOpen && (
-                            <button type="button" className="btn btn-outline-primary" onClick={() => setSuggestOpen(true)}>
+                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setSuggestOpen(true)}>
                                 <i className={`${waiting.status === "done" ? "ri-checkbox-circle-line text-success" : waiting.status === "error" ? "ri-error-warning-line text-danger" : "ri-time-line"} me-1`} />
                                 {waiting.status === "done" ? "Sugestão pronta: ver" : waiting.status === "error" ? "A sugestão falhou: ver" : "Sugestão em preparação"}
                             </button>
                         )}
-                        <button type="button" className="btn btn-outline-primary" onClick={() => setSuggestOpen(true)} disabled={loading}>
+                        <button type="button" className="btn btn-outline-primary btn-sm" onClick={() => setSuggestOpen(true)} disabled={loading}>
                             <i className="ri-magic-line me-1" />Sugerir perfil
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={save} disabled={saving || loading}>
+                        <button type="button" className="btn btn-primary btn-sm" onClick={save} disabled={saving || loading}>
                             {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-3-line me-1" />}Guardar
                         </button>
-                    </>) : undefined} />
-
-                {!loading && !canEdit && (
-                    <div className="alert alert-info fs-13">Só o administrador da empresa pode alterar o perfil da marca.</div>
-                )}
+                    </>) : undefined}
+                />
 
                 {loading ? (
                     <div className="text-center py-5"><Spinner color="primary" /></div>

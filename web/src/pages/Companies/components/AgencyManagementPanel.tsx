@@ -3,7 +3,7 @@ import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader
 import { toast } from "react-toastify";
 import { endAdminCompanyManagement, getAdminAgencies, getAdminCompanyManagement, setAdminCompanyAgency, setAdminCompanyManagement } from "helpers/laravel_helper";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * Gestão por agências de UMA empresa (só o root): "Esta empresa é uma agência" e "Gerida

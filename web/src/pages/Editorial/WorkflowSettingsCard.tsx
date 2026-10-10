@@ -3,7 +3,7 @@ import { Card, CardBody, CardHeader, Input, Label, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
 import { getWorkflowSettings, setContentApprover, updateWorkflowSettings } from "helpers/laravel_helper";
 import { PRODUCTION_MODE_LABEL, ProductionMode, WorkflowSettings } from "common/models/editorialWorkflow.model";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import useProducerLabel, { byProducer, capitalize } from "./useProducerLabel";
 
 /**

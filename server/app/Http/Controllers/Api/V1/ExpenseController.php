@@ -8,8 +8,10 @@ use App\Http\Requests\ExpenseRequest;
 use App\Http\Resources\ExpenseResource;
 use App\Models\Expense;
 use App\Services\ExpenseService;
+use App\Support\ListSort;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * DMS sub-fase 1c.2b — CRUD de Despesas (scoped por company) + filtros + totais.
@@ -86,15 +88,35 @@ class ExpenseController extends Controller
         return $query;
     }
 
+    /** Ordenações permitidas da lista (?sort=, via ListSort). A viatura ordena por marca e modelo, como aparece. */
+    public static function sorts(): array
+    {
+        $car = fn () => DB::table('cars')->whereColumn('cars.id', 'expenses.car_id')->limit(1);
+
+        return [
+            'date'        => 'expenses.date',
+            'description' => 'expenses.description',
+            'category'    => fn ($q, string $dir) => $q->orderBy(
+                DB::table('expense_categories')->whereColumn('expense_categories.id', 'expenses.expense_category_id')->select('name')->limit(1), $dir),
+            'supplier'    => fn ($q, string $dir) => $q->orderBy(
+                DB::table('suppliers')->whereColumn('suppliers.id', 'expenses.supplier_id')->select('name')->limit(1), $dir),
+            'car'         => fn ($q, string $dir) => $q
+                ->orderBy($car()->join('car_brands', 'car_brands.id', '=', 'cars.car_brand_id')->select('car_brands.name'), $dir)
+                ->orderBy($car()->join('car_models', 'car_models.id', '=', 'cars.car_model_id')->select('car_models.name'), $dir),
+            'amount'      => 'expenses.amount',
+            'status'      => 'expenses.is_paid',
+        ];
+    }
+
     public function index(Request $request, int $companyId)
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
 
-        $query = $this->applyFilters(Expense::query()->with(self::RELATIONS), $request, $companyId)
-            ->orderByDesc('date')
-            ->orderByDesc('id');
+        $query = $this->applyFilters(Expense::query()->with(self::RELATIONS), $request, $companyId);
+        // Por omissão, como sempre: as mais recentes primeiro (data, depois id).
+        ListSort::apply($query, $request, self::sorts(), [['date', 'desc']], 'expenses.id');
 
         $perPage = (int) $request->input('perPage', 15);
         $expenses = $query->paginate($perPage);

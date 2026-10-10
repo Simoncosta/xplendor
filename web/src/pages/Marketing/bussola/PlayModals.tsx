@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
 import { toast } from "react-toastify";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import AiRequestState from "Components/Common/AiRequestState";
 import { createPostFromPlay, getPlayCaption, requestPlayCaption } from "helpers/laravel_helper";
@@ -100,7 +100,7 @@ export function PlayPostModal({ companyId, locationId, play, prefill, formats, o
                                 </div>
                                 {mediaFormats[n.key] && (
                                     <div className="flex-grow-1" style={{ minWidth: 180 }}>
-                                        <XSelect small ariaLabel={`Formato no ${n.label}`} value={mediaFormats[n.key]} options={MEDIA_FORMATS[n.key]}
+                                        <XSelect ariaLabel={`Formato no ${n.label}`} value={mediaFormats[n.key]} options={MEDIA_FORMATS[n.key]}
                                             onChange={(v) => setMediaFormats((m) => ({ ...m, [n.key]: v }))} />
                                     </div>
                                 )}

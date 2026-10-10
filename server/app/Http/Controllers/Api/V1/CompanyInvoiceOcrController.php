@@ -13,6 +13,7 @@ use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
 use App\Jobs\LinkOcrInvoiceJob;
 use App\Services\InvoiceOcrService;
+use App\Services\OcrInvoiceDeleteService;
 use App\Services\OcrLineArticleService;
 use App\Services\OcrPingwinLinkService;
 use Illuminate\Support\Facades\Auth;
@@ -53,8 +54,10 @@ class CompanyInvoiceOcrController extends Controller
             'status'  => ['nullable', 'in:processing,por_validar,validada,erro,nao_desta_empresa'],
         ]);
         $perPage = (int) ($data['perPage'] ?? 20);
+        $deleted = $request->boolean('deleted'); // F2c: "Mostrar apagadas" (só as apagadas)
+        $deleter = app(OcrInvoiceDeleteService::class);
 
-        $page = OcrInvoice::where('company_id', $companyId)
+        $page = ($deleted ? OcrInvoice::onlyTrashed() : OcrInvoice::query())->where('company_id', $companyId)
             ->when($data['status'] ?? null, fn ($q, $s) => $q->where('status', $s))
             ->with('summary:id,ocr_invoice_id,total_cents')
             ->orderByDesc('created_at')
@@ -81,6 +84,10 @@ class CompanyInvoiceOcrController extends Controller
             'pingwin_doc_status' => $linkInfo[$inv->id]['xplendor_status'] ?? null, // FB-1: 8001 rascunho / 8002 lançada
             'total'         => $inv->summary ? $inv->summary->total_cents / 100 : null,
             'created_at'    => optional($inv->created_at)->toIso8601String(),
+            // F2c: apagar / repor
+            'deleted_at'    => optional($inv->deleted_at)->toIso8601String(),
+            'delete_block'  => $inv->trashed() ? null : $deleter->blockReason($inv),
+            'restore_block' => $inv->trashed() ? $deleter->restoreBlockReason($inv) : null,
         ]);
 
         return ApiResponse::success(['invoices' => $page, 'monthly_cap' => $this->monthlyCap(), 'used_this_month' => $this->usedThisMonth($companyId)], 'Faturas carregadas.');
@@ -101,6 +108,12 @@ class CompanyInvoiceOcrController extends Controller
             'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:12288'], // 12 MB
         ]);
 
+        // F2c: o mesmo ficheiro já carregado (e não apagado) → recusa ANTES da IA e do teto.
+        $sha256 = hash_file('sha256', $request->file('file')->getRealPath());
+        if ($same = app(OcrInvoiceDeleteService::class)->sameFile($companyId, $sha256)) {
+            return ApiResponse::error("Já carregada: abrir a fatura #{$same->id}.", 409, ['code' => 'ficheiro_duplicado', 'existing_id' => $same->id, 'existing_number' => $same->number]);
+        }
+
         if ($this->usedThisMonth($companyId) >= $this->monthlyCap()) {
             return ApiResponse::error('Limite mensal de leituras de faturas atingido (' . $this->monthlyCap() . '). Contacta o suporte para aumentar.', 429);
         }
@@ -113,6 +126,7 @@ class CompanyInvoiceOcrController extends Controller
             'image_path'    => $path,
             'image_size_bytes' => (int) $file->getSize(),
             'image_mime'    => $file->getClientMimeType(),
+            'file_sha256'   => $sha256,
             'status'        => 'processing',
             'synced_to_pingwin' => false,
         ]);
@@ -310,6 +324,58 @@ class CompanyInvoiceOcrController extends Controller
         return ApiResponse::success(['invoice' => $this->presentInvoice($invoice->fresh(['lines', 'summary']))], 'Fatura validada e guardada.');
     }
 
+    // ------------------------------------------------------------ F2c: apagar / repor
+
+    /** Apaga (soft) uma fatura. 422 com o motivo se não se pode (ex.: lançada pela XPLENDOR). */
+    public function destroy(int $companyId, int $invoiceId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $invoice = OcrInvoice::where('company_id', $companyId)->find($invoiceId);
+        if (! $invoice) {
+            return ApiResponse::error('Fatura não encontrada.', 404);
+        }
+        try {
+            app(OcrInvoiceDeleteService::class)->delete($invoice, Auth::id());
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, ['code' => 'nao_apagavel']);
+        }
+
+        return ApiResponse::success(['id' => $invoiceId], 'Fatura apagada. Pode repô-la durante ' . OcrInvoiceDeleteService::PURGE_AFTER_DAYS . ' dias.');
+    }
+
+    /** Apaga várias: as que não se podem apagar ficam de fora, com o motivo. */
+    public function bulkDestroy(Request $request, int $companyId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1', 'max:200'], 'ids.*' => ['integer']]);
+        $res = app(OcrInvoiceDeleteService::class)->deleteMany($companyId, $data['ids'], Auth::id());
+
+        return ApiResponse::success($res, count($res['deleted']) . ' fatura(s) apagada(s).' . ($res['skipped'] ? ' ' . count($res['skipped']) . ' ficaram de fora.' : ''));
+    }
+
+    /** Repõe uma fatura apagada (enquanto o ficheiro existir). */
+    public function restore(int $companyId, int $invoiceId)
+    {
+        if (! $this->authorizeCompanyAccess($companyId)) {
+            return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
+        }
+        $invoice = OcrInvoice::onlyTrashed()->where('company_id', $companyId)->find($invoiceId);
+        if (! $invoice) {
+            return ApiResponse::error('Fatura apagada não encontrada.', 404);
+        }
+        try {
+            app(OcrInvoiceDeleteService::class)->restore($invoice);
+        } catch (\InvalidArgumentException $e) {
+            return ApiResponse::error($e->getMessage(), 422, ['code' => 'nao_reponivel']);
+        }
+
+        return ApiResponse::success(['id' => $invoiceId], 'Fatura reposta.');
+    }
+
     // ------------------------------------------------------------ F3: ligação ao PingWin
 
     /** "Procurar no PingWin": corre a ligação já (espelhos) e, sem fornecedor, pesquisa-o no worker. */
@@ -439,6 +505,8 @@ class CompanyInvoiceOcrController extends Controller
                 'line_total'   => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
                 'vat_rate'     => $l->vat_rate,
             ] + $lineLinks->presentLine($l, $lineArticles))->values(),
+            // F2c: motivo para não se poder apagar (null = pode)
+            'delete_block'      => app(OcrInvoiceDeleteService::class)->blockReason($inv),
             // F2b: linhas ligadas a artigos; "pronta para lançar" = todas ligadas.
             'articles_summary'  => OcrLineArticleService::summary($inv->lines),
             'summary'           => $inv->summary ? [
@@ -463,9 +531,10 @@ class CompanyInvoiceOcrController extends Controller
         return (int) config('services.openai.ocr_monthly_cap', 200);
     }
 
+    /** Leituras do mês (as apagadas CONTAM: apagar não devolve a leitura ao teto). */
     private function usedThisMonth(int $companyId): int
     {
-        return OcrInvoice::where('company_id', $companyId)
+        return OcrInvoice::withTrashed()->where('company_id', $companyId)
             ->where('created_at', '>=', now()->startOfMonth())
             ->count();
     }

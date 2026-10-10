@@ -50,9 +50,11 @@ const XInput: React.FC<XInputProps> = ({
                       </Label>
             )}
 
+            {/* null mostra-se vazio; o valor do formulário não muda (só o onChange do Formik o altera). */}
             <Input
                 {...field}
                 {...props}
+                value={field.value ?? ""}
                 type={type}
                 invalid={!!hasError}
             />

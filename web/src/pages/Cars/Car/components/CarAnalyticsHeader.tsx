@@ -14,14 +14,15 @@ interface Props {
     ipsClassBadge: (cls: string) => string;
     /** Nome curto do separador atual (último breadcrumb), ex.: "Ficha". */
     section: string;
-    /** Ações próprias do separador (secundárias primeiro, a principal no fim). */
+    /** Ações próprias do separador (secundárias primeiro, a principal no fim); vão para o cartão de resumo. */
     actions?: React.ReactNode;
 }
 
 /**
- * Topo de todas as páginas de /cars/:id/*: o cabeçalho de página (título = viatura,
- * breadcrumbs, "Editar viatura") e, por baixo, o resumo fixo da viatura (versão, preço,
- * matrícula e sinais). Com `car` ainda por carregar, mostra só o cabeçalho.
+ * Topo de todas as páginas de /cars/:id/*: o cabeçalho de página (título = viatura e
+ * breadcrumbs) e, por baixo, o resumo fixo da viatura (versão, preço, matrícula e sinais),
+ * com "Editar viatura" à direita (as ações não vão no PageHeader, design-system §1).
+ * Com `car` ainda por carregar, mostra só o cabeçalho.
  */
 export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, section, actions }: Props) {
     const ipsBadge = ips ? formatIpsBadge(ips.score, ips.classification) : null;
@@ -31,14 +32,6 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, sect
             title={carName}
             crumbLabel={section}
             breadcrumbs={[{ label: "Comercial" }, { label: "Carros", to: "/cars" }]}
-            actions={<>
-                {car?.id && (
-                    <Link to={`/cars/${car.id}`} className="btn btn-outline-primary">
-                        <i className="ri-pencil-line me-1" />Editar viatura
-                    </Link>
-                )}
-                {actions}
-            </>}
         />
     );
     if (!car) return header;
@@ -123,6 +116,14 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, sect
                             </span>
                         )}
                     </div>
+                </div>
+                <div className="d-flex flex-wrap align-items-center gap-2 ms-auto xp-no-print">
+                    {actions}
+                    {car?.id && (
+                        <Link to={`/cars/${car.id}`} className="btn btn-outline-primary btn-sm">
+                            <i className="ri-pencil-line me-1" />Editar viatura
+                        </Link>
+                    )}
                 </div>
             </CardBody>
         </Card>

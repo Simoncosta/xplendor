@@ -232,8 +232,6 @@ export default function ArtigoFormPage() {
     const saleUnitOptions = useMemo(() => toOpts(lookups?.units?.sale), [lookups]);
     const purchaseUnitOptions = useMemo(() => toOpts(lookups?.units?.purchase), [lookups]);
 
-    const sel = (opts: Opt[], v: string) => opts.find((o) => o.value === v) ?? null;
-
     // Campos do maindataset (nomes PingWin) — partilhado por criar e editar.
     const buildMaindataset = useCallback(() => {
         const base = f.base_unit_id || undefined;

@@ -12,7 +12,7 @@ import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import ReasonButton from "Components/Common/ReasonButton";
 import { useModules } from "contexts/ModulesContext";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * Criar ou editar um colaborador. Dados e foto (400x400 WebP, gerada no servidor);

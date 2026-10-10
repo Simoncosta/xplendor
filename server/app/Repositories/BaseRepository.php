@@ -26,6 +26,19 @@ abstract class BaseRepository implements BaseRepositoryInterface
     }
 
     /**
+     * Nomes de coluna dos filtros e da ordenação: só identificadores ("coluna" ou "tabela.coluna").
+     * Defesa extra: nenhum texto vindo de um pedido chega ao SQL como nome de coluna.
+     */
+    protected static function column(string $field): string
+    {
+        if (! preg_match('/^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)?$/', $field)) {
+            throw new \InvalidArgumentException("Nome de coluna inválido: {$field}");
+        }
+
+        return $field;
+    }
+
+    /**
      * Método responsável por buscar um registro pelo ID
      *
      * @param mixed $id
@@ -37,7 +50,7 @@ abstract class BaseRepository implements BaseRepositoryInterface
     {
         try {
             $field = $field ?? 'id';
-            $data = $this->model->where($field, $id)->select($columns);
+            $data = $this->model->where(self::column($field), $id)->select($columns);
 
             if (!empty($relations)) {
                 $formattedRelations = [];
@@ -64,18 +77,18 @@ abstract class BaseRepository implements BaseRepositoryInterface
 
                 // Filtro LIKE
                 if (is_array($value) && isset($value['like'])) {
-                    $data->where($field, 'LIKE', '%' . $value['like'] . '%');
+                    $data->where(self::column($field), 'LIKE', '%' . $value['like'] . '%');
                     continue;
                 }
 
                 // Filtro whereIn
                 if (is_array($value)) {
-                    $data->whereIn($field, $value);
+                    $data->whereIn(self::column($field), $value);
                     continue;
                 }
 
                 // Filtro exato
-                $data->where($field, $value);
+                $data->where(self::column($field), $value);
             }
 
             $data = $data->firstOrFail();
@@ -133,31 +146,31 @@ abstract class BaseRepository implements BaseRepositoryInterface
 
             // Filtro LIKE
             if (is_array($value) && isset($value['like'])) {
-                $query->where($field, 'LIKE', '%' . $value['like'] . '%');
+                $query->where(self::column($field), 'LIKE', '%' . $value['like'] . '%');
                 continue;
             }
 
             // BETWEEN
             if (is_array($value) && isset($value['between']) && is_array($value['between'])) {
-                $query->whereBetween($field, $value['between']);
+                $query->whereBetween(self::column($field), $value['between']);
                 continue;
             }
 
             // Filtro whereIn
             if (is_array($value)) {
-                $query->whereIn($field, $value);
+                $query->whereIn(self::column($field), $value);
                 continue;
             }
 
             // Filtro exato
-            $query->where($field, $value);
+            $query->where(self::column($field), $value);
         }
 
         // Ordenação dinâmica
         if (!empty($orderBy)) {
             foreach ($orderBy as $field => $direction) {
                 $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
-                $query->orderBy($field, $direction);
+                $query->orderBy(self::column($field), $direction);
             }
         }
 

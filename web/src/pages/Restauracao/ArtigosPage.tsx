@@ -63,6 +63,8 @@ export default function ArtigosPage() {
     const [search, setSearch] = useState("");
     const [familyFilter, setFamilyFilter] = useState("");
     const [saleFilter, setSaleFilter] = useState<SaleFilter>("");
+    // Ordenação no servidor (CompanyPingwinController::CATALOG_SORTS). null = a de sempre (código).
+    const [sort, setSort] = useState<{ key: string; desc: boolean } | null>(null);
 
     const familyOptions: Opt[] = useMemo(
         () => [{ value: "", label: "Todas as famílias" }, ...families.map((f) => ({ value: f, label: f }))],
@@ -82,6 +84,8 @@ export default function ArtigosPage() {
                 family: familyFilter || undefined,
                 forsale: saleFilter === "sale" ? 1 : undefined,
                 forpurchase: saleFilter === "purchase" ? 1 : undefined,
+                sort: sort?.key,
+                dir: sort ? (sort.desc ? "desc" : "asc") : undefined,
             });
             const paginator = res?.data?.articles;
             setRows(paginator?.data ?? []);
@@ -95,14 +99,14 @@ export default function ArtigosPage() {
         } finally {
             setLoading(false);
         }
-    }, [companyId, page, search, familyFilter, saleFilter]);
+    }, [companyId, page, search, familyFilter, saleFilter, sort]);
 
     useEffect(() => {
         const t = setTimeout(() => fetchRows(), 250);
         return () => clearTimeout(t);
     }, [fetchRows]);
 
-    useEffect(() => { setPage(1); }, [search, familyFilter, saleFilter]);
+    useEffect(() => { setPage(1); }, [search, familyFilter, saleFilter, sort]);
 
     const clearFilters = () => { setSearch(""); setFamilyFilter(""); setSaleFilter(""); };
 
@@ -153,17 +157,22 @@ export default function ArtigosPage() {
     );
 
     const columns: DTColumn<PingwinCatalogItem>[] = [
-        { id: "code", header: "Código", value: (a) => a.code, cell: (a) => <span className="fw-medium">{a.code || "—"}</span>, mobile: "subtitle" },
+        { id: "code", header: "Código", sortKey: "code", value: (a) => a.code, cell: (a) => <span className="fw-medium">{a.code || "—"}</span>, mobile: "subtitle" },
         {
-            id: "description", header: "Descrição", value: (a) => a.description, mobile: "title",
+            id: "description", header: "Descrição", sortKey: "description", value: (a) => a.description, mobile: "title",
             cell: (a) => <>{a.description || "—"}{!a.is_active && <span className="badge bg-secondary-subtle text-secondary ms-2">Inativo</span>}</>,
         },
-        { id: "family", header: "Família", value: (a) => a.family, cell: (a) => (a.family ? <span className="badge bg-info-subtle text-info text-wrap text-start">{a.family}</span> : <span className="text-muted">—</span>) },
-        { id: "sale_price", header: "Preço venda", value: (a) => a.saleprice_cents, cell: (a) => fmtCents(a.saleprice_cents), align: "end", nowrap: true },
-        { id: "purchase_price", header: "Preço compra", value: (a) => a.purchaseprice_cents, cell: (a) => fmtCents(a.purchaseprice_cents), align: "end", nowrap: true },
-        { id: "forsale", header: "Venda", value: (a) => (a.forsale ? 1 : 0), cell: (a) => <YesNo v={a.forsale} color="success" />, align: "center" },
-        { id: "forpurchase", header: "Compra", value: (a) => (a.forpurchase ? 1 : 0), cell: (a) => <YesNo v={a.forpurchase} color="primary" />, align: "center" },
-        { id: "bom", header: "Ficha", value: (a) => (a.has_bom ? 1 : 0), cell: (a) => <YesNo v={a.has_bom} color="warning" />, align: "center" },
+        { id: "family", header: "Família", sortKey: "family", value: (a) => a.family, cell: (a) => (a.family ? <span className="badge bg-info-subtle text-info text-wrap text-start">{a.family}</span> : <span className="text-muted">—</span>) },
+        { id: "unit", header: "Unidade", sortKey: "unit", value: (a) => a.saleunit, cell: (a) => a.saleunit || <span className="text-muted">—</span>, defaultVisible: false },
+        { id: "sale_price", header: "Preço venda", sortKey: "sale_price", value: (a) => a.saleprice_cents, cell: (a) => fmtCents(a.saleprice_cents), align: "end", nowrap: true },
+        { id: "purchase_price", header: "Preço compra", sortKey: "purchase_price", value: (a) => a.purchaseprice_cents, cell: (a) => fmtCents(a.purchaseprice_cents), align: "end", nowrap: true },
+        { id: "forsale", header: "Venda", sortKey: "forsale", value: (a) => (a.forsale ? 1 : 0), cell: (a) => <YesNo v={a.forsale} color="success" />, align: "center" },
+        { id: "forpurchase", header: "Compra", sortKey: "forpurchase", value: (a) => (a.forpurchase ? 1 : 0), cell: (a) => <YesNo v={a.forpurchase} color="primary" />, align: "center" },
+        { id: "bom", header: "Ficha", sortKey: "bom", value: (a) => (a.has_bom ? 1 : 0), cell: (a) => <YesNo v={a.has_bom} color="warning" />, align: "center" },
+        {
+            id: "active", header: "Estado", sortKey: "active", value: (a) => (a.is_active ? 1 : 0), defaultVisible: false,
+            cell: (a) => (a.is_active ? "Ativo" : <span className="badge bg-secondary-subtle text-secondary">Inativo</span>),
+        },
     ];
     const cols = useDataColumns("restauracao.artigos", columns);
 
@@ -225,6 +234,8 @@ export default function ArtigosPage() {
                                 server={meta ? {
                                     page: meta.current_page, lastPage: meta.last_page, total: meta.total, perPage: meta.per_page,
                                     from: meta.from ?? 0, to: meta.to ?? 0, onPageChange: setPage,
+                                    sort: sort ? { id: sort.key, desc: sort.desc } : null,
+                                    onSortChange: (next) => setSort(next ? { key: next.key, desc: next.desc } : null),
                                 } : undefined}
                             />
                         </PageCard>

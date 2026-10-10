@@ -34,9 +34,11 @@ const XInputTextarea: React.FC<XInputTextareaProps> = ({
                 </Label>
             )}
 
+            {/* null mostra-se vazio; o valor do formulário não muda (só o onChange do Formik o altera). */}
             <Input
                 {...field}
                 {...props}
+                value={field.value ?? ""}
                 type="textarea"
                 rows={rows}
                 invalid={!!hasError}

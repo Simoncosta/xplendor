@@ -29,7 +29,7 @@ Todas as páginas começam com o `PageHeader` (`src/Components/Common/PageHeader
 - **Breadcrumbs:** à direita do título, com a secção do menu e as páginas acima. A página atual entra sozinha no fim.
 - **Filtros da página:** só os que valem para a página inteira (período, loja), em `filters`, por baixo do título, à direita.
 - **Sem ações.** As ações vão para o cabeçalho do cartão a que dizem respeito (§2).
-- **Compatibilidade, até à UI-2:** as páginas ainda não migradas passam `description` e `actions` e continuam a desenhar a barra antiga. O código novo não os usa.
+- O `PageHeader` não aceita `description` nem `actions` (removidos no fim da UI-2).
 - **Títulos dentro da página:** cartões com `h5.card-title.mb-0` no cabeçalho; subsecções com `h6`. Nunca `h3` nem `h4` dentro da página.
 
 ## 2. Cartões (PageCard)
@@ -129,7 +129,7 @@ O motivo aparece ao passar o rato, ao focar e ao tocar (telemóvel). Enquanto a 
 
 - **Nunca** um `<select>` nativo (nem `<Input type="select">`).
 - Componente `src/Components/Common/Select.tsx`, com o tema claro e escuro de `helpers/reactSelectStyles` (variáveis `--vz-*`):
-  - **Escolha única:** `XSelect` (`import XSelect from "Components/Common/Select"`). O antigo `pages/Editorial/XSelect` continua a funcionar e só reexporta.
+  - **Escolha única:** `XSelect` (`import XSelect from "Components/Common/Select"`). É o único caminho de import (o antigo `pages/Editorial/XSelect` foi apagado no fim da UI-2).
   - **Escolha múltipla:** `XMultiSelect` (chips), com o mesmo tema.
   - **Tamanho normal por omissão:** a mesma altura, letra e espaçamento de um `form-control` (37,8 px). `small` só quando se pede, com a altura de um `form-control-sm` / `btn-sm` (27,3 px).
 - Os menus abrem no `document.body`, para não ficarem cortados em modais e tabelas.
@@ -143,6 +143,9 @@ O motivo aparece ao passar o rato, ao focar e ao tocar (telemóvel). Enquanto a 
 | Células de tabela (por exemplo, uma pesquisa por cima de uma tabela num modal, ou um campo numa grelha de edição) | `sm` |
 - Com mais de 8 opções, há pesquisa (`searchable` muda isso).
 - "Todos" é uma opção com valor vazio (por exemplo, "Todos os fornecedores").
+- **Ainda por migrar** (usam o `react-select` direto, com o mesmo tema de `helpers/reactSelectStyles`, por isso já têm o tamanho e as cores certos):
+  - **Precisam de variantes do `XSelect` que ainda não existem** ("limpar", pesquisa remota, criar uma opção nova): o `QuoteSelect` e o seletor de cliente do editor de orçamentos; os `CreatableSelect` do fornecedor (modal de despesa), do cliente (`SaleEditModal`) e das etiquetas (editor do blog).
+  - **Formulários fora das listas da UI-2:** os campos da ficha da viatura (`Car*DataFields`, os acordeões de `vehicleAttributes` e o `CarSaleClosingModal`), o `AddressFields`, o perfil da marca, o `CreativeModal` da Linha Editorial e a validação de fatura.
 
 ## 8. Tabelas (DataTable)
 

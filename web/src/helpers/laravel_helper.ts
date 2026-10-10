@@ -507,7 +507,7 @@ export const voidPingwinDocumentConfig = (companyId: number, externalId: string)
 
 export const getPingwinCatalog = (
     companyId: number,
-    params?: { page?: number; perPage?: number; search?: string; family?: string; forsale?: number; forpurchase?: number }
+    params?: { page?: number; perPage?: number; search?: string; family?: string; forsale?: number; forpurchase?: number; sort?: string; dir?: "asc" | "desc" }
 ) => api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog`, params);
 export const syncPingwinCatalog = (companyId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/catalog/sync`, {});
@@ -879,7 +879,11 @@ export const deleteExpense = (companyId: number, id: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}` + url.GET_EXPENSES + `/${id}`);
 
 // LEADS
-export const getLeads = (params: { perPage: number; page: number; companyId: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_LEADS_APIS, { params });
+// Lista de leads paginada no servidor: pesquisa (nome, telefone, email, carro) e ordenação (CarLeadController::sorts).
+export const getLeads = (params: { perPage: number; page: number; companyId: number; search?: string; sort?: "created_at" | "name" | "status" | "car"; dir?: "asc" | "desc" }) => {
+    const { companyId, ...query } = params;
+    return api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS, { params: query });
+};
 export const updateLead = (companyId: number, leadId: number, data: { status?: string; lost_reason?: string | null; notes?: string | null }) => api.put(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS + `/${leadId}`, data);
 // CRM/funil — todas as leads da empresa (sem paginação) para montar o Kanban.
 export const getCompanyLeadsAll = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}` + url.GET_LEADS_APIS);
@@ -901,8 +905,9 @@ export const getCarsPaginate = (
         carModelIds?: number[];
         mincost?: number;
         maxcost?: number;
-        sort_by?: string;
-        sort_direction?: 'asc' | 'desc';
+        // Ordenação no servidor: só as chaves de CarRepository::sorts() (car, price, views, leads, interactions, conversion).
+        sort?: string;
+        dir?: 'asc' | 'desc';
     }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS, {
         params: {
             perPage: params.perPage,
@@ -916,8 +921,8 @@ export const getCarsPaginate = (
             car_model_id: params.carModelIds?.join(",") ?? undefined,
             mincost: params.mincost,
             maxcost: params.maxcost,
-            sort_by: params.sort_by,
-            sort_direction: params.sort_direction,
+            sort: params.sort,
+            dir: params.dir,
         }
     });
 export const showCar = (params: { companyId: number; id: number; }) => api.get(url.GET_COMPANIES + `/${params.companyId}` + url.GET_CARS + "/" + params.id);
@@ -1088,3 +1093,13 @@ export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {});
 export const setOcrLineLaunchUnit = (companyId: number, invoiceId: number, lineId: number, data: { unit_id: string; quantity?: number | null }) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data);
+
+// F2c — apagar faturas OCR (soft delete), repor, apagar várias; a lista com as apagadas.
+export const getOcrInvoicesList = (companyId: number, params: { page?: number; perPage?: number; status?: string; deleted?: 1 }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices`, params);
+export const deleteOcrInvoice = (companyId: number, invoiceId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
+export const restoreOcrInvoice = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/restore`, {});
+export const bulkDeleteOcrInvoices = (companyId: number, ids: number[]) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/bulk-delete`, { ids });

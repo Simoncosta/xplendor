@@ -5,7 +5,7 @@ import { getBlogs } from "helpers/laravel_helper";
 import { BLOG_STATUS_META } from "common/models/blog.model";
 import { NETWORKS, Network, POST_CHANNEL_META, POST_FORMATS } from "common/models/editorialPost.model";
 import { FormatTable, crossCheck } from "common/models/editorialWorkflow.model";
-import XSelect, { XOption } from "../XSelect";
+import XSelect, { XOption } from "Components/Common/Select";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 

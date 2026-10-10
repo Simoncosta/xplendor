@@ -328,3 +328,14 @@ Schedule::job(new \App\Jobs\SetupLinkStalledJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[Link de configuração] Verificação dos passos parados falhou no scheduler');
     });
+
+// 03:50 (Lisboa) — F2c: apaga do disco os ficheiros das faturas OCR apagadas há mais de 30 dias
+// (depois da retenção dos media das 03:40).
+Schedule::job(new \App\Jobs\PurgeDeletedOcrFilesJob())
+    ->dailyAt('03:50')
+    ->timezone('Europe/Lisbon')
+    ->name('ocr-purge-deleted-files')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[OCR] Purga dos ficheiros apagados falhou no scheduler');
+    });

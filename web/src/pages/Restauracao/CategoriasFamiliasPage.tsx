@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, CardHeader, Collapse, Container, Spinner } from "reactstrap";
+import { Collapse, Container, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { confirmFamilyCategories, getFamilyCategories, includeRestaurantItem, suggestFamilyCategories } from "helpers/laravel_helper";
@@ -227,36 +228,31 @@ export default function CategoriasFamiliasPage() {
                 <PageHeader
                     title="Categorias das famílias"
                     breadcrumbs={[{ label: "Restauração" }]}
-                    description="Categoria de marketing de cada família do PingWin com vendas. As regras e a IA só sugerem: uma categoria só conta depois de confirmada pela equipa."
-                    actions={
-                        <div className="d-flex flex-wrap gap-2">
-                            <ReasonButton color="outline-primary" onClick={askAi} reason={suggesting ? null : aiReason} disabled={suggesting}>
-                                {suggesting ? <><Spinner size="sm" className="me-1" /> A pedir sugestões</> : <><i className="ri-sparkling-line me-1" /> Pedir sugestões à IA</>}
-                            </ReasonButton>
-                            <ReasonButton color="primary" onClick={confirm} reason={saving ? null : confirmReason} disabled={saving}>
-                                {saving ? <><Spinner size="sm" className="me-1" /> A confirmar</> : <><i className="ri-check-line me-1" /> {changed.length === 1 ? "Confirmar 1 categoria" : `Confirmar ${changed.length} categorias`}</>}
-                            </ReasonButton>
-                        </div>
-                    }
+                    info="Categoria de marketing de cada família do PingWin com vendas. As regras e a IA só sugerem: uma categoria só conta depois de confirmada pela equipa."
                 />
 
-                <Card className="mb-3">
-                    <CardHeader className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                        <h5 className="card-title mb-0">
-                            Famílias com vendas {loading && <Spinner size="sm" className="ms-1" />}
-                        </h5>
-                        {data && (
+                {/* As ações (pedir sugestões e confirmar) no cabeçalho do cartão (design-system §1 e §2). */}
+                <PageCard
+                    title="Famílias com vendas"
+                    flush={false}
+                    loading={loading}
+                    status={data ? (
+                        <span className="d-inline-flex flex-wrap align-items-center gap-2">
                             <span className={`badge ${data.pending > 0 ? "bg-warning-subtle text-warning" : "bg-success-subtle text-success"}`}>
                                 {data.pending > 0 ? `${data.pending} por confirmar` : "Todas confirmadas"}
                             </span>
-                        )}
-                    </CardHeader>
-                    <CardBody>
-                        {data && !canManage && (
-                            <p className="text-muted fs-13 mb-3">
-                                <i className="ri-lock-line me-1" />Pode consultar as categorias; só o administrador da empresa ou da agência gestora as confirma.
-                            </p>
-                        )}
+                            {!canManage && <span><i className="ri-lock-line me-1" />Pode consultar as categorias; só o administrador da empresa ou da agência gestora as confirma.</span>}
+                        </span>
+                    ) : undefined}
+                    actions={<>
+                        <ReasonButton size="sm" color="outline-primary" onClick={askAi} reason={suggesting ? null : aiReason} disabled={suggesting}>
+                            {suggesting ? <><Spinner size="sm" className="me-1" /> A pedir sugestões</> : <><i className="ri-sparkling-line me-1" /> Pedir sugestões à IA</>}
+                        </ReasonButton>
+                        <ReasonButton size="sm" color="primary" onClick={confirm} reason={saving ? null : confirmReason} disabled={saving}>
+                            {saving ? <><Spinner size="sm" className="me-1" /> A confirmar</> : <><i className="ri-check-line me-1" /> {changed.length === 1 ? "Confirmar 1 categoria" : `Confirmar ${changed.length} categorias`}</>}
+                        </ReasonButton>
+                    </>}
+                >
                         {!loading && families.length === 0 ? (
                             <div className="text-center text-muted py-4">
                                 Ainda não há vendas por artigo. As famílias aparecem depois da primeira leitura das vendas por artigo do PingWin.
@@ -279,16 +275,11 @@ export default function CategoriasFamiliasPage() {
                                 )}
                             </>
                         )}
-                    </CardBody>
-                </Card>
+                </PageCard>
 
                 {data && (data.excluded_items ?? []).length > 0 && (
-                    <Card className="mb-3" data-testid="excluded-items">
-                        <CardHeader>
-                            <h5 className="card-title mb-1">Artigos que não voltam a ser sugeridos</h5>
-                            <p className="text-muted fs-13 mb-0">Ficam fora das jogadas e dos rankings da Bússola, sem mudar a categoria da família.</p>
-                        </CardHeader>
-                        <CardBody>
+                    <PageCard data-testid="excluded-items" title="Artigos que não voltam a ser sugeridos" flush={false}
+                        info="Ficam fora das jogadas e dos rankings da Bússola, sem mudar a categoria da família.">
                             <ul className="list-unstyled mb-0 vstack gap-2">
                                 {(data.excluded_items ?? []).map((it, i, all) => (
                                     <li key={it.id} className={`d-flex flex-wrap align-items-center justify-content-between gap-2${i < all.length - 1 ? " border-bottom pb-2" : ""}`}>
@@ -305,8 +296,7 @@ export default function CategoriasFamiliasPage() {
                                     </li>
                                 ))}
                             </ul>
-                        </CardBody>
-                    </Card>
+                    </PageCard>
                 )}
             </Container>
         </div>

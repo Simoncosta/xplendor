@@ -16,6 +16,7 @@ use App\Services\PingwinDashboardService;
 use App\Services\PingwinService;
 use Carbon\Carbon;
 use Illuminate\Bus\Batch;
+use App\Support\ListSort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -385,6 +386,20 @@ class CompanyPingwinController extends Controller
      * aos poucos, page/perPage) + pesquisa (código/descrição) + filtros (família,
      * forsale/forpurchase). Devolve última sincronização + famílias distintas.
      */
+    /** Ordenações permitidas do catálogo de artigos (?sort=, via ListSort): chave → coluna. */
+    private const CATALOG_SORTS = [
+        'code'           => 'code',
+        'description'    => 'description',
+        'family'         => 'family',
+        'unit'           => 'saleunit',
+        'sale_price'     => 'saleprice_cents',
+        'purchase_price' => 'purchaseprice_cents',
+        'active'         => 'is_active',
+        'forsale'        => 'forsale',
+        'forpurchase'    => 'forpurchase',
+        'bom'            => 'has_bom',
+    ];
+
     public function catalog(Request $request, int $companyId)
     {
         if (! $this->authorizeCompanyAccess($companyId)) {
@@ -411,8 +426,9 @@ class CompanyPingwinController extends Controller
             ->when(array_key_exists('forsale', $data) && $data['forsale'] !== null,
                 fn ($q) => $q->where('forsale', (bool) $data['forsale']))
             ->when(array_key_exists('forpurchase', $data) && $data['forpurchase'] !== null,
-                fn ($q) => $q->where('forpurchase', (bool) $data['forpurchase']))
-            ->orderBy('code')->orderBy('description');
+                fn ($q) => $q->where('forpurchase', (bool) $data['forpurchase']));
+        // Por omissão, como sempre: código e descrição.
+        ListSort::apply($query, $request, self::CATALOG_SORTS, [['code', 'asc'], ['description', 'asc']]);
 
         $lastSynced = (clone $base)->max('synced_at');
 

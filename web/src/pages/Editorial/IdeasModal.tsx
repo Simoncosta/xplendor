@@ -5,7 +5,7 @@ import { acceptEditorialIdea, dismissAiRequest, getBrandProfile, getEditorialIde
 import { useAiRequestPoll } from "hooks/useAiRequestPoll";
 import AiRequestState from "Components/Common/AiRequestState";
 import { EditorialIdea, EditorialIdeasRequest, POST_CHANNEL_META, PostChannel, mediaFormatLabel } from "common/models/editorialPost.model";
-import XSelect from "./XSelect";
+import XSelect from "Components/Common/Select";
 import useOpenInCompany from "./useOpenInCompany";
 import ReasonButton from "Components/Common/ReasonButton";
 

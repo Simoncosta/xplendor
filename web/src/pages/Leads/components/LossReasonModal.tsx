@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, ModalHeader, ModalBody, ModalFooter, Label, Spinner } from "reactstrap";
 import { LOSS_REASONS } from "common/models/lead.model";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 
 /**

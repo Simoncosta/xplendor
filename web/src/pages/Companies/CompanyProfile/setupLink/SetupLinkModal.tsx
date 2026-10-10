@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button, Label, Modal, ModalBody, ModalFooter, ModalHeader } from "reactstrap";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import { getAdminCompanies } from "helpers/laravel_helper";
 import type { SetupStepKey } from "common/models/setupLink.model";
 import SetupLinkPanel from "./SetupLinkPanel";

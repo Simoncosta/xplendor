@@ -4,7 +4,7 @@ import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Label } fro
 import { ToastContainer, toast } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import {
     showAdminTicket, updateAdminTicketStatus, addAdminTicketMessage,
     setAdminTicketQuote, markAdminTicketPaid, markAdminTicketCompleted, updateAdminTicketTask,

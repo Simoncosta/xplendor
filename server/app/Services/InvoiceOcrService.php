@@ -508,6 +508,25 @@ class InvoiceOcrService
         return $data;
     }
 
+    /**
+     * F2c: o que a leitura faria, SEM IA (scraper): tipo, páginas, texto útil, QR e o caminho das
+     * linhas (texto/imagem) com o modelo — para o --dry-run do reprocessamento das faturas antigas.
+     */
+    public function inspect(string $bytes, string $mime, string $path): array
+    {
+        $cfg = $this->cfg();
+        $an = $this->analyzeFile($bytes, $mime, 'never');
+        $isPdf = $this->isPdf($mime, $path);
+        $text = $isPdf && (int) ($an['text_chars'] ?? 0) >= $cfg['text_min_chars'];
+        $plan = $text ? $this->planFor('ocr_text', 'texto') : $this->planFor('ocr_image', 'imagem');
+
+        return [
+            'pages' => (int) ($an['pages'] ?? 1), 'text_chars' => (int) ($an['text_chars'] ?? 0),
+            'qr' => AtInvoiceQr::parse($an['qr']['raw'] ?? null), 'lines_source' => $plan['lines_source'],
+            'provider' => $plan['provider'], 'model' => $plan['model'],
+        ];
+    }
+
     /** Só o texto do PDF (scraper, SEM IA) — para extrair guias de faturas lidas antes da F3. */
     public function analyzeText(string $bytes): ?string
     {

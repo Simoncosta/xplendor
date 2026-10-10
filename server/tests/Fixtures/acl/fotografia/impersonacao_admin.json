@@ -1,6 +1,6 @@
 {
     "ator": "impersonacao_admin",
-    "rotas": 368,
+    "rotas": 371,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -154,6 +154,7 @@
         "DELETE api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 403,
         "DELETE api/v1/companies/{id}/integrations/social": 403,
         "DELETE api/v1/companies/{id}/management": 403,
+        "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 403,
@@ -434,6 +435,7 @@
         "POST api/v1/companies/{id}/marketing/bussola/caption": 422,
         "POST api/v1/companies/{id}/marketing/bussola/post": 422,
         "POST api/v1/companies/{id}/ocr/invoices": 422,
+        "POST api/v1/companies/{id}/ocr/invoices/bulk-delete": 200,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/accept-suggestions": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/relink": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
@@ -445,6 +447,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
+        "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/restore": 404,
         "POST api/v1/companies/{id}/permission-profiles": 403,
         "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,

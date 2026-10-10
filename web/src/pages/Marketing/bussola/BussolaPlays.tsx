@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
+import { Col, Row } from "reactstrap";
+import PageCard from "Components/Common/PageCard";
 import { toast } from "react-toastify";
 import { confirmAction } from "helpers/swal";
 import { excludeRestaurantItem, ignoreRestaurantSignal } from "helpers/laravel_helper";
@@ -54,12 +55,8 @@ export default function BussolaPlays({ companyId, data, onLocation, onChanged }:
     };
 
     return (
-        <Card data-testid="bussola-plays">
-            <CardHeader className="d-flex flex-wrap align-items-center gap-2">
-                <h5 className="card-title mb-0 flex-grow-1">As 3 jogadas da semana</h5>
-                {onLocation && <StoreSelector data={data} onLocation={onLocation} />}
-            </CardHeader>
-            <CardBody>
+        <PageCard data-testid="bussola-plays" title="As 3 jogadas da semana" flush={false}
+            actions={onLocation && data.locations.length >= 2 ? <StoreSelector data={data} onLocation={onLocation} /> : undefined}>
                 {data.plays.length === 0 ? (
                     <p className="text-muted mb-0">Esta semana não há jogadas: nenhum sinal das vendas e das reservas destas lojas pede uma ação.</p>
                 ) : (
@@ -72,13 +69,12 @@ export default function BussolaPlays({ companyId, data, onLocation, onChanged }:
                         ))}
                     </Row>
                 )}
-            </CardBody>
 
             <PlayPostModal companyId={companyId} locationId={locationId} play={creating?.play ?? null} prefill={creating?.prefill} formats={data.formats ?? ["Imagem única"]}
                 onClose={() => setCreating(null)} onCreated={(msg) => { setCreating(null); toast.success(msg); onChanged?.(); }} />
             <PlayCaptionModal companyId={companyId} locationId={locationId} play={suggesting} onClose={() => setSuggesting(null)}
                 onUse={(play, prefill) => { setSuggesting(null); setCreating({ play, prefill }); }} />
             <PlayDetailModal play={detail} onClose={() => setDetail(null)} />
-        </Card>
+        </PageCard>
     );
 }

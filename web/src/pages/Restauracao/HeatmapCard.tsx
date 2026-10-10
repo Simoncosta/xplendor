@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardBody, CardHeader, Col, Spinner } from "reactstrap";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import { getPingwinHeatmap } from "helpers/laravel_helper";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { FINANCIAL_NOTE, FinancialNote } from "Components/Common/HiddenMoney";

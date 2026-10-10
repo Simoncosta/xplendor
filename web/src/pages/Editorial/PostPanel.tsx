@@ -10,7 +10,7 @@ import { dirtyKeys, mergeDraft } from "./panel/draftMerge";
 import ApprovalSection from "./panel/ApprovalSection";
 import PublishSection from "./panel/PublishSection";
 import CreativeModal from "./CreativeModal";
-import { XOption } from "./XSelect";
+import { XOption } from "Components/Common/Select";
 import "./panel/post-panel.css";
 import "./editorial.css";
 import { confirmAction } from "helpers/swal";

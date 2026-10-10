@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getBrandProfile, getEditorialCalendar, getEditorialFormats } from "helpers/laravel_helper";
 import type { FormatTable } from "common/models/editorialWorkflow.model";
 import PostPanel, { PanelTarget } from "./PostPanel";
-import type { XOption } from "./XSelect";
+import type { XOption } from "Components/Common/Select";
 
 /**
  * O painel da publicação aberto na EMPRESA dela, a partir de uma vista de várias empresas

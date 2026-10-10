@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Modal, ModalBody, ModalFooter, ModalHeader, Spinner } from "reactstrap";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import { createPostFromSignal } from "helpers/laravel_helper";
 import { RestaurantSignalItem } from "common/models/pingwin.model";
