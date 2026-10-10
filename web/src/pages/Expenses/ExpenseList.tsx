@@ -2,15 +2,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Button, Card, CardBody, Col, Container, Row, Table, Input, Label, Badge } from "reactstrap";
+import { Button, Card, CardBody, Col, Container, Row, Input, Label, Badge } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
-import Select from "react-select";
 // Components
-import Pagination from "Components/Common/Pagination";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
-import XSelect from "pages/Editorial/XSelect";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
+import XSelect from "Components/Common/Select";
 import ExpenseFormModal, { CarOption } from "./components/ExpenseFormModal";
 // Redux / helpers
 import { getExpenses, getExpensesSummary, deleteExpense, updateExpense } from "slices/expenses/thunk";
@@ -79,10 +79,10 @@ const ExpenseList = () => {
     const [supplierOptions, setSupplierOptions] = useState<Option[]>([]);
     const [carOptions, setCarOptions] = useState<CarOption[]>([]);
 
-    // Filtros.
-    const [fCategory, setFCategory] = useState<Option | null>(null);
-    const [fSupplier, setFSupplier] = useState<Option | null>(null);
-    const [fCar, setFCar] = useState<CarOption | null>(null);
+    // Filtros ("" = todos; os ids vão como texto para o XSelect).
+    const [fCategory, setFCategory] = useState<string>("");
+    const [fSupplier, setFSupplier] = useState<string>("");
+    const [fCar, setFCar] = useState<string>("");
     const [fPaid, setFPaid] = useState<"" | "1" | "0">("");
     const [fFrom, setFFrom] = useState<string>("");
     const [fTo, setFTo] = useState<string>("");
@@ -117,9 +117,9 @@ const ExpenseList = () => {
 
     const filterParams = useMemo(() => {
         const p: Record<string, any> = {};
-        if (fCategory) p.expense_category_id = fCategory.value;
-        if (fSupplier) p.supplier_id = fSupplier.value;
-        if (fCar) p.car_id = fCar.value;
+        if (fCategory) p.expense_category_id = Number(fCategory);
+        if (fSupplier) p.supplier_id = Number(fSupplier);
+        if (fCar) p.car_id = Number(fCar);
         if (fPaid !== "") p.is_paid = fPaid;
         if (fFrom) p.date_from = fFrom;
         if (fTo) p.date_to = fTo;
@@ -140,7 +140,7 @@ const ExpenseList = () => {
     const resetToFirstPage = () => setPagination((p) => ({ ...p, pageIndex: 0 }));
 
     const clearFilters = () => {
-        setFCategory(null); setFSupplier(null); setFCar(null);
+        setFCategory(""); setFSupplier(""); setFCar("");
         setFPaid(""); setFFrom(""); setFTo(""); setIncludeArchived(false);
         resetToFirstPage();
     };
@@ -187,14 +187,86 @@ const ExpenseList = () => {
         }
     };
 
+    const activeFilterCount = [fCategory, fSupplier, fCar, fPaid, fFrom, fTo, includeArchived].filter(Boolean).length;
+    const all = (label: string, opts: { value: number; label: string }[]) => [{ value: "", label }, ...opts.map((o) => ({ value: String(o.value), label: o.label }))];
+    const FL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
+    const field = (flex = "1 1 170px") => ({ flex, minWidth: 0 });
+
+    const cols = useDataColumns<IExpense>("financas.despesas", [
+        { id: "date", header: "Data", value: (e) => e.date, nowrap: true },
+        {
+            id: "description", header: "Descrição", value: (e) => e.description, hideable: false, mobile: "title",
+            cell: (e) => (
+                <span className={e.archived ? "" : "fw-medium"}>
+                    {e.description}
+                    {e.is_automatic && !e.is_xplendor_charge && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
+                    {e.is_xplendor_charge && e.charge && (
+                        <>
+                            {e.charge.overdue && <Badge color="danger" className="ms-2 fw-normal">Vencida</Badge>}
+                            <div className="text-muted fs-12">Cobrança da XPLENDOR · vence a {dmy(e.charge.due_date)}</div>
+                        </>
+                    )}
+                    {e.archived && <Badge color="light" className="text-muted ms-2">Arquivada</Badge>}
+                </span>
+            ),
+        },
+        {
+            id: "category", header: "Categoria", value: (e) => e.category_name ?? "",
+            cell: (e) => e.category_name ? (
+                <span>
+                    <span className="d-inline-block rounded-circle align-middle me-1" style={{ width: 10, height: 10, backgroundColor: e.category_color || "#ced4da" }} />
+                    {e.category_name}
+                </span>
+            ) : <span className="text-muted">Sem categoria</span>,
+        },
+        { id: "supplier", header: "Fornecedor", value: (e) => e.supplier_name ?? "", cell: (e) => e.supplier_name || <span className="text-muted">-</span> },
+        { id: "car", header: "Viatura", value: (e) => e.car_name ?? "", cell: (e) => e.car_name || <span className="text-muted">-</span> },
+        { id: "amount", header: "Valor", value: (e) => e.amount, cell: (e) => <span className="fw-medium">{eur(e.amount)}</span>, align: "end", nowrap: true },
+        {
+            id: "status", header: "Estado",
+            cell: (e) => e.is_xplendor_charge && e.charge ? (
+                <Badge color={CHARGE_STATUS_META[e.charge.status].color} className="fw-normal" title="A XPLENDOR confirma o pagamento">{CHARGE_STATUS_META[e.charge.status].label}</Badge>
+            ) : (
+                <Badge color={e.is_paid ? "success-subtle" : "warning-subtle"} className={`fw-normal ${e.is_paid ? "text-success" : "text-warning"}`}
+                    title={e.is_automatic ? "Cobrada automaticamente pela Meta" : undefined}>
+                    {e.is_paid ? `Paga${e.paid_at ? ` · ${e.paid_at}` : ""}` : "Em aberto"}
+                </Badge>
+            ),
+        },
+    ] as DTColumn<IExpense>[]);
+
+    const rowActions = (e: IExpense) => e.is_xplendor_charge && e.charge ? (
+        <Button size="sm" color="outline-primary" title="Ver a fatura da XPLENDOR (só de leitura)" aria-label={`Ver a fatura da XPLENDOR: ${e.description}`}
+            onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, e.charge!.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
+            <i className="ri-lock-line me-1" /><i className="ri-file-pdf-2-line" />
+        </Button>
+    ) : e.is_automatic ? (
+        <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
+    ) : (
+        <>
+            {!e.is_paid && (
+                <Button size="sm" color="success" onClick={() => togglePaid(e)} title="Marcar como paga" aria-label={`Marcar como paga: ${e.description}`}><i className="ri-check-line" /></Button>
+            )}
+            <Button size="sm" color="outline-primary" onClick={() => openEdit(e)} title="Editar" aria-label={`Editar: ${e.description}`}><i className="ri-pencil-line" /></Button>
+            <ActionsMenu size="sm" label={`Mais ações: ${e.description}`} items={[
+                { label: "Marcar como em aberto", icon: "ri-arrow-go-back-line", hidden: !e.is_paid, onClick: () => void togglePaid(e) },
+                e.archived
+                    ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(e, false) }
+                    : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(e, true) },
+                { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(e) },
+            ]} />
+        </>
+    );
+
+    const metaAuto = summary?.automatic_meta;
+
     return (
         <React.Fragment>
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
                     <PageHeader title="Despesas" breadcrumbs={[{ label: "Finanças" }]}
-                        description="Todas as despesas da empresa (com e sem viatura)."
-                        actions={<Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova despesa</Button>} />
+                        info="Todas as despesas da empresa (com e sem viatura)." />
 
                     {/* Faturas da XPLENDOR por resolver: ver a fatura e indicar "Já paguei". */}
                     <XplendorChargesNotice onChanged={fetchAll} />
@@ -221,154 +293,79 @@ const ExpenseList = () => {
                             </CardBody></Card>
                         </Col>
                     </Row>
-                    {(summary?.automatic_meta?.amount ?? 0) > 0 && (
-                        <p className="text-muted fs-12 mb-3">
-                            <i className="ri-information-line me-1" />
-                            Publicidade Meta automática: {eur(summary?.automatic_meta?.amount ?? 0)} ({summary?.automatic_meta?.count} despesa(s)).
-                            Valor informativo, fora destes totais: conta na margem de cada viatura e a fatura da Meta é o registo financeiro.
-                        </p>
-                    )}
 
-                    {/* Filtros */}
-                    <Card className="mb-3"><CardBody>
-                        <Row className="g-2">
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">Categoria</Label>
-                                <Select isClearable placeholder="Todas" options={categoryOptions} value={fCategory}
-                                    onChange={(o: Option | null) => { setFCategory(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
-                            </Col>
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">Fornecedor</Label>
-                                <Select isClearable placeholder="Todos" options={supplierOptions} value={fSupplier}
-                                    onChange={(o: Option | null) => { setFSupplier(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
-                            </Col>
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">Viatura</Label>
-                                <Select isClearable placeholder="Todas" options={carOptions} value={fCar}
-                                    onChange={(o: CarOption | null) => { setFCar(o); resetToFirstPage(); }} classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} />
-                            </Col>
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">Estado</Label>
-                                <XSelect<"" | "1" | "0"> ariaLabel="Estado" value={fPaid} onChange={(v) => { setFPaid(v); resetToFirstPage(); }}
-                                    options={[{ value: "", label: "Todos" }, { value: "1", label: "Pagas" }, { value: "0", label: "Em aberto" }]} />
-                            </Col>
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">De</Label>
-                                <Input type="date" value={fFrom} onChange={(e) => { setFFrom(e.target.value); resetToFirstPage(); }} />
-                            </Col>
-                            <Col lg={3}>
-                                <Label className="form-label mb-1">Até</Label>
-                                <Input type="date" value={fTo} onChange={(e) => { setFTo(e.target.value); resetToFirstPage(); }} />
-                            </Col>
-                            <Col lg={3} className="d-flex align-items-end pb-2">
-                                <div className="form-check">
+                    <PageCard
+                        title="Despesas"
+                        info={(metaAuto?.amount ?? 0) > 0
+                            ? "A publicidade Meta automática é um valor informativo, fora dos totais: conta na margem de cada viatura e a fatura da Meta é o registo financeiro."
+                            : undefined}
+                        status={(metaAuto?.amount ?? 0) > 0
+                            ? <>Publicidade Meta automática: {eur(metaAuto?.amount ?? 0)} ({metaAuto?.count} despesa(s)), fora dos totais</>
+                            : undefined}
+                        loading={loading && expenses.length > 0}
+                        actions={<>
+                            {cols.selector}
+                            <Button size="sm" color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova despesa</Button>
+                        </>}
+                        filters={
+                            <RestFilterBar activeCount={activeFilterCount} onClear={clearFilters}>
+                                <div style={field()}>
+                                    <Label className={FL}>Categoria</Label>
+                                    <XSelect small ariaLabel="Categoria" options={all("Todas", categoryOptions)} value={fCategory}
+                                        onChange={(v) => { setFCategory(v); resetToFirstPage(); }} />
+                                </div>
+                                <div style={field()}>
+                                    <Label className={FL}>Fornecedor</Label>
+                                    <XSelect small ariaLabel="Fornecedor" options={all("Todos", supplierOptions)} value={fSupplier}
+                                        onChange={(v) => { setFSupplier(v); resetToFirstPage(); }} />
+                                </div>
+                                <div style={field()}>
+                                    <Label className={FL}>Viatura</Label>
+                                    <XSelect small ariaLabel="Viatura" options={all("Todas", carOptions)} value={fCar}
+                                        onChange={(v) => { setFCar(v); resetToFirstPage(); }} />
+                                </div>
+                                <div style={field("1 1 140px")}>
+                                    <Label className={FL}>Estado</Label>
+                                    <XSelect<"" | "1" | "0"> small ariaLabel="Estado" value={fPaid} onChange={(v) => { setFPaid(v); resetToFirstPage(); }}
+                                        options={[{ value: "", label: "Todos" }, { value: "1", label: "Pagas" }, { value: "0", label: "Em aberto" }]} />
+                                </div>
+                                <div style={field("1 1 140px")}>
+                                    <Label className={FL}>De</Label>
+                                    <Input bsSize="sm" type="date" aria-label="De" value={fFrom} onChange={(e) => { setFFrom(e.target.value); resetToFirstPage(); }} />
+                                </div>
+                                <div style={field("1 1 140px")}>
+                                    <Label className={FL}>Até</Label>
+                                    <Input bsSize="sm" type="date" aria-label="Até" value={fTo} onChange={(e) => { setFTo(e.target.value); resetToFirstPage(); }} />
+                                </div>
+                                <div className="form-check mb-1 align-self-center" style={{ flex: "0 0 auto" }}>
                                     <input className="form-check-input" type="checkbox" id="inc-arch" checked={includeArchived}
                                         onChange={(e) => { setIncludeArchived(e.target.checked); resetToFirstPage(); }} />
-                                    <label className="form-check-label" htmlFor="inc-arch">Incluir arquivadas</label>
+                                    <label className="form-check-label fs-12" htmlFor="inc-arch">Incluir arquivadas</label>
                                 </div>
-                            </Col>
-                            <Col lg={3} className="d-flex align-items-end pb-2">
-                                <Button color="outline-primary" onClick={clearFilters}><i className="ri-filter-off-line me-1" />Limpar filtros</Button>
-                            </Col>
-                        </Row>
-                    </CardBody></Card>
-
-                    {/* Tabela */}
-                    <Card>
-                        <CardBody>
-                            <div className="table-responsive">
-                                <Table className="align-middle table-nowrap mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th>Data</th>
-                                            <th>Descrição</th>
-                                            <th>Categoria</th>
-                                            <th>Fornecedor</th>
-                                            <th>Viatura</th>
-                                            <th className="text-end">Valor</th>
-                                            <th>Estado</th>
-                                            <th className="text-end">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading && <tr><td colSpan={8} className="text-center text-muted py-4">A carregar…</td></tr>}
-                                        {!loading && expenses.length === 0 && <tr><td colSpan={8} className="text-center text-muted py-4">Sem despesas para os filtros escolhidos.</td></tr>}
-                                        {!loading && expenses.map((e) => (
-                                            <tr key={e.id} className={e.archived ? "text-muted" : ""}>
-                                                <td>{e.date}</td>
-                                                <td className={e.archived ? "" : "fw-medium"}>
-                                                    {e.description}
-                                                    {e.is_automatic && !e.is_xplendor_charge && <Badge color="info" className="bg-info-subtle text-info ms-2" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável.">Automática (Meta)</Badge>}
-                                                    {e.is_xplendor_charge && e.charge && (
-                                                        <>
-                                                            {e.charge.overdue && <Badge color="danger" className="ms-2 fw-normal">Vencida</Badge>}
-                                                            <div className="text-muted fs-12">Cobrança da XPLENDOR · vence a {dmy(e.charge.due_date)}</div>
-                                                        </>
-                                                    )}
-                                                    {e.archived && <Badge color="light" className="text-muted ms-2">Arquivada</Badge>}
-                                                </td>
-                                                <td>
-                                                    {e.category_name ? (
-                                                        <span>
-                                                            <span className="d-inline-block rounded-circle align-middle me-1" style={{ width: 10, height: 10, backgroundColor: e.category_color || "#ced4da" }} />
-                                                            {e.category_name}
-                                                        </span>
-                                                    ) : <span className="text-muted">Sem categoria</span>}
-                                                </td>
-                                                <td>{e.supplier_name || <span className="text-muted">-</span>}</td>
-                                                <td>{e.car_name || <span className="text-muted">-</span>}</td>
-                                                <td className="text-end fw-medium">{eur(e.amount)}</td>
-                                                <td>
-                                                    {e.is_xplendor_charge && e.charge ? (
-                                                        <Badge color={CHARGE_STATUS_META[e.charge.status].color} className="fw-normal" title="A XPLENDOR confirma o pagamento">{CHARGE_STATUS_META[e.charge.status].label}</Badge>
-                                                    ) : (
-                                                    <Badge color={e.is_paid ? "success-subtle" : "warning-subtle"} className={`fw-normal ${e.is_paid ? "text-success" : "text-warning"}`}
-                                                        title={e.is_automatic ? "Cobrada automaticamente pela Meta" : undefined}>
-                                                        {e.is_paid ? `Paga${e.paid_at ? ` · ${e.paid_at}` : ""}` : "Em aberto"}
-                                                    </Badge>
-                                                    )}
-                                                </td>
-                                                <td className="text-end">
-                                                    {e.is_xplendor_charge && e.charge ? (
-                                                        <Button size="sm" color="outline-primary" title="Ver a fatura da XPLENDOR (só de leitura)" aria-label={`Ver a fatura da XPLENDOR: ${e.description}`}
-                                                            onClick={async () => { const r = await openPdfGet(companyChargeInvoicePath(companyId, e.charge!.id)); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
-                                                            <i className="ri-lock-line me-1" /><i className="ri-file-pdf-2-line" />
-                                                        </Button>
-                                                    ) : e.is_automatic ? (
-                                                        <span className="text-muted" title="Despesa automática: atualizada todos os dias a partir do gasto reportado pela Meta (sem IVA). Não é editável."><i className="ri-lock-line" /></span>
-                                                    ) : (
-                                                    <div className="d-inline-flex gap-1">
-                                                        {!e.is_paid && (
-                                                            <Button size="sm" color="success" onClick={() => togglePaid(e)} title="Marcar como paga" aria-label={`Marcar como paga: ${e.description}`}><i className="ri-check-line" /></Button>
-                                                        )}
-                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(e)} title="Editar" aria-label={`Editar: ${e.description}`}><i className="ri-pencil-line" /></Button>
-                                                        <ActionsMenu size="sm" label={`Mais ações: ${e.description}`} items={[
-                                                            { label: "Marcar como em aberto", icon: "ri-arrow-go-back-line", hidden: !e.is_paid, onClick: () => void togglePaid(e) },
-                                                            e.archived
-                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(e, false) }
-                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(e, true) },
-                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(e) },
-                                                        ]} />
-                                                    </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    <Pagination
-                        currentPage={meta?.current_page ?? 1}
-                        lastPage={meta?.last_page ?? 1}
-                        total={meta?.total ?? 0}
-                        perPage={meta?.per_page ?? pagination.pageSize}
-                        from={meta?.from ?? 0}
-                        to={meta?.to ?? 0}
-                        onPageChange={(page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))}
-                    />
+                            </RestFilterBar>
+                        }
+                    >
+                        <DataTable
+                            columns={cols}
+                            data={expenses}
+                            rowKey={(e) => e.id}
+                            mode="server"
+                            loading={loading}
+                            caption="Despesas"
+                            rowClassName={(e) => (e.archived ? "text-muted" : undefined)}
+                            empty={{ message: "Sem despesas para os filtros escolhidos." }}
+                            rowActions={rowActions}
+                            server={{
+                                page: meta?.current_page ?? 1,
+                                lastPage: meta?.last_page ?? 1,
+                                total: meta?.total ?? 0,
+                                perPage: meta?.per_page ?? pagination.pageSize,
+                                from: meta?.from ?? 0,
+                                to: meta?.to ?? 0,
+                                onPageChange: (page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 })),
+                            }}
+                        />
+                    </PageCard>
                 </Container>
             </div>
 

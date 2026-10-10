@@ -1,44 +1,39 @@
 // React
 import React, { useCallback, useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { createSelector } from "reselect";
-import { Button, Card, CardBody, Container, Table } from "reactstrap";
+import { useDispatch } from "react-redux";
+import { Button, Container } from "reactstrap";
 import { toast } from "react-toastify";
 import { ToastContainer } from "react-toastify";
 // Components
-import Pagination from "Components/Common/Pagination";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import SupplierFormModal from "./components/SupplierFormModal";
 import QuickAddSupplierModal from "./components/QuickAddSupplierModal";
 // Redux
-import { getSuppliers, deleteSupplier, updateSupplier } from "slices/suppliers/thunk";
+import { deleteSupplier, updateSupplier } from "slices/suppliers/thunk";
+import { getSuppliers as getSuppliersApi } from "helpers/laravel_helper";
 // Helpers
 import { confirmDelete, alertMessage } from "helpers/swal";
 // Models
 import { ISupplier } from "common/models/supplier.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
-const selectSupplierState = (state: any) => state.Supplier;
-
-const selectSupplierListViewModel = createSelector(
-    [selectSupplierState],
-    (supplierState) => ({
-        suppliers: supplierState.data.suppliers as ISupplier[],
-        meta: supplierState.data.meta,
-        loading: supplierState.loading.list,
-    })
-);
 
 const SupplierList = () => {
     const dispatch: any = useDispatch();
     document.title = "Fornecedores | Xplendor";
 
-    const { suppliers, meta, loading } = useSelector(selectSupplierListViewModel);
+    // UI-2c: todos os fornecedores (sem perPage, a API devolve-os todos, por nome); o DataTable
+    // ordena, pesquisa e pagina no browser.
+    const [suppliers, setSuppliers] = useState<ISupplier[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState("");
 
     const companyId = useWorkingCompanyId();
 
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
 
     // Modais
     const [formOpen, setFormOpen] = useState(false);
@@ -47,14 +42,12 @@ const SupplierList = () => {
 
     const fetchList = useCallback(() => {
         if (!companyId) return;
-        dispatch(
-            getSuppliers({
-                companyId,
-                page: pagination.pageIndex + 1,
-                perPage: pagination.pageSize,
-            })
-        );
-    }, [dispatch, companyId, pagination.pageIndex, pagination.pageSize]);
+        setLoading(true);
+        getSuppliersApi(companyId)
+            .then((r: any) => setSuppliers((r?.data ?? []) as ISupplier[]))
+            .catch(() => setSuppliers([]))
+            .finally(() => setLoading(false));
+    }, [companyId]);
 
     useEffect(() => {
         fetchList();
@@ -116,85 +109,65 @@ const SupplierList = () => {
     const locationOf = (s: ISupplier): string =>
         [s.parish_name, s.municipality_name, s.district_name].filter(Boolean).join(", ") || "-";
 
+    const cols = useDataColumns<ISupplier>("financas.fornecedores", [
+        {
+            id: "name", header: "Nome", value: (x) => x.name, mobile: "title",
+            cell: (x) => <span className={x.archived ? "" : "fw-medium"}>{x.name}{x.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}</span>,
+        },
+        { id: "nif", header: "NIF", value: (x) => x.nif || "", cell: (x) => x.nif || "-" },
+        { id: "phone", header: "Telefone", value: (x) => x.phone || "", cell: (x) => x.phone || "-", nowrap: true },
+        { id: "email", header: "Email", value: (x) => x.email || "", cell: (x) => x.email || "-" },
+        { id: "location", header: "Localidade", value: (x) => locationOf(x) },
+    ] as DTColumn<ISupplier>[]);
+
     return (
         <React.Fragment>
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
                     <PageHeader title="Fornecedores" breadcrumbs={[{ label: "Finanças" }]}
-                        description="Os fornecedores da sua empresa (base para as despesas)."
+                        info="Os fornecedores da sua empresa (base para as despesas)." />
+
+                    <PageCard
+                        title="Fornecedores"
+                        status={!loading ? <>{suppliers.length} fornecedor{suppliers.length === 1 ? "" : "es"}</> : undefined}
+                        loading={loading && suppliers.length > 0}
                         actions={<>
-                            <Button color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
-                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo fornecedor</Button>
-                        </>} />
-
-                    <Card>
-                        <CardBody>
-                            <div className="table-responsive">
-                                <Table className="align-middle table-nowrap mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>NIF</th>
-                                            <th>Telefone</th>
-                                            <th>Email</th>
-                                            <th>Localidade</th>
-                                            <th className="text-end">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading && (
-                                            <tr>
-                                                <td colSpan={6} className="text-center text-muted py-4">A carregar…</td>
-                                            </tr>
-                                        )}
-                                        {!loading && suppliers.length === 0 && (
-                                            <tr>
-                                                <td colSpan={6} className="text-center text-muted py-4">
-                                                    Sem fornecedores. Clique em "Novo fornecedor" para criar o primeiro.
-                                                </td>
-                                            </tr>
-                                        )}
-                                        {!loading && suppliers.map((s) => (
-                                            <tr key={s.id} className={s.archived ? "text-muted" : ""}>
-                                                <td className={s.archived ? "" : "fw-medium"}>
-                                                    {s.name}
-                                                    {s.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}
-                                                </td>
-                                                <td>{s.nif || "-"}</td>
-                                                <td>{s.phone || "-"}</td>
-                                                <td>{s.email || "-"}</td>
-                                                <td>{locationOf(s)}</td>
-                                                <td className="text-end">
-                                                    <div className="d-inline-flex gap-1">
-                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(s)} title="Editar" aria-label={`Editar: ${s.name}`}>
-                                                            <i className="ri-pencil-line" />
-                                                        </Button>
-                                                        <ActionsMenu size="sm" label={`Mais ações: ${s.name}`} items={[
-                                                            s.archived
-                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(s, false) }
-                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(s, true) },
-                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(s) },
-                                                        ]} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    <Pagination
-                        currentPage={meta?.current_page ?? 1}
-                        lastPage={meta?.last_page ?? 1}
-                        total={meta?.total ?? 0}
-                        perPage={meta?.per_page ?? pagination.pageSize}
-                        from={meta?.from ?? 0}
-                        to={meta?.to ?? 0}
-                        onPageChange={(page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))}
-                    />
+                            {cols.selector}
+                            <Button size="sm" color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
+                            <Button size="sm" color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo fornecedor</Button>
+                        </>}
+                        filters={<RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, NIF, telefone ou email)…"
+                            activeCount={search ? 1 : 0} onClear={() => setSearch("")} />}
+                    >
+                        <DataTable
+                            columns={cols}
+                            data={suppliers}
+                            rowKey={(x) => x.id}
+                            loading={loading}
+                            search={search}
+                            pageSize={10}
+                            caption="Fornecedores"
+                            rowClassName={(x) => (x.archived ? "text-muted" : undefined)}
+                            empty={{
+                                message: "Sem fornecedores.",
+                                action: <Button size="sm" color="outline-primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo fornecedor</Button>,
+                            }}
+                            rowActions={(x) => (
+                                <>
+                                    <Button size="sm" color="outline-primary" onClick={() => openEdit(x)} title="Editar" aria-label={`Editar: ${x.name}`}>
+                                        <i className="ri-pencil-line" />
+                                    </Button>
+                                    <ActionsMenu size="sm" label={`Mais ações: ${x.name}`} items={[
+                                        x.archived
+                                            ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(x, false) }
+                                            : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(x, true) },
+                                        { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(x) },
+                                    ]} />
+                                </>
+                            )}
+                        />
+                    </PageCard>
                 </Container>
             </div>
 

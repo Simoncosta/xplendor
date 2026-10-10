@@ -101,7 +101,7 @@ class InvoiceOcrTest extends TestCase
         $this->assertSame('500829993', $clean['supplier_nif']);
         $this->assertSame('2024-03-15', $clean['issue_date']);
         $this->assertCount(2, $clean['lines']); // a 3.ª (lixo) foi descartada
-        $this->assertSame(420, $clean['lines'][0]['unit_price_cents']); // 4.20 € → 420
+        $this->assertSame('4.200000', $clean['lines'][0]['unit_price']); // F2b: 6 casas, sem arredondar
         $this->assertSame(1170, $clean['lines'][1]['line_total_cents']);
         $this->assertSame(23, $clean['lines'][1]['vat_rate']);
         $this->assertSame(5891, $clean['summary']['total_cents']); // 58.91 € → 5891

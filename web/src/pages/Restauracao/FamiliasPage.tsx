@@ -162,7 +162,7 @@ export default function FamiliasPage() {
                                         <i className="ri-contract-up-down-line me-1" /> Colapsar tudo
                                     </Button>
                                 </>}
-                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
                             </>}

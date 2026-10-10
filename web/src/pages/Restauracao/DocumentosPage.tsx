@@ -363,7 +363,7 @@ export default function DocumentosPage() {
                             <Col md={6} key={i} className="mb-2 d-flex align-items-center gap-2">
                                 <span style={{ minWidth: 130 }} className="fs-13">{r.description || id}</span>
                                 <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                                    <XSelect small ariaLabel={`Uso da conta ${r.description || id}`} value={st}
+                                    <XSelect ariaLabel={`Uso da conta ${r.description || id}`} value={st}
                                         onChange={(v) => setDaState((p) => ({ ...p, [id]: v }))}
                                         options={[
                                             ...(st === "both" ? [{ value: "both", label: "Outro (crédito+débito)" }] : []),
@@ -594,16 +594,16 @@ export default function DocumentosPage() {
                             status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
                             actions={<>
                                 {cols.selector}
-                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar lista</>}
                                 </Button>
-                                <ActionsMenu label="Mais ações: Documentos" items={[
+                                <ActionsMenu size="sm" label="Mais ações: Documentos" items={[
                                     {
                                         label: syncingRich ? "A obter detalhe…" : "Sincronizar detalhe", icon: "ri-stack-line", onClick: runSyncRich,
                                         disabledReason: syncingRich ? "A sincronização do detalhe já está a correr." : null,
                                     },
                                 ]} />
-                                <Button color="primary" onClick={openCreate} disabled={creating2}>
+                                <Button size="sm" color="primary" onClick={openCreate} disabled={creating2}>
                                     <i className="ri-add-line me-1" /> Novo documento
                                 </Button>
                             </>}

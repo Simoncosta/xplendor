@@ -11,6 +11,7 @@ import { Button, Card, CardBody, Col, Container, Input, Label, Row, Spinner } fr
 import avatar1 from '../../../assets/images/users/avatar-company.jpg';
 import XInput from 'Components/Common/XInput';
 import PageHeader from 'Components/Common/PageHeader';
+import PageCard from 'Components/Common/PageCard';
 import XSelect from 'pages/Editorial/XSelect';
 import XInputMask from 'Components/Common/XInputMask';
 
@@ -63,13 +64,7 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                         title={formik.values.name || (isEdit ? "Colaborador" : "Novo colaborador")}
                         breadcrumbs={[{ label: "Configurações" }, { label: "Colaboradores", to: "/users" }]}
                         crumbLabel={isEdit ? "Colaborador" : "Novo"}
-                        description="Dados da conta e palavra-passe do colaborador."
-                        actions={<>
-                            <Button color="outline-primary" disabled={loading} onClick={() => onCancel()}>Cancelar</Button>
-                            <Button color="primary" type="submit" form="user-editor-form" disabled={loading}>
-                                {loading ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
-                            </Button>
-                        </>}
+                        info="Dados da conta e palavra-passe do colaborador."
                     />
                     <Row>
                         <Col xxl={3}>
@@ -119,8 +114,13 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                         </Col>
 
                         <Col xxl={9}>
-                            <Card>
-                                <CardBody className="p-4">
+                            <PageCard title="Conta" flush={false} bodyClassName="p-4"
+                                actions={<>
+                                    <Button size="sm" color="outline-primary" disabled={loading} onClick={() => onCancel()}>Cancelar</Button>
+                                    <Button size="sm" color="primary" type="submit" form="user-editor-form" disabled={loading}>
+                                        {loading ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
+                                    </Button>
+                                </>}>
                                     <FormikProvider value={formik}>
                                         <form id="user-editor-form" onSubmit={formik.handleSubmit}>
                                             <div className="mb-2 border-bottom pb-2">
@@ -227,8 +227,7 @@ export default function UserEditor({ data, onSubmit, onCancel, loading = false }
                                             </Row>
                                         </form>
                                     </FormikProvider>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
                         </Col>
                     </Row>
                 </Container>

@@ -143,6 +143,12 @@ class InvoiceOcrService
         } catch (\Throwable $e) {
             Log::warning('[OCR Fatura] ligação ao PingWin falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
         }
+        // F2b: liga cada linha a um artigo do catálogo (mapa → PingWin → descrição → sugestões).
+        try {
+            app(OcrLineArticleService::class)->linkInvoice($invoice->fresh());
+        } catch (\Throwable $e) {
+            Log::warning('[OCR Fatura] ligação das linhas a artigos falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
+        }
     }
 
     /** Guias únicas pela referência (a data lida no texto ganha à da IA). */
@@ -482,7 +488,7 @@ class InvoiceOcrService
             }
             $item = $this->str($l['item'] ?? null);
             $qty = $this->num($l['quantidade'] ?? null);
-            $unitPrice = $this->cents($l['precoUnitario'] ?? null);
+            $unitPrice = $this->dec6($l['precoUnitario'] ?? null); // F2b: 6 casas, nunca arredondar
             $lineTotal = $this->cents($l['totalLinha'] ?? null);
             // Linha só entra se tiver ALGO de útil (nome ou algum valor).
             if ($item === null && $qty === null && $unitPrice === null && $lineTotal === null) {
@@ -493,7 +499,7 @@ class InvoiceOcrService
                 'item'             => $item,
                 'quantity'         => $qty,
                 'unit'             => $this->str($l['unidade'] ?? null),
-                'unit_price_cents' => $unitPrice,
+                'unit_price'       => $unitPrice,
                 'discount_pct'     => $this->pct($l['descontoPct'] ?? null),
                 'line_total_cents' => $lineTotal,
                 'vat_rate'         => $this->vat($l['taxaIva'] ?? null),
@@ -832,6 +838,16 @@ class InvoiceOcrService
         }
 
         return (float) $v;
+    }
+
+    /** Decimal com 6 casas como string (preço unitário com precisão total), ou null. */
+    private function dec6($v): ?string
+    {
+        if ($v === null || $v === '' || ! is_numeric($v)) {
+            return null;
+        }
+
+        return number_format((float) $v, 6, '.', '');
     }
 
     /** € (número) → cêntimos inteiros, ou null se não numérico. */

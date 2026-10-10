@@ -17,6 +17,8 @@ class OcrInvoicePingwinLink extends Model
     public const TOTAL_DATE = 'total_data';
     public const GUIDES = 'guias';
     public const MANUAL = 'manual';
+    /** FB-1: documento criado pela própria XPLENDOR ("Lançar no PingWin"). */
+    public const XPLENDOR = 'xplendor';
 
     protected $fillable = ['company_id', 'ocr_invoice_id', 'docheader_id', 'method', 'confirmed_by', 'confirmed_at'];
 

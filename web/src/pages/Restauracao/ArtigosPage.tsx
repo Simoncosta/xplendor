@@ -158,7 +158,7 @@ export default function ArtigosPage() {
             id: "description", header: "Descrição", value: (a) => a.description, mobile: "title",
             cell: (a) => <>{a.description || "—"}{!a.is_active && <span className="badge bg-secondary-subtle text-secondary ms-2">Inativo</span>}</>,
         },
-        { id: "family", header: "Família", value: (a) => a.family, cell: (a) => (a.family ? <span className="badge bg-info-subtle text-info">{a.family}</span> : <span className="text-muted">—</span>) },
+        { id: "family", header: "Família", value: (a) => a.family, cell: (a) => (a.family ? <span className="badge bg-info-subtle text-info text-wrap text-start">{a.family}</span> : <span className="text-muted">—</span>) },
         { id: "sale_price", header: "Preço venda", value: (a) => a.saleprice_cents, cell: (a) => fmtCents(a.saleprice_cents), align: "end", nowrap: true },
         { id: "purchase_price", header: "Preço compra", value: (a) => a.purchaseprice_cents, cell: (a) => fmtCents(a.purchaseprice_cents), align: "end", nowrap: true },
         { id: "forsale", header: "Venda", value: (a) => (a.forsale ? 1 : 0), cell: (a) => <YesNo v={a.forsale} color="success" />, align: "center" },
@@ -185,10 +185,10 @@ export default function ArtigosPage() {
                             status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
                             actions={<>
                                 {cols.selector}
-                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
-                                <Button color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
+                                <Button size="sm" color="primary" onClick={() => navigate("/restauracao/artigos/novo")}>
                                     <i className="ri-add-line me-1" /> Novo artigo
                                 </Button>
                             </>}

@@ -5,7 +5,7 @@ import { Modal, ModalHeader, ModalBody, ModalFooter, Row, Col, Label, Input, For
 import { FormikProvider, useFormik } from "formik";
 import * as Yup from "yup";
 import { toast } from "react-toastify";
-import Select from "react-select";
+import XSelect from "Components/Common/Select";
 import CreatableSelect from "react-select/creatable";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 // Components
@@ -133,9 +133,7 @@ export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, f
     const categoryOptions: Option[] = categories.filter((c) => !c.locked).map((c) => ({ value: c.id, label: c.name }));
     const supplierOptions: Option[] = suppliers.map((s) => ({ value: s.id, label: s.name }));
 
-    const selectedCategory = categoryOptions.find((o) => o.value === formik.values.expense_category_id) ?? null;
     const selectedSupplier = supplierOptions.find((o) => o.value === formik.values.supplier_id) ?? null;
-    const selectedCar = carOptions.find((o) => o.value === formik.values.car_id) ?? null;
 
     const handleSupplierCreated = (supplier: ISupplier) => {
         setSuppliers((prev) => [...prev, supplier]);
@@ -184,15 +182,10 @@ export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, f
 
                                 <Col lg={4}>
                                     <Label className="form-label">Categoria</Label>
-                                    <Select
-                                        isClearable
-                                        placeholder="Sem categoria"
-                                        options={categoryOptions}
-                                        value={selectedCategory}
-                                        onChange={(opt: Option | null) => formik.setFieldValue("expense_category_id", opt?.value ?? null)}
-                                        classNamePrefix="react-select"
-                                        {...SELECT_PORTAL}
-                                    />
+                                    <XSelect ariaLabel="Categoria"
+                                        options={[{ value: "", label: "Sem categoria" }, ...categoryOptions.map((o) => ({ value: String(o.value), label: o.label }))]}
+                                        value={formik.values.expense_category_id != null ? String(formik.values.expense_category_id) : ""}
+                                        onChange={(v) => formik.setFieldValue("expense_category_id", v ? Number(v) : null)} />
                                 </Col>
 
                                 <Col lg={4}>
@@ -213,15 +206,10 @@ export default function ExpenseFormModal({ isOpen, toggle, expense, companyId, f
                                 {!fixedCarId && (
                                     <Col lg={6}>
                                         <Label className="form-label">Viatura</Label>
-                                        <Select
-                                            isClearable
-                                            placeholder="Sem viatura"
-                                            options={carOptions}
-                                            value={selectedCar}
-                                            onChange={(opt: CarOption | null) => formik.setFieldValue("car_id", opt?.value ?? null)}
-                                            classNamePrefix="react-select"
-                                            {...SELECT_PORTAL}
-                                        />
+                                        <XSelect ariaLabel="Viatura"
+                                            options={[{ value: "", label: "Sem viatura" }, ...carOptions.map((o) => ({ value: String(o.value), label: o.label }))]}
+                                            value={formik.values.car_id != null ? String(formik.values.car_id) : ""}
+                                            onChange={(v) => formik.setFieldValue("car_id", v ? Number(v) : null)} />
                                     </Col>
                                 )}
 

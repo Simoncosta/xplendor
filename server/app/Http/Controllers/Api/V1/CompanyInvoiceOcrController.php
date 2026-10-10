@@ -13,6 +13,7 @@ use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
 use App\Jobs\LinkOcrInvoiceJob;
 use App\Services\InvoiceOcrService;
+use App\Services\OcrLineArticleService;
 use App\Services\OcrPingwinLinkService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -77,6 +78,7 @@ class CompanyInvoiceOcrController extends Controller
             'link_status'   => $inv->link_status,
             'paid'          => $linkInfo[$inv->id]['paid'] ?? null,
             'store'         => $linkInfo[$inv->id]['store'] ?? null,
+            'pingwin_doc_status' => $linkInfo[$inv->id]['xplendor_status'] ?? null, // FB-1: 8001 rascunho / 8002 lançada
             'total'         => $inv->summary ? $inv->summary->total_cents / 100 : null,
             'created_at'    => optional($inv->created_at)->toIso8601String(),
         ]);
@@ -129,6 +131,11 @@ class CompanyInvoiceOcrController extends Controller
         $invoice = OcrInvoice::where('company_id', $companyId)->with(['lines', 'summary'])->find($invoiceId);
         if (! $invoice) {
             return ApiResponse::error('Fatura não encontrada.', 404);
+        }
+        // F2b: artigo criado pela linha já confirmado → liga a linha.
+        if ($invoice->lines->whereNotNull('article_write_id')->isNotEmpty()) {
+            app(OcrLineArticleService::class)->resolvePendingCreations($invoice);
+            $invoice->load('lines');
         }
 
         return ApiResponse::success([
@@ -206,6 +213,7 @@ class CompanyInvoiceOcrController extends Controller
             'number'        => ['nullable', 'string', 'max:120'],
             'issue_date'    => ['nullable', 'date_format:Y-m-d'],
             'lines'                   => ['present', 'array'],
+            'lines.*.id'              => ['nullable', 'integer'],
             'lines.*.supplier_code'   => ['nullable', 'string', 'max:60'],
             'lines.*.item'            => ['nullable', 'string', 'max:255'],
             'lines.*.quantity'        => ['nullable', 'numeric'],
@@ -245,22 +253,26 @@ class CompanyInvoiceOcrController extends Controller
                 // synced_to_pingwin permanece false — Fase B.
             ]);
 
-            $invoice->lines()->delete();
+            // F2b: as linhas que vêm com id mantêm-se (e a ligação ao artigo); as que não vêm saem.
+            $keep = collect($data['lines'])->pluck('id')->filter()->map(fn ($v) => (int) $v)->all();
+            $invoice->lines()->whereNotIn('id', $keep)->delete();
             $pos = 0;
             foreach ($data['lines'] as $line) {
-                OcrInvoiceLine::create([
-                    'ocr_invoice_id'   => $invoice->id,
-                    'company_id'       => $companyId,
+                $values = [
                     'position'         => $pos++,
                     'supplier_code'    => $line['supplier_code'] ?? null,
                     'item'             => $line['item'] ?? null,
                     'quantity'         => $line['quantity'] ?? null,
                     'unit'             => $line['unit'] ?? null,
-                    'unit_price_cents' => $this->cents($line['unit_price'] ?? null),
+                    'unit_price'       => isset($line['unit_price']) && is_numeric($line['unit_price']) ? number_format((float) $line['unit_price'], 6, '.', '') : null,
                     'discount_pct'     => $line['discount_pct'] ?? null,
                     'line_total_cents' => $this->cents($line['line_total'] ?? null),
                     'vat_rate'         => $line['vat_rate'] ?? null,
-                ]);
+                ];
+                $existing = ! empty($line['id']) ? $invoice->lines()->whereKey((int) $line['id'])->first() : null;
+                $existing
+                    ? $existing->update($values)
+                    : OcrInvoiceLine::create($values + ['ocr_invoice_id' => $invoice->id, 'company_id' => $companyId]);
             }
 
             $s = $data['summary'];
@@ -291,6 +303,8 @@ class CompanyInvoiceOcrController extends Controller
         // F3: ao validar, volta a ligar ao PingWin (espelho; se o fornecedor não estiver lá, o
         // worker pesquisa-o por NIF).
         $this->relink($invoice->fresh());
+        // F2b: as linhas editadas voltam a ligar-se aos artigos (as manuais ficam).
+        app(OcrLineArticleService::class)->linkInvoice($invoice->fresh());
 
         return ApiResponse::success(['invoice' => $this->presentInvoice($invoice->fresh(['lines', 'summary']))], 'Fatura validada e guardada.');
     }
@@ -373,6 +387,8 @@ class CompanyInvoiceOcrController extends Controller
 
     private function presentInvoice(OcrInvoice $inv): array
     {
+        $lineLinks = app(OcrLineArticleService::class);
+        $lineArticles = OcrLineArticleService::articlesFor($inv->lines);
         // ⚠️ A Xplendor calcula a soma das linhas (mais fiável que o sumário da IA).
         $linesTotal = $inv->lines->sum(fn (OcrInvoiceLine $l) => (int) ($l->line_total_cents ?? 0)) / 100;
 
@@ -411,16 +427,19 @@ class CompanyInvoiceOcrController extends Controller
                 'diff'  => ($r['diff_cents'] ?? 0) / 100,
                 'ok'    => (bool) ($r['ok'] ?? false),
             ])->values(),
-            'lines'             => $inv->lines->map(fn (OcrInvoiceLine $l) => [
+            'lines'             => $inv->lines->sortBy('position')->map(fn (OcrInvoiceLine $l) => [
+                'id'           => $l->id,
                 'supplier_code' => $l->supplier_code,
                 'item'         => $l->item,
-                'quantity'     => $l->quantity,
+                'quantity'     => $l->quantity !== null ? (float) $l->quantity : null,
                 'unit'         => $l->unit,
-                'unit_price'   => $l->unit_price_cents !== null ? $l->unit_price_cents / 100 : null,
+                'unit_price'   => $l->unit_price !== null ? (float) $l->unit_price : null, // 6 casas
                 'discount_pct' => $l->discount_pct,
                 'line_total'   => $l->line_total_cents !== null ? $l->line_total_cents / 100 : null,
                 'vat_rate'     => $l->vat_rate,
-            ])->values(),
+            ] + $lineLinks->presentLine($l, $lineArticles))->values(),
+            // F2b: linhas ligadas a artigos; "pronta para lançar" = todas ligadas.
+            'articles_summary'  => OcrLineArticleService::summary($inv->lines),
             'summary'           => $inv->summary ? [
                 'goods_total'         => $inv->summary->goods_total_cents / 100,
                 'commercial_discount' => $inv->summary->commercial_discount_cents / 100,

@@ -302,10 +302,10 @@ export default function UnidadesPage() {
                             status={<>Última sincronização: {fmtDateTime(lastSynced)}</>}
                             actions={<>
                                 {cols.selector}
-                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
-                                <Button color="primary" onClick={openCreate}>
+                                <Button size="sm" color="primary" onClick={openCreate}>
                                     <i className="ri-add-line me-1" /> Criar unidade
                                 </Button>
                             </>}

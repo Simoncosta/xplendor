@@ -394,15 +394,8 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                 />
             )}
 
-            <Container fluid>
-                <Row className="mb-3">
-                    <Col>
-                        <h5 className="fw-semibold mb-1">Integrações</h5>
-                        <p className="text-muted fs-13 mb-0">
-                            Ligue as suas plataformas externas para que os dados cheguem automaticamente à XPLENDOR.
-                        </p>
-                    </Col>
-                </Row>
+            {/* O título e a explicação estão no cartão "Integrações" do perfil (UI-2c). */}
+            <Container fluid className="px-0">
 
                 <Row className="g-3">
                     {/* Link de configuração do cliente (só quem pode gerir o vê) e histórico das ligações. */}
@@ -477,7 +470,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             /* Token expirado ou com falha: volta a ligar-se aqui; desligar (e apagar)
                                                fica no menu "..." do cartão. Já desligada: o histórico guardado apaga-se no menu. */
                                             <button
-                                                className="btn btn-primary w-100 mt-1"
+                                                className="btn btn-primary btn-sm w-100 mt-1"
                                                 onClick={connectMeta}
                                                 style={{ background: "#1877F2", borderColor: "#1877F2" }}
                                             >
@@ -490,7 +483,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                     <p className="text-muted fs-12 mb-0">{agencyMemberOnly ? "Pela agência, só os administradores ligam integrações." : "Só o administrador da empresa pode ligar os anúncios da Meta."}</p>
                                 ) : (
                                     <button
-                                        className="btn btn-primary w-100"
+                                        className="btn btn-primary btn-sm w-100"
                                         onClick={connectMeta}
                                         style={{ background: "#1877F2", borderColor: "#1877F2" }}
                                     >
@@ -567,7 +560,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             value={gaProperty}
                                             onChange={(e) => setGaProperty(e.target.value)}
                                         />
-                                        <button className="btn btn-outline-primary w-100" onClick={connectGa} disabled={gaSaving}>
+                                        <button className="btn btn-outline-primary btn-sm w-100" onClick={connectGa} disabled={gaSaving}>
                                             {gaSaving ? <><Spinner size="sm" className="me-1" /> A ligar…</> : <><i className="ri-links-line me-2" />Ligar Google Analytics</>}
                                         </button>
                                     </div>
@@ -607,7 +600,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             </button>)}
                                         </div>
                                     ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
-                                        <button className="btn btn-outline-primary w-100" onClick={() => setCarmineModalOpen(true)}>
+                                        <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setCarmineModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar Carmine
                                         </button>
                                     )}
@@ -697,7 +690,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                             </button>)}
                                         </div>
                                     ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
-                                        <button className="btn btn-outline-primary w-100" onClick={() => setPingwinModalOpen(true)}>
+                                        <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setPingwinModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar PingWin
                                         </button>
                                     )}
@@ -755,7 +748,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         <div className="vstack gap-2">
                                             <input type="password" className="form-control" placeholder="token CoverManager (apikey)"
                                                 value={coverToken} onChange={(e) => setCoverToken(e.target.value)} autoComplete="new-password" disabled={coverSaving} />
-                                            <button className="btn btn-outline-primary w-100" onClick={connectCover} disabled={coverSaving}>
+                                            <button className="btn btn-outline-primary btn-sm w-100" onClick={connectCover} disabled={coverSaving}>
                                                 {coverSaving ? <><Spinner size="sm" className="me-1" /> A ligar…</> : <><i className="ri-links-line me-2" /> Ligar CoverManager</>}
                                             </button>
                                         </div>

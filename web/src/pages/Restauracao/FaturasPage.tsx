@@ -47,7 +47,10 @@ const DOC_TYPES: Record<string, string> = {
 
 type InvoiceRow = OcrInvoiceListRow;
 
-function LinkBadge({ s }: { s: OcrLinkStatus | null }) {
+function LinkBadge({ s, docStatus }: { s: OcrLinkStatus | null; docStatus?: string | null }) {
+    // FB-1: lançada pela XPLENDOR → o estado do documento no PingWin.
+    if (docStatus === "8001") return <span className="badge bg-info-subtle text-info" title="Lançada pela XPLENDOR em rascunho (Aberto): ainda não mexe no stock">Rascunho</span>;
+    if (docStatus === "8002") return <span className="badge bg-success-subtle text-success" title="Lançada pela XPLENDOR e fechada no PingWin">Lançada</span>;
     if (!s) return <span className="text-muted">—</span>;
     const st = LINK_STATUS[s];
     return <span className={`badge ${st.cls}`} title={st.title}>{st.label}</span>;
@@ -154,7 +157,7 @@ export default function FaturasPage() {
         { id: "total", header: "Total", value: (r) => r.total, cell: (r) => euro(r.total), align: "end", nowrap: true },
         { id: "status", header: "Estado", value: (r) => STATUS[r.status]?.label ?? r.status, cell: (r) => <StatusBadge s={r.status} />, align: "center" },
         { id: "qr", header: "QR", value: (r) => r.check_status, cell: (r) => <QrCheck r={r} />, align: "center" },
-        { id: "pingwin", header: "PingWin", value: (r) => (r.link_status ? LINK_STATUS[r.link_status]?.label : null), cell: (r) => <LinkBadge s={r.link_status} />, align: "center" },
+        { id: "pingwin", header: "PingWin", value: (r) => (r.pingwin_doc_status === "8001" ? "Rascunho" : r.pingwin_doc_status === "8002" ? "Lançada" : r.link_status ? LINK_STATUS[r.link_status]?.label : null), cell: (r) => <LinkBadge s={r.link_status} docStatus={r.pingwin_doc_status} />, align: "center" },
         {
             id: "paid", header: "Liquidado", value: (r) => (r.paid === null ? null : r.paid ? 1 : 0), align: "center",
             cell: (r) => (r.paid === null ? <span className="text-muted" title="Sem documento do PingWin ligado">—</span>
@@ -197,7 +200,7 @@ export default function FaturasPage() {
                             actions={<>
                                 {cols.selector}
                                 <input ref={fileRef} type="file" accept="image/*,application/pdf" className="d-none" onChange={onFile} />
-                                <Button color="primary" onClick={onPickFile} disabled={uploading}>
+                                <Button size="sm" color="primary" onClick={onPickFile} disabled={uploading}>
                                     {uploading ? <><Spinner size="sm" className="me-1" /> A carregar…</> : <><i className="ri-upload-2-line me-1" /> Carregar fatura</>}
                                 </Button>
                             </>}

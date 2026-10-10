@@ -1043,3 +1043,29 @@ export const confirmOcrPingwinLink = (companyId: number, invoiceId: number, data
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link/confirm`, data);
 export const unlinkOcrPingwinLink = (companyId: number, invoiceId: number) =>
     api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-link`);
+
+// F2b — Artigos nas linhas da fatura OCR (associar/criar; as escritas no PingWin são assíncronas).
+export const searchOcrArticles = (companyId: number, params: { q?: string; nif?: string | null }) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/articles/search`, params);
+export const getOcrArticleForm = (companyId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/articles/form`);
+export const associateOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: { article_id: number; method?: string; replace_code?: boolean }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`, data);
+export const unlinkOcrLineArticle = (companyId: number, invoiceId: number, lineId: number) =>
+    api.delete(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/article`);
+export const createOcrLineArticle = (companyId: number, invoiceId: number, lineId: number, data: Record<string, any>) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/create-article`, data);
+export const acceptOcrLineSuggestions = (companyId: number, invoiceId: number, minConfidence: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/accept-suggestions`, { min_confidence: minConfidence });
+
+// FB-1 — "Lançar no PingWin" (rascunho → fechar / anular; escritas assíncronas com releitura).
+export const getOcrLaunch = (companyId: number, invoiceId: number) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`);
+export const launchOcrInvoice = (companyId: number, invoiceId: number, data: { accept_check_diff?: boolean }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch`, data);
+export const closeOcrLaunch = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/close`, {});
+export const voidOcrLaunch = (companyId: number, invoiceId: number) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/pingwin-launch/void`, {});
+export const setOcrLineLaunchUnit = (companyId: number, invoiceId: number, lineId: number, data: { unit_id: string; quantity?: number | null }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/lines/${lineId}/launch-unit`, data);

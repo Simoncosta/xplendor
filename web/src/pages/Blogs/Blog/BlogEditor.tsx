@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { FormikProvider, useFormik } from "formik";
 import CreatableSelect from "react-select/creatable";
-import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, InputGroup, InputGroupText, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
+import { Badge, Button, Col, Container, Input, InputGroup, InputGroupText, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import XInputTextareaQuill from "Components/Common/XInputTextareaQuill";
 import {
@@ -15,6 +15,7 @@ import { getWorkingCompanyId } from "helpers/workingCompany";
 import { confirmAction } from "helpers/swal";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 
@@ -270,31 +271,6 @@ const BlogEditor = () => {
                             title={isNew ? "Novo artigo" : blog?.title || "Artigo"}
                             crumbLabel={isNew ? "Novo" : "Editar"}
                             breadcrumbs={[{ label: "Marketing" }, { label: "Blogs", to: "/blogs" }]}
-                            description={(!isNew || dirty) ? (
-                                <div className="d-flex flex-wrap align-items-center gap-2">
-                                    {!isNew && <Badge color={`${statusMeta.color}-subtle`} className={`text-${statusMeta.color} fs-12`}><i className={`${statusMeta.icon} me-1`} />{statusMeta.label}</Badge>}
-                                    {dirty && <span className="small text-warning"><i className="ri-edit-circle-line me-1" />Alterações por guardar</span>}
-                                </div>
-                            ) : undefined}
-                            actions={<>
-                                {canEdit && (
-                                    <Button color="outline-primary" onClick={() => setAiOpen(true)}>
-                                        <i className="ri-magic-line me-1" />Ajudar a escrever
-                                    </Button>
-                                )}
-                                {!isNew && (
-                                    <ActionsMenu label="Mais ações do artigo" disabled={acting || saving} items={[
-                                        { label: "Pré-visualizar", icon: "ri-eye-line", to: `/blogs/${id}/show` },
-                                        { label: status === "published" ? "Retirar do site" : "Cancelar agendamento", icon: "ri-arrow-go-back-line", danger: true, hidden: !perms?.can_unpublish, onClick: () => void onBackToDraft() },
-                                        { label: "Apagar artigo", icon: "ri-delete-bin-line", danger: true, hidden: !perms?.can_delete, onClick: () => void onDelete() },
-                                    ]} />
-                                )}
-                                {canEdit && (
-                                    <ReasonButton color="primary" onClick={() => save()} disabled={saving || acting} reason={!dirty && !isNew && !saving && !acting ? "Sem alterações por guardar." : null}>
-                                        {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-line me-1" />}Guardar
-                                    </ReasonButton>
-                                )}
-                            </>}
                         />
 
                         {blog?.review_note && status === "draft" && (
@@ -321,8 +297,35 @@ const BlogEditor = () => {
 
                         <Row>
                             <Col xl={8}>
-                                <Card>
-                                    <CardBody>
+                                <PageCard
+                                    title="Conteúdo"
+                                    flush={false}
+                                    status={(!isNew || dirty) ? (
+                                        <span className="d-inline-flex flex-wrap align-items-center gap-2">
+                                            {!isNew && <Badge color={`${statusMeta.color}-subtle`} className={`text-${statusMeta.color} fs-12`}><i className={`${statusMeta.icon} me-1`} />{statusMeta.label}</Badge>}
+                                            {dirty && <span className="small text-warning"><i className="ri-edit-circle-line me-1" />Alterações por guardar</span>}
+                                        </span>
+                                    ) : undefined}
+                                    actions={<>
+                                        {canEdit && (
+                                            <Button size="sm" color="outline-primary" onClick={() => setAiOpen(true)}>
+                                                <i className="ri-magic-line me-1" />Ajudar a escrever
+                                            </Button>
+                                        )}
+                                        {!isNew && (
+                                            <ActionsMenu size="sm" label="Mais ações do artigo" disabled={acting || saving} items={[
+                                                { label: "Pré-visualizar", icon: "ri-eye-line", to: `/blogs/${id}/show` },
+                                                { label: status === "published" ? "Retirar do site" : "Cancelar agendamento", icon: "ri-arrow-go-back-line", danger: true, hidden: !perms?.can_unpublish, onClick: () => void onBackToDraft() },
+                                                { label: "Apagar artigo", icon: "ri-delete-bin-line", danger: true, hidden: !perms?.can_delete, onClick: () => void onDelete() },
+                                            ]} />
+                                        )}
+                                        {canEdit && (
+                                            <ReasonButton size="sm" color="primary" onClick={() => save()} disabled={saving || acting} reason={!dirty && !isNew && !saving && !acting ? "Sem alterações por guardar." : null}>
+                                                {saving ? <Spinner size="sm" className="me-1" /> : <i className="ri-save-line me-1" />}Guardar
+                                            </ReasonButton>
+                                        )}
+                                    </>}
+                                >
                                         <div className="mb-3">
                                             <Label>Título <span className="text-danger">*</span></Label>
                                             <Input value={v.title} disabled={!canEdit} maxLength={255} onChange={(e) => onTitle(e.target.value)} placeholder="Ex.: Como preparar a autocaravana para o inverno" />
@@ -410,14 +413,11 @@ const BlogEditor = () => {
                                                 />
                                             </Col>
                                         </Row>
-                                    </CardBody>
-                                </Card>
+                                </PageCard>
                             </Col>
 
                             <Col xl={4}>
-                                <Card>
-                                    <CardHeader><h5 className="card-title mb-0"><i className="ri-send-plane-line me-1" />Publicação</h5></CardHeader>
-                                    <CardBody>
+                                <PageCard title="Publicação" flush={false}>
                                         {isNew ? (
                                             <p className="text-muted mb-0">Guarde o artigo como rascunho. Depois pode enviá-lo para revisão.</p>
                                         ) : (
@@ -452,8 +452,7 @@ const BlogEditor = () => {
                                                 </div>
                                             </>
                                         )}
-                                    </CardBody>
-                                </Card>
+                                </PageCard>
 
                                 <BlogSeoPanel
                                     values={{ ...v, hasBanner: !!bannerUrl }}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Badge, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
+import { Badge, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 import {
     createCollaborator, getCollaborator, updateCollaborator, uploadCollaboratorPhoto, deleteCollaboratorPhoto, getDepartments,
@@ -9,6 +9,7 @@ import { ACCESS_META, ContactMode, ICollaborator, IDepartment, PhoneType, collab
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import { confirmAction } from "helpers/swal";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ReasonButton from "Components/Common/ReasonButton";
 import XSelect from "pages/Editorial/XSelect";
 
@@ -145,26 +146,24 @@ const CollaboratorEditor = () => {
             <Container fluid>
                 <PageHeader title={isNew ? "Novo colaborador" : collaborator?.name ?? "Colaborador"}
                     breadcrumbs={[{ label: "Configurações" }, { label: "Colaboradores", to: "/users" }]}
-                    crumbLabel={isNew ? "Novo" : "Colaborador"}
-                    description={(am || (collaborator && !collaborator.active)) ? (
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
-                            {am && <Badge color={am.color} className={`fs-12 ${am.color === "light" ? "text-body" : ""}`}>{am.label}</Badge>}
-                            {collaborator && !collaborator.active && <Badge color="light" className="fs-12 text-body">Desativado</Badge>}
-                        </div>
-                    ) : undefined}
-                    actions={canEdit ? (
-                        <ReasonButton color="primary" onClick={() => void save()} disabled={saving}
-                            reason={!form.name.trim() ? "Indique o nome." : form.create_access && !form.access_email.trim() ? "Indique o email para o convite." : null}>
-                            {saving ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
-                        </ReasonButton>
-                    ) : undefined} />
+                    crumbLabel={isNew ? "Novo" : "Colaborador"} />
 
                 <fieldset disabled={!canEdit}>
                     <Row className="g-3">
                         <Col xl={8}>
-                            <Card className="mb-3">
-                                <CardHeader><h5 className="card-title mb-0">Dados</h5></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Dados" flush={false}
+                                status={(am || (collaborator && !collaborator.active)) ? (
+                                    <span className="d-inline-flex align-items-center gap-2 flex-wrap">
+                                        {am && <Badge color={am.color} className={`fs-12 ${am.color === "light" ? "text-body" : ""}`}>{am.label}</Badge>}
+                                        {collaborator && !collaborator.active && <Badge color="light" className="fs-12 text-body">Desativado</Badge>}
+                                    </span>
+                                ) : undefined}
+                                actions={canEdit ? (
+                                    <ReasonButton size="sm" color="primary" onClick={() => void save()} disabled={saving}
+                                        reason={!form.name.trim() ? "Indique o nome." : form.create_access && !form.access_email.trim() ? "Indique o email para o convite." : null}>
+                                        {saving ? <Spinner size="sm" /> : <><i className="ri-save-line me-1" />Guardar</>}
+                                    </ReasonButton>
+                                ) : undefined}>
                                     <Row className="g-3">
                                         <Col md={6}><Label className="form-label">Nome</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></Col>
                                         <Col md={6}><Label className="form-label">Função</Label><Input value={form.role_title} onChange={(e) => set("role_title", e.target.value)} placeholder="Ex.: Consultor comercial" /></Col>
@@ -181,13 +180,9 @@ const CollaboratorEditor = () => {
                                             <small className="text-muted">{form.bio.length}/{BIO_MAX}</small>
                                         </Col>
                                     </Row>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
-                            <Card className="mb-3">
-                                <CardHeader><h5 className="card-title mb-0">Contactos pessoais</h5></CardHeader>
-                                <CardBody>
-                                    <p className="text-muted fs-13">Só aparecem no site se a pessoa autorizar (secção Site). Sem essa autorização, o site mostra os contactos do departamento.</p>
+                            <PageCard className="mb-3" title="Contactos pessoais" flush={false} info="Só aparecem no site se a pessoa autorizar (secção Site). Sem essa autorização, o site mostra os contactos do departamento.">
                                     <Row className="g-3">
                                         <Col md={6}><Label className="form-label">WhatsApp</Label><Input value={form.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} placeholder="912 345 678" /></Col>
                                         <Col md={6}><Label className="form-label">Email</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></Col>
@@ -198,13 +193,10 @@ const CollaboratorEditor = () => {
                                                 onChange={(v) => set("phone_type", v)} options={[{ value: "mobile", label: "Móvel" }, { value: "fixed", label: "Fixo" }]} />
                                         </Col>
                                     </Row>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {isNew && (
-                                <Card className="mb-3">
-                                    <CardHeader><h5 className="card-title mb-0">Acesso à plataforma</h5></CardHeader>
-                                    <CardBody>
+                                <PageCard className="mb-3" title="Acesso à plataforma" flush={false}>
                                         {canManageAccess ? (
                                             <>
                                                 <Label className="form-label d-block">Criar acesso à plataforma para este colaborador?</Label>
@@ -229,15 +221,12 @@ const CollaboratorEditor = () => {
                                         ) : (
                                             <p className="text-muted fs-13 mb-0">O acesso à plataforma é dado depois, pelo administrador da empresa, na lista de colaboradores.</p>
                                         )}
-                                    </CardBody>
-                                </Card>
+                                </PageCard>
                             )}
                         </Col>
 
                         <Col xl={4}>
-                            <Card className="mb-3">
-                                <CardHeader><h5 className="card-title mb-0">Foto</h5></CardHeader>
-                                <CardBody className="text-center">
+                            <PageCard className="mb-3" bodyClassName="text-center" title="Foto" flush={false}>
                                     {currentPhoto
                                         ? <img src={currentPhoto} alt="" width={160} height={160} className="rounded-circle mb-3" style={{ objectFit: "cover" }} />
                                         : <div className="avatar-xl mx-auto mb-3"><span className="avatar-title rounded-circle bg-primary-subtle text-primary fs-24">{initials(form.name || "?")}</span></div>}
@@ -250,12 +239,9 @@ const CollaboratorEditor = () => {
                                     {collaborator?.photo_path && !photoFile && canEdit && (
                                         <button type="button" className="btn btn-link btn-sm mt-1" onClick={() => void removePhoto()}>Remover foto</button>
                                     )}
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
-                            <Card className="mb-3">
-                                <CardHeader><h5 className="card-title mb-0">Site (secção Equipa)</h5></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Site (secção Equipa)" flush={false}>
                                     <div className="form-check mb-2">
                                         <Input className="form-check-input" type="checkbox" id="consent" checked={form.publish_consent}
                                             onChange={(e) => setForm((f) => ({ ...f, publish_consent: e.target.checked, show_on_site: e.target.checked ? f.show_on_site : false }))} />
@@ -286,8 +272,7 @@ const CollaboratorEditor = () => {
                                         </div>
                                     )}
                                     {form.phone_type === "fixed" && form.contact_mode === "personal" && <small className="text-muted d-block mt-2">Número fixo: o site mostra o aviso legal do custo da chamada.</small>}
-                                </CardBody>
-                            </Card>
+                            </PageCard>
                         </Col>
                     </Row>
                 </fieldset>

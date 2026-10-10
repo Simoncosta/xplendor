@@ -3,11 +3,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Button, Card, CardBody, Container, Table } from "reactstrap";
+import { Button, Container } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 // Components
-import Pagination from "Components/Common/Pagination";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import CustomerFormModal from "./components/CustomerFormModal";
 import QuickAddCustomerModal from "./components/QuickAddCustomerModal";
@@ -21,7 +23,6 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 const selectState = (state: any) => state.Customer;
 const selectViewModel = createSelector([selectState], (s) => ({
     customers: s.data.customers as ICustomer[],
-    meta: s.data.meta,
     loading: s.loading.list,
 }));
 
@@ -29,19 +30,21 @@ const CustomerList = () => {
     const dispatch: any = useDispatch();
     document.title = "Clientes | Xplendor";
 
-    const { customers, meta, loading } = useSelector(selectViewModel);
+    const { customers, loading } = useSelector(selectViewModel);
 
     const companyId = useWorkingCompanyId();
 
-    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 });
+    const [search, setSearch] = useState("");
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<ICustomer | null>(null);
     const [quickOpen, setQuickOpen] = useState(false);
 
     const fetchList = useCallback(() => {
         if (!companyId) return;
-        dispatch(getCustomers({ companyId, page: pagination.pageIndex + 1, perPage: pagination.pageSize }));
-    }, [dispatch, companyId, pagination.pageIndex, pagination.pageSize]);
+        // UI-2b: todos os clientes (a API ordena por nome mas não por coluna); o DataTable
+        // ordena, pesquisa e pagina no browser.
+        dispatch(getCustomers({ companyId }));
+    }, [dispatch, companyId]);
 
     useEffect(() => { fetchList(); }, [fetchList]);
 
@@ -80,76 +83,64 @@ const CustomerList = () => {
     const locationOf = (c: ICustomer): string =>
         [c.parish_name, c.municipality_name, c.district_name].filter(Boolean).join(", ") || "-";
 
+    const cols = useDataColumns<ICustomer>("comercial.clientes", [
+        {
+            id: "name", header: "Nome", value: (c) => c.name, mobile: "title",
+            cell: (c) => <span className={c.archived ? "" : "fw-medium"}>{c.name}{c.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}</span>,
+        },
+        { id: "nif", header: "NIF", value: (c) => c.nif || "", cell: (c) => c.nif || "-" },
+        { id: "phone", header: "Telefone", value: (c) => c.phone || "", cell: (c) => c.phone || "-", nowrap: true },
+        { id: "email", header: "Email", value: (c) => c.email || "", cell: (c) => c.email || "-" },
+        { id: "location", header: "Localidade", value: (c) => locationOf(c) },
+    ] as DTColumn<ICustomer>[]);
+
     return (
         <React.Fragment>
             <div className="page-content">
                 <ToastContainer />
                 <Container fluid>
                     <PageHeader title="Clientes" breadcrumbs={[{ label: "Comercial" }]}
-                        description="Os clientes da sua empresa (base para os documentos de venda)."
+                        info="Os clientes da sua empresa (base para os documentos de venda)." />
+
+                    <PageCard
+                        title="Clientes"
+                        status={!loading ? <>{customers.length} cliente{customers.length === 1 ? "" : "s"}</> : undefined}
+                        loading={loading && customers.length > 0}
                         actions={<>
-                            <Button color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
-                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo cliente</Button>
-                        </>} />
-
-                    <Card>
-                        <CardBody>
-                            <div className="table-responsive">
-                                <Table className="align-middle table-nowrap mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>NIF</th>
-                                            <th>Telefone</th>
-                                            <th>Email</th>
-                                            <th>Localidade</th>
-                                            <th className="text-end">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {loading && <tr><td colSpan={6} className="text-center text-muted py-4">A carregar…</td></tr>}
-                                        {!loading && customers.length === 0 && (
-                                            <tr><td colSpan={6} className="text-center text-muted py-4">Sem clientes. Clique em "Novo cliente" para criar o primeiro.</td></tr>
-                                        )}
-                                        {!loading && customers.map((c) => (
-                                            <tr key={c.id} className={c.archived ? "text-muted" : ""}>
-                                                <td className={c.archived ? "" : "fw-medium"}>
-                                                    {c.name}
-                                                    {c.archived && <span className="badge bg-light text-muted ms-2">Arquivado</span>}
-                                                </td>
-                                                <td>{c.nif || "-"}</td>
-                                                <td>{c.phone || "-"}</td>
-                                                <td>{c.email || "-"}</td>
-                                                <td>{locationOf(c)}</td>
-                                                <td className="text-end">
-                                                    <div className="d-inline-flex gap-1">
-                                                        <Link to={`/customers/${c.id}`} className="btn btn-sm btn-outline-primary" title="Ver ficha" aria-label={`Ver ficha: ${c.name}`}><i className="ri-user-line" /></Link>
-                                                        <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}><i className="ri-pencil-line" /></Button>
-                                                        <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
-                                                            c.archived
-                                                                ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(c, false) }
-                                                                : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(c, true) },
-                                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
-                                                        ]} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    <Pagination
-                        currentPage={meta?.current_page ?? 1}
-                        lastPage={meta?.last_page ?? 1}
-                        total={meta?.total ?? 0}
-                        perPage={meta?.per_page ?? pagination.pageSize}
-                        from={meta?.from ?? 0}
-                        to={meta?.to ?? 0}
-                        onPageChange={(page) => setPagination((prev) => ({ ...prev, pageIndex: page - 1 }))}
-                    />
+                            {cols.selector}
+                            <Button size="sm" color="outline-primary" onClick={() => setQuickOpen(true)}><i className="ri-flashlight-line me-1" />Criação rápida</Button>
+                            <Button size="sm" color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo cliente</Button>
+                        </>}
+                        filters={<RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, NIF, telefone ou email)…"
+                            activeCount={search ? 1 : 0} onClear={() => setSearch("")} />}
+                    >
+                        <DataTable
+                            columns={cols}
+                            data={customers}
+                            rowKey={(c) => c.id}
+                            loading={loading}
+                            search={search}
+                            pageSize={10}
+                            caption="Clientes"
+                            rowClassName={(c) => (c.archived ? "text-muted" : undefined)}
+                            empty={{
+                                message: "Sem clientes.",
+                                action: <Button size="sm" color="outline-primary" onClick={openCreate}><i className="ri-add-line me-1" />Novo cliente</Button>,
+                            }}
+                            rowActions={(c) => (
+                                <>
+                                    <Link to={`/customers/${c.id}`} className="btn btn-sm btn-outline-primary" title="Ver ficha" aria-label={`Ver ficha: ${c.name}`}><i className="ri-user-line" /></Link>
+                                    <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}><i className="ri-pencil-line" /></Button>
+                                    <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
+                                        c.archived
+                                            ? { label: "Restaurar", icon: "ri-inbox-unarchive-line", onClick: () => void setArchived(c, false) }
+                                            : { label: "Arquivar", icon: "ri-archive-line", onClick: () => void setArchived(c, true) },
+                                        { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
+                                    ]} />
+                                </>
+                            )}
+                        />
+                    </PageCard>
                 </Container>
             </div>
 

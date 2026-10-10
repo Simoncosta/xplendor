@@ -171,6 +171,18 @@ Schedule::job(new \App\Jobs\RelinkOcrInvoicesJob())
         \Illuminate\Support\Facades\Log::error('[OCR↔PingWin] Verificação noturna falhou no scheduler');
     });
 
+// 08:00 (Lisboa) — F2b: mapa de aprendizagem fornecedor+código → artigo (F4 + fichas dos
+// artigos) e nova ligação das linhas das faturas por validar. DEPOIS das linhas da F4 (07:15,
+// até ~6 min) e da revisão F3 (07:45). Só a nossa BD.
+Schedule::job(new \App\Jobs\RefreshSupplierArticleMapJob())
+    ->dailyAt('08:00')
+    ->timezone('Europe/Lisbon')
+    ->name('ocr-article-map-nightly')
+    ->withoutOverlapping()
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('[OCR Artigos] Atualização noturna do mapa falhou no scheduler');
+    });
+
 // 00:15 (Lisboa): expira os orçamentos enviados com a validade de 30 dias ultrapassada.
 // Rascunhos nunca expiram.
 Schedule::job(new \App\Jobs\ExpireQuotesJob())

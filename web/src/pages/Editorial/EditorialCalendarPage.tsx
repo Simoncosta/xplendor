@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-    Card, CardBody, CardHeader, Container, Row, Col, Spinner, Button,
+    Container, Row, Col, Spinner, Button,
     Modal, ModalHeader, ModalBody, ModalFooter, Form, FormGroup, Label, Input,
     Offcanvas, OffcanvasHeader, OffcanvasBody, Tooltip,
 } from "reactstrap";
@@ -10,6 +10,7 @@ import listPlugin from "@fullcalendar/list";
 import ptLocale from "@fullcalendar/core/locales/pt";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import {
     getEditorialCalendar, setEditorialSector, openEditorialMonth, closeEditorialMonth,
@@ -397,9 +398,8 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <PageHeader title="Linha Editorial" breadcrumbs={[{ label: "Marketing" }]} />
+                <PageHeader title="Linha Editorial" breadcrumbs={[{ label: "Marketing" }]} filters={clientFilter} />
 
-                {clientFilter && (loading || hasSector === false) && <div className="d-flex justify-content-end mb-3">{clientFilter}</div>}
                 {loading ? (
                     <div className="text-center py-5"><Spinner color="primary" /></div>
                 ) : hasSector === false ? (
@@ -407,62 +407,48 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                         <SectorChooser companyId={companyId} busy={saving} onChoose={chooseSector} />
                     </Col></Row>
                 ) : (
-                    <Card>
-                        <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div className="me-auto">
-                                <h5 className="card-title mb-0 d-flex align-items-center gap-1">
-                                    Linha Editorial
-                                    <button type="button" className="btn btn-link btn-sm p-0 lh-1 text-muted" aria-label="Como funciona" title="Como funciona" onClick={() => setHowOpen(true)}>
-                                        <i className="ri-question-line fs-18" />
+                    <PageCard
+                        title="Linha Editorial"
+                        flush={false}
+                        status={<>Ramo: <strong>{sectorName}</strong></>}
+                        // Ordem do cabeçalho (design-system §2): vistas, secundária, "...", e a principal no fim.
+                        actions={<>
+                            <div className="xp-seg" role="tablist" aria-label="Vista">
+                                {VIEWS.map((v) => (
+                                    <button key={v.key} type="button" role="tab" aria-selected={view === v.key} className={view === v.key ? "on" : ""} onClick={() => setView(v.key)}>
+                                        <i className={`${v.icon} me-1`} />{v.label}
                                     </button>
-                                </h5>
-                                <small className="text-muted">Ramo: <strong>{sectorName}</strong></small>
+                                ))}
                             </div>
-                            {/* Uma ação principal; "Gerar ideias" secundária; o resto em "Mais". */}
-                            <div className="d-flex flex-wrap align-items-center gap-2">
-                                {clientFilter}
-                                {canProduce && (ideasReason
-                                    ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
-                                    : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
-                                {canProduce && (newPostReason
-                                    ? reasonButton("new", newPostReason, <><i className="ri-add-line me-1" />Nova publicação</>, "primary")
-                                    : <Button color="primary" size="sm" onClick={() => newPost()}><i className="ri-add-line me-1" />Nova publicação</Button>)}
-                                <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
-                                    { label: "Aprovação por link", icon: "ri-links-line", onClick: () => setReviewOpen(true) },
-                                    { label: "Âncora própria", icon: "ri-calendar-event-line", onClick: openCreate, hidden: !(selected && monthIsOpen) },
-                                    { label: selected ? `Fechar ${monthLabel(selected.month_key)}` : "Fechar o mês", icon: "ri-lock-2-line", hidden: !selected?.can_close,
-                                        disabledReason: acting ? "A processar o mês." : null, onClick: () => { if (selected) doClose(selected); } },
-                                    { label: "Legenda das etapas", icon: "ri-palette-line", onClick: () => setLegendOpen(true) },
-                                    { label: "Como funciona", icon: "ri-question-line", onClick: () => setHowOpen(true) },
-                                ]} />
+                            {canProduce && (ideasReason
+                                ? reasonButton("ideas", ideasReason, <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")
+                                : <Button color="outline-primary" size="sm" disabled={working} onClick={() => setIdeasOpen(true)}><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</Button>)}
+                            <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
+                                { label: "Aprovação por link", icon: "ri-links-line", onClick: () => setReviewOpen(true) },
+                                { label: "Âncora própria", icon: "ri-calendar-event-line", onClick: openCreate, hidden: !(selected && monthIsOpen) },
+                                { label: selected ? `Fechar ${monthLabel(selected.month_key)}` : "Fechar o mês", icon: "ri-lock-2-line", hidden: !selected?.can_close,
+                                    disabledReason: acting ? "A processar o mês." : null, onClick: () => { if (selected) doClose(selected); } },
+                                { label: "Legenda das etapas", icon: "ri-palette-line", onClick: () => setLegendOpen(true) },
+                                { label: "Como funciona", icon: "ri-question-line", onClick: () => setHowOpen(true) },
+                            ]} />
+                            {canProduce && (newPostReason
+                                ? reasonButton("new", newPostReason, <><i className="ri-add-line me-1" />Nova publicação</>, "primary")
+                                : <Button color="primary" size="sm" onClick={() => newPost()}><i className="ri-add-line me-1" />Nova publicação</Button>)}
+                        </>}
+                        filters={selectedKey ? (
+                            <div className="d-flex flex-wrap align-items-center gap-1" style={{ maxWidth: "100%" }}>
+                                <Button color="outline-primary" size="sm" aria-label="Mês anterior" className={!!minKey && selectedKey <= minKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, -1))}><i className="ri-arrow-left-s-line" /></Button>
+                                <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={selectedKey} onChange={goMonth} /></div>
+                                <Button color="outline-primary" size="sm" aria-label="Mês seguinte" className={!!maxKey && selectedKey >= maxKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, 1))}><i className="ri-arrow-right-s-line" /></Button>
+                                {selected ? (monthIsOpen
+                                    ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
+                                    : selected.can_open && canProduce
+                                        ? <Button color="success" size="sm" className="ms-1" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
+                                        : <span className="badge bg-body-secondary text-muted ms-1" title={selected.state === "closed" ? "Abra primeiro o mês anterior." : undefined}><i className="ri-lock-2-line me-1" />Fechado</span>)
+                                    : isPastView ? <span className="badge bg-warning-subtle text-warning ms-1"><i className="ri-archive-line me-1" />Só consulta</span> : null}
                             </div>
-                        </CardHeader>
-
-                        <CardBody>
-                            {/* Vistas (controlo segmentado) e o mês */}
-                            <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <div className="xp-seg" role="tablist" aria-label="Vista">
-                                    {VIEWS.map((v) => (
-                                        <button key={v.key} type="button" role="tab" aria-selected={view === v.key} className={view === v.key ? "on" : ""} onClick={() => setView(v.key)}>
-                                            <i className={`${v.icon} me-1`} />{v.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                {selectedKey && (
-                                    <div className="d-flex flex-wrap align-items-center gap-1 ms-md-auto" style={{ maxWidth: "100%" }}>
-                                        <Button color="outline-primary" size="sm" aria-label="Mês anterior" className={!!minKey && selectedKey <= minKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, -1))}><i className="ri-arrow-left-s-line" /></Button>
-                                        <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={selectedKey} onChange={goMonth} /></div>
-                                        <Button color="outline-primary" size="sm" aria-label="Mês seguinte" className={!!maxKey && selectedKey >= maxKey ? "invisible" : ""} onClick={() => goMonth(shiftKey(selectedKey, 1))}><i className="ri-arrow-right-s-line" /></Button>
-                                        {selected ? (monthIsOpen
-                                            ? <span className="badge bg-success-subtle text-success ms-1"><i className="ri-lock-unlock-line me-1" />Aberto</span>
-                                            : selected.can_open && canProduce
-                                                ? <Button color="success" size="sm" className="ms-1" disabled={acting} onClick={() => doOpen(selected)}>{acting ? <Spinner size="sm" /> : <><i className="ri-lock-unlock-line me-1" />Abrir mês</>}</Button>
-                                                : <span className="badge bg-body-secondary text-muted ms-1" title={selected.state === "closed" ? "Abra primeiro o mês anterior." : undefined}><i className="ri-lock-2-line me-1" />Fechado</span>)
-                                            : isPastView ? <span className="badge bg-warning-subtle text-warning ms-1"><i className="ri-archive-line me-1" />Só consulta</span> : null}
-                                    </div>
-                                )}
-                            </div>
-
+                        ) : undefined}
+                    >
                             {(view === "calendar" || view === "board") && <TodayPanel companyId={companyId} reloadKey={reload} onOpen={openPost} />}
 
                             {view === "results" ? (
@@ -523,8 +509,7 @@ export default function EditorialCalendarPage({ companyIdOverride, clientFilter 
                                     }}
                                 />
                             )}
-                        </CardBody>
-                    </Card>
+                    </PageCard>
                 )}
             </Container>
 

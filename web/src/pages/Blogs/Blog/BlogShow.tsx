@@ -5,6 +5,7 @@ import { showBlog } from "helpers/laravel_helper";
 import { BLOG_STATUS_META, IBlogPost, blogImage, fmtDateTime } from "common/models/blog.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 
 /**
  * Pré-visualização de leitura do artigo. O conteúdo chega já limpo pelo servidor (lista de
@@ -40,12 +41,15 @@ export default function BlogShow() {
         <div className="page-content">
             <Container fluid>
                 <PageHeader title={blog.title} crumbLabel="Pré-visualização" breadcrumbs={[{ label: "Marketing" }, { label: "Blogs", to: "/blogs" }]}
-                    description={<><Badge color={`${sm.color}-subtle`} className={`text-${sm.color} me-2`}>{sm.label}</Badge>Pré-visualização de leitura do artigo.</>}
-                    actions={<Link to={`/blogs/${blog.id}`} className="btn btn-outline-primary"><i className="ri-arrow-left-line me-1" />Voltar ao editor</Link>} />
+                    info="A pré-visualização de leitura do artigo." />
                 <div className="row justify-content-center">
                     <div className="col-xxl-9">
-                        <div className="card">
-                            <div className="card-body">
+                        <PageCard
+                            title="Pré-visualização"
+                            flush={false}
+                            status={<Badge color={`${sm.color}-subtle`} className={`text-${sm.color}`}>{sm.label}</Badge>}
+                            actions={<Link to={`/blogs/${blog.id}`} className="btn btn-outline-primary btn-sm"><i className="ri-arrow-left-line me-1" />Voltar ao editor</Link>}
+                        >
                                 <div className="text-center mb-4">
                                     {blog.category && <p className="text-success text-uppercase mb-2">{blog.category}</p>}
                                     <div className="h2 mb-2">{blog.title}</div>
@@ -57,8 +61,7 @@ export default function BlogShow() {
                                 </div>
                                 {img && <img src={img} alt="" className="img-fluid rounded mb-4 w-100" />}
                                 <div className="blog-content fs-15" dangerouslySetInnerHTML={{ __html: blog.content ?? "" }} />
-                            </div>
-                        </div>
+                        </PageCard>
                     </div>
                 </div>
             </Container>

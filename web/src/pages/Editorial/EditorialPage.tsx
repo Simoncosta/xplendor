@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Container, Spinner } from "reactstrap";
 import { useSearchParams } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import BreadCrumb from "Components/Common/BreadCrumb";
+import PageHeader from "Components/Common/PageHeader";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
 import { getAgencyCompanies } from "helpers/laravel_helper";
 import EditorialCalendarPage from "./EditorialCalendarPage";
@@ -76,8 +76,8 @@ export default function EditorialPage() {
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
-                <BreadCrumb title="Linha Editorial" pageTitle="Marketing" />
-                <AgencyEditorialAll agencyId={agencyId} clients={clients} filter={filter}
+                <PageHeader title="Linha Editorial" breadcrumbs={[{ label: "Marketing" }]} filters={filter} />
+                <AgencyEditorialAll agencyId={agencyId} clients={clients}
                     initialView={searchParams.get("vista")} initialMonth={searchParams.get("mes")} onView={onView} />
             </Container>
         </div>

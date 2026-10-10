@@ -1,26 +1,22 @@
 // React
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import { useCallback, useEffect, useState } from "react";
 // Redux
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 // Components
-import XTanStackTable from "Components/Common/XTanStackTable";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import LeadStatusBadge from "./components/LeadStatusBadge";
 import LeadsFunnel from "./components/LeadsFunnel";
 import LossReasonModal from "./components/LossReasonModal";
-import {
-    Container,
-    Row,
-    Card,
-    Col,
-} from "reactstrap";
+import { Container } from "reactstrap";
 // Slices
-import { getLeadsPaginate } from "slices/thunks";
 import { updateLeadStatus } from "slices/leads/thunk";
-import { createSelector } from "reselect";
+import { getLeads } from "helpers/laravel_helper";
+import { fetchAllPages } from "helpers/fetchAllPages";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
 const formatTimeDiff = (dateStr: string): string => {
@@ -31,49 +27,51 @@ const formatTimeDiff = (dateStr: string): string => {
     return `${Math.floor(diff / 86400)}d`;
 };
 
-const selectLeadState = (state: any) => state.Lead;
-
-
-const selectLeadListViewModel = createSelector(
-    [selectLeadState],
-    (leadState) => ({
-        leads: leadState.data.leads,
-        meta: leadState.data.meta,
-        loading: leadState.loading.list,
-        loadingUpdate: leadState.loadingUpdate,
-    })
-);
 
 export default function LeadList() {
     const dispatch: any = useDispatch();
-    const isMobile = useIsMobile(680);
 
-    const { leads, meta, loading, loadingUpdate } = useSelector(selectLeadListViewModel);
+    // UI-2b: a lista lê todas as leads (a API pagina mas não ordena) e o DataTable ordena,
+    // pesquisa e pagina no browser.
+    const [leads, setLeads] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [loadingUpdate, setLoadingUpdate] = useState(false);
+    const [search, setSearch] = useState("");
 
     const [view, setView] = useState<"list" | "funnel">("list");
     // Perder na LISTA também exige motivo (mesmo modal do funil).
     const [pendingLost, setPendingLost] = useState<{ id: number; name: string } | null>(null);
     const [savingLost, setSavingLost] = useState(false);
 
-    // Paginação controlada no pai (server-side)
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
-    // Fetch sempre que mudar página ou tamanho
     useEffect(() => {
         const authUser = sessionStorage.getItem("authUser");
-        if (authUser) {
+        const companyId = getWorkingCompanyId();
+        if (!authUser || !companyId) return;
+        let alive = true;
+        setLoading(true);
+        fetchAllPages<any>((page) => getLeads({ page, perPage: 100, companyId }), (r) => r?.data)
+            .then(({ rows }) => { if (alive) setLeads(rows); })
+            .catch(() => { if (alive) setLeads([]); })
+            .finally(() => { if (alive) setLoading(false); });
+        return () => { alive = false; };
+    }, []);
 
-            dispatch(
-                getLeadsPaginate({
-                    page: pagination.pageIndex + 1,
-                    perPage: pagination.pageSize,
-                    companyId: getWorkingCompanyId(),
-                })
-            );
-        }
-    }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+    // Muda o estado como antes (updateLeadStatus), com a mesma atualização otimista do reducer:
+    // mostra logo o novo estado e volta ao anterior se a API falhar.
+    const applyStatus = useCallback((leadId: number, status: string, lostReason?: string) => {
+        const previous = leads.find((l) => l.id === leadId)?.status;
+        setLeads((list) => list.map((l) => (l.id === leadId ? { ...l, status } : l)));
+        setLoadingUpdate(true);
+        return dispatch(updateLeadStatus(lostReason ? { leadId, status, lostReason } : { leadId, status }))
+            .unwrap()
+            .then((updated: any) => {
+                if (updated?.id) setLeads((list) => list.map((l) => (l.id === updated.id ? { ...l, ...updated } : l)));
+            })
+            .catch(() => {
+                setLeads((list) => list.map((l) => (l.id === leadId ? { ...l, status: previous } : l)));
+            })
+            .finally(() => setLoadingUpdate(false));
+    }, [dispatch, leads]);
 
     const handleStatusChange = useCallback((leadId: number, status: string, leadName = "esta lead") => {
         // Não perder sem motivo: abre o modal quando o destino é "Perdida".
@@ -81,25 +79,24 @@ export default function LeadList() {
             setPendingLost({ id: leadId, name: leadName });
             return;
         }
-        dispatch(updateLeadStatus({ leadId, status }));
-    }, [dispatch]);
+        applyStatus(leadId, status);
+    }, [applyStatus]);
 
     const confirmLost = useCallback((reason: string) => {
         if (!pendingLost) return;
         setSavingLost(true);
-        dispatch(updateLeadStatus({ leadId: pendingLost.id, status: "lost", lostReason: reason }))
-            .unwrap()
-            .catch(() => { })
+        applyStatus(pendingLost.id, "lost", reason)
             .finally(() => { setSavingLost(false); setPendingLost(null); });
-    }, [dispatch, pendingLost]);
+    }, [applyStatus, pendingLost]);
 
-    const columns = useMemo(() => [
+    const columnDefs: DTColumn<any>[] = [
         {
-            enableColumnFilter: false,
+            id: "name",
             header: "Cliente",
-            accessorKey: "name",
-            cell: ({ row }: any) => {
-                const lead = row.original;
+            value: (lead) => `${lead.name ?? ""} ${lead.phone ?? ""} ${lead.email ?? ""}`,
+            sortable: true,
+            mobile: "title",
+            cell: (lead) => {
 
                 return (
                     <div>
@@ -111,11 +108,11 @@ export default function LeadList() {
             },
         },
         {
-            enableColumnFilter: false,
+            id: "car",
             header: "Carro",
-            accessorKey: "car",
-            cell: ({ row }: any) => {
-                const car = row.original.car;
+            value: (lead) => [lead.car?.brand?.name, lead.car?.model?.name, lead.car?.version].filter(Boolean).join(" "),
+            cell: (lead) => {
+                const car = lead.car;
 
                 const image = car?.images?.find((img: any) => img.is_primary)?.image ?? null;
 
@@ -133,12 +130,10 @@ export default function LeadList() {
             },
         },
         {
-            enableColumnFilter: false,
+            id: "status",
             header: "Estado",
-            accessorKey: "status",
-            cell: ({ row }: any) => {
-                const lead = row.original;
-
+            value: (lead) => lead.status,
+            cell: (lead) => {
                 return (
                     <LeadStatusBadge
                         currentStatus={lead.status}
@@ -150,18 +145,18 @@ export default function LeadList() {
             },
         },
         {
-            enableColumnFilter: false,
+            // Tempo desde a entrada: ordenar do menor para o maior = as mais recentes primeiro.
+            id: "created_at",
             header: "Tempo",
-            accessorKey: "created_at",
-            cell: ({ row }: any) => formatTimeDiff(row.original.created_at),
+            value: (lead) => -new Date(lead.created_at).getTime(),
+            cell: (lead) => formatTimeDiff(lead.created_at),
+            nowrap: true,
         },
         {
-            enableColumnFilter: false,
+            id: "channel",
             header: "Origem",
-            accessorKey: "channel",
-            cell: ({ row }: any) => {
-                const lead = row.original;
-
+            value: (lead) => `${lead.channel ?? ""} - ${lead.utm_source ?? ""}`,
+            cell: (lead) => {
                 return (
                     <span className="text-muted">
                         {lead.channel} - {lead.utm_source}
@@ -169,62 +164,29 @@ export default function LeadList() {
                 );
             },
         },
-        {
-            enableColumnFilter: false,
-            header: "Ações",
-            id: "actions",
-            cell: ({ row }: any) => {
-                const lead = row.original;
+    ];
+    const cols = useDataColumns("comercial.leads", columnDefs);
 
-                const phone = lead.phone?.replace(/\D/g, "");
-
-                return (
-                    <div className="d-flex gap-1">
-                        {phone ? (
-                            <>
-                                <a
-                                    href={`tel:${phone}`}
-                                    className="btn btn-sm btn-outline-primary"
-                                    title="Ligar"
-                                    aria-label={`Ligar: ${lead.name}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <i className="ri-phone-line" />
-                                </a>
-
-                                <a
-                                    href={`https://wa.me/${phone}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="btn btn-sm btn-outline-primary"
-                                    title="WhatsApp"
-                                    aria-label={`WhatsApp: ${lead.name}`}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <i className="ri-whatsapp-line" />
-                                </a>
-                                <ActionsMenu size="sm" label={`Mais ações: ${lead.name}`} items={[
-                                    { label: "Enviar email", icon: "ri-mail-line", onClick: () => { window.location.href = `mailto:${lead.email}`; } },
-                                ]} />
-                            </>
-                        ) : (
-                            <a
-                                href={`mailto:${lead.email}`}
-                                className="btn btn-sm btn-outline-primary"
-                                title="Enviar email"
-                                aria-label={`Enviar email: ${lead.name}`}
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <i className="ri-mail-line" />
-                            </a>
-                        )}
-                    </div>
-                );
-            },
-        }
-    ],
-        [handleStatusChange, loadingUpdate]
-    );
+    const rowActions = (lead: any) => {
+        const phone = lead.phone?.replace(/\D/g, "");
+        return phone ? (
+            <>
+                <a href={`tel:${phone}`} className="btn btn-sm btn-outline-primary" title="Ligar" aria-label={`Ligar: ${lead.name}`} onClick={(e) => e.stopPropagation()}>
+                    <i className="ri-phone-line" />
+                </a>
+                <a href={`https://wa.me/${phone}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline-primary" title="WhatsApp" aria-label={`WhatsApp: ${lead.name}`} onClick={(e) => e.stopPropagation()}>
+                    <i className="ri-whatsapp-line" />
+                </a>
+                <ActionsMenu size="sm" label={`Mais ações: ${lead.name}`} items={[
+                    { label: "Enviar email", icon: "ri-mail-line", onClick: () => { window.location.href = `mailto:${lead.email}`; } },
+                ]} />
+            </>
+        ) : (
+            <a href={`mailto:${lead.email}`} className="btn btn-sm btn-outline-primary" title="Enviar email" aria-label={`Enviar email: ${lead.name}`} onClick={(e) => e.stopPropagation()}>
+                <i className="ri-mail-line" />
+            </a>
+        );
+    };
 
     const renderLeadMobileCard = useCallback((lead: any) => {
         const phone = lead.phone?.replace(/\D/g, "");
@@ -329,6 +291,17 @@ export default function LeadList() {
         );
     }, [handleStatusChange, loadingUpdate]);
 
+    const viewToggle = (
+        <div className="xp-seg" role="tablist" aria-label="Vista">
+            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>
+                <i className="ri-list-check me-1" />Lista
+            </button>
+            <button type="button" role="tab" aria-selected={view === "funnel"} className={view === "funnel" ? "on" : ""} onClick={() => setView("funnel")}>
+                <i className="ri-layout-grid-line me-1" />Funil
+            </button>
+        </div>
+    );
+
     document.title = "Leads | Xplendor";
 
     return (
@@ -337,45 +310,37 @@ export default function LeadList() {
                 <PageHeader
                     title="Leads"
                     breadcrumbs={[{ label: "Comercial" }]}
-                    description="Os contactos interessados nas suas viaturas. Mude o estado de cada lead na lista ou arraste-a no funil."
-                    actions={
-                        <div className="xp-seg" role="tablist" aria-label="Vista">
-                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>
-                                <i className="ri-list-check me-1" />Lista
-                            </button>
-                            <button type="button" role="tab" aria-selected={view === "funnel"} className={view === "funnel" ? "on" : ""} onClick={() => setView("funnel")}>
-                                <i className="ri-layout-grid-line me-1" />Funil
-                            </button>
-                        </div>
-                    }
+                    info="Os contactos interessados nas suas viaturas. Mude o estado de cada lead na lista ou arraste-a no funil."
                 />
-                <Row>
-                    <Col lg={12}>
-                        <div>
-                            <Card>
-                                <div className="card-body">
-                                    {view === "funnel" ? (
-                                        <LeadsFunnel />
-                                    ) : (
-                                        <XTanStackTable
-                                            columns={columns}
-                                            data={leads || []}
-                                            loading={loading}
-                                            pagination={pagination}
-                                            onPaginationChange={setPagination}
-                                            pageCount={meta?.last_page ?? 0}
-                                            total={meta?.total}
-                                            isBordered={true}
-                                            theadClass="text-muted table-light"
-                                            mobileMode={isMobile}
-                                            renderMobileCard={renderLeadMobileCard}
-                                        />
-                                    )}
-                                </div>
-                            </Card>
-                        </div>
-                    </Col>
-                </Row>
+                <PageCard
+                    title={view === "funnel" ? "Funil" : "Lista"}
+                    status={view === "list" && !loading ? <>{leads.length} lead{leads.length === 1 ? "" : "s"}</> : undefined}
+                    loading={view === "list" && loading && leads.length > 0}
+                    flush={view === "list"}
+                    actions={<>{viewToggle}{view === "list" && cols.selector}</>}
+                    filters={view === "list" ? (
+                        <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, telefone, email ou carro)…"
+                            activeCount={search ? 1 : 0} onClear={() => setSearch("")} />
+                    ) : undefined}
+                >
+                    {view === "funnel" ? (
+                        <LeadsFunnel />
+                    ) : (
+                        <DataTable
+                            columns={cols}
+                            data={leads}
+                            rowKey={(lead: any) => lead.id}
+                            loading={loading}
+                            search={search}
+                            pageSize={10}
+                            initialSort={{ id: "created_at" }}
+                            caption="Leads"
+                            empty={{ message: "Ainda não há leads." }}
+                            rowActions={rowActions}
+                            mobileCard={(lead) => renderLeadMobileCard(lead)}
+                        />
+                    )}
+                </PageCard>
             </Container>
 
             <LossReasonModal

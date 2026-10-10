@@ -2,11 +2,13 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Button, Card, CardBody, CardHeader, Col, Container, Row, Input, Label, Badge, Spinner } from "reactstrap";
+import { Button, Col, Container, Row, Input, Label, Badge, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
 // Components
 import XButton from "Components/Common/XButton";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ActionsMenu from "Components/Common/ActionsMenu";
 // Redux
 import { getDocumentTemplates, createDocumentTemplate, updateDocumentTemplate, deleteDocumentTemplate } from "slices/documentTemplates/thunk";
@@ -139,23 +141,26 @@ const DocumentTemplatesList = () => {
             .then((r) => { if (!r.ok) toast.error("Não foi possível descarregar o exemplo."); });
     };
 
+    const cols = useDataColumns<IDocumentTemplate>("financas.modelos-documento", [
+        {
+            id: "name", header: "Modelo", value: (t) => t.name, hideable: false, mobile: "title",
+            cell: (t) => <span className="fw-medium text-break"><i className="ri-file-word-2-line text-primary me-1" />{t.name}{t.archived && <Badge color="light" className="ms-2 text-muted">Arquivado</Badge>}</span>,
+        },
+    ] as DTColumn<IDocumentTemplate>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Modelos de documento" breadcrumbs={[{ label: "Finanças" }]}
-                    description={<>Carregue um .docx com variáveis <code>{"{{ }}"}</code>. Depois, em cada venda, pode gerar o documento preenchido para descarregar.</>}
-                    actions={<Button color="outline-primary" onClick={downloadExample}><i className="ri-download-2-line me-1" />Exemplo .docx</Button>} />
+                    info={<>Carregue um .docx com variáveis <code>{"{{ }}"}</code>. Depois, em cada venda, pode gerar o documento preenchido para descarregar.</>} />
 
                 <Row>
                     {/* Coluna esquerda: variáveis + exemplo */}
                     <Col lg={4} className="mb-3">
-                        <Card className="h-100">
-                            <CardHeader>
-                                <h5 className="card-title mb-0">Variáveis disponíveis</h5>
-                            </CardHeader>
-                            <CardBody>
-                                <p className="text-muted fs-13">Clique numa variável para a copiar e cole-a no seu .docx (Word ou Google Docs).</p>
+                        <PageCard className="h-100" title="Variáveis disponíveis" flush={false}
+                            info="Clique numa variável para a copiar e cole-a no seu .docx (Word ou Google Docs)."
+                            actions={<Button size="sm" color="outline-primary" onClick={downloadExample}><i className="ri-download-2-line me-1" />Exemplo .docx</Button>}>
                                 {Object.keys(groups).length === 0 ? (
                                     <div className="text-muted fs-13">A carregar…</div>
                                 ) : Object.entries(groups).map(([group, vars]) => (
@@ -176,15 +181,12 @@ const DocumentTemplatesList = () => {
                                         </div>
                                     </div>
                                 ))}
-                            </CardBody>
-                        </Card>
+                        </PageCard>
                     </Col>
 
                     {/* Coluna direita: upload + lista */}
                     <Col lg={8}>
-                        <Card className="mb-3">
-                            <CardHeader><h5 className="card-title mb-0">Carregar novo modelo</h5></CardHeader>
-                            <CardBody>
+                        <PageCard className="mb-3" title="Carregar novo modelo" flush={false}>
                                 <Row className="g-2 align-items-end">
                                     <Col md={5}>
                                         <Label className="form-label">Nome do modelo</Label>
@@ -198,39 +200,31 @@ const DocumentTemplatesList = () => {
                                         <XButton variant="primary" onClick={submit} loading={creating} className="w-100" icon={<i className="ri-upload-2-line" />}>Carregar</XButton>
                                     </Col>
                                 </Row>
-                            </CardBody>
-                        </Card>
+                        </PageCard>
 
-                        <Card>
-                            <CardHeader><h5 className="card-title mb-0">Os meus modelos</h5></CardHeader>
-                            <CardBody>
-                                {loadingList ? (
-                                    <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                                ) : templates.length === 0 ? (
-                                    <p className="text-muted mb-0">Ainda não há modelos. Carregue o primeiro acima.</p>
-                                ) : (
-                                    <div className="d-flex flex-column gap-2">
-                                        {templates.map((t) => (
-                                            <div key={t.id} className="d-flex align-items-center justify-content-between gap-2 border rounded p-3">
-                                                <div className="min-w-0 text-break">
-                                                    <div className="fw-medium"><i className="ri-file-word-2-line text-primary me-1" />{t.name}{t.archived && <Badge color="light" className="ms-2 text-muted">Arquivado</Badge>}</div>
-                                                </div>
-                                                <div className="d-flex gap-1 flex-shrink-0">
-                                                    <Button size="sm" color="outline-primary" onClick={() => pickReplacement(t)} disabled={replacingId === t.id} title="Substituir ficheiro" aria-label={`Substituir ficheiro: ${t.name}`}>
-                                                        {replacingId === t.id ? <Spinner size="sm" /> : <i className="ri-file-upload-line" />}
-                                                    </Button>
-                                                    <Button size="sm" color="outline-primary" onClick={() => rename(t)} title="Renomear" aria-label={`Renomear: ${t.name}`}><i className="ri-pencil-line" /></Button>
-                                                    <ActionsMenu size="sm" label={`Mais ações: ${t.name}`} items={[
-                                                        { label: t.archived ? "Reativar" : "Arquivar", icon: t.archived ? "ri-inbox-unarchive-line" : "ri-archive-line", onClick: () => void toggleArchive(t) },
-                                                        { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(t) },
-                                                    ]} />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                        <PageCard title="Os meus modelos" status={!loadingList ? <>{templates.length} modelo{templates.length === 1 ? "" : "s"}</> : undefined}>
+                            <DataTable
+                                columns={cols}
+                                data={templates}
+                                rowKey={(t) => t.id}
+                                loading={loadingList}
+                                caption="Modelos de documento"
+                                rowClassName={(t) => (t.archived ? "text-muted" : undefined)}
+                                empty={{ message: "Ainda não há modelos. Carregue o primeiro acima." }}
+                                rowActions={(t) => (
+                                    <>
+                                        <Button size="sm" color="outline-primary" onClick={() => pickReplacement(t)} disabled={replacingId === t.id} title="Substituir ficheiro" aria-label={`Substituir ficheiro: ${t.name}`}>
+                                            {replacingId === t.id ? <Spinner size="sm" /> : <i className="ri-file-upload-line" />}
+                                        </Button>
+                                        <Button size="sm" color="outline-primary" onClick={() => rename(t)} title="Renomear" aria-label={`Renomear: ${t.name}`}><i className="ri-pencil-line" /></Button>
+                                        <ActionsMenu size="sm" label={`Mais ações: ${t.name}`} items={[
+                                            { label: t.archived ? "Reativar" : "Arquivar", icon: t.archived ? "ri-inbox-unarchive-line" : "ri-archive-line", onClick: () => void toggleArchive(t) },
+                                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(t) },
+                                        ]} />
+                                    </>
                                 )}
-                            </CardBody>
-                        </Card>
+                            />
+                        </PageCard>
                     </Col>
                 </Row>
 

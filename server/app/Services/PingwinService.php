@@ -1309,6 +1309,37 @@ class PingwinService
         return (array) ($res['supplier'] ?? []);
     }
 
+    /**
+     * FB-1 ⚠️ ESCRITA: lança UMA fatura de fornecedor em RASCUNHO (8001) e relê-a (leitor da F4).
+     * Devolve {result: {ok, saved: true|false|"unknown", docheader_id, document, adjustment, …},
+     * reread: {ok, header, details}|null}. Nunca repete: quem chama decide pela resposta.
+     */
+    public function launchSupplierInvoice(int $companyId, array $doc): array
+    {
+        $this->invokeTimeout = 300;
+        try {
+            $res = $this->supplierCall($companyId, ['mode' => 'launch_supplier_invoice', 'doc' => $doc]);
+        } finally {
+            $this->invokeTimeout = 180;
+        }
+        if (! ($res['ok'] ?? false)) {
+            throw new \RuntimeException('Lançar a fatura no PingWin falhou: ' . ($res['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['result' => (array) ($res['result'] ?? []), 'reread' => $res['reread'] ?? null];
+    }
+
+    /** FB-1 ⚠️ ESCRITA: fecha (8002) ou anula (8003) UM documento e relê-o. */
+    public function documentStatus(int $companyId, string $docheaderId, string $status, string $docconfigId = '1209'): array
+    {
+        $res = $this->supplierCall($companyId, ['mode' => 'document_status', 'docheader_id' => $docheaderId, 'docstatus_id' => $status, 'docconfig_id' => $docconfigId]);
+        if (! ($res['ok'] ?? false)) {
+            throw new \RuntimeException('Mudar o estado do documento falhou: ' . ($res['error'] ?? 'erro desconhecido'));
+        }
+
+        return ['result' => (array) ($res['result'] ?? []), 'reread' => $res['reread'] ?? null];
+    }
+
     /** SÓ LEITURA: fornecedores do PingWin com este NIF. @return array{active: list<array>, voided: list<array>} */
     public function findSuppliersByNif(int $companyId, string $nif): array
     {

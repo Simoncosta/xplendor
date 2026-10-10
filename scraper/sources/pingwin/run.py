@@ -295,6 +295,25 @@ def run(cfg: dict) -> dict:
                 return {"ok": False, "error": "entity_ids em falta (lista de pingwin_id de fornecedores)."}
             return {"ok": True, "mode": "supplier_cc", "suppliers": client.fetch_supplier_cc(entity_ids)}
 
+        if mode == "launch_supplier_invoice":
+            # ⚠️ ESCRITA (FB-1): cria UMA fatura de fornecedor em RASCUNHO (8001) e relê-a logo
+            # (leitor da F4: OPEN → GET header,details → CLOSE) para a confirmação no PHP.
+            doc = cfg.get("doc") or {}
+            res = client.launch_supplier_invoice(doc)
+            reread = None
+            if res.get("saved") is True and res.get("docheader_id"):
+                reread = client.fetch_supplier_document_lines([{"docconfig_id": res.get("docconfig_id") or "1209", "docheader_id": res["docheader_id"]}])[0]
+            return {"ok": True, "mode": "launch_supplier_invoice", "result": res, "reread": reread}
+
+        if mode == "document_status":
+            # ⚠️ ESCRITA (FB-1): fecha (8002) ou anula (8003) UM documento e relê-o.
+            dh = str(cfg.get("docheader_id") or "")
+            if not dh:
+                return {"ok": False, "error": "docheader_id em falta."}
+            res = client.set_document_status(dh, str(cfg.get("docstatus_id") or ""))
+            reread = client.fetch_supplier_document_lines([{"docconfig_id": str(cfg.get("docconfig_id") or "1209"), "docheader_id": dh}])[0]
+            return {"ok": True, "mode": "document_status", "result": res, "reread": reread}
+
         if mode == "supplier_document_lines":
             # READ-ONLY (F4): header + LINHAS de uma lista de documentos de fornecedor
             # ({docconfig_id, docheader_id}). OPEN → GET header,details → CLOSE (sempre),

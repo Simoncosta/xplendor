@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Alert } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import ReasonButton from "Components/Common/ReasonButton";
 import { getCompanyTicketQuotes, approveCompanyTicketQuotes } from "helpers/laravel_helper";
 import { ISupportTicket, ITicketQuotePipeline, QUOTE_STATUS_META, formatEuro } from "common/models/supportTicket.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -95,32 +98,46 @@ export default function OrcamentosStand() {
         ];
     }, [summary]);
 
-    const row = (t: ISupportTicket, selectable: boolean) => {
-        const qm = t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
-        return (
-            <div key={t.id} className="d-flex align-items-center gap-3 border rounded p-3">
-                {selectable && (
-                    <input type="checkbox" className="form-check-input flex-shrink-0 mt-0" checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
-                )}
-                <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                    <div className="fw-medium text-truncate">{t.title}</div>
-                    <small className="text-muted">
-                        {t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}
-                        {t.estimated_hours != null ? ` · ${t.estimated_hours}h` : ""}
-                        {t.author_name ? ` · ${t.author_name}` : ""}
-                    </small>
-                </div>
-                {qm && <Badge color={qm.color} className="flex-shrink-0">{qm.label}</Badge>}
-            </div>
-        );
+    // Colunas comuns às três listas; a de seleção só existe em "Por aprovar".
+    const baseCols: DTColumn<ISupportTicket>[] = [
+        { id: "title", header: "Pedido", value: (t) => t.title, hideable: false, mobile: "title", cell: (t) => <span className="fw-medium">{t.title}</span> },
+        { id: "amount", header: "Valor", value: (t) => (t.quoted_amount != null ? num(t.quoted_amount) : undefined), cell: (t) => (t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"), align: "end", nowrap: true },
+        { id: "hours", header: "Horas", value: (t) => (t.estimated_hours != null ? num(t.estimated_hours) : undefined), cell: (t) => (t.estimated_hours != null ? `${t.estimated_hours}h` : "—"), align: "end" },
+        { id: "author", header: "Pedido por", value: (t) => t.author_name ?? "", cell: (t) => t.author_name || "—" },
+        {
+            id: "status", header: "Estado", value: (t) => (t.quote_status ? QUOTE_STATUS_META[t.quote_status].label : ""),
+            cell: (t) => { const qm = t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null; return qm ? <Badge color={qm.color}>{qm.label}</Badge> : null; },
+        },
+    ];
+    const selectCol: DTColumn<ISupportTicket> = {
+        id: "select", header: "Selecionar", hideable: false, mobile: "hide", sortable: false, className: "text-center", cellClassName: () => "text-center",
+        cell: (t) => <input type="checkbox" className="form-check-input mt-0" aria-label={`Selecionar: ${t.title}`} checked={selected.has(t.id)} onChange={() => toggle(t.id)} />,
     };
+    const pendingCols = useDataColumns<ISupportTicket>("equipa.orcamentos.por-aprovar", [selectCol, ...baseCols]);
+    const doingCols = useDataColumns<ISupportTicket>("equipa.orcamentos.em-curso", baseCols);
+    const otherCols = useDataColumns<ISupportTicket>("equipa.orcamentos.outros", baseCols);
+
+    // No telemóvel não há coluna de seleção: a caixa vai no próprio cartão da linha.
+    const pendingCard = (t: ISupportTicket) => (
+        <div className="xp-dt-card d-flex align-items-center gap-3" data-testid="dt-row">
+            <input type="checkbox" className="form-check-input flex-shrink-0 mt-0" aria-label={`Selecionar: ${t.title}`} checked={selected.has(t.id)} onChange={() => toggle(t.id)} />
+            <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                <div className="fw-medium text-truncate">{t.title}</div>
+                <small className="text-muted">
+                    {t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"}
+                    {t.estimated_hours != null ? ` · ${t.estimated_hours}h` : ""}
+                    {t.author_name ? ` · ${t.author_name}` : ""}
+                </small>
+            </div>
+        </div>
+    );
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Orçamentos" breadcrumbs={[{ label: "Equipa" }]}
-                    description="As alterações ao site orçadas. Selecione as que quer avançar e aprove o pacote." />
+                    info="As alterações ao site orçadas. Selecione as que quer avançar e aprove o pacote." />
 
                 {/* Pipeline (cards+SUM, reaproveitando o padrão do sistema). */}
                 <Row className="g-3 mb-3">
@@ -137,58 +154,49 @@ export default function OrcamentosStand() {
                     ))}
                 </Row>
 
-                {loading ? (
-                    <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                ) : tickets.length === 0 ? (
-                    <Card><CardBody className="text-muted">Ainda não há orçamentos. Quando pedir uma alteração ao site e a XPLENDOR a orçar, aparece aqui.</CardBody></Card>
+                {!loading && tickets.length === 0 ? (
+                    <PageCard title="Orçamentos" flush={false}>
+                        <p className="text-muted mb-0">Ainda não há orçamentos. Quando pedir uma alteração ao site e a XPLENDOR a orçar, aparece aqui.</p>
+                    </PageCard>
                 ) : (
                     <>
-                        <Card className="mb-3">
-                            <CardBody>
-                                <div className="d-flex align-items-center justify-content-between mb-2">
-                                    <h5 className="mb-0">Por aprovar {porAprovar.length > 0 && <Badge color="warning" className="ms-1">{porAprovar.length}</Badge>}</h5>
-                                    {porAprovar.length > 0 && (
-                                        <button className="btn btn-sm btn-link p-0" onClick={toggleAll}>{allSelected ? "Desmarcar todos" : "Selecionar todos"}</button>
-                                    )}
-                                </div>
-                                {porAprovar.length === 0 ? (
-                                    <p className="text-muted mb-0">Nada por aprovar.</p>
-                                ) : (
-                                    <div className="d-flex flex-column gap-2">{porAprovar.map((t) => row(t, true))}</div>
-                                )}
-                            </CardBody>
-                        </Card>
+                        {/* Ações em massa no cabeçalho do cartão (já não há barra fixa no fundo). */}
+                        <PageCard
+                            title={<>Por aprovar {porAprovar.length > 0 && <Badge color="warning" className="ms-1">{porAprovar.length}</Badge>}</>}
+                            loading={loading && tickets.length > 0}
+                            status={sel.length > 0
+                                ? <><span className="fw-semibold text-body">{sel.length} selecionado{sel.length === 1 ? "" : "s"}</span> · Total: <strong className="text-body">{formatEuro(totalAmount)}</strong> · {totalHours}h (sem IVA)</>
+                                : porAprovar.length > 0 ? "Selecione os orçamentos que quer aprovar." : undefined}
+                            actions={porAprovar.length > 0 ? <>
+                                {pendingCols.selector}
+                                <button type="button" className="btn btn-sm btn-outline-primary" onClick={toggleAll}>{allSelected ? "Desmarcar todos" : "Selecionar todos"}</button>
+                                <ReasonButton size="sm" color="success" onClick={() => setConfirmOpen(true)} reason={sel.length === 0 ? "Selecione pelo menos um orçamento." : null}>
+                                    <i className="ri-check-double-line me-1" />Aprovar selecionados
+                                </ReasonButton>
+                            </> : undefined}
+                        >
+                            <DataTable
+                                columns={pendingCols}
+                                data={porAprovar}
+                                rowKey={(t) => t.id}
+                                loading={loading}
+                                caption="Orçamentos por aprovar"
+                                empty={{ message: "Nada por aprovar." }}
+                                mobileCard={(t) => pendingCard(t)}
+                            />
+                        </PageCard>
 
                         {emCurso.length > 0 && (
-                            <Card className="mb-3"><CardBody>
-                                <h5 className="mb-2">Aprovados / em curso</h5>
-                                <div className="d-flex flex-column gap-2">{emCurso.map((t) => row(t, false))}</div>
-                            </CardBody></Card>
+                            <PageCard title="Aprovados / em curso" actions={doingCols.selector}>
+                                <DataTable columns={doingCols} data={emCurso} rowKey={(t) => t.id} caption="Orçamentos aprovados ou em curso" />
+                            </PageCard>
                         )}
                         {outros.length > 0 && (
-                            <Card className="mb-5"><CardBody>
-                                <h5 className="mb-2">Outros</h5>
-                                <div className="d-flex flex-column gap-2">{outros.map((t) => row(t, false))}</div>
-                            </CardBody></Card>
+                            <PageCard title="Outros" className="mb-5" actions={otherCols.selector}>
+                                <DataTable columns={otherCols} data={outros} rowKey={(t) => t.id} caption="Outros orçamentos" />
+                            </PageCard>
                         )}
                     </>
-                )}
-
-                {/* Barra fixa de total + aprovar (aparece quando há seleção). */}
-                {sel.length > 0 && (
-                    <div className="position-fixed bottom-0 start-0 end-0 p-3" style={{ zIndex: 1030, pointerEvents: "none" }}>
-                        <Card className="mb-0 shadow mx-auto" style={{ maxWidth: 720, pointerEvents: "auto", border: "1px solid var(--vz-border-color)" }}>
-                            <CardBody className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                <div>
-                                    <span className="fw-semibold">Selecionados: {sel.length}</span>
-                                    <span className="text-muted"> · Total: <strong className="text-body">{formatEuro(totalAmount)}</strong> · {totalHours}h (sem IVA)</span>
-                                </div>
-                                <button className="btn btn-success" onClick={() => setConfirmOpen(true)}>
-                                    <i className="ri-check-double-line me-1" />Aprovar selecionados
-                                </button>
-                            </CardBody>
-                        </Card>
-                    </div>
                 )}
 
                 {/* Confirmação (ação com consequência). */}

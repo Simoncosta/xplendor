@@ -90,7 +90,7 @@ export default function CalendarioPage() {
                     info="A faturação com IVA, as pessoas que reservaram e o ticket médio de cada dia. Os dias sem dados sincronizados ficam vazios; o ticket médio só aparece com faturação e reservas."
                     filters={<>
                         {/* Filtro por loja: por omissão "Todas as lojas" (somadas). */}
-                        <XSelect
+                        <XSelect small
                             ariaLabel="Loja"
                             width={220}
                             options={locationOptions}

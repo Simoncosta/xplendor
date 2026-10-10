@@ -7,6 +7,7 @@ import { FormikProvider, useFormik } from 'formik';
 import * as Yup from "yup";
 // Components
 import PageHeader from 'Components/Common/PageHeader';
+import PageCard from 'Components/Common/PageCard';
 import CompanyGeneralDataFields from './components/CompanyGeneralDataFields';
 import AgencyCreateFields from './components/AgencyCreateFields';
 import ManagingAgencyCard from './components/ManagingAgencyCard';
@@ -14,7 +15,7 @@ import AgencyManagementPanel from 'pages/Companies/components/AgencyManagementPa
 import IntegrationsSettings from './IntegrationsSettings';
 import EditorialSectorSettings from 'pages/Editorial/EditorialSectorSettings';
 import { getCompanyManagement, getMyModules } from 'helpers/laravel_helper';
-import { Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import { Button, Card, CardBody, Col, Container, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 // Slices
 import classnames from "classnames";
 // Models
@@ -207,7 +208,7 @@ export default function CompanyProfileEditor({
                         title={isEdit ? (data?.fiscal_name || "Perfil da empresa") : "Nova empresa"}
                         crumbLabel={isEdit ? "Perfil da empresa" : "Nova empresa"}
                         breadcrumbs={isRoot ? [{ label: "Administração", to: "/admin" }, { label: "Empresas", to: "/companies" }] : []}
-                        description={isEdit ? "Os dados, a Linha Editorial e as integrações da empresa." : "Os dados da nova empresa e o utilizador de acesso."}
+                        info={isEdit ? "Os dados, a Linha Editorial e as integrações da empresa." : "Os dados da nova empresa e o utilizador de acesso."}
                     />
                     <Row>
                         <Col xxl={3}>
@@ -258,36 +259,25 @@ export default function CompanyProfileEditor({
                                 </CardBody>
                             </Card>
 
-                            <Card>
-                                <CardBody>
-                                    <div className="d-flex align-items-center mb-5">
-                                        <div className="flex-grow-1">
-                                            <h5 className="card-title mb-0">Complete o perfil da empresa</h5>
-                                        </div>
-                                    </div>
-                                    <div className="progress animated-progress custom-progress progress-label">
+                            <PageCard title="Complete o perfil da empresa" flush={false} status={<>{progress.percent}% preenchido</>}>
+                                    <div className="progress mt-2 animated-progress custom-progress progress-label">
                                         <div className="progress-bar bg-primary" role="progressbar" style={{ width: `${progress.percent}%` }}>
                                             <div className="label">{progress.percent}%</div>
                                         </div>
                                     </div>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {isEdit && <ManagingAgencyCard companyId={companyId} highlight={wantsGestao} />}
                             {isEdit && isRoot && (
-                                <Card>
-                                    <CardBody>
-                                        <h5 className="card-title mb-3"><i className="ri-team-line me-1" />Gestão por agências</h5>
-                                        <AgencyManagementPanel companyId={companyId} />
-                                    </CardBody>
-                                </Card>
+                                <PageCard title={<><i className="ri-team-line me-1" />Gestão por agências</>} flush={false}>
+                                    <AgencyManagementPanel companyId={companyId} />
+                                </PageCard>
                             )}
                         </Col>
 
                         <Col xxl={9}>
-                            <Card>
-                                <CardHeader>
-                                    <Nav className="nav-tabs-custom rounded card-header-tabs border-bottom-0"
+                            {/* Um cartão por separador (design-system §2); os separadores ficam por cima. */}
+                                    <Nav className="nav-tabs-custom mb-3" tabs
                                         role="tablist">
                                         <NavItem>
                                             <NavLink
@@ -325,10 +315,9 @@ export default function CompanyProfileEditor({
                                             </NavItem>
                                         )}
                                     </Nav>
-                                </CardHeader>
-                                <CardBody className="p-4">
                                     <TabContent activeTab={activeTab}>
                                         <TabPane tabId="1">
+                                          <PageCard title="Dados gerais" flush={false} bodyClassName="p-4">
                                             <FormikProvider value={formik}>
                                                 <form onSubmit={formik.handleSubmit}>
                                                     {readOnly && (
@@ -365,22 +354,26 @@ export default function CompanyProfileEditor({
                                                     </Col>
                                                 </form>
                                             </FormikProvider>
+                                          </PageCard>
                                         </TabPane>
                                         <TabPane tabId="3">
+                                          <PageCard title="Integrações" flush={false}
+                                              info="Ligue as suas plataformas externas para que os dados cheguem automaticamente à XPLENDOR.">
                                             <IntegrationsSettings
                                                 companyId={companyId}
                                                 dataCarmine={dataCarmine}
                                                 onSubmitCarmine={onSubmitCarmine}
                                             />
+                                          </PageCard>
                                         </TabPane>
                                         {showEditorial && (
                                             <TabPane tabId="4">
+                                              <PageCard title="Linha Editorial" flush={false} bodyClassName="p-4">
                                                 <EditorialSectorSettings companyId={companyId} />
+                                              </PageCard>
                                             </TabPane>
                                         )}
                                     </TabContent>
-                                </CardBody>
-                            </Card>
                         </Col>
                     </Row>
                 </Container>

@@ -26,6 +26,8 @@ class OcrInvoice extends Model
         // F3: ligação ao PingWin
         'link_status', 'link_diff_cents', 'link_checked_at', 'link_note', 'link_candidates', 'link_rejected',
         'link_search_pending', 'duplicate_of_id', 'guide_refs',
+        // FB-1: diferença das linhas face ao QR aceite pela pessoa
+        'check_accepted_by', 'check_accepted_at',
     ];
 
     protected $casts = [
@@ -43,6 +45,7 @@ class OcrInvoice extends Model
         'link_rejected'     => 'array',
         'link_search_pending' => 'boolean',
         'guide_refs'        => 'array',
+        'check_accepted_at' => 'datetime',
     ];
 
     public function company(): BelongsTo

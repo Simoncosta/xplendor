@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Card, CardBody, CardHeader, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Tooltip } from "reactstrap";
+import { Badge, Button, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Tooltip } from "reactstrap";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import listPlugin from "@fullcalendar/list";
@@ -9,6 +9,7 @@ import { channelIcons } from "common/models/editorialPost.model";
 import { STAGE_META, STAGE_ORDER, Stage, stageTextColor } from "common/models/editorialWorkflow.model";
 import ClientMark from "Components/Common/ClientMark";
 import ActionsMenu from "Components/Common/ActionsMenu";
+import PageCard from "Components/Common/PageCard";
 import XSelect, { XOption } from "./XSelect";
 import MonthResults from "./MonthResults";
 import CompanyPostPanel from "./CompanyPostPanel";
@@ -40,13 +41,12 @@ const ONE_CLIENT = "Escolha um cliente no filtro: esta ação é de uma só empr
 type Props = {
     agencyId: number;
     clients: AgencyClient[];
-    filter: React.ReactNode;
     initialView: string | null;
     initialMonth: string | null;
     onView: (view: string, month: string) => void;
 };
 
-export default function AgencyEditorialAll({ agencyId, clients, filter, initialView, initialMonth, onView }: Props) {
+export default function AgencyEditorialAll({ agencyId, clients, initialView, initialMonth, onView }: Props) {
     const [view, setView] = useState<View>(initialView === "kanban" ? "board" : initialView === "resultados" ? "results" : "calendar");
     const [month, setMonth] = useState(initialMonth && /^\d{4}-\d{2}$/.test(initialMonth) ? initialMonth : todayLisbon().slice(0, 7));
     const [posts, setPosts] = useState<AgencyPost[] | null>(null);
@@ -127,41 +127,39 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
     );
 
     return (
-        <Card>
-            <CardHeader className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <div className="me-auto">
-                    <h5 className="card-title mb-0">Linha Editorial</h5>
-                    <small className="text-muted">Todos os clientes da agência</small>
+        <PageCard
+            title="Linha Editorial"
+            flush={false}
+            status="Todos os clientes da agência"
+            info={<>
+                Abrir e fechar meses, âncoras próprias e o Feed são de cada cliente: escolha-o no filtro.
+                {view === "board" && <> Para mudar uma publicação de etapa, abra-a: o painel mostra os passos possíveis nessa empresa.</>}
+            </>}
+            actions={<>
+                <div className="xp-seg" role="tablist" aria-label="Vista">
+                    {([["calendar", "Calendário", "ri-calendar-2-line"], ["board", "Kanban", "ri-layout-column-line"]] as const).map(([k, l, i]) => (
+                        <button key={k} type="button" role="tab" aria-selected={view === k} className={view === k ? "on" : ""} onClick={() => setView(k)}><i className={`${i} me-1`} />{l}</button>
+                    ))}
+                    <span id="why-all-feed" tabIndex={0} role="button" onMouseEnter={() => setReason("feed")} onMouseLeave={() => setReason(null)} onFocus={() => setReason("feed")} onBlur={() => setReason(null)} onClick={() => setReason("feed")}>
+                        <button type="button" role="tab" aria-selected={false} aria-disabled className="opacity-50" style={{ pointerEvents: "none" }}><i className="ri-smartphone-line me-1" />Feed</button>
+                    </span>
+                    <Tooltip target="why-all-feed" isOpen={reason === "feed"} trigger="manual" placement="bottom">Escolha um cliente no filtro: o Feed mostra a grelha de uma só conta.</Tooltip>
+                    <button type="button" role="tab" aria-selected={view === "results"} className={view === "results" ? "on" : ""} onClick={() => setView("results")}><i className="ri-bar-chart-2-line me-1" />Resultados</button>
                 </div>
-                <div className="d-flex flex-wrap align-items-center gap-2">
-                    {filter}
-                    {why("ideas", <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")}
-                    <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
-                        { label: "Aprovação por link", icon: "ri-links-line", disabledReason: ONE_CLIENT },
-                    ]} />
-                    <Button color="primary" size="sm" onClick={() => { setChosen(editorialClients[0]?.id ?? 0); setChooser(true); }}><i className="ri-add-line me-1" />Nova publicação</Button>
+                {why("ideas", <><i className="ri-lightbulb-flash-line me-1" />Gerar ideias</>, "outline-primary")}
+                <ActionsMenu size="sm" label="Mais ações: Linha Editorial" items={[
+                    { label: "Aprovação por link", icon: "ri-links-line", disabledReason: ONE_CLIENT },
+                ]} />
+                <Button color="primary" size="sm" onClick={() => { setChosen(editorialClients[0]?.id ?? 0); setChooser(true); }}><i className="ri-add-line me-1" />Nova publicação</Button>
+            </>}
+            filters={
+                <div className="d-flex flex-wrap align-items-center gap-1" style={{ maxWidth: "100%" }}>
+                    <Button color="outline-primary" size="sm" aria-label="Mês anterior" onClick={() => goMonth(shiftKey(month, -1))}><i className="ri-arrow-left-s-line" /></Button>
+                    <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={month} onChange={goMonth} /></div>
+                    <Button color="outline-primary" size="sm" aria-label="Mês seguinte" onClick={() => goMonth(shiftKey(month, 1))}><i className="ri-arrow-right-s-line" /></Button>
                 </div>
-            </CardHeader>
-            <CardBody>
-                <div className="d-flex flex-wrap align-items-center gap-2 mb-3">
-                    <div className="xp-seg" role="tablist" aria-label="Vista">
-                        {([["calendar", "Calendário", "ri-calendar-2-line"], ["board", "Kanban", "ri-layout-column-line"]] as const).map(([k, l, i]) => (
-                            <button key={k} type="button" role="tab" aria-selected={view === k} className={view === k ? "on" : ""} onClick={() => setView(k)}><i className={`${i} me-1`} />{l}</button>
-                        ))}
-                        <span id="why-all-feed" tabIndex={0} role="button" onMouseEnter={() => setReason("feed")} onMouseLeave={() => setReason(null)} onFocus={() => setReason("feed")} onBlur={() => setReason(null)} onClick={() => setReason("feed")}>
-                            <button type="button" role="tab" aria-selected={false} aria-disabled className="opacity-50" style={{ pointerEvents: "none" }}><i className="ri-smartphone-line me-1" />Feed</button>
-                        </span>
-                        <Tooltip target="why-all-feed" isOpen={reason === "feed"} trigger="manual" placement="bottom">Escolha um cliente no filtro: o Feed mostra a grelha de uma só conta.</Tooltip>
-                        <button type="button" role="tab" aria-selected={view === "results"} className={view === "results" ? "on" : ""} onClick={() => setView("results")}><i className="ri-bar-chart-2-line me-1" />Resultados</button>
-                    </div>
-                    <div className="d-flex flex-wrap align-items-center gap-1 ms-md-auto" style={{ maxWidth: "100%" }}>
-                        <Button color="outline-primary" size="sm" aria-label="Mês anterior" onClick={() => goMonth(shiftKey(month, -1))}><i className="ri-arrow-left-s-line" /></Button>
-                        <div style={{ flex: "1 1 150px", minWidth: 150, maxWidth: 220 }}><XSelect small ariaLabel="Mês" options={monthOptions} value={month} onChange={goMonth} /></div>
-                        <Button color="outline-primary" size="sm" aria-label="Mês seguinte" onClick={() => goMonth(shiftKey(month, 1))}><i className="ri-arrow-right-s-line" /></Button>
-                    </div>
-                </div>
-                <p className="text-muted fs-12 mb-3"><i className="ri-information-line me-1" />Abrir e fechar meses, âncoras próprias e o Feed são de cada cliente: escolha-o no filtro.</p>
-
+            }
+        >
                 {view !== "results" && today && (
                     <>
                         {strip("Para publicar hoje", "ri-send-plane-line", today.today, "success", (p) => p.can_mark && <Button size="sm" color="success" className="ms-auto py-0" onClick={() => openPost(p, true)}><i className="ri-checkbox-circle-line me-1" />Marcar como publicada</Button>)}
@@ -175,7 +173,6 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
                         onOpen={(id, companyId) => companyId && setOpen({ companyId, target: { mode: "edit", postId: id } })} />
                 ) : posts === null ? <div className="text-center py-5"><Spinner /></div> : view === "board" ? (
                     <>
-                        <p className="text-muted fs-12 mb-2">Para mudar uma publicação de etapa, abra-a (o painel mostra os passos possíveis nessa empresa).</p>
                         <div className="d-flex gap-2 overflow-auto pb-2" style={{ scrollSnapType: "x mandatory" }} data-testid="agency-board">
                             {columns.map((col) => (
                                 <div key={col.stage} className="border rounded flex-shrink-0 bg-light-subtle" style={{ width: 240, scrollSnapAlign: "start" }}>
@@ -219,7 +216,6 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
                             );
                         }} />
                 )}
-            </CardBody>
 
             <Modal isOpen={chooser} toggle={() => setChooser(false)} centered>
                 <ModalHeader toggle={() => setChooser(false)}>Nova publicação</ModalHeader>
@@ -236,6 +232,6 @@ export default function AgencyEditorialAll({ agencyId, clients, filter, initialV
             </Modal>
 
             <CompanyPostPanel companyId={open?.companyId ?? null} target={open?.target ?? null} onClose={() => setOpen(null)} onChanged={() => setReload((k) => k + 1)} />
-        </Card>
+        </PageCard>
     );
 }

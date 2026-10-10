@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody,
+    Badge, Button, Col, Container, Input, Label, Modal, ModalBody,
     ModalFooter, ModalHeader, Nav, NavItem, NavLink, Row, Spinner,
 } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
@@ -16,9 +16,12 @@ import {
 } from "common/models/collaborator.model";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu, { MenuAction } from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 
 /**
  * Colaboradores (equipa) e departamentos da empresa. A equipa XPLENDOR em sessão como
@@ -120,125 +123,138 @@ const CollaboratorsList = () => {
         { label: "Apagar", icon: "ri-delete-bin-line", danger: true, hidden: !canEdit || !!c.user, onClick: () => void confirmRun("Apagar o colaborador?", "O registo e a foto são apagados.", "Apagar", () => deleteCollaborator(companyId, c.id), "Colaborador apagado.", "danger", () => setItems((p) => p.filter((x) => x.id !== c.id))) },
     ];
 
+    const teamCols = useDataColumns<ICollaborator>("configuracoes.colaboradores", [
+        {
+            id: "name", header: "Colaborador", value: (c) => `${c.name} ${c.role_title ?? ""}`, hideable: false, mobile: "title",
+            cell: (c) => {
+                const photo = collaboratorPhoto(c);
+                return (
+                    <div className="d-flex align-items-center gap-2" style={{ minWidth: 200 }}>
+                        {photo ? <img src={photo} alt="" width={36} height={36} className="rounded-circle" style={{ objectFit: "cover" }} />
+                            : <span className="avatar-xs"><span className="avatar-title rounded-circle bg-primary-subtle text-primary fs-12">{initials(c.name)}</span></span>}
+                        <div>
+                            <div className="fw-medium">{c.name}</div>
+                            <small className="text-muted">{c.role_title || "Sem função"}{!c.active ? " · desativado" : ""}</small>
+                        </div>
+                    </div>
+                );
+            },
+        },
+        { id: "department", header: "Departamento", value: (c) => c.department?.name ?? "", cell: (c) => c.department?.name ?? <span className="text-muted">Sem departamento</span> },
+        {
+            id: "site", header: "No site", value: (c) => (c.on_site ? 1 : 0),
+            cell: (c) => c.on_site ? <Badge color="success">Sim</Badge>
+                : <span className="text-muted fs-12">{!c.publish_consent_at ? "Sem autorização" : !c.show_on_site ? "Não marcado" : "Desativado"}</span>,
+        },
+        {
+            id: "access", header: "Acesso", value: (c) => ACCESS_META[c.access_status].label,
+            cell: (c) => { const am = ACCESS_META[c.access_status]; return <Badge color={am.color} className={am.color === "light" ? "text-body" : ""}>{am.label}</Badge>; },
+        },
+    ] as DTColumn<ICollaborator>[]);
+
+    const deptCols = useDataColumns<IDepartment>("configuracoes.departamentos", [
+        { id: "name", header: "Departamento", value: (d) => d.name, hideable: false, mobile: "title", cell: (d) => <span className="fw-medium">{d.name}{!d.active && <small className="text-muted ms-1">(inativo)</small>}</span> },
+        {
+            id: "contacts", header: "Contactos públicos (aparecem no site)",
+            value: (d) => [d.whatsapp, d.phone, d.email].filter(Boolean).join(" "),
+            cell: (d) => <span className="fs-13">{[d.whatsapp && `WhatsApp ${d.whatsapp}`, d.phone && `${d.phone} (${PHONE_TYPE_LABEL[d.phone_type ?? "mobile"]})`, d.email].filter(Boolean).join(" · ") || <span className="text-muted">Sem contactos</span>}</span>,
+        },
+        { id: "count", header: "Colaboradores", value: (d) => d.collaborators_count ?? 0, align: "end" },
+    ] as DTColumn<IDepartment>[]);
+
+    const tabs = (
+        <Nav className="nav-tabs-custom mb-3" tabs>
+            <NavItem><NavLink href="#" className={tab === "team" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("team"); }}>Colaboradores</NavLink></NavItem>
+            <NavItem><NavLink href="#" className={tab === "departments" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("departments"); }}>Departamentos</NavLink></NavItem>
+        </Nav>
+    );
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Colaboradores" breadcrumbs={[{ label: "Configurações" }]}
-                    description="A equipa da empresa. Quem tiver autorização e estiver marcado aparece na secção Equipa do site."
-                    actions={canEdit ? (tab === "team" ? (
-                        <Link to="/users/collaborators/new" className="btn btn-primary"><i className="ri-add-line me-1" />Novo colaborador</Link>
-                    ) : (
-                        <>
-                            <Button color="outline-primary" disabled={busy} onClick={() => run(() => createSuggestedDepartments(companyId), "Departamentos criados.", () => loadDepartments())}>
-                                <i className="ri-magic-line me-1" />Criar departamentos sugeridos
-                            </Button>
-                            <Button color="primary" onClick={() => setDeptModal({ ...EMPTY_DEPT })}><i className="ri-add-line me-1" />Novo departamento</Button>
-                        </>
-                    )) : undefined} />
+                    info="A equipa da empresa. Quem tiver autorização e estiver marcado aparece na secção Equipa do site." />
 
                 {impersonating && (
                     <div className="alert alert-info py-2 fs-13">Em sessão como cliente pode editar a equipa e os departamentos. As ações sobre contas (dar ou retirar acesso) ficam reservadas ao administrador da empresa.</div>
                 )}
 
-                <Card>
-                    <CardBody>
-                        <Nav className="nav-tabs nav-border-top nav-border-top-primary mb-3">
-                            <NavItem><NavLink href="#" className={tab === "team" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("team"); }}>Colaboradores</NavLink></NavItem>
-                            <NavItem><NavLink href="#" className={tab === "departments" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("departments"); }}>Departamentos</NavLink></NavItem>
-                        </Nav>
+                {tabs}
 
-                        {tab === "team" ? (
-                            <>
-                                <Row className="g-2 mb-3">
-                                    <Col md={8}><Input type="search" placeholder="Pesquisar por nome ou função" value={search} onChange={(e) => setSearch(e.target.value)} /></Col>
-                                    <Col md={4}>
-                                        <XSelect ariaLabel="Estado" value={status} onChange={setStatus}
-                                            options={[{ value: "active", label: "Ativos" }, { value: "inactive", label: "Desativados" }, { value: "", label: "Todos" }]} />
-                                    </Col>
-                                </Row>
-                                {loading ? (
-                                    <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                                ) : items.length === 0 ? (
-                                    <p className="text-muted mb-0">Sem colaboradores. Crie o primeiro com "Novo colaborador".</p>
-                                ) : (
-                                    <div className="table-responsive">
-                                        <table className="table align-middle table-hover mb-0">
-                                            <thead className="table-light text-muted">
-                                                <tr><th>Colaborador</th><th>Departamento</th><th>No site</th><th>Acesso</th><th /></tr>
-                                            </thead>
-                                            <tbody>
-                                                {items.map((c) => {
-                                                    const photo = collaboratorPhoto(c);
-                                                    const am = ACCESS_META[c.access_status];
-                                                    return (
-                                                        <tr key={c.id} className={c.active ? "" : "opacity-50"}>
-                                                            <td style={{ minWidth: 220 }} role="button" onClick={() => navigate(`/users/collaborators/${c.id}`)}>
-                                                                <div className="d-flex align-items-center gap-2">
-                                                                    {photo ? <img src={photo} alt="" width={36} height={36} className="rounded-circle" style={{ objectFit: "cover" }} />
-                                                                        : <span className="avatar-xs"><span className="avatar-title rounded-circle bg-primary-subtle text-primary fs-12">{initials(c.name)}</span></span>}
-                                                                    <div>
-                                                                        <div className="fw-medium">{c.name}</div>
-                                                                        <small className="text-muted">{c.role_title || "Sem função"}{!c.active ? " · desativado" : ""}</small>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td>{c.department?.name ?? <span className="text-muted">Sem departamento</span>}</td>
-                                                            <td>
-                                                                {c.on_site ? <Badge color="success">Sim</Badge>
-                                                                    : <span className="text-muted fs-12">{!c.publish_consent_at ? "Sem autorização" : !c.show_on_site ? "Não marcado" : "Desativado"}</span>}
-                                                            </td>
-                                                            <td><Badge color={am.color} className={am.color === "light" ? "text-body" : ""}>{am.label}</Badge></td>
-                                                            <td className="text-end">
-                                                                <div className="d-inline-flex gap-1">
-                                                                    <Button size="sm" color="outline-primary" onClick={() => navigate(`/users/collaborators/${c.id}`)} aria-label={`${canEdit ? "Editar" : "Ver"}: ${c.name}`}>
-                                                                        <i className={canEdit ? "ri-pencil-line" : "ri-eye-line"} />
-                                                                    </Button>
-                                                                    <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} disabled={busy} items={rowActions(c)} />
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            departments.length === 0 ? (
-                                <p className="text-muted mb-0">Sem departamentos. Use "Criar departamentos sugeridos" (Comercial, Oficina, Pós-Venda, Admin) ou crie os seus.</p>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table align-middle mb-0">
-                                        <thead className="table-light text-muted"><tr><th>Departamento</th><th>Contactos públicos (aparecem no site)</th><th>Colaboradores</th><th /></tr></thead>
-                                        <tbody>
-                                            {departments.map((d) => (
-                                                <tr key={d.id} className={d.active ? "" : "opacity-50"}>
-                                                    <td className="fw-medium">{d.name}{!d.active && <small className="text-muted ms-1">(inativo)</small>}</td>
-                                                    <td className="fs-13">
-                                                        {[d.whatsapp && `WhatsApp ${d.whatsapp}`, d.phone && `${d.phone} (${PHONE_TYPE_LABEL[d.phone_type ?? "mobile"]})`, d.email].filter(Boolean).join(" · ") || <span className="text-muted">Sem contactos</span>}
-                                                    </td>
-                                                    <td>{d.collaborators_count ?? 0}</td>
-                                                    <td className="text-end">
-                                                        {canEdit && (
-                                                            <div className="d-flex gap-1 justify-content-end">
-                                                                <Button size="sm" color="outline-primary" aria-label={`Editar: ${d.name}`} onClick={() => setDeptModal({ id: d.id, name: d.name, whatsapp: d.whatsapp ?? "", phone: d.phone ?? "", phone_type: d.phone_type ?? "", email: d.email ?? "", active: d.active })}><i className="ri-pencil-line" /></Button>
-                                                                <ActionsMenu size="sm" label={`Mais ações: ${d.name}`} items={[
-                                                                    { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void confirmRun("Apagar o departamento?", "Os colaboradores deste departamento ficam sem departamento.", "Apagar", () => deleteDepartment(companyId, d.id), "Departamento apagado.", "danger", () => { loadDepartments(); load(); }) },
-                                                                ]} />
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                {/* Um cartão por separador, cada um com as suas ações (design-system §2). */}
+                {tab === "team" ? (
+                    <PageCard
+                        title="Colaboradores"
+                        status={!loading ? <>{items.length} colaborador{items.length === 1 ? "" : "es"}</> : undefined}
+                        loading={loading && items.length > 0}
+                        actions={<>
+                            {teamCols.selector}
+                            {canEdit && <Link to="/users/collaborators/new" className="btn btn-primary btn-sm"><i className="ri-add-line me-1" />Novo colaborador</Link>}
+                        </>}
+                        filters={
+                            <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar por nome ou função"
+                                activeCount={(search ? 1 : 0) + (status !== "active" ? 1 : 0)} onClear={() => { setSearch(""); setStatus("active"); }}>
+                                <div style={{ flex: "0 1 200px", minWidth: 0 }}>
+                                    <XSelect small ariaLabel="Estado" value={status} onChange={setStatus} searchable={false}
+                                        options={[{ value: "active", label: "Ativos" }, { value: "inactive", label: "Desativados" }, { value: "", label: "Todos" }]} />
                                 </div>
-                            )
-                        )}
-                    </CardBody>
-                </Card>
+                            </RestFilterBar>
+                        }
+                    >
+                        <DataTable
+                            columns={teamCols}
+                            data={items}
+                            rowKey={(c) => c.id}
+                            loading={loading}
+                            caption="Colaboradores"
+                            rowClassName={(c) => (c.active ? undefined : "opacity-50")}
+                            onRowClick={(c) => navigate(`/users/collaborators/${c.id}`)}
+                            empty={{ message: <>Sem colaboradores. Crie o primeiro com "Novo colaborador".</> }}
+                            rowActions={(c) => (
+                                <>
+                                    <Button size="sm" color="outline-primary" onClick={() => navigate(`/users/collaborators/${c.id}`)} aria-label={`${canEdit ? "Editar" : "Ver"}: ${c.name}`}>
+                                        <i className={canEdit ? "ri-pencil-line" : "ri-eye-line"} />
+                                    </Button>
+                                    <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} disabled={busy} items={rowActions(c)} />
+                                </>
+                            )}
+                        />
+                    </PageCard>
+                ) : (
+                    <PageCard
+                        title="Departamentos"
+                        status={<>{departments.length} departamento{departments.length === 1 ? "" : "s"}</>}
+                        actions={<>
+                            {deptCols.selector}
+                            {canEdit && (
+                                <>
+                                    <Button size="sm" color="outline-primary" disabled={busy} onClick={() => run(() => createSuggestedDepartments(companyId), "Departamentos criados.", () => loadDepartments())}>
+                                        <i className="ri-magic-line me-1" />Criar departamentos sugeridos
+                                    </Button>
+                                    <Button size="sm" color="primary" onClick={() => setDeptModal({ ...EMPTY_DEPT })}><i className="ri-add-line me-1" />Novo departamento</Button>
+                                </>
+                            )}
+                        </>}
+                    >
+                        <DataTable
+                            columns={deptCols}
+                            data={departments}
+                            rowKey={(d) => d.id}
+                            caption="Departamentos"
+                            rowClassName={(d) => (d.active ? undefined : "opacity-50")}
+                            empty={{ message: <>Sem departamentos. Use "Criar departamentos sugeridos" (Comercial, Oficina, Pós-Venda, Admin) ou crie os seus.</> }}
+                            rowActions={canEdit ? (d) => (
+                                <>
+                                    <Button size="sm" color="outline-primary" aria-label={`Editar: ${d.name}`} onClick={() => setDeptModal({ id: d.id, name: d.name, whatsapp: d.whatsapp ?? "", phone: d.phone ?? "", phone_type: d.phone_type ?? "", email: d.email ?? "", active: d.active })}><i className="ri-pencil-line" /></Button>
+                                    <ActionsMenu size="sm" label={`Mais ações: ${d.name}`} items={[
+                                        { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void confirmRun("Apagar o departamento?", "Os colaboradores deste departamento ficam sem departamento.", "Apagar", () => deleteDepartment(companyId, d.id), "Departamento apagado.", "danger", () => { loadDepartments(); load(); }) },
+                                    ]} />
+                                </>
+                            ) : undefined}
+                        />
+                    </PageCard>
+                )}
 
                 {/* Dar acesso: convite por email (a pessoa define a password). */}
                 <Modal isOpen={accessModal !== null} toggle={() => !busy && setAccessModal(null)} centered>

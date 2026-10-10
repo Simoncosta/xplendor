@@ -1,22 +1,6 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import { useEffect, useState, useCallback } from "react";
 
-import {
-    Container,
-    Row,
-    Card,
-    CardHeader,
-    CardBody,
-    Col,
-    Label,
-    Offcanvas,
-    OffcanvasHeader,
-    OffcanvasBody,
-} from "reactstrap";
-
-// Select Form
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
+import { Container, Label } from "reactstrap";
 
 // image
 import easyDataIcon from "../../assets/images/icon-easydata.png";
@@ -25,8 +9,11 @@ import easyDataIcon from "../../assets/images/icon-easydata.png";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
-import XTanStackTable from "Components/Common/XTanStackTable";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
+import XSelect, { XMultiSelect } from "Components/Common/Select";
 import CarPriceDisplay from "Components/Common/CarPriceDisplay";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import { createSelector } from "reselect";
@@ -72,6 +59,10 @@ const stockTypeOptions: StockTypeOption[] = [
     { value: true, label: "Retoma" },
     { value: false, label: "Stock próprio" },
 ];
+// O XSelect só aceita texto ou número: "all" / "resume" / "own" ↔ null / true / false.
+const STOCK_KEY = (v: boolean | null) => (v === null ? "all" : v ? "resume" : "own");
+const stockTypeSelectOptions = stockTypeOptions.map((o) => ({ value: STOCK_KEY(o.value), label: o.label }));
+const FILTER_LABEL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
 
 // Usado pelo filtro "Investimento" (comentado mais abaixo, à espera de reativação).
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -188,8 +179,6 @@ const CarList = () => {
     const navigate = useNavigate();
 
     // State
-    const isMobile = useIsMobile(680);
-    const isFiltersMobile = useIsMobile();
     const [companyId, setCompanyId] = useState<any>(null);
     const [carBrandIds, setCarBrandIds] = useState<number[]>([]);
     const [carModelIds, setCarModelIds] = useState<number[]>([]);
@@ -205,7 +194,12 @@ const CarList = () => {
         field: null,
         direction: null,
     });
-    const [filtersOpen, setFiltersOpen] = useState(false);
+
+    // Paginação controlada no pai (server-side)
+    const [pagination, setPagination] = useState({
+        pageIndex: 0,
+        pageSize: 10,
+    });
 
     // "Filtro activo" = difere do estado inicial. Para o status considera-se
     // activo quando difere do DEFAULT_STATUS_FILTERS (independentemente da
@@ -220,23 +214,10 @@ const CarList = () => {
         maxcost !== undefined,
     ].filter(Boolean).length;
 
-    // Actions
-    const handleSortChange = useCallback((sorting: any) => {
-        setSort((prev) => {
-            const next = {
-                field: sorting?.field ?? null,
-                direction: sorting?.direction ?? null,
-            };
-
-            if (
-                prev.field === next.field &&
-                prev.direction === next.direction
-            ) {
-                return prev;
-            }
-
-            return next;
-        });
+    // Ordenação no servidor: a API só ordena por colunas da tabela cars (hoje, o preço).
+    const handleSortChange = useCallback((next: { id: string; key: string; desc: boolean } | null) => {
+        setSort(next ? { field: next.key, direction: next.desc ? "desc" : "asc" } : { field: null, direction: null });
+        setPagination((p) => ({ ...p, pageIndex: 0 }));
     }, []);
 
     const handleClearFilters = () => {
@@ -252,11 +233,6 @@ const CarList = () => {
         setSort({ field: null, direction: null });
     };
 
-    // Paginação controlada no pai (server-side)
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
 
     // Fetch sempre que mudar página ou tamanho
     useEffect(() => {
@@ -311,13 +287,13 @@ const CarList = () => {
         toast("Carros sincronizados com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
     };
 
-    const columns = useMemo(() => [
+    const columnDefs: DTColumn<any>[] = [
         {
+            id: "car",
             header: "Carro",
-            accessorKey: "brand",
-            enableColumnFilter: false,
-            cell: (cell: any) => {
-                const car = cell.row.original;
+            hideable: false,
+            mobile: "title",
+            cell: (car) => {
                 const badge = getAttentionBadge(car);
 
                 return (
@@ -356,102 +332,54 @@ const CarList = () => {
             },
         },
         {
+            id: "price",
             header: "Preço",
-            accessorKey: "price_gross",
-            enableColumnFilter: false,
-            cell: (cell: any) => {
-                const car = cell.row.original;
-
-                return (
-                    <CarPriceDisplay
-                        priceGross={car.price_gross}
-                        promoPriceGross={car.promo_price_gross}
-                        promoDiscountPct={car.promo_discount_pct}
-                        hidePriceOnline={car.hide_price_online}
-                        size="sm"
-                        badgeLabel="Oportunidade"
-                    />
-                );
-            }
+            sortKey: "price_gross",
+            value: (car) => car.price_gross,
+            cell: (car) => (
+                <CarPriceDisplay
+                    priceGross={car.price_gross}
+                    promoPriceGross={car.promo_price_gross}
+                    promoDiscountPct={car.promo_discount_pct}
+                    hidePriceOnline={car.hide_price_online}
+                    size="sm"
+                    badgeLabel="Oportunidade"
+                />
+            ),
         },
+        { id: "views", header: "Views", value: (car) => getMetricCount(car.views), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.views)}</span> },
         {
-            header: "Views",
-            accessorKey: "views",
-            enableColumnFilter: false,
-            cell: (cell: any) => (
-                <div>
-                    <div className="fw-semibold text-body">{getMetricCount(cell.row.original.views)}</div>
-                </div>
-            )
-        },
-        {
+            id: "leads",
             header: "Leads",
-            accessorKey: "leads",
-            enableColumnFilter: false,
-            cell: (cell: any) => {
-                const leads = getMetricCount(cell.row.original.leads);
-                return (
-                    <div>
-                        <div className={`fw-semibold ${leads > 0 ? "text-success" : "text-body"}`}>{leads}</div>
-                    </div>
-                );
+            value: (car) => getMetricCount(car.leads),
+            cell: (car) => {
+                const leads = getMetricCount(car.leads);
+                return <span className={`fw-semibold ${leads > 0 ? "text-success" : "text-body"}`}>{leads}</span>;
             },
         },
+        { id: "interactions", header: "Interações", value: (car) => getMetricCount(car.interactions), cell: (car) => <span className="fw-semibold text-body">{getMetricCount(car.interactions)}</span> },
         {
-            header: "Interações",
-            accessorKey: "interactions",
-            enableColumnFilter: false,
-            cell: (cell: any) => (
-                <div>
-                    <div className="fw-semibold text-body">{getMetricCount(cell.row.original.interactions)}</div>
-                </div>
-            )
-        },
-        {
+            id: "conversion",
             header: "Conversão",
-            accessorKey: "conversion_rate",
-            enableColumnFilter: false,
-            cell: (cell: any) => {
-                const views = getMetricCount(cell.row.original.views);
-                const leads = getMetricCount(cell.row.original.leads);
-
-                return (
-                    <div>
-                        <div className="fw-semibold text-body">{formatConversionRate(views, leads)}</div>
-                        <div className="text-muted fs-12">leads / views</div>
-                    </div>
-                );
-            },
+            cell: (car) => (
+                <div>
+                    <div className="fw-semibold text-body">{formatConversionRate(getMetricCount(car.views), getMetricCount(car.leads))}</div>
+                    <div className="text-muted fs-12">leads / views</div>
+                </div>
+            ),
         },
-        {
-            header: "Ação",
-            cell: (cell: any) => {
-                const id = cell.row.original.id;
+    ];
+    const cols = useDataColumns("comercial.carros", columnDefs);
 
-                return (
-                    <div className="d-flex gap-2">
-                        <Link
-                            to={`/cars/${id}/analytics`}
-                            className="btn btn-outline-primary btn-sm"
-                            title="Inteligência"
-                            aria-label="Inteligência"
-                        >
-                            <i className="ri-brain-line" />
-                        </Link>
-                        <Link
-                            to={`/cars/${id}`}
-                            className="btn btn-outline-primary btn-sm"
-                            title="Editar"
-                            aria-label="Editar"
-                        >
-                            <i className="ri-pencil-line" />
-                        </Link>
-                    </div>
-                );
-            },
-        }
-    ],
-        []
+    const rowActions = (car: any) => (
+        <>
+            <Link to={`/cars/${car.id}/analytics`} className="btn btn-outline-primary btn-sm" title="Inteligência" aria-label="Inteligência">
+                <i className="ri-brain-line" />
+            </Link>
+            <Link to={`/cars/${car.id}`} className="btn btn-outline-primary btn-sm" title="Editar" aria-label="Editar">
+                <i className="ri-pencil-line" />
+            </Link>
+        </>
     );
 
     const renderCarMobileCard = useCallback((car: any) => {
@@ -566,111 +494,69 @@ const CarList = () => {
         );
     }, [navigate]);
 
-    const filterPanelContent = (
+    const field = (flex = "1 1 180px") => ({ flex, minWidth: 0 });
+    const filterFields = (
         <>
-            <div className="filter-choices-input mb-3">
-                <Label for="car_brand_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Marca</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    inputId="car_brand_id"
+            <div style={field()}>
+                <Label for="car_brand_id" className={FILTER_LABEL} style={{ letterSpacing: "0.05em" }}>Marca</Label>
+                <XMultiSelect
+                    id="car_brand_id"
+                    small
                     placeholder="Escolha as marcas"
-                    options={brands}
-                    getOptionLabel={(option: any) => option.name}
-                    getOptionValue={(option: any) => String(option.id)}
-                    isMulti
-                    value={brands.filter((brand: any) => carBrandIds?.includes(brand.id))}
-                    onChange={(selected: any) => {
-                        setCarBrandIds(selected ? selected.map((item: any) => item.id) : []);
-                    }}
+                    options={(brands ?? []).map((b: any) => ({ value: b.id as number, label: b.name }))}
+                    value={carBrandIds}
+                    onChange={(v) => setCarBrandIds(v)}
                 />
             </div>
-            <div className="filter-choices-input mb-4">
-                <Label for="car_model_id" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Modelo</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    inputId="car_model_id"
+            <div style={field()}>
+                <Label for="car_model_id" className={FILTER_LABEL} style={{ letterSpacing: "0.05em" }}>Modelo</Label>
+                <XMultiSelect
+                    id="car_model_id"
+                    small
                     placeholder={carBrandIds.length === 0 ? "Escolha primeiro uma marca" : "Escolha os modelos"}
-                    options={models}
-                    getOptionLabel={(option: any) => option.name}
-                    getOptionValue={(option: any) => String(option.id)}
-                    isMulti
-                    value={models.filter((model: any) => carModelIds?.includes(model.id))}
-                    onChange={(selected: any) => {
-                        setCarModelIds(selected ? selected.map((item: any) => item.id) : []);
-                    }}
-                    isDisabled={carBrandIds.length === 0}
+                    options={(models ?? []).map((m: any) => ({ value: m.id as number, label: m.name }))}
+                    value={carModelIds}
+                    onChange={(v) => setCarModelIds(v)}
+                    disabled={carBrandIds.length === 0}
                 />
             </div>
-            <div className="filter-choices-input mb-4">
-                <Label for="car_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Estado</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    inputId="car_status"
+            <div style={field("1 1 240px")}>
+                <Label for="car_status" className={FILTER_LABEL} style={{ letterSpacing: "0.05em" }}>Estado</Label>
+                <XMultiSelect
+                    id="car_status"
+                    small
                     placeholder="Escolha um ou mais estados"
                     options={statusFilterOptions}
-                    isMulti
-                    closeMenuOnSelect={false}
-                    value={statusFilterOptions.filter((opt) => statusFilters.includes(opt.value))}
-                    onChange={(selected: readonly StatusFilterOption[] | null) => {
-                        setStatusFilters((selected ?? []).map((s) => s.value));
-                    }}
+                    value={statusFilters}
+                    onChange={(v) => setStatusFilters(v)}
                 />
             </div>
-            <div className="filter-choices-input mb-4">
-                <Label for="car_stock_type" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    inputId="car_stock_type"
-                    placeholder="Todo o stock"
-                    options={stockTypeOptions}
-                    isClearable={false}
-                    value={stockTypeOptions.find((option) => option.value === isResumeFilter) ?? stockTypeOptions[0]}
-                    onChange={(selected: StockTypeOption | null) => {
-                        setIsResumeFilter(selected?.value ?? null);
-                    }}
+            <div style={field("1 1 150px")}>
+                <Label for="car_stock_type" className={FILTER_LABEL} style={{ letterSpacing: "0.05em" }}>Tipo de stock</Label>
+                <XSelect
+                    id="car_stock_type"
+                    small
+                    options={stockTypeSelectOptions}
+                    value={STOCK_KEY(isResumeFilter)}
+                    onChange={(v) => setIsResumeFilter(v === "all" ? null : v === "resume")}
+                    searchable={false}
                 />
             </div>
-            {/* <div className="filter-choices-input mb-4">
-                <Label for="car_investment_status" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Investimento</Label>
-                <Select
-                    inputId="car_investment_status"
-                    placeholder="Todo o stock"
-                    options={investmentFilterOptions}
-                    isClearable={false}
-                    value={investmentFilterOptions.find((option) => option.value === hasActiveCampaignFilter) ?? investmentFilterOptions[0]}
-                    onChange={(selected: InvestmentFilterOption | null) => {
-                        setHasActiveCampaignFilter(selected?.value ?? null);
-                    }}
-                />
-            </div> */}
-            <div className="filter-choices-input">
-                <Label for="minCost" className="text-muted fw-semibold fs-12 text-uppercase" style={{ letterSpacing: "0.05em" }}>Preço</Label>
-                <div className="formCost d-flex gap-2 align-items-center">
-                    <input
-                        className="form-control form-control-sm"
-                        type="text"
-                        placeholder="Preço de"
-                        value={mincost}
-                        onChange={(e: any) => setMincost(e.target.value)}
-                        id="minCost"
-                    />
-                    <span className="fw-semibold text-muted">até</span>
-                    <input
-                        className="form-control form-control-sm"
-                        type="text"
-                        placeholder="Preço até"
-                        value={maxcost}
-                        onChange={(e: any) => setMaxcost(e.target.value)}
-                        id="maxCost"
-                    />
+            <div style={field("1 1 220px")}>
+                <Label for="minCost" className={FILTER_LABEL} style={{ letterSpacing: "0.05em" }}>Preço</Label>
+                <div className="d-flex gap-2 align-items-center">
+                    <input className="form-control form-control-sm" type="text" placeholder="Preço de" value={mincost ?? ""}
+                        onChange={(e: any) => setMincost(e.target.value === "" ? undefined : e.target.value)} id="minCost" />
+                    <span className="fw-semibold text-muted fs-12">até</span>
+                    <input className="form-control form-control-sm" type="text" placeholder="Preço até" value={maxcost ?? ""}
+                        onChange={(e: any) => setMaxcost(e.target.value === "" ? undefined : e.target.value)} id="maxCost" />
                 </div>
             </div>
         </>
     );
+
+    const noStatus = statusFilters.length === 0;
+    const total = noStatus ? 0 : (meta?.total ?? 0);
 
     document.title = "Carros | Xplendor";
 
@@ -681,185 +567,64 @@ const CarList = () => {
                 <PageHeader
                     title="Carros"
                     breadcrumbs={[{ label: "Comercial" }]}
-                    description="As viaturas em stock, com o desempenho comercial de cada uma."
+                    info="As viaturas em stock, com o desempenho comercial de cada uma."
+                />
+
+                <PageCard
+                    title="Viaturas"
+                    info={<>
+                        Cada viatura tem um sinal comercial: <strong>Interesse sem ação</strong> (mais de 500 views e nenhuma lead),{" "}
+                        <strong>A converter bem</strong> (mais de 2 leads), <strong>Ninguém está a ver</strong> (menos de 50 views){" "}
+                        e <strong>Em observação</strong> (o resto).
+                    </>}
+                    status={<>{total} viatura{total === 1 ? "" : "s"}</>}
+                    loading={loading && (cars?.length ?? 0) > 0}
                     actions={<>
-                        {isFiltersMobile && (
-                            <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={() => setFiltersOpen(true)}
-                            >
-                                <i className="ri-filter-line me-1" />
-                                {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
-                            </button>
-                        )}
+                        {cols.selector}
                         {carmine && carmine.id && (
-                            <button type="button" onClick={onClickSyncCarmine} className="btn btn-outline-primary">
+                            <button type="button" onClick={onClickSyncCarmine} className="btn btn-outline-primary btn-sm">
                                 <img src={easyDataIcon} alt="EasyData" width={10} className="me-1" />
                                 Sincronizar
                             </button>
                         )}
-                        <Link to="/cars/create" className="btn btn-primary">
+                        <Link to="/cars/create" className="btn btn-primary btn-sm">
                             <i className="ri-add-line align-bottom me-1"></i>
                             Nova viatura
                         </Link>
                     </>}
-                />
-
-                <Row>
-                    {!isFiltersMobile && (
-                        <Col xl={3} lg={4}>
-                            <Card
-                                className="border-0"
-                                style={{
-                                    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                    background: "var(--vz-card-bg)",
-                                }}
-                            >
-                                <CardHeader
-                                    className="border-bottom-0"
-                                    style={{
-                                        padding: "1.25rem 1.25rem 0 1.25rem",
-                                        background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
-                                    }}
-                                >
-                                    <div className="d-flex mb-3 align-items-start justify-content-between gap-2">
-                                        <div className="flex-grow-1">
-                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                Filtros
-                                            </p>
-                                            <h5 className="fs-16 mb-1 fw-semibold">Refinar listagem</h5>
-                                            <p className="text-muted fs-13 mb-0">Encontre rapidamente as viaturas que pedem ação.</p>
-                                        </div>
-                                        <div className="flex-shrink-0">
-                                            <button
-                                                type="button"
-                                                onClick={handleClearFilters}
-                                                className="btn btn-link text-decoration-none p-0 fs-13"
-                                            >
-                                                Limpar todos
-                                            </button>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardBody className="pt-2">
-                                    {filterPanelContent}
-                                </CardBody>
-                            </Card>
-                        </Col>
-                    )}
-
-                    <Col xl={isFiltersMobile ? 12 : 9} lg={isFiltersMobile ? 12 : 8}>
-                        <Card
-                            className="border-0 overflow-hidden"
-                            style={{
-                                boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-                                background: "var(--vz-card-bg)",
-                            }}
-                        >
-                            <CardHeader
-                                className="border-bottom-0"
-                                style={{
-                                    padding: "1rem 1rem 0 1rem",
-                                    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
-                                }}
-                            >
-                                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3 px-2">
-                                    <div>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                            Gestão de Stock
-                                        </p>
-                                        <h5 className="mb-1 fw-semibold">Viaturas acompanhadas por filtros e desempenho</h5>
-                                        <p className="text-muted fs-13 mb-0">
-                                            Encontre rapidamente as viaturas certas e dê prioridade às que pedem mais atenção comercial.
-                                        </p>
-                                    </div>
-                                    <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                        {meta?.total ?? 0} viatura{meta?.total === 1 ? "" : "s"}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardBody className="pt-3">
-                                <div className="mb-3 px-1">
-                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                        <div>
-                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>
-                                                Prioridade Comercial
-                                            </p>
-                                            <h6 className="mb-0 fw-semibold">Que carros pedem decisão agora?</h6>
-                                        </div>
-                                        <div className="d-flex gap-2 flex-wrap">
-                                            <span className="badge bg-danger-subtle text-danger px-3 py-2 fs-12">Precisa de atenção agora</span>
-                                            <span className="badge bg-warning-subtle text-warning px-3 py-2 fs-12">Acompanhar esta semana</span>
-                                            <span className="badge bg-secondary-subtle text-secondary px-3 py-2 fs-12">Monitorizar</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pt-1">
-                                    {statusFilters.length === 0 ? (
-                                        <div
-                                            className="text-center py-5"
-                                            style={{
-                                                background: "var(--vz-tertiary-bg)",
-                                                border: "1px dashed var(--vz-border-color)",
-                                                borderRadius: 12,
-                                            }}
-                                        >
-                                            <i className="ri-filter-line text-muted" style={{ fontSize: 28 }} />
-                                            <h6 className="fw-semibold mt-2 mb-1">Nenhum estado selecionado</h6>
-                                            <p className="text-muted small mb-0">
-                                                Escolha pelo menos um estado no filtro <strong>Estado</strong> para ver viaturas.
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <XTanStackTable
-                                            columns={columns}
-                                            data={cars || []}
-                                            loading={loading}
-                                            pagination={pagination}
-                                            onPaginationChange={setPagination}
-                                            pageCount={meta?.last_page ?? 0}
-                                            total={meta?.total}
-                                            isBordered={true}
-                                            theadClass="text-muted table-light"
-                                            mobileMode={isMobile}
-                                            renderMobileCard={renderCarMobileCard}
-                                            onSortingChange={handleSortChange}
-                                        />
-                                    )}
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </Col>
-                </Row>
-
-                {isFiltersMobile && (
-                    <Offcanvas
-                        isOpen={filtersOpen}
-                        toggle={() => setFiltersOpen(false)}
-                        direction="start"
-                        scrollable
-                    >
-                        <OffcanvasHeader toggle={() => setFiltersOpen(false)}>
-                            <div>
-                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={{ letterSpacing: "0.08em" }}>Filtros</p>
-                                <span className="fw-semibold fs-16">Refinar listagem</span>
-                            </div>
-                        </OffcanvasHeader>
-                        <OffcanvasBody>
-                            <div className="d-flex justify-content-end mb-4">
-                                <button
-                                    type="button"
-                                    onClick={handleClearFilters}
-                                    className="btn btn-link text-decoration-none p-0 fs-13"
-                                >
-                                    Limpar todos
-                                </button>
-                            </div>
-                            {filterPanelContent}
-                        </OffcanvasBody>
-                    </Offcanvas>
-                )}
+                    filters={
+                        <RestFilterBar activeCount={activeFilterCount} onClear={handleClearFilters}>
+                            {filterFields}
+                        </RestFilterBar>
+                    }
+                >
+                    <DataTable
+                        columns={cols}
+                        data={noStatus ? [] : (cars ?? [])}
+                        rowKey={(car: any) => car.id}
+                        mode="server"
+                        loading={!noStatus && loading}
+                        caption="Viaturas"
+                        empty={{
+                            message: noStatus
+                                ? <>Nenhum estado selecionado. Escolha pelo menos um estado no filtro <strong>Estado</strong> para ver viaturas.</>
+                                : "Sem viaturas com estes filtros.",
+                        }}
+                        rowActions={rowActions}
+                        mobileCard={(car) => renderCarMobileCard(car)}
+                        server={noStatus ? undefined : {
+                            page: meta?.current_page ?? pagination.pageIndex + 1,
+                            lastPage: meta?.last_page ?? 1,
+                            total: meta?.total ?? 0,
+                            perPage: meta?.per_page ?? pagination.pageSize,
+                            from: meta?.from ?? 0,
+                            to: meta?.to ?? 0,
+                            onPageChange: (p) => setPagination((s) => ({ ...s, pageIndex: p - 1 })),
+                            sort: sort.field === "price_gross" ? { id: "price", desc: sort.direction === "desc" } : null,
+                            onSortChange: handleSortChange,
+                        }}
+                    />
+                </PageCard>
             </Container>
         </div>
     );

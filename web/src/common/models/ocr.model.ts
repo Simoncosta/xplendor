@@ -7,11 +7,12 @@ export type OcrSource = "qr+texto" | "qr+imagem" | "sem_qr" | "qr";
 export type OcrCheckStatus = "confere" | "nao_confere" | "sem_qr";
 
 export interface OcrInvoiceLine {
+    id?: number;                   // F2b: linha já guardada (mantém a ligação ao artigo ao validar)
     supplier_code: string | null; // código do artigo na fatura do fornecedor
     item: string | null;
     quantity: number | null;
     unit: string | null;
-    unit_price: number | null;   // euros
+    unit_price: number | null;   // euros, 6 casas (F2b: sem arredondar)
     discount_pct: number | null; // 0..100
     line_total: number | null;   // euros
     vat_rate: number | null;     // 6|13|23
@@ -63,8 +64,9 @@ export interface OcrInvoiceDetail {
     duration_ms: number | null;
     check_status: OcrCheckStatus | null;
     check_diff: OcrCheckDiffRow[];
-    lines: OcrInvoiceLine[];
+    lines: (OcrInvoiceLine & OcrLineLink)[];
     summary: OcrInvoiceSummary | null;
+    articles_summary: OcrArticlesSummary;
 }
 
 export interface OcrCheckDiffRow {
@@ -88,6 +90,7 @@ export interface OcrInvoiceListRow {
     doc_type: string | null;              // F3: tipo do QR (D)
     link_status: OcrLinkStatus | null;    // F3: estado no PingWin
     paid: boolean | null;                 // F3: do(s) documento(s) ligado(s)
+    pingwin_doc_status: string | null;    // FB-1: lançada pela XPLENDOR → "8001" rascunho, "8002" fechada
     store: string | null;                 // F3: do(s) documento(s) ligado(s)
     total: number | null;
     created_at: string | null;
@@ -160,3 +163,111 @@ export const OCR_LINK_STATUS: Record<OcrLinkStatus, { label: string; cls: string
     fornecedor_em_falta: { label: "Fornecedor em falta", cls: "bg-danger-subtle text-danger", title: "O fornecedor (NIF) não existe no PingWin" },
     duplicada: { label: "Duplicada", cls: "bg-secondary-subtle text-secondary", title: "Esta fatura já foi carregada antes" },
 };
+
+// ── F2b: artigos nas linhas da fatura ───────────────────────────────────────
+export type OcrLineLinkState = "ligada" | "sugerida" | "por_ligar";
+export type OcrLineLinkMethod = "mapa" | "pingwin" | "descricao" | "sugestao" | "manual" | "criado";
+
+export interface OcrLineArticle {
+    id: number;
+    code: string | null;
+    description: string | null;
+    unit: string | null;
+}
+
+export interface OcrLineLink {
+    article: OcrLineArticle | null;
+    link_state: OcrLineLinkState;
+    link_method: OcrLineLinkMethod | null;
+    link_confidence: number | null;
+    suggestions: (OcrLineArticle & { score: number })[];
+    creating: { write_id: number; status: string; error: string | null } | null; // "Criar artigo" em curso
+    supplier_code_status: "pendente" | "ok" | "erro" | "conflito" | null;        // código do fornecedor no artigo (PingWin)
+    supplier_code_error: string | null;
+}
+
+export interface OcrArticlesSummary {
+    total: number;
+    linked: number;
+    suggested: number;
+    unlinked: number;
+    ready: boolean; // "pronta para lançar": todas as linhas ligadas
+}
+
+export interface OcrLineLinksPayload {
+    articles_summary: OcrArticlesSummary;
+    line_links: (OcrLineLink & { id: number })[];
+}
+
+export interface OcrArticleSearchResult {
+    id: number;
+    code: string | null;
+    description: string | null;
+    unit: string | null;
+    family: string | null;
+    last_purchase: { price: number; unit: string | null; date: string; supplier: string | null } | null;
+    bought_from_supplier: boolean;
+    supplier_codes: string[];
+    approximate: boolean; // nenhum artigo tinha todas as palavras: são os mais parecidos
+}
+
+export interface OcrArticleFormOptions {
+    families: { value: string; label: string }[];
+    taxgroups: { value: string; label: string; rate: number }[];
+    units: { value: string; label: string; code: string }[];
+}
+
+export const OCR_LINK_METHOD_LABEL: Record<OcrLineLinkMethod, string> = {
+    mapa: "Aprendido",
+    pingwin: "Do PingWin",
+    descricao: "Descrição igual",
+    sugestao: "Sugestão aceite",
+    manual: "Associado à mão",
+    criado: "Artigo criado",
+};
+
+// ── FB-1: "Lançar no PingWin" (rascunho 8001 → fechar 8002 / anular 8003) ────────────
+export interface OcrLaunchGuard {
+    key: "tipo" | "qr" | "conferencia" | "fornecedor" | "nao_lancada" | "artigos" | "unidades" | "iva" | "valores" | "acerto" | "escrita";
+    ok: boolean;
+    label: string;
+    message: string | null;
+}
+
+export interface OcrLaunchLine {
+    id: number;
+    position: number;
+    item: string | null;
+    ocr_unit: string | null;
+    quantity: number | null;
+    article: { id: number; code: string | null; description: string | null; pingwin_id: string } | null;
+    unit_options: { value: string; label: string }[];
+    unit_id: string | null;
+    unit_source: "escolhida" | "fatura" | null;
+    unit_ok: boolean;
+}
+
+export interface OcrDocWrite {
+    id: number;
+    action: "launch" | "close" | "void";
+    status: "pendente" | "ok" | "erro" | "erro_confirmacao";
+    document: string | null;
+    docheader_id: string | null;
+    error: string | null;
+    adjustment: string | null;
+    tax_overrides: number;
+    created_at: string | null;
+    finished_at: string | null;
+}
+
+export interface OcrLaunchPreview {
+    can_launch: boolean;
+    guards: OcrLaunchGuard[];
+    lines: OcrLaunchLine[];
+    estimate: { target_cents: number | null; computed_cents: number; net_cents: number; tax_cents: number; adjustment_cents: number | null };
+    supplier: { id: number; name: string | null; pingwin_id: string } | null;
+    docreference: { number: string; truncated: boolean; date: string | null };
+    defaults: { store: string | null; store_code: string | null; serie: string | null; at: string | null };
+    draft: { docheader_id: string; document: string | null; docstatus_id: string; docstatus_label: string; total: number; store_name: string | null; doc_date: string | null } | null;
+    writes: OcrDocWrite[];
+}

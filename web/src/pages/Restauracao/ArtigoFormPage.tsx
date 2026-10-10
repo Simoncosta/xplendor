@@ -344,7 +344,7 @@ export default function ArtigoFormPage() {
                             title="Artigo"
                             flush={false}
                             actions={!isCreate ? (
-                                <ActionsMenu label={`Mais ações: ${f.description || "artigo"}`} items={[
+                                <ActionsMenu size="sm" label={`Mais ações: ${f.description || "artigo"}`} items={[
                                     {
                                         label: "Anular", icon: "ri-delete-bin-line", danger: true, onClick: () => setAnularOpen(true),
                                         disabledReason: busy ? "Aguarde: há uma gravação em curso no PingWin." : loading ? "A carregar o artigo." : null,

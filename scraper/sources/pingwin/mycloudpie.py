@@ -26,7 +26,9 @@ import re
 import ssl
 import sys
 import time
+import unicodedata
 from contextlib import contextmanager
+from decimal import ROUND_HALF_UP, Decimal
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List
 from urllib.parse import quote, urlparse
@@ -3438,6 +3440,192 @@ class MyCloudPieClient:
                                 "ms": int((time.time() - t0) * 1000), "error": f"{type(exc).__name__}: {exc}"[:300]})
                     break
         return out
+
+    # ============ LANÇAR FATURA DE FORNECEDOR (FB-1, ⚠️ ESCRITA) — sempre em RASCUNHO (8001) ============
+    # Protocolo provado no spike FB-0 ({dc}=1209; o MESMO ObjectID do passo 2 em diante;
+    # Content-Type JSON só nos pedidos com corpo):
+    #   1. POST /service/{dc}                 NEW (sem corpo)             → ObjectID no header da resposta
+    #   2. POST /service/{dc}/header,doctaxes.taxgroup  GET,INFO SEM CORPO → header.key + grupos de IVA
+    #      ⚠️ com {"params":{}} o servidor ESVAZIA o documento em memória.
+    #   3. POST /service/{dc}/header          EDIT [{"key","entity_id"}]   → nº, paycond, vencimento, moradas
+    #   4. por linha: details NEW [{"product_id","unit_id"}] → details EDIT [{"key":<ÚLTIMA>, price, qnt,
+    #      discount1 (+ taxgroup_id)}]. As keys têm versão: usa SEMPRE a da última resposta.
+    #   5. moradas: GET,INFO sem corpo → MERGE dos três blocos tal como vieram (sem isto a morada de
+    #      entrega passa a ser a fiscal da empresa).
+    #   6. ACERTO: lê o total; adjustment = alvo − total; |adjustment| > máximo → CLOSE SEM SAVE.
+    #   7. header EDIT parcial: docreference_*, adjustment, docstatus_id 8001 (RASCUNHO).
+    #   8. fiscalrules.verifydoc (só registo: diz OK mesmo sem fornecedor nem linhas).
+    #   9. SAVE → CLOSE SEMPRE (finally). Fechar sem SAVE não gasta número.
+    # MUDAR DE ESTADO: POST /service/document/{id}/header OPEN,EDIT,SAVE,CLOSE [{"docstatus_id": …}].
+    DOCW_DRAFT = "8001"
+    DOCW_ALLOWED_STATUS = ("8001", "8002", "8003")  # NUNCA 8004 (Edição): mexe no stock logo no SAVE
+    DOCW_TAX_RATES = {"normal": 23, "intermedia": 13, "reduzida": 6, "isenta": 0}
+
+    def _docw(self, path: str, action: str, oid: str | None = None, body: Any = None) -> requests.Response:
+        h = self._paycond_headers(action, oid)
+        if body is None:
+            h.pop("Content-Type", None)
+            return self.session.post(f"{self.api_url}/service/{path}", data=b"", headers=h)
+        return self.session.post(f"{self.api_url}/service/{path}", data=json.dumps(body), headers=h)
+
+    @staticmethod
+    def _docw_block(r: requests.Response, dc: str, block: str) -> List[Dict[str, Any]]:
+        if r.status_code not in (200, 206):
+            raise RuntimeError(f"{block}: HTTP {r.status_code} — {r.text[:300]}")
+        data = r.json()
+        inner = data.get(dc, data) if isinstance(data, dict) else {}
+        rows = inner.get(block) if isinstance(inner, dict) else None
+        if not isinstance(rows, list) or not rows:
+            raise RuntimeError(f"{block}: resposta sem linhas — {r.text[:300]}")
+        return rows
+
+    @classmethod
+    def _tax_rate(cls, description: Any) -> int | None:
+        d = unicodedata.normalize("NFKD", str(description or "")).encode("ascii", "ignore").decode().strip().lower()
+        return cls.DOCW_TAX_RATES.get(d)
+
+    @staticmethod
+    def _money(v: Any) -> Decimal:
+        return Decimal(str(v if v not in (None, "") else "0")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    def launch_supplier_invoice(self, doc: Dict[str, Any]) -> Dict[str, Any]:
+        """⚠️ ESCRITA: cria UMA fatura de fornecedor em RASCUNHO (8001). Devolve sempre um dicionário
+        com saved (True / False / "unknown"); erros depois do SAVE nunca apagam saved=True."""
+        dc = str(doc.get("docconfig_id") or "1209")
+        status = str(doc.get("docstatus_id") or self.DOCW_DRAFT)
+        if status != self.DOCW_DRAFT:
+            return {"ok": False, "saved": False, "error": "Só se lança em rascunho (8001)."}
+        lines_in = doc.get("lines") or []
+        if not doc.get("entity_id") or not lines_in:
+            return {"ok": False, "saved": False, "error": "Fornecedor ou linhas em falta."}
+        target = self._money(doc.get("target_total"))
+        max_adj = Decimal(str(doc.get("max_adjustment") or "0.05"))
+        out: Dict[str, Any] = {"ok": False, "saved": False, "steps": []}
+        step = lambda name, **kw: out["steps"].append({"step": name, **kw})  # noqa: E731
+
+        r = self._docw(dc, "NEW")
+        oid = r.headers.get("ObjectID") or r.headers.get("Objectid")
+        if r.status_code not in (200, 206) or not oid:
+            return {**out, "error": f"NEW falhou: HTTP {r.status_code} — {r.text[:300]}"}
+        step("NEW")
+        try:
+            # 2. modelo (SEM corpo)
+            g = self._docw(f"{dc}/header,doctaxes.taxgroup", "GET,INFO", oid)
+            header = self._docw_block(g, dc, "header")[0]
+            groups = (g.json().get(dc) or {}).get("doctaxes.taxgroup") or []
+            rate_to_group = {self._tax_rate(t.get("description")): str(t.get("id")) for t in groups if self._tax_rate(t.get("description")) is not None}
+            # 3. fornecedor
+            r = self._docw(f"{dc}/header", "EDIT", oid, [{"key": header["key"], "entity_id": str(doc["entity_id"])}])
+            header = self._docw_block(r, dc, "header")[0]
+            if str(header.get("entity_id")) != str(doc["entity_id"]):
+                raise RuntimeError("o fornecedor não ficou no documento")
+            out["header_new"] = {k: header.get(k) for k in ("id", "doc_prefix", "doc_number", "store_id", "store_code", "paycond_id", "due_date", "docstatus_id")}
+            step("EDIT header entity", doc_number=header.get("doc_number"))
+            # 4. linhas
+            lines_out = []
+            for i, ln in enumerate(lines_in):
+                r = self._docw(f"{dc}/details", "NEW", oid, [{"product_id": str(ln["product_id"]), "unit_id": str(ln["unit_id"])}])
+                row = self._docw_block(r, dc, "details")[-1]
+                if str(row.get("product_id")) != str(ln["product_id"]):
+                    raise RuntimeError(f"linha {i + 1}: o artigo não ficou na linha")
+                edit = {"key": row["key"], "price": str(ln["price"]), "qnt": str(ln["qnt"]), "discount1": str(ln.get("discount1") or "0")}
+                want = ln.get("vat_rate")
+                tax_override = None
+                if want is not None and self._tax_rate(row.get("tax_description")) != int(want):
+                    tg = rate_to_group.get(int(want))
+                    if not tg:
+                        raise RuntimeError(f"linha {i + 1}: não há grupo de IVA para {want}%")
+                    edit["taxgroup_id"] = tg
+                    tax_override = {"from": row.get("taxgroup_id"), "to": tg}
+                r = self._docw(f"{dc}/details", "EDIT", oid, [edit])
+                row = self._docw_block(r, dc, "details")[-1]  # a key mudou de versão: esta é a última
+                if str(row.get("unit_id")) != str(ln["unit_id"]):
+                    raise RuntimeError(f"linha {i + 1}: a unidade não ficou ({row.get('unit_id')} ≠ {ln['unit_id']})")
+                lines_out.append({"key": row.get("key"), "product_id": row.get("product_id"), "unit_id": row.get("unit_id"),
+                                  "qnt": row.get("qnt"), "price": row.get("price"), "discount1": row.get("discount1"),
+                                  "taxgroup_id": row.get("taxgroup_id"), "tax_description": row.get("tax_description"),
+                                  "total": row.get("total"), "tax_value": row.get("tax_value"), "stk_qnt": row.get("stk_qnt"),
+                                  "tax_override": tax_override})
+            out["lines"] = lines_out
+            step("linhas", n=len(lines_out))
+            # 5. moradas: GET sem corpo → MERGE tal como vieram
+            blocks = "entity_address.address,expedition_address.address,delivery_address.address"
+            a = self._docw(f"{dc}/{blocks}", "GET,INFO", oid)
+            if a.status_code not in (200, 206):
+                raise RuntimeError(f"moradas GET: HTTP {a.status_code}")
+            addr = a.json().get(dc) or {}
+            merge = {k: addr.get(k) or [] for k in blocks.split(",")}
+            m = self._docw(f"{dc}/{blocks}", "MERGE", oid, merge)
+            if m.status_code not in (200, 206):
+                raise RuntimeError(f"moradas MERGE: HTTP {m.status_code} — {m.text[:300]}")
+            step("MERGE moradas")
+            # 6. acerto
+            g = self._docw(f"{dc}/header", "GET,INFO", oid)
+            header = self._docw_block(g, dc, "header")[0]
+            before = self._money(header.get("total"))
+            adjustment = (target - before).quantize(Decimal("0.01"))
+            out["totals_before"] = {"total_products": header.get("total_products"), "total_tax": header.get("total_tax"), "total": header.get("total")}
+            out["adjustment"] = str(adjustment)
+            if abs(adjustment) > max_adj:
+                out["error"] = f"O total no PingWin ({before}) difere do da fatura ({target}) em {adjustment} € — acima do acerto máximo ({max_adj} €). Nada foi gravado."
+                out["reason"] = "acerto"
+                step("ACERTO acima do máximo — CLOSE sem SAVE", adjustment=str(adjustment))
+                return out
+            # 7. referência + acerto + rascunho
+            edit = {"key": header["key"], "docreference_id": str(doc.get("docreference_id") or ""),
+                    "docreference_number": str(doc.get("docreference_number") or "")[:25],
+                    "docreference_date": str(doc.get("docreference_date") or ""),
+                    "adjustment": str(adjustment), "docstatus_id": self.DOCW_DRAFT}
+            r = self._docw(f"{dc}/header", "EDIT", oid, [edit])
+            header = self._docw_block(r, dc, "header")[0]
+            final_total = self._money(header.get("total"))
+            if final_total != target or str(header.get("docstatus_id")) != self.DOCW_DRAFT:
+                out["error"] = f"Antes de gravar: total {final_total} (esperado {target}), estado {header.get('docstatus_id')}. Nada foi gravado."
+                return out
+            step("EDIT header (referência, acerto, rascunho)", total=str(final_total))
+            # 8. verifydoc (só registo)
+            v = self._docw(f"{dc}/fiscalrules.verifydoc", "GET,INFO", oid, {"params": {}})
+            try:
+                out["verifydoc"] = (v.json().get(dc) or {}).get("fiscalrules.verifydoc")
+            except Exception:  # noqa: BLE001
+                out["verifydoc"] = None
+            out["header_before_save"] = {k: header.get(k) for k in ("id", "doc_prefix", "doc_number", "store_id", "store_code", "entity_id",
+                                                                   "total", "docreference_number", "docstatus_id", "adjustment")}
+            # 9. SAVE
+            try:
+                sv = self._docw(dc, "SAVE", oid)
+            except Exception as exc:  # noqa: BLE001 — sem resposta: não se sabe se gravou
+                out["saved"] = "unknown"
+                out["error"] = f"SAVE sem resposta ({type(exc).__name__}): pode ter gravado — rever no PingWin."
+                return out
+            if sv.status_code not in (200, 206):
+                out["error"] = f"SAVE recusado: HTTP {sv.status_code} — {self._soa_message(sv.text)}"
+                return out
+            out["saved"] = True
+            out["ok"] = True
+            out["docheader_id"] = str(header.get("id"))
+            out["docconfig_id"] = dc
+            out["document"] = f"{header.get('doc_prefix')}/{header.get('doc_number')}"
+            step("SAVE")
+            return out
+        except Exception as exc:  # noqa: BLE001
+            out["error"] = f"{type(exc).__name__}: {exc}"[:500]
+            return out
+        finally:
+            out["closed"] = self._doc_close(dc, oid)
+
+    def set_document_status(self, docheader_id: str, status: str) -> Dict[str, Any]:
+        """⚠️ ESCRITA: muda o estado de UM documento (8002 fechar / 8003 anular). Pedido único."""
+        if str(status) not in ("8002", "8003"):
+            return {"ok": False, "error": "Estado não permitido (só 8002 ou 8003)."}
+        r = self._docw(f"document/{docheader_id}/header", "OPEN,EDIT,SAVE,CLOSE", None, [{"docstatus_id": str(status)}])
+        if r.status_code not in (200, 206):
+            return {"ok": False, "error": f"HTTP {r.status_code} — {self._soa_message(r.text)}"}
+        try:
+            h = ((r.json().get("document") or {}).get("header") or [{}])[0]
+        except Exception:  # noqa: BLE001
+            h = {}
+        return {"ok": True, "docstatus_id": h.get("docstatus_id"), "doc_number": h.get("doc_number")}
 
     # ------------------------------------------------------------- PARSE
     def fetch_sales_report(self, target_date: datetime) -> pd.DataFrame:

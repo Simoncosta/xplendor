@@ -469,7 +469,7 @@ class OcrPingwinLinkService
         ];
     }
 
-    /** Para a lista: Liquidado e Loja vêm do(s) documento(s) ligado(s). @return array<int, array{paid: ?bool, store: ?string}> */
+    /** Para a lista: Liquidado, Loja e o estado do documento lançado pela XPLENDOR. @return array<int, array{paid: ?bool, store: ?string, xplendor_status: ?string}> */
     public function listInfo(int $companyId, array $invoiceIds): array
     {
         if ($invoiceIds === []) {
@@ -478,12 +478,15 @@ class OcrPingwinLinkService
         $rows = DB::table('ocr_invoice_pingwin_links as l')
             ->join('pingwin_supplier_documents as d', fn ($j) => $j->on('d.docheader_id', '=', 'l.docheader_id')->on('d.company_id', '=', 'l.company_id'))
             ->where('l.company_id', $companyId)->whereIn('l.ocr_invoice_id', $invoiceIds)
-            ->get(['l.ocr_invoice_id', 'd.paid', 'd.store_name']);
+            ->get(['l.ocr_invoice_id', 'l.method', 'd.paid', 'd.store_name', 'd.docstatus_id']);
         $out = [];
         foreach ($rows->groupBy('ocr_invoice_id') as $id => $g) {
+            $mine = $g->firstWhere('method', OcrInvoicePingwinLink::XPLENDOR);
             $out[(int) $id] = [
                 'paid'  => $g->every(fn ($r) => (bool) $r->paid),
                 'store' => $g->pluck('store_name')->filter()->unique()->implode(', ') ?: null,
+                // FB-1: lançada pela XPLENDOR → "Rascunho" (8001) ou "Lançada" (fechada)
+                'xplendor_status' => $mine ? (string) $mine->docstatus_id : null,
             ];
         }
 

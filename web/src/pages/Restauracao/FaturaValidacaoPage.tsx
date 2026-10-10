@@ -6,13 +6,20 @@ import Select from "react-select";
 import { reactSelectTheme } from "../../helpers/reactSelectStyles";
 import PageHeader, { Crumb } from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
+import XSelect from "Components/Common/Select";
+import ArticlePicker from "./faturas/ArticlePicker";
+import CreateArticleModal, { CreateArticleData } from "./faturas/CreateArticleModal";
+import LineArticleCell from "./faturas/LineArticleCell";
+import LaunchCard from "./faturas/LaunchCard";
 import {
     getOcrInvoice, updateOcrInvoice, getOcrInvoiceImageBlob, reprocessOcrInvoice,
     searchOcrPingwinLink, confirmOcrPingwinLink, unlinkOcrPingwinLink,
+    associateOcrLineArticle, unlinkOcrLineArticle, createOcrLineArticle, acceptOcrLineSuggestions,
 } from "helpers/laravel_helper";
 import {
     OcrInvoiceDetail, OcrInvoiceLine, OcrInvoiceSummary, OcrVatBreakdownRow, OcrSupplierOption,
     OcrPingwinBlock, OcrPingwinDoc, OcrLinkMethod, OCR_LINK_STATUS,
+    OcrLineLink, OcrArticlesSummary, OcrLineLinksPayload,
 } from "common/models/ocr.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 
@@ -28,6 +35,13 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
  *
  * F3: bloco "No PingWin" — o documento lançado no PingWin a que a fatura está ligada (ou os
  * candidatos, ou o modo guias com seleção e soma). Só lê os espelhos: nada é gravado no PingWin.
+ *
+ * FB-1: cartão "Lançar no PingWin" (rascunho → fechar / anular), com as guardas que faltam.
+ *
+ * F2b: coluna "Artigo" em cada linha (ligada / sugerida / por ligar), pesquisa de artigos,
+ * "Criar artigo" e "Aceitar sugestões". A fatura fica "pronta para lançar" com todas as linhas
+ * ligadas. As escritas no PingWin (artigo novo, código do fornecedor no artigo) são assíncronas:
+ * a página acompanha-as sem mexer no que está a ser editado.
  */
 
 const VAT_OPTS = [0, 6, 13, 23].map((v) => ({ value: v, label: v === 0 ? "Isento" : `${v}%` }));
@@ -55,6 +69,16 @@ export default function FaturaValidacaoPage() {
     const [confirmReprocess, setConfirmReprocess] = useState(false);
     const [reprocessing, setReprocessing] = useState(false);
     const [pingwin, setPingwin] = useState<OcrPingwinBlock | null>(null);
+    // F2b — ligação das linhas a artigos (separada do formulário: as ações não apagam edições)
+    const [links, setLinks] = useState<Record<number, OcrLineLink>>({});
+    const [artSummary, setArtSummary] = useState<OcrArticlesSummary | null>(null);
+    const [picker, setPicker] = useState<number | null>(null);       // índice da linha
+    const [creating, setCreating] = useState<number | null>(null);   // índice da linha
+    const [createBusy, setCreateBusy] = useState(false);
+    const [lineBusy, setLineBusy] = useState<number | null>(null);   // id da linha
+    const [codeConflict, setCodeConflict] = useState<{ lineId: number; articleId: number; method: string; existing: string; newCode: string } | null>(null);
+    const [acceptOpen, setAcceptOpen] = useState(false);
+    const [minConf, setMinConf] = useState(0.8);
 
     // Estado editável
     const [supplierId, setSupplierId] = useState<number | null>(null);
@@ -65,8 +89,13 @@ export default function FaturaValidacaoPage() {
     const [lines, setLines] = useState<OcrInvoiceLine[]>([]);
     const [summary, setSummary] = useState<OcrInvoiceSummary>(emptySummary());
 
+    const linksFrom = (ls: any[]): Record<number, OcrLineLink> =>
+        Object.fromEntries((ls ?? []).filter((l) => l.id).map((l) => [l.id, l as OcrLineLink]));
+
     const hydrate = useCallback((d: OcrInvoiceDetail) => {
         setInv(d);
+        setLinks(linksFrom(d.lines ?? []));
+        setArtSummary(d.articles_summary ?? null);
         setSupplierId(d.supplier_id);
         setSupplierName(d.supplier_name ?? "");
         setSupplierNif(d.supplier_nif ?? "");
@@ -114,6 +143,90 @@ export default function FaturaValidacaoPage() {
         const t = setInterval(refreshPingwin, 3000);
         return () => clearInterval(t);
     }, [pingwin?.search_pending, refreshPingwin]);
+
+    // F2b: acompanha as escritas no PingWin (artigo a criar, código do fornecedor) sem mexer no formulário.
+    const linksPending = Object.values(links).some((l) => (l.creating && !["ok", "erro"].includes(l.creating.status)) || l.supplier_code_status === "pendente");
+    useEffect(() => {
+        if (!linksPending || !companyId || !invoiceId) return;
+        const t = setInterval(async () => {
+            try {
+                const res: any = await getOcrInvoice(companyId, invoiceId);
+                const d = res?.data?.invoice;
+                if (d) { setLinks(linksFrom(d.lines ?? [])); setArtSummary(d.articles_summary ?? null); }
+            } catch { /* tenta na próxima */ }
+        }, 4000);
+        return () => clearInterval(t);
+    }, [linksPending, companyId, invoiceId]);
+
+    const applyLinks = (p?: OcrLineLinksPayload) => {
+        if (!p) return;
+        setLinks(linksFrom(p.line_links));
+        setArtSummary(p.articles_summary);
+    };
+
+    const associate = async (lineId: number, articleId: number, method = "manual", replace = false) => {
+        setLineBusy(lineId);
+        try {
+            const r: any = await associateOcrLineArticle(companyId, invoiceId, lineId, { article_id: articleId, method, replace_code: replace });
+            applyLinks(r?.data);
+            setPicker(null);
+            setCodeConflict(null);
+            toast.success("Linha ligada ao artigo.");
+        } catch (e: any) {
+            if (e?.__status === 409 && e?.errors?.code === "codigo_diferente") {
+                setPicker(null);
+                setCodeConflict({ lineId, articleId, method, existing: e.errors.existing_code, newCode: e.errors.new_code });
+            } else {
+                toast.error(e?.message ?? "Não foi possível ligar a linha.");
+            }
+        } finally {
+            setLineBusy(null);
+        }
+    };
+
+    const unlinkLine = async (lineId: number) => {
+        setLineBusy(lineId);
+        try {
+            const r: any = await unlinkOcrLineArticle(companyId, invoiceId, lineId);
+            applyLinks(r?.data);
+            toast.success("Ligação desfeita.");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível desfazer a ligação.");
+        } finally {
+            setLineBusy(null);
+        }
+    };
+
+    const createArticle = async (d: CreateArticleData) => {
+        const line = creating !== null ? lines[creating] : null;
+        if (!line?.id) return;
+        setCreateBusy(true);
+        try {
+            const r: any = await createOcrLineArticle(companyId, invoiceId, line.id, d);
+            applyLinks(r?.data);
+            setCreating(null);
+            toast.info("A criar o artigo no PingWin… a linha liga-se quando terminar.");
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível pedir a criação do artigo.");
+        } finally {
+            setCreateBusy(false);
+        }
+    };
+
+    const acceptAll = async () => {
+        setLineBusy(-1);
+        try {
+            const r: any = await acceptOcrLineSuggestions(companyId, invoiceId, minConf);
+            applyLinks(r?.data);
+            setAcceptOpen(false);
+            const skipped = r?.data?.result?.skipped?.length ?? 0;
+            toast.success(`${r?.data?.result?.accepted ?? 0} sugestões aceites${skipped ? ` (${skipped} ficaram por o artigo ter outro código deste fornecedor)` : ""}.`);
+        } catch (e: any) {
+            toast.error(e?.message ?? "Não foi possível aceitar as sugestões.");
+        } finally {
+            setLineBusy(null);
+        }
+    };
 
     // Imagem (disco privado → blob).
     useEffect(() => {
@@ -183,7 +296,7 @@ export default function FaturaValidacaoPage() {
                 supplier_id: supplierId, supplier_name: supplierName || null, supplier_nif: supplierNif || null,
                 number: number || null, issue_date: issueDate || null,
                 lines: lines.map((l) => ({
-                    supplier_code: l.supplier_code || null, item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
+                    id: l.id ?? null, supplier_code: l.supplier_code || null, item: l.item || null, quantity: num(l.quantity), unit: l.unit || null,
                     unit_price: num(l.unit_price), discount_pct: num(l.discount_pct), line_total: num(l.line_total), vat_rate: l.vat_rate ?? null,
                 })),
                 summary: {
@@ -269,11 +382,12 @@ export default function FaturaValidacaoPage() {
     }
 
     // Campos do QR: só leitura, com tooltip "lido do QR".
-    const qrLocked = hasQr ? { readOnly: true, title: "lido do QR", className: "form-control form-control-sm bg-light" } : {};
+    const qrLocked = hasQr ? { readOnly: true, title: "lido do QR", className: "form-control bg-light" } : {};
     const qrMark = hasQr ? <i className="ri-qr-code-line ms-1 text-success" title="lido do QR" aria-label="lido do QR" /> : null;
 
-    const numInput = (value: number | null, onChange: (v: number | null) => void, extra: any = {}) => (
-        <input type="number" step="0.01" className="form-control form-control-sm text-end"
+    // Grelha das linhas: sm (célula de tabela); sumário: normal (formulário).
+    const numInput = (value: number | null, onChange: (v: number | null) => void, extra: any = {}, small = true) => (
+        <input type="number" step="any" className={`form-control ${small ? "form-control-sm" : ""} text-end`}
             value={value ?? ""} onChange={(e) => onChange(num(e.target.value))} {...extra} />
     );
 
@@ -357,40 +471,57 @@ export default function FaturaValidacaoPage() {
                             <CardBody>
                                 <Row className="g-2">
                                     <Col md={12}>
-                                        <Label className="fs-12 text-muted mb-1">Fornecedor (ligar ao sincronizado)</Label>
+                                        <Label className="form-label">Fornecedor (ligar ao sincronizado)</Label>
                                         <Select styles={reactSelectTheme} menuPortalTarget={document.body} isClearable
                                             options={supplierOptions}
                                             value={supplierOptions.find((o) => o.value === supplierId) ?? null}
                                             onChange={(o: any) => setSupplierId(o?.value ?? null)}
                                             placeholder="Escolher fornecedor…" />
                                     </Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Nome (lido)</Label><input className="form-control form-control-sm" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">NIF{qrMark}</Label><input className="form-control form-control-sm" value={supplierNif} onChange={(e) => setSupplierNif(e.target.value)} {...qrLocked} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Nº fatura{qrMark}</Label><input className="form-control form-control-sm" value={number} onChange={(e) => setNumber(e.target.value)} {...qrLocked} /></Col>
-                                    <Col md={6}><Label className="fs-12 text-muted mb-1">Data emissão{qrMark}</Label><input type="date" className="form-control form-control-sm" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} {...qrLocked} /></Col>
+                                    <Col md={6}><Label className="form-label">Nome (lido)</Label><input className="form-control" value={supplierName} onChange={(e) => setSupplierName(e.target.value)} /></Col>
+                                    <Col md={6}><Label className="form-label">NIF{qrMark}</Label><input className="form-control" value={supplierNif} onChange={(e) => setSupplierNif(e.target.value)} {...qrLocked} /></Col>
+                                    <Col md={6}><Label className="form-label">Nº fatura{qrMark}</Label><input className="form-control" value={number} onChange={(e) => setNumber(e.target.value)} {...qrLocked} /></Col>
+                                    <Col md={6}><Label className="form-label">Data emissão{qrMark}</Label><input type="date" className="form-control" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} {...qrLocked} /></Col>
                                     {(inv?.buyer_nif || inv?.atcud) && <>
-                                        <Col md={6}><Label className="fs-12 text-muted mb-1">NIF adquirente{qrMark}</Label><input className="form-control form-control-sm bg-light" value={inv?.buyer_nif ?? ""} readOnly title="lido do QR" /></Col>
-                                        <Col md={6}><Label className="fs-12 text-muted mb-1">ATCUD{qrMark}</Label><input className="form-control form-control-sm bg-light" value={inv?.atcud ?? ""} readOnly title="lido do QR" /></Col>
+                                        <Col md={6}><Label className="form-label">NIF adquirente{qrMark}</Label><input className="form-control bg-light" value={inv?.buyer_nif ?? ""} readOnly title="lido do QR" /></Col>
+                                        <Col md={6}><Label className="form-label">ATCUD{qrMark}</Label><input className="form-control bg-light" value={inv?.atcud ?? ""} readOnly title="lido do QR" /></Col>
                                     </>}
                                 </Row>
                             </CardBody>
                         </Card>
 
                         <Card>
-                            <div className="card-header d-flex justify-content-between align-items-center">
-                                <h5 className="card-title mb-0">Linhas</h5>
-                                <Button size="sm" color="outline-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</Button>
+                            <div className="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div>
+                                    <h5 className="card-title mb-0">Linhas</h5>
+                                    {artSummary && artSummary.total > 0 && (
+                                        <div className="fs-12 text-muted mt-1" data-testid="articles-summary">
+                                            {artSummary.linked} de {artSummary.total} ligadas a artigos
+                                            {artSummary.suggested > 0 && <> · {artSummary.suggested} sugeridas</>}
+                                            {artSummary.unlinked > 0 && <> · {artSummary.unlinked} por ligar</>}
+                                            {artSummary.ready
+                                                ? <span className="badge bg-success-subtle text-success ms-2"><i className="ri-check-double-line me-1" />Pronta para lançar</span>
+                                                : <span className="badge bg-warning-subtle text-warning ms-2" title="Para lançar no PingWin, todas as linhas têm de estar ligadas a um artigo">Faltam {artSummary.total - artSummary.linked} linhas</span>}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="d-flex gap-2">
+                                    {artSummary && artSummary.suggested > 0 && (
+                                        <Button size="sm" color="outline-primary" onClick={() => setAcceptOpen(true)} disabled={lineBusy !== null}><i className="ri-check-line me-1" />Aceitar sugestões</Button>
+                                    )}
+                                    <Button size="sm" color="outline-primary" onClick={() => setLines((p) => [...p, emptyLine()])}><i className="ri-add-line me-1" />Adicionar linha</Button>
+                                </div>
                             </div>
                             <div className="table-responsive">
-                                <table className="table table-bordered align-middle mb-0" style={{ minWidth: 940 }}>
+                                <table className="table table-bordered align-middle mb-0" style={{ minWidth: 1280 }}>
                                     <thead className="text-muted table-light">
                                         <tr>
-                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th>IVA</th><th></th>
+                                            <th style={{ minWidth: 90 }}>Cód. fornecedor</th><th style={{ minWidth: 180 }}>Item</th><th>Qtd</th><th>Un.</th><th>Preço un.</th><th>Desc.%</th><th>Total</th><th>IVA</th><th style={{ minWidth: 320 }}>Artigo</th><th></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {lines.length === 0 ? (
-                                            <tr><td colSpan={9} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
+                                            <tr><td colSpan={10} className="text-center text-muted py-3">Sem linhas. Use “Adicionar linha”.</td></tr>
                                         ) : lines.map((l, i) => (
                                             <tr key={i}>
                                                 <td style={{ width: 110 }}><input className="form-control form-control-sm" value={l.supplier_code ?? ""} onChange={(e) => setLine(i, { supplier_code: e.target.value })} aria-label={`Código do fornecedor, linha ${i + 1}`} /></td>
@@ -400,10 +531,19 @@ export default function FaturaValidacaoPage() {
                                                 <td style={{ width: 100 }}>{numInput(l.unit_price, (v) => setLine(i, { unit_price: v }))}</td>
                                                 <td style={{ width: 80 }}>{numInput(l.discount_pct, (v) => setLine(i, { discount_pct: v }))}</td>
                                                 <td style={{ width: 100 }}>{numInput(l.line_total, (v) => setLine(i, { line_total: v }))}</td>
-                                                <td style={{ width: 120, minWidth: 120 }}>
-                                                    <Select styles={reactSelectTheme} menuPortalTarget={document.body} isClearable
-                                                        options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === l.vat_rate) ?? null}
-                                                        onChange={(o: any) => setLine(i, { vat_rate: o?.value ?? null })} placeholder="Taxa" aria-label="Taxa de IVA" />
+                                                <td style={{ width: 110, minWidth: 110 }}>
+                                                    <XSelect small ariaLabel="Taxa de IVA" options={VAT_OPTS} value={l.vat_rate as any} onChange={(v) => setLine(i, { vat_rate: v as number })} placeholder="Taxa" searchable={false} />
+                                                </td>
+                                                <td style={{ minWidth: 320 }}>
+                                                    <LineArticleCell
+                                                        link={l.id ? links[l.id] ?? null : null}
+                                                        saved={!!l.id}
+                                                        busy={lineBusy !== null}
+                                                        onAccept={(articleId) => l.id && associate(l.id, articleId, "sugestao")}
+                                                        onAssociate={() => setPicker(i)}
+                                                        onCreate={() => setCreating(i)}
+                                                        onUnlink={() => l.id && unlinkLine(l.id)}
+                                                    />
                                                 </td>
                                                 <td style={{ width: 40 }}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover linha ${i + 1}`} onClick={() => setLines((p) => p.filter((_, idx) => idx !== i))}><i className="ri-delete-bin-line" /></button></td>
                                             </tr>
@@ -438,13 +578,13 @@ export default function FaturaValidacaoPage() {
                                         ["Retenção na fonte", "withholding"], ["Desconto financeiro", "financial_discount"],
                                     ] as [string, keyof OcrInvoiceSummary][]).map(([label, key]) => (
                                         <Col md={4} key={key}>
-                                            <Label className="fs-12 text-muted mb-1">{label}</Label>
-                                            {numInput(summary[key] as number, (v) => setSum({ [key]: v ?? 0 } as any))}
+                                            <Label className="form-label">{label}</Label>
+                                            {numInput(summary[key] as number, (v) => setSum({ [key]: v ?? 0 } as any), {}, false)}
                                         </Col>
                                     ))}
                                     <Col md={4}>
-                                        <Label className="fs-12 text-muted mb-1 fw-semibold">Total</Label>
-                                        {numInput(summary.total, (v) => setSum({ total: v ?? 0 }), { className: "form-control form-control-sm text-end fw-semibold" })}
+                                        <Label className="form-label fw-semibold">Total</Label>
+                                        {numInput(summary.total, (v) => setSum({ total: v ?? 0 }), { className: "form-control text-end fw-semibold" }, false)}
                                     </Col>
                                 </Row>
 
@@ -454,9 +594,9 @@ export default function FaturaValidacaoPage() {
                                 </div>
                                 {summary.vat_breakdown.map((b, i) => (
                                     <Row className="g-2 mb-1 align-items-center" key={i}>
-                                        <Col xs={4}><Select styles={reactSelectTheme} menuPortalTarget={document.body} options={VAT_OPTS} value={VAT_OPTS.find((o) => o.value === b.rate) ?? null} onChange={(o: any) => setVat(i, { rate: o?.value ?? null })} placeholder="Taxa" aria-label="Taxa de IVA" /></Col>
-                                        <Col xs={3}>{numInput(b.base, (v) => setVat(i, { base: v }))}</Col>
-                                        <Col xs={3}>{numInput(b.vat, (v) => setVat(i, { vat: v }))}</Col>
+                                        <Col xs={4}><XSelect ariaLabel="Taxa de IVA" options={VAT_OPTS} value={b.rate as any} onChange={(v) => setVat(i, { rate: v as number })} placeholder="Taxa" searchable={false} /></Col>
+                                        <Col xs={3}>{numInput(b.base, (v) => setVat(i, { base: v }), {}, false)}</Col>
+                                        <Col xs={3}>{numInput(b.vat, (v) => setVat(i, { vat: v }), {}, false)}</Col>
                                         <Col xs={2}><button type="button" className="btn btn-sm btn-outline-danger" aria-label={`Remover taxa ${i + 1}`} onClick={() => setSum({ vat_breakdown: summary.vat_breakdown.filter((_, idx) => idx !== i) })}><i className="ri-delete-bin-line" /></button></Col>
                                     </Row>
                                 ))}
@@ -467,6 +607,10 @@ export default function FaturaValidacaoPage() {
                             <PingwinLinkCard companyId={companyId} invoiceId={invoiceId} block={pingwin} onBlock={setPingwin}
                                 onCreateSupplier={(nif, name) => navigate(`/restauracao/fornecedores?${new URLSearchParams({ novo: "1", nif: nif ?? "", nome: name ?? "" }).toString()}`)}
                                 onOpenInvoice={(id) => navigate(`/restauracao/faturas/${id}`)} />
+                        )}
+                        {/* FB-1: lançar no PingWin em rascunho, fechar, anular */}
+                        {inv && (inv.status === "por_validar" || inv.status === "validada") && (
+                            <LaunchCard companyId={companyId} invoiceId={invoiceId} onChanged={refreshPingwin} />
                         )}
                     </Col>
 
@@ -487,6 +631,57 @@ export default function FaturaValidacaoPage() {
                     </Col>
                 </Row>
                 {reprocessModal}
+
+                {/* F2b — pesquisa de artigos, criar artigo, código diferente, aceitar sugestões */}
+                <ArticlePicker
+                    isOpen={picker !== null}
+                    companyId={companyId}
+                    supplierNif={supplierNif || null}
+                    supplierName={supplierName || null}
+                    initialQuery={picker !== null ? (lines[picker]?.item ?? "") : ""}
+                    lineLabel={picker !== null ? `${lines[picker]?.supplier_code ? `${lines[picker]?.supplier_code} · ` : ""}${lines[picker]?.item ?? ""}` : ""}
+                    onPick={(a) => { const id = picker !== null ? lines[picker]?.id : undefined; if (id) associate(id, a.id); }}
+                    onCreate={() => { const i = picker; setPicker(null); setCreating(i); }}
+                    onClose={() => setPicker(null)}
+                />
+                <CreateArticleModal
+                    isOpen={creating !== null}
+                    companyId={companyId}
+                    line={creating !== null ? lines[creating] ?? null : null}
+                    supplierName={supplierName || null}
+                    busy={createBusy}
+                    onSubmit={createArticle}
+                    onClose={() => setCreating(null)}
+                />
+                <Modal isOpen={!!codeConflict} toggle={() => setCodeConflict(null)} centered>
+                    <ModalHeader toggle={() => setCodeConflict(null)}>Substituir o código do fornecedor?</ModalHeader>
+                    <ModalBody>
+                        O artigo já tem o código <strong>{codeConflict?.existing}</strong> para este fornecedor. A fatura diz <strong>{codeConflict?.newCode}</strong>.
+                        Ao substituir, o código passa a ser <strong>{codeConflict?.newCode}</strong> no PingWin.
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setCodeConflict(null)}>Cancelar</Button>
+                        <Button color="primary" disabled={lineBusy !== null} onClick={() => codeConflict && associate(codeConflict.lineId, codeConflict.articleId, codeConflict.method, true)}>
+                            Substituir e ligar
+                        </Button>
+                    </ModalFooter>
+                </Modal>
+                <Modal isOpen={acceptOpen} toggle={() => setAcceptOpen(false)} centered>
+                    <ModalHeader toggle={() => setAcceptOpen(false)}>Aceitar as sugestões?</ModalHeader>
+                    <ModalBody>
+                        <p>Liga cada linha sugerida ao 1.º artigo sugerido, quando a semelhança da descrição for pelo menos:</p>
+                        <Label className="form-label" for="min-conf">Semelhança mínima</Label>
+                        <XSelect id="min-conf" ariaLabel="Semelhança mínima" searchable={false} value={minConf}
+                            options={[0.9, 0.8, 0.7, 0.6].map((v) => ({ value: v, label: `${Math.round(v * 100)}%` }))} onChange={(v) => setMinConf(v)} />
+                        <p className="fs-12 text-muted mt-2 mb-0">
+                            {Object.values(links).filter((l) => l.link_state === "sugerida" && (l.suggestions[0]?.score ?? 0) >= minConf).length} linhas serão ligadas. Pode desfazer cada uma depois.
+                        </p>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setAcceptOpen(false)}>Cancelar</Button>
+                        <Button color="primary" onClick={acceptAll} disabled={lineBusy !== null}>Aceitar sugestões</Button>
+                    </ModalFooter>
+                </Modal>
             </Container>
         </div>
     );

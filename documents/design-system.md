@@ -41,7 +41,7 @@ O quadro de uma página é um `PageCard` (`src/Components/Common/PageCard.tsx`):
     title="Fornecedores"
     info="Os fornecedores do PingWin."
     status={<>Última sincronização: 09/10, 21:15</>}
-    actions={<>{cols.selector}<Button color="outline-primary">Sincronizar</Button><Button color="primary">Novo fornecedor</Button></>}
+    actions={<>{cols.selector}<Button size="sm" color="outline-primary">Sincronizar</Button><Button size="sm" color="primary">Novo fornecedor</Button></>}
     filters={<RestFilterBar … />}
 >
     <DataTable … />
@@ -53,7 +53,7 @@ O quadro de uma página é um `PageCard` (`src/Components/Common/PageCard.tsx`):
 | Título | `h5`, com o (i) quando o quadro precisa de explicação |
 | Estado (`status`) | Texto pequeno por baixo do título: "Última sincronização…", "A gravar no PingWin…", contagens ("3 de 200 leituras este mês"). **Estado não é ajuda:** não vai para o (i) |
 | Ações (`actions`) | À direita do título, por esta ordem: vistas e "Colunas", secundárias, menu "...", e a ação principal no fim. No telemóvel passam para baixo do título e encostam à esquerda |
-| Filtros (`filters`) | Por baixo do cabeçalho: a pesquisa e os filtros do quadro (`RestFilterBar`) |
+| Filtros (`filters`) | Por baixo do cabeçalho: a pesquisa e os filtros do quadro (`RestFilterBar`; sem `onSearchChange`, só os filtros), e a navegação por mês de um calendário |
 | Conteúdo | Normalmente um `DataTable` (sem margem) |
 | Rodapé (`footer`) | Totais. A paginação do `DataTable` já vem dentro do cartão |
 
@@ -90,6 +90,16 @@ Regras complementares:
 - **Exceção:** remover uma linha de um formulário ainda por guardar (por exemplo, uma linha de orçamento ou uma tarefa) pode ser um ícone de caixote em contorno vermelho pequeno (`btn-outline-danger btn-sm`), porque nada se apaga até "Guardar".
 - **Não usar** as variantes `soft-*`, `ghost-*`, `info`, `warning`, `secondary` nem `dark` em botões. Ligações com aspeto de botão (`<Link className="btn ...">`) seguem a mesma regra.
 
+**Tamanhos dos botões** (os do Velzon: normal 37,8 px, `sm` 27,3 px; nunca `lg`):
+
+| Onde | Tamanho |
+|---|---|
+| Ações do cabeçalho do cartão (incluindo "Colunas", o menu "..." e as vistas `xp-seg`) | `size="sm"` |
+| Ações por linha (`rowActions`) e botões dentro de células | `size="sm"` (`<ActionsMenu size="sm" />`) |
+| Barras de filtros (`RestFilterBar`, filtros da página no `PageHeader`) | `size="sm"` |
+| Rodapé de um modal e rodapé de um formulário (Cancelar, Guardar, Voltar) | normal |
+| Ação do estado de vazio de uma tabela | `size="sm"` |
+
 ## 5. Menu "..."
 
 Componente `ActionsMenu` (`src/Components/Common/ActionsMenu.tsx`):
@@ -121,8 +131,16 @@ O motivo aparece ao passar o rato, ao focar e ao tocar (telemóvel). Enquanto a 
 - Componente `src/Components/Common/Select.tsx`, com o tema claro e escuro de `helpers/reactSelectStyles` (variáveis `--vz-*`):
   - **Escolha única:** `XSelect` (`import XSelect from "Components/Common/Select"`). O antigo `pages/Editorial/XSelect` continua a funcionar e só reexporta.
   - **Escolha múltipla:** `XMultiSelect` (chips), com o mesmo tema.
-  - `small` para barras de filtros (altura de um `btn-sm`).
+  - **Tamanho normal por omissão:** a mesma altura, letra e espaçamento de um `form-control` (37,8 px). `small` só quando se pede, com a altura de um `form-control-sm` / `btn-sm` (27,3 px).
 - Os menus abrem no `document.body`, para não ficarem cortados em modais e tabelas.
+
+**Tamanhos dos campos** (inputs, selects, datas e textareas):
+
+| Onde | Tamanho |
+|---|---|
+| Formulários e modais | Normal em todos, com a mesma altura: `Input` sem `bsSize`, `XSelect` sem `small`. Rótulos `form-label` |
+| Barras de filtros (`RestFilterBar`, filtros do cartão e da página) | `sm` em tudo: `bsSize="sm"`, `XSelect small`, botões `size="sm"`. A pesquisa do `RestFilterBar` já é `sm` |
+| Células de tabela (por exemplo, uma pesquisa por cima de uma tabela num modal, ou um campo numa grelha de edição) | `sm` |
 - Com mais de 8 opções, há pesquisa (`searchable` muda isso).
 - "Todos" é uma opção com valor vazio (por exemplo, "Todos os fornecedores").
 
@@ -147,7 +165,7 @@ const cols = useDataColumns("restauracao.fornecedores", [
 
 - **Quando usar:** em todas as listas de registos. Não se escrevem tabelas à mão.
 - **Modo cliente** (por omissão): a página entrega todas as linhas e a tabela ordena, pesquisa (em todas as colunas com `value`, sem acentos) e pagina (25 por página). Serve para listas até algumas centenas de linhas: a página lê todas as páginas da API.
-- **Modo servidor** (`mode="server"` + `server={…}`): a página entrega uma página e a API pagina. A ordenação só existe com `server.onSortChange` e colunas com `sortKey`; sem isso, a tabela não deixa ordenar (nunca setas que não fazem nada).
+- **Modo servidor** (`mode="server"` + `server={…}`): a página entrega uma página e a API pagina. A ordenação só existe com `server.onSortChange` e colunas com `sortKey` e `value`; sem isso, a tabela não deixa ordenar (nunca setas que não fazem nada). Só se dá `sortKey` às colunas que a API ordena de facto.
 - **Colunas:** cada coluna é visível por omissão, salvo `defaultVisible: false`. O botão "Colunas" (`cols.selector`) vai para o cabeçalho do cartão, à esquerda das outras ações. A escolha de cada pessoa guarda-se no browser, por tabela (`useTablePrefs`, chave `xp.table.<id>`), e "Repor colunas" volta às de omissão.
 - **Colunas sem dados:** uma coluna que ainda não tem dados leva `unavailable` com o motivo. Não se mostra, e aparece desativada no "Colunas" com esse motivo. Nunca se mostram colunas vazias.
 - **Células ricas:** `cell` (badges, ligações, riscado); `cellClassName` para cores de célula (por exemplo, âmbar quando falta um valor); `rowClassName` para a linha inteira (por exemplo, anulados a cinzento).
@@ -155,6 +173,9 @@ const cols = useDataColumns("restauracao.fornecedores", [
 - **Vazio:** mensagem e, quando faz sentido, a ação que resolve (em contorno). Com pesquisa sem resultados, diz o que foi pesquisado.
 - **Ações por linha:** `rowActions`, segundo o §4 (no máximo uma ou duas visíveis; destrutivas no "..."). A linha pode abrir o detalhe (`onRowClick`), mas há sempre uma ação visível para quem usa teclado.
 - **Paginação:** a `Pagination` comum, sempre dentro do cartão, com janela de páginas. Com uma só página, fica só a contagem ("8 resultados").
+- **Listas com ordem fixa** (por exemplo, um extrato com saldo corrido): colunas com `sortable: false` e `paginate={false}`. Mostram-se todas as linhas e o rodapé fica só com a contagem.
+- **Linhas especiais:** `leadingRow` (no topo, por exemplo "Saldo anterior") e `footerRow` (no fim, por exemplo um total). O rótulo ocupa as colunas visíveis até à primeira que tem valor em `cells` (por `id` de coluna). No telemóvel, são um cartão. Não contam para a ordenação, a pesquisa nem a paginação.
+- **Ler todas as páginas da API:** no modo cliente, a página usa `fetchAllPages` (`src/helpers/fetchAllPages.ts`), que lê as páginas uma a uma (até 25) e mantém os filtros e a pesquisa que a API já aceita.
 
 ## 9. Claro e escuro
 

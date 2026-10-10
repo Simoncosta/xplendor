@@ -218,10 +218,10 @@ export default function LojasPage() {
                             loading={loading && rows.length > 0}
                             actions={<>
                                 {cols.selector}
-                                <Button color="outline-primary" onClick={openSync} disabled={syncBusy}>
+                                <Button size="sm" color="outline-primary" onClick={openSync} disabled={syncBusy}>
                                     {syncBusy ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-calendar-2-line me-1" /> Sincronizar</>}
                                 </Button>
-                                <Button color="primary" onClick={openAdd}>
+                                <Button size="sm" color="primary" onClick={openAdd}>
                                     <i className="ri-add-line me-1" /> Adicionar loja
                                 </Button>
                             </>}

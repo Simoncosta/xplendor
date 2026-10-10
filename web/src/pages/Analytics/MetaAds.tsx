@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { useDataColumns } from "Components/Common/DataTable";
 import { getMetaOverview } from "helpers/laravel_helper";
 import { MetaOverviewResponse, MetaOverviewState, eur, nfmt, pct } from "common/models/metaAds.model";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
@@ -68,6 +70,15 @@ const MetaAds = () => {
         ];
     }, [data]);
 
+    type CampaignRow = MetaOverviewResponse["by_campaign"][number];
+    const campaignCols = useDataColumns<CampaignRow>("marketing.meta.campanhas", [
+        { id: "campaign", header: "Campanha", value: (c) => c.campaign_name, cell: (c) => <span className="fw-medium text-truncate d-inline-block" style={{ maxWidth: 260 }}>{c.campaign_name}</span>, hideable: false, mobile: "title" },
+        { id: "spend", header: "Gasto", value: (c) => c.spend, cell: (c) => eur(c.spend), align: "end", nowrap: true },
+        { id: "impressions", header: "Impr.", value: (c) => c.impressions, cell: (c) => nfmt(c.impressions), align: "end" },
+        { id: "clicks", header: "Cliques", value: (c) => c.clicks, cell: (c) => nfmt(c.clicks), align: "end" },
+        { id: "ctr", header: "CTR", value: (c) => c.ctr, cell: (c) => pct(c.ctr), align: "end" },
+    ]);
+
     const rangeToggle = (
         <div className="xp-seg" role="radiogroup" aria-label="Intervalo">
             {RANGES.map((r) => (
@@ -83,28 +94,23 @@ const MetaAds = () => {
         <div className="page-content">
             <Container fluid>
                 <PageHeader title="Meta / Anúncios" breadcrumbs={[{ label: "Marketing" }]}
-                    description={showData && data ? (
-                        <>
-                            {data.range.start} a {data.range.end}
-                            {data.last_synced_at ? ` · último sync ${new Date(data.last_synced_at).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
-                        </>
-                    ) : "Os resultados dos anúncios da Meta (Facebook e Instagram)."}
-                    actions={showData ? rangeToggle : undefined} />
+                    info="Os resultados dos anúncios da Meta (Facebook e Instagram)."
+                    filters={showData ? rangeToggle : undefined} />
 
                 {loading ? (
                     <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                 ) : error || !data ? (
-                    <Card><CardBody className="text-center py-5">
+                    <PageCard title="Meta Ads" flush={false}><div className="text-center py-4">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-danger-subtle text-danger rounded fs-24"><i className="ri-error-warning-line" /></span></div>
                         <h5 className="mb-2">Não foi possível carregar os dados Meta</h5>
-                    </CardBody></Card>
+                    </div></PageCard>
                 ) : !data.connected ? (
-                    <Card><CardBody className="text-center py-5">
+                    <PageCard title="Meta Ads" flush={false}><div className="text-center py-4">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-light rounded fs-24" style={{ color: "#1877F2" }}><i className="ri-facebook-circle-line" /></span></div>
                         <h5 className="mb-2">Ligue a conta Meta</h5>
                         <p className="text-muted mb-3">Ainda não ligou a conta Meta Ads desta empresa.</p>
                         <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
-                    </CardBody></Card>
+                    </div></PageCard>
                 ) : data.source === "none" && data.state && BLOCKING_STATES.includes(data.state) ? (
                     // Sem números para mostrar: o ESTADO explica porquê (nunca zeros falsos).
                     <StateCard state={data.state} error={data.sync?.error ?? null} companyId={companyId} slow={pollExhausted} />
@@ -126,34 +132,27 @@ const MetaAds = () => {
                         <Row className="g-4 pb-5 mb-5">
                             {/* Por campanha */}
                             <Col xl={7}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Por campanha</h6>
-                                    {data.by_campaign.length === 0 ? <p className="text-muted fs-13 mb-0">{data.state === "no_spend" ? "Sem gasto neste período." : "Sem dados de campanhas no período."}</p> : (
-                                        <div className="table-responsive">
-                                            <table className="table table-sm align-middle mb-0">
-                                                <thead className="text-muted"><tr><th>Campanha</th><th className="text-end">Gasto</th><th className="text-end">Impr.</th><th className="text-end">Cliques</th><th className="text-end">CTR</th></tr></thead>
-                                                <tbody>
-                                                    {data.by_campaign.map((c) => (
-                                                        <tr key={String(c.campaign_id)}>
-                                                            <td className="fw-medium text-truncate" style={{ maxWidth: 220 }}>{c.campaign_name}</td>
-                                                            <td className="text-end">{eur(c.spend)}</td>
-                                                            <td className="text-end">{nfmt(c.impressions)}</td>
-                                                            <td className="text-end">{nfmt(c.clicks)}</td>
-                                                            <td className="text-end">{pct(c.ctr)}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </CardBody></Card>
+                                <PageCard className="h-100 mb-0" title="Por campanha" actions={campaignCols.selector}
+                                    status={<>
+                                        {data.range.start} a {data.range.end}
+                                        {data.last_synced_at ? ` · último sync ${new Date(data.last_synced_at).toLocaleString("pt-PT", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : ""}
+                                    </>}>
+                                    <DataTable
+                                        columns={campaignCols}
+                                        data={data.by_campaign}
+                                        rowKey={(c) => String(c.campaign_id)}
+                                        initialSort={{ id: "spend", desc: true }}
+                                        pageSize={10}
+                                        caption="Resultados por campanha"
+                                        empty={{ message: data.state === "no_spend" ? "Sem gasto neste período." : "Sem dados de campanhas no período." }}
+                                    />
+                                </PageCard>
                             </Col>
 
                             {/* Vendas atribuídas (factual, já calculado) */}
                             <Col xl={5}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-1 text-uppercase">Vendas atribuídas</h6>
-                                    <p className="text-muted fs-12 mb-3">Vendas ligadas a campanhas Meta pelo motor de atribuição (best-effort).</p>
+                                <PageCard className="h-100 mb-0" title="Vendas atribuídas" flush={false}
+                                    info="As vendas ligadas a campanhas Meta pelo motor de atribuição, por aproximação.">
                                     <div className="d-flex gap-3 mb-3">
                                         <div><div className="fs-20 fw-semibold">{nfmt(data.attributed.sales)}</div><small className="text-muted">Vendas</small></div>
                                         <div><div className="fs-20 fw-semibold">{eur(data.attributed.revenue)}</div><small className="text-muted">Receita</small></div>
@@ -173,7 +172,7 @@ const MetaAds = () => {
                                             ))}
                                         </ul>
                                     )}
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
                         </Row>
                     </>
@@ -220,7 +219,7 @@ const StateCard = ({ state, error, companyId, slow }: StateProps) => {
     const c = STATE_COPY[state];
     if (!c) return null;
     return (
-        <Card><CardBody className="text-center py-5">
+        <PageCard title="Meta Ads" flush={false}><div className="text-center py-4">
             <div className="avatar-md mx-auto mb-3">
                 <span className={`avatar-title bg-${c.color}-subtle text-${c.color} rounded fs-24`}>
                     {state === "syncing_first" ? <Spinner size="sm" /> : <i className={c.icon} />}
@@ -231,7 +230,7 @@ const StateCard = ({ state, error, companyId, slow }: StateProps) => {
             {state === "sync_failed" && error && <p className="text-danger fs-13 mb-3">{error}</p>}
             {state === "syncing_first" && slow && <Link to={integrationsUrl(companyId)} className="btn btn-outline-primary"><i className="ri-links-line me-1" />Ver Integrações</Link>}
             {c.cta && <Link to={integrationsUrl(companyId)} className="btn btn-primary"><i className="ri-links-line me-1" />{c.cta}</Link>}
-        </CardBody></Card>
+        </div></PageCard>
     );
 };
 

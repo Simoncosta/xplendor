@@ -2,26 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "../../helpers/reactSelectStyles";
-import {
-    Card,
-    CardBody,
-    CardHeader,
-    Col,
-    Container,
-    Input,
-    Label,
-    Offcanvas,
-    OffcanvasBody,
-    OffcanvasHeader,
-    Row,
-} from "reactstrap";
+import { Container, Input, Label } from "reactstrap";
 import { createSelector } from "reselect";
-import XTanStackTable from "Components/Common/XTanStackTable";
 import PageHeader from "Components/Common/PageHeader";
-import ReasonButton from "Components/Common/ReasonButton";
-import { useIsMobile } from "../../hooks/useIsMobile";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
+import XSelect, { XMultiSelect } from "Components/Common/Select";
 import { listPromotionCandidates, getPromotionSummary } from "../../helpers/stockPromotion_helper";
 import { getCompaniesPaginate } from "slices/companies/thunk";
 import {
@@ -43,24 +30,12 @@ import type {
 } from "../../types/api";
 import StarToggle from "./components/StarToggle";
 import MarketChip from "./components/MarketChip";
-import MarketLegendHeader from "./components/MarketLegendHeader";
 import PromotionMobileCard from "./components/PromotionMobileCard";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import { getWorkingCompanyId } from "helpers/workingCompany";
 
-// ── Design tokens espelhados da CarList ──────────────────────────────────────
-// Cards: sombra suave + gradiente vertical branco→quase-branco.
-// CardHeader: gradiente azul-Velzon (#405189) muito subtil.
-// Reaproveitamos como objects para garantir consistência byte-a-byte.
-const CARD_SHADOW: React.CSSProperties = {
-    boxShadow: "0 16px 40px rgba(15, 23, 42, 0.08)",
-    background: "var(--vz-card-bg)",
-};
-const CARD_HEADER_GRADIENT: React.CSSProperties = {
-    background: "linear-gradient(180deg, rgba(64,81,137,0.05) 0%, rgba(64,81,137,0.015) 100%)",
-};
-const EYEBROW_STYLE: React.CSSProperties = { letterSpacing: "0.08em" };
 const LABEL_STYLE: React.CSSProperties = { letterSpacing: "0.05em" };
+const FILTER_LABEL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
 
 const VEHICLE_TYPE_OPTIONS: { value: PromotionVehicleType; label: string }[] = [
     { value: "car",        label: "Carro" },
@@ -82,13 +57,9 @@ const PRICE_SIGNAL_OPTIONS: { value: MarketPriceSignal; label: string }[] = [
     { value: "competitive",   label: PRICE_SIGNAL_LABELS.competitive },
 ];
 
-const SORT_OPTIONS = [
-    { value: "days_in_stock", label: "Dias em stock" },
-    { value: "price",         label: "Preço" },
-    { value: "views",         label: "Visualizações" },
-    { value: "leads",         label: "Leads" },
-    { value: "ips",           label: "IPS" },
-];
+// Ordenação no servidor (as mesmas chaves do antigo "Ordenar por"): coluna → sort_by.
+const SORT_COLUMN: Record<string, string> = { days_in_stock: "days", price: "price", views: "views", leads: "leads", ips: "ips" };
+const DEFAULT_SORT = { by: "days_in_stock" as const, dir: "desc" as const };
 
 const formatEuro = (v: number | null): string => {
     if (v === null) return "—";
@@ -106,8 +77,6 @@ const selectCompanies = createSelector(
 
 const StockPromotionPage = () => {
     const dispatch: any = useDispatch();
-    const isMobile = useIsMobile(768);
-    const isFiltersMobile = useIsMobile(992);
 
     // ── Auth / company resolution ─────────────────────────────────────────
     const [userRole, setUserRole] = useState<string | null>(null);
@@ -147,9 +116,8 @@ const StockPromotionPage = () => {
     const [maxDays, setMaxDays] = useState<string>("");
     const [priceSignals, setPriceSignals] = useState<MarketPriceSignal[]>([]);
     const [onlyMarked, setOnlyMarked] = useState(false);
-    const [sortBy, setSortBy] = useState<ListPromotionCandidatesParams["sort_by"]>("days_in_stock");
-    const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [sortBy, setSortBy] = useState<ListPromotionCandidatesParams["sort_by"]>(DEFAULT_SORT.by);
+    const [sortDir, setSortDir] = useState<"asc" | "desc">(DEFAULT_SORT.dir);
 
     const activeFilterCount = [
         vehicleType,
@@ -237,155 +205,59 @@ const StockPromotionPage = () => {
         setOnlyMarked(false);
     };
 
-    // ── Sidebar de filtros (mesmas labels uppercase letterspacing da CarList) ──
-    const filterPanelContent = (
+    // ── Filtros do cartão (RestFilterBar: numa linha no computador; "Filtros" no telemóvel) ──
+    const field = (flex = "1 1 180px") => ({ flex, minWidth: 0 });
+    const filterFields = (
         <>
-            <div className="filter-choices-input mb-4">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Tipo de viatura
-                </Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    isClearable
-                    placeholder="Todos os tipos"
-                    options={VEHICLE_TYPE_OPTIONS}
-                    value={VEHICLE_TYPE_OPTIONS.find((o) => o.value === vehicleType) || null}
-                    onChange={(opt: any) => setVehicleType(opt?.value ?? null)}
+            <div style={field("1 1 160px")}>
+                <Label className={FILTER_LABEL} style={LABEL_STYLE}>Tipo de viatura</Label>
+                <XSelect
+                    small
+                    ariaLabel="Tipo de viatura"
+                    options={[{ value: "", label: "Todos os tipos" }, ...VEHICLE_TYPE_OPTIONS]}
+                    value={vehicleType ?? ""}
+                    onChange={(v) => setVehicleType((v || null) as PromotionVehicleType | null)}
+                    searchable={false}
                 />
             </div>
-
-            <div className="filter-choices-input mb-4">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Estado
-                </Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    isMulti
-                    placeholder="Todos os estados"
-                    options={STATUS_OPTIONS}
-                    value={STATUS_OPTIONS.filter((o) => statuses.includes(o.value))}
-                    onChange={(opts: any) => setStatuses((opts || []).map((o: any) => o.value))}
-                />
+            <div style={field()}>
+                <Label className={FILTER_LABEL} style={LABEL_STYLE}>Estado</Label>
+                <XMultiSelect small ariaLabel="Estado" placeholder="Todos os estados" options={STATUS_OPTIONS} value={statuses} onChange={setStatuses} />
             </div>
-
-            <div className="filter-choices-input mb-4">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Posição vs mercado
-                </Label>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    isMulti
-                    placeholder="Qualquer posição"
-                    options={PRICE_SIGNAL_OPTIONS}
-                    value={PRICE_SIGNAL_OPTIONS.filter((o) => priceSignals.includes(o.value))}
-                    onChange={(opts: any) => setPriceSignals((opts || []).map((o: any) => o.value))}
-                />
+            <div style={field()}>
+                <Label className={FILTER_LABEL} style={LABEL_STYLE}>Posição vs mercado</Label>
+                <XMultiSelect small ariaLabel="Posição vs mercado" placeholder="Qualquer posição" options={PRICE_SIGNAL_OPTIONS} value={priceSignals} onChange={setPriceSignals} />
             </div>
-
-            <div className="filter-choices-input mb-4">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Dias em stock
-                </Label>
-                <div className="formCost d-flex gap-2 align-items-center">
-                    <Input
-                        type="number"
-                        min={0}
-                        placeholder="De"
-                        value={minDays}
-                        onChange={(e) => setMinDays(e.target.value)}
-                        className="form-control form-control-sm"
-                    />
-                    <span className="fw-semibold text-muted">até</span>
-                    <Input
-                        type="number"
-                        min={0}
-                        placeholder="Até"
-                        value={maxDays}
-                        onChange={(e) => setMaxDays(e.target.value)}
-                        className="form-control form-control-sm"
-                    />
-                </div>
-            </div>
-
-            <div className="filter-choices-input mb-4">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Preço (€)
-                </Label>
-                <div className="formCost d-flex gap-2 align-items-center">
-                    <Input
-                        type="number"
-                        min={0}
-                        placeholder="Preço de"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
-                        className="form-control form-control-sm"
-                    />
-                    <span className="fw-semibold text-muted">até</span>
-                    <Input
-                        type="number"
-                        min={0}
-                        placeholder="Preço até"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
-                        className="form-control form-control-sm"
-                    />
-                </div>
-            </div>
-
-            <div className="form-check mb-4">
-                <Input
-                    type="checkbox"
-                    id="only-marked"
-                    className="form-check-input"
-                    checked={onlyMarked}
-                    onChange={(e) => setOnlyMarked(e.target.checked)}
-                />
-                <Label for="only-marked" className="form-check-label">
-                    Só com prioridade marcada
-                </Label>
-            </div>
-
-            <div className="filter-choices-input">
-                <Label className="text-muted fw-semibold fs-12 text-uppercase" style={LABEL_STYLE}>
-                    Ordenar por
-                </Label>
+            <div style={field("1 1 170px")}>
+                <Label className={FILTER_LABEL} style={LABEL_STYLE}>Dias em stock</Label>
                 <div className="d-flex gap-2 align-items-center">
-                    <div style={{ flex: 1 }}>
-                        <Select
-                            styles={reactSelectTheme}
-                            menuPortalTarget={document.body}
-                            options={SORT_OPTIONS}
-                            value={SORT_OPTIONS.find((o) => o.value === sortBy)}
-                            onChange={(opt: any) => setSortBy(opt?.value)}
-                        />
-                    </div>
-                    <button
-                        type="button"
-                        className="btn btn-outline-primary btn-sm"
-                        onClick={() => setSortDir(sortDir === "desc" ? "asc" : "desc")}
-                        title={sortDir === "desc" ? "Descendente: clique para ascendente" : "Ascendente: clique para descendente"}
-                        aria-label={sortDir === "desc" ? "Ordem descendente: clique para ascendente" : "Ordem ascendente: clique para descendente"}
-                        style={{ minWidth: 40 }}
-                    >
-                        <i className={sortDir === "desc" ? "ri-sort-desc" : "ri-sort-asc"} />
-                    </button>
+                    <Input type="number" min={0} placeholder="De" value={minDays} onChange={(e) => setMinDays(e.target.value)} bsSize="sm" aria-label="Dias em stock, de" />
+                    <span className="fw-semibold text-muted fs-12">até</span>
+                    <Input type="number" min={0} placeholder="Até" value={maxDays} onChange={(e) => setMaxDays(e.target.value)} bsSize="sm" aria-label="Dias em stock, até" />
                 </div>
+            </div>
+            <div style={field("1 1 200px")}>
+                <Label className={FILTER_LABEL} style={LABEL_STYLE}>Preço (€)</Label>
+                <div className="d-flex gap-2 align-items-center">
+                    <Input type="number" min={0} placeholder="Preço de" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} bsSize="sm" aria-label="Preço de" />
+                    <span className="fw-semibold text-muted fs-12">até</span>
+                    <Input type="number" min={0} placeholder="Preço até" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} bsSize="sm" aria-label="Preço até" />
+                </div>
+            </div>
+            <div className="form-check mb-1 align-self-center" style={{ flex: "0 0 auto" }}>
+                <Input type="checkbox" id="only-marked" className="form-check-input" checked={onlyMarked} onChange={(e) => setOnlyMarked(e.target.checked)} />
+                <Label for="only-marked" className="form-check-label fs-12">Só com prioridade marcada</Label>
             </div>
         </>
     );
 
     // ── Tabela: coluna "Viatura" espelha o layout da CarList ──────────────
-    const columns = useMemo(() => [
+    const columnDefs: DTColumn<PromotionCandidate>[] = [
         {
+            id: "vehicle",
             header: "Viatura",
-            accessorKey: "brand",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
+            hideable: false,
+            cell: (r) => {
                 const title = [r.brand?.name, r.model?.name].filter(Boolean).join(" ");
                 const isHabitation = r.vehicle_type === "motorhome" || r.vehicle_type === "caravan";
                 const taxonomy = isHabitation
@@ -434,114 +306,88 @@ const StockPromotionPage = () => {
             },
         },
         {
+            id: "price",
             header: "Preço",
-            accessorKey: "price",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
-                return (
-                    <div>
-                        <div className="fw-semibold text-body">{formatEuro(r.price.effective)}</div>
-                        {r.price.has_promo && (
-                            <div className="text-muted fs-12 text-decoration-line-through">
-                                {formatEuro(r.price.gross)}
-                            </div>
-                        )}
-                        {r.price.hide_online && (
-                            <div className="text-muted fs-12">Sob consulta</div>
-                        )}
-                    </div>
-                );
-            },
+            sortKey: "price",
+            value: (r) => r.price.effective,
+            cell: (r) => (
+                <div>
+                    <div className="fw-semibold text-body">{formatEuro(r.price.effective)}</div>
+                    {r.price.has_promo && (
+                        <div className="text-muted fs-12 text-decoration-line-through">
+                            {formatEuro(r.price.gross)}
+                        </div>
+                    )}
+                    {r.price.hide_online && (
+                        <div className="text-muted fs-12">Sob consulta</div>
+                    )}
+                </div>
+            ),
         },
+        { id: "market", header: "Mercado", cell: (r) => <MarketChip market={r.market} rowId={r.id} /> },
         {
-            header: () => <MarketLegendHeader />,
-            accessorKey: "market",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
-                return <MarketChip market={r.market} rowId={r.id} />;
-            },
-        },
-        {
+            id: "ips",
             header: "IPS",
-            accessorKey: "ips",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
+            sortKey: "ips",
+            value: (r) => r.ips?.score ?? undefined,
+            cell: (r) => {
                 const badge = formatIpsBadge(r.ips?.score, r.ips?.classification);
                 return <span className={`badge ${badge.className} fw-normal`}>{badge.shortLabel}</span>;
             },
         },
         {
+            id: "days",
             header: "Em stock",
-            accessorKey: "days_in_stock",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
-                return (
-                    <div>
-                        <div className="fw-semibold text-body">
-                            {r.days_in_stock} <span className="fw-normal text-muted fs-12">{r.days_in_stock === 1 ? "dia" : "dias"}</span>
-                        </div>
-                    </div>
-                );
-            },
+            sortKey: "days_in_stock",
+            value: (r) => r.days_in_stock,
+            nowrap: true,
+            cell: (r) => (
+                <span className="fw-semibold text-body">
+                    {r.days_in_stock} <span className="fw-normal text-muted fs-12">{r.days_in_stock === 1 ? "dia" : "dias"}</span>
+                </span>
+            ),
         },
         {
-            header: "Tráfego",
-            accessorKey: "engagement",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
-                return (
-                    <div>
-                        <div className="fw-semibold text-body">
-                            {r.engagement.views_count} <span className="fw-normal text-muted fs-12">views</span>
-                        </div>
-                        <div className={`fw-semibold ${r.engagement.leads_count > 0 ? "text-success" : "text-body"}`}>
-                            {r.engagement.leads_count} <span className="fw-normal text-muted fs-12">leads</span>
-                        </div>
-                    </div>
-                );
-            },
+            id: "views",
+            header: "Views",
+            sortKey: "views",
+            value: (r) => r.engagement.views_count,
+            cell: (r) => <span className="fw-semibold text-body">{r.engagement.views_count}</span>,
         },
         {
+            id: "leads",
+            header: "Leads",
+            sortKey: "leads",
+            value: (r) => r.engagement.leads_count,
+            cell: (r) => <span className={`fw-semibold ${r.engagement.leads_count > 0 ? "text-success" : "text-body"}`}>{r.engagement.leads_count}</span>,
+        },
+        {
+            id: "promotion",
             header: "Promover",
-            accessorKey: "promotion",
-            enableSorting: false,
-            enableColumnFilter: false,
-            cell: (c: any) => {
-                const r = c.row.original as PromotionCandidate;
-                return (
-                    <div className="d-flex flex-column align-items-start gap-1">
-                        {selectedCompanyId !== null && (
-                            <StarToggle
-                                companyId={selectedCompanyId}
-                                carId={r.id}
-                                priority={r.promotion}
-                                onChange={(next) => handlePriorityChanged(r.id, next)}
-                                size="md"
-                            />
-                        )}
-                        {r.promotion && (
-                            <div className="text-muted fs-12" style={{ lineHeight: 1.3 }}>
-                                <div>{r.promotion.marked_by?.name ?? "—"}</div>
-                                {r.promotion.marked_at && (
-                                    <div>{new Date(r.promotion.marked_at).toLocaleDateString("pt-PT")}</div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                );
-            },
+            cell: (r) => (
+                <div className="d-flex flex-column align-items-start gap-1">
+                    {selectedCompanyId !== null && (
+                        <StarToggle
+                            companyId={selectedCompanyId}
+                            carId={r.id}
+                            priority={r.promotion}
+                            onChange={(next) => handlePriorityChanged(r.id, next)}
+                            size="md"
+                        />
+                    )}
+                    {r.promotion && (
+                        <div className="text-muted fs-12" style={{ lineHeight: 1.3 }}>
+                            <div>{r.promotion.marked_by?.name ?? "—"}</div>
+                            {r.promotion.marked_at && (
+                                <div>{new Date(r.promotion.marked_at).toLocaleDateString("pt-PT")}</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ),
         },
-    ], [selectedCompanyId, handlePriorityChanged]);
+    ];
+    const cols = useDataColumns("comercial.candidatas-promocao", columnDefs);
 
     const renderMobileCard = useCallback((rowData: PromotionCandidate) => {
         if (selectedCompanyId === null) return null;
@@ -555,7 +401,7 @@ const StockPromotionPage = () => {
     }, [selectedCompanyId, handlePriorityChanged]);
 
     const total = page?.meta?.total ?? summary?.visible_total ?? 0;
-    const lastPage = page?.meta?.last_page ?? 1;
+    const meta: any = page?.meta ?? {};
 
     document.title = "Candidatas a promoção | Xplendor";
 
@@ -566,177 +412,73 @@ const StockPromotionPage = () => {
                 <PageHeader
                     title="Candidatas a promoção"
                     breadcrumbs={[{ label: "Comercial" }]}
-                    description="As viaturas em stock que vale a pena potenciar com tráfego pago, com a posição de cada uma face ao mercado."
-                    actions={<>
-                        {isRoot && (
-                            <div style={{ minWidth: 240, maxWidth: "100%" }}>
-                                <Select
-                                    styles={reactSelectTheme}
-                                    menuPortalTarget={document.body}
-                                    aria-label="Empresa"
-                                    options={companyOptions}
-                                    value={companyOptions.find((o: any) => o.value === selectedCompanyId) || null}
-                                    onChange={(opt: any) => {
-                                        setSelectedCompanyId(opt?.value ?? userCompanyId);
-                                        setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
-                                    }}
-                                    placeholder="Escolher empresa…"
-                                />
-                            </div>
-                        )}
-                        {isFiltersMobile && (
-                            <button
-                                type="button"
-                                className="btn btn-outline-primary"
-                                onClick={() => setFiltersOpen(true)}
-                            >
-                                <i className="ri-filter-line me-1" />
-                                {activeFilterCount > 0 ? `Filtros (${activeFilterCount})` : "Filtros"}
-                            </button>
-                        )}
-                    </>}
+                    info="As viaturas em stock que vale a pena potenciar com tráfego pago, com a posição de cada uma face ao mercado."
+                    filters={isRoot ? (
+                        <XSelect
+                            small
+                            width={240}
+                            ariaLabel="Empresa"
+                            options={companyOptions}
+                            value={selectedCompanyId}
+                            onChange={(v) => {
+                                setSelectedCompanyId(Number(v) || userCompanyId);
+                                setPagination({ pageIndex: 0, pageSize: pagination.pageSize });
+                            }}
+                            placeholder="Escolher empresa…"
+                        />
+                    ) : undefined}
                 />
 
-                <Row>
-                    {/* SIDEBAR DE FILTROS — card com gradiente espelhado */}
-                    {!isFiltersMobile && (
-                        <Col xl={3} lg={4}>
-                            <Card className="border-0" style={CARD_SHADOW}>
-                                <CardHeader
-                                    className="border-bottom-0"
-                                    style={{ ...CARD_HEADER_GRADIENT, padding: "1.25rem 1.25rem 0 1.25rem" }}
-                                >
-                                    <div className="d-flex mb-3 align-items-start justify-content-between gap-2">
-                                        <div className="flex-grow-1">
-                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={EYEBROW_STYLE}>
-                                                Filtros
-                                            </p>
-                                            <h5 className="fs-16 mb-1 fw-semibold">Refinar candidatas</h5>
-                                            <p className="text-muted fs-13 mb-0">
-                                                Afine por preço, idade, posição no mercado e prioridades já marcadas.
-                                            </p>
-                                        </div>
-                                        <div className="flex-shrink-0">
-                                            <ReasonButton
-                                                type="button"
-                                                color="link"
-                                                onClick={handleClearFilters}
-                                                className="text-decoration-none p-0 fs-13"
-                                                reason={activeFilterCount === 0 ? "Não há filtros ativos." : null}
-                                            >
-                                                Limpar todos
-                                            </ReasonButton>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardBody className="pt-2">
-                                    {filterPanelContent}
-                                </CardBody>
-                            </Card>
-                        </Col>
-                    )}
-
-                    {/* LISTA — card espelhado com sub-section da legenda */}
-                    <Col xl={isFiltersMobile ? 12 : 9} lg={isFiltersMobile ? 12 : 8}>
-                        <Card className="border-0 overflow-hidden" style={CARD_SHADOW}>
-                            <CardHeader
-                                className="border-bottom-0"
-                                style={{ ...CARD_HEADER_GRADIENT, padding: "1rem 1rem 0 1rem" }}
-                            >
-                                <div className="d-flex align-items-start justify-content-between gap-3 flex-wrap mb-3 px-2">
-                                    <div>
-                                        <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={EYEBROW_STYLE}>
-                                            Decisão de Promoção
-                                        </p>
-                                        <h5 className="mb-1 fw-semibold">Que viaturas vamos potenciar com tráfego pago?</h5>
-                                        <p className="text-muted fs-13 mb-0">
-                                            Marque com ★ as que entram na próxima campanha. O orçamento e a ligação ao Meta vêm depois.
-                                        </p>
-                                    </div>
-                                    <span className="badge bg-light text-muted fs-12 px-3 py-2">
-                                        {total} viatura{total === 1 ? "" : "s"}
-                                        {summary && summary.marked_total > 0 && (
-                                            <> · {summary.marked_total} marcada{summary.marked_total === 1 ? "" : "s"}</>
-                                        )}
-                                    </span>
-                                </div>
-                            </CardHeader>
-                            <CardBody className="pt-3">
-                                {/* Sub-section "Legenda de Mercado" — espelha o bloco "Prioridade Comercial" da CarList */}
-                                <div className="mb-3 px-1">
-                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                        <div>
-                                            <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={EYEBROW_STYLE}>
-                                                Posição vs Mercado
-                                            </p>
-                                            <h6 className="mb-0 fw-semibold">Como ler o chip de mercado</h6>
-                                        </div>
-                                        <div className="d-flex gap-2 flex-wrap">
-                                            <span className="badge bg-success-subtle text-success px-3 py-2 fs-12">
-                                                No mercado ou abaixo
-                                            </span>
-                                            <span className="badge bg-danger-subtle text-danger px-3 py-2 fs-12">
-                                                Acima do mercado
-                                            </span>
-                                            <span className="badge bg-light text-muted px-3 py-2 fs-12">
-                                                Confiança baixa
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="pt-1">
-                                    <XTanStackTable
-                                        columns={columns}
-                                        data={page?.data ?? []}
-                                        loading={loading}
-                                        pagination={pagination}
-                                        onPaginationChange={setPagination}
-                                        pageCount={lastPage}
-                                        total={total}
-                                        customPageSize={pagination.pageSize}
-                                        mobileMode={isMobile}
-                                        renderMobileCard={renderMobileCard}
-                                        isBordered={true}
-                                        theadClass="text-muted table-light"
-                                    />
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </Col>
-                </Row>
-
-                {/* Off-canvas em mobile/tablet — espelha CarList */}
-                {isFiltersMobile && (
-                    <Offcanvas
-                        isOpen={filtersOpen}
-                        toggle={() => setFiltersOpen(false)}
-                        direction="start"
-                        scrollable
-                    >
-                        <OffcanvasHeader toggle={() => setFiltersOpen(false)}>
-                            <div>
-                                <p className="text-muted text-uppercase fw-semibold fs-11 mb-1" style={EYEBROW_STYLE}>
-                                    Filtros
-                                </p>
-                                <span className="fw-semibold fs-16">Refinar candidatas</span>
-                            </div>
-                        </OffcanvasHeader>
-                        <OffcanvasBody>
-                            <div className="d-flex justify-content-end mb-4">
-                                <ReasonButton
-                                    type="button"
-                                    color="link"
-                                    onClick={handleClearFilters}
-                                    className="text-decoration-none p-0 fs-13"
-                                    reason={activeFilterCount === 0 ? "Não há filtros ativos." : null}
-                                >
-                                    Limpar todos
-                                </ReasonButton>
-                            </div>
-                            {filterPanelContent}
-                        </OffcanvasBody>
-                    </Offcanvas>
-                )}
+                <PageCard
+                    title="Que viaturas vamos potenciar com tráfego pago?"
+                    info={<>
+                        Marque com ★ as que entram na próxima campanha. O orçamento e a ligação ao Meta vêm depois.
+                        <br />Mercado: <span className="text-success">verde</span>, no mercado ou abaixo; <span className="text-danger">vermelho</span>, acima do mercado;
+                        cinzento, confiança baixa ou sem dados suficientes.
+                    </>}
+                    status={<>
+                        {total} viatura{total === 1 ? "" : "s"}
+                        {summary && summary.marked_total > 0 && (
+                            <> · {summary.marked_total} marcada{summary.marked_total === 1 ? "" : "s"}</>
+                        )}
+                    </>}
+                    loading={loading && (page?.data?.length ?? 0) > 0}
+                    actions={cols.selector}
+                    filters={
+                        <RestFilterBar activeCount={activeFilterCount} onClear={handleClearFilters}>
+                            {filterFields}
+                        </RestFilterBar>
+                    }
+                >
+                    <DataTable
+                        columns={cols}
+                        data={page?.data ?? []}
+                        rowKey={(r) => r.id}
+                        mode="server"
+                        loading={loading}
+                        caption="Candidatas a promoção"
+                        empty={{ message: activeFilterCount > 0 ? "Sem viaturas com estes filtros." : "Sem viaturas candidatas." }}
+                        mobileCard={(r) => renderMobileCard(r)}
+                        server={{
+                            page: meta.current_page ?? pagination.pageIndex + 1,
+                            lastPage: meta.last_page ?? 1,
+                            total,
+                            perPage: meta.per_page ?? pagination.pageSize,
+                            from: meta.from ?? (total ? pagination.pageIndex * pagination.pageSize + 1 : 0),
+                            to: meta.to ?? Math.min(total, (pagination.pageIndex + 1) * pagination.pageSize),
+                            onPageChange: (p) => setPagination((s) => ({ ...s, pageIndex: p - 1 })),
+                            sort: sortBy ? { id: SORT_COLUMN[sortBy], desc: sortDir === "desc" } : null,
+                            onSortChange: (next) => {
+                                // Sem ordenação volta à de omissão (dias em stock, decrescente); se já era essa,
+                                // passa a crescente, para os dias em stock também se poderem ver ao contrário.
+                                const isDefault = sortBy === DEFAULT_SORT.by && sortDir === DEFAULT_SORT.dir;
+                                setSortBy((next?.key ?? DEFAULT_SORT.by) as ListPromotionCandidatesParams["sort_by"]);
+                                setSortDir(next ? (next.desc ? "desc" : "asc") : (isDefault ? "asc" : DEFAULT_SORT.dir));
+                                setPagination((s) => ({ ...s, pageIndex: 0 }));
+                            },
+                        }}
+                    />
+                </PageCard>
             </Container>
         </div>
     );

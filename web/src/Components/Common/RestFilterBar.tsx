@@ -11,8 +11,9 @@ import { useIsMobile } from "../../hooks/useIsMobile";
  * alinharem no desktop e ocuparem a largura toda no off-canvas.
  */
 interface RestFilterBarProps {
-    search: string;
-    onSearchChange: (v: string) => void;
+    /** Sem `onSearchChange`, a barra não tem pesquisa (só os filtros). */
+    search?: string;
+    onSearchChange?: (v: string) => void;
     searchPlaceholder?: string;
     activeCount: number;
     onClear: () => void;
@@ -31,18 +32,18 @@ export default function RestFilterBar({
     const isMobile = useIsMobile();
     const [open, setOpen] = useState(false);
 
-    const searchField = (
+    const searchField = onSearchChange && (
         <div className="position-relative" style={{ flex: "1 1 220px", minWidth: 0 }}>
             <i
                 className="ri-search-line position-absolute text-muted"
-                style={{ top: "50%", left: 12, transform: "translateY(-50%)", pointerEvents: "none" }}
+                style={{ top: "50%", left: 9, transform: "translateY(-50%)", pointerEvents: "none" }}
             />
             <input
                 type="search"
-                className="form-control"
-                style={{ paddingLeft: 34 }}
+                className="form-control form-control-sm"
+                style={{ paddingLeft: 28 }}
                 placeholder={searchPlaceholder}
-                value={search}
+                value={search ?? ""}
                 onChange={(e) => onSearchChange(e.target.value)}
             />
         </div>
@@ -55,7 +56,7 @@ export default function RestFilterBar({
                     {searchField}
                     <button
                         type="button"
-                        className="btn btn-outline-primary flex-shrink-0"
+                        className="btn btn-outline-primary btn-sm flex-shrink-0"
                         onClick={() => setOpen(true)}
                     >
                         <i className="ri-filter-3-line me-1" />
@@ -92,8 +93,8 @@ export default function RestFilterBar({
                 <button
                     type="button"
                     onClick={onClear}
-                    className="btn btn-link text-decoration-none p-0 fs-13 flex-shrink-0"
-                    style={{ paddingBottom: 8 }}
+                    className="btn btn-link text-decoration-none p-0 fs-12 flex-shrink-0"
+                    style={{ paddingBottom: 5 }}
                 >
                     Limpar
                 </button>

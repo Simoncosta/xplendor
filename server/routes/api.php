@@ -319,6 +319,20 @@ Route::prefix('v1')->group(function () {
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinSearch']);
                     Route::post('/ocr/invoices/{invoiceId}/pingwin-link/confirm', [CompanyInvoiceOcrController::class, 'pingwinConfirm']);
                     Route::delete('/ocr/invoices/{invoiceId}/pingwin-link', [CompanyInvoiceOcrController::class, 'pingwinUnlink']);
+                    // F2b: artigos nas linhas (associar/criar; escritas no PingWin assíncronas)
+                    Route::get('/ocr/articles/search', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'search']);
+                    Route::get('/ocr/articles/form', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'form']);
+                    Route::post('/ocr/invoices/{invoiceId}/lines/accept-suggestions', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'acceptSuggestions']);
+                    Route::post('/ocr/invoices/{invoiceId}/lines/relink', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'relink']);
+                    Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'associate'])->whereNumber('lineId');
+                    Route::delete('/ocr/invoices/{invoiceId}/lines/{lineId}/article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'unlink'])->whereNumber('lineId');
+                    Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/create-article', [\App\Http\Controllers\Api\V1\CompanyOcrLineArticleController::class, 'createArticle'])->whereNumber('lineId');
+                    // FB-1: "Lançar no PingWin" (rascunho 8001 → fechar 8002 / anular 8003); escritas assíncronas
+                    Route::get('/ocr/invoices/{invoiceId}/pingwin-launch', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'show']);
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-launch', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'store'])->middleware('block_when_impersonating');
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-launch/close', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'close'])->middleware('block_when_impersonating');
+                    Route::post('/ocr/invoices/{invoiceId}/pingwin-launch/void', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'void'])->middleware('block_when_impersonating');
+                    Route::post('/ocr/invoices/{invoiceId}/lines/{lineId}/launch-unit', [\App\Http\Controllers\Api\V1\CompanyOcrLaunchController::class, 'setLineUnit'])->whereNumber('lineId');
                     // F1 — documentos de fornecedor do PingWin (SÓ LEITURA): lista, sync por período e estado do run.
                     Route::get('/integrations/pingwin/supplier-documents', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'index']);
                     Route::post('/integrations/pingwin/supplier-documents/sync', [\App\Http\Controllers\Api\V1\CompanySupplierDocumentsController::class, 'sync']);

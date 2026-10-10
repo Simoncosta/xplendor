@@ -172,8 +172,8 @@ export default function ContaCorrenteFornecedorPage() {
                         flush={false}
                         status={s ? <>Atualizado a {fmtInstant(s.synced_at)}</> : undefined}
                         actions={<>
-                            <Link to="/restauracao/conta-corrente" className="btn btn-light"><i className="ri-arrow-left-line me-1" />Voltar</Link>
-                            <Button color="outline-primary" onClick={() => refresh(supplierId)} disabled={!!busy[supplierId] || !s} title="Atualizar a partir do PingWin">
+                            <Link to="/restauracao/conta-corrente" className="btn btn-light btn-sm"><i className="ri-arrow-left-line me-1" />Voltar</Link>
+                            <Button size="sm" color="outline-primary" onClick={() => refresh(supplierId)} disabled={!!busy[supplierId] || !s} title="Atualizar a partir do PingWin">
                                 {busy[supplierId] ? <><Spinner size="sm" className="me-1" />A atualizar…</> : <><i className="ri-refresh-line me-1" />Atualizar</>}
                             </Button>
                         </>}
@@ -257,7 +257,7 @@ export default function ContaCorrenteFornecedorPage() {
                             status={<>{fmtDay(from)} a {fmtDay(to)} · {storeName === "Todas" ? "todas as lojas" : storeName}</>}
                             actions={<>
                                 {stmtCols.selector}
-                                <Button color="outline-primary" onClick={() => window.print()} disabled={!stmt}>
+                                <Button size="sm" color="outline-primary" onClick={() => window.print()} disabled={!stmt}>
                                     <i className="ri-printer-line me-1" />Imprimir
                                 </Button>
                             </>}

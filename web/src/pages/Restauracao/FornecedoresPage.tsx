@@ -339,8 +339,8 @@ export default function FornecedoresPage() {
 
     const field = (k: keyof PingwinSupplierForm, label: string, max: number, opts: { md?: number; required?: boolean; placeholder?: string } = {}) => (
         <Col md={opts.md ?? 6} className="mb-2">
-            <Label className="form-label fs-12 mb-1">{label}{opts.required && <span className="text-danger"> *</span>}</Label>
-            <Input bsSize="sm" value={form[k]} maxLength={max} placeholder={opts.placeholder} onChange={(e) => setField(k, e.target.value)} disabled={busy} />
+            <Label className="form-label">{label}{opts.required && <span className="text-danger"> *</span>}</Label>
+            <Input value={form[k]} maxLength={max} placeholder={opts.placeholder} onChange={(e) => setField(k, e.target.value)} disabled={busy} />
         </Col>
     );
 
@@ -365,10 +365,10 @@ export default function FornecedoresPage() {
                             </>}
                             actions={<>
                                 {cols.selector}
-                                <Button color="outline-primary" onClick={runSync} disabled={syncing}>
+                                <Button size="sm" color="outline-primary" onClick={runSync} disabled={syncing}>
                                     {syncing ? <><Spinner size="sm" className="me-1" /> A sincronizar…</> : <><i className="ri-refresh-line me-1" /> Sincronizar</>}
                                 </Button>
-                                <ReasonButton color="primary" onClick={openCreate} reason={busyReason}>
+                                <ReasonButton size="sm" color="primary" onClick={openCreate} reason={busyReason}>
                                     <i className="ri-add-line me-1" /> Novo fornecedor
                                 </ReasonButton>
                             </>}
@@ -412,22 +412,22 @@ export default function FornecedoresPage() {
                         <Row>
                             {modal?.mode === "edit" && (
                                 <Col md={3} className="mb-2">
-                                    <Label className="form-label fs-12 mb-1">Código</Label>
-                                    <Input bsSize="sm" value={modal.supplier?.code ?? ""} readOnly disabled />
+                                    <Label className="form-label">Código</Label>
+                                    <Input value={modal.supplier?.code ?? ""} readOnly disabled />
                                 </Col>
                             )}
                             {field("description", "Nome", 50, { md: modal?.mode === "edit" ? 9 : 12, required: true })}
                             {field("fiscalname", "Nome fiscal", 100)}
                             {field("tax_number", "NIF", 21, { md: 3 })}
                             <Col md={3} className="mb-2">
-                                <Label className="form-label fs-12 mb-1">País</Label>
-                                <Input bsSize="sm" value="Portugal" readOnly disabled />
+                                <Label className="form-label">País</Label>
+                                <Input value="Portugal" readOnly disabled />
                             </Col>
                             {field("address", "Morada", 150, { md: 12 })}
                             {field("postalcode", "Código postal", 20, { md: 3, placeholder: "4200-232" })}
                             {field("postalcode_description", "Localidade", 75, { md: 9, placeholder: "Porto" })}
                             <Col md={6} className="mb-2">
-                                <Label className="form-label fs-12 mb-1">Condição de pagamento</Label>
+                                <Label className="form-label">Condição de pagamento</Label>
                                 <XSelect ariaLabel="Condição de pagamento" options={paycondOptions} value={form.paycond_id}
                                     onChange={(v) => setField("paycond_id", v)} disabled={busy} placeholder="— Sem condição —" />
                             </Col>

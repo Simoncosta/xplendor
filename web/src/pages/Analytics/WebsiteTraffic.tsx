@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Card, CardBody, Col, Container, Row, Spinner } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { useDataColumns } from "Components/Common/DataTable";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getGa4Traffic } from "helpers/laravel_helper";
 import {
@@ -81,6 +83,20 @@ const WebsiteTraffic = () => {
         ];
     }, [traffic]);
 
+    type TopPage = { title: string; path: string; views: number };
+    const pageCols = useDataColumns<TopPage>("marketing.trafego.paginas", [
+        {
+            id: "page", header: "Página", value: (p) => p.title || p.path, hideable: false, mobile: "title",
+            cell: (p) => (
+                <div className="text-truncate" style={{ maxWidth: 360 }}>
+                    <div className="fw-medium text-truncate">{p.title || p.path}</div>
+                    <small className="text-muted text-truncate d-block">{p.path}</small>
+                </div>
+            ),
+        },
+        { id: "views", header: "Visualizações", value: (p) => p.views, cell: (p) => <span className="fw-semibold">{p.views.toLocaleString("pt-PT")}</span>, align: "end", hideable: false },
+    ]);
+
     const rangeToggle = (
         <div className="xp-seg" role="radiogroup" aria-label="Intervalo">
             {RANGES.map((r) => (
@@ -95,26 +111,21 @@ const WebsiteTraffic = () => {
         <div className="page-content">
             <Container fluid>
                 <PageHeader title="Tráfego do site" breadcrumbs={[{ label: "Marketing" }]}
-                    description={!loading && connected && traffic && !error ? `${traffic.range.start} a ${traffic.range.end}` : "Os visitantes, as páginas, as origens e os dispositivos do site (Google Analytics)."}
-                    actions={!loading && connected && traffic && !error ? (<>
-                        {rangeToggle}
-                        <button className="btn btn-outline-primary" onClick={() => fetchTraffic(true)} disabled={refreshing} title="Ignorar a cache e ler dados atualizados" aria-label="Atualizar os dados">
-                            {refreshing ? <Spinner size="sm" /> : <i className="ri-refresh-line" />}
-                        </button>
-                    </>) : undefined} />
+                    info="Os visitantes, as páginas, as origens e os dispositivos do site (Google Analytics)."
+                    filters={!loading && connected && traffic && !error ? rangeToggle : undefined} />
 
                 {loading ? (
                     <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                 ) : !connected ? (
-                    <Card><CardBody className="text-center py-5">
+                    <PageCard title="Google Analytics" flush={false}><div className="text-center py-4">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-light rounded fs-24" style={{ color: "#E37400" }}><i className="ri-bar-chart-box-line" /></span></div>
                         <h5 className="mb-2">Ligue o Google Analytics</h5>
                         <p className="text-muted mb-1">Ainda não ligou a propriedade GA4 do seu site.</p>
                         {saEmail && <p className="text-muted fs-13 mb-3">Adicione <span className="fw-medium">{saEmail}</span> como Visualizador no seu GA4 e cole o ID da propriedade nas Integrações.</p>}
                         <Link to={`/companies/${companyId}`} className="btn btn-primary"><i className="ri-links-line me-1" />Ir às Integrações</Link>
-                    </CardBody></Card>
+                    </div></PageCard>
                 ) : error || !traffic ? (
-                    <Card><CardBody className="text-center py-5">
+                    <PageCard title="Google Analytics" flush={false}><div className="text-center py-4">
                         <div className="avatar-md mx-auto mb-3"><span className="avatar-title bg-danger-subtle text-danger rounded fs-24"><i className="ri-error-warning-line" /></span></div>
                         <h5 className="mb-2">Não foi possível ler o GA4</h5>
                         <p className="text-muted mb-2">{error ?? "Tente novamente mais tarde."}</p>
@@ -126,7 +137,7 @@ const WebsiteTraffic = () => {
                                 {refreshing ? <><Spinner size="sm" className="me-1" /> A atualizar…</> : <><i className="ri-refresh-line me-1" />Forçar atualização (ignora cache)</>}
                             </button>
                         </div>
-                    </CardBody></Card>
+                    </div></PageCard>
                 ) : (
                     <>
                         {/* KPIs */}
@@ -147,66 +158,59 @@ const WebsiteTraffic = () => {
                         <Row className="g-4 pb-5 mb-5">
                             {/* Tendência */}
                             <Col xl={8}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Tendência</h6>
+                                <PageCard className="h-100 mb-0" title="Tendência" flush={false}
+                                    status={<>{traffic.range.start} a {traffic.range.end}</>}
+                                    actions={
+                                        <button className="btn btn-outline-primary btn-sm" onClick={() => fetchTraffic(true)} disabled={refreshing} title="Ignorar a cache e ler dados atualizados" aria-label="Atualizar os dados">
+                                            {refreshing ? <Spinner size="sm" /> : <i className="ri-refresh-line" />}
+                                        </button>
+                                    }>
                                     <TrendChart trend={traffic.trend} />
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
 
                             {/* Origens de tráfego */}
                             <Col xl={4}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Origens de tráfego</h6>
+                                <PageCard className="h-100 mb-0" title="Origens de tráfego" flush={false}>
                                     {traffic.traffic_sources.length === 0 ? <p className="text-muted fs-13 mb-0">Sem dados.</p> : (() => {
                                         const max = Math.max(...traffic.traffic_sources.map((s) => s.sessions), 1);
                                         return traffic.traffic_sources.map((s) => (
                                             <Bar key={s.channel} label={CHANNEL_LABELS[s.channel] ?? s.channel} value={s.sessions} max={max} />
                                         ));
                                     })()}
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
 
                             {/* Páginas mais vistas */}
                             <Col xl={6}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Páginas mais vistas</h6>
-                                    {traffic.top_pages.length === 0 ? <p className="text-muted fs-13 mb-0">Sem dados.</p> : (
-                                        <div className="table-responsive">
-                                            <table className="table table-sm align-middle mb-0">
-                                                <tbody>
-                                                    {traffic.top_pages.map((p, i) => (
-                                                        <tr key={i}>
-                                                            <td className="text-truncate" style={{ maxWidth: 260 }}>
-                                                                <div className="fw-medium text-truncate">{p.title || p.path}</div>
-                                                                <small className="text-muted text-truncate d-block">{p.path}</small>
-                                                            </td>
-                                                            <td className="text-end fw-semibold">{p.views.toLocaleString("pt-PT")}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </CardBody></Card>
+                                <PageCard className="h-100 mb-0" title="Páginas mais vistas">
+                                    <DataTable
+                                        columns={pageCols}
+                                        data={traffic.top_pages as TopPage[]}
+                                        rowKey={(p) => p.path}
+                                        initialSort={{ id: "views", desc: true }}
+                                        pageSize={10}
+                                        caption="Páginas mais vistas"
+                                        empty={{ message: "Sem dados." }}
+                                    />
+                                </PageCard>
                             </Col>
 
                             {/* Dispositivos */}
                             <Col xl={3} md={6}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Dispositivos</h6>
+                                <PageCard className="h-100 mb-0" title="Dispositivos" flush={false}>
                                     {traffic.devices.length === 0 ? <p className="text-muted fs-13 mb-0">Sem dados.</p> : (() => {
                                         const max = Math.max(...traffic.devices.map((d) => d.sessions), 1);
                                         return traffic.devices.map((d) => (
                                             <Bar key={d.device} label={DEVICE_LABELS[d.device] ?? d.device} value={d.sessions} max={max} />
                                         ));
                                     })()}
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
 
                             {/* Geografia */}
                             <Col xl={3} md={6}>
-                                <Card className="h-100 mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Localização</h6>
+                                <PageCard className="h-100 mb-0" title="Localização" flush={false}>
                                     {traffic.geo.length === 0 ? <p className="text-muted fs-13 mb-0">Sem dados.</p> : (
                                         <ul className="list-unstyled vstack gap-2 mb-0">
                                             {traffic.geo.map((g, i) => (
@@ -217,13 +221,12 @@ const WebsiteTraffic = () => {
                                             ))}
                                         </ul>
                                     )}
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
 
                             {/* Demografia — BEST-EFFORT */}
                             <Col xl={12}>
-                                <Card className="mb-0"><CardBody>
-                                    <h6 className="mb-3 text-uppercase">Demografia</h6>
+                                <PageCard className="mb-0" title="Demografia" flush={false}>
                                     {/* demografia — grelha interna arejada */}
                                     {!traffic.demographics.available ? (
                                         <div className="text-center text-muted py-3">
@@ -254,7 +257,7 @@ const WebsiteTraffic = () => {
                                             </Col>
                                         </Row>
                                     )}
-                                </CardBody></Card>
+                                </PageCard>
                             </Col>
                         </Row>
                     </>

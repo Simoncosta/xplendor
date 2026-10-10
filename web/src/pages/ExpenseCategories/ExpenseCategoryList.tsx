@@ -2,10 +2,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Button, Card, CardBody, Container, Table } from "reactstrap";
+import { Button, Container } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 // Components
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ExpenseCategoryFormModal from "./components/ExpenseCategoryFormModal";
 import ImportSuggestedModal from "./components/ImportSuggestedModal";
@@ -47,6 +50,7 @@ const ExpenseCategoryList = () => {
     const [editing, setEditing] = useState<IExpenseCategory | null>(null);
     const [showArchived, setShowArchived] = useState(false);
     const [importOpen, setImportOpen] = useState(false);
+    const [search, setSearch] = useState("");
 
     const fetchList = useCallback(() => {
         if (!companyId) return;
@@ -112,36 +116,38 @@ const ExpenseCategoryList = () => {
         }
     };
 
-    const renderRow = (c: IExpenseCategory, isArchivedRow: boolean) => (
-        <tr key={c.id} className={isArchivedRow ? "text-muted" : ""}>
-            <td className={isArchivedRow ? "" : "fw-medium"}>
-                <ColorDot color={c.color} />
-                {c.name}
-                {isArchivedRow && <span className="badge bg-light text-muted ms-2">Arquivada</span>}
-                {c.locked && <span className="badge bg-primary-subtle text-primary ms-2">Da plataforma</span>}
-            </td>
-            <td className="text-end">
-                {c.locked ? (
-                    <span className="text-muted" title="Categoria das faturas da XPLENDOR: não pode ser alterada nem apagada."><i className="ri-lock-line" /></span>
-                ) : (
-                    <div className="d-inline-flex gap-1">
-                        {isArchivedRow ? (
-                            <Button size="sm" color="outline-primary" onClick={() => setArchived(c, false)} title="Restaurar" aria-label={`Restaurar: ${c.name}`}>
-                                <i className="ri-inbox-unarchive-line" />
-                            </Button>
-                        ) : (
-                            <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}>
-                                <i className="ri-pencil-line" />
-                            </Button>
-                        )}
-                        <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
-                            { label: "Arquivar", icon: "ri-archive-line", hidden: isArchivedRow, onClick: () => void setArchived(c, true) },
-                            { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
-                        ]} />
-                    </div>
-                )}
-            </td>
-        </tr>
+    const cols = useDataColumns<IExpenseCategory>("financas.categorias-despesa", [
+        {
+            id: "name", header: "Categoria", value: (c) => c.name, hideable: false, mobile: "title",
+            cell: (c) => (
+                <span className={c.archived ? "" : "fw-medium"}>
+                    <ColorDot color={c.color} />
+                    {c.name}
+                    {c.archived && <span className="badge bg-light text-muted ms-2">Arquivada</span>}
+                    {c.locked && <span className="badge bg-primary-subtle text-primary ms-2">Da plataforma</span>}
+                </span>
+            ),
+        },
+    ] as DTColumn<IExpenseCategory>[]);
+
+    const rowActions = (c: IExpenseCategory) => c.locked ? (
+        <span className="text-muted" title="Categoria das faturas da XPLENDOR: não pode ser alterada nem apagada."><i className="ri-lock-line" /></span>
+    ) : (
+        <>
+            {c.archived ? (
+                <Button size="sm" color="outline-primary" onClick={() => setArchived(c, false)} title="Restaurar" aria-label={`Restaurar: ${c.name}`}>
+                    <i className="ri-inbox-unarchive-line" />
+                </Button>
+            ) : (
+                <Button size="sm" color="outline-primary" onClick={() => openEdit(c)} title="Editar" aria-label={`Editar: ${c.name}`}>
+                    <i className="ri-pencil-line" />
+                </Button>
+            )}
+            <ActionsMenu size="sm" label={`Mais ações: ${c.name}`} items={[
+                { label: "Arquivar", icon: "ri-archive-line", hidden: !!c.archived, onClick: () => void setArchived(c, true) },
+                { label: "Eliminar", icon: "ri-delete-bin-line", danger: true, onClick: () => void handleDelete(c) },
+            ]} />
+        </>
     );
 
     return (
@@ -150,16 +156,12 @@ const ExpenseCategoryList = () => {
                 <ToastContainer />
                 <Container fluid>
                     <PageHeader title="Categorias de Despesa" breadcrumbs={[{ label: "Finanças" }]}
-                        description="Classificam as despesas de viatura (para agrupar nos gráficos)."
-                        actions={!isEmpty ? (<>
-                            <Button color="outline-primary" onClick={() => setImportOpen(true)}><i className="ri-download-2-line me-1" />Importar sugeridas</Button>
-                            <Button color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova categoria</Button>
-                        </>) : undefined} />
+                        info="Classificam as despesas de viatura (para agrupar nos gráficos)." />
 
                     {/* Estado vazio — importar sugeridas ou criar do zero. */}
-                    {isEmpty && (
-                        <Card>
-                            <CardBody className="text-center py-5">
+                    {isEmpty ? (
+                        <PageCard title="Categorias" flush={false}>
+                            <div className="text-center py-4">
                                 <div className="mb-3">
                                     <i className="ri-price-tag-3-line display-5 text-muted" />
                                 </div>
@@ -171,57 +173,41 @@ const ExpenseCategoryList = () => {
                                     <Button color="outline-primary" onClick={openCreate}><i className="ri-add-line me-1" />Criar do zero</Button>
                                     <Button color="primary" onClick={() => setImportOpen(true)}><i className="ri-download-2-line me-1" />Importar categorias sugeridas</Button>
                                 </div>
-                            </CardBody>
-                        </Card>
-                    )}
-
-                    {/* Lista de activas. */}
-                    {!isEmpty && (
-                        <Card>
-                            <CardBody>
-                                <div className="table-responsive">
-                                    <Table className="align-middle table-nowrap mb-0">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Categoria</th>
-                                                <th className="text-end">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {loading && (
-                                                <tr><td colSpan={2} className="text-center text-muted py-4">A carregar…</td></tr>
-                                            )}
-                                            {!loading && active.length === 0 && (
-                                                <tr><td colSpan={2} className="text-center text-muted py-4">Sem categorias ativas.</td></tr>
-                                            )}
-                                            {!loading && active.map((c) => renderRow(c, false))}
-                                        </tbody>
-                                    </Table>
-                                </div>
-
-                                {archived.length > 0 && (
-                                    <div className="mt-3">
-                                        <button
-                                            className="btn btn-sm btn-link text-decoration-none px-0"
-                                            onClick={() => setShowArchived((v) => !v)}
-                                        >
-                                            <i className={`ri-arrow-${showArchived ? "down" : "right"}-s-line align-middle`} />
-                                            {showArchived ? "Ocultar" : "Mostrar"} arquivadas ({archived.length})
-                                        </button>
-
-                                        {showArchived && (
-                                            <div className="table-responsive mt-2">
-                                                <Table className="align-middle table-nowrap mb-0">
-                                                    <tbody>
-                                                        {archived.map((c) => renderRow(c, true))}
-                                                    </tbody>
-                                                </Table>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </CardBody>
-                        </Card>
+                            </div>
+                        </PageCard>
+                    ) : (
+                        <PageCard
+                            title="Categorias"
+                            status={<>{active.length} ativa{active.length === 1 ? "" : "s"}{archived.length > 0 ? ` · ${archived.length} arquivada${archived.length === 1 ? "" : "s"}` : ""}</>}
+                            loading={loading && categories.length > 0}
+                            actions={<>
+                                <Button size="sm" color="outline-primary" onClick={() => setImportOpen(true)}><i className="ri-download-2-line me-1" />Importar sugeridas</Button>
+                                <Button size="sm" color="primary" onClick={openCreate}><i className="ri-add-line me-1" />Nova categoria</Button>
+                            </>}
+                            filters={
+                                <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar categoria…"
+                                    activeCount={(search ? 1 : 0) + (showArchived ? 1 : 0)} onClear={() => { setSearch(""); setShowArchived(false); }}>
+                                    {archived.length > 0 && (
+                                        <div className="form-check mb-1 align-self-center" style={{ flex: "0 0 auto" }}>
+                                            <input className="form-check-input" type="checkbox" id="cat-show-archived" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+                                            <label className="form-check-label fs-12" htmlFor="cat-show-archived">Mostrar arquivadas ({archived.length})</label>
+                                        </div>
+                                    )}
+                                </RestFilterBar>
+                            }
+                        >
+                            <DataTable
+                                columns={cols}
+                                data={showArchived ? [...active, ...archived] : active}
+                                rowKey={(c) => c.id}
+                                loading={loading}
+                                search={search}
+                                caption="Categorias de despesa"
+                                rowClassName={(c) => (c.archived ? "text-muted" : undefined)}
+                                empty={{ message: "Sem categorias ativas." }}
+                                rowActions={rowActions}
+                            />
+                        </PageCard>
                     )}
                 </Container>
             </div>

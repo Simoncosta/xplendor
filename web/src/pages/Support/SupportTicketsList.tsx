@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { createSelector } from "reselect";
-import { Link } from "react-router-dom";
-import { Card, CardBody, CardHeader, Container, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Input, Label } from "reactstrap";
+import { Link, useNavigate } from "react-router-dom";
+import { Container, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter, Input, Label } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import { ToastContainer, toast } from "react-toastify";
 import { getSupportTickets, createSupportTicket } from "slices/supportTickets/thunk";
 import {
@@ -28,6 +30,7 @@ const SupportTicketsList = () => {
     const dispatch: any = useDispatch();
     document.title = "Suporte | Xplendor";
     const { tickets, loading, creating } = useSelector(selectVM);
+    const navigate = useNavigate();
 
     const companyId = useWorkingCompanyId();
 
@@ -59,73 +62,86 @@ const SupportTicketsList = () => {
         }
     };
 
+    const cols = useDataColumns<ISupportTicket>("equipa.suporte", [
+        {
+            id: "title", header: "Pedido", value: (t) => t.title, hideable: false, mobile: "title",
+            cell: (t) => {
+                const tm = TICKET_TYPE_META[t.type];
+                const isPaid = t.type === "site_change";
+                return (
+                    <span className="d-inline-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                        <span className="avatar-xs flex-shrink-0">
+                            <span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span>
+                        </span>
+                        <span className="fw-medium text-break">
+                            {t.title}
+                            {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago</span>}
+                        </span>
+                    </span>
+                );
+            },
+        },
+        { id: "type", header: "Tipo", value: (t) => TICKET_TYPE_META[t.type].label, mobile: "subtitle" },
+        { id: "amount", header: "Valor", value: (t) => (t.type === "site_change" && t.quoted_amount != null ? Number(t.quoted_amount) : undefined), cell: (t) => (t.type === "site_change" && t.quoted_amount != null ? formatEuro(t.quoted_amount) : "—"), align: "end", nowrap: true },
+        { id: "messages", header: "Mensagens", value: (t) => t.messages_count ?? 0, cell: (t) => t.messages_count || "—", align: "end" },
+        {
+            // Nos pagos, o badge mostra o estado do ORÇAMENTO (mais informativo).
+            id: "status", header: "Estado",
+            value: (t) => (t.type === "site_change" && t.quote_status ? QUOTE_STATUS_META[t.quote_status].label : TICKET_STATUS_META[t.status].label),
+            cell: (t) => {
+                const qm = t.type === "site_change" && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
+                const sm = TICKET_STATUS_META[t.status];
+                return qm ? <Badge color={qm.color}>{qm.label}</Badge> : <Badge color={sm.color}>{sm.label}</Badge>;
+            },
+        },
+    ] as DTColumn<ISupportTicket>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Suporte" breadcrumbs={[{ label: "Equipa" }]}
-                    description="Os pedidos da sua empresa: ideias, melhorias, erros e sugestões."
+                    info="Os pedidos da sua empresa: ideias, melhorias, erros e sugestões." />
+
+                <PageCard
+                    title="Os meus pedidos"
+                    flush={view === "list"}
+                    status={!loading ? <>{tickets.length} pedido{tickets.length === 1 ? "" : "s"}</> : undefined}
+                    loading={loading && tickets.length > 0}
                     actions={<>
                         <div className="xp-seg" role="tablist" aria-label="Vista">
                             <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
                             <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
                         </div>
-                        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+                        {view === "list" && cols.selector}
+                        <button type="button" className="btn btn-primary btn-sm" onClick={() => setOpen(true)}>
                             <i className="ri-add-line me-1" />Novo pedido
                         </button>
-                    </>} />
-
-                <Card>
-                    <CardHeader><h5 className="mb-0">Os meus pedidos</h5></CardHeader>
-                    <CardBody>
-                        {loading ? (
-                            <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                        ) : tickets.length === 0 ? (
-                            <p className="text-muted mb-0">Ainda não há pedidos. Abre o primeiro em "Novo pedido".</p>
-                        ) : view === "kanban" ? (
+                    </>}
+                >
+                    {view === "kanban" ? (
+                        tickets.length === 0
+                            ? <p className="text-muted mb-0">Ainda não há pedidos. Abre o primeiro em "Novo pedido".</p>
                             // Vista Kanban SÓ LEITURA: o cliente não arrasta (o estado é gerido
                             // pelo admin). Sem coluna de empresa (é uma empresa só). Clicar abre o detalhe.
-                            <TicketsKanban
-                                tickets={tickets}
-                                readOnly
-                                showCompany={false}
-                                detailHref={(id) => `/support/${id}`}
-                            />
-                        ) : (
-                            <div className="d-flex flex-column gap-2">
-                                {tickets.map((t) => {
-                                    const tm = TICKET_TYPE_META[t.type];
-                                    const isPaid = t.type === "site_change";
-                                    const qm = isPaid && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
-                                    const sm = TICKET_STATUS_META[t.status];
-                                    return (
-                                        <Link key={t.id} to={`/support/${t.id}`} className="d-flex align-items-center gap-3 border rounded p-3 text-reset text-decoration-none">
-                                            <span className="avatar-xs flex-shrink-0">
-                                                <span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span>
-                                            </span>
-                                            <div className="flex-grow-1 min-w-0">
-                                                <div className="fw-medium text-truncate">
-                                                    {t.title}
-                                                    {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago</span>}
-                                                </div>
-                                                <small className="text-muted">
-                                                    {tm.label}
-                                                    {isPaid && t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}
-                                                    {t.messages_count ? ` · ${t.messages_count} mensagem(ns)` : ""}
-                                                </small>
-                                            </div>
-                                            {/* Nos pagos, o badge mostra o estado do ORÇAMENTO (mais informativo). */}
-                                            {qm
-                                                ? <Badge color={qm.color} className="flex-shrink-0">{qm.label}</Badge>
-                                                : <Badge color={sm.color} className="flex-shrink-0">{sm.label}</Badge>}
-                                            <i className="ri-arrow-right-s-line fs-18 text-muted flex-shrink-0" />
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardBody>
-                </Card>
+                            : <TicketsKanban tickets={tickets} readOnly showCompany={false} detailHref={(id) => `/support/${id}`} />
+                    ) : (
+                        <DataTable
+                            columns={cols}
+                            data={tickets}
+                            rowKey={(t) => t.id}
+                            loading={loading}
+                            caption="Pedidos de suporte"
+                            onRowClick={(t) => navigate(`/support/${t.id}`)}
+                            empty={{ message: <>Ainda não há pedidos. Abre o primeiro em "Novo pedido".</> }}
+                            rowActions={(t) => (
+                                <Link to={`/support/${t.id}`} className="btn btn-outline-primary btn-sm" title="Abrir" aria-label={`Abrir: ${t.title}`} onClick={(e) => e.stopPropagation()}>
+                                    <i className="ri-arrow-right-s-line" />
+                                </Link>
+                            )}
+                        />
+                    )}
+                </PageCard>
             </Container>
 
             {/* Modal — novo pedido */}

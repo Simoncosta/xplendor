@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import SimpleBar from "simplebar-react";
 import {
-    Button, Card, CardBody, Container, Spinner,
+    Button, CardBody, Container, Spinner,
     Modal, ModalHeader, ModalBody, ModalFooter, Input, Label,
 } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
@@ -17,6 +17,7 @@ import {
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { confirmAction } from "helpers/swal";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import XSelect from "pages/Editorial/XSelect";
 
@@ -153,11 +154,14 @@ const CompanyTasksKanban = () => {
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Tarefas" breadcrumbs={[{ label: "Equipa" }]}
-                    description="O quadro de tarefas da equipa, partilhado por toda a empresa."
-                    actions={<Button color="primary" onClick={() => openCreate("todo")}><i className="ri-add-line me-1" />Nova tarefa</Button>} />
+                    info="O quadro de tarefas da equipa, partilhado por toda a empresa." />
 
-                <Card>
-                    <CardBody>
+                <PageCard
+                    title="Quadro"
+                    flush={false}
+                    status={!loading ? <>{TASK_COLUMNS.reduce((n, c) => n + board[c.key].length, 0)} tarefas</> : undefined}
+                    actions={<Button size="sm" color="primary" onClick={() => openCreate("todo")}><i className="ri-add-line me-1" />Nova tarefa</Button>}
+                >
                         {loading ? (
                             <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
                         ) : (
@@ -240,8 +244,7 @@ const CompanyTasksKanban = () => {
                                 </div>
                             </DragDropContext>
                         )}
-                    </CardBody>
-                </Card>
+                </PageCard>
             </Container>
 
             {/* Modal — criar tarefa (edição vive no detalhe /tasks/:id). */}

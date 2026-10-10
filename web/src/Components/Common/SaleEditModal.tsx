@@ -18,6 +18,7 @@ import { getCustomers, getSaleLeadMatch, linkSaleLead } from "helpers/laravel_he
 import QuickAddCustomerModal from "pages/Customers/components/QuickAddCustomerModal";
 import PostSaleLeadPrompt, { type LeadCandidate } from "Components/Common/PostSaleLeadPrompt";
 import ValidationAlert from "Components/Common/ValidationAlert";
+import XSelect from "Components/Common/Select";
 import {
     parseApiValidationErrors,
     showApiErrorToast,
@@ -371,46 +372,22 @@ export default function SaleEditModal({
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="sale-channel">Canal de venda</Label>
-                                <Input
-                                    id="sale-channel"
-                                    type="select"
-                                    value={form.sale_channel}
-                                    onChange={(e) => setField("sale_channel", e.target.value)}
-                                >
-                                    {SALE_CHANNEL_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                    ))}
-                                </Input>
+                                <XSelect<string> id="sale-channel" value={form.sale_channel} onChange={(v) => setField("sale_channel", v)} searchable={false}
+                                    options={SALE_CHANNEL_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="buyer-gender">Género</Label>
-                                <Input
-                                    id="buyer-gender"
-                                    type="select"
-                                    value={form.buyer_gender}
-                                    onChange={(e) => setField("buyer_gender", e.target.value)}
-                                >
-                                    {BUYER_GENDER_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                    ))}
-                                </Input>
+                                <XSelect<string> id="buyer-gender" value={form.buyer_gender} onChange={(v) => setField("buyer_gender", v)} searchable={false}
+                                    options={BUYER_GENDER_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="buyer-age-range">Faixa etária</Label>
-                                <Input
-                                    id="buyer-age-range"
-                                    type="select"
-                                    value={form.buyer_age_range}
-                                    onChange={(e) => setField("buyer_age_range", e.target.value)}
-                                >
-                                    {BUYER_AGE_RANGE_OPTIONS.map((o) => (
-                                        <option key={o.value} value={o.value}>{o.label}</option>
-                                    ))}
-                                </Input>
+                                <XSelect<string> id="buyer-age-range" value={form.buyer_age_range} onChange={(v) => setField("buyer_age_range", v)} searchable={false}
+                                    options={BUYER_AGE_RANGE_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-12">
@@ -481,9 +458,8 @@ export default function SaleEditModal({
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="has-financing">Financiamento</Label>
-                                <Input id="has-financing" type="select" value={form.has_financing} onChange={(e) => setField("has_financing", e.target.value as Tri)}>
-                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                </Input>
+                                <XSelect<string> id="has-financing" value={form.has_financing} onChange={(v) => setField("has_financing", v as Tri)} searchable={false}
+                                    options={TRI_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-md-4">
@@ -502,9 +478,8 @@ export default function SaleEditModal({
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="has-trade-in">Retoma</Label>
-                                <Input id="has-trade-in" type="select" value={form.has_trade_in} onChange={(e) => setField("has_trade_in", e.target.value as Tri)}>
-                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                </Input>
+                                <XSelect<string> id="has-trade-in" value={form.has_trade_in} onChange={(v) => setField("has_trade_in", v as Tri)} searchable={false}
+                                    options={TRI_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-md-5">
@@ -523,9 +498,8 @@ export default function SaleEditModal({
                         <div className="col-md-4">
                             <FormGroup className="mb-0">
                                 <Label for="first-motorhome">Primeira autocaravana</Label>
-                                <Input id="first-motorhome" type="select" value={form.first_motorhome} onChange={(e) => setField("first_motorhome", e.target.value as Tri)}>
-                                    {TRI_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                                </Input>
+                                <XSelect<string> id="first-motorhome" value={form.first_motorhome} onChange={(v) => setField("first_motorhome", v as Tri)} searchable={false}
+                                    options={TRI_OPTIONS.map((o) => ({ value: String(o.value), label: o.label }))} />
                             </FormGroup>
                         </div>
                         <div className="col-md-8">
