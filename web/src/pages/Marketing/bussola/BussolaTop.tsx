@@ -1,6 +1,7 @@
 import { Col, Row } from "reactstrap";
 import PageCard from "Components/Common/PageCard";
 import { CompassData, CompassNumber, fmtEur, fmtPct } from "common/models/bussola.model";
+import HiddenMoney, { FinancialNote } from "Components/Common/HiddenMoney";
 
 /**
  * Bússola, o cartão do topo: "Esta semana em [empresa]", a linha das datas (estado do cartão),
@@ -27,7 +28,7 @@ export default function BussolaTop({ data }: { data: CompassData }) {
                         <p className="text-uppercase fw-medium text-muted text-truncate fs-12 mb-1" title={n.label}>{n.label}</p>
                         <h4 className={`fs-22 fw-semibold ff-secondary mb-1 ${signed ? `text-${tone}` : ""}`}>
                             {signed && n.value !== null && <i className={`${(n.value ?? 0) < 0 ? "ri-arrow-right-down-line" : "ri-arrow-right-up-line"} fs-16 align-middle me-1`} aria-hidden />}
-                            {n.format === "eur" ? fmtEur(n.value ?? 0) : fmtPct(n.value, signed)}
+                            {n.format === "eur" ? (n.hidden || n.value === null ? <HiddenMoney seed={i} /> : fmtEur(n.value)) : fmtPct(n.value, signed)}
                         </h4>
                         <span className="text-muted fs-12">{n.caption}</span>
                     </div>
@@ -47,6 +48,7 @@ export default function BussolaTop({ data }: { data: CompassData }) {
             status={<>Dados até {dmy(data.data_until)}; atualizados a {dmy(data.computed_at)}, às {hm(data.computed_at)}. Últimas 4 semanas ({dmy(top.period.from)} a {dmy(top.period.to)}) contra as 4 anteriores.</>}
         >
             <Row className="row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-3">{top.numbers.map(tile)}</Row>
+            {data.financial?.visible === false && <FinancialNote className="mb-3" />}
             {top.notes.length > 0 && (
                 <div className="bg-light rounded p-3 fs-13" data-testid="compass-notes">
                     {top.notes.map((t, i) => <p key={i} className={i === top.notes.length - 1 ? "mb-0" : "mb-2"}><i className="ri-information-line text-muted me-1" aria-hidden />{t}</p>)}

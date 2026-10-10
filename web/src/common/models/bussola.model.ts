@@ -8,6 +8,8 @@ export interface CompassNumber {
     format: "pct_signed" | "pct" | "eur";
     caption: string;
     icon: string;
+    /** Sem Finanças: o valor em euros não vem (value null) e o ecrã mostra um número fictício desfocado. */
+    hidden?: boolean;
 }
 
 export interface CompassPlay {
@@ -21,7 +23,7 @@ export interface CompassPlay {
     title: string;
     confidence: "alta" | "media";
     number: { value: string; caption: string };
-    bars: { label: string; value: string; pct: number; color: string }[];
+    bars: { label: string; value: string | null; pct: number; color: string; hidden?: boolean }[];
     what: { text: string; source: "ai" | "template" };
     /** Sempre Instagram e Facebook (multicanal); "connected": as redes da empresa estão ligadas. */
     where: { networks: { network: string; label: string; format_key: string; format_label: string; format_source: string | null }[]; connected: boolean };
@@ -39,7 +41,7 @@ export interface ShiftGrid {
     to: string;
     mode: "hours" | "days";
     special_excluded: number;
-    shifts: Record<string, { mean_cents: number; days: Record<string, { avg_cents: number; occurrences: number; closed: boolean; pct_vs_mean: number | null; weak: boolean }> }>;
+    shifts: Record<string, { mean_cents: number | null; days: Record<string, { avg_cents: number | null; occurrences: number; closed: boolean; pct_vs_mean: number | null; weak: boolean }> }>;
 }
 
 export interface ChangeRow { key: string; name: string; location: string; category: string; before: number; now: number; variation_pct: number; confidence: "alta" | "media" }
@@ -55,11 +57,13 @@ export interface CompassData {
     can_act?: boolean;
     can_act_reason?: string | null;
     formats?: string[];
+    /** Sem a permissão de ver as Finanças, os valores em euros não vêm (visible false). */
+    financial?: { visible: boolean; note: string | null };
     top: { title: string; period: { from: string; to: string; prev_from: string; prev_to: string }; numbers: CompassNumber[]; notes: string[] } | null;
     plays: CompassPlay[];
     blocks?: {
         days: { headline: string; grids: ShiftGrid[]; weeks: number };
-        stars: { headline: string | null; stores: { location_id: number; name: string; items: { product_id: string; name: string; qty: number; net_cents: number; share_pct: number }[]; others_pct: number }[] };
+        stars: { headline: string | null; stores: { location_id: number; name: string; items: { product_id: string; name: string; qty: number; net_cents: number | null; share_pct: number }[]; others_pct: number }[] };
         changes: {
             headline: string;
             context: { period_now: { from: string; to: string }; period_before: { from: string; to: string }; stores: { name: string; variation_pct: number | null }[]; special_days: string[] };

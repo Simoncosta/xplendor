@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Badge, Button, Progress } from "reactstrap";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
+import HiddenMoney from "Components/Common/HiddenMoney";
 import type { CompassPlay } from "common/models/bussola.model";
 
 /**
@@ -57,9 +58,9 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                     <div key={i}>
                         <div className="d-flex justify-content-between gap-2 fs-12 mb-1">
                             <span className="text-truncate">{b.label}</span>
-                            <span className="fw-medium text-nowrap">{b.value}</span>
+                            <span className="fw-medium text-nowrap">{b.hidden ? <HiddenMoney text="1 240 € contra 2 310 €" /> : b.value}</span>
                         </div>
-                        <Progress value={Math.max(b.pct, b.pct > 0 ? 2 : 0)} color={b.color} className="progress-sm" aria-label={`${b.label}: ${b.value}`} />
+                        <Progress value={Math.max(b.pct, b.pct > 0 ? 2 : 0)} color={b.color} className="progress-sm" aria-label={`${b.label}: ${b.hidden ? `${b.pct}%` : b.value}`} />
                     </div>
                 ))}
             </div>

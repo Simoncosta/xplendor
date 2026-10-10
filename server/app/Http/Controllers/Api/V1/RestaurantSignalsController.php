@@ -34,11 +34,12 @@ class RestaurantSignalsController extends Controller
             'show_ignored' => ['nullable', 'boolean'],
         ]);
 
-        return ApiResponse::success($this->panel->panel(
+        // Os sinais são da Bússola: sem Finanças, sem os valores em euros.
+        return ApiResponse::success(\App\Services\Restaurant\CompassFinancials::forUser($this->panel->panel(
             $companyId, $request->user(),
             isset($data['location_id']) ? (int) $data['location_id'] : null,
             (bool) ($data['show_ignored'] ?? false),
-        ), 'O que publicar e quando.');
+        ), $request->user(), $companyId), 'O que publicar e quando.');
     }
 
     // POST /companies/{id}/integrations/pingwin/signals/ignore   Body: { key }

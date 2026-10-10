@@ -105,6 +105,26 @@ Ver e aprovar a faturação da XPLENDOR (orçamentos e cobranças) é exclusivo 
 - **Root noutra empresa:** passam a 403 as três listas dos orçamentos e as cobranças (ver e a fatura). Trata a faturação no `/admin`, que não mudou.
 - **Administrador do cliente e root na própria empresa:** nada muda.
 
+## 6b. Bússola sem Finanças (complemento ao pré-deploy, ponto 2; sem mudança na fotografia)
+
+Quem não tem a permissão de ver as Finanças (`financas.ver`) continua a abrir a Bússola (nenhuma rota muda de 403), mas **o backend não envia os valores em euros** (`App\Services\Restaurant\CompassFinancials`):
+
+- **Desfocados no ecrã** (o backend manda `null` e `hidden: true`; o ecrã mostra um número fictício desfocado e a frase "Sem acesso aos valores financeiros"): a faturação das 4 semanas, os valores por artigo (mais vendidos), por hora e por dia (a grelha dos turnos e as barras dos dias para encher), e todos os campos em cêntimos (`*_cents`: faturação, valores dos artigos, margem e custos).
+- **Visíveis:** as jogadas, as quantidades (unidades, reservas, pessoas), os mais e menos vendidos, as horas e os dias fortes, e as variações e pesos em percentagem.
+- **Textos:** os valores em euros saem das frases dos sinais e das jogadas (`App\Support\Text\MoneyText`).
+- **Onde:** a página da Bússola, o separador Marketing do dashboard do restaurante (as jogadas), o painel dos sinais (`GET {id}/integrations/pingwin/signals`) e o mapa da semana dentro da Bússola (`heatmap?for=bussola`: as vendas vão em intensidade de 0 a 100, sem euros). Não há exportes da Bússola.
+
+**Outros ecrãs com valores de vendas da restauração, com outra permissão (não mudaram):**
+
+- Dashboard do restaurante, separador Vendas (faturação, ticket médio, vendas por dia): `GET {id}/analytics/pingwin/dashboard`, `restauracao.ver`;
+- Calendário de faturação: `GET {id}/analytics/pingwin/calendar`, `restauracao.ver`;
+- Faturação mensal: `GET {id}/analytics/pingwin/monthly-billing`, `restauracao.ver`;
+- Mapa da semana fora da Bússola (dashboard do restaurante): `GET {id}/integrations/pingwin/heatmap`, `restauracao.ver`;
+- Cartão "Dados para o marketing" (Integrações › PingWin): `GET {id}/integrations/pingwin/marketing-data`, `restauracao.ver`;
+- Documentos, faturas e conta corrente dos fornecedores do PingWin (custos): `restauracao.ver`.
+
+A sugestão "Marketing" tem `restauracao.ver` sem `financas.ver`: vê a Bússola sem euros, mas continua a ver as vendas nestes ecrãs.
+
 ## 7. Antes e depois (rotas com 403 por ator)
 
 | Ator | Antes | Depois (com o pré-deploy e o complemento) |

@@ -41,8 +41,12 @@ class RestaurantCompassController extends Controller
         $data = $request->validate(['location_id' => ['nullable', 'integer'], 'summary' => ['nullable', 'boolean'], 'plays_only' => ['nullable', 'boolean']]);
         [$can, $reason] = $this->panel->canAct($request->user(), $companyId);
 
-        return ApiResponse::success($this->compass->payload($companyId, isset($data['location_id']) ? (int) $data['location_id'] : null, (bool) ($data['summary'] ?? false), (bool) ($data['plays_only'] ?? false))
-            + ['can_act' => $can, 'can_act_reason' => $reason, 'formats' => EditorialPost::FORMATS], 'Bússola.');
+        // Sem Finanças, sem os valores em euros (o backend não os envia).
+        $payload = \App\Services\Restaurant\CompassFinancials::forUser(
+            $this->compass->payload($companyId, isset($data['location_id']) ? (int) $data['location_id'] : null, (bool) ($data['summary'] ?? false), (bool) ($data['plays_only'] ?? false)),
+            $request->user(), $companyId);
+
+        return ApiResponse::success($payload + ['can_act' => $can, 'can_act_reason' => $reason, 'formats' => EditorialPost::FORMATS], 'Bússola.');
     }
 
     public function createPost(Request $request, int $companyId)

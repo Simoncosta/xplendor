@@ -464,4 +464,50 @@ class RestaurantCompassTest extends TestCase
         $this->assertSame('Venha almoçar à quarta.', $done['result']['proposals'][0]['captions']['instagram']);
         Http::assertSent(fn ($r) => str_contains($r['messages'][0]['content'][0]['text'] ?? '', 'O que publicar: ' . $play['what']['text']));
     }
+
+    // ── Sem Finanças (complemento ao pré-deploy, ponto 2) ───────────────────
+
+    public function test_without_finance_the_compass_comes_without_any_euro_value(): void
+    {
+        $this->sales($this->baixa, 'S1', 'Cheesecake', 'DOCES', 100, 40);
+        $this->sales($this->baixa, 'S2', 'Mousse', 'DOCES', 80, 30);
+        $this->confirm('DOCES', 'sobremesas');
+        $this->signal($this->baixa, 'weak_period:1:3:almoco', 'weak_period', 'alta',
+            ['weekday' => 3, 'shift' => 'almoco', 'mode' => 'hours', 'avg_cents' => 45000, 'mean_cents' => 90000, 'pct_below' => 50, 'offset_days' => 1],
+            'O almoço de quarta ficou 50% abaixo da média (média de 450 € contra 900 €, em 8 quartas).');
+        $this->item($this->baixa, 'item_down', 'S1', 'Cheesecake', 'alta', 100, 40, -10);
+        $this->fresh();
+        $profile = \App\Models\PermissionProfile::create(['company_id' => $this->company->id, 'side' => 'cliente', 'name' => 'Marketing sem Finanças',
+            'is_system' => false, 'is_suggestion' => false]);
+        $profile->syncPermissions(['bussola.ver', 'editorial.ver']);
+        $marketing = User::factory()->create(['company_id' => $this->company->id, 'role' => 'user', 'profile_id' => $profile->id]);
+        $url = "/api/v1/companies/{$this->company->id}/marketing/bussola?location_id={$this->baixa->id}";
+
+        $page = $this->actingAs($marketing, 'sanctum')->getJson($url)->assertOk()->json('data');
+        $json = json_encode($page, JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('€', $json, 'nenhum valor em euros');
+        $this->assertDoesNotMatchRegularExpression('/"[a-z_]+_cents":(?!null)/', $json, 'nenhum campo em cêntimos com valor');
+        $this->assertSame(['visible' => false, 'note' => 'Sem acesso aos valores financeiros'], $page['financial']);
+        $revenue = collect($page['top']['numbers'])->firstWhere('kind', 'revenue');
+        $this->assertSame([null, true], [$revenue['value'], $revenue['hidden']]);
+        // Visíveis: as jogadas, as quantidades, os mais vendidos e as variações em percentagem.
+        $this->assertNotEmpty($page['plays']);
+        $this->assertSame('Cheesecake', $page['blocks']['stars']['stores'][0]['items'][0]['name']);
+        $this->assertNotNull($page['blocks']['stars']['stores'][0]['items'][0]['qty']);
+        $this->assertNotNull(collect($page['top']['numbers'])->firstWhere('kind', 'store_variation')['value']);
+        $weak = collect($page['plays'])->firstWhere('type', 'weak_period');
+        $this->assertSame([null, true, 50], [$weak['bars'][0]['value'], $weak['bars'][0]['hidden'], $weak['bars'][0]['pct']]);
+        $this->assertStringContainsString('50% abaixo da média', implode(' ', $weak['detail']['sentences']));
+
+        // O separador Marketing do dashboard (só as jogadas) e o painel dos sinais seguem a mesma regra.
+        $this->assertStringNotContainsString('€', json_encode($this->actingAs($marketing, 'sanctum')->getJson($url . '&plays_only=1')->assertOk()->json('data'), JSON_UNESCAPED_UNICODE));
+        $signals = json_encode($this->actingAs($marketing, 'sanctum')->getJson("/api/v1/companies/{$this->company->id}/integrations/pingwin/signals")->assertOk()->json('data'), JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('€', $signals);
+        $this->assertDoesNotMatchRegularExpression('/"[a-z_]+_cents":(?!null)/', $signals);
+
+        // Com Finanças, os valores vêm.
+        $admin = $this->actingAs($this->admin, 'sanctum')->getJson($url)->assertOk()->json('data');
+        $this->assertTrue($admin['financial']['visible']);
+        $this->assertGreaterThan(0, collect($admin['top']['numbers'])->firstWhere('kind', 'revenue')['value']);
+    }
 }

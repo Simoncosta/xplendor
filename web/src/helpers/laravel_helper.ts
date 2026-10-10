@@ -636,8 +636,8 @@ export const acceptEditorialIdea = (companyId: number, id: number, payload: { in
 // F1-3 do marketing da restauração: dados para o marketing e categorias das famílias.
 export const getPingwinMarketingData = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/marketing-data`);
-export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number, excludeSpecial?: boolean) =>
-    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}) });
+export const getPingwinHeatmap = (companyId: number, locationId?: number | null, weeks?: number, excludeSpecial?: boolean, forBussola?: boolean) =>
+    api.get(url.GET_COMPANIES + `/${companyId}/integrations/pingwin/heatmap`, { ...(locationId ? { location_id: locationId } : {}), ...(weeks ? { weeks } : {}), ...(excludeSpecial ? { exclude_special: 1 } : {}), ...(forBussola ? { for: "bussola" } : {}) });
 // Bússola (marketing da restauração): a página, criar publicação e sugerir texto a partir de uma jogada.
 export const getBussola = (companyId: number, locationId?: number | null, summary?: boolean, playsOnly?: boolean) =>
     api.get(url.GET_COMPANIES + `/${companyId}/marketing/bussola`, { ...(locationId ? { location_id: locationId } : {}), ...(summary ? { summary: 1 } : {}), ...(playsOnly ? { plays_only: 1 } : {}) });

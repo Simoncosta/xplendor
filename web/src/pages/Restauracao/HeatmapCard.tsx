@@ -3,6 +3,7 @@ import { Card, CardBody, CardHeader, Col, Spinner } from "reactstrap";
 import XSelect from "pages/Editorial/XSelect";
 import { getPingwinHeatmap } from "helpers/laravel_helper";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { FINANCIAL_NOTE, FinancialNote } from "Components/Common/HiddenMoney";
 
 /**
  * XPLENDOR — F2 do marketing da restauração: mapa de calor da semana (dia × hora), por loja.
@@ -10,10 +11,11 @@ import { useIsMobile } from "../../hooks/useIsMobile";
  * últimas 12 semanas a partir do início efetivo da loja. Só aparece com o interruptor da
  * empresa ligado. Cores pelo tema (claro e escuro); no telemóvel, as horas ficam em linhas.
  * Na Bússola ("Dias para encher", Por hora) vem embutido, com a janela das jogadas: 8
- * semanas, sem os dias especiais, e a loja escolhida pela página.
+ * semanas, sem os dias especiais, e a loja escolhida pela página. Aí, quem não vê as Finanças
+ * recebe as vendas em intensidade (0 a 100, sem euros): o mapa mostra só as cores.
  */
 
-type Matrix = { cells: Record<string, Record<string, number>>; days: Record<string, number>; max: number };
+type Matrix = { cells: Record<string, Record<string, number>>; days: Record<string, number>; max: number; unit?: "cents" | "people" | "relative" };
 type Heatmap = {
     enabled: boolean;
     locations: { id: number; name: string }[];
@@ -40,9 +42,11 @@ type Props = {
     /** Embutido noutro cartão: sem moldura, com a loja escolhida por fora. */
     embedded?: boolean;
     locationId?: number | null;
+    /** Dentro da Bússola: segue a regra das Finanças (sem euros para quem não as vê). */
+    forBussola?: boolean;
 };
 
-export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded, locationId: fixedLocation }: Props) {
+export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded, locationId: fixedLocation, forBussola }: Props) {
     const isMobile = useIsMobile();
     const [data, setData] = useState<Heatmap | null>(null);
     const [ownLocation, setLocationId] = useState<number | null>(null);
@@ -54,7 +58,7 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
         if (!companyId) return;
         setLoading(true);
         try {
-            const res: any = await getPingwinHeatmap(companyId, locationId, weeks, excludeSpecial);
+            const res: any = await getPingwinHeatmap(companyId, locationId, weeks, excludeSpecial, forBussola);
             setData(res?.data ?? null);
             if (locationId === null && res?.data?.location_id) setLocationId(res.data.location_id);
         } catch {
@@ -62,7 +66,7 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
         } finally {
             setLoading(false);
         }
-    }, [companyId, locationId, weeks, excludeSpecial]);
+    }, [companyId, locationId, weeks, excludeSpecial, forBussola]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -70,13 +74,14 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
 
     const m = metric === "sales" ? data.sales : data.guests;
     const value = (wd: number, h: number) => m?.cells?.[wd]?.[h] ?? 0;
-    const label = (v: number) => (metric === "sales" ? eurShort(v) : v.toLocaleString("pt-PT", { maximumFractionDigits: 1 }));
+    const relative = metric === "sales" && m?.unit === "relative"; // sem Finanças: só as cores, sem euros
+    const label = (v: number) => (relative ? "" : metric === "sales" ? eurShort(v) : v.toLocaleString("pt-PT", { maximumFractionDigits: 1 }));
     const alpha = (v: number) => (m && m.max > 0 ? Math.max(0.06, v / m.max) : 0);
     const cell = (wd: number, h: number, key: string) => {
         const v = value(wd, h);
         const a = alpha(v);
         return (
-            <td key={key} title={`${WEEKDAYS[wd - 1][2]}, ${h}h: ${label(v)}`} className="text-center p-0"
+            <td key={key} title={`${WEEKDAYS[wd - 1][2]}, ${h}h: ${relative ? FINANCIAL_NOTE : label(v)}`} className="text-center p-0"
                 style={{ background: v > 0 ? `rgba(var(--vz-primary-rgb), ${a.toFixed(2)})` : "transparent", color: a > 0.55 ? "#fff" : "var(--vz-body-color)", fontSize: 11, height: 30, minWidth: isMobile ? 0 : 44 }}>
                 {v > 0 ? label(v) : ""}
             </td>
@@ -134,6 +139,7 @@ export default function HeatmapCard({ companyId, weeks, excludeSpecial, embedded
                     </table>
                 </div>
             )}
+            {!noData && relative && <FinancialNote className="mt-2" />}
             {!noData && m && (
                 <p className="text-muted fs-12 mt-2 mb-0">
                     Dias com dados: {WEEKDAYS.map(([wd, short]) => `${short} ${m.days[wd] ?? 0}`).join(", ")}.

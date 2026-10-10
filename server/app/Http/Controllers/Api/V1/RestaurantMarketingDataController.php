@@ -72,14 +72,21 @@ class RestaurantMarketingDataController extends Controller
             'location_id' => ['nullable', 'integer'],
             'weeks' => ['nullable', 'integer', 'min:4', 'max:26'],
             'exclude_special' => ['nullable', 'boolean'],
+            'for' => ['nullable', 'in:bussola'],
         ]);
-
-        return ApiResponse::success(app(RestaurantHeatmapService::class)->build(
+        $map = app(RestaurantHeatmapService::class)->build(
             $companyId,
             isset($data['location_id']) ? (int) $data['location_id'] : null,
             (int) ($data['weeks'] ?? RestaurantHeatmapService::DEFAULT_WEEKS),
             (bool) ($data['exclude_special'] ?? false),
-        ), 'Mapa de calor da semana.');
+        );
+        // Dentro da Bússola, sem Finanças: as vendas vão em intensidade (0 a 100 da hora mais
+        // forte), sem euros; as horas e os dias fortes continuam à vista.
+        if (($data['for'] ?? null) === 'bussola' && ! \App\Services\Restaurant\CompassFinancials::visibleTo($request->user(), $companyId)) {
+            $map = RestaurantHeatmapService::relativeSales($map) + ['financial' => ['visible' => false, 'note' => \App\Services\Restaurant\CompassFinancials::NOTE]];
+        }
+
+        return ApiResponse::success($map, 'Mapa de calor da semana.');
     }
 
     // GET /companies/{id}/integrations/pingwin/family-categories

@@ -57,6 +57,18 @@ describe("dashboard do restaurante, separador Marketing e resultados", () => {
         expect(screen.queryByText(/as vendas das últimas 4 semanas/)).not.toBeInTheDocument();
     });
 
+    it("sem Finanças, as barras em euros vêm desfocadas, com números fictícios, e a frase", async () => {
+        const weak: CompassPlay = { ...play(true), key: "weak_period:wd3", type: "weak_period", title: "Encher o almoço de quarta",
+            number: { value: "−50%", caption: "abaixo da média do turno" },
+            bars: [{ label: "Almoço de quarta (Yuko Baixa)", value: null, pct: 50, color: "warning", hidden: true }] };
+        (getBussola as jest.Mock).mockResolvedValue({ data: { ...data, plays: [weak], financial: { visible: false, note: "Sem acesso aos valores financeiros" } } });
+        render(<MemoryRouter><BussolaDashboardSummary companyId={5} /></MemoryRouter>);
+        const box = await screen.findByTestId("dashboard-bussola");
+        expect(within(box).getByTestId("hidden-money")).toHaveAttribute("aria-label", "Sem acesso aos valores financeiros");
+        expect(within(box).getByTestId("financial-note")).toHaveTextContent("Sem acesso aos valores financeiros");
+        expect(within(box).getByText("−50%")).toBeInTheDocument();
+    });
+
     it("não mostra nada quando a leitura por artigo está desligada", async () => {
         (getBussola as jest.Mock).mockResolvedValue({ data: { ...data, enabled: false } });
         const { container } = render(<MemoryRouter><BussolaDashboardSummary companyId={5} /></MemoryRouter>);

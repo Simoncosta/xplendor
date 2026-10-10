@@ -121,4 +121,22 @@ class RestaurantHeatmapService
     {
         return $location->display_name ?: $location->winrest_name ?: (string) $location->winrest_store_id;
     }
+
+    /** As vendas em intensidade (0 a 100 da hora mais forte), sem euros. */
+    public static function relativeSales(array $map): array
+    {
+        if (! is_array($map['sales'] ?? null)) {
+            return $map;
+        }
+        $max = (int) ($map['sales']['max'] ?? 0);
+        $cells = [];
+        foreach ((array) ($map['sales']['cells'] ?? []) as $wd => $hours) {
+            foreach ((array) $hours as $h => $v) {
+                $cells[$wd][$h] = $max > 0 ? (int) round((float) $v / $max * 100) : 0;
+            }
+        }
+        $map['sales'] = ['unit' => 'relative', 'cells' => $cells, 'days' => $map['sales']['days'] ?? [], 'max' => $max > 0 ? 100 : 0];
+
+        return $map;
+    }
 }

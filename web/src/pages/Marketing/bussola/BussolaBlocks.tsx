@@ -6,6 +6,7 @@ import PageCard from "Components/Common/PageCard";
 import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import HeatmapCard from "pages/Restauracao/HeatmapCard";
 import { ChangeRow, CompassData, fmtDm, fmtEur, fmtPct } from "common/models/bussola.model";
+import HiddenMoney from "Components/Common/HiddenMoney";
 
 /**
  * Bússola, os blocos (cada um com uma manchete descritiva e o seu visual, com os componentes
@@ -83,14 +84,14 @@ export function DaysCard({ companyId, block }: { companyId: number; block: Block
                                                     <tr key={shift}>
                                                         <th className="text-start fw-medium">
                                                             {SHIFT_LABEL[shift] ?? shift}
-                                                            <span className="d-block text-muted fw-normal">média {fmtEur(row.mean_cents)}</span>
+                                                            <span className="d-block text-muted fw-normal">média {row.mean_cents === null ? <HiddenMoney seed={1} /> : fmtEur(row.mean_cents)}</span>
                                                         </th>
                                                         {WEEKDAYS.map(([wd]) => {
                                                             const c = row.days[wd];
                                                             if (!c || c.closed) return <td key={wd} className="text-muted">Fechado</td>;
                                                             return (
                                                                 <td key={wd} className={`rounded ${c.weak ? "bg-warning-subtle" : "bg-light"}`} title={c.weak ? "Período fraco" : undefined}>
-                                                                    <span className="d-block fw-medium">{fmtEur(c.avg_cents)}</span>
+                                                                    <span className="d-block fw-medium">{c.avg_cents === null ? <HiddenMoney seed={Number(wd)} /> : fmtEur(c.avg_cents)}</span>
                                                                     <span className={c.weak ? "text-warning fw-semibold" : "text-muted"}>{fmtPct(c.pct_vs_mean, true)}</span>
                                                                 </td>
                                                             );
@@ -113,7 +114,7 @@ export function DaysCard({ companyId, block }: { companyId: number; block: Block
                                 ))}
                             </div>
                         )}
-                        <HeatmapCard companyId={companyId} weeks={8} excludeSpecial embedded locationId={store} />
+                        <HeatmapCard companyId={companyId} weeks={8} excludeSpecial embedded locationId={store} forBussola />
                     </>
                 )}
         </PageCard>
@@ -153,7 +154,7 @@ export function StarsCard({ block }: { block: Blocks["stars"] }) {
                                             <p className="text-muted fs-12 mb-0">{it.qty.toLocaleString("pt-PT")} unidades</p>
                                         </div>
                                         <div className="flex-shrink-0 text-end">
-                                            <h6 className="fs-13 mb-0">{fmtEur(it.net_cents)}</h6>
+                                            <h6 className="fs-13 mb-0">{it.net_cents === null ? <HiddenMoney seed={i} /> : fmtEur(it.net_cents)}</h6>
                                             <p className="text-muted fs-12 mb-0">{fmtPct(it.share_pct)}</p>
                                         </div>
                                     </li>
