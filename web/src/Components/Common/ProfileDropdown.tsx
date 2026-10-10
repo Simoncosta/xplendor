@@ -7,6 +7,8 @@ import { useSelector } from 'react-redux';
 //import images
 import avatar1 from '../../assets/images/users/avatar-company.jpg';
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { useAccess } from "contexts/ModulesContext";
+import { isAdminRole, sessionIsPlatformRoot, sessionUser } from "helpers/roles";
 
 const selectProfileUser = createSelector(
     [(state: any) => state.Profile],
@@ -19,8 +21,22 @@ type Props = {
     onChangeLayoutMode?: (mode: string) => void;
 };
 
+/**
+ * Por baixo do nome: o perfil da pessoa na empresa em que trabalha (ex.: "Administrador",
+ * "Marketing"); o root, fora de uma sessão como cliente, é a "Equipa XPLENDOR". Sem perfil
+ * conhecido, o papel; enquanto as permissões carregam, nada (para não mostrar um valor errado).
+ */
+export const profileSubtitle = (profileName: string | null, loading: boolean): string => {
+    if (sessionIsPlatformRoot()) return "Equipa XPLENDOR";
+    if (profileName) return profileName;
+    if (loading) return "";
+    return isAdminRole(sessionUser()?.role) ? "Administrador" : "Utilizador";
+};
+
 const ProfileDropdown = ({ layoutMode, onChangeLayoutMode }: Props) => {
     const user = useSelector(selectProfileUser);
+    const { profileName, loading } = useAccess();
+    const subtitle = profileSubtitle(profileName, loading);
 
     const [userId, setUserId] = useState(0);
     const [userName, setUserName] = useState("");
@@ -52,7 +68,7 @@ const ProfileDropdown = ({ layoutMode, onChangeLayoutMode }: Props) => {
                             alt="Header Avatar" />
                         <span className="text-start ms-xl-2">
                             <span className="d-none d-xl-inline-block ms-1 fw-medium user-name-text">{userName}</span>
-                            <span className="d-none d-xl-block ms-1 fs-12 text-muted user-name-sub-text">Utilizador</span>
+                            <span className="d-none d-xl-block ms-1 fs-12 text-muted user-name-sub-text" data-testid="header-profile">{subtitle || "\u00a0"}</span>
                         </span>
                     </span>
                 </DropdownToggle>

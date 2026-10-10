@@ -43,7 +43,7 @@ final class CompatibilityProfiles
     /**
      * Áreas que não existiam na fotografia de antes (não há "como hoje" a derivar): o que cada
      * perfil de compatibilidade tem, decidido explicitamente. Ficheiros (noite dos Ficheiros):
-     * o Administrador tudo; o utilizador ver, criar e editar; a Agência convidada ver e criar.
+     * o Administrador tudo; o utilizador ver, criar e editar; a Agência convidada ver, criar e editar.
      */
     public const NEW_AREAS = [
         'ficheiros' => [
