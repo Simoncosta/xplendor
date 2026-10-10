@@ -268,6 +268,8 @@ const Navdata = () => {
                 { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances", module: "documents", permission: "automovel.ver" },
             ],
         },
+        // ── Ficheiros: o gestor de ficheiros da empresa (módulo "ficheiros") ──
+        { id: "ficheiros", label: "Ficheiros", icon: "ri-folder-2-line", link: "/ficheiros", module: "ficheiros", permission: "ficheiros.ver" },
         // ── Equipa — ferramentas transversais da equipa (qualquer ramo) ──────────
         {
             id: "equipa",
@@ -378,6 +380,7 @@ const Navdata = () => {
         finances: ["expenses", "suppliers"],
         equipa: "all",
         settings: "all",
+        ficheiros: "all",
     };
     const curateForRoot = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {

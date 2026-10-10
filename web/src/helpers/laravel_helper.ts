@@ -1103,3 +1103,35 @@ export const restoreOcrInvoice = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/restore`, {});
 export const bulkDeleteOcrInvoices = (companyId: number, ids: number[]) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/bulk-delete`, { ids });
+
+// Ficheiros: o gestor de ficheiros da empresa.
+const FL = (companyId: number) => url.GET_COMPANIES + `/${companyId}/files`;
+const FL_JSON = { headers: { "Content-Type": "application/json" } };
+export const getFiles = (companyId: number, params?: { folder_id?: number | null; q?: string }) =>
+    api.get(FL(companyId), { ...(params?.folder_id ? { folder_id: params.folder_id } : {}), ...(params?.q ? { q: params.q } : {}) });
+export const getFilesTrash = (companyId: number) => api.get(FL(companyId) + `/trash`);
+export const getFileDetail = (companyId: number, id: number) => api.get(FL(companyId) + `/${id}`);
+export const createFileFolder = (companyId: number, data: { name: string; parent_id?: number | null }) => api.create(FL(companyId) + `/folders`, data, FL_JSON);
+export const updateFileFolder = (companyId: number, id: number, data: { name?: string; parent_id?: number | null }) => api.put(FL(companyId) + `/folders/${id}`, data);
+export const deleteFileFolder = (companyId: number, id: number) => api.delete(FL(companyId) + `/folders/${id}`);
+export const restoreFileFolder = (companyId: number, id: number) => api.create(FL(companyId) + `/folders/${id}/restore`, {}, FL_JSON);
+export const uploadFileDocument = (companyId: number, file: File, folderId: number | null, onProgress?: (fraction: number) => void) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    if (folderId) fd.append("folder_id", String(folderId));
+    return api.create(FL(companyId) + `/documents`, fd, { headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e: any) => onProgress?.(e.total ? e.loaded / e.total : 0) });
+};
+export const startFileMediaUpload = (companyId: number, data: { name: string; size: number; mime: string; folder_id?: number | null }) => api.create(FL(companyId) + `/uploads`, data, FL_JSON);
+export const sendFileMediaChunk = (companyId: number, id: string, offset: number, chunk: Blob, onProgress?: (loaded: number) => void) => {
+    const fd = new FormData();
+    fd.append("offset", String(offset));
+    fd.append("chunk", chunk, "chunk");
+    return api.create(FL(companyId) + `/uploads/${id}/chunk`, fd, { headers: { "Content-Type": "multipart/form-data" }, onUploadProgress: (e: any) => onProgress?.(e.loaded ?? 0) });
+};
+export const updateStoredFile = (companyId: number, id: number, data: { name?: string; folder_id?: number | null }) => api.put(FL(companyId) + `/${id}`, data);
+export const deleteStoredFile = (companyId: number, id: number) => api.delete(FL(companyId) + `/${id}`);
+export const restoreStoredFile = (companyId: number, id: number) => api.create(FL(companyId) + `/${id}/restore`, {}, FL_JSON);
+export const saveFileToFolder = (companyId: number, id: number, folderId: number) => api.create(FL(companyId) + `/${id}/shortcuts`, { folder_id: folderId }, FL_JSON);
+export const deleteFileShortcut = (companyId: number, id: number) => api.delete(FL(companyId) + `/shortcuts/${id}`);
+export const restoreFileShortcut = (companyId: number, id: number) => api.create(FL(companyId) + `/shortcuts/${id}/restore`, {}, FL_JSON);
+

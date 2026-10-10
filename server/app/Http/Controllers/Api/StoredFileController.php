@@ -38,13 +38,19 @@ class StoredFileController extends Controller
                 ['Cache-Control' => 'private, no-store', 'Referrer-Policy' => 'no-referrer']);
         }
 
-        return $disk->response($f->path, $f->name, [
+        $headers = [
             'Content-Type' => $isSvg ? 'image/svg+xml' : $mime,
-            'Content-Security-Policy' => 'sandbox',
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, max-age=1800',
             'Referrer-Policy' => 'no-referrer',
             'X-Robots-Tag' => 'noindex',
-        ], $attachment ? 'attachment' : 'inline');
+        ];
+        // "sandbox" em tudo, menos nos PDF: o leitor de PDF do browser não abre numa caixa de areia
+        // (e já isola o documento).
+        if ($mime !== 'application/pdf') {
+            $headers['Content-Security-Policy'] = 'sandbox';
+        }
+
+        return $disk->response($f->path, $f->name, $headers, $attachment ? 'attachment' : 'inline');
     }
 }

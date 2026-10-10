@@ -61,6 +61,7 @@ import QuotePublicPage from "pages/QuotePublic";
 import ChargePublicPage from "pages/ChargePublic";
 import AdminChargesPage from "pages/Admin/AdminChargesPage";
 import StorageUsagePage from "pages/Admin/StorageUsagePage";
+import FilesPage from "pages/Files/FilesPage";
 import ContentReviewPage from "pages/ContentReview";
 import ContentReviewPreview from "pages/ContentReview/Preview";
 import QuotePublicPreview from "pages/Admin/QuotePublicPreview";
@@ -149,6 +150,7 @@ const authProtectedRoutes = [
     { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos" permission="restauracao.ver"><DocumentosPage /></RequireModule> },
     { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
+    { path: "/ficheiros", component: <RequireModule module="ficheiros" permission="ficheiros.ver"><FilesPage /></RequireModule> },
     { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
     { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },

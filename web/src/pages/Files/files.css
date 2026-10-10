@@ -1,0 +1,21 @@
+/* Ficheiros: a página File Manager do Velzon dentro do cabeçalho de página do padrão visual. */
+.xp-files .chat-wrapper { background: var(--vz-body-bg); }
+@media (min-width: 992px) {
+  .xp-files .file-manager-sidebar { height: calc(100vh - 230px); min-height: 480px; }
+  .xp-files .file-manager-content-scroll { height: calc(100vh - 300px); min-height: 420px; }
+  .xp-files .file-detail-content-scroll { height: calc(100vh - 250px); }
+  .xp-files .file-menu-sidebar-scroll { height: calc(100vh - 420px); min-height: 220px; }
+}
+@media (max-width: 991.98px) {
+  .xp-files .file-manager-content-scroll { height: auto; }
+}
+.xp-files .file-manager-menu .sub-menu li a.active { color: var(--vz-success); }
+.xp-files .xp-file-thumb { height: 120px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-top-left-radius: var(--vz-border-radius); border-top-right-radius: var(--vz-border-radius); }
+.xp-files .xp-file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.xp-files .file-details-box { height: 200px; }
+/* Ligações da árvore e do caminho: botões (acessíveis) com o aspeto das ligações do template. */
+.xp-files [data-xp-link] { background: none; border: 0; padding: 0; text-align: left; color: var(--vz-body-color); font-weight: 500; }
+.xp-files [data-xp-link]:hover, .xp-files [data-xp-link].active { color: var(--vz-success); }
+.xp-files .fs-12 [data-xp-link] { color: var(--vz-link-color); font-weight: 400; }
+.xp-files .folder-card-link { color: inherit; }
+.xp-files .card [data-xp-link] { display: block; min-width: 0; overflow: hidden; }
