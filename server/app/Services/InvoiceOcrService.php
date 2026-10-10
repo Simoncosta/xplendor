@@ -26,9 +26,10 @@ use Symfony\Component\Process\Process;
  *  2. Com QR válido o CABEÇALHO vem do QR (NIFs, tipo, data, nº, ATCUD, bases/IVA por
  *     taxa, totais). B tem de ser o NIF da empresa e A nunca o pode ser — senão a fatura
  *     fica 'nao_desta_empresa' e a IA NÃO é chamada.
- *  3. A IA só lê as LINHAS: pelo TEXTO (OCR_MODEL_TEXT) se o PDF tiver texto útil, senão
- *     pelas IMAGENS de todas as páginas (OCR_MODEL_IMAGE). Recebe as bases do QR para se
- *     auto-conferir.
+ *  3. A IA só lê as LINHAS: pelo TEXTO (função ocr_text) se o PDF tiver texto útil, senão
+ *     pelas IMAGENS de todas as páginas (função ocr_image). O fornecedor, o modelo e o esforço
+ *     de cada função escolhem-se em Administração › Modelos de IA; sem escolha, valem
+ *     OCR_MODEL_TEXT e OCR_MODEL_IMAGE do .env. Recebe as bases do QR para se auto-conferir.
  *  4. CONFERÊNCIA: soma das linhas por taxa = base do QR por taxa (tolerância configurável).
  *     Não confere → 1 nova tentativa (modelo de imagem se a 1.ª foi texto; mais esforço se
  *     já foi imagem). Fica sempre a melhor tentativa ('por_validar'), nunca se descarta.
@@ -92,9 +93,8 @@ class InvoiceOcrService
             // 3) Linhas pela IA: texto se houver texto útil, senão imagens.
             $textOk = $isPdf && (int) ($an['text_chars'] ?? 0) >= $cfg['text_min_chars'];
             $images = $isPdf ? ($an['images'] ?? []) : [['page' => 1, 'mime' => $mime, 'base64' => base64_encode($bytes)]];
-            $plan = $textOk
-                ? ['lines_source' => 'texto', 'model' => $cfg['model_text'], 'effort' => $cfg['effort']]
-                : ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['effort']];
+            $imagePlan = $this->planFor('ocr_image', 'imagem');
+            $plan = $textOk ? $this->planFor('ocr_text', 'texto') : $imagePlan;
 
             $attempts = [];
             $best = $this->attempt($plan, $qrOk ? $qr : null, $an['text'] ?? '', $images, $invoice->company_id);
@@ -103,8 +103,8 @@ class InvoiceOcrService
             // 4) Conferência pelo QR (+ 1 nova tentativa se não conferir).
             if ($qrOk && ! $best['check']['ok']) {
                 $retry = $plan['lines_source'] === 'texto'
-                    ? ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['effort']]
-                    : ['lines_source' => 'imagem', 'model' => $cfg['model_image'], 'effort' => $cfg['retry_effort']];
+                    ? $imagePlan
+                    : ['effort' => $this->higherEffort($imagePlan['model'], $imagePlan['effort'])] + $imagePlan;
                 try {
                     if ($retry['lines_source'] === 'imagem' && $images === []) {
                         $images = $this->analyzeFile($bytes, $mime, 'always')['images'] ?? [];
@@ -117,7 +117,7 @@ class InvoiceOcrService
                 } catch (\Throwable $e) {
                     // A 2.ª tentativa falhou: fica a 1.ª (nunca se descarta o resultado).
                     Log::warning('[OCR Fatura] 2.ª tentativa falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
-                    $attempts[] = ['model' => $retry['model'], 'lines_source' => $retry['lines_source'], 'effort' => $retry['effort'],
+                    $attempts[] = ['provider' => $retry['provider'], 'model' => $retry['model'], 'lines_source' => $retry['lines_source'], 'effort' => $retry['effort'],
                         'tokens_in' => 0, 'tokens_out' => 0, 'cost_usd' => 0.0, 'ms' => 0, 'error' => mb_substr($e->getMessage(), 0, 300)];
                 }
             }
@@ -174,7 +174,7 @@ class InvoiceOcrService
     private function attempt(array $plan, ?array $qr, string $text, array $images, int $companyId): array
     {
         if ($plan['model'] === null || $plan['model'] === '') {
-            throw new \RuntimeException('Modelo de OCR não configurado (OCR_MODEL_' . ($plan['lines_source'] === 'texto' ? 'TEXT' : 'IMAGE') . ').');
+            throw new \RuntimeException('Modelo de OCR não configurado: escolha-o em Modelos de IA (ou OCR_MODEL_' . ($plan['lines_source'] === 'texto' ? 'TEXT' : 'IMAGE') . ' no .env).');
         }
         if ($plan['lines_source'] === 'imagem' && $images === []) {
             throw new \RuntimeException('Sem imagens da fatura para a IA ler.');
@@ -183,7 +183,10 @@ class InvoiceOcrService
         $t0 = hrtime(true);
         $system = $qr ? $this->linesPrompt() : $this->prompt();
         $user = $this->userContent($plan['lines_source'], $qr, $text, $images);
-        $res = $this->callModel($plan['model'], $system, $user, $plan['effort']);
+        $res = match ($plan['provider']) {
+            'openai' => $this->callModel($plan['model'], $system, $user, $plan['effort']),
+            default => throw new \RuntimeException("O OCR ainda não lê faturas com o fornecedor \"{$plan['provider']}\"."),
+        };
         $clean = $this->sanitize($this->decodeJson($res['content']));
         if (! $qr) {
             // ⚠️ O NIF do fornecedor NUNCA é o da própria empresa (esse é o cliente).
@@ -191,6 +194,7 @@ class InvoiceOcrService
         }
 
         return [
+            'provider'     => $plan['provider'],
             'model'        => $plan['model'],
             'lines_source' => $plan['lines_source'],
             'effort'       => $this->isReasoningModel($plan['model']) ? $plan['effort'] : null,
@@ -201,6 +205,33 @@ class InvoiceOcrService
             'ms'           => $this->elapsedMs($t0),
             'check'        => $qr ? $this->conference($clean['lines'], $qr) : ['ok' => false, 'abs_cents' => 0, 'rows' => []],
         ];
+    }
+
+    /**
+     * O fornecedor, o modelo e o esforço de uma função do OCR (Modelos de IA, ou a reserva do .env).
+     *
+     * @return array{lines_source: string, function: string, provider: string, model: string, effort: string}
+     */
+    private function planFor(string $function, string $source): array
+    {
+        $s = \App\Services\Ai\AiFunctionSettings::for($function);
+
+        return ['lines_source' => $source, 'function' => $function, 'provider' => $s['provider'] ?: 'openai', 'model' => $s['model'], 'effort' => $s['effort']];
+    }
+
+    /** O esforço seguinte do modelo (2.ª tentativa); fora do catálogo, o OCR_RETRY_REASONING_EFFORT. */
+    private function higherEffort(string $model, string $effort): string
+    {
+        $efforts = array_values(array_diff((array) (\App\Services\Ai\AiFunctionSettings::model($model)['efforts'] ?? []), ['default']));
+        if ($efforts === []) {
+            return $this->cfg()['retry_effort'];
+        }
+        if ($effort === 'default') {
+            return end($efforts);
+        }
+        $i = array_search($effort, $efforts, true);
+
+        return $i === false ? $this->cfg()['retry_effort'] : $efforts[min($i + 1, count($efforts) - 1)];
     }
 
     /** Mensagem do utilizador: texto do PDF ou imagens + (com QR) as bases para se conferir. */
@@ -403,10 +434,8 @@ class InvoiceOcrService
     {
         $c = (array) config('services.openai.ocr', []);
 
+        // O modelo e o esforço de cada leitura vêm de Modelos de IA (planFor); o .env é a reserva.
         return [
-            'model_text'        => $c['model_text'] ?? null,
-            'model_image'       => $c['model_image'] ?? null,
-            'effort'            => $c['reasoning_effort'] ?? 'low',
             'retry_effort'      => $c['retry_reasoning_effort'] ?? 'medium',
             'reasoning_prefixes' => array_filter(array_map('trim', explode(',', (string) ($c['reasoning_model_prefixes'] ?? '')))),
             'max_pages'         => max(1, (int) ($c['max_pages'] ?? 10)),
@@ -429,9 +458,17 @@ class InvoiceOcrService
         return false;
     }
 
-    /** Custo estimado (USD) pelos preços em config "modelo=entrada/saída;…" por 1M tokens. Null se o modelo não tiver preço. */
+    /**
+     * Custo estimado (USD): pelos preços do catálogo da IA (config/ai.php, os mesmos da lista
+     * "Modelos de IA"); fora dele, pelos de OCR_PRICES ("modelo=entrada/saída;…" por 1M tokens).
+     * Null se o modelo não tiver preço.
+     */
     public function costUsd(string $model, int $in, int $out): ?float
     {
+        $catalog = \App\Services\Ai\AiFunctionSettings::model($model)['prices'] ?? null;
+        if (is_array($catalog)) {
+            return round($in * (float) $catalog['input'] / 1e6 + $out * (float) $catalog['output'] / 1e6, 6);
+        }
         $best = null;
         foreach (explode(';', $this->cfg()['prices']) as $entry) {
             if (! preg_match('/^\s*([^=]+?)\s*=\s*([\d.]+)\s*\/\s*([\d.]+)\s*$/', $entry, $m)) {
@@ -723,6 +760,7 @@ class InvoiceOcrService
     {
         return array_values(array_map(fn ($a, $i) => [
             'n'            => $i + 1,
+            'provider'     => $a['provider'] ?? null,
             'model'        => $a['model'],
             'lines_source' => $a['lines_source'],
             'effort'       => $a['effort'] ?? null,

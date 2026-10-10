@@ -34,7 +34,8 @@ class AnthropicProvider implements AiProvider
         }
         $content[] = ['type' => 'text', 'text' => $prompt->text];
 
-        $outputConfig = ['effort' => $effort];
+        // "default": não se envia o esforço (vale o do modelo).
+        $outputConfig = $effort === 'default' ? [] : ['effort' => $effort];
         if ($prompt->schema) {
             $outputConfig['format'] = ['type' => 'json_schema', 'schema' => $prompt->schema];
         }
@@ -44,8 +45,10 @@ class AnthropicProvider implements AiProvider
             // JSON sem esquema: a Anthropic não tem um modo "json_object"; a instrução pede só o objeto.
             'system' => $prompt->json && ! $prompt->schema ? $prompt->system . "\n\nResponda apenas com um objeto JSON válido, sem texto antes ou depois." : $prompt->system,
             'messages' => [['role' => 'user', 'content' => $content]],
-            'output_config' => $outputConfig,
         ];
+        if ($outputConfig !== []) {
+            $body['output_config'] = $outputConfig;
+        }
 
         $response = $this->withRetries(fn () => Http::withHeaders([
             'x-api-key' => $key,

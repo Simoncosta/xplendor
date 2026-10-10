@@ -11,9 +11,9 @@ use Illuminate\Validation\ValidationException;
 /**
  * Modelo por função da IA, escolhido SÓ pelo root (Administração › Modelos de IA): para cada
  * função (legenda, criativo, ideias, blog, perfil, descrição e análise de viaturas) o
- * fornecedor, o modelo e o esforço de raciocínio, com histórico de alterações. O OCR das
- * faturas não entra aqui (continua como está). Sem linha gravada, valem os valores iniciais
- * de config/ai.php.
+ * fornecedor, o modelo e o esforço de raciocínio, com histórico de alterações. Sem linha
+ * gravada, valem os valores iniciais de config/ai.php; nas funções do OCR (group "ocr"), a
+ * reserva do .env (OCR_MODEL_TEXT, OCR_MODEL_IMAGE e OCR_REASONING_EFFORT).
  */
 class AiFunctionSettings
 {
@@ -25,6 +25,9 @@ class AiFunctionSettings
         if ($row) {
             return ['provider' => (string) $row->provider, 'model' => (string) $row->model, 'effort' => (string) $row->effort];
         }
+        if ($reserve = self::reserve($function)) {
+            return $reserve;
+        }
         $model = (string) config('ai.default_model');
 
         return ['provider' => self::providerOf($model), 'model' => $model, 'effort' => (string) config("ai.functions.{$function}.default_effort", 'low')];
@@ -35,6 +38,7 @@ class AiFunctionSettings
         self::assertFunction($function);
         self::assertChoice($model, $effort);
         $from = self::for($function);
+        unset($from['reserve']);
         $to = ['provider' => self::providerOf($model), 'model' => $model, 'effort' => $effort];
         if ($from === $to) {
             return;
@@ -50,13 +54,40 @@ class AiFunctionSettings
         });
     }
 
-    /** "Aplicar a todas as funções": o mesmo modelo e esforço em todas. */
+    /** "Aplicar a todas as funções": o mesmo modelo e esforço em todas, exceto as do OCR (escolhem-se à parte). */
     public static function applyAll(string $model, string $effort, User $actor): void
     {
         self::assertChoice($model, $effort);
-        foreach (array_keys((array) config('ai.functions')) as $function) {
-            self::set($function, $model, $effort, $actor, true);
+        foreach ((array) config('ai.functions') as $function => $def) {
+            if (($def['group'] ?? null) !== 'ocr') {
+                self::set($function, $model, $effort, $actor, true);
+            }
         }
+    }
+
+    /**
+     * A reserva do .env das funções do OCR, quando nada está escolhido: o modelo de
+     * OCR_MODEL_TEXT ou OCR_MODEL_IMAGE (o fornecedor pelo catálogo, ou pelo nome) e o esforço
+     * de OCR_REASONING_EFFORT. Null nas outras funções.
+     *
+     * @return array{provider: string, model: string, effort: string, reserve: true}|null
+     */
+    public static function reserve(string $function): ?array
+    {
+        $key = config("ai.functions.{$function}.reserve_model");
+        if (! is_string($key)) {
+            return null;
+        }
+        $model = (string) config($key, '');
+        $provider = self::providerOf($model) ?: ($model === '' ? '' : (str_starts_with($model, 'claude') ? 'anthropic' : 'openai'));
+
+        return ['provider' => $provider, 'model' => $model, 'effort' => (string) config('services.openai.ocr.reasoning_effort', 'low'), 'reserve' => true];
+    }
+
+    /** Há uma escolha gravada (senão vale o valor inicial ou a reserva do .env). */
+    public static function chosen(string $function): bool
+    {
+        return DB::table('ai_function_settings')->where('function', $function)->exists();
     }
 
     /** O ecrã do root: as funções, as escolhas possíveis e o histórico. */
@@ -65,7 +96,15 @@ class AiFunctionSettings
         $names = User::pluck('name', 'id');
 
         return [
-            'functions' => collect((array) config('ai.functions'))->map(fn ($f, $key) => ['key' => $key, 'label' => $f['label'], 'hint' => $f['hint'] ?? null] + self::for($key))->values()->all(),
+            'functions' => collect((array) config('ai.functions'))->map(function ($f, $key) {
+                $s = self::for($key);
+                $reserve = (bool) ($s['reserve'] ?? false);
+                unset($s['reserve']);
+
+                return ['key' => $key, 'label' => $f['label'], 'hint' => $f['hint'] ?? null, 'group' => $f['group'] ?? null,
+                    // Funções do OCR sem escolha: vale o modelo do .env (pode não estar no catálogo).
+                    'reserve' => $reserve, 'reserve_env' => $reserve ? strtoupper(str_replace('services.openai.ocr.model_', 'OCR_MODEL_', (string) $f['reserve_model'])) : null] + $s;
+            })->values()->all(),
             'models' => collect((array) config('ai.models'))->map(fn ($m, $key) => [
                 'key' => $key, 'label' => $m['label'], 'provider' => $m['provider'], 'efforts' => $m['efforts'], 'prices' => $m['prices'],
             ])->values()->all(),

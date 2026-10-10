@@ -11,11 +11,13 @@ import {
 /**
  * Administração › Modelos de IA (só o root): o fornecedor, o modelo e o nível de raciocínio de
  * cada função, "Aplicar a todas as funções", o histórico, os custos do mês e o teste às cegas
- * entre dois modelos. O OCR das faturas não aparece aqui: continua como está.
+ * entre dois modelos. O OCR das faturas aparece como duas funções (PDF com texto; digitalizadas e
+ * fotografias); sem escolha, vale a reserva do .env. Não entra no "Aplicar a todas" nem no teste às cegas.
  */
 
-type Fn = { key: string; label: string; hint: string | null; provider: string; model: string; effort: string };
-type Model = { key: string; label: string; provider: string; efforts: string[]; prices: { input: number; cached_input: number; output: number } };
+/** group "ocr": as funções do OCR das faturas; reserve: sem escolha, vale o modelo do .env (reserve_env). */
+type Fn = { key: string; label: string; hint: string | null; provider: string; model: string; effort: string; group?: string | null; reserve?: boolean; reserve_env?: string | null };
+type Model = { key: string; label: string; provider: string; efforts: string[]; prices: { input: number; cached_input: number; output: number } | null };
 type Provider = { key: string; label: string; configured: boolean };
 type HistoryRow = { function: string; from: string | null; to: string; applied_to_all: boolean; user: string | null; at: string };
 type Usage = { function: string; requests: number; provider_errors: number; input_tokens: number; output_tokens: number; reasoning_tokens: number; cost_usd: number };
@@ -28,7 +30,7 @@ type BlindRow = { id: number; function: string; function_label: string; status: 
 type ReportSide = { model: string; wins: number; pt_failures: number; errors: number; avg_cost_usd: number; total_cost_usd: number; avg_ms: number };
 type ReportRow = { function: string; function_label: string; cases: number; ties: number; a: ReportSide; b: ReportSide };
 
-const EFFORT_LABEL: Record<string, string> = { low: "Baixo", medium: "Médio", high: "Alto" };
+const EFFORT_LABEL: Record<string, string> = { default: "O do modelo", low: "Baixo", medium: "Médio", high: "Alto" };
 const usd = (v: number, digits = 4) => `${v.toLocaleString("pt-PT", { minimumFractionDigits: digits, maximumFractionDigits: digits })} USD`;
 const dmyHm = (iso: string) => new Date(iso.replace(" ", "T")).toLocaleString("pt-PT", { dateStyle: "short", timeStyle: "short" });
 const errorOf = (e: any, fallback: string): string => {
@@ -77,7 +79,7 @@ export default function AiModelsPage() {
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Modelos de IA" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description="O fornecedor, o modelo e o nível de raciocínio de cada função de IA. As chaves ficam só no servidor. O OCR das faturas não está aqui e continua como está."
+                    description="O fornecedor, o modelo e o nível de raciocínio de cada função de IA. As chaves ficam só no servidor. O OCR das faturas escolhe-se aqui à parte (sem escolha, vale o modelo do .env)."
                     actions={view === "functions"
                         ? <ReasonButton color="primary" onClick={() => setApplyOpen(true)} reason={!data ? "A carregar." : null}><i className="ri-stack-line me-1" />Aplicar a todas as funções</ReasonButton>
                         : <Button color="primary" onClick={() => setNewTestOpen(true)}><i className="ri-add-line me-1" />Novo teste</Button>} />
@@ -114,7 +116,9 @@ export default function AiModelsPage() {
                                                             <div className="text-muted fs-12 d-md-none mt-1">Este mês: {u ? u.requests : 0} pedidos, {usd(u?.cost_usd ?? 0)}</div>
                                                         </td>
                                                         <td>
-                                                            <XSelect small ariaLabel={`Modelo: ${f.label}`} options={modelOptions} value={f.model} disabled={saving === f.key} onChange={(m) => m !== f.model && save(f, m, f.effort)} />
+                                                            <XSelect small ariaLabel={`Modelo: ${f.label}`} value={f.model} disabled={saving === f.key} onChange={(m) => m !== f.model && save(f, m, f.effort)}
+                                                                options={f.reserve && f.model && !models.some((m) => m.key === f.model) ? [...modelOptions, { value: f.model, label: `${f.model} (reserva do .env)` }] : modelOptions} />
+                                                            {f.reserve && <div className="text-muted fs-12 mt-1" data-testid={`ai-fn-reserve-${f.key}`}>{f.model ? `Reserva do .env (${f.reserve_env}): ${f.model}.` : `Sem modelo: escolha um aqui ou defina ${f.reserve_env} no .env.`}</div>}
                                                             {missing && <div className="text-warning fs-12 mt-1">Sem a chave da {missing.label}.</div>}
                                                             <div className="d-md-none mt-2">
                                                                 <XSelect small ariaLabel={`Raciocínio: ${f.label}`} options={effortOptions(f.model)} value={f.effort} disabled={saving === f.key} onChange={(e) => e !== f.effort && save(f, f.model, e)} />
@@ -152,7 +156,11 @@ export default function AiModelsPage() {
                                             {models.map((m) => (
                                                 <tr key={m.key}>
                                                     <td className="fw-semibold">{m.label}</td><td>{providerLabel(m.provider)}</td>
-                                                    <td className="text-end">{usd(m.prices.input, 2)}</td><td className="text-end">{usd(m.prices.cached_input, 2)}</td><td className="text-end">{usd(m.prices.output, 2)}</td>
+                                                    {m.prices ? (
+                                                        <><td className="text-end">{usd(m.prices.input, 2)}</td><td className="text-end">{usd(m.prices.cached_input, 2)}</td><td className="text-end">{usd(m.prices.output, 2)}</td></>
+                                                    ) : (
+                                                        <td colSpan={3} className="text-end text-warning">Preço por confirmar (custo desconhecido)</td>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -190,8 +198,8 @@ export default function AiModelsPage() {
             </Container>
 
             {data && <ApplyAllModal isOpen={applyOpen} onClose={() => setApplyOpen(false)} models={models} modelOptions={modelOptions} effortOptions={effortOptions}
-                count={data.functions.length} missingKey={missingKey} onApplied={(d) => { setData(d); setApplyOpen(false); }} />}
-            {data && <NewBlindTestModal isOpen={newTestOpen} onClose={() => setNewTestOpen(false)} functions={data.functions} onCreated={() => { setNewTestOpen(false); setView("blind"); }} />}
+                count={data.functions.filter((f) => f.group !== "ocr").length} missingKey={missingKey} onApplied={(d) => { setData(d); setApplyOpen(false); }} />}
+            {data && <NewBlindTestModal isOpen={newTestOpen} onClose={() => setNewTestOpen(false)} functions={data.functions.filter((f) => f.group !== "ocr")} onCreated={() => { setNewTestOpen(false); setView("blind"); }} />}
         </div>
     );
 }
@@ -227,7 +235,7 @@ function ApplyAllModal({ isOpen, onClose, models, modelOptions, effortOptions, c
                 <XSelect id="apply-all-effort" options={model ? effortOptions(model) : []} value={effort || null} onChange={setEffort} disabled={!model} />
                 {model && effort && (
                     <div className="alert alert-warning fs-13 mt-3 mb-0" role="alert">
-                        As {count} funções passam a usar o {label}, com raciocínio {(EFFORT_LABEL[effort] ?? effort).toLowerCase()}, a partir do pedido seguinte. Fica registado no histórico.
+                        As {count} funções passam a usar o {label}, com raciocínio {(EFFORT_LABEL[effort] ?? effort).toLowerCase()}, a partir do pedido seguinte (o OCR das faturas escolhe-se à parte). Fica registado no histórico.
                         {missing && <> A chave da {missing.label} não está configurada: os pedidos vão falhar até ser configurada.</>}
                     </div>
                 )}

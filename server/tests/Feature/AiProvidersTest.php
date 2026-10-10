@@ -310,11 +310,20 @@ class AiProvidersTest extends TestCase
         }
 
         $data = $this->as($this->root)->getJson('/api/v1/admin/ai-models')->assertOk()->json('data');
-        // Valores iniciais: claude-opus-5-5, esforço baixo nas funções curtas e médio nas ideias, no blog e na análise. Sem o OCR.
+        // Valores iniciais: claude-opus-5-5, esforço baixo nas funções curtas e médio nas ideias, no blog e na análise.
+        $plain = collect($data['functions'])->whereNull('group');
         $this->assertSame([
             'caption' => 'low', 'creative' => 'low', 'ideas' => 'medium', 'blog' => 'medium', 'brand_profile' => 'low', 'car_description' => 'low', 'car_analysis' => 'medium', 'family_categories' => 'low', 'bussola_jogadas' => 'low',
-        ], collect($data['functions'])->pluck('effort', 'key')->all());
-        $this->assertSame(['claude-opus-5-5'], collect($data['functions'])->pluck('model')->unique()->values()->all());
+        ], $plain->pluck('effort', 'key')->all());
+        $this->assertSame(['claude-opus-5-5'], $plain->pluck('model')->unique()->values()->all());
+        // O OCR também aparece, com a reserva do .env enquanto nada estiver escolhido.
+        $this->assertSame(['ocr_text', 'ocr_image'], collect($data['functions'])->where('group', 'ocr')->pluck('key')->values()->all());
+        $this->assertTrue(collect($data['functions'])->firstWhere('key', 'ocr_text')['reserve']);
+        $this->assertSame('OCR_MODEL_TEXT', collect($data['functions'])->firstWhere('key', 'ocr_text')['reserve_env']);
+        // A Anthropic tem o Fable 5.1 e o Opus 5.5 (o Fable com o esforço do modelo, "default").
+        $anthropic = collect($data['models'])->where('provider', 'anthropic')->pluck('key')->all();
+        $this->assertContains('claude-fable-5-1', $anthropic);
+        $this->assertContains('claude-opus-5-5', $anthropic);
         $this->assertSame(['anthropic' => true, 'openai' => true], collect($data['providers'])->pluck('configured', 'key')->all());
 
         $this->as($this->root)->putJson('/api/v1/admin/ai-models/blog', ['model' => 'gpt-6.1-sol', 'effort' => 'high'])->assertOk()
@@ -324,7 +333,8 @@ class AiProvidersTest extends TestCase
         $this->as($this->root)->putJson('/api/v1/admin/ai-models/ocr', ['model' => 'gpt-6.1-sol', 'effort' => 'low'])->assertStatus(422);
 
         $all = $this->as($this->root)->postJson('/api/v1/admin/ai-models/apply-all', ['model' => 'claude-sonnet-5-5', 'effort' => 'medium'])->assertOk()->json('data');
-        $this->assertSame(['claude-sonnet-5-5'], collect($all['functions'])->pluck('model')->unique()->values()->all());
+        $this->assertSame(['claude-sonnet-5-5'], collect($all['functions'])->whereNull('group')->pluck('model')->unique()->values()->all());
+        $this->assertTrue(collect($all['functions'])->firstWhere('key', 'ocr_image')['reserve'], 'o "Aplicar a todas" não mexe no OCR');
         $this->assertSame(1 + 9, DB::table('ai_function_setting_changes')->count());
         $this->assertSame(9, DB::table('ai_function_setting_changes')->where('applied_to_all', true)->where('user_id', $this->root->id)->count());
         $this->assertSame(['function' => 'blog', 'from' => 'claude-opus-5-5 (medium)', 'to' => 'gpt-6.1-sol (high)'],
@@ -336,13 +346,12 @@ class AiProvidersTest extends TestCase
         Http::assertSent(fn (Request $req) => $req['model'] === 'claude-sonnet-5-5' && $req['output_config']['effort'] === 'medium');
     }
 
-    public function test_ocr_is_untouched_by_the_model_switch(): void
+    public function test_ocr_is_untouched_by_apply_all_and_uses_the_env_reserve_until_chosen(): void
     {
         $this->as($this->root)->postJson('/api/v1/admin/ai-models/apply-all', ['model' => 'gpt-6.1-sol', 'effort' => 'high'])->assertOk();
-        $this->assertNotContains('ocr', array_keys((array) config('ai.functions')));
 
         Storage::fake('local');
-        // F2a: o modelo do OCR vem do .env (OCR_MODEL_TEXT/IMAGE), não do interruptor global.
+        // Sem escolha em Modelos de IA, o modelo do OCR vem da reserva do .env (OCR_MODEL_TEXT/IMAGE).
         config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
         // Leitura local (scraper) fora do teste: fotografia sem QR → caminho "sem QR".
         $this->app->instance(InvoiceOcrService::class, new class extends InvoiceOcrService {
@@ -365,6 +374,29 @@ class AiProvidersTest extends TestCase
         Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'anthropic') || str_contains($req->url(), '/v1/responses'));
         $this->assertSame('gpt-4o-mini', $invoice->fresh()->model);
         $this->assertSame(0, AiRequest::count());
+    }
+
+    public function test_the_ocr_model_chosen_in_ai_models_wins_over_the_env_reserve(): void
+    {
+        $this->as($this->root)->putJson('/api/v1/admin/ai-models/ocr_image', ['model' => 'gpt-6.1-sol', 'effort' => 'medium'])->assertOk()
+            ->assertJsonPath('data.functions.10.reserve', false);
+        Storage::fake('local');
+        config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
+        $this->app->instance(InvoiceOcrService::class, new class extends InvoiceOcrService {
+            protected function analyzeFile(string $bytes, string $mime, string $images): array
+            {
+                return ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
+            }
+        });
+        app(CompanyModuleService::class)->applyPreset($this->a->id, 'restaurant');
+        $invoice = OcrInvoice::create(['company_id' => $this->a->id, 'image_path' => "ocr-invoices/{$this->a->id}/y.jpg", 'image_mime' => 'image/jpeg', 'status' => 'processing']);
+        Storage::disk('local')->put($invoice->image_path, 'fake-image-bytes');
+        Http::fake(['api.openai.com/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => json_encode(['linhas' => []])]]], 'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 10]])]);
+
+        ProcessInvoiceOcrJob::dispatchSync($this->a->id, $invoice->id);
+
+        Http::assertSent(fn (Request $req) => $req['model'] === 'gpt-6.1-sol' && $req['reasoning_effort'] === 'medium');
+        $this->assertSame('openai', $invoice->fresh()->attempts_log[0]['provider']);
     }
 
     // ── Descrição de viaturas (síncrona) ──────────────────────────────────────
