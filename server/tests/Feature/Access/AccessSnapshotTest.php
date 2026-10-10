@@ -139,6 +139,17 @@ class AccessSnapshotTest extends TestCase
         $this->assertSame([], ShadowLog::divergences(), "Divergências do ator {$actor} em modo sombra.");
     }
 
+    /** F2: os atores usam os perfis gravados na base de dados (e não o papel). */
+    public function test_the_actors_use_the_profiles_saved_in_the_database(): void
+    {
+        foreach (['cliente_admin', 'cliente_utilizador', 'cliente_aprovador', 'agencia_admin', 'agencia_membro', 'sem_modulos_admin'] as $name) {
+            $this->assertNotNull($this->users[$name]->fresh()->profile_id, $name);
+        }
+        $this->assertNotNull($this->users['agencia_membro']->fresh()->agency_profile_id);
+        $this->assertNotNull(\App\Models\CompanyManagement::where('managed_company_id', $this->client->id)->value('guest_profile_id'));
+        $this->assertNull($this->users['root']->fresh()->profile_id);
+    }
+
     // ── O mundo de teste ─────────────────────────────────────────────────────
 
     protected function seedWorld(): void

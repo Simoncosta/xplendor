@@ -18,6 +18,14 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        // ACL (F2): até haver a escolha do perfil no ecrã (F5), o perfil segue o papel. Um
+        // utilizador novo fica com o perfil equivalente ao papel; ao mudar de papel, um perfil
+        // de sistema acompanha a mudança (um perfil personalizado fica como está). O root não
+        // tem perfil.
+        static::saving(function (User $user) {
+            \App\Access\ProfileAssignment::syncWithRole($user);
+        });
+
         // Gestão por agências: uma empresa arquivada (sem admin nem agência) sai do arquivo
         // quando ganha um administrador ativo.
         static::saved(function (User $user) {
@@ -80,6 +88,18 @@ class User extends Authenticatable
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** ACL: o perfil na própria empresa. */
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(PermissionProfile::class, 'profile_id');
+    }
+
+    /** ACL: o perfil dentro dos clientes, para quem trabalha numa agência. */
+    public function agencyProfile(): BelongsTo
+    {
+        return $this->belongsTo(PermissionProfile::class, 'agency_profile_id');
     }
 
     public function assignedCars(): HasMany

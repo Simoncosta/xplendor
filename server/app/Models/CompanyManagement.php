@@ -42,8 +42,24 @@ class CompanyManagement extends Model
         'requested_by_user_id', 'requested_at', 'request_message', 'agency_authorization_declared_at',
         'responded_by_user_id', 'responded_at', 'decline_reason', 'request_expires_at',
         'ended_by_user_id', 'ended_by_side', 'ended_at', 'end_reason', 'data_outcome', 'notes',
-        'connections_decision', 'connections_decided_at',
+        'connections_decision', 'connections_decided_at', 'guest_profile_id',
     ];
+
+    /** ACL (F2): uma relação nova fica com o teto "Agência convidada (como hoje)", se não vier outro. */
+    protected static function booted(): void
+    {
+        static::creating(function (CompanyManagement $m) {
+            if ($m->guest_profile_id === null && \Illuminate\Support\Facades\Schema::hasColumn('company_managements', 'guest_profile_id')) {
+                $m->guest_profile_id = PermissionProfile::where('system_key', PermissionProfile::CEILING_COMPAT)->value('id');
+            }
+        });
+    }
+
+    /** ACL: o teto que o cliente dá à agência gestora. */
+    public function guestProfile(): BelongsTo
+    {
+        return $this->belongsTo(PermissionProfile::class, 'guest_profile_id');
+    }
 
     protected $casts = [
         'requested_at' => 'datetime',

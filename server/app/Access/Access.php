@@ -6,6 +6,7 @@ namespace App\Access;
 
 use App\Models\Company;
 use App\Models\ImpersonationSession;
+use App\Models\ProfilePermission;
 use App\Models\User;
 use App\Services\CompanyModuleService;
 use App\Services\Tenancy\CompanyAccess;
@@ -18,8 +19,10 @@ use App\Services\Tenancy\CompanyAccess;
  *   3. módulos: os módulos pedidos (os do ensure_module da rota) têm de estar ativos;
  *   4. impersonation: as rotas sensíveis (block_when_impersonating) ficam recusadas;
  *   5. root: até à decisão D1 (F3), a regra de hoje (as rotas que lhe davam 403);
- *   6. perfil: own → o perfil do utilizador (+ editorial.aprovar se for aprovador);
- *      agency → o perfil na agência ∩ o teto que o cliente deu à agência.
+ *   6. perfil: own → o perfil do utilizador (users.profile_id; + editorial.aprovar se for
+ *      aprovador); agency → o perfil dentro dos clientes (users.agency_profile_id) ∩ o teto
+ *      que o cliente deu à agência (company_managements.guest_profile_id). Sem perfil
+ *      gravado, vale o perfil de compatibilidade do papel (o mesmo que a migração F2 dá).
  *
  * Contexto (opcional): route ("MÉTODO api/v1/companies/…"), modules (string[]),
  * sensitive (bool). Sem pedido HTTP (jobs, comandos), não há Access: os serviços não podem
@@ -29,6 +32,9 @@ class Access
 {
     /** @var array<string, array<string, true>> cache por pedido */
     private array $memo = [];
+
+    /** @var array<int, array<string, true>> permissões de cada perfil (cache por pedido) */
+    private array $profiles = [];
 
     public function __construct(
         private readonly CompanyAccess $companies,
@@ -80,16 +86,42 @@ class Access
             return $this->memo[$key];
         }
         if ($kind === CompanyAccess::AGENCY) {
-            $own = CompatibilityProfiles::allowed($user->role === 'admin' ? CompatibilityProfiles::AGENCY_ADMIN : CompatibilityProfiles::AGENCY_MEMBER);
-            $set = array_intersect_key($own, CompatibilityProfiles::allowed(CompatibilityProfiles::CEILING));
+            $own = $user->agency_profile_id
+                ? $this->profilePermissions((int) $user->agency_profile_id)
+                : CompatibilityProfiles::allowed($user->role === 'admin' ? CompatibilityProfiles::AGENCY_ADMIN : CompatibilityProfiles::AGENCY_MEMBER);
+            $set = array_intersect_key($own, $this->ceilingFor($companyId));
         } else {
-            $set = CompatibilityProfiles::allowed($user->role === 'admin' ? CompatibilityProfiles::CLIENT_ADMIN : CompatibilityProfiles::CLIENT_USER);
+            $set = $user->profile_id
+                ? $this->profilePermissions((int) $user->profile_id)
+                : CompatibilityProfiles::allowed($user->role === 'admin' ? CompatibilityProfiles::CLIENT_ADMIN : CompatibilityProfiles::CLIENT_USER);
             if ($user->can_approve_content) {
                 $set[CompatibilityProfiles::load()['aprovador']] = true;
             }
         }
 
         return $this->memo[$key] = $set;
+    }
+
+    /** O teto que o cliente deu à agência gestora (a relação ativa). @return array<string, true> */
+    public function ceilingFor(int $companyId): array
+    {
+        $profileId = $this->companies->management($companyId)?->guest_profile_id;
+
+        return $profileId ? $this->profilePermissions((int) $profileId) : CompatibilityProfiles::allowed(CompatibilityProfiles::CEILING);
+    }
+
+    /** @return array<string, true> */
+    private function profilePermissions(int $profileId): array
+    {
+        if (! isset($this->profiles[$profileId])) {
+            $set = [];
+            foreach (ProfilePermission::where('profile_id', $profileId)->get(['area', 'action']) as $p) {
+                $set["{$p->area}.{$p->action}"] = true;
+            }
+            $this->profiles[$profileId] = $set;
+        }
+
+        return $this->profiles[$profileId];
     }
 
     /** Regra do root de hoje (até à D1, na F3): as rotas que lhe davam 403 continuam a dar. */
@@ -112,7 +144,7 @@ class Access
             if (Permissions::isClientDecision($permission)) {
                 return Decision::deny('Esta decisão é do cliente: a agência gestora não a pode tomar.', Decision::CLIENT_DECISION);
             }
-            if (! isset(CompatibilityProfiles::allowed(CompatibilityProfiles::CEILING)[$permission])) {
+            if (! isset($this->ceilingFor($companyId)[$permission])) {
                 $name = Company::whereKey($companyId)->value('fiscal_name') ?: 'O cliente';
 
                 return Decision::deny("{$name} não deu acesso a esta agência para " . Permissions::phrase($permission) . '.', Decision::CEILING);
@@ -127,5 +159,6 @@ class Access
     public function flush(): void
     {
         $this->memo = [];
+        $this->profiles = [];
     }
 }
