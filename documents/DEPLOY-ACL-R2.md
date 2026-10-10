@@ -59,10 +59,10 @@ Se o `git pull` falhar, nada foi desligado: devolver o registo (`cp /home/scrape
 ### b2. Variáveis do `.env` (antes de correr o script, que faz o `config:cache`)
 
 ```
-# OCR (obrigatórias: sem elas, ler uma fatura falha com "Modelo de OCR não configurado")
-OCR_MODEL_TEXT=gpt-4o-mini
-OCR_MODEL_IMAGE=gpt-6.1-sol
-OCR_REASONING_EFFORT=low
+# OCR (corrigido no pré-deploy dos Ficheiros: só a Anthropic; ver documents/ficheiros/DEPLOY-FICHEIROS.md)
+OCR_MODEL_TEXT=claude-opus-5-5
+OCR_MODEL_IMAGE=claude-opus-5-5
+OCR_REASONING_EFFORT=medium
 
 # R2: as credenciais podem entrar já; os discos FICAM LOCAIS até ao passo d
 R2_ACCESS_KEY_ID=<Access Key ID>
@@ -76,7 +76,7 @@ MEDIA_EXTERNAL_FETCH_TTL=3600
 MEDIA_DISK=media
 PRIVATE_FILES_DISK=local
 ```
-- Confirmar os modelos do OCR (são os de dev).
+- Os modelos do OCR foram corrigidos no pré-deploy dos Ficheiros (só a Anthropic). Com o código novo, um modelo da OpenAI aqui é ignorado.
 - Se já existir `REDIS_QUEUE_RETRY_AFTER` ou `DB_QUEUE_RETRY_AFTER`, tem de ser pelo menos `3700`.
 - Sem o bucket criado, as variáveis `R2_*` podem ficar para o passo d (com os discos locais, nada as usa).
 - Opcionais, sem acrescentar: `PINGWIN_REPORT_ID_ITEM_SALES`, `PINGWIN_REPORT_ID_ANNUAL`, `PINGWIN_REPORT_ID_HOURLY_SALES`.
