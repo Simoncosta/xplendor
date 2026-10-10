@@ -766,8 +766,9 @@ export const uploadOcrInvoice = (companyId: number, file: File) => {
 };
 export const getOcrInvoice = (companyId: number, invoiceId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`);
+// A rota só aceita PUT (o api.update envia PATCH e dava 405 ao gravar a fatura).
 export const updateOcrInvoice = (companyId: number, invoiceId: number, data: Record<string, any>) =>
-    api.update(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`, data);
+    api.put(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}`, data);
 // F2a: reprocessar (async — volta a 'processing'; a página faz polling como no upload).
 export const reprocessOcrInvoice = (companyId: number, invoiceId: number) =>
     api.create(url.GET_COMPANIES + `/${companyId}/ocr/invoices/${invoiceId}/reprocess`, {});

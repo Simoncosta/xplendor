@@ -251,4 +251,40 @@ class InvoiceOcrTest extends TestCase
             ->getJson("/api/v1/companies/{$this->auto->id}/ocr/invoices")
             ->assertStatus(403);
     }
+
+    /**
+     * Pré-deploy, ponto 4: o ciclo completo como o ecrã o faz. Carregar, ler (com a IA
+     * simulada), rever e gravar com PUT (o ecrã enviava PATCH, que a rota não aceita).
+     */
+    public function test_full_cycle_upload_review_and_save_with_put(): void
+    {
+        Bus::fake();
+        $base = "/api/v1/companies/{$this->resto->id}/ocr/invoices";
+        $id = $this->actingAs($this->restoUser, 'sanctum')->postJson($base, ['file' => UploadedFile::fake()->image('fatura.jpg', 800, 1000)])
+            ->assertOk()->json('data.id') ?? OcrInvoice::where('company_id', $this->resto->id)->latest('id')->value('id');
+        $this->assertNotNull($id);
+
+        Bus::assertDispatched(ProcessInvoiceOcrJob::class);
+        $this->bindFakeOcr($this->sampleJson());
+        app()->call([new ProcessInvoiceOcrJob($this->resto->id, (int) $id), 'handle']); // o worker (o Bus está simulado)
+
+        $shown = $this->actingAs($this->restoUser, 'sanctum')->getJson("{$base}/{$id}")->assertOk()->json('data.invoice');
+        $this->assertSame('por_validar', $shown['status']);
+        $lines = array_map(fn ($l) => [
+            'id' => $l['id'], 'item' => $l['item'], 'quantity' => $l['quantity'], 'unit' => $l['unit'] ?? 'un',
+            'unit_price' => $l['unit_price'], 'line_total' => 42.00, 'vat_rate' => 6,
+        ], array_slice($shown['lines'], 0, 1));
+        $payload = ['supplier_name' => 'Recheio Revisto', 'supplier_nif' => '500829993', 'number' => 'FT 2024A/12345', 'issue_date' => '2024-03-15',
+            'lines' => $lines, 'summary' => ['goods_total' => 42.00, 'taxable_base' => 42.00, 'vat_total' => 2.52, 'total' => 44.52,
+                'vat_breakdown' => [['rate' => 6, 'base' => 42.00, 'vat' => 2.52]]]];
+
+        // O método que o ecrã usava (PATCH) não existe nesta rota; o PUT grava.
+        $this->actingAs($this->restoUser, 'sanctum')->patchJson("{$base}/{$id}", $payload)->assertStatus(405);
+        $this->actingAs($this->restoUser, 'sanctum')->putJson("{$base}/{$id}", $payload)->assertOk();
+
+        $invoice = OcrInvoice::find($id);
+        $this->assertSame('Recheio Revisto', $invoice->supplier_name);
+        $this->assertDatabaseCount('ocr_invoice_lines', 1);
+        $this->assertDatabaseHas('ocr_invoice_summary', ['ocr_invoice_id' => $id, 'total_cents' => 4452]);
+    }
 }
