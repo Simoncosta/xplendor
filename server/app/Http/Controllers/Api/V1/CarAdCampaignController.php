@@ -77,6 +77,10 @@ class CarAdCampaignController extends Controller
         if ($r = $this->denied($companyId) ?? $this->readOnly($companyId)) {
             return $r;
         }
+        // Isolamento (F0): a viatura tem de ser desta empresa.
+        if (! \App\Models\Car::where('company_id', $companyId)->whereKey($carId)->exists()) {
+            return ApiResponse::error('Viatura não encontrada.', 404);
+        }
 
         $request->validate([
             'platform'        => 'required|in:meta,google',

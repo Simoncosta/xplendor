@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CarViewRequest extends FormRequest
 {
@@ -23,7 +24,8 @@ class CarViewRequest extends FormRequest
     {
         return [
             // relations
-            'car_id'     => ['required', 'integer', 'exists:cars,id'],
+            // Só viaturas da empresa do token (F0 do isolamento).
+            'car_id'     => ['required', 'integer', Rule::exists('cars', 'id')->where('company_id', $this->publicCompanyId())],
 
             // tracking
             'referrer'     => ['nullable', 'string', 'max:2048'],
@@ -44,5 +46,13 @@ class CarViewRequest extends FormRequest
             'ad_id'        => ['nullable', 'string', 'max:255'],
             'click_id'     => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    /** A empresa do token público (posta pelo check_company_api_token); 0 se não houver. */
+    private function publicCompanyId(): int
+    {
+        $company = $this->input('public_api_company');
+
+        return $company instanceof \App\Models\Company ? (int) $company->id : 0;
     }
 }

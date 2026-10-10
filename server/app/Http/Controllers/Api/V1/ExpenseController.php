@@ -193,7 +193,7 @@ class ExpenseController extends Controller
         $data = $this->service->normalizePaidState($request->validated());
         unset($data['company_id']);
 
-        $updated = $this->service->update($id, $data);
+        $updated = $this->service->updateForCompany($companyId, $id, $data);
         $updated->load(self::RELATIONS);
 
         return ApiResponse::success(

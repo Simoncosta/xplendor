@@ -508,6 +508,7 @@ class CarService extends BaseService
 
         $sellerMap = User::query()
             ->whereIn('id', $sellerIds)
+            ->whereIn('company_id', $companyIds) // nunca dados de vendedores de outra empresa
             ->get(['id', 'name', 'avatar', 'mobile', 'whatsapp', 'company_id'])
             ->keyBy('id');
 
@@ -523,6 +524,9 @@ class CarService extends BaseService
             $seller = $car->seller_user_id
                 ? $sellerMap->get($car->seller_user_id)
                 : null;
+            if ($seller && (int) $seller->company_id !== (int) $car->company_id) {
+                $seller = null; // vendedor de outra empresa: fica o contacto do stand
+            }
 
             if (!$seller) {
                 $seller = $adminMap->get($car->company_id);

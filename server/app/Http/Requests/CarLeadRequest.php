@@ -41,7 +41,8 @@ class CarLeadRequest extends FormRequest
             'message' => ['nullable', 'string', 'max:5000'],
 
             // relations
-            'car_id'     => ['required', 'integer', 'exists:cars,id'],
+            // Só viaturas da empresa do token (F0 do isolamento).
+            'car_id'     => ['required', 'integer', Rule::exists('cars', 'id')->where('company_id', $this->publicCompanyId())],
             // 'company_id' => ['required', 'integer', 'exists:companies,id'],
 
             // tracking
@@ -72,5 +73,13 @@ class CarLeadRequest extends FormRequest
                 Rule::in(\App\Models\CarLead::STATUSES),
             ],
         ];
+    }
+
+    /** A empresa do token público (posta pelo check_company_api_token); 0 se não houver. */
+    private function publicCompanyId(): int
+    {
+        $company = $this->input('public_api_company');
+
+        return $company instanceof \App\Models\Company ? (int) $company->id : 0;
     }
 }

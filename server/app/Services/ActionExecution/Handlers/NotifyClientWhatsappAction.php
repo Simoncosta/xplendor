@@ -35,6 +35,9 @@ class NotifyClientWhatsappAction implements ActionExecutionHandlerInterface
     private function resolveRecipient(Car $car): array
     {
         $seller = $car->seller;
+        if ($seller && (int) $seller->company_id !== (int) $car->company_id) {
+            $seller = null; // nunca o contacto de um vendedor de outra empresa
+        }
         $company = $car->company;
 
         $rawPhone = $seller?->whatsapp

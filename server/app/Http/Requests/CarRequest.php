@@ -404,7 +404,9 @@ class CarRequest extends FormRequest
             'description_website_en' => ['nullable', 'string'],
             'internal_notes' => ['nullable', 'string'],
             'youtube_url' => ['nullable', 'url'],
-            'seller_user_id' => ['nullable', 'exists:users,id'],
+            // Só utilizadores da empresa do endereço (F0 do isolamento): os contactos do vendedor
+            // aparecem no site público do stand.
+            'seller_user_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('company_id', (int) $this->route('id'))],
 
             // Imagens normais (upload)
             'images' => ['nullable', 'array', 'max:60'],
