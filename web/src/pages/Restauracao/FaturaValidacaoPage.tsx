@@ -426,6 +426,11 @@ export default function FaturaValidacaoPage() {
                         </Button>
                     </>}
                 />
+                {inv?.status === "por_validar" && inv.error_message && (
+                    <Alert color="warning" className="mb-3" data-testid="ocr-manual-review">
+                        <i className="ri-error-warning-line me-1" />{inv.error_message}
+                    </Alert>
+                )}
 
                 {inv?.confidence !== undefined && inv.confidence < 60 && (
                     <Alert color="warning" className="py-2"><i className="ri-alert-line me-1" /> Confiança baixa ({inv.confidence}%): confira tudo com atenção contra a imagem.</Alert>

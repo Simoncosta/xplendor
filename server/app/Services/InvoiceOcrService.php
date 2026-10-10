@@ -9,6 +9,9 @@ use App\Models\OcrInvoice;
 use App\Models\OcrInvoiceLine;
 use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
+use App\Services\Ocr\AnthropicInvoiceReader;
+use App\Services\Ocr\OcrModelStopped;
+use App\Services\Ocr\OcrSchemas;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -56,6 +59,9 @@ class InvoiceOcrService
     private const OPENAI_BACKOFF_MS = [500, 1500];
     private const MAX_TEXT_CHARS = 60000;
 
+    /** O ficheiro da fatura em leitura (a Anthropic recebe-o diretamente). @var array{bytes: string, mime: string, is_pdf: bool} */
+    private array $file = ['bytes' => '', 'mime' => '', 'is_pdf' => false];
+
     /**
      * Processa uma fatura (chamado pela fila). Ver o fluxo no topo. Marca a fatura
      * 'por_validar', 'nao_desta_empresa' ou 'erro'. NÃO escreve no PingWin.
@@ -76,9 +82,12 @@ class InvoiceOcrService
             $mime = (string) ($invoice->image_mime ?? 'image/jpeg');
             $isPdf = $this->isPdf($mime, $invoice->image_path);
             $cfg = $this->cfg();
+            $this->file = ['bytes' => $bytes, 'mime' => $mime, 'is_pdf' => $isPdf];
+            $imagePlan = $this->planFor('ocr_image', 'imagem');
 
-            // 1) Leitura local (sem IA): QR + texto + (se o texto não chegar) imagens.
-            $an = $this->analyzeFile($bytes, $mime, 'auto');
+            // 1) Leitura local (sem IA): QR + texto + (se o texto não chegar) imagens. A Anthropic
+            //    lê o PDF diretamente, por isso não é preciso rasterizar.
+            $an = $this->analyzeFile($bytes, $mime, $imagePlan['provider'] === 'anthropic' ? 'never' : 'auto');
             $qr = AtInvoiceQr::parse($an['qr']['raw'] ?? null);
             $qrOk = $qr !== null && $qr['valid'];
             $pages = (int) ($an['pages'] ?? 1);
@@ -93,11 +102,18 @@ class InvoiceOcrService
             // 3) Linhas pela IA: texto se houver texto útil, senão imagens.
             $textOk = $isPdf && (int) ($an['text_chars'] ?? 0) >= $cfg['text_min_chars'];
             $images = $isPdf ? ($an['images'] ?? []) : [['page' => 1, 'mime' => $mime, 'base64' => base64_encode($bytes)]];
-            $imagePlan = $this->planFor('ocr_image', 'imagem');
             $plan = $textOk ? $this->planFor('ocr_text', 'texto') : $imagePlan;
 
             $attempts = [];
-            $best = $this->attempt($plan, $qrOk ? $qr : null, $an['text'] ?? '', $images, $invoice->company_id);
+            try {
+                $best = $this->attempt($plan, $qrOk ? $qr : null, $an['text'] ?? '', $images, $invoice->company_id);
+            } catch (OcrModelStopped $stop) {
+                // Recusa ou resposta cortada: para revisão manual, com o motivo, sem repetir.
+                $this->persistStopped($invoice, $plan, $stop, $qrOk ? $qr : null, $an, $this->elapsedMs($started));
+                $this->linkAfterRead($invoiceId);
+
+                return;
+            }
             $attempts[] = $best;
 
             // 4) Conferência pelo QR (+ 1 nova tentativa se não conferir).
@@ -117,8 +133,10 @@ class InvoiceOcrService
                 } catch (\Throwable $e) {
                     // A 2.ª tentativa falhou: fica a 1.ª (nunca se descarta o resultado).
                     Log::warning('[OCR Fatura] 2.ª tentativa falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
+                    $in = $e instanceof OcrModelStopped ? $e->tokensIn : 0;
+                    $out = $e instanceof OcrModelStopped ? $e->tokensOut : 0;
                     $attempts[] = ['provider' => $retry['provider'], 'model' => $retry['model'], 'lines_source' => $retry['lines_source'], 'effort' => $retry['effort'],
-                        'tokens_in' => 0, 'tokens_out' => 0, 'cost_usd' => 0.0, 'ms' => 0, 'error' => mb_substr($e->getMessage(), 0, 300)];
+                        'tokens_in' => $in, 'tokens_out' => $out, 'cost_usd' => $this->costUsd($retry['model'], $in, $out) ?? 0.0, 'ms' => 0, 'error' => mb_substr($e->getMessage(), 0, 300)];
                 }
             }
 
@@ -136,6 +154,16 @@ class InvoiceOcrService
             throw $e; // deixa o Job notificar/registar
         }
 
+        $this->linkAfterRead($invoiceId);
+    }
+
+    /** Depois da leitura: as ligações ao PingWin e aos artigos (uma falha nunca estraga a leitura). */
+    private function linkAfterRead(int $invoiceId): void
+    {
+        $invoice = OcrInvoice::find($invoiceId);
+        if (! $invoice) {
+            return;
+        }
         // F3: liga ao documento do PingWin (espelhos; pesquisa viva do fornecedor por NIF, só
         // leitura — o processamento corre no worker). Uma falha aqui nunca estraga a leitura.
         try {
@@ -176,16 +204,16 @@ class InvoiceOcrService
         if ($plan['model'] === null || $plan['model'] === '') {
             throw new \RuntimeException('Modelo de OCR não configurado: escolha-o em Modelos de IA (ou OCR_MODEL_' . ($plan['lines_source'] === 'texto' ? 'TEXT' : 'IMAGE') . ' no .env).');
         }
-        if ($plan['lines_source'] === 'imagem' && $images === []) {
+        if ($plan['provider'] !== 'anthropic' && $plan['lines_source'] === 'imagem' && $images === []) {
             throw new \RuntimeException('Sem imagens da fatura para a IA ler.');
         }
 
         $t0 = hrtime(true);
         $system = $qr ? $this->linesPrompt() : $this->prompt();
-        $user = $this->userContent($plan['lines_source'], $qr, $text, $images);
         $res = match ($plan['provider']) {
-            'openai' => $this->callModel($plan['model'], $system, $user, $plan['effort']),
-            default => throw new \RuntimeException("O OCR ainda não lê faturas com o fornecedor \"{$plan['provider']}\"."),
+            'openai' => $this->callModel($plan['model'], $system, $this->userContent($plan['lines_source'], $qr, $text, $images), $plan['effort']),
+            'anthropic' => $this->callAnthropic($plan, $system, $qr),
+            default => throw new \RuntimeException("O OCR não lê faturas com o fornecedor \"{$plan['provider']}\"."),
         };
         $clean = $this->sanitize($this->decodeJson($res['content']));
         if (! $qr) {
@@ -197,7 +225,8 @@ class InvoiceOcrService
             'provider'     => $plan['provider'],
             'model'        => $plan['model'],
             'lines_source' => $plan['lines_source'],
-            'effort'       => $this->isReasoningModel($plan['model']) ? $plan['effort'] : null,
+            'effort'       => $plan['provider'] === 'anthropic' || $this->isReasoningModel($plan['model']) ? $plan['effort'] : null,
+            'input'        => $res['input'] ?? ($plan['lines_source'] === 'texto' ? 'texto' : 'imagens'),
             'clean'        => $clean,
             'tokens_in'    => $res['tokens_in'],
             'tokens_out'   => $res['tokens_out'],
@@ -205,6 +234,22 @@ class InvoiceOcrService
             'ms'           => $this->elapsedMs($t0),
             'check'        => $qr ? $this->conference($clean['lines'], $qr) : ['ok' => false, 'abs_cents' => 0, 'rows' => []],
         ];
+    }
+
+    /**
+     * Anthropic: o ficheiro original (PDF como documento, fotografia como imagem), saída
+     * estruturada com o esquema de hoje. Com QR, só as linhas (e as bases para se conferir).
+     */
+    protected function callAnthropic(array $plan, string $system, ?array $qr): array
+    {
+        $instruction = ($qr
+            ? "Lê as LINHAS desta fatura de fornecedor para o JSON pedido.\n\n" . $this->qrHint($qr)
+            : 'Extrai os dados desta fatura de fornecedor para o JSON pedido.')
+            . "\n\nA fatura segue em anexo (" . ($this->file['is_pdf'] ? 'PDF' : 'fotografia') . ').';
+        $maxTokens = (int) config("ai.functions.{$plan['function']}.max_tokens", 16000) + (int) config("ai.reasoning_headroom.{$plan['effort']}", 12000);
+
+        return app(AnthropicInvoiceReader::class)->read($plan['model'], $plan['effort'], $system, $qr ? OcrSchemas::lines() : OcrSchemas::full(),
+            $instruction, $this->file['bytes'], $this->file['mime'], $this->file['is_pdf'], $maxTokens);
     }
 
     /**
@@ -641,6 +686,8 @@ class InvoiceOcrService
                 'doc_type'       => $qr['doc_type'] ?? null,
                 'issue_date'     => $clean['issue_date'],
                 'model'          => $best['model'],
+                'ai_provider'    => $best['provider'] ?? null,
+                'ai_effort'      => $best['effort'] ?? null,
                 'prompt_version' => $qr ? self::LINES_PROMPT_VERSION : self::PROMPT_VERSION,
                 'confidence'     => $confidence,
                 'status'         => 'por_validar',
@@ -678,6 +725,27 @@ class InvoiceOcrService
         });
     }
 
+    /**
+     * A IA parou sem leitura (recusa ou resposta cortada): a fatura fica 'por_validar', sem
+     * linhas, com o cabeçalho do QR (se houver) e o motivo em error_message, para revisão manual.
+     * Os tokens gastos contam no custo.
+     */
+    private function persistStopped(OcrInvoice $invoice, array $plan, OcrModelStopped $stop, ?array $qr, array $an, int $ms): void
+    {
+        $empty = ['supplier_name' => null, 'supplier_nif' => null, 'number' => null, 'issue_date' => null, 'lines' => [], 'guides' => [],
+            'summary' => ['goods_total_cents' => 0, 'commercial_discount_cents' => 0, 'taxable_base_cents' => 0, 'vat_total_cents' => 0,
+                'withholding_cents' => 0, 'financial_discount_cents' => 0, 'total_cents' => 0, 'vat_breakdown' => []]];
+        $attempt = [
+            'provider' => $plan['provider'], 'model' => $plan['model'], 'lines_source' => $plan['lines_source'], 'effort' => $plan['effort'],
+            'clean' => $empty, 'tokens_in' => $stop->tokensIn, 'tokens_out' => $stop->tokensOut,
+            'cost_usd' => $this->costUsd($plan['model'], $stop->tokensIn, $stop->tokensOut), 'ms' => $ms,
+            'check' => $qr ? $this->conference([], $qr) : ['ok' => false, 'abs_cents' => 0, 'rows' => []], 'error' => $stop->reason,
+        ];
+        $this->persist($invoice, $attempt, [$attempt], $qr, $an, $ms);
+        OcrInvoice::whereKey($invoice->id)->update(['error_message' => mb_substr($stop->getMessage(), 0, 500)]);
+        Log::warning('[OCR Fatura] A IA parou sem leitura: fica para revisão manual', ['invoice_id' => $invoice->id, 'motivo' => $stop->reason, 'modelo' => $plan['model']]);
+    }
+
     /** QR de outra empresa (ou emitido pela própria): cabeçalho do QR, sem linhas, sem IA. */
     private function persistNotOurs(OcrInvoice $invoice, array $qr, int $pages, string $message, int $ms): void
     {
@@ -693,6 +761,8 @@ class InvoiceOcrService
                 'doc_type'      => $qr['doc_type'],
                 'issue_date'    => $qr['issue_date'],
                 'model'         => null,
+                'ai_provider'   => null,
+                'ai_effort'     => null,
                 'confidence'    => 0,
                 'status'        => self::STATUS_NOT_OURS,
                 'error_message' => $message,
@@ -762,6 +832,7 @@ class InvoiceOcrService
             'n'            => $i + 1,
             'provider'     => $a['provider'] ?? null,
             'model'        => $a['model'],
+            'input'        => $a['input'] ?? null,
             'lines_source' => $a['lines_source'],
             'effort'       => $a['effort'] ?? null,
             'tokens_in'    => $a['tokens_in'],

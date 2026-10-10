@@ -15,7 +15,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * Administração › Modelos de IA (só o root, grupo /admin com ensure_super_admin): o fornecedor,
  * o modelo e o esforço de cada função, "Aplicar a todas as funções", o histórico, os custos do
- * mês e o teste às cegas. O OCR das faturas não aparece aqui.
+ * mês e o teste às cegas. O OCR das faturas aparece como duas funções (o custo do mês vem das
+ * faturas lidas: ocr_invoices).
  */
 class AiModelsController extends Controller
 {
@@ -71,8 +72,21 @@ class AiModelsController extends Controller
         return ApiResponse::success($this->blind->show($testId), 'Escolha registada.');
     }
 
-    /** Custos do mês por função (ai_requests): pedidos, erros com resposta do fornecedor, tokens e custo. */
+    /** Custos do mês por função (ai_requests; o OCR pelas faturas lidas): pedidos, erros com resposta do fornecedor, tokens e custo. */
     private function usage(): array
+    {
+        $ocr = DB::table('ocr_invoices')->where('created_at', '>=', now()->startOfMonth())->whereNotNull('model')->whereIn('lines_source', ['texto', 'imagem'])
+            ->selectRaw('lines_source, count(*) as requests, coalesce(sum(tokens_in), 0) as input_tokens, coalesce(sum(tokens_out), 0) as output_tokens, coalesce(sum(cost_usd), 0) as cost_usd')
+            ->groupBy('lines_source')->get()->map(fn ($r) => [
+                'function' => $r->lines_source === 'texto' ? 'ocr_text' : 'ocr_image', 'requests' => (int) $r->requests, 'provider_errors' => 0,
+                'input_tokens' => (int) $r->input_tokens, 'output_tokens' => (int) $r->output_tokens, 'reasoning_tokens' => 0,
+                'cost_usd' => round((float) $r->cost_usd, 4),
+            ])->values()->all();
+
+        return array_merge($this->aiRequestsUsage(), $ocr);
+    }
+
+    private function aiRequestsUsage(): array
     {
         return DB::table('ai_requests')->where('created_at', '>=', now()->startOfMonth())->whereNotNull('provider')
             ->selectRaw('mode, count(*) as requests, sum(case when status = ? and provider_status is not null then 1 else 0 end) as provider_errors, '
