@@ -90,7 +90,7 @@ PRIVATE_FILES_DISK=local
       docker exec xplendor-php php artisan config:cache
       docker exec xplendor-php php artisan queue:restart
       ```
-   6. Correr outra vez `storage:migrate-to-r2 --execute`, para os ficheiros escritos entre os passos 4.2 e 4.5.
+   6. Correr outra vez `storage:migrate-to-r2 --execute`, para os ficheiros escritos entre os passos 4.2 e 4.5. Os que já foram escritos diretamente no R2 contam como "já estavam" (não "em falta").
 5. **Confirmar no ecrã:** uma publicação com imagem e uma com vídeo (o vídeo avança), enviar uma imagem nova, abrir uma fatura do OCR, o PDF de uma cobrança, a fatura de um ticket pago e as fotografias de um relatório de satisfação.
 6. **Uns dias depois**, com tudo a funcionar, apagar as cópias locais (comando à parte; só apaga o que já é lido do R2):
    ```

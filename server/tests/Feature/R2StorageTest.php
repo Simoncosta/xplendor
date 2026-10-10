@@ -241,6 +241,50 @@ class R2StorageTest extends TestCase
         $this->assertFalse(Storage::disk('local')->exists($photo->path));
     }
 
+    public function test_with_private_files_on_r2_ticket_invoices_and_report_photos_are_written_and_served_from_r2(): void
+    {
+        config(['storage_targets.private_disk' => 'r2']);
+        $ticket = \App\Models\SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->user->id, 'type' => 'site_change',
+            'title' => 'Mudar o site', 'description' => 'Texto', 'status' => 'open', 'quote_status' => 'approved', 'quoted_amount' => 100]);
+        $ticket = app(\App\Services\SupportTicketService::class)->markPaid($ticket, UploadedFile::fake()->createWithContent('fatura.pdf', '%PDF-1.4 no R2'));
+        $this->assertTrue(Storage::disk('r2')->exists($ticket->invoice_path));
+        $this->assertSame([], Storage::disk('local')->allFiles(), 'nada no disco local');
+
+        $car = \App\Models\Car::factory()->create(['company_id' => $this->company->id]);
+        $sale = \App\Models\CarSale::create(['car_id' => $car->id, 'company_id' => $this->company->id, 'sale_price' => 1, 'buyer_gender' => 'male',
+            'buyer_age_range' => '31-45', 'sale_channel' => 'in_person', 'sold_at' => now()]);
+        $report = \App\Models\SatisfactionReport::create(['company_id' => $this->company->id, 'car_sale_id' => $sale->id, 'car_id' => $car->id,
+            'public_token' => \App\Models\SatisfactionReport::generateToken(), 'status' => 'pending', 'expires_at' => now()->addDays(90)]);
+        $photo = app(\App\Services\SatisfactionReportPhotoService::class)->upload($report, UploadedFile::fake()->image('foto.jpg', 120, 90));
+        $this->assertTrue(Storage::disk('r2')->exists($photo->path));
+
+        // Saem por um endereço assinado do R2 (redirecionamento), atrás do endereço assinado da aplicação.
+        $this->get(\App\Support\Storage\PrivateFiles::ticketInvoiceUrl($ticket))->assertRedirect();
+        $this->get(\App\Support\Storage\PrivateFiles::reportPhotoUrl($photo))->assertRedirect();
+
+        // Repetir a migração depois da mudança: o que já está no R2 conta como "já estava", não "em falta".
+        $run = (new StorageMigration('r2'))->run(true, ['fatura_ticket', 'foto_relatorio']);
+        $this->assertSame([0, 2, 0], [$run['copiados'], $run['ja_estavam'], $run['em_falta']]);
+
+        // O apagamento definitivo apaga no R2.
+        app(\App\Services\SatisfactionReportPhotoService::class)->delete($photo);
+        $this->assertFalse(Storage::disk('r2')->exists($photo->path));
+    }
+
+    public function test_files_make_private_moves_the_old_public_files_straight_to_r2(): void
+    {
+        Storage::fake('public');
+        config(['storage_targets.private_disk' => 'r2']);
+        $ticket = \App\Models\SupportTicket::forceCreate(['company_id' => $this->company->id, 'user_id' => $this->user->id, 'type' => 'site_change',
+            'title' => 'Antigo', 'description' => 'Texto', 'status' => 'open', 'quote_status' => 'paid', 'quoted_amount' => 100,
+            'invoice_path' => "/storage/company_{$this->company->id}/ticket-invoices/antiga.pdf"]);
+        Storage::disk('public')->put("company_{$this->company->id}/ticket-invoices/antiga.pdf", '%PDF antiga');
+
+        $this->assertSame(0, \Illuminate\Support\Facades\Artisan::call('files:make-private', ['--execute' => true]));
+        $this->assertSame('%PDF antiga', Storage::disk('r2')->get($ticket->fresh()->invoice_path));
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
     public function test_charges_are_stored_and_read_on_the_private_disk(): void
     {
         config(['storage_targets.private_disk' => 'r2']);

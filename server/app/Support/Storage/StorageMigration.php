@@ -119,6 +119,12 @@ final class StorageMigration
         $target = Storage::disk($this->target);
         $item = DB::table('storage_migration_items')->where(['source_disk' => $sourceDisk, 'target_disk' => $this->target, 'path' => $path])->first();
 
+        if (! $source->exists($path) && $target->exists($path)) {
+            // Escrito já no destino (depois de mudar o disco para o R2): nada a copiar.
+            $this->stats['ja_estavam']++;
+
+            return 'ja_estava';
+        }
         if (! $source->exists($path)) {
             $this->stats['em_falta']++;
             $execute && $this->save($item, $kind, $sourceDisk, $path, ['status' => 'em_falta', 'error' => 'O ficheiro local não existe.']);
