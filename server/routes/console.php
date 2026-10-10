@@ -354,6 +354,14 @@ Schedule::job(new \App\Jobs\PurgeFilesRecycleJob())
         \Illuminate\Support\Facades\Log::error('[Ficheiros] Reciclagem falhou no scheduler');
     });
 
+// 04:40 (Lisboa) — Ficheiros: regista os ficheiros novos dos módulos nas pastas do sistema
+// (empresas com o módulo ligado; nada é copiado). Interna.
+Schedule::command('files:catalog --execute')
+    ->dailyAt('04:40')
+    ->timezone('Europe/Lisbon')
+    ->name('files-catalog-nightly')
+    ->withoutOverlapping();
+
 // Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
 foreach (Schedule::events() as $event) {
     if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {

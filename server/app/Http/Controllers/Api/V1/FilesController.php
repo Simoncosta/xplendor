@@ -35,6 +35,7 @@ class FilesController extends Controller
     {
         $data = $request->validate(['folder_id' => ['nullable', 'integer'], 'q' => ['nullable', 'string', 'max:120']]);
         $user = $request->user();
+        app(\App\Services\Files\SystemFileCatalog::class)->syncIfStale($companyId); // os ficheiros novos dos módulos (de 5 em 5 minutos)
         $folderId = isset($data['folder_id']) ? (int) $data['folder_id'] : null;
         $contents = $this->files->contents($user, $companyId, $folderId, $data['q'] ?? null);
         $tree = $this->files->folders($user, $companyId);
