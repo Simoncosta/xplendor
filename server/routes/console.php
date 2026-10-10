@@ -18,6 +18,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// As tarefas que chamam serviços externos (config/scheduler.php) só correm com o interruptor
+// ligado: sempre em produção; no dev, só com SCHEDULE_EXTERNAL_JOBS=true. Aplica-se no fim do
+// ficheiro, pelos nomes, para nenhuma tarefa nova escapar sem querer.
+
 // 00:30 — agrega dados comportamentais (views, leads, interactions)
 Schedule::job(new AggregateCarPerformanceMetricsJob())
     ->hourly()
@@ -339,3 +343,10 @@ Schedule::job(new \App\Jobs\PurgeDeletedOcrFilesJob())
     ->onFailure(function () {
         \Illuminate\Support\Facades\Log::error('[OCR] Purga dos ficheiros apagados falhou no scheduler');
     });
+
+// Interruptor das chamadas externas (ver o topo do ficheiro e config/scheduler.php).
+foreach (Schedule::events() as $event) {
+    if (in_array($event->description, (array) config('scheduler.external_job_names'), true)) {
+        $event->when(fn () => (bool) config('scheduler.external_jobs'));
+    }
+}
