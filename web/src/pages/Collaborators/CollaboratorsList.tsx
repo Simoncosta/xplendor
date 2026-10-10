@@ -21,6 +21,7 @@ import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable
 import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu, { MenuAction } from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
+import { useModules } from "contexts/ModulesContext";
 import XSelect from "Components/Common/Select";
 
 /**
@@ -45,9 +46,11 @@ const CollaboratorsList = () => {
     const auth = useMemo(readAuth, []);
     const companyId = getWorkingCompanyId();
     const impersonating = !!auth.impersonating;
-    const canEdit = auth.role === "admin" || auth.role === "root" || impersonating;
-    // Admin da própria empresa; o root conta como admin da SUA empresa. Nunca em impersonation.
-    const canManageAccess = (auth.role === "admin" || auth.role === "root") && !impersonating;
+    // ACL (F4): as permissões vêm do backend (/my-access), com as mesmas regras da API
+    // (em sessão como cliente, a equipa edita os conteúdos mas nunca gere os acessos).
+    const { can, reason } = useModules();
+    const canEdit = can("utilizadores.editar");
+    const canManageAccess = can("utilizadores.configurar");
 
     const [tab, setTab] = useState<"team" | "departments">("team");
     const [items, setItems] = useState<ICollaborator[]>([]);
@@ -176,6 +179,9 @@ const CollaboratorsList = () => {
                 <PageHeader title="Colaboradores" breadcrumbs={[{ label: "Configurações" }]}
                     info="A equipa da empresa. Quem tiver autorização e estiver marcado aparece na secção Equipa do site." />
 
+                {!canEdit && !loading && (
+                    <p className="text-muted fs-13 mb-3"><i className="ri-lock-line me-1" />{reason("utilizadores.editar")}</p>
+                )}
                 {impersonating && (
                     <div className="alert alert-info py-2 fs-13">Em sessão como cliente pode editar a equipa e os departamentos. As ações sobre contas (dar ou retirar acesso) ficam reservadas ao administrador da empresa.</div>
                 )}

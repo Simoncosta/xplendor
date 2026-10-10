@@ -37,6 +37,7 @@ final class RoutePermissions
         'POST {id}/management/requests/{requestId}/accept' => 'empresa.aprovar',
         'POST {id}/management/requests/{requestId}/decline' => 'empresa.aprovar',
         'GET {id}/my-modules' => 'empresa.ver',
+        'GET {id}/my-access' => 'empresa.ver',
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
         'POST {id}/collaborators' => 'utilizadores.criar',

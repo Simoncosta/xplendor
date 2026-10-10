@@ -1,5 +1,6 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { isRootRole, sessionUser } from "helpers/roles";
 
 /**
  * DMS — Guard de rota do super-admin (role 'root').
@@ -9,15 +10,7 @@ import { Navigate } from "react-router-dom";
  * é a barreira. Redireciona não-root para o dashboard.
  */
 const RequireSuperAdmin = ({ children }: { children: React.ReactNode }) => {
-    let role: string | null = null;
-    try {
-        const raw = sessionStorage.getItem("authUser");
-        role = raw ? JSON.parse(raw)?.role ?? null : null;
-    } catch {
-        role = null;
-    }
-
-    if (role !== "root") {
+    if (!isRootRole(sessionUser()?.role)) {
         return <Navigate to="/dashboard" replace />;
     }
     return <>{children}</>;

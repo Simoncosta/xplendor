@@ -1,6 +1,6 @@
 {
     "ator": "root_propria",
-    "rotas": 359,
+    "rotas": 360,
     "proibidas": [
         "DELETE api/v1/companies/{id}/management",
         "GET api/v1/companies/{id}/management/requests",
@@ -172,7 +172,7 @@
         "GET api/v1/companies/{id}/integrations/pingwin/family-categories": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/heatmap": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/locations": 200,
-        "GET api/v1/companies/{id}/integrations/pingwin/marketing-data": 500,
+        "GET api/v1/companies/{id}/integrations/pingwin/marketing-data": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions": 200,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions/creation/{creationId}": 404,
         "GET api/v1/companies/{id}/integrations/pingwin/payment-conditions/docs-template": 200,
@@ -196,6 +196,7 @@
         "GET api/v1/companies/{id}/management/requests": 403,
         "GET api/v1/companies/{id}/marketing/bussola": 200,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 404,
+        "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 200,
         "GET api/v1/companies/{id}/ocr/articles/search": 200,

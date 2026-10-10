@@ -25,6 +25,7 @@ import { startImpersonationFlow } from "helpers/impersonation";
 import XTanStackTable from "Components/Common/XTanStackTable";
 import { createSelector } from "reselect";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { isPlatformRoot, isRootRole } from "helpers/roles";
 
 const selectUserState = (state: any) => state.User;
 
@@ -47,7 +48,7 @@ export default function UsersList() {
 
     // Identidade atual (para o gatilho de impersonation — só root, e não sobre si nem sobre outro root).
     const me = useMemo(() => { try { return JSON.parse(sessionStorage.getItem("authUser") || "null"); } catch { return null; } }, []);
-    const isRoot = me?.role === "root" && !me?.impersonating;
+    const isRoot = isPlatformRoot(me);
     const enterAs = async (id: number) => {
         try { await startImpersonationFlow(id); } // recarrega a app na identidade do alvo
         catch (e: any) { toast.error(e?.message ?? "Não foi possível iniciar a impersonation."); }
@@ -126,7 +127,7 @@ export default function UsersList() {
                                 <i className="ri-pencil-fill align-bottom me-2 text-muted"></i>{" "}
                                 Editar
                             </DropdownItem>
-                            {isRoot && cell.row.original.role !== "root" && cell.row.original.id !== me?.id && (
+                            {isRoot && !isRootRole(cell.row.original.role) && cell.row.original.id !== me?.id && (
                                 <DropdownItem onClick={() => enterAs(cell.row.original.id)}>
                                     <i className="ri-spy-line align-bottom me-2 text-muted"></i>{" "}
                                     Entrar como

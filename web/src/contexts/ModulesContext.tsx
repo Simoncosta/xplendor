@@ -1,75 +1,115 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getMyModules } from "helpers/laravel_helper";
+import { getMyAccess } from "helpers/laravel_helper";
 import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getHomeCompanyId } from "helpers/workingCompany";
+import { isRootRole, sessionUser } from "helpers/roles";
 
 /**
- * XPLENDOR — Fonte ÚNICA (frontend) dos módulos ATIVOS da empresa em que se trabalha.
- * Consumida pelo menu (esconder — Fase 2) E pelo guard de rotas (Fase 3), para
- * menu e rotas ficarem alinhados. É só UX/conveniência — a segurança real é o
- * middleware EnsureModuleActive no backend.
+ * XPLENDOR — Fonte ÚNICA (frontend) do que a pessoa pode fazer na empresa em que trabalha:
+ * os módulos ATIVOS e as permissões efetivas, com o motivo de cada recusa (ACL, F4:
+ * GET /companies/{id}/my-access). Consumida pelo menu, pelos guardas das rotas e pelos
+ * botões (useCan). É só o ecrã: a segurança é o backend (middleware permission e
+ * ensure_module), que decide com as mesmas regras.
  *
- * `modules === null` = ainda não sabido / root / falha → tratar como "vê tudo".
+ * FALHA FECHADA: enquanto carrega, ou se o pedido falhar, nenhum módulo nem permissão conta
+ * como dado (os guardas mostram "a carregar" e o menu fica só com o que é base).
  *
- * O root vê tudo só na PRÓPRIA empresa. No contexto de um cliente, o ecrã (menu, dashboard,
- * rotas) segue os módulos desse cliente, para o root ver como o cliente vê; o servidor
- * continua a deixá-lo passar (suporte).
+ * O root vê todos os módulos só na PRÓPRIA empresa. No contexto de um cliente, o ecrã segue
+ * os módulos desse cliente, para o root ver como o cliente vê; o servidor continua a deixá-lo
+ * passar (suporte).
  */
-interface ModulesState {
+export interface AccessState {
     modules: string[] | null;
-    /** Vê tudo: o root na própria empresa (não num cliente). */
+    /** Vê todos os módulos: o root na própria empresa (não num cliente). */
     isRoot: boolean;
     loading: boolean;
-    /** true se o módulo está ativo OU se ainda não sabemos/root (fail-open UX). */
+    /** O pedido falhou: tudo fechado. */
+    failed: boolean;
+    /** O módulo está ativo (ou é o root na própria empresa). Sem módulo = base. */
     has: (module?: string) => boolean;
+    /** A pessoa tem a permissão ("area.acao"). Sem permissão = base. */
+    can: (permission?: string) => boolean;
+    /** O motivo da recusa (do backend), para o ReasonButton. null se pode. */
+    reason: (permission: string) => string | null;
+    /** Administra a própria agência (painel da agência). */
+    agencyAdmin: boolean;
+    /** O nome do perfil da pessoa nesta empresa. */
+    profileName: string | null;
 }
 
-const ModulesContext = createContext<ModulesState>({
-    modules: null, isRoot: false, loading: true, has: () => true,
+const LOADING_REASON = "A carregar as permissões…";
+
+const ModulesContext = createContext<AccessState>({
+    modules: null, isRoot: false, loading: true, failed: false, agencyAdmin: false, profileName: null,
+    has: (m) => !m, can: (p) => !p, reason: () => LOADING_REASON,
 });
 
-/** O root na própria empresa vê tudo; noutra empresa, o ecrã segue os módulos dela. */
+/** O root na própria empresa vê todos os módulos; noutra empresa, o ecrã segue os módulos dela. */
 export const seesAllModules = (role: string | undefined, workingId: number, homeId: number): boolean =>
-    role === "root" && (!workingId || workingId === homeId);
+    isRootRole(role) && (!workingId || workingId === homeId);
+
+type Payload = {
+    modules: string[];
+    permissions: Record<string, boolean>;
+    reasons: Record<string, string>;
+    agency_admin?: boolean;
+    profile?: { name: string } | null;
+    agency_profile?: { name: string } | null;
+};
 
 export const ModulesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [modules, setModules] = useState<string[] | null>(null);
+    const [data, setData] = useState<Payload | null>(null);
     const [isRoot, setIsRoot] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [failed, setFailed] = useState(false);
 
-    // Os módulos da empresa em que se trabalha (contexto de trabalho): a agência vê o que a
-    // empresa gerida tem ativo; muda ao trocar de empresa.
+    // A empresa em que se trabalha (contexto de trabalho): a agência vê o que a empresa gerida
+    // tem ativo e o que o cliente lhe permite; muda ao trocar de empresa.
     const companyId = useWorkingCompanyId();
 
     useEffect(() => {
         let alive = true;
-        let role: string | undefined;
-        try {
-            const raw = sessionStorage.getItem("authUser");
-            if (raw) role = JSON.parse(raw).role;
-        } catch { /* ignore */ }
-        const all = seesAllModules(role, companyId, getHomeCompanyId());
+        const all = seesAllModules(sessionUser()?.role, companyId, getHomeCompanyId());
         setIsRoot(all);
-        setModules(null);
+        setData(null);
+        setFailed(false);
         setLoading(true);
+        if (!companyId) { setLoading(false); return; }
 
-        if (all || !companyId) { setLoading(false); return; } // root na própria empresa vê tudo
-
-        getMyModules(companyId)
-            .then((r: any) => { if (alive) setModules(r?.data?.modules ?? null); })
-            .catch(() => { if (alive) setModules(null); })
+        getMyAccess(companyId)
+            .then((r: any) => { if (alive) setData(r?.data ?? null); })
+            .catch(() => { if (alive) { setData(null); setFailed(true); } })
             .finally(() => { if (alive) setLoading(false); });
         return () => { alive = false; };
     }, [companyId]);
 
-    const has = (module?: string): boolean =>
-        !module || isRoot || modules === null || modules.includes(module);
+    const modules = data?.modules ?? null;
+    const has = (module?: string): boolean => !module || isRoot || (!!modules && modules.includes(module));
+    const can = (permission?: string): boolean => !permission || !!data?.permissions?.[permission];
+    const reason = (permission: string): string | null => {
+        if (can(permission)) return null;
+        if (loading) return LOADING_REASON;
+        if (!data) return "Não foi possível carregar as permissões. Atualize a página.";
+        return data.reasons?.[permission] ?? "Não tem permissão para esta ação.";
+    };
 
     return (
-        <ModulesContext.Provider value={{ modules, isRoot, loading, has }}>
+        <ModulesContext.Provider value={{
+            modules, isRoot, loading, failed, has, can, reason,
+            agencyAdmin: !!data?.agency_admin,
+            profileName: data?.agency_profile?.name ?? data?.profile?.name ?? null,
+        }}>
             {children}
         </ModulesContext.Provider>
     );
 };
 
 export const useModules = () => useContext(ModulesContext);
+/** O mesmo contexto, com o nome do ACL. */
+export const useAccess = () => useContext(ModulesContext);
+
+/** ACL: pode fazer isto nesta empresa? Devolve [pode, motivo] (o motivo vem do backend). */
+export const useCan = (permission: string): [boolean, string | null] => {
+    const ctx = useContext(ModulesContext);
+    return [ctx.can(permission), ctx.reason(permission)];
+};

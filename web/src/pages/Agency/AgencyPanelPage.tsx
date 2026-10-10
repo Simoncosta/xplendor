@@ -14,9 +14,10 @@ import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { confirmAction } from "helpers/swal";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
-import { readAuthUser } from "helpers/impersonation";
 import XSelect from "pages/Editorial/XSelect";
 import SetupLinkModal from "pages/Companies/CompanyProfile/setupLink/SetupLinkModal";
+import { isAdminRole } from "helpers/roles";
+import { useAccess } from "contexts/ModulesContext";
 
 /**
  * Painel da agência (a equipa da agência e o root, no contexto da agência): por cliente, o
@@ -52,8 +53,8 @@ export default function AgencyPanelPage() {
     document.title = "Painel da agência | Xplendor";
     const wc = useWorkingCompany();
     const agencyId = wc?.agencyMode ? wc.workingId : 0;
-    const user: any = readAuthUser();
-    const isAgencyAdmin = !!wc?.isRoot || (user?.role === "admin" && !user?.impersonating);
+    const { agencyAdmin } = useAccess();
+    const isAgencyAdmin = !!wc?.isRoot || agencyAdmin; // do backend (/my-access): administra a agência
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get("tab") as Tab | null;
     const tab: Tab = tabParam === "pedidos" || tabParam === "gestao" || (tabParam === "atribuicoes" && isAgencyAdmin) ? tabParam : "clientes";
@@ -308,7 +309,7 @@ function AssignmentsTab({ agencyId, asRoot }: { agencyId: number; asRoot: boolea
         finally { setEndBusy(false); }
     };
 
-    const memberOptions = useMemo(() => members.filter((m) => m.role !== "admin").map((m) => ({ value: m.id, label: m.name })), [members]);
+    const memberOptions = useMemo(() => members.filter((m) => !isAdminRole(m.role)).map((m) => ({ value: m.id, label: m.name })), [members]);
     const update = (companyId: number, patch: Partial<Assignment>) => setRows((list) => (list ?? []).map((r) => (r.company.id === companyId ? { ...r, ...patch } : r)));
     const save = async (row: Assignment) => {
         setSaving(row.company.id);

@@ -33,6 +33,7 @@ import MarketChip from "./components/MarketChip";
 import PromotionMobileCard from "./components/PromotionMobileCard";
 import CarThumbnail from "Components/Common/CarThumbnail";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { isRootRole } from "helpers/roles";
 
 const LABEL_STYLE: React.CSSProperties = { letterSpacing: "0.05em" };
 const FILTER_LABEL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
@@ -92,7 +93,7 @@ const StockPromotionPage = () => {
         setSelectedCompanyId(getWorkingCompanyId());
     }, []);
 
-    const isRoot = userRole === "root";
+    const isRoot = isRootRole(userRole);
     const companies = useSelector(selectCompanies);
 
     useEffect(() => {

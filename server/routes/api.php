@@ -223,6 +223,7 @@ Route::prefix('v1')->group(function () {
 
                 // Módulos ativos da empresa do utilizador (Fase 2 — esconder secções).
                 Route::get('/my-modules', [CompanyModuleController::class, 'active']);
+                Route::get('/my-access', [\App\Http\Controllers\Api\V1\AccessController::class, 'show']); // ACL (F4)
 
                 // PingWin (POS restauração) — gate pelo módulo 'pingwin'. A senha
                 // é cifrada; o cliente Python garante o logout.

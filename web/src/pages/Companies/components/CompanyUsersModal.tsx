@@ -3,6 +3,7 @@ import { Modal, ModalHeader, ModalBody, Table, Spinner, Badge, Button } from "re
 import { toast } from "react-toastify";
 import { getAdminCompanyUsers } from "helpers/laravel_helper";
 import { startImpersonationFlow } from "helpers/impersonation";
+import { isRootRole } from "helpers/roles";
 
 /**
  * XPLENDOR — ROOT: utilizadores de uma empresa (modal, na CompanyList). Busca ao endpoint
@@ -72,7 +73,7 @@ export default function CompanyUsersModal({
                                 {users.length === 0 ? (
                                     <tr><td colSpan={4} className="text-center text-muted py-4">Sem utilizadores.</td></tr>
                                 ) : users.map((u) => {
-                                    const canImpersonate = u.role !== "root" && u.id !== me?.id;
+                                    const canImpersonate = !isRootRole(u.role) && u.id !== me?.id;
                                     return (
                                         <tr key={u.id}>
                                             <td className="fw-semibold">{u.name}</td>

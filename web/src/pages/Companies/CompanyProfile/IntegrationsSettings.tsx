@@ -19,7 +19,9 @@ import SetupLinkCard from "./setupLink/SetupLinkCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { confirmAction } from "helpers/swal";
-import { getHomeCompanyId, getWorkingCompanyId } from "helpers/workingCompany";
+import { getWorkingCompanyId } from "helpers/workingCompany";
+import { useModules } from "contexts/ModulesContext";
+import { sessionIsPlatformRoot } from "helpers/roles";
 
 interface Integration {
     id: number;
@@ -124,8 +126,15 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     const [companyId, setCompanyId] = useState<number>(0);
     // Ligar e desligar os anúncios: admin da própria empresa (o root na sua), nunca em
     // impersonation. O backend decide; aqui só se escondem os botões.
-    const [canManageMeta, setCanManageMeta] = useState(false);
-    const [agencyMemberOnly, setAgencyMemberOnly] = useState(false);
+    // ACL (F4, D7): ligar, alterar e desligar QUALQUER integração é integracoes.configurar.
+    // A decisão e o motivo vêm do backend (/my-access); noutra empresa que não a de trabalho
+    // (o root a partir da Administração), só o root.
+    const { can, reason: accessReason } = useModules();
+    const sameCompany = !profileCompanyId || profileCompanyId === getWorkingCompanyId();
+    const canManageMeta = sameCompany ? can("integracoes.configurar") : sessionIsPlatformRoot();
+    const agencyMemberOnly = !canManageMeta;
+    const integrationsReason = canManageMeta ? null
+        : sameCompany ? accessReason("integracoes.configurar") : "Só a equipa da plataforma configura as integrações de outra empresa.";
     // Corrigir uma conta já guardada (ID mal escrito → sync falha sem outra saída).
     const [editingMetaAccount, setEditingMetaAccount] = useState(false);
     // Desligar a Meta (com escolha: manter histórico ou apagar) ou apagar o histórico guardado.
@@ -238,15 +247,8 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
     }, [canUsePingwin]);
 
     useEffect(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (!authUser) return;
-        const { role, impersonating } = JSON.parse(authUser);
         const companyId = profileCompanyId || getWorkingCompanyId();
         setCompanyId(companyId);
-        // O backend confirma: admin da empresa, root ou ADMIN da agência gestora (fora de impersonation).
-        setCanManageMeta((role === "admin" || role === "root") && !impersonating);
-        // Pela agência (empresa que não é a da pessoa), só os admins dela ligam integrações.
-        setAgencyMemberOnly(role === "user" && companyId !== getHomeCompanyId());
         fetchIntegrations(companyId);
         fetchPingwin(companyId);
         fetchCover(companyId);
@@ -465,7 +467,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         )}
 
                                         {!canManageMeta ? (
-                                            <p className="text-muted fs-12 mb-0 mt-1">Só o administrador da empresa pode ligar ou desligar os anúncios da Meta.</p>
+                                            <p className="text-muted fs-12 mb-0 mt-1">{integrationsReason}</p>
                                         ) : metaIntegration.status === "active" ? null : (
                                             /* Token expirado ou com falha: volta a ligar-se aqui; desligar (e apagar)
                                                fica no menu "..." do cartão. Já desligada: o histórico guardado apaga-se no menu. */
@@ -480,7 +482,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                         )}
                                     </div>
                                 ) : !canManageMeta ? (
-                                    <p className="text-muted fs-12 mb-0">{agencyMemberOnly ? "Pela agência, só os administradores ligam integrações." : "Só o administrador da empresa pode ligar os anúncios da Meta."}</p>
+                                    <p className="text-muted fs-12 mb-0">{integrationsReason}</p>
                                 ) : (
                                     <button
                                         className="btn btn-primary btn-sm w-100"
@@ -531,7 +533,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                 {agencyMemberOnly ? (
                                     gaConnected
                                         ? <div className="vstack gap-2">{infoRow("Propriedade", googleIntegration?.property_id)}<Link to="/trafego-site" className="btn btn-outline-primary btn-sm mt-1"><i className="ri-line-chart-line me-1" /> Ver tráfego do site</Link></div>
-                                        : <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p>
+                                        : <p className="text-muted fs-12 mb-0">{integrationsReason}</p>
                                 ) : gaConnected ? (
                                     <div className="vstack gap-2">
                                         {infoRow("Propriedade", googleIntegration?.property_id)}
@@ -599,7 +601,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
                                             </button>)}
                                         </div>
-                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">{integrationsReason}</p> : (
                                         <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setCarmineModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar Carmine
                                         </button>
@@ -689,7 +691,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 <i className="ri-settings-3-line me-1" /> Reconfigurar
                                             </button>)}
                                         </div>
-                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">{integrationsReason}</p> : (
                                         <button className="btn btn-outline-primary btn-sm w-100" onClick={() => setPingwinModalOpen(true)}>
                                             <i className="ri-links-line me-2" /> Ligar PingWin
                                         </button>
@@ -744,7 +746,7 @@ export default function IntegrationsSettings({ companyId: profileCompanyId, data
                                                 { label: "Desligar", icon: "ri-unlink", danger: true, onClick: () => void disconnectCover() },
                                             ]} /></div>)}
                                         </div>
-                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">Pela agência, só os administradores ligam integrações.</p> : (
+                                    ) : agencyMemberOnly ? <p className="text-muted fs-12 mb-0">{integrationsReason}</p> : (
                                         <div className="vstack gap-2">
                                             <input type="password" className="form-control" placeholder="token CoverManager (apikey)"
                                                 value={coverToken} onChange={(e) => setCoverToken(e.target.value)} autoComplete="new-password" disabled={coverSaving} />

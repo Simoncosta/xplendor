@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 359,
+    "rotas": 360,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -622,6 +622,7 @@
         "GET api/v1/companies/{id}/management/requests": 200,
         "GET api/v1/companies/{id}/marketing/bussola": 403,
         "GET api/v1/companies/{id}/marketing/bussola/caption/{requestId}": 403,
+        "GET api/v1/companies/{id}/my-access": 200,
         "GET api/v1/companies/{id}/my-modules": 200,
         "GET api/v1/companies/{id}/ocr/articles/form": 403,
         "GET api/v1/companies/{id}/ocr/articles/search": 403,

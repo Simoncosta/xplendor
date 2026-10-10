@@ -21,6 +21,7 @@ import classnames from "classnames";
 // Models
 import { ICompanyUpdatePayload } from 'common/models/company.model';
 import { ICarmineApi } from 'common/models/carmine-api.model';
+import { sessionIsPlatformRoot } from "helpers/roles";
 
 type CompanyProfileEditorProps = {
     data: ICompanyUpdatePayload;
@@ -41,9 +42,7 @@ export default function CompanyProfileEditor({
     const isEdit = Boolean((data as any)?.id);
     const companyId = Number((data as any)?.id) || 0;
     // Gestão por agências: o root marca agências e define a agência gestora.
-    const isRoot = useMemo(() => {
-        try { const a = JSON.parse(sessionStorage.getItem("authUser") || "null"); return a?.role === "root" && !a?.impersonating; } catch { return false; }
-    }, []);
+    const isRoot = useMemo(() => sessionIsPlatformRoot(), []);
     // Aba só para quem tem o módulo, pelos módulos ATIVOS da empresa deste perfil (sem
     // pedidos que dão 403 enquanto não se sabem).
     const [profileModules, setProfileModules] = useState<string[] | null>(null);

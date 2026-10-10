@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useModules } from "contexts/ModulesContext";
 import { useWorkingCompany } from "contexts/WorkingCompanyContext";
+import { sessionIsPlatformRoot } from "helpers/roles";
 
 const Navdata = () => {
     const history = useNavigate();
@@ -35,7 +36,8 @@ const Navdata = () => {
 
     // Fase 2/3 — módulos ATIVOS da empresa vêm da fonte única (ModulesContext),
     // partilhada com o guard de rotas. `has(module)` = ativo OU root/desconhecido.
-    const { has: hasModule } = useModules();
+    // ACL (F4): e as permissões efetivas (as mesmas do backend), com a mesma falha fechada.
+    const { has: hasModule, can } = useModules();
 
     // Helper do Velzon para o modo two-column (icon sidebar). Guardado para não
     // rebentar no layout vertical (onde #two-column-menu pode não existir).
@@ -54,13 +56,9 @@ const Navdata = () => {
     }
 
     useEffect(() => {
-        const authUser = sessionStorage.getItem("authUser");
-        if (authUser) {
-            const obj = JSON.parse(authUser);
-            // Root "de verdade" só quando NÃO está em impersonation (aí authUser é o cliente,
-            // role 'user' → o menu volta a ser o do cliente automaticamente).
-            setIsRoot(obj.role === 'root' && !obj.impersonating);
-        }
+        // Root "de verdade" só quando NÃO está em impersonation (aí a sessão é a do cliente e o
+        // menu volta a ser o do cliente automaticamente).
+        setIsRoot(sessionIsPlatformRoot());
     }, []);
 
     useEffect(() => {
@@ -175,11 +173,11 @@ const Navdata = () => {
             },
             // Comercial = operação de carros (stock + CRM). Módulos por sub-item.
             subItems: [
-                { id: "cars", label: "Carros", link: "/cars", parentId: "comercial", module: "stock" },
-                { id: "leads", label: "Leads", link: "/leads", parentId: "comercial", module: "commercial_crm" },
-                { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial", module: "commercial_crm" },
+                { id: "cars", label: "Carros", link: "/cars", parentId: "comercial", module: "stock", permission: "automovel.ver" },
+                { id: "leads", label: "Leads", link: "/leads", parentId: "comercial", module: "commercial_crm", permission: "automovel.ver" },
+                { id: "stock-promotion", label: "Candidatas a promoção", link: "/stock/promotion", parentId: "comercial", module: "commercial_crm", permission: "automovel.ver" },
                 // Clientes (CRM) — mantém o gate 'finance' (a rota /customers é gated por finance no backend).
-                { id: "customers", label: "Clientes", link: "/customers", parentId: "comercial", module: "finance" },
+                { id: "customers", label: "Clientes", link: "/customers", parentId: "comercial", module: "finance", permission: "financas.ver" },
             ],
         },
         // ── Marketing — TRANSVERSAL (GA4 + Meta + conteúdo). Serve qualquer ramo.
@@ -196,14 +194,14 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "analytics", module: "marketing_analytics" },
-                { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "analytics", module: "marketing_analytics" },
+                { id: "website-traffic", label: "Tráfego do site", link: "/trafego-site", parentId: "analytics", module: "marketing_analytics", permission: "resultados.ver" },
+                { id: "meta-ads", label: "Meta / Anúncios", link: "/meta-ads", parentId: "analytics", module: "marketing_analytics", permission: "resultados.ver" },
                 // Blogs — conteúdo/marketing. Sem módulo (BASE) — deixou de ser item solto.
-                { id: "blogs", label: "Blogs", link: "/blogs", parentId: "analytics" },
+                { id: "blogs", label: "Blogs", link: "/blogs", parentId: "analytics", permission: "blog.ver" },
                 // Linha Editorial — transversal (qualquer ramo). Gated pelo SEU módulo.
-                { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial" },
+                { id: "linha-editorial", label: "Linha Editorial", link: "/editorial", parentId: "analytics", module: "linha_editorial", permission: "editorial.ver" },
                 // F3 do marketing da restauração: só com o PingWin (pelos módulos da empresa).
-                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", module: "pingwin" },
+                { id: "bussola", label: "Bússola", link: "/marketing/bussola", parentId: "analytics", module: "pingwin", permission: "bussola.ver" },
             ],
         },
         // ── Restauração — OPERAÇÃO (dia-a-dia). O grupo aparece se a empresa tem
@@ -222,11 +220,11 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "restauracao_lojas" },
-                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario" },
-                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos" },
-                { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas" },
-                { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente" },
+                { id: "pingwin-lojas", label: "Lojas", link: "/restauracao/lojas", parentId: "restauracao", module: "restauracao_lojas", permission: "restauracao.ver" },
+                { id: "pingwin-calendario", label: "Calendário de faturação", link: "/restauracao/calendario", parentId: "restauracao", module: "restauracao_calendario", permission: "restauracao.ver" },
+                { id: "pingwin-artigos", label: "Artigos", link: "/restauracao/artigos", parentId: "restauracao", module: "restauracao_artigos", permission: "restauracao.ver" },
+                { id: "pingwin-faturas", label: "Faturas", link: "/restauracao/faturas", parentId: "restauracao", module: "restauracao_faturas", permission: "restauracao.ver" },
+                { id: "pingwin-conta-corrente", label: "Conta Corrente Fornecedores", link: "/restauracao/conta-corrente", parentId: "restauracao", module: "restauracao_conta_corrente", permission: "restauracao.ver" },
             ],
         },
         // ── Cadastros — base/registos da restauração. (Nome distinto de "Configurações".)
@@ -244,11 +242,11 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "cadastros", module: "restauracao_documentos" },
-                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias" },
-                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores" },
-                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades" },
-                { id: "pingwin-condicoes-pagamento", label: "Condições de Pagamento", link: "/restauracao/condicoes-pagamento", parentId: "cadastros", module: "restauracao_condicoes_pagamento" },
+                { id: "pingwin-documentos", label: "Documentos", link: "/restauracao/documentos", parentId: "cadastros", module: "restauracao_documentos", permission: "restauracao.ver" },
+                { id: "pingwin-familias", label: "Famílias", link: "/restauracao/familias", parentId: "cadastros", module: "restauracao_familias", permission: "restauracao.ver" },
+                { id: "pingwin-fornecedores", label: "Fornecedores", link: "/restauracao/fornecedores", parentId: "cadastros", module: "restauracao_fornecedores", permission: "restauracao.ver" },
+                { id: "pingwin-unidades", label: "Unidades", link: "/restauracao/unidades", parentId: "cadastros", module: "restauracao_unidades", permission: "restauracao.ver" },
+                { id: "pingwin-condicoes-pagamento", label: "Condições de Pagamento", link: "/restauracao/condicoes-pagamento", parentId: "cadastros", module: "restauracao_condicoes_pagamento", permission: "restauracao.ver" },
             ],
         },
         {
@@ -264,10 +262,10 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance" },
-                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance" },
-                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance" },
-                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances", module: "documents" },
+                { id: "expenses", label: "Despesas", link: "/expenses", parentId: "finances", module: "finance", permission: "financas.ver" },
+                { id: "expense-categories", label: "Categorias de Despesa", link: "/expense-categories", parentId: "finances", module: "finance", permission: "financas.ver" },
+                { id: "suppliers", label: "Fornecedores", link: "/suppliers", parentId: "finances", module: "finance", permission: "financas.ver" },
+                { id: "document-templates", label: "Modelos de documento", link: "/document-templates", parentId: "finances", module: "documents", permission: "automovel.ver" },
             ],
         },
         // ── Equipa — ferramentas transversais da equipa (qualquer ramo) ──────────
@@ -284,13 +282,13 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "tasks", label: "Tarefas", link: "/tasks", parentId: "equipa", module: "support_tasks" },
+                { id: "tasks", label: "Tarefas", link: "/tasks", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
                 // ⚠️ "Orçamentos" agora aponta para os orçamentos-em-tickets DO STAND
                 // (site_change: ver, somar, aprovar). A antiga tela de quotes avulsos
                 // (/quotes) foi ESCONDIDA do menu do cliente — serve o caso off-platform
                 // que é do ADMIN (/admin/quotes continua). A rota /quotes NÃO foi apagada.
-                { id: "orcamentos", label: "Orçamentos", link: "/orcamentos", parentId: "equipa", module: "support_tasks" },
-                { id: "support", label: "Suporte", link: "/support", parentId: "equipa", module: "support_tasks" },
+                { id: "orcamentos", label: "Orçamentos", link: "/orcamentos", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
+                { id: "support", label: "Suporte", link: "/support", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
             ],
         },
         // ── Configurações — só conta/organização (Empresas foi para Administração;
@@ -308,7 +306,7 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "user", label: "Colaboradores", link: "/users", parentId: "settings" },
+                { id: "user", label: "Colaboradores", link: "/users", parentId: "settings", permission: "utilizadores.ver" },
                 { id: "install-app", label: "Instalar app", link: "/install", parentId: "settings" },
             ],
         },
@@ -348,23 +346,24 @@ const Navdata = () => {
         ] : []),
     ];
 
-    // ── Mecanismo CENTRAL de esconder por módulo (Fase 2) ─────────────────────
-    // Cada item/sub-item declara `module`; itens sem `module` são BASE (sempre
-    // visíveis). Um grupo esconde-se se ficar sem sub-itens visíveis. activeModules
-    // null (root/loading/falha) → mostra tudo.
-    const moduleVisible = (mod?: string): boolean => hasModule(mod);
+    // ── Mecanismo CENTRAL de esconder por módulo e por permissão ─────────────
+    // Cada item/sub-item declara `module` e `permission`; sem eles é BASE (sempre
+    // visível). Um grupo esconde-se se ficar sem sub-itens visíveis.
+    // ACL (F4): um item só aparece com o módulo ativo E a permissão (as chaves do backend,
+    // app/Access/RoutePermissions.php). Enquanto carrega, nada que dependa deles aparece.
+    const visible = (it: any): boolean => hasModule(it.module) && can(it.permission);
 
     const filterMenu = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {
             if (it.isHeader) { acc.push(it); return acc; }
             if (Array.isArray(it.subItems)) {
-                if (!moduleVisible(it.module)) return acc;
-                const subs = it.subItems.filter((s: any) => moduleVisible(s.module));
+                if (!visible(it)) return acc;
+                const subs = it.subItems.filter((s: any) => visible(s));
                 if (subs.length === 0) return acc; // grupo vazio → esconde
                 acc.push({ ...it, subItems: subs });
                 return acc;
             }
-            return moduleVisible(it.module) ? [...acc, it] : acc;
+            return visible(it) ? [...acc, it] : acc;
         }, []);
 
     // ── Menu ENXUTO do ROOT (COSMÉTICO) ───────────────────────────────────────

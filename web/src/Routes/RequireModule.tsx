@@ -1,24 +1,27 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { Spinner } from "reactstrap";
 import { useModules } from "contexts/ModulesContext";
 
 /**
- * XPLENDOR — Fase 3: guard de rota por MÓDULO. Impede navegar (pelo URL) para uma
- * página cujo módulo não está ativo na empresa → redireciona para o dashboard.
+ * XPLENDOR — guarda de rota por MÓDULO e, com o ACL (F4), por PERMISSÃO. Impede navegar
+ * (pelo URL) para uma página cujo módulo não está ativo, ou que o perfil da pessoa não
+ * permite ver → volta ao dashboard.
  *
- * ⚠️ É conveniência de UX. A fronteira REAL é o middleware EnsureModuleActive no
- * backend (que devolve 403). Enquanto os módulos ainda carregam, deixa passar
- * (fail-open) — o backend recusa na mesma se não for permitido.
+ * FALHA FECHADA: enquanto as permissões carregam, mostra "a carregar" (nunca a página).
+ * A fronteira real é o backend (middleware permission e ensure_module), que recusa com 403.
  */
-const RequireModule = ({ module, children }: { module: string; children: React.ReactNode }) => {
-    const { has, loading, modules, isRoot } = useModules();
+const RequireModule = ({ module, permission, children }: { module?: string; permission?: string; children: React.ReactNode }) => {
+    const { has, can, loading } = useModules();
 
-    // Ainda a carregar (e não é root nem já temos os módulos) → não redireciona já.
-    if (loading && modules === null && !isRoot) {
-        return <>{children}</>;
+    if (loading) {
+        return (
+            <div className="page-content d-flex justify-content-center align-items-center py-5">
+                <Spinner color="primary" size="sm" className="me-2">A carregar</Spinner><span className="text-muted" aria-hidden>A carregar</span>
+            </div>
+        );
     }
-
-    if (!has(module)) {
+    if (!has(module) || !can(permission)) {
         return <Navigate to="/dashboard" replace />;
     }
 

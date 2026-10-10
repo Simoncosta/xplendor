@@ -19,6 +19,7 @@ import { statusOptions, originOptions } from "common/data/cars";
 import { ICarUpdatePayload } from "common/models/car.model";
 import { getUsersPaginate } from "slices/users/thunk";
 import { getWorkingCompanyId } from "helpers/workingCompany";
+import { isAdminRole } from "helpers/roles";
 
 const selectUserState = (state: any) => state.User;
 
@@ -64,7 +65,7 @@ export default function CarInformationDataFields({
     const sellerOptions = useMemo(() => (
         (users || []).map((user: any) => ({
             value: user.id,
-            label: `${user.name}${user.role === "admin" ? " (Admin)" : ""}`,
+            label: `${user.name}${isAdminRole(user.role) ? " (Admin)" : ""}`,
         }))
     ), [users]);
 

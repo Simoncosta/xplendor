@@ -341,6 +341,8 @@ export const getMetaOverview = (companyId: number, days = 28) =>
 // Módulos ATIVOS da empresa do utilizador (Fase 2 — esconder secções no menu).
 export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
+/** ACL: os módulos e as permissões efetivas da pessoa na empresa, com os motivos das recusas. */
+export const getMyAccess = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-access`);
 
 // Cobranças da XPLENDOR. Root: todas as empresas; empresa: as suas (sem o módulo de Finanças).
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);

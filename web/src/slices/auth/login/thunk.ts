@@ -9,6 +9,7 @@ import {
 import { loginSuccess, logoutUserSuccess, apiError, reset_login_flag } from './reducer';
 import { clearTeamMarker, storeTeamMarker } from "helpers/teamMarker";
 import { clearWorkingCompany } from "helpers/workingCompany";
+import { isRootRole } from "helpers/roles";
 
 export const registerByInvite =
     (payload: { token: string; password: string; password_confirmation: string }, navigate: any) =>
@@ -71,7 +72,7 @@ export const logoutUser = () => async (dispatch: any) => {
         // O root termina a sessão: o browser deixa de ser marcado como da equipa.
         try {
             const current = JSON.parse(sessionStorage.getItem("authUser") || "null");
-            if (current?.role === "root" || sessionStorage.getItem("rootAuthUser")) clearTeamMarker();
+            if (isRootRole(current?.role) || sessionStorage.getItem("rootAuthUser")) clearTeamMarker();
         } catch { /* sessão ilegível */ }
         sessionStorage.removeItem("authUser");
         localStorage.removeItem("authUser");

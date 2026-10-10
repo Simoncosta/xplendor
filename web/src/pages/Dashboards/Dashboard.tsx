@@ -25,6 +25,7 @@ import { useWorkingCompanyId } from "contexts/WorkingCompanyContext";
 import { getWorkingCompany } from "helpers/workingCompany";
 import XplendorChargesNotice from "pages/Charges/XplendorChargesNotice";
 import PageHeader from "Components/Common/PageHeader";
+import { isPlatformRoot } from "helpers/roles";
 
 // Silent Buyer ESCONDIDO do dashboard (decisão de produto). Reversível: basta pôr
 // true. O componente e a lógica de backend (analytics.silent_buyers) ficam intactos.
@@ -255,7 +256,7 @@ const Dashboard = () => {
     let isTrueRoot = false;
     try {
         const o = JSON.parse(sessionStorage.getItem("authUser") || "null");
-        isTrueRoot = o?.role === "root" && !o?.impersonating;
+        isTrueRoot = isPlatformRoot(o);
     } catch { /* ignore */ }
 
     return isTrueRoot && !getWorkingCompany() ? <RootDashboard /> : <ClientDashboard />;

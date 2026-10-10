@@ -3,6 +3,7 @@ import { getWorkingCompanies } from "helpers/laravel_helper";
 import {
     WORKING_COMPANY_EVENT, getHomeCompanyId, getWorkingCompany, getWorkingCompanyId, setWorkingCompany,
 } from "helpers/workingCompany";
+import { isPlatformRoot } from "helpers/roles";
 
 /**
  * Contexto de trabalho (gestão por agências): a empresa em que a pessoa trabalha neste
@@ -50,7 +51,7 @@ const optionName = (c: any): string => String(c?.trade_name || c?.fiscal_name ||
 
 export const WorkingCompanyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const auth = readAuth();
-    const isRoot = auth?.role === "root" && !auth?.impersonating;
+    const isRoot = isPlatformRoot(auth);
     const impersonating = !!auth?.impersonating;
     const [workingId, setWorkingId] = useState<number>(() => getWorkingCompanyId());
     const [stored, setStored] = useState(() => getWorkingCompany());

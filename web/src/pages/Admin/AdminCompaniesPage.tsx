@@ -4,6 +4,7 @@ import { Card, CardBody, Container, Spinner, Table, Alert, Badge } from "reactst
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
 import { getAdminCompanies } from "helpers/laravel_helper";
+import { isRootRole, sessionUser } from "helpers/roles";
 
 /**
  * XPLENDOR — ROOT: lista de TODAS as empresas (área /admin, root-only). Passo 1 da
@@ -28,7 +29,7 @@ export default function AdminCompaniesPage() {
     const navigate = useNavigate();
 
     const isRoot = useMemo(() => {
-        try { return JSON.parse(sessionStorage.getItem("authUser") || "null")?.role === "root"; } catch { return false; }
+        return isRootRole(sessionUser()?.role);
     }, []);
 
     const [loading, setLoading] = useState(true);

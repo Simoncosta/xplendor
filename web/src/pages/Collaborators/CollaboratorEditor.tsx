@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import { ToastContainer, toast } from "react-toastify";
@@ -11,6 +11,7 @@ import { confirmAction } from "helpers/swal";
 import PageHeader from "Components/Common/PageHeader";
 import PageCard from "Components/Common/PageCard";
 import ReasonButton from "Components/Common/ReasonButton";
+import { useModules } from "contexts/ModulesContext";
 import XSelect from "pages/Editorial/XSelect";
 
 /**
@@ -19,9 +20,6 @@ import XSelect from "pages/Editorial/XSelect";
  * pessoal com autorização própria). Ao criar: "Criar acesso à plataforma?" (convite
  * por email), só disponível para o administrador da própria empresa.
  */
-const readAuth = () => {
-    try { return JSON.parse(sessionStorage.getItem("authUser") || "null") ?? {}; } catch { return {}; }
-};
 const errorMessage = (e: any, fallback: string) => {
     const first = e?.errors ? Object.values(e.errors).flat()[0] : null;
     return (first as string) || e?.message || fallback;
@@ -52,12 +50,12 @@ const CollaboratorEditor = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const isNew = !id || id === "new";
-    const auth = useMemo(readAuth, []);
     const companyId = getWorkingCompanyId();
-    const impersonating = !!auth.impersonating;
-    const canEdit = auth.role === "admin" || auth.role === "root" || impersonating;
-    // Admin da própria empresa; o root conta como admin da SUA empresa. Nunca em impersonation.
-    const canManageAccess = (auth.role === "admin" || auth.role === "root") && !impersonating;
+    // ACL (F4): as permissões vêm do backend (/my-access), com as mesmas regras da API
+    // (em sessão como cliente, a equipa edita os conteúdos mas nunca gere os acessos).
+    const { can } = useModules();
+    const canEdit = can("utilizadores.editar");
+    const canManageAccess = can("utilizadores.configurar");
 
     const [collaborator, setCollaborator] = useState<ICollaborator | null>(null);
     const [form, setForm] = useState<Form>(EMPTY);

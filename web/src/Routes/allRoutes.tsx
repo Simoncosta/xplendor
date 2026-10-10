@@ -142,31 +142,31 @@ const authProtectedRoutes = [
     { path: "/root/companies", component: <AdminCompaniesPage /> },
     { path: "/root/companies/:companyId/users", component: <AdminCompanyUsersPage /> },
     // Dashboard de restauração — só empresas com o módulo pingwin (backend recusa na mesma).
-    { path: "/restauracao", component: <RequireModule module="pingwin"><PingwinDashboard /></RequireModule> },
-    { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas"><LojasPage /></RequireModule> },
-    { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario"><CalendarioPage /></RequireModule> },
-    { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos"><DocumentosPage /></RequireModule> },
-    { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos"><ArtigosPage /></RequireModule> },
+    { path: "/restauracao", component: <RequireModule module="pingwin" permission="restauracao.ver"><PingwinDashboard /></RequireModule> },
+    { path: "/restauracao/lojas", component: <RequireModule module="restauracao_lojas" permission="restauracao.ver"><LojasPage /></RequireModule> },
+    { path: "/restauracao/calendario", component: <RequireModule module="restauracao_calendario" permission="restauracao.ver"><CalendarioPage /></RequireModule> },
+    { path: "/restauracao/documentos", component: <RequireModule module="restauracao_documentos" permission="restauracao.ver"><DocumentosPage /></RequireModule> },
+    { path: "/restauracao/artigos", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigosPage /></RequireModule> },
     // Linha Editorial (transversal)
-    { path: "/editorial", component: <RequireModule module="linha_editorial"><EditorialPage /></RequireModule> },
+    { path: "/editorial", component: <RequireModule module="linha_editorial" permission="editorial.ver"><EditorialPage /></RequireModule> },
     // Link de aprovação visto pela equipa ("Ver como o cliente"): sem ações e sem contar como abertura.
-    { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial"><ContentReviewPreview /></RequireModule> },
-    { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
-    { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos"><ArtigoFormPage /></RequireModule> },
-    { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias"><FamiliasPage /></RequireModule> },
+    { path: "/editorial/aprovacao/:id/ver", component: <RequireModule module="linha_editorial" permission="editorial.ver"><ContentReviewPreview /></RequireModule> },
+    { path: "/restauracao/artigos/novo", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/restauracao/artigos/:pingwinId", component: <RequireModule module="restauracao_artigos" permission="restauracao.ver"><ArtigoFormPage /></RequireModule> },
+    { path: "/restauracao/familias", component: <RequireModule module="restauracao_familias" permission="restauracao.ver"><FamiliasPage /></RequireModule> },
     // F1-3 do marketing: categorias das famílias (módulo pingwin, como o backend).
-    { path: "/restauracao/categorias", component: <RequireModule module="pingwin"><CategoriasFamiliasPage /></RequireModule> },
+    { path: "/restauracao/categorias", component: <RequireModule module="pingwin" permission="restauracao.ver"><CategoriasFamiliasPage /></RequireModule> },
     // F3 do marketing: "O que publicar e quando" (módulo pingwin, como o backend).
-    { path: "/marketing/bussola", component: <RequireModule module="pingwin"><BussolaPage /></RequireModule> },
+    { path: "/marketing/bussola", component: <RequireModule module="pingwin" permission="bussola.ver"><BussolaPage /></RequireModule> },
     // Endereço antigo da Bússola ("O que publicar e quando").
     { path: "/marketing/o-que-publicar", component: <Navigate to="/marketing/bussola" replace /> },
-    { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores"><FornecedoresPage /></RequireModule> },
-    { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas"><FaturasPage /></RequireModule> },
-    { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas"><FaturaValidacaoPage /></RequireModule> },
-    { path: "/restauracao/unidades", component: <RequireModule module="restauracao_unidades"><UnidadesPage /></RequireModule> },
-    { path: "/restauracao/condicoes-pagamento", component: <RequireModule module="restauracao_condicoes_pagamento"><CondicoesPagamentoPage /></RequireModule> },
-    { path: "/restauracao/conta-corrente", component: <RequireModule module="restauracao_conta_corrente"><ContaCorrenteFornecedoresPage /></RequireModule> },
-    { path: "/restauracao/conta-corrente/:supplierId", component: <RequireModule module="restauracao_conta_corrente"><ContaCorrenteFornecedorPage /></RequireModule> },
+    { path: "/restauracao/fornecedores", component: <RequireModule module="restauracao_fornecedores" permission="restauracao.ver"><FornecedoresPage /></RequireModule> },
+    { path: "/restauracao/faturas", component: <RequireModule module="restauracao_faturas" permission="restauracao.ver"><FaturasPage /></RequireModule> },
+    { path: "/restauracao/faturas/:id", component: <RequireModule module="restauracao_faturas" permission="restauracao.ver"><FaturaValidacaoPage /></RequireModule> },
+    { path: "/restauracao/unidades", component: <RequireModule module="restauracao_unidades" permission="restauracao.ver"><UnidadesPage /></RequireModule> },
+    { path: "/restauracao/condicoes-pagamento", component: <RequireModule module="restauracao_condicoes_pagamento" permission="restauracao.ver"><CondicoesPagamentoPage /></RequireModule> },
+    { path: "/restauracao/conta-corrente", component: <RequireModule module="restauracao_conta_corrente" permission="restauracao.ver"><ContaCorrenteFornecedoresPage /></RequireModule> },
+    { path: "/restauracao/conta-corrente/:supplierId", component: <RequireModule module="restauracao_conta_corrente" permission="restauracao.ver"><ContaCorrenteFornecedorPage /></RequireModule> },
 
     // Company
     { path: "/companies", component: <CompanyList /> },
@@ -174,84 +174,84 @@ const authProtectedRoutes = [
     { path: "/companies/create", component: <CompanyProfileCreate /> },
 
     // Cars — módulo STOCK (guard de rota; o backend recusa 403 na mesma)
-    { path: "/cars", component: <RequireModule module="stock"><CarList /></RequireModule> },
-    { path: "/actions", component: <RequireModule module="stock"><ActionCenterPage /></RequireModule> },
-    { path: "/cars/create", component: <RequireModule module="stock"><CarCreate /></RequireModule> },
-    { path: "/cars/:id", component: <RequireModule module="stock"><CarUpdate /></RequireModule> },
-    { path: "/cars/:id/analytics", component: <RequireModule module="stock"><CarAnalytics /></RequireModule> },
-    { path: "/cars/:id/intelligence", component: <RequireModule module="stock"><CarIntelligencePage /></RequireModule> },
-    { path: "/cars/:id/ads", component: <RequireModule module="stock"><CarAdsRedirect /></RequireModule> },
-    { path: "/cars/:id/ficha", component: <RequireModule module="stock"><CarFichaPage /></RequireModule> },
+    { path: "/cars", component: <RequireModule module="stock" permission="automovel.ver"><CarList /></RequireModule> },
+    { path: "/actions", component: <RequireModule module="stock" permission="automovel.ver"><ActionCenterPage /></RequireModule> },
+    { path: "/cars/create", component: <RequireModule module="stock" permission="automovel.ver"><CarCreate /></RequireModule> },
+    { path: "/cars/:id", component: <RequireModule module="stock" permission="automovel.ver"><CarUpdate /></RequireModule> },
+    { path: "/cars/:id/analytics", component: <RequireModule module="stock" permission="automovel.ver"><CarAnalytics /></RequireModule> },
+    { path: "/cars/:id/intelligence", component: <RequireModule module="stock" permission="automovel.ver"><CarIntelligencePage /></RequireModule> },
+    { path: "/cars/:id/ads", component: <RequireModule module="stock" permission="automovel.ver"><CarAdsRedirect /></RequireModule> },
+    { path: "/cars/:id/ficha", component: <RequireModule module="stock" permission="automovel.ver"><CarFichaPage /></RequireModule> },
     // DMS Fase 3 — tab Documentos (ficha A4 + documentos de venda).
-    { path: "/cars/:id/documents", component: <RequireModule module="stock"><CarDocumentsPage /></RequireModule> },
+    { path: "/cars/:id/documents", component: <RequireModule module="stock" permission="automovel.ver"><CarDocumentsPage /></RequireModule> },
     // Ficha de impressão A4 (2026-06-27) — rota própria com companyId no path
     // para simetria com os endpoints internos que scope por company (sec 11).
-    { path: "/companies/:companyId/cars/:id/print-sheet", component: <RequireModule module="stock"><CarPrintSheet /></RequireModule> },
+    { path: "/companies/:companyId/cars/:id/print-sheet", component: <RequireModule module="stock" permission="automovel.ver"><CarPrintSheet /></RequireModule> },
     // DMS Fase 3 — documentos de venda (mesma aba, motor de impressão partilhado).
-    { path: "/companies/:companyId/cars/:id/documents/:docId", component: <RequireModule module="stock"><SaleDocumentPrint /></RequireModule> },
-    { path: "/cars/:id/marketing", component: <RequireModule module="stock"><CarMarketingRedirect /></RequireModule> },
+    { path: "/companies/:companyId/cars/:id/documents/:docId", component: <RequireModule module="stock" permission="automovel.ver"><SaleDocumentPrint /></RequireModule> },
+    { path: "/cars/:id/marketing", component: <RequireModule module="stock" permission="automovel.ver"><CarMarketingRedirect /></RequireModule> },
 
     // Leads — módulo COMERCIAL/CRM
-    { path: "/leads", component: <RequireModule module="commercial_crm"><LeadList /></RequireModule> },
+    { path: "/leads", component: <RequireModule module="commercial_crm" permission="automovel.ver"><LeadList /></RequireModule> },
 
     // Stock & Promoção — módulo COMERCIAL/CRM
-    { path: "/stock/promotion", component: <RequireModule module="commercial_crm"><StockPromotionPage /></RequireModule> },
+    { path: "/stock/promotion", component: <RequireModule module="commercial_crm" permission="automovel.ver"><StockPromotionPage /></RequireModule> },
 
     // A antiga "Monitorização de stock" foi absorvida pelo separador "Stock" do
     // dashboard. A rota fica só para não partir links e favoritos antigos.
     { path: "/stock/monitoring", component: <Navigate to="/dashboard?tab=stock" replace /> },
 
     // Orçamentos (lado stand)
-    { path: "/quotes", component: <CompanyQuotesList /> },
+    { path: "/quotes", component: <RequireModule permission="suporte.ver"><CompanyQuotesList /></RequireModule> },
 
     // Users
     // Colaboradores (equipa) e departamentos. /users/:id continua a ser a conta do utilizador (perfil).
-    { path: "/users", component: <CollaboratorsList /> },
-    { path: "/users/create", component: <CollaboratorEditor /> },
-    { path: "/users/collaborators/new", component: <CollaboratorEditor /> },
-    { path: "/users/collaborators/:id", component: <CollaboratorEditor /> },
+    { path: "/users", component: <RequireModule permission="utilizadores.ver"><CollaboratorsList /></RequireModule> },
+    { path: "/users/create", component: <RequireModule permission="utilizadores.criar"><CollaboratorEditor /></RequireModule> },
+    { path: "/users/collaborators/new", component: <RequireModule permission="utilizadores.criar"><CollaboratorEditor /></RequireModule> },
+    { path: "/users/collaborators/:id", component: <RequireModule permission="utilizadores.ver"><CollaboratorEditor /></RequireModule> },
     { path: "/users/:id", component: <UserUpdate /> },
     // Perfil da Marca (página própria; antes era um modal no Blog).
-    { path: "/brand-profile", component: <BrandProfilePage /> },
+    { path: "/brand-profile", component: <RequireModule permission="marca.ver"><BrandProfilePage /></RequireModule> },
 
     // Blogs
-    { path: "/blogs", component: <BlogList /> },
-    { path: "/blogs/create", component: <BlogEditor /> },
-    { path: "/blogs/:id", component: <BlogEditor /> },
-    { path: "/blogs/:id/show", component: <BlogShow /> },
+    { path: "/blogs", component: <RequireModule permission="blog.ver"><BlogList /></RequireModule> },
+    { path: "/blogs/create", component: <RequireModule permission="blog.criar"><BlogEditor /></RequireModule> },
+    { path: "/blogs/:id", component: <RequireModule permission="blog.ver"><BlogEditor /></RequireModule> },
+    { path: "/blogs/:id/show", component: <RequireModule permission="blog.ver"><BlogShow /></RequireModule> },
 
     // Suppliers — módulo FINANÇAS
-    { path: "/suppliers", component: <RequireModule module="finance"><SupplierList /></RequireModule> },
+    { path: "/suppliers", component: <RequireModule module="finance" permission="financas.ver"><SupplierList /></RequireModule> },
 
     // Customers — módulo FINANÇAS
-    { path: "/customers", component: <RequireModule module="finance"><CustomerList /></RequireModule> },
-    { path: "/customers/:id", component: <RequireModule module="finance"><CustomerHub /></RequireModule> },
+    { path: "/customers", component: <RequireModule module="finance" permission="financas.ver"><CustomerList /></RequireModule> },
+    { path: "/customers/:id", component: <RequireModule module="finance" permission="financas.ver"><CustomerHub /></RequireModule> },
 
     // Document templates — módulo DOCUMENTOS
-    { path: "/document-templates", component: <RequireModule module="documents"><DocumentTemplatesList /></RequireModule> },
+    { path: "/document-templates", component: <RequireModule module="documents" permission="automovel.ver"><DocumentTemplatesList /></RequireModule> },
 
     // Expense categories — módulo FINANÇAS
-    { path: "/expense-categories", component: <RequireModule module="finance"><ExpenseCategoryList /></RequireModule> },
+    { path: "/expense-categories", component: <RequireModule module="finance" permission="financas.ver"><ExpenseCategoryList /></RequireModule> },
 
     // Expenses — módulo FINANÇAS
-    { path: "/expenses", component: <RequireModule module="finance"><ExpenseList /></RequireModule> },
+    { path: "/expenses", component: <RequireModule module="finance" permission="financas.ver"><ExpenseList /></RequireModule> },
 
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.
-    { path: "/support", component: <SupportTicketsList /> },
+    { path: "/support", component: <RequireModule module="support_tasks" permission="suporte.ver"><SupportTicketsList /></RequireModule> },
     // Orçamentos-em-tickets do STAND (site_change): ver, somar, aprovar pacote.
-    { path: "/orcamentos", component: <OrcamentosStand /> },
-    { path: "/support/:id", component: <SupportTicketDetail /> },
+    { path: "/orcamentos", component: <RequireModule module="support_tasks" permission="suporte.ver"><OrcamentosStand /></RequireModule> },
+    { path: "/support/:id", component: <RequireModule module="support_tasks" permission="suporte.ver"><SupportTicketDetail /></RequireModule> },
 
     // Tarefas — Kanban interno da equipa (partilhado por company_id).
-    { path: "/tasks", component: <CompanyTasksKanban /> },
+    { path: "/tasks", component: <RequireModule module="support_tasks" permission="suporte.ver"><CompanyTasksKanban /></RequireModule> },
     // Detalhe de uma tarefa (visual TaskDetails do template).
-    { path: "/tasks/:id", component: <CompanyTaskDetails /> },
+    { path: "/tasks/:id", component: <RequireModule module="support_tasks" permission="suporte.ver"><CompanyTaskDetails /></RequireModule> },
 
     // Tráfego do site — dados GA4 da propriedade do cliente (scoped por company_id).
-    { path: "/trafego-site", component: <WebsiteTraffic /> },
+    { path: "/trafego-site", component: <RequireModule module="marketing_analytics" permission="resultados.ver"><WebsiteTraffic /></RequireModule> },
     // Meta / Anúncios — dados factuais que o pipeline já ingere (scoped por company_id).
-    { path: "/meta-ads", component: <MetaAds /> },
+    { path: "/meta-ads", component: <RequireModule module="marketing_analytics" permission="resultados.ver"><MetaAds /></RequireModule> },
 
     // Consola de administração — SÓ root (segurança real no backend).
     // Primeira consola: tickets de suporte de todas as empresas.
