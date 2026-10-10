@@ -133,11 +133,11 @@ Quem não tem a permissão de ver as Finanças (`financas.ver`) continua a abrir
 
 - **Administrador:** tudo.
 - **Utilizador (como hoje):** ver, criar e editar.
-- **Agência convidada (como hoje):** ver e criar.
+- **Agência convidada (como hoje), o teto:** ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar. No início era ver e criar; o editar entrou no pré-deploy dos Ficheiros.
 
 Sugestões:
 - **Só leitura:** ver;
-- **Agência convidada:** ver e criar;
+- **Agência convidada:** ver, criar e editar (no início, ver e criar);
 - **Marketing e Financeiro:** ver, criar e editar;
 - **lado da agência:** o Gestor ver, criar e editar, e o Criativo ver e criar.
 
@@ -146,8 +146,14 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 **Diferença na fotografia:** só as 16 rotas novas (`{id}/files…`). Nenhum ator perde nem ganha outras rotas. Nas novas:
 - **Administrador do cliente, root (na própria e noutra empresa) e impersonação do administrador:** nenhum 403.
 - **Utilizador, aprovador e impersonação de um utilizador:** 403 em apagar e restaurar (pastas, ficheiros e atalhos).
-- **Administrador e membro da agência:** 403 em mudar o nome, mover, apagar e restaurar (o teto dá ver e criar).
+- **Administrador e membro da agência:** 403 em apagar e restaurar (o teto dá ver, criar e editar).
 - **Empresa sem módulos:** 403 em todas (módulo desligado).
+
+**No pré-deploy dos Ficheiros (a agência passa a editar):**
+- A migração `2026_12_29_100001_files_agency_edit` volta a gravar os perfis de sistema e as sugestões. Os perfis que cada empresa criou ficam como estão.
+- Na fotografia, os três atores da agência (administrador, membro e membro numa empresa criada pela agência) deixam de ter 403 em duas rotas: `PUT {id}/files/{fileId}` (mudar o nome e mover um ficheiro) e `PUT {id}/files/folders/{folderId}` (o mesmo numa pasta).
+- Na fotografia, essas duas rotas passam a dar 404, porque os identificadores do pedido não existem.
+- Nenhum outro ator muda.
 
 **Na F4 (a Linha Editorial nos dois sentidos):** mais uma rota, `POST {id}/editorial/media/from-file` ("Escolher dos Ficheiros"), com a permissão `editorial.criar` (como o envio de media da Linha Editorial) e, dentro, o módulo "Ficheiros" e `ficheiros.ver`. Na fotografia comporta-se como `editorial/media/uploads`, ator a ator: 403 só na empresa sem módulos; os restantes recebem 422 (o pedido da fotografia vai vazio).
 
@@ -160,9 +166,9 @@ As pastas do sistema seguem, além disto, a permissão da sua área (`App\Servic
 | Utilizador aprovador (`cliente_aprovador`) | 51 | 76 |
 | Root na própria empresa (`root_propria`) | 9 | 0 |
 | Root noutra empresa (`root_outra`) | 19 | 21 |
-| Administrador da agência (`agencia_admin`) | 28 | 44 |
-| Membro da agência (`agencia_membro`) | 52 | 68 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 67 |
+| Administrador da agência (`agencia_admin`) | 28 | 42 |
+| Membro da agência (`agencia_membro`) | 52 | 66 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 65 |
 | Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
 | Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 76 |
 | Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 242 |

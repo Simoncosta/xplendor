@@ -51,7 +51,8 @@ final class CompatibilityProfiles
             self::CLIENT_USER => ['ver', 'criar', 'editar'],
             self::AGENCY_ADMIN => ['ver', 'criar', 'editar', 'apagar'],
             self::AGENCY_MEMBER => ['ver', 'criar', 'editar'],
-            self::CEILING => ['ver', 'criar'],
+            // A agência (teto): ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar.
+            self::CEILING => ['ver', 'criar', 'editar'],
         ],
     ];
 

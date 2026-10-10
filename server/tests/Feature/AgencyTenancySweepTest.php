@@ -119,12 +119,10 @@ class AgencyTenancySweepTest extends TestCase
         'POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid',
     ];
 
-    /** Ficheiros: o teto "Agência convidada (como hoje)" dá ver e criar, sem editar nem apagar. */
+    /** Ficheiros: o teto "Agência convidada (como hoje)" dá ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar. */
     private const FILES_ABOVE_CEILING = [
-        'PUT api/v1/companies/{id}/files/folders/{folderId}',
         'POST api/v1/companies/{id}/files/folders/{folderId}/restore',
         'DELETE api/v1/companies/{id}/files/folders/{folderId}',
-        'PUT api/v1/companies/{id}/files/{fileId}',
         'POST api/v1/companies/{id}/files/{fileId}/restore',
         'DELETE api/v1/companies/{id}/files/{fileId}',
         'DELETE api/v1/companies/{id}/files/shortcuts/{shortcutId}',

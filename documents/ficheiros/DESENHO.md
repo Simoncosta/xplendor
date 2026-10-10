@@ -149,6 +149,7 @@ As pastas das pessoas seguem a área `ficheiros`: ver, criar, editar e apagar.
 - **Relatórios de satisfação:** continuam fechados à agência.
 - **"Só leitura" e a pasta "Viaturas":** fica como está; a sugestão "Só leitura" não tem `automovel.ver`.
   - **Para mais tarde:** separar a área `automovel` em "stock" e "contactos", para um perfil poder ver o stock sem ver os contactos dos clientes.
+- **Agência nos Ficheiros:** o teto e a sugestão "Agência convidada" passam a ter ver, criar e editar (mudar o nome e mover), sem apagar nem restaurar (`documents/acl/F3-DECISOES.md`, secção 6c).
 - **O módulo:** liga-se primeiro na XPLENDOR, em produção, pelo Simon (`DEPLOY-FICHEIROS.md`).
 
 ## 4. O que pode correr mal

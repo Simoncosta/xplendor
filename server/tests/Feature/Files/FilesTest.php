@@ -227,9 +227,26 @@ class FilesTest extends TestCase
         $this->actingAs($member, 'sanctum')->getJson($this->url($this->a, "/{$support->id}"))->assertOk();
         // O Administrador do cliente vê-as todas.
         $this->assertCount(4, $this->actingAs($this->adminA, 'sanctum')->getJson($this->url($this->a))->json('data.tree'));
-        // E a agência (teto "como hoje": ver e criar) envia, mas não apaga.
+        // E a agência (teto: ver, criar e editar) envia, muda o nome e move, mas não apaga nem restaura.
         $id = $this->upload($member, $this->a, $this->pdf('da-agencia.pdf'))->assertCreated()->json('data.id');
+        $folder = $this->actingAs($member, 'sanctum')->postJson($this->url($this->a, '/folders'), ['name' => 'Da agência'])->assertCreated()->json('data.id');
+        $this->actingAs($member, 'sanctum')->putJson($this->url($this->a, "/{$id}"), ['name' => 'Proposta da agência.pdf', 'folder_id' => $folder])->assertOk();
+        $this->assertSame(['Proposta da agência.pdf', $folder], [StoredFile::find($id)->name, StoredFile::find($id)->folder_id]);
+        $this->actingAs($member, 'sanctum')->putJson($this->url($this->a, "/folders/{$folder}"), ['name' => 'Agência'])->assertOk();
         $this->actingAs($member, 'sanctum')->deleteJson($this->url($this->a, "/{$id}"))->assertForbidden();
+        $this->actingAs($member, 'sanctum')->deleteJson($this->url($this->a, "/folders/{$folder}"))->assertForbidden();
+        $this->actingAs($this->adminA, 'sanctum')->deleteJson($this->url($this->a, "/{$id}"))->assertOk();
+        $this->actingAs($member, 'sanctum')->postJson($this->url($this->a, "/{$id}/restore"))->assertForbidden();
+    }
+
+    public function test_the_guest_agency_suggestion_and_the_ceiling_have_edit_but_not_delete(): void
+    {
+        $suggestion = \App\Models\PermissionProfile::where('system_key', \App\Access\ProfileSuggestions::GUEST_AGENCY)->firstOrFail();
+        $ceiling = \App\Models\PermissionProfile::where('system_key', \App\Models\PermissionProfile::CEILING_COMPAT)->firstOrFail();
+        foreach ([$suggestion, $ceiling] as $profile) {
+            $actions = \App\Models\ProfilePermission::where('profile_id', $profile->id)->where('area', 'ficheiros')->orderBy('action')->pluck('action')->all();
+            $this->assertSame(['criar', 'editar', 'ver'], $actions, $profile->name);
+        }
     }
 
     public function test_the_module_starts_off_and_closes_everything(): void
