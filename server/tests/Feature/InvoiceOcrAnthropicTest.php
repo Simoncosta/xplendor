@@ -142,7 +142,7 @@ class InvoiceOcrAnthropicTest extends TestCase
         $inv->refresh();
         $this->assertSame(['por_validar', 'sem_qr', '500829993', 1060], [$inv->status, $inv->check_status, $inv->supplier_nif, (int) $inv->summary->total_cents]);
         $this->assertSame(['anthropic', 'claude-fable-5-1', 'default'], [$inv->ai_provider, $inv->model, $inv->ai_effort]);
-        $this->assertNull($inv->cost_usd, 'o preço do Fable está por confirmar: custo desconhecido');
+        $this->assertEqualsWithDelta(3000 * 10 / 1e6 + 400 * 50 / 1e6, (float) $inv->cost_usd, 1e-6, 'preços do Fable 5.1');
     }
 
     public function test_a_refusal_leaves_the_invoice_for_manual_review_without_retrying(): void

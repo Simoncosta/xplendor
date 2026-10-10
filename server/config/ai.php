@@ -28,15 +28,16 @@ return [
 
     // Preços em USD por milhão de tokens. O raciocínio é cobrado como saída nos dois fornecedores.
     'models' => [
-        // Claude Fable 5.1: preços POR CONFIRMAR (null: o custo fica desconhecido até os pôr aqui).
-        // "default" = não enviar o esforço (vale o do modelo).
+        // "default" = não enviar o esforço (vale o do modelo). Escrita em cache (5 minutos e 1 hora):
+        // registada para referência; a XPLENDOR não usa a cache de prompts.
+        // Preços do Fable 5.1 indicados pelo Simon a 2026-10-10.
         'claude-fable-5-1' => [
             'label' => 'Claude Fable 5.1', 'provider' => 'anthropic', 'efforts' => ['default', 'low', 'medium', 'high'],
-            'prices' => null,
+            'prices' => ['input' => 10.00, 'cached_input' => 0.25, 'cache_write_5m' => 12.50, 'cache_write_1h' => 20.00, 'output' => 50.00],
         ],
         'claude-opus-5-5' => [
             'label' => 'Claude Opus 5.5', 'provider' => 'anthropic', 'efforts' => ['low', 'medium', 'high'],
-            'prices' => ['input' => 4.00, 'cached_input' => 0.20, 'output' => 20.00],
+            'prices' => ['input' => 4.00, 'cached_input' => 0.20, 'cache_write_5m' => 5.00, 'cache_write_1h' => 8.00, 'output' => 20.00],
         ],
         'claude-sonnet-5-5' => [
             'label' => 'Claude Sonnet 5.5', 'provider' => 'anthropic', 'efforts' => ['low', 'medium', 'high'],

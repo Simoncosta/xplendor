@@ -73,7 +73,6 @@ class OcrCompareTest extends TestCase
         $this->assertStringContainsString('ANTHROPIC_API_KEY: configurada', $out);
         $this->assertStringContainsString('SIMULAÇÃO: nada foi enviado', $out);
         $this->assertStringNotContainsString('SEGREDO', $out);
-        $this->assertStringContainsString('preço por confirmar', $out, 'o Fable sem preço');
         $this->assertSame([], Storage::disk('local')->allFiles('ocr-compare'));
     }
 
