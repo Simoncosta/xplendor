@@ -75,7 +75,7 @@ export default function PersonaGroupCard({ group }: Props) {
                     </div>
                     <div>
                         <h6 className="mb-0 fw-semibold">{group.label}</h6>
-                        <span className="text-muted fs-12">{group.cars_count} carro{group.cars_count !== 1 ? "s" : ""}{group.avg_ips !== null ? ` · IPS médio ${group.avg_ips}` : ""}</span>
+                        <span className="text-muted fs-12">{group.cars_count} veículo{group.cars_count !== 1 ? "s" : ""}{group.avg_ips !== null ? ` · IPS médio ${group.avg_ips}` : ""}</span>
                     </div>
                 </div>
                 {group.is_campanha_viable ? (
@@ -139,7 +139,7 @@ export default function PersonaGroupCard({ group }: Props) {
                         · {group.interactions_count} interações
                         {group.is_campanha_viable
                             ? <span className="text-success ms-2"><i className="ri-checkbox-circle-line me-1" />Campanha conjunta viável</span>
-                            : <span className="text-muted ms-2">· Adiciona mais carros deste perfil para criar campanha conjunta</span>
+                            : <span className="text-muted ms-2">· Adiciona mais veículos deste perfil para criar campanha conjunta</span>
                         }
                     </span>
                     <div className="d-flex gap-2">

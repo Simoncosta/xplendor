@@ -129,7 +129,7 @@ export default function CarImagesDataFields({ isEdit, companyId }: { isEdit: boo
             }
         }
 
-        return `carro-${fallbackCarId || "imagens"}.zip`;
+        return `veiculo-${fallbackCarId || "imagens"}.zip`;
     };
 
     const handleDownloadZip = async () => {

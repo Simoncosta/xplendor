@@ -221,7 +221,7 @@ class CarMarketingRoiService extends BaseService
         }
 
         if ($ipsScore >= 70 && $views >= 80 && $leads >= 1) {
-            return 'Carro com procura forte; aumentar budget de forma gradual.';
+            return 'Veículo com procura forte; aumentar budget de forma gradual.';
         }
 
         if ($views >= 120 && $leads === 0 && $spend > 0) {
@@ -259,7 +259,7 @@ class CarMarketingRoiService extends BaseService
 
         $topCar = $topCarsToPromote[0] ?? null;
         if ($topCar) {
-            $insights[] = "{$topCar['car_name']} é o carro com maior potencial para escalar investimento.";
+            $insights[] = "{$topCar['car_name']} é o veículo com maior potencial para escalar investimento.";
         }
 
         $problematicPaid = collect($topCarsToPromote)
@@ -267,7 +267,7 @@ class CarMarketingRoiService extends BaseService
             ->count();
 
         if ($problematicPaid > 0) {
-            $insights[] = "Há {$problematicPaid} carros com tráfego pago sem conversão que exigem revisão do anúncio.";
+            $insights[] = "Há {$problematicPaid} veículos com tráfego pago sem conversão que exigem revisão do anúncio.";
         }
 
         $bestChannel = collect($byChannel)

@@ -300,7 +300,7 @@ const CarEditor = ({
                 <PageHeader
                     title={isEdit ? (carName || "Editar viatura") : "Nova viatura"}
                     crumbLabel={isEdit ? "Editar" : undefined}
-                    breadcrumbs={[{ label: "Comercial" }, { label: "Carros", to: "/cars" }]}
+                    breadcrumbs={[{ label: "Comercial" }, { label: "Veículos", to: "/cars" }]}
                     info={isEdit
                         ? "Altere os dados da viatura e guarde no fim da página."
                         : "Preencha os dados da viatura. Pode guardar como rascunho e continuar mais tarde."}

@@ -184,7 +184,7 @@ class AudienceGapAnalysisService
         }
 
         if (!empty($add)) {
-            $insights[] = 'Faltam interesses mais próximos do carro e da intenção de compra.';
+            $insights[] = 'Faltam interesses mais próximos do veículo e da intenção de compra.';
         }
 
         if ($views > 200 && $leads === 0) {

@@ -21,7 +21,7 @@ final class SystemFolders
             'children' => ['cobrancas' => 'Cobranças', 'comprovativos' => 'Comprovativos', 'pedidos' => 'Pedidos de suporte', 'orcamentos' => 'Orçamentos']],
         'suporte' => ['name' => 'Suporte', 'module' => null, 'permissions' => ['suporte.ver'], 'no_agency' => false],
         'satisfacao' => ['name' => 'Relatórios de satisfação', 'module' => 'aftersales', 'permissions' => ['automovel.ver'], 'no_agency' => true],
-        'viaturas' => ['name' => 'Viaturas', 'module' => 'stock', 'permissions' => ['automovel.ver'], 'no_agency' => false],
+        'viaturas' => ['name' => 'Veículos', 'module' => 'stock', 'permissions' => ['automovel.ver'], 'no_agency' => false],
         'marca' => ['name' => 'Marca e logótipos', 'module' => null, 'permissions' => ['empresa.ver'], 'no_agency' => false],
         'blog' => ['name' => 'Blog', 'module' => null, 'permissions' => ['blog.ver'], 'no_agency' => false],
         'equipa' => ['name' => 'Equipa', 'module' => null, 'permissions' => ['utilizadores.ver'], 'no_agency' => false],

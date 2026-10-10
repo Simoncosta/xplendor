@@ -34,7 +34,7 @@ export default function CarUpdate() {
     const navigate = useNavigate();
     const { id } = useParams();
 
-    document.title = "Editar Carro | Xplendor";
+    document.title = "Editar veículo | Xplendor";
 
     // State
     const [companyId, setCompanyId] = useState<number>(0);
@@ -73,7 +73,7 @@ export default function CarUpdate() {
 
                     try {
                         await dispatch(updateCar({ companyId: companyId, id: Number(id), formData: fd })).unwrap();
-                        toast("Carro atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+                        toast("Veículo atualizado com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
                     } catch (error) {
                         setValidationErrors(parseApiValidationErrors(error));
                         showApiErrorToast(error, "Erro ao atualizar viatura.");

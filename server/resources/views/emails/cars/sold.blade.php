@@ -1,7 +1,7 @@
 @component('mail::message')
 # Mais um carro foi vendido
 
-Foi vendido mais um carro na empresa {{ $companyName }}.
+Foi vendido mais um veículo na empresa {{ $companyName }}.
 
 **Detalhes:**
 

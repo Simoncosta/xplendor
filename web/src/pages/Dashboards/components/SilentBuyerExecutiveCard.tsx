@@ -58,7 +58,7 @@ export default function SilentBuyerExecutiveCard({ summary }: Props) {
                         <div className="fw-semibold fs-4">{averageIntentScore.toFixed(0)}/100</div>
                     </div>
                     <div className="text-muted fs-13">
-                        {summary?.recommended_focus || summary?.executive_alert || "Monitorizar os carros com maior recorrencia e interacao."}
+                        {summary?.recommended_focus || summary?.executive_alert || "Monitorizar os veículos com maior recorrencia e interacao."}
                     </div>
                 </div>
             </section>

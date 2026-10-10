@@ -12,7 +12,7 @@ const MarketAnalysis: React.FC = () => (
                 </h2>
                 <p className="lp-section-sub mt-3">
                     Monitorizamos diariamente o preço de viaturas comparáveis no mercado
-                    português. Cada carro do seu stock recebe um indicador — abaixo, dentro ou
+                    português. Cada veículo do seu stock recebe um indicador — abaixo, dentro ou
                     acima do mercado — que entra no Índice de Potencial de Venda.
                 </p>
             </Col>

@@ -310,7 +310,7 @@ class CarAnalyticsService
 
         $timeline[] = [
             'type'       => 'car_created',
-            'label'      => 'Carro publicado',
+            'label'      => 'Veículo publicado',
             'created_at' => $car->created_at,
             'icon'       => 'ri-add-circle-line',
             'color'      => 'success',
@@ -348,7 +348,7 @@ class CarAnalyticsService
             'call_click' => 'Clique em chamada',
             'show_phone' => 'Visualização do telefone',
             'copy_phone' => 'Cópia do telefone',
-            'favorite' => 'Carro adicionado aos favoritos',
+            'favorite' => 'Veículo adicionado aos favoritos',
             'share' => 'Partilha do anúncio',
             'form_open' => 'Abertura do formulário',
             'form_start' => 'Início de preenchimento do formulário',

@@ -33,7 +33,7 @@ class CarSoldNotificationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Mais um carro foi vendido',
+            subject: 'Mais um veículo foi vendido',
         );
     }
 

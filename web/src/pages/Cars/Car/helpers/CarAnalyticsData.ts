@@ -101,13 +101,13 @@ export const buildInteractions = (raw: any[]) =>
 
 export const buildInsight = (met: any) => {
     if (!met || met.views === 0)
-        return { title: "Este carro ainda não foi visto", text: "Este carro ainda não foi visto. Partilha o link ou cria um anúncio.", rec: "Distribui a viatura para começar a gerar sinais reais.", icon: "ri-search-eye-line", color: "muted", bg: "bg-light" };
+        return { title: "Este veículo ainda não foi visto", text: "Este veículo ainda não foi visto. Partilha o link ou cria um anúncio.", rec: "Distribui a viatura para começar a gerar sinais reais.", icon: "ri-search-eye-line", color: "muted", bg: "bg-light" };
     if (met.views > 0 && met.interactions === 0)
-        return { title: "Há visualizações mas pouco envolvimento real", text: "Este carro está a receber atenção, mas ainda sem sinais claros de contacto.", rec: "Revê preço, fotos e proposta antes de reforçar investimento.", icon: "ri-eye-line", color: "warning", bg: "bg-warning-subtle" };
+        return { title: "Há visualizações mas pouco envolvimento real", text: "Este veículo está a receber atenção, mas ainda sem sinais claros de contacto.", rec: "Revê preço, fotos e proposta antes de reforçar investimento.", icon: "ri-eye-line", color: "warning", bg: "bg-warning-subtle" };
     if (met.interactions > 0 && met.leads === 0)
         return { title: "Há interesse mas ninguém contactou ainda", text: "Há sinais de intenção, mas ainda sem lead formal.", rec: "Verifica o preço, as fotos e o tempo de resposta comercial.", icon: "ri-cursor-line", color: "info", bg: "bg-info-subtle" };
     if (met.leads > 0)
-        return { title: "O mercado está a responder", text: "Este carro já está a transformar atenção em contactos.", rec: "Mantém o ritmo e acelera o follow-up comercial.", icon: "ri-checkbox-circle-line", color: "success", bg: "bg-success-subtle" };
+        return { title: "O mercado está a responder", text: "Este veículo já está a transformar atenção em contactos.", rec: "Mantém o ritmo e acelera o follow-up comercial.", icon: "ri-checkbox-circle-line", color: "success", bg: "bg-success-subtle" };
     return { title: "A recolher dados", text: "Ainda não existe padrão suficiente para uma leitura firme.", rec: "Continua a acompanhar a evolução desta viatura.", icon: "ri-line-chart-line", color: "muted", bg: "bg-light" };
 };
 
@@ -122,7 +122,7 @@ export const timelineDesc = (item: any): string => {
         return parts.join(" • ") || "Visualizações registadas.";
     }
     if (item.type === "interaction") return "Ação de intenção registada neste anúncio.";
-    if (item.type === "lead") return "Lead gerada associada a este carro.";
+    if (item.type === "lead") return "Lead gerada associada a este veículo.";
     return "Atividade registada.";
 };
 

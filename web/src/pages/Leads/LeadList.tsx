@@ -131,7 +131,7 @@ export default function LeadList() {
         },
         {
             id: "car",
-            header: "Carro",
+            header: "Veículo",
             sortKey: "car", // marca, modelo e versão
             value: (lead) => [lead.car?.brand?.name, lead.car?.model?.name, lead.car?.version].filter(Boolean).join(" "),
             cell: (lead) => {
@@ -344,7 +344,7 @@ export default function LeadList() {
                     flush={view === "list"}
                     actions={<>{viewToggle}{view === "list" && cols.selector}</>}
                     filters={view === "list" ? (
-                        <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, telefone, email ou carro)…"
+                        <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, telefone, email ou veículo)…"
                             activeCount={search ? 1 : 0} onClear={() => setSearch("")} />
                     ) : undefined}
                 >

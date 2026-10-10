@@ -27,7 +27,7 @@ export default function CarCreate() {
     const navigate = useNavigate();
     const dispatch: any = useDispatch();
 
-    document.title = "Novo Carro | Xplendor";
+    document.title = "Novo veículo | Xplendor";
 
     // States
     const [companyId, setCompanyId] = useState(0);
@@ -60,7 +60,7 @@ export default function CarCreate() {
 
                     try {
                         await dispatch(createCar({ companyId, formData: fd })).unwrap();
-                        toast("Carro criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
+                        toast("Veículo criado com sucesso!", { position: "top-right", hideProgressBar: false, className: "bg-success text-white" });
                         navigate(-1);
                     } catch (error) {
                         setValidationErrors(parseApiValidationErrors(error));

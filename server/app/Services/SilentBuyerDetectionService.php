@@ -150,7 +150,7 @@ class SilentBuyerDetectionService
 
         if ($topCar) {
             return sprintf(
-                '%d compradores silenciosos detetados nos ultimos %d dias. O carro mais afetado e %s com %d sinais fortes.',
+                '%d compradores silenciosos detetados nos ultimos %d dias. O veículo mais afetado e %s com %d sinais fortes.',
                 $buyers->count(),
                 $days,
                 $topCar['car_name'],

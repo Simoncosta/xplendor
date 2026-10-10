@@ -166,7 +166,7 @@ export default function RootDashboard() {
                     </Col>
                     <Col md={4}>
                         {/* Em stock (Car::IN_STOCK_STATUSES) de empresas ativas; o total geral fica como referência. */}
-                        <Stat icon="ri-car-line" color="info" label="Carros em stock"
+                        <Stat icon="ri-car-line" color="info" label="Veículos em stock"
                             value={num(platform?.cars_in_stock ?? 0)}
                             sub={`De empresas ativas · ${num(platform?.cars_total ?? 0)} no total da plataforma`}
                             to="/admin/stock" />

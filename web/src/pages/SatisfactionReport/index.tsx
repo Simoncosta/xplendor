@@ -555,7 +555,7 @@ export default function SatisfactionReport() {
                 {/* Saudação premium — como o título de um painel de bordo. */}
                 <div className="xsr-greeting">
                     <div className="xsr-eyebrow">A sua nova viatura</div>
-                    <h1 className="xsr-title">{vehicleTitle || "O seu carro"}</h1>
+                    <h1 className="xsr-title">{vehicleTitle || "O seu veículo"}</h1>
                     <div className="xsr-subline">
                         {data.car.version && <span className="xsr-chip">{data.car.version}</span>}
                         {data.car.registration_year && <span className="xsr-chip">{data.car.registration_year}</span>}

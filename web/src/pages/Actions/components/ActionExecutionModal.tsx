@@ -278,19 +278,19 @@ export default function ActionExecutionModal({
 
         if (option.level === "ad") {
             return extraCars === 1
-                ? "Este anúncio está ligado a mais 1 carro."
-                : `Este anúncio está ligado a mais ${extraCars} carros.`;
+                ? "Este anúncio está ligado a mais 1 veículo."
+                : `Este anúncio está ligado a mais ${extraCars} veículos.`;
         }
 
         if (option.level === "adset") {
             return extraCars === 1
-                ? "Este conjunto está ligado a mais 1 carro."
-                : `Este conjunto está ligado a mais ${extraCars} carros.`;
+                ? "Este conjunto está ligado a mais 1 veículo."
+                : `Este conjunto está ligado a mais ${extraCars} veículos.`;
         }
 
         return option.affected_cars_count === 1
-            ? "Esta campanha afeta 1 carro."
-            : `Esta campanha afeta ${option.affected_cars_count} carros.`;
+            ? "Esta campanha afeta 1 veículo."
+            : `Esta campanha afeta ${option.affected_cars_count} veículos.`;
     };
 
     const copyText = async (value?: string | null) => {

@@ -21,7 +21,7 @@ const baseCar = (overrides: Partial<IAdsPriorityRankedCar>): IAdsPriorityRankedC
     reasons: ["Sinal forte de contacto recente."],
     recommended_action: {
         type: "promote_car",
-        label: "Promover este carro",
+        label: "Promover este veículo",
     },
     priority_score: 82,
     confidence_score: 76,
@@ -56,10 +56,10 @@ test("renders cars in the blocks provided by backend state", () => {
 test("renders honest empty states", () => {
     renderCard([]);
 
-    expect(screen.getByText("Nenhum carro está forte o suficiente para investimento imediato.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum veículo está forte o suficiente para investimento imediato.")).toBeInTheDocument();
     expect(screen.getByText("Não existem candidatos intermédios neste momento.")).toBeInTheDocument();
-    expect(screen.getByText("Sem carros em observação agora.")).toBeInTheDocument();
-    expect(screen.getByText("Nenhum carro foi sinalizado para evitar investimento.")).toBeInTheDocument();
+    expect(screen.getByText("Sem veículos em observação agora.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum veículo foi sinalizado para evitar investimento.")).toBeInTheDocument();
 });
 
 test("limit selector applies to the current ranking view", async () => {

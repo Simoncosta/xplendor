@@ -278,8 +278,8 @@ class NextBestCarToPromoteService
         }
 
         return match ($state) {
-            'ready' => ['type' => 'promote_car', 'label' => 'Promover este carro'],
-            'candidate' => ['type' => 'promote_car', 'label' => 'Promover este carro'],
+            'ready' => ['type' => 'promote_car', 'label' => 'Promover este veículo'],
+            'candidate' => ['type' => 'promote_car', 'label' => 'Promover este veículo'],
             'avoid' => ['type' => 'avoid_investment', 'label' => 'Evitar investimento'],
             default => ['type' => 'observe_car', 'label' => 'Observar evolução'],
         };
@@ -307,8 +307,8 @@ class NextBestCarToPromoteService
             'to_car_id' => $to['car_id'],
             'to_car_name' => $to['car_name'],
             'reason' => [
-                'O carro atual tem score fraco.',
-                'Existe outro carro com probabilidade superior de performar.',
+                'O veículo atual tem score fraco.',
+                'Existe outro veículo com probabilidade superior de performar.',
                 'O candidato alternativo ainda não tem campanha ativa.',
             ],
             'confidence' => max(55, min(95, (int) round(60 + (($to['promotion_score'] - $from['promotion_score']) * 0.6)))),
@@ -587,7 +587,7 @@ class NextBestCarToPromoteService
             $car->version ?? ''
         ));
 
-        return $name !== '' ? $name : "Carro #{$car->id}";
+        return $name !== '' ? $name : "Veículo #{$car->id}";
     }
 
     private function applyLimit(Collection $ranked, mixed $limit): Collection

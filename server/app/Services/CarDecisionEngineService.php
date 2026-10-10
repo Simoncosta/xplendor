@@ -404,9 +404,9 @@ class CarDecisionEngineService
             'test_campaign_seed' => 'Gerar procura inicial para validar interesse.',
             'review_campaign' => ($market['market_position'] ?? null) === 'above_market'
                 ? 'Existe interesse, mas o preco acima do mercado esta a reduzir a capacidade de conversao.'
-                : 'O carro precisa de correccoes em proposta, criativo ou segmentacao antes de receber novo investimento.',
+                : 'O veículo precisa de correccoes em proposta, criativo ou segmentacao antes de receber novo investimento.',
             default => StockThresholds::isStale($context['car']['vehicle_type'] ?? null, $days)
-                ? 'O contexto atual e demasiado fraco para justificar investimento pago enquanto o carro nao for reposicionado.'
+                ? 'O contexto atual e demasiado fraco para justificar investimento pago enquanto o veículo nao for reposicionado.'
                 : 'Ainda nao existem sinais suficientes para recomendar investimento imediato.',
         };
     }
@@ -453,7 +453,7 @@ class CarDecisionEngineService
     private function buildWhyNow(string $decision, array $context): string
     {
         if ($decision === 'test_campaign_seed') {
-            return 'Sem investimento, este carro nao vai gerar dados nem leads.';
+            return 'Sem investimento, este veículo nao vai gerar dados nem leads.';
         }
 
         $trend = $context['historical_trend'];

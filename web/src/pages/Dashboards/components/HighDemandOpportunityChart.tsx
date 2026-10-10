@@ -112,7 +112,7 @@ const HighDemandOpportunityChart = ({
             <Col xl={6}>
                 <Card className="overflow-hidden">
                     <div className="card-header align-items-center d-flex">
-                        <h4 className="card-title mb-0 flex-grow-1">🔥 Carros com maior procura</h4>
+                        <h4 className="card-title mb-0 flex-grow-1">🔥 Veículos com maior procura</h4>
                     </div>
                     <div>
                         {
@@ -128,7 +128,7 @@ const HighDemandOpportunityChart = ({
                             ) : (
                                 <div className="p-3">
                                     <p className="fs-16 lh-base">
-                                        Ainda não há dados suficientes para identificar carros com maior procura.
+                                        Ainda não há dados suficientes para identificar veículos com maior procura.
                                         Assim que o stock começar a receber mais visitas e interações, este gráfico será preenchido automaticamente.
                                     </p>
                                 </div>

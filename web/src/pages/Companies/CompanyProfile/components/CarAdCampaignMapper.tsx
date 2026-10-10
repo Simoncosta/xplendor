@@ -293,7 +293,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
             {mappings.length === 0 && !showForm && (
                 <div className="text-center py-4 text-muted" style={dashed}>
                     <i className="ri-advertisement-line fs-1 d-block mb-2" />
-                    <p className="fs-13 mb-0">Nenhuma campanha mapeada a este carro.</p>
+                    <p className="fs-13 mb-0">Nenhuma campanha mapeada a este veículo.</p>
                     <p className="fs-12 mb-0 mt-1">Mapeia uma campanha, conjunto ou anuncio para que o spend chegue automaticamente.</p>
                 </div>
             )}
@@ -370,7 +370,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                                 </span>
                             </div>
                             <label className="fs-12 text-muted fw-semibold text-uppercase mb-1" style={{ letterSpacing: ".05em" }}>
-                                Peso relativo deste carro no target
+                                Peso relativo deste veículo no target
                             </label>
                             <div className="d-flex align-items-center gap-3">
                                 <input
@@ -386,7 +386,7 @@ export default function CarAdCampaignMapper({ companyId, carId }: Props) {
                             </div>
                             {splitPct < 100 && (
                                 <p className="fs-12 text-muted mt-1 mb-0">
-                                    Este valor passa a funcionar como peso relativo para repartir métricas e spend entre carros do mesmo target.
+                                    Este valor passa a funcionar como peso relativo para repartir métricas e spend entre veículos do mesmo target.
                                 </p>
                             )}
                         </div>

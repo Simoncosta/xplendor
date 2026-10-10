@@ -16,7 +16,7 @@ type SummaryDashboardProps = {
 
 const metrics = (summary: ISummaryDashboard) => [
     {
-        label: "Total carros",
+        label: "Total de veículos",
         value: Number(summary?.total_cars || 0).toLocaleString("pt-PT"),
         icon: "ri-car-line",
     },

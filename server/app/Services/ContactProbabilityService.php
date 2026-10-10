@@ -135,7 +135,7 @@ class ContactProbabilityService
             'no_real_interest' => [
                 'type' => 'pause_ad',
                 'label' => 'Pausar anúncio',
-                'reason' => 'O carro ainda não mostra sinais reais de contacto.',
+                'reason' => 'O veículo ainda não mostra sinais reais de contacto.',
                 'next_step' => 'Reduzir investimento até existir uma proposta ou criativo mais forte.',
                 'action_key' => 'pause_campaign',
                 'confidence' => max(55, min(85, 100 - $score)),
@@ -151,7 +151,7 @@ class ContactProbabilityService
             'healthy_contact_flow', 'strong_contact_signal' => [
                 'type' => 'scale_adset',
                 'label' => 'Escalar conjunto',
-                'reason' => 'O carro mostra sinais consistentes de contacto.',
+                'reason' => 'O veículo mostra sinais consistentes de contacto.',
                 'next_step' => 'Aumentar orçamento ou duplicar o conjunto com melhor sinal.',
                 'action_key' => 'duplicate_campaign',
                 'confidence' => max(65, min(92, $score)),
@@ -159,7 +159,7 @@ class ContactProbabilityService
             default => [
                 'type' => 'test_creative',
                 'label' => 'Gerar novo criativo',
-                'reason' => 'O carro já capta alguma atenção, mas ainda não gera contacto suficiente.',
+                'reason' => 'O veículo já capta alguma atenção, mas ainda não gera contacto suficiente.',
                 'next_step' => 'Testar novo criativo com foco em preço, benefício ou urgência.',
                 'action_key' => 'generate_new_copy',
                 'confidence' => max(50, min(80, $score)),
@@ -213,11 +213,11 @@ class ContactProbabilityService
     private function resolveSummary(string $state): string
     {
         return [
-            'no_real_interest' => 'O carro recebe pouco sinal útil para justificar mais investimento.',
+            'no_real_interest' => 'O veículo recebe pouco sinal útil para justificar mais investimento.',
             'weak_contact_signal' => 'Há algum interesse, mas ainda não é suficiente para prever contacto.',
             'strong_contact_signal' => 'O comportamento mostra probabilidade real de gerar contacto.',
             'high_interest_low_conversion' => 'Há interesse relevante, mas o contacto ainda não aconteceu.',
-            'healthy_contact_flow' => 'O carro está a transformar interesse em contacto comercial.',
+            'healthy_contact_flow' => 'O veículo está a transformar interesse em contacto comercial.',
         ][$state] ?? 'A recolher sinais para consolidar a leitura.';
     }
 
@@ -232,7 +232,7 @@ class ContactProbabilityService
             $items[] = 'O tráfego atual ainda não mostra intenção comercial suficiente.';
             $items[] = 'Não há tentativas claras de contacto neste período.';
         } elseif ($state === 'healthy_contact_flow') {
-            $items[] = 'O carro já transforma interesse em contacto comercial.';
+            $items[] = 'O veículo já transforma interesse em contacto comercial.';
             $items[] = 'Os sinais de navegação e contacto estão consistentes.';
         } elseif ($state === 'strong_contact_signal') {
             $items[] = 'Há comportamento compatível com intenção real de contacto.';

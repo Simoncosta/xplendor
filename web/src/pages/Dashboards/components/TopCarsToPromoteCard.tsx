@@ -10,13 +10,13 @@ export default function TopCarsToPromoteCard({ cars }: TopCarsToPromoteCardProps
     return (
         <Col xl={6}>
             <section style={{ border: "1px solid var(--vz-border-color)", borderRadius: 16, padding: "16px 18px", background: "var(--vz-card-bg)" }}>
-                <h6 className="mb-3 fw-semibold">Carros para promover</h6>
+                <h6 className="mb-3 fw-semibold">Veículos para promover</h6>
                 {cars.length > 0 ? (
                     <div className="table-responsive">
                         <table className="table table-sm align-middle mb-0">
                             <thead style={{ background: "var(--vz-tertiary-bg)" }}>
                                 <tr>
-                                    <th className="ps-0">Carro</th>
+                                    <th className="ps-0">Veículo</th>
                                     <th>IPS</th>
                                     <th>Views</th>
                                     <th>Leads</th>
@@ -39,7 +39,7 @@ export default function TopCarsToPromoteCard({ cars }: TopCarsToPromoteCardProps
                         </table>
                     </div>
                 ) : (
-                    <p className="text-muted mb-0">Sem dados suficientes para sugerir carros a escalar neste momento.</p>
+                    <p className="text-muted mb-0">Sem dados suficientes para sugerir veículos a escalar neste momento.</p>
                 )}
             </section>
         </Col>

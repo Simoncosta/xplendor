@@ -31,7 +31,7 @@ export default function CarAnalyticsHeader({ car, ips, ai, aiMeta, fmtDate, sect
         <PageHeader
             title={carName}
             crumbLabel={section}
-            breadcrumbs={[{ label: "Comercial" }, { label: "Carros", to: "/cars" }]}
+            breadcrumbs={[{ label: "Comercial" }, { label: "Veículos", to: "/cars" }]}
         />
     );
     if (!car) return header;

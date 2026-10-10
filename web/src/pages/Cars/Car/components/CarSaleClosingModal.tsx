@@ -221,7 +221,7 @@ export default function CarSaleClosingModal({
                                 {errors.buyer_age_range && <div className="text-danger small mt-1">{errors.buyer_age_range}</div>}
                             </Col>
                             <Col lg={6}>
-                                <Label className="form-label">Como chegou ao carro?</Label>
+                                <Label className="form-label">Como chegou ao veículo?</Label>
                                 <Select
                                     styles={reactSelectTheme}
                                     menuPortalTarget={document.body}

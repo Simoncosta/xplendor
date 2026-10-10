@@ -26,29 +26,29 @@ const stateSections: Array<{
     {
         state: "ready",
         title: "Prontos para anunciar",
-        description: "Carros com sinais fortes e sem bloqueadores relevantes.",
-        empty: "Nenhum carro está forte o suficiente para investimento imediato.",
+        description: "Veículos com sinais fortes e sem bloqueadores relevantes.",
+        empty: "Nenhum veículo está forte o suficiente para investimento imediato.",
         tone: { bg: "#ecfdf3", border: "#bbf7d0", color: "#15803d" },
     },
     {
         state: "candidate",
         title: "Bons candidatos",
-        description: "Carros com sinais positivos, bons para testar ou validar orçamento.",
+        description: "Veículos com sinais positivos, bons para testar ou validar orçamento.",
         empty: "Não existem candidatos intermédios neste momento.",
         tone: { bg: "#eff6ff", border: "#bfdbfe", color: "#1d4ed8" },
     },
     {
         state: "watch",
         title: "Em observação",
-        description: "Carros ainda com pouco volume ou sinais insuficientes para investir com confiança.",
-        empty: "Sem carros em observação agora.",
+        description: "Veículos ainda com pouco volume ou sinais insuficientes para investir com confiança.",
+        empty: "Sem veículos em observação agora.",
         tone: { bg: "#fffbeb", border: "#fde68a", color: "#a16207" },
     },
     {
         state: "avoid",
         title: "Evitar investimento",
-        description: "Carros onde investir agora tende a gerar baixo retorno.",
-        empty: "Nenhum carro foi sinalizado para evitar investimento.",
+        description: "Veículos onde investir agora tende a gerar baixo retorno.",
+        empty: "Nenhum veículo foi sinalizado para evitar investimento.",
         tone: { bg: "#fff1f2", border: "#fecdd3", color: "#be123c" },
     },
 ];
@@ -76,7 +76,7 @@ const getActionLabel = (car: IAdsPriorityRankedCar) => {
 
     const state = getPromotionState(car);
 
-    if (state === "ready" || state === "candidate") return "Promover este carro";
+    if (state === "ready" || state === "candidate") return "Promover este veículo";
     if (state === "avoid") return "Evitar investimento";
 
     return "Observar evolução";

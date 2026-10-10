@@ -285,13 +285,13 @@ const CarList = () => {
     const onClickSyncCarmine = async () => {
         if (!companyId) return;
         dispatch(syncCarmine({ companyId: Number(companyId) }));
-        toast("Carros sincronizados com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
+        toast("Veículos sincronizados com sucesso!", { position: "top-right", hideProgressBar: false, className: 'bg-success text-white' });
     };
 
     const columnDefs: DTColumn<any>[] = [
         {
             id: "car",
-            header: "Carro",
+            header: "Veículo",
             sortKey: "car", // marca, modelo e versão
             // (o DataTable só ordena colunas com value; em modo servidor a ordem vem da API)
             value: (car) => [car.brand?.name, car.model?.name, car.version].filter(Boolean).join(" "),
@@ -565,14 +565,14 @@ const CarList = () => {
     const noStatus = statusFilters.length === 0;
     const total = noStatus ? 0 : (meta?.total ?? 0);
 
-    document.title = "Carros | Xplendor";
+    document.title = "Veículos | Xplendor";
 
     return (
         <div className="page-content">
             <ToastContainer closeButton={false} limit={1} />
             <Container fluid>
                 <PageHeader
-                    title="Carros"
+                    title="Veículos"
                     breadcrumbs={[{ label: "Comercial" }]}
                     info="As viaturas em stock, com o desempenho comercial de cada uma."
                 />

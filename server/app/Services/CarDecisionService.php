@@ -436,7 +436,7 @@ class CarDecisionService
             'PARAR' => [
                 'Pausar campanha atual',
                 'Rever segmentação e oferta',
-                'Redistribuir orçamento para carros com sinal',
+                'Redistribuir orçamento para veículos com sinal',
             ],
             default => match ($worstPhase) {
             'conversion' => [

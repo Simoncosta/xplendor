@@ -177,7 +177,7 @@ export default function ActionCenterPage() {
                 <PageHeader
                     title="Ações"
                     breadcrumbs={[{ label: "Comercial" }]}
-                    info="O que fazer agora, por carro: recomendações operacionais do motor, focadas na próxima ação."
+                    info="O que fazer agora, por veículo: recomendações operacionais do motor, focadas na próxima ação."
                 />
                 {/* "Atualizar" no cabeçalho do cartão do resumo (design-system §1 e §2). */}
                 <Row className="mb-4">
@@ -259,7 +259,7 @@ export default function ActionCenterPage() {
                         <Col>
                             <div className="d-flex align-items-center justify-content-center gap-2 py-5 text-muted">
                                 <Spinner size="sm" />
-                                A carregar decisões reais dos carros...
+                                A carregar decisões reais dos veículos...
                             </div>
                         </Col>
                     </Row>

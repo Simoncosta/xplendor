@@ -125,8 +125,8 @@ class TrackController extends Controller
         if (($data['car_id'] ?? null) && !$carId) {
             return response()->json([
                 'message' => $useCarmineId
-                    ? 'Carro CARMINE não encontrado para esta empresa.'
-                    : 'Carro não encontrado para esta empresa.',
+                    ? 'Veículo CARMINE não encontrado para esta empresa.'
+                    : 'Veículo não encontrado para esta empresa.',
             ], 404);
         }
 

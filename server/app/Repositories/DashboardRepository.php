@@ -553,7 +553,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                     return null;
                 }
 
-                $suggestion = 'Monitorizar, carro com procura saudável';
+                $suggestion = 'Monitorizar, veículo com procura saudável';
 
                 if ($car->views_count >= 150 && $car->leads_count === 0) {
                     $suggestion = 'Alta procura sem conversão: rever preço ou melhorar anúncio';
@@ -562,7 +562,7 @@ class DashboardRepository extends BaseRepository implements DashboardRepositoryI
                 } elseif ($car->interactions_count >= 10 && $car->leads_count === 0) {
                     $suggestion = 'Interesse alto sem leads: melhorar CTA e contacto';
                 } elseif ($leadRate >= 2) {
-                    $suggestion = 'Carro com boa conversão, reforçar promoção';
+                    $suggestion = 'Veículo com boa conversão, reforçar promoção';
                 }
 
                 $car->interest_rate = $interestRate;

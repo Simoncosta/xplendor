@@ -118,7 +118,7 @@ const CompanyModulesPanel: React.FC<Props> = ({ companyId }) => {
                                         <div className="fw-medium">
                                             {m.label}
                                             <Badge color={m.car_specific ? "warning" : "info"} className="ms-2 fs-11">
-                                                {m.car_specific ? "Carros" : "Transversal"}
+                                                {m.car_specific ? "Veículos" : "Transversal"}
                                             </Badge>
                                         </div>
                                         {blocked && (
