@@ -50,6 +50,12 @@ final class Permissions
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];
 
+    /**
+     * Permissões BASE: quem pode trabalhar na empresa tem-nas sempre, seja qual for o perfil
+     * (ver a empresa, os avisos e o que pode fazer). Sem elas o ecrã não abre.
+     */
+    public const BASE = ['empresa.ver'];
+
     /** Áreas que nunca entram num perfil (só o root, ou só a agência). */
     public const NOT_ASSIGNABLE = ['plataforma'];
 

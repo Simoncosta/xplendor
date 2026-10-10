@@ -23,6 +23,7 @@ import ActionsMenu, { MenuAction } from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { useModules } from "contexts/ModulesContext";
 import XSelect from "Components/Common/Select";
+import ProfilesTab from "./ProfilesTab";
 
 /**
  * Colaboradores (equipa) e departamentos da empresa. A equipa XPLENDOR em sessão como
@@ -52,7 +53,9 @@ const CollaboratorsList = () => {
     const canEdit = can("utilizadores.editar");
     const canManageAccess = can("utilizadores.configurar");
 
-    const [tab, setTab] = useState<"team" | "departments">("team");
+    // ?tab=perfis abre logo os perfis (por exemplo, a partir do cartão da agência gestora).
+    const [tab, setTab] = useState<"team" | "departments" | "profiles">(() =>
+        (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "perfis" ? "profiles" : "team"));
     const [items, setItems] = useState<ICollaborator[]>([]);
     const [departments, setDepartments] = useState<IDepartment[]>([]);
     const [loading, setLoading] = useState(true);
@@ -169,6 +172,7 @@ const CollaboratorsList = () => {
         <Nav className="nav-tabs-custom mb-3" tabs>
             <NavItem><NavLink href="#" className={tab === "team" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("team"); }}>Colaboradores</NavLink></NavItem>
             <NavItem><NavLink href="#" className={tab === "departments" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("departments"); }}>Departamentos</NavLink></NavItem>
+            <NavItem><NavLink href="#" className={tab === "profiles" ? "active" : ""} onClick={(e) => { e.preventDefault(); setTab("profiles"); }}>Perfis</NavLink></NavItem>
         </Nav>
     );
 
@@ -189,7 +193,9 @@ const CollaboratorsList = () => {
                 {tabs}
 
                 {/* Um cartão por separador, cada um com as suas ações (design-system §2). */}
-                {tab === "team" ? (
+                {tab === "profiles" ? (
+                    <ProfilesTab companyId={companyId} />
+                ) : tab === "team" ? (
                     <PageCard
                         title="Colaboradores"
                         status={!loading ? <>{items.length} colaborador{items.length === 1 ? "" : "es"}</> : undefined}

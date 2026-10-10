@@ -1,6 +1,6 @@
 {
     "ator": "sem_modulos_admin",
-    "rotas": 360,
+    "rotas": 367,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -490,6 +490,7 @@
         "DELETE api/v1/companies/{id}/management": 422,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 403,
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 404,
         "DELETE api/v1/companies/{id}/stock/promotion-candidates/{carId}": 403,
         "DELETE api/v1/companies/{id}/suppliers/{supplier}": 403,
         "DELETE api/v1/companies/{id}/tasks/{task}": 403,
@@ -630,6 +631,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 403,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 403,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 403,
+        "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
@@ -776,6 +778,8 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 403,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 403,
+        "POST api/v1/companies/{id}/permission-profiles": 422,
+        "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 422,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 404,
@@ -818,9 +822,12 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 403,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 422,
         "PUT api/v1/companies/{id}/leads/{lead}": 403,
+        "PUT api/v1/companies/{id}/management/guest-profile": 422,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 403,
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 404,
         "PUT api/v1/companies/{id}/suppliers/{supplier}": 403,
         "PUT api/v1/companies/{id}/tasks/{task}": 403,
-        "PUT api/v1/companies/{id}/users/{user}": 200
+        "PUT api/v1/companies/{id}/users/{user}": 200,
+        "PUT api/v1/companies/{id}/users/{user}/profile": 422
     }
 }

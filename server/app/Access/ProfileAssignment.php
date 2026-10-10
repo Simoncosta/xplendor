@@ -34,12 +34,13 @@ final class ProfileAssignment
         }
 
         $roleChanged = $user->exists && $user->isDirty('role');
-        if ($user->profile_id === null || ($roleChanged && self::isSystem($user->profile_id))) {
+        // Um perfil escolhido de propósito (profile_id alterado no mesmo gravar) nunca é trocado.
+        if ($user->profile_id === null || ($roleChanged && ! $user->isDirty('profile_id') && self::isSystem($user->profile_id))) {
             $user->profile_id = CompatibilityMigration::profileForRole((string) $user->role);
         }
 
         $isAgency = $user->company_id && Company::whereKey($user->company_id)->whereNotNull('agency_enabled_at')->exists();
-        if ($isAgency && ($user->agency_profile_id === null || ($roleChanged && self::isSystem($user->agency_profile_id)))) {
+        if ($isAgency && ($user->agency_profile_id === null || ($roleChanged && ! $user->isDirty('agency_profile_id') && self::isSystem($user->agency_profile_id)))) {
             $user->agency_profile_id = CompatibilityMigration::agencyProfileForRole((string) $user->role);
         }
     }

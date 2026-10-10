@@ -1,10 +1,11 @@
 {
     "ator": "agencia_admin",
-    "rotas": 360,
+    "rotas": 367,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/collaborators/{collaborator}/access/invite",
         "DELETE api/v1/companies/{id}/management",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}",
         "GET api/v1/companies/{id}/management/requests",
         "GET api/v1/companies/{id}/xplendor-charges",
         "GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice",
@@ -23,18 +24,23 @@
         "POST api/v1/companies/{id}/management/connections",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
+        "POST api/v1/companies/{id}/permission-profiles",
         "POST api/v1/companies/{id}/support-tickets/quotes/approve",
         "POST api/v1/companies/{id}/users",
         "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid",
         "PUT api/v1/companies/{company}",
         "PUT api/v1/companies/{id}/editorial/approvers/{userId}",
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals",
-        "PUT api/v1/companies/{id}/users/{user}"
+        "PUT api/v1/companies/{id}/management/guest-profile",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}",
+        "PUT api/v1/companies/{id}/users/{user}",
+        "PUT api/v1/companies/{id}/users/{user}/profile"
     ],
     "motivos": {
         "DELETE api/v1/companies/{company}": "Só a equipa da plataforma pode fazer isto.",
         "DELETE api/v1/companies/{id}/collaborators/{collaborator}/access/invite": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "DELETE api/v1/companies/{id}/management": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "GET api/v1/companies/{id}/management/requests": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "GET api/v1/companies/{id}/xplendor-charges": "Cliente Teste não deu acesso a esta agência para ver em Faturação da XPLENDOR.",
         "GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice": "Cliente Teste não deu acesso a esta agência para ver em Faturação da XPLENDOR.",
@@ -53,13 +59,17 @@
         "POST api/v1/companies/{id}/management/connections": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "POST api/v1/companies/{id}/permission-profiles": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "POST api/v1/companies/{id}/support-tickets/quotes/approve": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/users": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "PUT api/v1/companies/{company}": "Cliente Teste não deu acesso a esta agência para editar em Empresa.",
         "PUT api/v1/companies/{id}/editorial/approvers/{userId}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals": "Só a equipa da plataforma pode fazer isto.",
-        "PUT api/v1/companies/{id}/users/{user}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa."
+        "PUT api/v1/companies/{id}/management/guest-profile": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
+        "PUT api/v1/companies/{id}/users/{user}": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa.",
+        "PUT api/v1/companies/{id}/users/{user}/profile": "Cliente Teste não deu acesso a esta agência para configurar em Utilizadores e equipa."
     },
     "estados": {
         "DELETE api/v1/companies/{company}": 403,
@@ -90,6 +100,7 @@
         "DELETE api/v1/companies/{id}/management": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "DELETE api/v1/companies/{id}/stock/promotion-candidates/{carId}": 200,
         "DELETE api/v1/companies/{id}/suppliers/{supplier}": 404,
         "DELETE api/v1/companies/{id}/tasks/{task}": 404,
@@ -230,6 +241,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 404,
+        "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
@@ -376,6 +388,8 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
+        "POST api/v1/companies/{id}/permission-profiles": 403,
+        "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 422,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 404,
@@ -418,9 +432,12 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 404,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 422,
         "PUT api/v1/companies/{id}/leads/{lead}": 404,
+        "PUT api/v1/companies/{id}/management/guest-profile": 403,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "PUT api/v1/companies/{id}/suppliers/{supplier}": 404,
         "PUT api/v1/companies/{id}/tasks/{task}": 404,
-        "PUT api/v1/companies/{id}/users/{user}": 403
+        "PUT api/v1/companies/{id}/users/{user}": 403,
+        "PUT api/v1/companies/{id}/users/{user}/profile": 403
     }
 }

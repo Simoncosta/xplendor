@@ -1,6 +1,6 @@
 {
     "ator": "impersonacao_utilizador",
-    "rotas": 360,
+    "rotas": 367,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -14,6 +14,7 @@
         "DELETE api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}",
         "DELETE api/v1/companies/{id}/integrations/social",
         "DELETE api/v1/companies/{id}/management",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}",
         "GET api/v1/companies/{id}/carmine-connection/{carmine_connection}",
         "GET api/v1/companies/{id}/integrations/meta/ad-accounts",
         "GET api/v1/companies/{id}/integrations/meta/oauth-url",
@@ -46,6 +47,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch/close",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch/void",
+        "POST api/v1/companies/{id}/permission-profiles",
         "POST api/v1/companies/{id}/setup-links",
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend",
         "POST api/v1/companies/{id}/setup-links/{linkId}/revoke",
@@ -58,7 +60,10 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals",
         "PUT api/v1/companies/{id}/integrations/pingwin/family-categories",
         "PUT api/v1/companies/{id}/integrations/social/accounts",
-        "PUT api/v1/companies/{id}/users/{user}"
+        "PUT api/v1/companies/{id}/management/guest-profile",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}",
+        "PUT api/v1/companies/{id}/users/{user}",
+        "PUT api/v1/companies/{id}/users/{user}/profile"
     ],
     "motivos": {
         "DELETE api/v1/companies/{company}": "Só a equipa da plataforma pode fazer isto.",
@@ -73,6 +78,7 @@
         "DELETE api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "DELETE api/v1/companies/{id}/integrations/social": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "DELETE api/v1/companies/{id}/management": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "GET api/v1/companies/{id}/carmine-connection/{carmine_connection}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "GET api/v1/companies/{id}/integrations/meta/ad-accounts": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "GET api/v1/companies/{id}/integrations/meta/oauth-url": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
@@ -105,6 +111,7 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch/close": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch/void": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
+        "POST api/v1/companies/{id}/permission-profiles": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "POST api/v1/companies/{id}/setup-links": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "POST api/v1/companies/{id}/setup-links/{linkId}/revoke": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
@@ -117,7 +124,10 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals": "Só a equipa da plataforma pode fazer isto.",
         "PUT api/v1/companies/{id}/integrations/pingwin/family-categories": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
         "PUT api/v1/companies/{id}/integrations/social/accounts": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
-        "PUT api/v1/companies/{id}/users/{user}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar."
+        "PUT api/v1/companies/{id}/management/guest-profile": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
+        "PUT api/v1/companies/{id}/users/{user}": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar.",
+        "PUT api/v1/companies/{id}/users/{user}/profile": "Esta ação não é permitida durante a impersonation. Sai da impersonation para a executar."
     },
     "estados": {
         "DELETE api/v1/companies/{company}": 403,
@@ -148,6 +158,7 @@
         "DELETE api/v1/companies/{id}/management": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "DELETE api/v1/companies/{id}/stock/promotion-candidates/{carId}": 200,
         "DELETE api/v1/companies/{id}/suppliers/{supplier}": 404,
         "DELETE api/v1/companies/{id}/tasks/{task}": 404,
@@ -288,6 +299,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 404,
+        "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
@@ -434,6 +446,8 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
+        "POST api/v1/companies/{id}/permission-profiles": 403,
+        "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 403,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 403,
@@ -476,9 +490,12 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 404,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 403,
         "PUT api/v1/companies/{id}/leads/{lead}": 404,
+        "PUT api/v1/companies/{id}/management/guest-profile": 403,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "PUT api/v1/companies/{id}/suppliers/{supplier}": 404,
         "PUT api/v1/companies/{id}/tasks/{task}": 404,
-        "PUT api/v1/companies/{id}/users/{user}": 403
+        "PUT api/v1/companies/{id}/users/{user}": 403,
+        "PUT api/v1/companies/{id}/users/{user}/profile": 403
     }
 }

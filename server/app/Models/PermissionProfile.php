@@ -26,9 +26,9 @@ class PermissionProfile extends Model
     public const AGENCY_MEMBER_COMPAT = 'gestor_clientes_como_hoje';
     public const CEILING_COMPAT = 'teto_agencia_como_hoje';
 
-    protected $fillable = ['company_id', 'side', 'system_key', 'name', 'description', 'is_system', 'is_suggestion', 'created_by_user_id'];
+    protected $fillable = ['company_id', 'side', 'system_key', 'name', 'description', 'is_system', 'is_suggestion', 'only_assigned_clients', 'created_by_user_id'];
 
-    protected $casts = ['is_system' => 'boolean', 'is_suggestion' => 'boolean'];
+    protected $casts = ['is_system' => 'boolean', 'is_suggestion' => 'boolean', 'only_assigned_clients' => 'boolean'];
 
     public function company(): BelongsTo
     {

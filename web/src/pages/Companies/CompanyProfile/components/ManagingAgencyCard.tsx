@@ -5,6 +5,7 @@ import { decideCompanyConnections, endCompanyManagement, getCompanyManagement, i
 import ManagementRequestsCard from "./ManagementRequestsCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
+import AgencyCeilingSection from "./AgencyCeilingSection";
 
 /**
  * Definições da empresa gerida: "Agência gestora: [nome]". Só o admin da própria empresa
@@ -105,6 +106,7 @@ export default function ManagingAgencyCard({ companyId, highlight = false }: { c
                         <p className="text-muted fs-12 mb-0">
                             A agência produz conteúdos, configura integrações e vê resultados com a própria conta. A aprovação e os acessos são sempre desta empresa.
                         </p>
+                        <AgencyCeilingSection companyId={companyId} agencyName={m.agency.name} />
                     </>
                 ) : <p className="text-muted fs-13 mb-2">Sem agência gestora.</p>}
 

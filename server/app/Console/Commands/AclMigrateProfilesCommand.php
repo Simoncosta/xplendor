@@ -21,6 +21,7 @@ class AclMigrateProfilesCommand extends Command
     public function handle(): int
     {
         $r = CompatibilityMigration::run();
+        \App\Access\ProfileSuggestions::ensure();
         $this->info("Perfis de sistema: {$r['perfis']}. Utilizadores com perfil novo: {$r['utilizadores']}. Perfis dentro dos clientes: {$r['agencia']}. Relações de gestão com teto: {$r['relacoes']}.");
 
         return self::SUCCESS;

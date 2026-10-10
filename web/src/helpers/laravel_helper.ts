@@ -343,6 +343,19 @@ export const getMyModules = (companyId: number) =>
     api.get(url.GET_COMPANIES + `/${companyId}/my-modules`);
 /** ACL: os módulos e as permissões efetivas da pessoa na empresa, com os motivos das recusas. */
 export const getMyAccess = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/my-access`);
+// ACL (F5): Utilizadores › Perfis e o teto da agência gestora.
+export const getPermissionProfiles = (companyId: number) => api.get(url.GET_COMPANIES + `/${companyId}/permission-profiles`);
+export const createPermissionProfile = (companyId: number, data: { name: string; description?: string | null; side: string; permissions: string[]; from_profile_id?: number | null }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles`, data);
+export const updatePermissionProfile = (companyId: number, profileId: number, data: { name?: string; description?: string | null; permissions?: string[] }) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/permission-profiles/${profileId}`, data);
+export const deletePermissionProfile = (companyId: number, profileId: number) => api.delete(url.GET_COMPANIES + `/${companyId}/permission-profiles/${profileId}`);
+export const previewPermissionProfile = (companyId: number, data: { side: string; permissions: string[] }) =>
+    api.create(url.GET_COMPANIES + `/${companyId}/permission-profiles/preview`, data);
+export const assignUserProfile = (companyId: number, userId: number, profileId: number) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/users/${userId}/profile`, { profile_id: profileId });
+export const setAgencyCeiling = (companyId: number, profileId: number) =>
+    api.put(url.GET_COMPANIES + `/${companyId}/management/guest-profile`, { profile_id: profileId });
 
 // Cobranças da XPLENDOR. Root: todas as empresas; empresa: as suas (sem o módulo de Finanças).
 export const getAdminCharges = (params?: { status?: string; company_id?: number; overdue?: 1 }) => api.get(url.GET_ADMIN + `/charges`, params);

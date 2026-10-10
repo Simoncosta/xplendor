@@ -71,6 +71,9 @@ class Access
                 : Decision::allow();
         }
 
+        if (in_array($permission, Permissions::BASE, true)) {
+            return Decision::allow(); // base: quem trabalha na empresa vê-a sempre
+        }
         if (($context['self'] ?? false) && $kind === CompanyAccess::OWN) {
             return Decision::allow(); // a própria conta (o FormRequest continua a limitar o que se pode mudar)
         }

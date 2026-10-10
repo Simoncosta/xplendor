@@ -108,11 +108,13 @@ class CompanyAccess
      */
     public function visibleManaged(int $agencyId, User $user): array
     {
-        $everything = $user->role === 'root' || ($user->role === 'admin' && (int) $user->company_id === $agencyId);
+        $everything = $user->role === 'root' || ($user->role === 'admin' && (int) $user->company_id === $agencyId && ! $this->onlyAssignedClients($user));
+        $onlyAssigned = ! $everything && $user->role !== 'root' && $this->onlyAssignedClients($user);
 
         return CompanyManagement::active()
             ->where('agency_company_id', $agencyId)
-            ->when(! $everything, fn ($q) => $q->where(fn ($w) => $w->where('team_scope', CompanyManagement::SCOPE_ALL)
+            ->when($onlyAssigned, fn ($q) => $q->whereHas('members', fn ($m) => $m->where('user_id', $user->id)))
+            ->when(! $everything && ! $onlyAssigned, fn ($q) => $q->where(fn ($w) => $w->where('team_scope', CompanyManagement::SCOPE_ALL)
                 ->orWhereHas('members', fn ($m) => $m->where('user_id', $user->id))))
             ->pluck('managed_company_id')->map(fn ($id) => (int) $id)->all();
     }
@@ -131,10 +133,23 @@ class CompanyAccess
             return false;
         }
 
-        // Os admins da agência veem sempre todos os clientes (são eles que atribuem).
+        // ACL (D11): um perfil "só clientes atribuídos" (o Criativo externo) só vê os clientes
+        // a que está atribuído, mesmo com team_scope = all; os admins da agência não atribuídos
+        // a esse perfil veem sempre todos (são eles que atribuem).
+        if ($this->onlyAssignedClients($user)) {
+            return $m->members()->where('user_id', $user->id)->exists();
+        }
+
         return $m->team_scope !== CompanyManagement::SCOPE_ASSIGNED
             || $user->role === 'admin'
             || $m->members()->where('user_id', $user->id)->exists();
+    }
+
+    /** D11: o perfil da pessoa dentro dos clientes só a deixa ver os clientes atribuídos. */
+    public function onlyAssignedClients(User $user): bool
+    {
+        return $user->agency_profile_id !== null
+            && (bool) \App\Models\PermissionProfile::whereKey($user->agency_profile_id)->value('only_assigned_clients');
     }
 
     /** Guarda no pedido HTTP atual (nunca entre pedidos nem em jobs). */

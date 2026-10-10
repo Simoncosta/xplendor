@@ -1,6 +1,6 @@
 {
     "ator": "root_outra",
-    "rotas": 360,
+    "rotas": 367,
     "proibidas": [
         "DELETE api/v1/companies/{id}/management",
         "GET api/v1/companies/{id}/management/requests",
@@ -16,7 +16,8 @@
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
         "POST api/v1/companies/{id}/support-tickets/quotes/approve",
-        "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid"
+        "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid",
+        "PUT api/v1/companies/{id}/management/guest-profile"
     ],
     "motivos": {
         "DELETE api/v1/companies/{id}/management": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.",
@@ -33,7 +34,8 @@
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.",
         "POST api/v1/companies/{id}/support-tickets/quotes/approve": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.",
-        "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa."
+        "POST api/v1/companies/{id}/xplendor-charges/{chargeId}/paid": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.",
+        "PUT api/v1/companies/{id}/management/guest-profile": "Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa."
     },
     "estados": {
         "DELETE api/v1/companies/{company}": 200,
@@ -64,6 +66,7 @@
         "DELETE api/v1/companies/{id}/management": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 404,
         "DELETE api/v1/companies/{id}/stock/promotion-candidates/{carId}": 200,
         "DELETE api/v1/companies/{id}/suppliers/{supplier}": 404,
         "DELETE api/v1/companies/{id}/tasks/{task}": 404,
@@ -204,6 +207,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 404,
+        "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
@@ -350,6 +354,8 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
+        "POST api/v1/companies/{id}/permission-profiles": 422,
+        "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 422,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 404,
@@ -392,9 +398,12 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 404,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 422,
         "PUT api/v1/companies/{id}/leads/{lead}": 404,
+        "PUT api/v1/companies/{id}/management/guest-profile": 403,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 404,
         "PUT api/v1/companies/{id}/suppliers/{supplier}": 404,
         "PUT api/v1/companies/{id}/tasks/{task}": 404,
-        "PUT api/v1/companies/{id}/users/{user}": 200
+        "PUT api/v1/companies/{id}/users/{user}": 200,
+        "PUT api/v1/companies/{id}/users/{user}/profile": 422
     }
 }

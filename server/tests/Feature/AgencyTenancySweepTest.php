@@ -101,6 +101,12 @@ class AgencyTenancySweepTest extends TestCase
         'PUT api/v1/companies/{id}/users/{user}',
         'PUT api/v1/companies/{company}',
         'DELETE api/v1/companies/{company}',
+        // ACL (F5): os perfis da empresa e o teto da agência são do cliente (utilizadores.configurar, empresa.aprovar).
+        'POST api/v1/companies/{id}/permission-profiles',
+        'PUT api/v1/companies/{id}/permission-profiles/{profileId}',
+        'DELETE api/v1/companies/{id}/permission-profiles/{profileId}',
+        'PUT api/v1/companies/{id}/users/{user}/profile',
+        'PUT api/v1/companies/{id}/management/guest-profile',
         // Cobranças da XPLENDOR: só da própria empresa (a agência gestora não as vê).
         'GET api/v1/companies/{id}/xplendor-charges',
         'GET api/v1/companies/{id}/xplendor-charges/{chargeId}/invoice',

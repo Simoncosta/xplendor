@@ -38,6 +38,7 @@ final class RoutePermissions
         'POST {id}/management/requests/{requestId}/decline' => 'empresa.aprovar',
         'GET {id}/my-modules' => 'empresa.ver',
         'GET {id}/my-access' => 'empresa.ver',
+        'PUT {id}/management/guest-profile' => 'empresa.aprovar', // F5: o teto da agência é uma decisão do cliente
         // ── utilizadores ──
         'GET {id}/collaborators' => 'utilizadores.ver',
         'POST {id}/collaborators' => 'utilizadores.criar',
@@ -60,6 +61,12 @@ final class RoutePermissions
         'PUT {id}/departments/{department}' => 'utilizadores.editar',
         'PUT {id}/editorial/approvers/{userId}' => 'utilizadores.configurar',
         'GET {id}/users' => 'utilizadores.ver',
+        'GET {id}/permission-profiles' => 'utilizadores.ver',
+        'POST {id}/permission-profiles' => 'utilizadores.configurar',
+        'POST {id}/permission-profiles/preview' => 'utilizadores.ver',
+        'PUT {id}/permission-profiles/{profileId}' => 'utilizadores.configurar',
+        'DELETE {id}/permission-profiles/{profileId}' => 'utilizadores.configurar',
+        'PUT {id}/users/{user}/profile' => 'utilizadores.configurar',
         'POST {id}/users' => 'utilizadores.configurar',
         'GET {id}/users/{user}' => 'utilizadores.ver',
         'PUT {id}/users/{user}' => 'utilizadores.configurar',

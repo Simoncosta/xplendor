@@ -201,6 +201,7 @@ class CollaboratorService
         if ($user->role === 'root' || (int) $user->company_id !== (int) $c->company_id) {
             abort(403, 'Acesso negado.');
         }
+        \App\Access\LastAdminGuard::assertKeeps($user, 'retirar o acesso a'); // D12
         DB::transaction(function () use ($user) {
             $user->forceFill(['deactivated_at' => now()])->save();
             $user->tokens()->delete();

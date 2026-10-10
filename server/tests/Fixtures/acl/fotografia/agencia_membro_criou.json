@@ -1,6 +1,6 @@
 {
     "ator": "agencia_membro_criou",
-    "rotas": 360,
+    "rotas": 367,
     "proibidas": [
         "DELETE api/v1/companies/{company}",
         "DELETE api/v1/companies/{id}/carmine-connection/{carmine_connection}",
@@ -10,6 +10,7 @@
         "DELETE api/v1/companies/{id}/integrations/meta",
         "DELETE api/v1/companies/{id}/integrations/social",
         "DELETE api/v1/companies/{id}/management",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}",
         "GET api/v1/companies/{id}/integrations/meta/ad-accounts",
         "GET api/v1/companies/{id}/integrations/meta/oauth-url",
         "GET api/v1/companies/{id}/integrations/social/auth-url",
@@ -41,6 +42,7 @@
         "POST api/v1/companies/{id}/management/connections",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
+        "POST api/v1/companies/{id}/permission-profiles",
         "POST api/v1/companies/{id}/setup-links",
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend",
         "POST api/v1/companies/{id}/setup-links/{linkId}/revoke",
@@ -52,7 +54,10 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals",
         "PUT api/v1/companies/{id}/integrations/pingwin/family-categories",
         "PUT api/v1/companies/{id}/integrations/social/accounts",
-        "PUT api/v1/companies/{id}/users/{user}"
+        "PUT api/v1/companies/{id}/management/guest-profile",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}",
+        "PUT api/v1/companies/{id}/users/{user}",
+        "PUT api/v1/companies/{id}/users/{user}/profile"
     ],
     "motivos": {
         "DELETE api/v1/companies/{company}": "Só a equipa da plataforma pode fazer isto.",
@@ -63,6 +68,7 @@
         "DELETE api/v1/companies/{id}/integrations/meta": "O seu perfil na agência não permite configurar em Integrações.",
         "DELETE api/v1/companies/{id}/integrations/social": "O seu perfil na agência não permite configurar em Integrações.",
         "DELETE api/v1/companies/{id}/management": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "GET api/v1/companies/{id}/integrations/meta/ad-accounts": "O seu perfil na agência não permite configurar em Integrações.",
         "GET api/v1/companies/{id}/integrations/meta/oauth-url": "O seu perfil na agência não permite configurar em Integrações.",
         "GET api/v1/companies/{id}/integrations/social/auth-url": "O seu perfil na agência não permite configurar em Integrações.",
@@ -94,6 +100,7 @@
         "POST api/v1/companies/{id}/management/connections": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/accept": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
         "POST api/v1/companies/{id}/management/requests/{requestId}/decline": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "POST api/v1/companies/{id}/permission-profiles": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa.",
         "POST api/v1/companies/{id}/setup-links": "O seu perfil na agência não permite configurar em Integrações.",
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": "O seu perfil na agência não permite configurar em Integrações.",
         "POST api/v1/companies/{id}/setup-links/{linkId}/revoke": "O seu perfil na agência não permite configurar em Integrações.",
@@ -105,7 +112,10 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/annual-locals": "Só a equipa da plataforma pode fazer isto.",
         "PUT api/v1/companies/{id}/integrations/pingwin/family-categories": "O seu perfil na agência não permite configurar em Restauração.",
         "PUT api/v1/companies/{id}/integrations/social/accounts": "O seu perfil na agência não permite configurar em Integrações.",
-        "PUT api/v1/companies/{id}/users/{user}": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa."
+        "PUT api/v1/companies/{id}/management/guest-profile": "Esta decisão é do cliente: a agência gestora não a pode tomar.",
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa.",
+        "PUT api/v1/companies/{id}/users/{user}": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa.",
+        "PUT api/v1/companies/{id}/users/{user}/profile": "Criada pela Agência não deu acesso a esta agência para configurar em Utilizadores e equipa."
     },
     "estados": {
         "DELETE api/v1/companies/{company}": 403,
@@ -136,6 +146,7 @@
         "DELETE api/v1/companies/{id}/management": 403,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/lines/{lineId}/article": 404,
         "DELETE api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
+        "DELETE api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "DELETE api/v1/companies/{id}/stock/promotion-candidates/{carId}": 200,
         "DELETE api/v1/companies/{id}/suppliers/{supplier}": 404,
         "DELETE api/v1/companies/{id}/tasks/{task}": 404,
@@ -276,6 +287,7 @@
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/image": 404,
         "GET api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-launch": 404,
+        "GET api/v1/companies/{id}/permission-profiles": 200,
         "GET api/v1/companies/{id}/quotes": 200,
         "GET api/v1/companies/{id}/quotes/{quote}/pdf": 404,
         "GET api/v1/companies/{id}/recommendations": 200,
@@ -422,6 +434,8 @@
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/pingwin-link/confirm": 404,
         "POST api/v1/companies/{id}/ocr/invoices/{invoiceId}/reprocess": 404,
+        "POST api/v1/companies/{id}/permission-profiles": 403,
+        "POST api/v1/companies/{id}/permission-profiles/preview": 422,
         "POST api/v1/companies/{id}/scraper/run": 422,
         "POST api/v1/companies/{id}/setup-links": 403,
         "POST api/v1/companies/{id}/setup-links/{linkId}/extend": 403,
@@ -464,9 +478,12 @@
         "PUT api/v1/companies/{id}/integrations/pingwin/suppliers/{supplierId}": 404,
         "PUT api/v1/companies/{id}/integrations/social/accounts": 403,
         "PUT api/v1/companies/{id}/leads/{lead}": 404,
+        "PUT api/v1/companies/{id}/management/guest-profile": 403,
         "PUT api/v1/companies/{id}/ocr/invoices/{invoiceId}": 404,
+        "PUT api/v1/companies/{id}/permission-profiles/{profileId}": 403,
         "PUT api/v1/companies/{id}/suppliers/{supplier}": 404,
         "PUT api/v1/companies/{id}/tasks/{task}": 404,
-        "PUT api/v1/companies/{id}/users/{user}": 403
+        "PUT api/v1/companies/{id}/users/{user}": 403,
+        "PUT api/v1/companies/{id}/users/{user}/profile": 403
     }
 }
