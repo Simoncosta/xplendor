@@ -18,6 +18,12 @@ docker compose -f docker-compose.prod.yml down
 echo "🐳 Backend: build + up"
 docker compose -f docker-compose.prod.yml up -d --build
 
+# Dependências PHP, sempre, logo a seguir ao pull (o primeiro momento possível: o vendor é o
+# volume xplendor_vendor, partilhado com o worker e o scheduler, e só existe com o contentor
+# a correr). Antes das migrações, que podem precisar de pacotes novos. Se falhar, o deploy pára.
+echo "📦 Composer install (sem dev)"
+docker exec xplendor-php composer install --no-dev --optimize-autoloader --no-interaction
+
 # As migrações correm LOGO A SEGUIR ao backend arrancar, antes das compilações do web e do
 # site: o código novo nunca fica a correr sem as tabelas e as colunas novas.
 echo "⏳ À espera da base de dados"
