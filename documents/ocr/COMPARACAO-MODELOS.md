@@ -79,3 +79,46 @@ Na primeira corrida, a Anthropic recusou todos os pedidos: "too many parameters 
 - **claude-fable-5-1:** cerca de 8,5 vezes o custo do GPT (0,307 USD por fatura) e o mais lento, **sem ganho de exatidão** nesta amostra. Não se justifica para o OCR, pelo menos nos PDFs com QR.
 
 **Proposta:** manter o **gpt-6.1-sol** como reserva no `.env` e em Modelos de IA para os PDFs com QR, por custo. Se preferir um só fornecedor (a Anthropic) ou ler o PDF diretamente, o **claude-opus-5-5 com esforço médio** é a escolha, a cerca de 0,11 USD por fatura. Nota: hoje, os PDFs com texto vão ao `gpt-4o-mini` pelo texto extraído (a reserva `OCR_MODEL_TEXT`, ainda mais barata), um caminho que esta comparação não mediu (mediu o `gpt-6.1-sol` pelas imagens das páginas). **Antes de decidir em definitivo,** uma segunda volta com fotografias e faturas sem QR (onde os modelos mais se separam), a custo semelhante. A escolha é sua.
+
+## Decisão (ponto 5)
+
+**Escolha do Simon: só a Anthropic, sem a OpenAI.**
+
+- **Modelo:** as duas funções do OCR (PDF com texto, e digitalizadas e fotografias) usam o `claude-opus-5-5` com esforço médio.
+  - A migração `2026_12_29_100000_ocr_anthropic_only` muda uma escolha gravada e deixa a alteração no histórico de Modelos de IA.
+  - Em Modelos de IA, o OCR só aceita modelos da Anthropic.
+- **Reserva do `.env`:** `OCR_MODEL_TEXT`, `OCR_MODEL_IMAGE` e `OCR_REASONING_EFFORT` passam por omissão a `claude-opus-5-5` e `medium`.
+  - Um modelo de outro fornecedor no `.env` é ignorado e vale o `claude-opus-5-5`.
+  - Sem nenhuma escolha, o OCR nunca vai à OpenAI.
+  - Se uma escolha antiga da OpenAI ficasse gravada, a fatura não é enviada a ninguém e fica em erro, com o motivo.
+- **Envio do ficheiro:**
+  - os PDF com texto deixam de ir ao `gpt-4o-mini` pelo texto extraído;
+  - vão como documento à Anthropic, como as digitalizadas;
+  - as páginas deixam de ser convertidas em imagens.
+- **2.ª tentativa** (quando as linhas não conferem com o QR): se fosse igual à 1.ª (o mesmo ficheiro, modelo e esforço), sobe o esforço.
+- **Erros temporários da Anthropic** (sobrecarga 529, erros 5xx, limite de pedidos 429, sem resposta a tempo):
+  - a fatura continua a ler;
+  - a fila repete ao fim de 1, 2, 5, 10 e 20 minutos;
+  - só depois da última tentativa fica em erro, com aviso.
+  - O limite de gastos e os pedidos inválidos não passam com o tempo e dão erro logo.
+- **Revisão manual:** só a recusa e a resposta cortada.
+- **Comparação:** o comando `ocr:compare` continua a poder medir o `gpt-6.1-sol`, só quando é corrido à mão com `--execute`.
+
+### Onde a OpenAI ainda pode ser usada
+
+| Função | Por omissão | Como reserva | Por escolha |
+|---|---|---|---|
+| OCR das faturas (as duas funções) | não | não | não (só a Anthropic) |
+| Legenda, criativo, ideias, blog, perfil da marca, descrição e análise de viaturas, categorias das famílias, jogadas da Bússola | não (`claude-opus-5-5`) | não há reserva | sim, se o root escolher um modelo GPT em Modelos de IA |
+| Teste às cegas (Modelos de IA) | não | não | sim, se um dos dois modelos for GPT |
+| Comparação do OCR (`ocr:compare --execute`) | não | não | sim, à mão |
+
+**Em dev**, nenhuma função tem um modelo da OpenAI escolhido.
+
+**Em produção**, a chave `OPENAI_KEY` só faz falta se alguma função tiver um modelo GPT escolhido em Modelos de IA. Depois do deploy, isso vê-se no próprio ecrã, na coluna "Modelo", ou com esta consulta (só leitura):
+
+```sql
+select function, model, effort from ai_function_settings where provider = 'openai';
+```
+
+Sem linhas e sem testes às cegas com o GPT, a chave pode sair do `.env` de produção.

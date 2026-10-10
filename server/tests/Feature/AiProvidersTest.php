@@ -346,13 +346,14 @@ class AiProvidersTest extends TestCase
         Http::assertSent(fn (Request $req) => $req['model'] === 'claude-sonnet-5-5' && $req['output_config']['effort'] === 'medium');
     }
 
-    public function test_ocr_is_untouched_by_apply_all_and_uses_the_env_reserve_until_chosen(): void
+    public function test_ocr_is_untouched_by_apply_all_and_its_env_reserve_is_always_anthropic(): void
     {
         $this->as($this->root)->postJson('/api/v1/admin/ai-models/apply-all', ['model' => 'gpt-6.1-sol', 'effort' => 'high'])->assertOk();
 
         Storage::fake('local');
-        // Sem escolha em Modelos de IA, o modelo do OCR vem da reserva do .env (OCR_MODEL_TEXT/IMAGE).
-        config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
+        // Sem escolha em Modelos de IA vale a reserva do .env; um modelo da OpenAI ali é ignorado
+        // (vale claude-opus-5-5, esforço médio): o OCR nunca vai à OpenAI.
+        config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini', 'ai.providers.anthropic.key' => 'sk-ant-test']);
         // Leitura local (scraper) fora do teste: fotografia sem QR → caminho "sem QR".
         $this->app->instance(InvoiceOcrService::class, new class extends InvoiceOcrService {
             protected function analyzeFile(string $bytes, string $mime, string $images): array
@@ -363,25 +364,28 @@ class AiProvidersTest extends TestCase
         app(CompanyModuleService::class)->applyPreset($this->a->id, 'restaurant');
         $invoice = OcrInvoice::create(['company_id' => $this->a->id, 'image_path' => "ocr-invoices/{$this->a->id}/x.jpg", 'image_mime' => 'image/jpeg', 'status' => 'processing']);
         Storage::disk('local')->put($invoice->image_path, 'fake-image-bytes');
-        Http::fake(['api.openai.com/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => json_encode([
+        Http::fake(['api.anthropic.com/*' => $this->anthropicResponse([
             'fornecedor' => ['nome' => 'Recheio', 'nif' => '500829993'], 'numeroFatura' => 'FT 1', 'dataEmissao' => '2026-10-01', 'linhas' => [], 'sumario' => ['total' => 10],
-        ])]]], 'usage' => []])]);
+        ])]);
 
         ProcessInvoiceOcrJob::dispatchSync($this->a->id, $invoice->id);
 
-        // Continua igual: chat/completions com o gpt-4o-mini e a chave da OpenAI; nunca a Anthropic nem a Responses API.
-        Http::assertSent(fn (Request $req) => $req->url() === 'https://api.openai.com/v1/chat/completions' && $req['model'] === 'gpt-4o-mini' && $req->hasHeader('Authorization', 'Bearer test-ocr'));
-        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'anthropic') || str_contains($req->url(), '/v1/responses'));
-        $this->assertSame('gpt-4o-mini', $invoice->fresh()->model);
+        Http::assertSent(fn (Request $req) => str_contains($req->url(), 'anthropic') && $req['model'] === 'claude-opus-5-5' && $req['output_config']['effort'] === 'medium');
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'openai'));
+        $this->assertSame('claude-opus-5-5', $invoice->fresh()->model);
         $this->assertSame(0, AiRequest::count());
+        $ocr = collect($this->as($this->root)->getJson('/api/v1/admin/ai-models')->json('data.functions'))->keyBy('key');
+        $this->assertSame([true, 'claude-opus-5-5', 'medium'], [$ocr['ocr_image']['reserve'], $ocr['ocr_image']['model'], $ocr['ocr_image']['effort']]);
     }
 
-    public function test_the_ocr_model_chosen_in_ai_models_wins_over_the_env_reserve(): void
+    public function test_the_ocr_model_chosen_in_ai_models_wins_over_the_env_reserve_and_only_anthropic_is_accepted(): void
     {
-        $this->as($this->root)->putJson('/api/v1/admin/ai-models/ocr_image', ['model' => 'gpt-6.1-sol', 'effort' => 'medium'])->assertOk()
+        $this->as($this->root)->putJson('/api/v1/admin/ai-models/ocr_image', ['model' => 'gpt-6.1-sol', 'effort' => 'medium'])->assertStatus(422)
+            ->assertJsonPath('errors.model.0', 'Esta função só aceita modelos de: Anthropic.');
+        $this->as($this->root)->putJson('/api/v1/admin/ai-models/ocr_image', ['model' => 'claude-sonnet-5-5', 'effort' => 'high'])->assertOk()
             ->assertJsonPath('data.functions.10.reserve', false);
         Storage::fake('local');
-        config(['services.openai.key' => 'test-ocr', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
+        config(['services.openai.ocr.model_image' => 'claude-opus-5-5', 'ai.providers.anthropic.key' => 'sk-ant-test']);
         $this->app->instance(InvoiceOcrService::class, new class extends InvoiceOcrService {
             protected function analyzeFile(string $bytes, string $mime, string $images): array
             {
@@ -391,12 +395,12 @@ class AiProvidersTest extends TestCase
         app(CompanyModuleService::class)->applyPreset($this->a->id, 'restaurant');
         $invoice = OcrInvoice::create(['company_id' => $this->a->id, 'image_path' => "ocr-invoices/{$this->a->id}/y.jpg", 'image_mime' => 'image/jpeg', 'status' => 'processing']);
         Storage::disk('local')->put($invoice->image_path, 'fake-image-bytes');
-        Http::fake(['api.openai.com/v1/chat/completions' => Http::response(['choices' => [['message' => ['content' => json_encode(['linhas' => []])]]], 'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 10]])]);
+        Http::fake(['api.anthropic.com/*' => $this->anthropicResponse(['linhas' => []])]);
 
         ProcessInvoiceOcrJob::dispatchSync($this->a->id, $invoice->id);
 
-        Http::assertSent(fn (Request $req) => $req['model'] === 'gpt-6.1-sol' && $req['reasoning_effort'] === 'medium');
-        $this->assertSame('openai', $invoice->fresh()->attempts_log[0]['provider']);
+        Http::assertSent(fn (Request $req) => $req['model'] === 'claude-sonnet-5-5' && $req['output_config']['effort'] === 'high');
+        $this->assertSame('anthropic', $invoice->fresh()->attempts_log[0]['provider']);
     }
 
     // ── Descrição de viaturas (síncrona) ──────────────────────────────────────

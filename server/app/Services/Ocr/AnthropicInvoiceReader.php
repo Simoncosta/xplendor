@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Ocr;
 
 use App\Services\Ai\AiProviderException;
-use App\Services\Ai\Providers\HttpRetry;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Http;
  *  · a resposta usa saídas estruturadas (output_config.format, json_schema) com o esquema de
  *    hoje (OcrSchemas); o esforço vai em output_config.effort ("default" = não se envia);
  *  · stop_reason "refusal" ou "max_tokens": OcrModelStopped (revisão manual, sem repetir);
- *  · repete só em limite de pedidos, sobrecarga ou falha do fornecedor (HttpRetry).
+ *  · limite de pedidos, sobrecarga, falha do fornecedor ou sem resposta a tempo:
+ *    OcrTemporaryFailure, sem repetir aqui (a fila repete com espera crescente);
+ *  · os outros erros (pedido inválido, chave, limite de gastos): AiProviderException.
  * A chave (ANTHROPIC_API_KEY) só existe no servidor.
  */
 class AnthropicInvoiceReader
 {
-    use HttpRetry;
-
     /** Tipos de imagem que a Anthropic aceita; o resto lê-se como PDF ou falha antes de gastar. */
     public const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
@@ -56,11 +56,23 @@ class AnthropicInvoiceReader
             'output_config' => $outputConfig,
         ];
 
-        $response = $this->withRetries(fn () => Http::withHeaders([
-            'x-api-key' => $key,
-            'anthropic-version' => (string) config('ai.providers.anthropic.version', '2023-06-01'),
-        ])->acceptJson()->connectTimeout(15)->timeout((int) config('services.openai.ocr.http_timeout', 240))
-            ->post((string) config('ai.providers.anthropic.url'), $body), 'anthropic', [429, 500, 529]);
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $key,
+                'anthropic-version' => (string) config('ai.providers.anthropic.version', '2023-06-01'),
+            ])->acceptJson()->connectTimeout(15)->timeout((int) config('services.openai.ocr.http_timeout', 240))
+                ->post((string) config('ai.providers.anthropic.url'), $body);
+        } catch (ConnectionException $e) {
+            throw new OcrTemporaryFailure('A Anthropic não respondeu a tempo.', null, 'anthropic', $e);
+        }
+        if (! $response->successful()) {
+            $status = $response->status();
+            $message = mb_substr((string) ($response->json('error.message') ?? 'Erro do fornecedor de IA.'), 0, 300);
+            if (OcrTemporaryFailure::isTemporary($status, (string) $response->body())) {
+                throw new OcrTemporaryFailure("Anthropic HTTP {$status}: {$message}", $status, 'anthropic');
+            }
+            throw new AiProviderException($message, $status, 'anthropic');
+        }
 
         $usage = (array) $response->json('usage', []);
         $in = (int) ($usage['input_tokens'] ?? 0) + (int) ($usage['cache_creation_input_tokens'] ?? 0) + (int) ($usage['cache_read_input_tokens'] ?? 0);

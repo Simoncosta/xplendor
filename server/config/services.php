@@ -55,9 +55,11 @@ return [
         'ocr_monthly_cap' => (int) env('OCR_MONTHLY_CAP', 200), // teto de faturas OCR por empresa/mês (controlo de custo)
         // F2a: QR da AT primeiro (cabeçalho sem IA) + linhas pela IA, com o modelo POR VIA.
         'ocr' => [
-            'model_text'             => env('OCR_MODEL_TEXT'),   // PDF com camada de texto
-            'model_image'            => env('OCR_MODEL_IMAGE'),  // digitalizado / fotografia (e 2.ª tentativa do texto)
-            'reasoning_effort'       => env('OCR_REASONING_EFFORT', 'low'),
+            // Reserva (sem escolha em Modelos de IA): sempre a Anthropic. Um modelo de outro
+            // fornecedor no .env é ignorado (vale claude-opus-5-5): o OCR nunca vai à OpenAI.
+            'model_text'             => env('OCR_MODEL_TEXT', 'claude-opus-5-5'),   // PDF com camada de texto
+            'model_image'            => env('OCR_MODEL_IMAGE', 'claude-opus-5-5'),  // digitalizado / fotografia (e 2.ª tentativa do texto)
+            'reasoning_effort'       => env('OCR_REASONING_EFFORT', 'medium'),
             'retry_reasoning_effort' => env('OCR_RETRY_REASONING_EFFORT', 'medium'),
             // Modelos de raciocínio: sem temperature, com reasoning_effort (prefixos, separados por vírgula).
             'reasoning_model_prefixes' => env('OCR_REASONING_MODEL_PREFIXES', 'o1,o3,o4,gpt-5,gpt-6'),

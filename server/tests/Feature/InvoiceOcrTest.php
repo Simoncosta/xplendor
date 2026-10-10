@@ -22,7 +22,7 @@ use Tests\TestCase;
  * XPLENDOR — OCR de faturas de fornecedor (Fase A): a IA é chamada com o prompt
  * B2B (mock da resposta), sanitização, gravação (cêntimos, linhas+sumário, status
  * por_validar, model+prompt_version), NÃO escreve no PingWin, teto de custo, gate
- * + tenancy. A OpenAI e o scraper são substituídos por fakes (override callModel/analyzeFile).
+ * + tenancy. A IA (Anthropic) e o scraper são substituídos por fakes (override callAnthropic/analyzeFile).
  */
 class InvoiceOcrTest extends TestCase
 {
@@ -65,21 +65,20 @@ class InvoiceOcrTest extends TestCase
     }
 
     /**
-     * Serviço com a IA e a leitura local substituídas por fakes (não chama a OpenAI nem o
+     * Serviço com a IA e a leitura local substituídas por fakes (não chama a Anthropic nem o
      * scraper). Ficheiro sem QR → caminho "sem QR" (cabeçalho + linhas pela IA).
      */
     private function bindFakeOcr(string $json): void
     {
-        config(['services.openai.ocr.model_text' => 'gpt-4o-mini', 'services.openai.ocr.model_image' => 'gpt-4o-mini']);
         $this->app->instance(InvoiceOcrService::class, new class($json) extends InvoiceOcrService {
             public function __construct(private string $json) {}
             protected function analyzeFile(string $bytes, string $mime, string $images): array
             {
                 return ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
             }
-            protected function callModel(string $model, string $system, array $userContent, ?string $effort): array
+            protected function callAnthropic(array $plan, string $system, ?array $qr): array
             {
-                return ['content' => $this->json, 'tokens_in' => 1000, 'tokens_out' => 200];
+                return ['content' => $this->json, 'tokens_in' => 1000, 'tokens_out' => 200, 'input' => 'imagem'];
             }
         });
     }
@@ -119,7 +118,7 @@ class InvoiceOcrTest extends TestCase
 
         $invoice->refresh();
         $this->assertSame('por_validar', $invoice->status);
-        $this->assertSame('gpt-4o-mini', $invoice->model);
+        $this->assertSame('claude-opus-5-5', $invoice->model); // a reserva: sempre a Anthropic
         $this->assertSame('sem_qr', $invoice->source);           // sem QR → como antes
         $this->assertSame('sem_qr', $invoice->check_status);
         $this->assertSame(InvoiceOcrService::PROMPT_VERSION, $invoice->prompt_version);

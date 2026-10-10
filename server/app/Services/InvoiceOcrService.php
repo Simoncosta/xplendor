@@ -11,6 +11,7 @@ use App\Models\OcrInvoiceSummary;
 use App\Models\PingwinSupplier;
 use App\Services\Ocr\AnthropicInvoiceReader;
 use App\Services\Ocr\OcrModelStopped;
+use App\Services\Ocr\OcrTemporaryFailure;
 use App\Services\Ocr\OcrSchemas;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -29,13 +30,16 @@ use Symfony\Component\Process\Process;
  *  2. Com QR válido o CABEÇALHO vem do QR (NIFs, tipo, data, nº, ATCUD, bases/IVA por
  *     taxa, totais). B tem de ser o NIF da empresa e A nunca o pode ser — senão a fatura
  *     fica 'nao_desta_empresa' e a IA NÃO é chamada.
- *  3. A IA só lê as LINHAS: pelo TEXTO (função ocr_text) se o PDF tiver texto útil, senão
- *     pelas IMAGENS de todas as páginas (função ocr_image). O fornecedor, o modelo e o esforço
- *     de cada função escolhem-se em Administração › Modelos de IA; sem escolha, valem
- *     OCR_MODEL_TEXT e OCR_MODEL_IMAGE do .env. Recebe as bases do QR para se auto-conferir.
+ *  3. A IA só lê as LINHAS, sempre na Anthropic, com o ficheiro original (o PDF como documento,
+ *     a fotografia como imagem). A função é ocr_text se o PDF tiver texto útil, senão ocr_image.
+ *     O modelo e o esforço de cada função escolhem-se em Administração › Modelos de IA (só
+ *     modelos da Anthropic); sem escolha, vale a reserva do .env (por omissão claude-opus-5-5,
+ *     esforço médio). Recebe as bases do QR para se auto-conferir. O OCR nunca vai à OpenAI.
  *  4. CONFERÊNCIA: soma das linhas por taxa = base do QR por taxa (tolerância configurável).
- *     Não confere → 1 nova tentativa (modelo de imagem se a 1.ª foi texto; mais esforço se
- *     já foi imagem). Fica sempre a melhor tentativa ('por_validar'), nunca se descarta.
+ *     Não confere → 1 nova tentativa (a função ocr_image se a 1.ª foi ocr_text; mais esforço se
+ *     já foi ocr_image ou se ficaria igual à 1.ª). Fica sempre a melhor ('por_validar').
+ *  Erros temporários da Anthropic (OcrTemporaryFailure): a fatura continua a ler e a fila
+ *  repete com espera crescente. Só a recusa e a resposta cortada vão para revisão manual.
  *  Sem QR legível → como antes (cabeçalho + linhas pela IA), marcado 'sem_qr'.
  *
  * ⚠️ SÓ LÊ/EXTRAI. NÃO escreve no PingWin. A gravação final só acontece quando o
@@ -60,7 +64,7 @@ class InvoiceOcrService
     private const MAX_TEXT_CHARS = 60000;
 
     /** O ficheiro da fatura em leitura (a Anthropic recebe-o diretamente). @var array{bytes: string, mime: string, is_pdf: bool} */
-    private array $file = ['bytes' => '', 'mime' => '', 'is_pdf' => false];
+    protected array $file = ['bytes' => '', 'mime' => '', 'is_pdf' => false];
 
     /**
      * Processa uma fatura (chamado pela fila). Ver o fluxo no topo. Marca a fatura
@@ -85,9 +89,9 @@ class InvoiceOcrService
             $this->file = ['bytes' => $bytes, 'mime' => $mime, 'is_pdf' => $isPdf];
             $imagePlan = $this->planFor('ocr_image', 'imagem');
 
-            // 1) Leitura local (sem IA): QR + texto + (se o texto não chegar) imagens. A Anthropic
-            //    lê o PDF diretamente, por isso não é preciso rasterizar.
-            $an = $this->analyzeFile($bytes, $mime, $imagePlan['provider'] === 'anthropic' ? 'never' : 'auto');
+            // 1) Leitura local (sem IA): QR + texto. A Anthropic lê o PDF diretamente, por isso
+            //    não é preciso rasterizar as páginas.
+            $an = $this->analyzeFile($bytes, $mime, 'never');
             $qr = AtInvoiceQr::parse($an['qr']['raw'] ?? null);
             $qrOk = $qr !== null && $qr['valid'];
             $pages = (int) ($an['pages'] ?? 1);
@@ -99,14 +103,13 @@ class InvoiceOcrService
                 return;
             }
 
-            // 3) Linhas pela IA: texto se houver texto útil, senão imagens.
+            // 3) Linhas pela IA (o ficheiro vai sempre inteiro): ocr_text se houver texto útil, senão ocr_image.
             $textOk = $isPdf && (int) ($an['text_chars'] ?? 0) >= $cfg['text_min_chars'];
-            $images = $isPdf ? ($an['images'] ?? []) : [['page' => 1, 'mime' => $mime, 'base64' => base64_encode($bytes)]];
             $plan = $textOk ? $this->planFor('ocr_text', 'texto') : $imagePlan;
 
             $attempts = [];
             try {
-                $best = $this->attempt($plan, $qrOk ? $qr : null, $an['text'] ?? '', $images, $invoice->company_id);
+                $best = $this->attempt($plan, $qrOk ? $qr : null, $invoice->company_id);
             } catch (OcrModelStopped $stop) {
                 // Recusa ou resposta cortada: para revisão manual, com o motivo, sem repetir.
                 $this->persistStopped($invoice, $plan, $stop, $qrOk ? $qr : null, $an, $this->elapsedMs($started));
@@ -118,14 +121,13 @@ class InvoiceOcrService
 
             // 4) Conferência pelo QR (+ 1 nova tentativa se não conferir).
             if ($qrOk && ! $best['check']['ok']) {
-                $retry = $plan['lines_source'] === 'texto'
-                    ? $imagePlan
-                    : ['effort' => $this->higherEffort($imagePlan['model'], $imagePlan['effort'])] + $imagePlan;
+                $retry = $imagePlan;
+                // O mesmo ficheiro, o mesmo modelo e o mesmo esforço dariam a mesma leitura: mais esforço.
+                if ($plan['lines_source'] === 'imagem' || ($retry['model'] === $plan['model'] && $retry['effort'] === $plan['effort'])) {
+                    $retry = ['effort' => $this->higherEffort($imagePlan['model'], $plan['effort'])] + $imagePlan;
+                }
                 try {
-                    if ($retry['lines_source'] === 'imagem' && $images === []) {
-                        $images = $this->analyzeFile($bytes, $mime, 'always')['images'] ?? [];
-                    }
-                    $second = $this->attempt($retry, $qr, $an['text'] ?? '', $images, $invoice->company_id);
+                    $second = $this->attempt($retry, $qr, $invoice->company_id);
                     $attempts[] = $second;
                     if ($second['check']['ok'] || $second['check']['abs_cents'] < $best['check']['abs_cents']) {
                         $best = $second;
@@ -147,6 +149,12 @@ class InvoiceOcrService
             );
 
             $this->persist($invoice, $best, $attempts, $qrOk ? $qr : null, $an, $this->elapsedMs($started));
+        } catch (OcrTemporaryFailure $e) {
+            // Sobrecarga, erro do lado da Anthropic ou limite de pedidos: a fatura continua "a ler"
+            // e a fila repete mais tarde (ProcessInvoiceOcrJob). Não é um erro da fatura.
+            Log::info('[OCR Fatura] Erro temporário da IA; nova tentativa pela fila', ['invoice_id' => $invoiceId, 'status' => $e->status, 'error' => $e->getMessage()]);
+            OcrInvoice::whereKey($invoiceId)->update(['error_message' => 'A IA está temporariamente indisponível; a leitura vai ser repetida automaticamente.']);
+            throw $e;
         } catch (\Throwable $e) {
             Log::warning('[OCR Fatura] Falhou', ['invoice_id' => $invoiceId, 'error' => $e->getMessage()]);
             // Query direta: o modelo pode ter ficado "sujo" com a escrita que falhou.
@@ -199,22 +207,19 @@ class InvoiceOcrService
      * Uma tentativa de leitura: chama a IA (texto ou imagens), sanitiza e confere com o QR.
      * Devolve o resultado + registo de custo (tokens, USD, ms).
      */
-    private function attempt(array $plan, ?array $qr, string $text, array $images, int $companyId): array
+    private function attempt(array $plan, ?array $qr, int $companyId): array
     {
         if ($plan['model'] === null || $plan['model'] === '') {
-            throw new \RuntimeException('Modelo de OCR não configurado: escolha-o em Modelos de IA (ou OCR_MODEL_' . ($plan['lines_source'] === 'texto' ? 'TEXT' : 'IMAGE') . ' no .env).');
+            throw new \RuntimeException('Modelo de OCR não configurado: escolha-o em Modelos de IA.');
         }
-        if ($plan['provider'] !== 'anthropic' && $plan['lines_source'] === 'imagem' && $images === []) {
-            throw new \RuntimeException('Sem imagens da fatura para a IA ler.');
+        // Só a Anthropic: nunca se envia uma fatura à OpenAI, nem que uma escolha antiga o peça.
+        if ($plan['provider'] !== 'anthropic') {
+            throw new \RuntimeException("O OCR só lê faturas com a Anthropic (escolhido: {$plan['provider']} · {$plan['model']}). Escolha um modelo da Anthropic em Modelos de IA.");
         }
 
         $t0 = hrtime(true);
         $system = $qr ? $this->linesPrompt() : $this->prompt();
-        $res = match ($plan['provider']) {
-            'openai' => $this->callModel($plan['model'], $system, $this->userContent($plan['lines_source'], $qr, $text, $images), $plan['effort']),
-            'anthropic' => $this->callAnthropic($plan, $system, $qr),
-            default => throw new \RuntimeException("O OCR não lê faturas com o fornecedor \"{$plan['provider']}\"."),
-        };
+        $res = $this->callAnthropic($plan, $system, $qr);
         $clean = $this->sanitize($this->decodeJson($res['content']));
         if (! $qr) {
             // ⚠️ O NIF do fornecedor NUNCA é o da própria empresa (esse é o cliente).
@@ -225,8 +230,8 @@ class InvoiceOcrService
             'provider'     => $plan['provider'],
             'model'        => $plan['model'],
             'lines_source' => $plan['lines_source'],
-            'effort'       => $plan['provider'] === 'anthropic' || $this->isReasoningModel($plan['model']) ? $plan['effort'] : null,
-            'input'        => $res['input'] ?? ($plan['lines_source'] === 'texto' ? 'texto' : 'imagens'),
+            'effort'       => $plan['effort'],
+            'input'        => $res['input'] ?? 'pdf',
             'clean'        => $clean,
             'tokens_in'    => $res['tokens_in'],
             'tokens_out'   => $res['tokens_out'],
@@ -282,14 +287,20 @@ class InvoiceOcrService
      */
     protected function callAnthropic(array $plan, string $system, ?array $qr): array
     {
-        $instruction = ($qr
-            ? "Lê as LINHAS desta fatura de fornecedor para o JSON pedido.\n\n" . $this->qrHint($qr)
-            : 'Extrai os dados desta fatura de fornecedor para o JSON pedido.')
-            . "\n\nA fatura segue em anexo (" . ($this->file['is_pdf'] ? 'PDF' : 'fotografia') . ').';
+        $instruction = $this->anthropicInstruction($qr);
         $maxTokens = (int) config("ai.functions.{$plan['function']}.max_tokens", 16000) + (int) config("ai.reasoning_headroom.{$plan['effort']}", 12000);
 
         return app(AnthropicInvoiceReader::class)->read($plan['model'], $plan['effort'], $system, $qr ? OcrSchemas::lines() : OcrSchemas::full(),
             $instruction, $this->file['bytes'], $this->file['mime'], $this->file['is_pdf'], $maxTokens);
+    }
+
+    /** A instrução que acompanha o ficheiro (com QR: só as linhas, com as bases para se conferir). */
+    protected function anthropicInstruction(?array $qr): string
+    {
+        return ($qr
+            ? "Lê as LINHAS desta fatura de fornecedor para o JSON pedido.\n\n" . $this->qrHint($qr)
+            : 'Extrai os dados desta fatura de fornecedor para o JSON pedido.')
+            . "\n\nA fatura segue em anexo (" . ($this->file['is_pdf'] ? 'PDF' : 'fotografia') . ').';
     }
 
     /**
@@ -301,7 +312,7 @@ class InvoiceOcrService
     {
         $s = \App\Services\Ai\AiFunctionSettings::for($function);
 
-        return ['lines_source' => $source, 'function' => $function, 'provider' => $s['provider'] ?: 'openai', 'model' => $s['model'], 'effort' => $s['effort']];
+        return ['lines_source' => $source, 'function' => $function, 'provider' => $s['provider'] ?: 'anthropic', 'model' => $s['model'], 'effort' => $s['effort']];
     }
 
     /** O esforço seguinte do modelo (2.ª tentativa); fora do catálogo, o OCR_RETRY_REASONING_EFFORT. */

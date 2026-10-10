@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Services\AlertService;
 use App\Models\OcrInvoice;
 use App\Services\InvoiceOcrService;
+use App\Services\Ocr\OcrTemporaryFailure;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -17,12 +18,17 @@ use Illuminate\Support\Facades\Log;
  * sanitiza e cria o rascunho ('por_validar') para o utilizador validar. Corre no
  * worker (tem o socket, necessário se a fatura for PDF → scraper/poppler). NÃO
  * escreve no PingWin. Notifica no sino quando termina.
+ *
+ * Erros temporários da IA (sobrecarga, 5xx, limite de pedidos, sem resposta): a fatura continua
+ * "a ler" e o job volta à fila com espera crescente (config ai.ocr_retry_backoff); só depois da
+ * última tentativa fica em erro. A recusa e a resposta cortada vão para revisão manual (serviço).
  */
 class ProcessInvoiceOcrJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    /** 1 + as novas tentativas dos erros temporários (uma por espera de ai.ocr_retry_backoff). */
+    public int $tries = 6;
     public int $timeout = 900; // até 2 tentativas da IA com várias páginas (OCR_HTTP_TIMEOUT cada)
 
     public function __construct(public int $companyId, public int $invoiceId) {}
@@ -32,6 +38,28 @@ class ProcessInvoiceOcrJob implements ShouldQueue
         Log::info('[OCR Fatura] Job iniciado', ['company_id' => $this->companyId, 'invoice_id' => $this->invoiceId]);
         try {
             $ocr->process($this->invoiceId);
+        } catch (OcrTemporaryFailure $e) {
+            $backoff = array_values((array) config('ai.ocr_retry_backoff', [60, 120, 300, 600, 1200]));
+            $attempt = max(1, $this->attempts());
+            if ($attempt <= count($backoff) && $attempt < $this->tries) {
+                $delay = (int) $backoff[$attempt - 1];
+                Log::info('[OCR Fatura] Nova tentativa pela fila', ['invoice_id' => $this->invoiceId, 'tentativa' => $attempt, 'espera_s' => $delay]);
+                $this->release($delay);
+
+                return;
+            }
+            OcrInvoice::whereKey($this->invoiceId)->update(['status' => 'erro',
+                'error_message' => mb_substr('A IA esteve indisponível em todas as tentativas: ' . $e->getMessage(), 0, 500)]);
+            $alerts->createSystemAlert(
+                companyId: $this->companyId,
+                type: 'warning',
+                title: 'Falha ao ler a fatura',
+                message: 'A IA esteve indisponível em todas as tentativas. Volte a pedir a leitura mais tarde.',
+                severity: 'high',
+                detailPath: '/restauracao/faturas',
+            );
+
+            return;
         } catch (\Throwable $e) {
             $alerts->createSystemAlert(
                 companyId: $this->companyId,

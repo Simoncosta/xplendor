@@ -22,7 +22,8 @@ use Tests\TestCase;
 /**
  * XPLENDOR — OCR de faturas F2a: QR PRIMEIRO + texto do PDF + modelo por via + conferência
  * pelo QR. QRs REAIS das faturas do spike (Carnes, Makro, Forno, Julho, a de outra empresa).
- * A OpenAI e o scraper são fakes (override callModel/analyzeFile) — sem rede.
+ * A IA (Anthropic, o ficheiro inteiro como documento ou imagem) e o scraper são fakes
+ * (override callAnthropic/analyzeFile): sem rede. O caminho da OpenAI só fica na comparação.
  */
 class InvoiceOcrQrTest extends TestCase
 {
@@ -45,8 +46,8 @@ class InvoiceOcrQrTest extends TestCase
         parent::setUp();
         Storage::fake('local');
         config([
-            'services.openai.ocr.model_text'  => 'gpt-4o-mini',
-            'services.openai.ocr.model_image' => 'gpt-6.1-sol',
+            'services.openai.ocr.model_text'  => 'claude-sonnet-5-5',
+            'services.openai.ocr.model_image' => 'claude-opus-5-5',
             'services.openai.ocr.reasoning_effort' => 'low',
             'services.openai.ocr.retry_reasoning_effort' => 'medium',
             'services.openai.ocr.reasoning_model_prefixes' => 'o1,o3,o4,gpt-5,gpt-6',
@@ -64,7 +65,7 @@ class InvoiceOcrQrTest extends TestCase
 
     /**
      * Fake: $analysis é o que o scraper devolve; $responses é a fila de respostas da IA
-     * (uma por chamada). Regista cada chamada (modelo, esforço, tipo de conteúdo).
+     * (uma por chamada). Regista cada chamada (função, modelo, esforço, instrução, PDF ou fotografia).
      */
     private function bindFake(array $analysis, array $responses, ?array $alwaysAnalysis = null): void
     {
@@ -81,15 +82,15 @@ class InvoiceOcrQrTest extends TestCase
                 return $images === 'always' && $this->always ? $this->always : $this->analysis;
             }
 
-            protected function callModel(string $model, string $system, array $userContent, ?string $effort): array
+            protected function callAnthropic(array $plan, string $system, ?array $qr): array
             {
                 $this->calls[] = [
-                    'model' => $model, 'effort' => $effort, 'system' => $system,
-                    'kinds' => array_column($userContent, 'type'), 'text' => $userContent[0]['text'] ?? '',
+                    'function' => $plan['function'], 'model' => $plan['model'], 'effort' => $plan['effort'], 'system' => $system,
+                    'text' => $this->anthropicInstruction($qr), 'is_pdf' => $this->file['is_pdf'],
                 ];
                 $r = array_shift($this->responses);
 
-                return ['content' => json_encode($r['json']), 'tokens_in' => $r['in'] ?? 1000, 'tokens_out' => $r['out'] ?? 100];
+                return ['content' => json_encode($r['json']), 'tokens_in' => $r['in'] ?? 1000, 'tokens_out' => $r['out'] ?? 100, 'input' => $this->file['is_pdf'] ? 'pdf' : 'imagem'];
             }
         };
         $this->app->instance(InvoiceOcrService::class, $this->fake);
@@ -230,9 +231,7 @@ class InvoiceOcrQrTest extends TestCase
         $inv = $this->runOcr($this->invoice());
 
         $call = $this->fake->calls[0];
-        $this->assertSame('gpt-4o-mini', $call['model']);
-        $this->assertSame(['text'], $call['kinds']);                     // só texto, sem imagens
-        $this->assertStringContainsString('TEXTO DA FATURA', $call['text']);
+        $this->assertSame(['ocr_text', 'claude-sonnet-5-5', true], [$call['function'], $call['model'], $call['is_pdf']]); // o PDF vai como documento
         $this->assertStringContainsString('IVA 6%: base 1214.92 €', $call['text']); // auto-conferência
         $this->assertStringContainsString('LINHAS', $call['system']);
         $this->assertSame('qr+texto', $inv->source);
@@ -261,9 +260,8 @@ class InvoiceOcrQrTest extends TestCase
         $inv = $this->runOcr($this->invoice());
 
         $call = $this->fake->calls[0];
-        $this->assertSame('gpt-6.1-sol', $call['model']);
-        $this->assertSame('low', $call['effort']);
-        $this->assertSame(['text', 'image_url', 'image_url', 'image_url'], $call['kinds']); // 3 páginas
+        $this->assertSame(['ocr_image', 'claude-opus-5-5', 'low', true], [$call['function'], $call['model'], $call['effort'], $call['is_pdf']]);
+        $this->assertSame(['never'], $this->fake->analyzeCalls); // o PDF vai inteiro: sem rasterizar
         $this->assertSame('qr+imagem', $inv->source);
     }
 
@@ -273,7 +271,7 @@ class InvoiceOcrQrTest extends TestCase
         $this->bindFake($analysis, [['json' => $this->linesJson([23 => 1504.07])]]);
         $inv = $this->runOcr($this->invoice('image/jpeg'));
 
-        $this->assertSame(['text', 'image_url'], $this->fake->calls[0]['kinds']);
+        $this->assertSame(['ocr_image', false], [$this->fake->calls[0]['function'], $this->fake->calls[0]['is_pdf']]); // a fotografia vai como imagem
         $this->assertSame('qr+imagem', $inv->source);
         $this->assertSame(InvoiceOcrService::CHECK_OK, $inv->check_status);
     }
@@ -322,15 +320,16 @@ class InvoiceOcrQrTest extends TestCase
         );
         $inv = $this->runOcr($this->invoice());
 
-        $this->assertSame(['gpt-4o-mini', 'gpt-6.1-sol'], array_column($this->fake->calls, 'model'));
-        $this->assertSame(['auto', 'always'], $this->fake->analyzeCalls); // imagens só pedidas para a 2.ª
+        $this->assertSame(['claude-sonnet-5-5', 'claude-opus-5-5'], array_column($this->fake->calls, 'model'));
+        $this->assertSame(['ocr_text', 'ocr_image'], array_column($this->fake->calls, 'function'));
+        $this->assertSame(['never'], $this->fake->analyzeCalls); // nunca se rasteriza
         $this->assertSame(InvoiceOcrService::CHECK_OK, $inv->check_status);
-        $this->assertSame('gpt-6.1-sol', $inv->model);
+        $this->assertSame('claude-opus-5-5', $inv->model);
         $this->assertSame('qr+imagem', $inv->source);
         $this->assertSame(2, $inv->attempts);
         $this->assertSame(11000, $inv->tokens_in);   // soma das 2 tentativas
         $this->assertSame(2900, $inv->tokens_out);
-        $this->assertEqualsWithDelta(3000 * 0.15 / 1e6 + 900 * 0.60 / 1e6 + 8000 * 2 / 1e6 + 2000 * 10 / 1e6, $inv->cost_usd, 1e-6);
+        $this->assertEqualsWithDelta(3000 * 2 / 1e6 + 900 * 10 / 1e6 + 8000 * 4 / 1e6 + 2000 * 20 / 1e6, $inv->cost_usd, 1e-6); // preços do catálogo
         $this->assertSame([false, true], array_column($inv->attempts_log, 'chosen'));
     }
 
@@ -346,7 +345,7 @@ class InvoiceOcrQrTest extends TestCase
         $inv = $this->runOcr($this->invoice());
 
         // 1.ª já foi imagem → a 2.ª é imagem com MAIS esforço.
-        $this->assertSame(['gpt-6.1-sol', 'gpt-6.1-sol'], array_column($this->fake->calls, 'model'));
+        $this->assertSame(['claude-opus-5-5', 'claude-opus-5-5'], array_column($this->fake->calls, 'model'));
         $this->assertSame(['low', 'medium'], array_column($this->fake->calls, 'effort'));
         $this->assertSame('por_validar', $inv->status);                     // nunca se descarta
         $this->assertSame(InvoiceOcrService::CHECK_MISMATCH, $inv->check_status);

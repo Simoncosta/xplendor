@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Jobs\ProcessInvoiceOcrJob;
 use App\Models\Company;
 use App\Models\OcrInvoice;
 use App\Models\User;
 use App\Services\Ai\AiFunctionSettings;
 use App\Services\CompanyModuleService;
 use App\Services\InvoiceOcrService;
+use App\Services\Ocr\OcrTemporaryFailure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +23,9 @@ use Tests\TestCase;
  * OCR das faturas na Anthropic: o QR primeiro (sem IA), o ficheiro diretamente ao modelo (PDF
  * como documento, fotografia como imagem, sem citações), saídas estruturadas com o esquema de
  * hoje, a recusa e a resposta cortada para revisão manual (sem repetir), e o registo do
- * fornecedor, do modelo, do esforço, dos tokens, do tempo e do custo. Respostas simuladas.
+ * fornecedor, do modelo, do esforço, dos tokens, do tempo e do custo. Só a Anthropic: a reserva
+ * do .env com um modelo da OpenAI vale claude-opus-5-5, e os erros temporários voltam à fila com
+ * espera crescente. Respostas simuladas.
  */
 class InvoiceOcrAnthropicTest extends TestCase
 {
@@ -165,41 +169,143 @@ class InvoiceOcrAnthropicTest extends TestCase
 
     public function test_a_cut_answer_is_also_for_manual_review_and_the_second_attempt_never_loops(): void
     {
-        // 1.ª leitura com a OpenAI (reserva), 2.ª (não confere) na Anthropic, que fica cortada: fica a 1.ª.
+        // 1.ª leitura pela reserva (o .env diz gpt-4o-mini: vale claude-opus-5-5, médio); não confere;
+        // a 2.ª (ocr_image, esforço alto) fica cortada: fica a 1.ª. Nada vai à OpenAI.
         $this->choose('ocr_image', 'claude-opus-5-5', 'high');
         $this->analysis = ['ok' => true, 'kind' => 'pdf', 'pages' => 1, 'qr' => ['raw' => self::QR, 'page' => 1], 'text' => str_repeat('x', 600), 'text_chars' => 600, 'images' => []];
         config(['services.openai.key' => 'sk-test']);
         Http::fake([
-            'api.openai.com/*' => Http::response(['choices' => [['message' => ['content' => json_encode(['fornecedorNome' => 'X', 'linhas' => [
-                ['item' => 'Forma', 'quantidade' => 1, 'precoUnitario' => 50, 'totalLinha' => 50, 'taxaIva' => 6]]])]]], 'usage' => ['prompt_tokens' => 100, 'completion_tokens' => 10]]),
-            'api.anthropic.com/*' => Http::response(['type' => 'message', 'stop_reason' => 'max_tokens', 'content' => [['type' => 'text', 'text' => '{"linhas": [']], 'usage' => ['input_tokens' => 3000, 'output_tokens' => 44000]]),
+            'api.openai.com/*' => Http::response([], 500),
+            'api.anthropic.com/*' => Http::sequence()
+                ->push($this->anthropic(['fornecedorNome' => 'X', 'guias' => [], 'linhas' => [
+                    ['codigo' => '1', 'item' => 'Forma', 'quantidade' => 1, 'unidade' => 'UN', 'precoUnitario' => 50, 'descontoPct' => 0, 'totalLinha' => 50, 'taxaIva' => 6]]], 'end_turn', 100, 10))
+                ->push(['type' => 'message', 'stop_reason' => 'max_tokens', 'content' => [['type' => 'text', 'text' => '{"linhas": [']], 'usage' => ['input_tokens' => 3000, 'output_tokens' => 44000]]),
         ]);
         $inv = $this->invoice('application/pdf');
 
         app(InvoiceOcrService::class)->process($inv->id);
 
         Http::assertSentCount(2);
+        Http::assertNotSent(fn (Request $req) => str_contains($req->url(), 'openai'));
+        $sent = Http::recorded()->map(fn ($p) => [$p[0]['model'], $p[0]['output_config']['effort'] ?? null])->all();
+        $this->assertSame([['claude-opus-5-5', 'medium'], ['claude-opus-5-5', 'high']], $sent);
         $inv->refresh();
         $this->assertSame(['por_validar', 'nao_confere', 1], [$inv->status, $inv->check_status, $inv->lines()->count()]);
-        $this->assertSame([2, 'gpt-4o-mini'], [$inv->attempts, $inv->model]);
+        $this->assertSame([2, 'claude-opus-5-5', 'anthropic'], [$inv->attempts, $inv->model, $inv->ai_provider]);
         $this->assertStringContainsString('cortada', (string) $inv->attempts_log[1]['error']);
         $this->assertSame(44000, $inv->attempts_log[1]['tokens_out'], 'os tokens da tentativa cortada contam');
     }
 
-    public function test_a_429_is_retried_a_few_times_then_the_invoice_is_an_error(): void
+    public function test_the_second_attempt_raises_the_effort_when_it_would_repeat_the_first(): void
+    {
+        $this->choose('ocr_text', 'claude-opus-5-5', 'medium');
+        $this->choose('ocr_image', 'claude-opus-5-5', 'medium');
+        $this->analysis = ['ok' => true, 'kind' => 'pdf', 'pages' => 1, 'qr' => ['raw' => self::QR, 'page' => 1], 'text' => str_repeat('x', 600), 'text_chars' => 600, 'images' => []];
+        $wrong = $this->anthropic(['fornecedorNome' => 'X', 'guias' => [], 'linhas' => [
+            ['codigo' => '1', 'item' => 'Forma', 'quantidade' => 1, 'unidade' => 'UN', 'precoUnitario' => 50, 'descontoPct' => 0, 'totalLinha' => 50, 'taxaIva' => 6]]]);
+        Http::fake(['api.anthropic.com/*' => Http::sequence()->push($wrong)->push($wrong)]);
+
+        app(InvoiceOcrService::class)->process($this->invoice('application/pdf')->id);
+
+        $this->assertSame(['medium', 'high'], Http::recorded()->map(fn ($p) => $p[0]['output_config']['effort'])->all(), 'o mesmo ficheiro e modelo: mais esforço');
+    }
+
+    public function test_the_reserve_never_goes_to_openai_and_an_openai_choice_is_refused(): void
+    {
+        // Sem escolha: o .env diz gpt-4o-mini e gpt-6.1-sol, mas a reserva é a Anthropic.
+        $this->assertSame(['provider' => 'anthropic', 'model' => 'claude-opus-5-5', 'effort' => 'medium', 'reserve' => true], AiFunctionSettings::for('ocr_text'));
+        $this->assertSame('claude-opus-5-5', AiFunctionSettings::for('ocr_image')['model']);
+        config(['services.openai.ocr.model_image' => 'claude-sonnet-5-5', 'services.openai.ocr.reasoning_effort' => 'extremo']);
+        $this->assertSame(['anthropic', 'claude-sonnet-5-5', 'medium'], array_values(array_slice(AiFunctionSettings::for('ocr_image'), 0, 3)), 'um esforço que o modelo não aceita: médio');
+
+        // Em Modelos de IA, o OCR só aceita modelos da Anthropic (as outras funções aceitam todos).
+        try {
+            $this->choose('ocr_text', 'gpt-6.1-sol', 'low');
+            $this->fail('devia recusar');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->assertStringContainsString('só aceita modelos de: Anthropic', $e->getMessage());
+        }
+        $this->choose('caption', 'gpt-6.1-sol', 'low');
+        $overview = collect(AiFunctionSettings::overview()['functions'])->keyBy('key');
+        $this->assertSame(['anthropic'], $overview['ocr_image']['providers']);
+        $this->assertSame(['anthropic', 'openai'], $overview['caption']['providers']);
+
+        // Uma escolha antiga da OpenAI gravada à mão: a fatura não é enviada a ninguém.
+        DB::table('ai_function_settings')->insert(['function' => 'ocr_image', 'provider' => 'openai', 'model' => 'gpt-6.1-sol', 'effort' => 'low', 'created_at' => now(), 'updated_at' => now()]);
+        Http::fake();
+        $this->analysis = ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
+        $inv = $this->invoice('image/jpeg', 'jpeg');
+        try {
+            app(InvoiceOcrService::class)->process($inv->id);
+        } catch (\Throwable) {
+        }
+        Http::assertNothingSent();
+        $this->assertSame('erro', $inv->fresh()->status);
+        $this->assertStringContainsString('só lê faturas com a Anthropic', (string) $inv->fresh()->error_message);
+    }
+
+    public function test_the_migration_moves_a_saved_ocr_choice_to_opus_medium_with_history(): void
+    {
+        DB::table('ai_function_settings')->insert(['function' => 'ocr_text', 'provider' => 'openai', 'model' => 'gpt-4o-mini', 'effort' => 'low', 'created_at' => now(), 'updated_at' => now()]);
+        (require database_path('migrations/2026_12_29_100000_ocr_anthropic_only.php'))->up();
+
+        $this->assertSame(['anthropic', 'claude-opus-5-5', 'medium'], array_values((array) DB::table('ai_function_settings')->where('function', 'ocr_text')->first(['provider', 'model', 'effort'])));
+        $this->assertFalse(DB::table('ai_function_settings')->where('function', 'ocr_image')->exists(), 'sem escolha: vale a reserva');
+        $this->assertSame('gpt-4o-mini', DB::table('ai_function_setting_changes')->where('function', 'ocr_text')->value('from_model'));
+    }
+
+    /** @return array<string, array{int, string}> */
+    public static function temporaryErrors(): array
+    {
+        return ['limite de pedidos' => [429, 'rate_limit_error'], 'sobrecarga' => [529, 'overloaded_error'], 'erro do fornecedor' => [500, 'api_error'], 'indisponível' => [503, 'api_error']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('temporaryErrors')]
+    public function test_a_temporary_error_keeps_the_invoice_reading_and_the_queue_repeats_with_growing_waits(int $status, string $type): void
     {
         $this->choose('ocr_image', 'claude-opus-5-5', 'low');
         $this->analysis = ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
-        Http::fake(['api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => 'rate_limit_error', 'message' => 'Rate limited']], 429)]);
+        Http::fake(['api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => $type, 'message' => 'Tente mais tarde']], $status)]);
         $inv = $this->invoice('image/jpeg', 'jpeg');
 
         try {
             app(InvoiceOcrService::class)->process($inv->id);
-            $this->fail('devia falhar');
-        } catch (\Throwable) {
+            $this->fail('devia lançar o erro temporário');
+        } catch (OcrTemporaryFailure $e) {
+            $this->assertSame($status, $e->status);
         }
-        Http::assertSentCount(3);
+        Http::assertSentCount(1); // sem repetir dentro do pedido: repete a fila
+        $this->assertSame('processing', $inv->fresh()->status, 'continua a ler');
+        $this->assertStringContainsString('vai ser repetida automaticamente', (string) $inv->fresh()->error_message);
+
+        // A fila: 1 min, 2, 5, 10, 20 e, depois da última, erro com aviso.
+        foreach ([1 => 60, 2 => 120, 3 => 300, 4 => 600, 5 => 1200] as $attempt => $delay) {
+            $job = (new ProcessInvoiceOcrJob($this->yuko->id, $inv->id))->withFakeQueueInteractions();
+            $job->job->attempts = $attempt;
+            $job->handle(app(InvoiceOcrService::class), app(\App\Services\AlertService::class));
+            $job->assertReleased($delay);
+        }
+        $job = (new ProcessInvoiceOcrJob($this->yuko->id, $inv->id))->withFakeQueueInteractions();
+        $job->job->attempts = 6;
+        $job->handle(app(InvoiceOcrService::class), app(\App\Services\AlertService::class));
+        $job->assertNotReleased();
         $this->assertSame('erro', $inv->fresh()->status);
+        $this->assertStringContainsString('indisponível em todas as tentativas', (string) $inv->fresh()->error_message);
+        $this->assertSame(6, (new ProcessInvoiceOcrJob(1, 1))->tries);
+    }
+
+    public function test_errors_that_time_does_not_fix_are_an_error_right_away(): void
+    {
+        $this->choose('ocr_image', 'claude-opus-5-5', 'low');
+        $this->analysis = ['ok' => true, 'kind' => 'image', 'pages' => 1, 'qr' => null, 'text' => '', 'text_chars' => 0, 'images' => []];
+        foreach ([[400, 'invalid_request_error', 'Bad request'], [429, 'rate_limit_error', 'spend_limit reached']] as [$status, $type, $message]) {
+            Http::fake(['api.anthropic.com/*' => Http::response(['type' => 'error', 'error' => ['type' => $type, 'message' => $message]], $status)]);
+            $inv = $this->invoice('image/jpeg', 'jpeg');
+            $job = (new ProcessInvoiceOcrJob($this->yuko->id, $inv->id))->withFakeQueueInteractions();
+            $job->handle(app(InvoiceOcrService::class), app(\App\Services\AlertService::class));
+            $job->assertNotReleased();
+            $this->assertSame('erro', $inv->fresh()->status, "HTTP {$status}");
+        }
     }
 
     public function test_the_schemas_respect_the_api_limits_no_union_types_and_at_most_24_optional_fields(): void

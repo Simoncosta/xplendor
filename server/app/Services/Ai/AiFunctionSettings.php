@@ -13,7 +13,8 @@ use Illuminate\Validation\ValidationException;
  * função (legenda, criativo, ideias, blog, perfil, descrição e análise de viaturas) o
  * fornecedor, o modelo e o esforço de raciocínio, com histórico de alterações. Sem linha
  * gravada, valem os valores iniciais de config/ai.php; nas funções do OCR (group "ocr"), a
- * reserva do .env (OCR_MODEL_TEXT, OCR_MODEL_IMAGE e OCR_REASONING_EFFORT).
+ * reserva do .env (OCR_MODEL_TEXT, OCR_MODEL_IMAGE e OCR_REASONING_EFFORT). As funções do OCR só
+ * aceitam os fornecedores da sua lista ("providers": só a Anthropic).
  */
 class AiFunctionSettings
 {
@@ -37,6 +38,7 @@ class AiFunctionSettings
     {
         self::assertFunction($function);
         self::assertChoice($model, $effort);
+        self::assertProviderAllowed($function, $model);
         $from = self::for($function);
         unset($from['reserve']);
         $to = ['provider' => self::providerOf($model), 'model' => $model, 'effort' => $effort];
@@ -67,8 +69,9 @@ class AiFunctionSettings
 
     /**
      * A reserva do .env das funções do OCR, quando nada está escolhido: o modelo de
-     * OCR_MODEL_TEXT ou OCR_MODEL_IMAGE (o fornecedor pelo catálogo, ou pelo nome) e o esforço
-     * de OCR_REASONING_EFFORT. Null nas outras funções.
+     * OCR_MODEL_TEXT ou OCR_MODEL_IMAGE e o esforço de OCR_REASONING_EFFORT. Só a Anthropic: um
+     * modelo de outro fornecedor (ou vazio) dá lugar a ai.ocr_fallback_model, e um esforço que o
+     * modelo não aceite dá lugar a "medium". Null nas outras funções.
      *
      * @return array{provider: string, model: string, effort: string, reserve: true}|null
      */
@@ -79,9 +82,24 @@ class AiFunctionSettings
             return null;
         }
         $model = (string) config($key, '');
-        $provider = self::providerOf($model) ?: ($model === '' ? '' : (str_starts_with($model, 'claude') ? 'anthropic' : 'openai'));
+        $allowed = self::allowedProviders($function);
+        if (! in_array(self::providerOf($model), $allowed, true)) {
+            $model = (string) config('ai.ocr_fallback_model', 'claude-opus-5-5');
+        }
+        $effort = (string) config('services.openai.ocr.reasoning_effort', 'medium');
+        if (! in_array($effort, (array) (self::model($model)['efforts'] ?? []), true)) {
+            $effort = 'medium';
+        }
 
-        return ['provider' => $provider, 'model' => $model, 'effort' => (string) config('services.openai.ocr.reasoning_effort', 'low'), 'reserve' => true];
+        return ['provider' => self::providerOf($model), 'model' => $model, 'effort' => $effort, 'reserve' => true];
+    }
+
+    /** Os fornecedores que a função aceita (por omissão, todos os do catálogo). @return string[] */
+    public static function allowedProviders(string $function): array
+    {
+        $list = config("ai.functions.{$function}.providers");
+
+        return is_array($list) ? array_values($list) : array_keys((array) config('ai.providers'));
     }
 
     /** Há uma escolha gravada (senão vale o valor inicial ou a reserva do .env). */
@@ -101,7 +119,7 @@ class AiFunctionSettings
                 $reserve = (bool) ($s['reserve'] ?? false);
                 unset($s['reserve']);
 
-                return ['key' => $key, 'label' => $f['label'], 'hint' => $f['hint'] ?? null, 'group' => $f['group'] ?? null,
+                return ['key' => $key, 'label' => $f['label'], 'hint' => $f['hint'] ?? null, 'group' => $f['group'] ?? null, 'providers' => self::allowedProviders($key),
                     // Funções do OCR sem escolha: vale o modelo do .env (pode não estar no catálogo).
                     'reserve' => $reserve, 'reserve_env' => $reserve ? strtoupper(str_replace('services.openai.ocr.model_', 'OCR_MODEL_', (string) $f['reserve_model'])) : null] + $s;
             })->values()->all(),
@@ -133,6 +151,14 @@ class AiFunctionSettings
     {
         if (! array_key_exists($function, (array) config('ai.functions'))) {
             throw ValidationException::withMessages(['function' => ["Função de IA desconhecida: {$function}."]]);
+        }
+    }
+
+    private static function assertProviderAllowed(string $function, string $model): void
+    {
+        if (! in_array(self::providerOf($model), self::allowedProviders($function), true)) {
+            throw ValidationException::withMessages(['model' => ['Esta função só aceita modelos de: ' . implode(', ', array_map(
+                fn ($p) => (string) config("ai.providers.{$p}.label", $p), self::allowedProviders($function))) . '.']]);
         }
     }
 

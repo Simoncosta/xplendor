@@ -17,8 +17,8 @@ import {
  * fotografias); sem escolha, vale a reserva do .env. Não entra no "Aplicar a todas" nem no teste às cegas.
  */
 
-/** group "ocr": as funções do OCR das faturas; reserve: sem escolha, vale o modelo do .env (reserve_env). */
-type Fn = { key: string; label: string; hint: string | null; provider: string; model: string; effort: string; group?: string | null; reserve?: boolean; reserve_env?: string | null };
+/** group "ocr": as funções do OCR das faturas; reserve: sem escolha, vale o modelo do .env (reserve_env); providers: os fornecedores que a função aceita (o OCR só a Anthropic). */
+type Fn = { key: string; label: string; hint: string | null; provider: string; model: string; effort: string; group?: string | null; reserve?: boolean; reserve_env?: string | null; providers?: string[] };
 type Model = { key: string; label: string; provider: string; efforts: string[]; prices: { input: number; cached_input: number; output: number } | null };
 type Provider = { key: string; label: string; configured: boolean };
 type HistoryRow = { function: string; from: string | null; to: string; applied_to_all: boolean; user: string | null; at: string };
@@ -57,6 +57,8 @@ export default function AiModelsPage() {
     const models = useMemo(() => data?.models ?? [], [data]);
     const providerLabel = (key: string) => data?.providers.find((p) => p.key === key)?.label ?? key;
     const modelOptions = models.map((m) => ({ value: m.key, label: `${m.label} (${providerLabel(m.provider)})` }));
+    // Só os modelos dos fornecedores que a função aceita (o OCR: só a Anthropic).
+    const modelOptionsFor = (f: Fn) => (f.providers ? modelOptions.filter((o) => f.providers!.includes(models.find((m) => m.key === o.value)?.provider ?? "")) : modelOptions);
     const effortOptions = (model: string) => (models.find((m) => m.key === model)?.efforts ?? []).map((e) => ({ value: e, label: EFFORT_LABEL[e] ?? e }));
     const functionLabel = (key: string) => data?.functions.find((f) => f.key === key)?.label ?? key;
     const missingKey = (model: string) => {
@@ -100,7 +102,7 @@ export default function AiModelsPage() {
                 return (
                     <div style={{ minWidth: 200 }}>
                         <XSelect small ariaLabel={`Modelo: ${f.label}`} value={f.model} disabled={saving === f.key} onChange={(m) => m !== f.model && save(f, m, f.effort)}
-                            options={f.reserve && f.model && !models.some((m) => m.key === f.model) ? [...modelOptions, { value: f.model, label: `${f.model} (reserva do .env)` }] : modelOptions} />
+                            options={modelOptionsFor(f)} />
                         {f.reserve && <div className="text-muted fs-12 mt-1" data-testid={`ai-fn-reserve-${f.key}`}>{f.model ? `Reserva do .env (${f.reserve_env}): ${f.model}.` : `Sem modelo: escolha um aqui ou defina ${f.reserve_env} no .env.`}</div>}
                         {missing && <div className="text-warning fs-12 mt-1">Sem a chave da {missing.label}.</div>}
                     </div>
