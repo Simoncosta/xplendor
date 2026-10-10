@@ -1,0 +1,517 @@
+{
+    "success": true,
+    "message": "Bússola.",
+    "data": {
+        "enabled": true,
+        "company": "Yuko",
+        "locations": [
+            {
+                "id": 990011,
+                "name": "Baixa"
+            },
+            {
+                "id": 990012,
+                "name": "Costa"
+            }
+        ],
+        "location_id": 990011,
+        "categories_pending": 0,
+        "computed_at": "2026-10-08T10:00:00+00:00",
+        "data_until": "2026-10-07",
+        "top": {
+            "title": "Esta semana em Yuko",
+            "period": {
+                "from": "2026-09-10",
+                "to": "2026-10-07",
+                "prev_from": "2026-08-13",
+                "prev_to": "2026-09-09"
+            },
+            "numbers": [
+                {
+                    "kind": "store_variation",
+                    "label": "Vendas",
+                    "value": -30.4,
+                    "format": "pct_signed",
+                    "caption": "4 semanas contra as 4 anteriores",
+                    "icon": "ri-store-2-line"
+                },
+                {
+                    "kind": "revenue",
+                    "label": "Faturação, 4 semanas",
+                    "value": 160000,
+                    "format": "eur",
+                    "caption": "Sem IVA, de 10/09 a 07/10",
+                    "icon": "ri-money-euro-circle-line"
+                },
+                {
+                    "kind": "family",
+                    "label": "Peso de PRATOS",
+                    "value": 56.3,
+                    "format": "pct",
+                    "caption": "das vendas das últimas 4 semanas",
+                    "icon": "ri-restaurant-2-line"
+                },
+                {
+                    "kind": "same_day",
+                    "label": "Reservas no próprio dia",
+                    "value": 42.5,
+                    "format": "pct",
+                    "caption": "das reservas dos últimos 90 dias",
+                    "icon": "ri-time-line"
+                }
+            ],
+            "notes": [
+                "Na loja Baixa, as vendas das últimas 4 semanas desceram 30,4% face às 4 anteriores, e a maior parte dos artigos desceu com a loja. Os artigos em descida mostrados abaixo já descontam esta variação."
+            ]
+        },
+        "plays": [
+            {
+                "key": "item_up:prod:P1",
+                "type": "item_up",
+                "type_label": "A ganhar força",
+                "icon": "ri-arrow-right-up-line",
+                "color": "success",
+                "locations": [
+                    "Baixa"
+                ],
+                "location_id": 990011,
+                "title": "Dar palco a Bitoque",
+                "confidence": "alta",
+                "number": {
+                    "value": "+80%",
+                    "caption": "em unidades, 4 semanas contra as 4 anteriores"
+                },
+                "bars": [
+                    {
+                        "label": "4 semanas anteriores",
+                        "value": "50 un.",
+                        "pct": 56,
+                        "color": "secondary"
+                    },
+                    {
+                        "label": "Últimas 4 semanas",
+                        "value": "90 un.",
+                        "pct": 100,
+                        "color": "success"
+                    }
+                ],
+                "what": {
+                    "text": "Dê destaque a Bitoque numa publicação com uma boa fotografia.",
+                    "source": "template"
+                },
+                "where": {
+                    "networks": [
+                        {
+                            "network": "instagram",
+                            "label": "Instagram",
+                            "format_key": "ig_feed_image",
+                            "format_label": "Imagem (feed)",
+                            "format_source": null
+                        },
+                        {
+                            "network": "facebook",
+                            "label": "Facebook",
+                            "format_key": "fb_photos",
+                            "format_label": "Fotografias",
+                            "format_source": null
+                        }
+                    ],
+                    "connected": false
+                },
+                "when": {
+                    "date": "2026-10-09",
+                    "is_today": false,
+                    "label": "Publicar na sexta-feira, 09/10",
+                    "target": null
+                },
+                "detail": {
+                    "sentences": [
+                        "Bitoque: de 50 para 90 unidades (de 500 € para 900 €)."
+                    ],
+                    "sample": "De 10/09 a 07/10.",
+                    "confidence": [
+                        {
+                            "title": "Título item_up:990011:P1",
+                            "confidence": "alta"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "item_up:990011:P1"
+                ],
+                "theme": "Tema item_up:990011:P1",
+                "format": "Imagem única"
+            },
+            {
+                "key": "item_down:cat:sobremesas",
+                "type": "item_down",
+                "type_label": "A perder força",
+                "icon": "ri-arrow-right-down-line",
+                "color": "danger",
+                "locations": [
+                    "Baixa"
+                ],
+                "location_id": 990011,
+                "title": "Recuperar as sobremesas",
+                "confidence": "alta",
+                "number": {
+                    "value": "−61%",
+                    "caption": "em unidades, 4 semanas contra as 4 anteriores"
+                },
+                "bars": [
+                    {
+                        "label": "Cheesecake",
+                        "value": "100 → 40 un.",
+                        "pct": 40,
+                        "color": "danger"
+                    },
+                    {
+                        "label": "Mousse",
+                        "value": "80 → 30 un.",
+                        "pct": 38,
+                        "color": "danger"
+                    }
+                ],
+                "what": {
+                    "text": "Dê destaque às sobremesas da casa nas redes sociais.",
+                    "source": "ai"
+                },
+                "where": {
+                    "networks": [
+                        {
+                            "network": "instagram",
+                            "label": "Instagram",
+                            "format_key": "ig_feed_image",
+                            "format_label": "Imagem (feed)",
+                            "format_source": null
+                        },
+                        {
+                            "network": "facebook",
+                            "label": "Facebook",
+                            "format_key": "fb_photos",
+                            "format_label": "Fotografias",
+                            "format_source": null
+                        }
+                    ],
+                    "connected": false
+                },
+                "when": {
+                    "date": "2026-10-09",
+                    "is_today": false,
+                    "label": "Publicar na sexta-feira, 09/10",
+                    "target": null
+                },
+                "detail": {
+                    "sentences": [
+                        "Cheesecake: de 100 para 40 unidades (de 1000 € para 400 €).",
+                        "Mousse: de 80 para 30 unidades (de 800 € para 300 €)."
+                    ],
+                    "sample": "De 10/09 a 07/10.",
+                    "confidence": [
+                        {
+                            "title": "Título item_down:990011:S1",
+                            "confidence": "alta"
+                        },
+                        {
+                            "title": "Título item_down:990011:S2",
+                            "confidence": "alta"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "item_down:990011:S1",
+                    "item_down:990011:S2"
+                ],
+                "theme": "Voltar a mostrar: as sobremesas",
+                "format": "Imagem única"
+            },
+            {
+                "key": "weak_period:midweek",
+                "type": "weak_period",
+                "type_label": "Dia para encher",
+                "icon": "ri-calendar-event-line",
+                "color": "warning",
+                "locations": [
+                    "Baixa"
+                ],
+                "location_id": 990011,
+                "title": "Encher o meio da semana",
+                "confidence": "alta",
+                "number": {
+                    "value": "−50%",
+                    "caption": "abaixo da média do turno"
+                },
+                "bars": [
+                    {
+                        "label": "Almoço de quarta (Baixa)",
+                        "value": "450 € contra 900 €",
+                        "pct": 50,
+                        "color": "warning"
+                    },
+                    {
+                        "label": "Jantar de terça (Baixa)",
+                        "value": "630 € contra 900 €",
+                        "pct": 70,
+                        "color": "warning"
+                    }
+                ],
+                "what": {
+                    "text": "Publique uma proposta para o meio da semana na loja Baixa, com Bitoque em destaque.",
+                    "source": "template"
+                },
+                "where": {
+                    "networks": [
+                        {
+                            "network": "instagram",
+                            "label": "Instagram",
+                            "format_key": "ig_feed_image",
+                            "format_label": "Imagem (feed)",
+                            "format_source": null
+                        },
+                        {
+                            "network": "facebook",
+                            "label": "Facebook",
+                            "format_key": "fb_photos",
+                            "format_label": "Fotografias",
+                            "format_source": null
+                        }
+                    ],
+                    "connected": false
+                },
+                "when": {
+                    "date": "2026-10-12",
+                    "is_today": false,
+                    "label": "Publicar na segunda-feira, 12/10",
+                    "target": "para a terça-feira, 13/10"
+                },
+                "detail": {
+                    "sentences": [
+                        "O turno ficou 50% abaixo da média (média de 450 € contra 900 €, em 8 semanas).",
+                        "O turno ficou 30% abaixo da média (média de 450 € contra 900 €, em 8 semanas)."
+                    ],
+                    "sample": "De 13/08 a 07/10, 8 ocorrências, sem 1 dias especiais.",
+                    "confidence": [
+                        {
+                            "title": "Título weak_period:990011:3:almoco",
+                            "confidence": "alta"
+                        },
+                        {
+                            "title": "Título weak_period:990011:2:jantar",
+                            "confidence": "media"
+                        }
+                    ]
+                },
+                "signal_keys": [
+                    "weak_period:990011:3:almoco",
+                    "weak_period:990011:2:jantar"
+                ],
+                "theme": "O meio da semana em destaque",
+                "format": "Imagem única"
+            }
+        ],
+        "blocks": {
+            "days": {
+                "headline": "Nas últimas 8 semanas, nenhum turno ficou 20% ou mais abaixo da sua média.",
+                "grids": [
+                    {
+                        "location_id": 990011,
+                        "name": "Baixa",
+                        "from": "2026-08-13",
+                        "to": "2026-10-07",
+                        "mode": "days",
+                        "shifts": [],
+                        "special_excluded": 2
+                    }
+                ],
+                "weeks": 8
+            },
+            "stars": {
+                "headline": "Bitoque é o artigo que mais vende: 56,3% das vendas das últimas 4 semanas.",
+                "stores": [
+                    {
+                        "location_id": 990011,
+                        "name": "Baixa",
+                        "items": [
+                            {
+                                "product_id": "P1",
+                                "name": "Bitoque",
+                                "qty": 90,
+                                "net_cents": 90000,
+                                "share_pct": 56.3
+                            },
+                            {
+                                "product_id": "S1",
+                                "name": "Cheesecake",
+                                "qty": 40,
+                                "net_cents": 40000,
+                                "share_pct": 25
+                            },
+                            {
+                                "product_id": "S2",
+                                "name": "Mousse",
+                                "qty": 30,
+                                "net_cents": 30000,
+                                "share_pct": 18.8
+                            }
+                        ],
+                        "others_pct": 0
+                    }
+                ]
+            },
+            "changes": {
+                "headline": "1 artigo a ganhar força e 2 a perder força, já descontada a variação de cada loja.",
+                "context": {
+                    "period_now": {
+                        "from": "2026-09-10",
+                        "to": "2026-10-07"
+                    },
+                    "period_before": {
+                        "from": "2026-08-13",
+                        "to": "2026-09-09"
+                    },
+                    "stores": [
+                        {
+                            "name": "Baixa",
+                            "variation_pct": -30.4
+                        }
+                    ],
+                    "special_days": [
+                        "Assunção de Nossa Senhora",
+                        "Implantação da República"
+                    ]
+                },
+                "up": [
+                    {
+                        "key": "item_up:990011:P1",
+                        "name": "Bitoque",
+                        "location": "Baixa",
+                        "category": "Pratos principais",
+                        "before": 50,
+                        "now": 90,
+                        "variation_pct": 80,
+                        "confidence": "alta"
+                    }
+                ],
+                "down": [
+                    {
+                        "key": "item_down:990011:S2",
+                        "name": "Mousse",
+                        "location": "Baixa",
+                        "category": "Sobremesas",
+                        "before": 80,
+                        "now": 30,
+                        "variation_pct": -62.5,
+                        "confidence": "alta"
+                    },
+                    {
+                        "key": "item_down:990011:S1",
+                        "name": "Cheesecake",
+                        "location": "Baixa",
+                        "category": "Sobremesas",
+                        "before": 100,
+                        "now": 40,
+                        "variation_pct": -60,
+                        "confidence": "alta"
+                    }
+                ],
+                "visible": 5
+            },
+            "decide": {
+                "headline": "42,5% das reservas dos últimos 90 dias foram feitas no próprio dia.",
+                "same_day_pct": 42.5,
+                "stores": [
+                    {
+                        "name": "Baixa",
+                        "total": 200,
+                        "buckets": [
+                            {
+                                "key": "same_day",
+                                "label": "No próprio dia",
+                                "pct": 42.5
+                            },
+                            {
+                                "key": "d1_2",
+                                "label": "1 a 2 dias antes",
+                                "pct": 30
+                            },
+                            {
+                                "key": "d3_7",
+                                "label": "3 a 7 dias antes",
+                                "pct": 20
+                            },
+                            {
+                                "key": "d8_30",
+                                "label": "8 a 30 dias antes",
+                                "pct": 7.5
+                            },
+                            {
+                                "key": "d31_plus",
+                                "label": "Mais de 30 dias antes",
+                                "pct": 0
+                            }
+                        ]
+                    }
+                ]
+            },
+            "channels": {
+                "headline": "Registadas pela equipa é a forma mais comum de chegar (60% das reservas dos últimos 90 dias).",
+                "stores": [
+                    {
+                        "name": "Baixa",
+                        "total": 200,
+                        "channels": [
+                            {
+                                "key": "software",
+                                "label": "Registadas pela equipa",
+                                "reservations": 120,
+                                "pct": 60
+                            },
+                            {
+                                "key": "moduloweb",
+                                "label": "Site",
+                                "reservations": 60,
+                                "pct": 30
+                            },
+                            {
+                                "key": "walk in",
+                                "label": "Sem reserva",
+                                "reservations": 20,
+                                "pct": 10
+                            }
+                        ]
+                    }
+                ]
+            },
+            "forgotten": {
+                "headline": "Nenhum artigo do catálogo ficou parado nos últimos 30 dias.",
+                "items": []
+            }
+        },
+        "financial": {
+            "visible": true,
+            "note": null
+        },
+        "can_act": true,
+        "can_act_reason": null,
+        "formats": [
+            "Carrossel",
+            "Imagem única",
+            "Reels",
+            "Stories",
+            "Vídeo",
+            "Live",
+            "Infográfico",
+            "Citação",
+            "Checklist",
+            "Tutorial",
+            "Antes e depois",
+            "Bastidores",
+            "Enquete/Interativo",
+            "Depoimento",
+            "Dica de expert",
+            "Notícia",
+            "Institucional",
+            "Sazonal"
+        ]
+    }
+}

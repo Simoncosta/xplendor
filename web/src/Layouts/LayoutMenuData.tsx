@@ -354,7 +354,8 @@ const Navdata = () => {
     // visível). Um grupo esconde-se se ficar sem sub-itens visíveis.
     // ACL (F4): um item só aparece com o módulo ativo E a permissão (as chaves do backend,
     // app/Access/RoutePermissions.php). Enquanto carrega, nada que dependa deles aparece.
-    const visible = (it: any): boolean => hasModule(it.module) && can(it.permission);
+    // anyModule: basta um destes módulos (a Bússola: o PingWin ou o stock).
+    const visible = (it: any): boolean => (it.anyModule ? it.anyModule.some((m: string) => hasModule(m)) : hasModule(it.module)) && can(it.permission);
 
     const filterMenu = (items: any[]): any[] =>
         items.reduce((acc: any[], it: any) => {

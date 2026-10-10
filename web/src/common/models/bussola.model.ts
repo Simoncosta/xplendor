@@ -1,5 +1,6 @@
-/** Bússola (marketing da restauração): o topo, as jogadas da semana e os blocos. */
-export type PlayType = "weak_period" | "item_up" | "item_down" | "stale_item";
+/** Bússola comum (restauração e stand): o topo, as jogadas da semana e os blocos. */
+export type PlayType = "weak_period" | "item_up" | "item_down" | "stale_item"
+    | "stop_ad" | "review_price" | "renew_stock" | "use_interest" | "give_stage";
 
 export interface CompassNumber {
     kind: "store_variation" | "revenue" | "family" | "same_day";
@@ -17,7 +18,7 @@ export interface CompassPlay {
     type: PlayType;
     type_label: string;
     icon: string;
-    color: "warning" | "success" | "danger" | "info";
+    color: "warning" | "success" | "danger" | "info" | "primary";
     locations: string[];
     location_id: number;
     title: string;
@@ -25,13 +26,21 @@ export interface CompassPlay {
     number: { value: string; caption: string };
     bars: { label: string; value: string | null; pct: number; color: string; hidden?: boolean }[];
     what: { text: string; source: "ai" | "template" };
-    /** Sempre Instagram e Facebook (multicanal); "connected": as redes da empresa estão ligadas. */
-    where: { networks: { network: string; label: string; format_key: string; format_label: string; format_source: string | null }[]; connected: boolean };
+    /** Sempre Instagram e Facebook (multicanal); "connected": as redes da empresa estão ligadas. Stand: "ad" (o anúncio, no tráfego pago). */
+    where: { networks: { network: string; label: string; format_key: string; format_label: string; format_source: string | null }[]; connected: boolean; ad?: string | null };
     when: { date: string; is_today: boolean; label: string; target: string | null };
     detail: { sentences: string[]; sample: string; confidence: { title: string; confidence: "alta" | "media" }[] };
     signal_keys: string[];
     theme: string;
     format: string;
+    /** Stand: os veículos da jogada (marca, modelo e ano; sem dados pessoais). */
+    items?: { car_id: number; label: string; detail: string | null }[];
+    /** Stand: o veículo único da jogada (para "Ver veículo" e "Rever preço"). */
+    car_id?: number | null;
+    /** Stand: os botões desta jogada. */
+    actions?: ("create" | "suggest" | "view_car" | "review_price")[];
+    /** Stand: o que acontece às fotografias no "Criar publicação". */
+    post_note?: string | null;
 }
 
 export interface ShiftGrid {

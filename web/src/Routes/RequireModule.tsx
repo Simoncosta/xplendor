@@ -11,7 +11,8 @@ import { useModules } from "contexts/ModulesContext";
  * FALHA FECHADA: enquanto as permissões carregam, mostra "a carregar" (nunca a página).
  * A fronteira real é o backend (middleware permission e ensure_module), que recusa com 403.
  */
-const RequireModule = ({ module, permission, children }: { module?: string; permission?: string; children: React.ReactNode }) => {
+/** anyModule: basta um destes módulos (a Bússola: o PingWin ou o stock). */
+const RequireModule = ({ module, anyModule, permission, children }: { module?: string; anyModule?: string[]; permission?: string; children: React.ReactNode }) => {
     const { has, can, loading } = useModules();
 
     if (loading) {
@@ -21,7 +22,7 @@ const RequireModule = ({ module, permission, children }: { module?: string; perm
             </div>
         );
     }
-    if (!has(module) || !can(permission)) {
+    if (!(anyModule ? anyModule.some((m) => has(m)) : has(module)) || !can(permission)) {
         return <Navigate to="/dashboard" replace />;
     }
 

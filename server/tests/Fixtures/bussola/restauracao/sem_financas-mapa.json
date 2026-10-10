@@ -1,0 +1,55 @@
+{
+    "success": true,
+    "message": "Mapa da semana.",
+    "data": {
+        "enabled": true,
+        "locations": [
+            {
+                "id": 990011,
+                "name": "Baixa"
+            },
+            {
+                "id": 990012,
+                "name": "Costa"
+            }
+        ],
+        "location_id": 990011,
+        "weeks": 8,
+        "special_excluded": 0,
+        "from": "2026-08-13",
+        "to": "2026-10-07",
+        "hours": [],
+        "sales": {
+            "unit": "relative",
+            "cells": [],
+            "days": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0
+            },
+            "max": 0
+        },
+        "guests": {
+            "unit": "people",
+            "cells": [],
+            "days": {
+                "1": 0,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0
+            },
+            "max": 0
+        },
+        "financial": {
+            "visible": false,
+            "note": "Sem acesso aos valores financeiros"
+        }
+    }
+}

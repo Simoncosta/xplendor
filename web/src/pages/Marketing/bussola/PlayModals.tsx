@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import XSelect from "Components/Common/Select";
 import ReasonButton from "Components/Common/ReasonButton";
 import AiRequestState from "Components/Common/AiRequestState";
-import { createPostFromPlay, getPlayCaption, requestPlayCaption } from "helpers/laravel_helper";
+import { CompassApi, restaurantAdapter } from "./compassAdapter";
 import { AiPollable, useAiRequestPoll } from "hooks/useAiRequestPoll";
 import { MEDIA_FORMATS } from "common/models/editorialPost.model";
 import type { CompassPlay } from "common/models/bussola.model";
@@ -24,9 +24,9 @@ export type PostPrefill = { caption?: string; hashtags?: string[]; cta?: string 
  * e formato de cada uma) e o Quando (data); com a legenda escolhida, se vier do "Sugerir
  * texto". Cria uma ideia na Linha Editorial; nunca uma data passada.
  */
-export function PlayPostModal({ companyId, locationId, play, prefill, formats, onClose, onCreated }: {
+export function PlayPostModal({ companyId, locationId, play, prefill, formats, onClose, onCreated, api = restaurantAdapter.api }: {
     companyId: number; locationId: number | null; play: CompassPlay | null; prefill?: PostPrefill | null; formats: string[];
-    onClose: () => void; onCreated: (message: string) => void;
+    onClose: () => void; onCreated: (message: string) => void; api?: CompassApi;
 }) {
     const [title, setTitle] = useState("");
     const [date, setDate] = useState("");
@@ -63,7 +63,7 @@ export function PlayPostModal({ companyId, locationId, play, prefill, formats, o
         setSaving(true);
         setError(null);
         try {
-            const res: any = await createPostFromPlay(companyId, {
+            const res: any = await api.createPost(companyId, {
                 play_key: play.key, location_id: locationId || undefined, title: title.trim(), publish_date: date, networks: chosen, media_formats: mediaFormats, format,
                 ...(caption.trim() ? { caption: caption.trim() } : {}), ...(hashtags.trim() ? { hashtags: hashtags.split(/[\s,]+/).filter(Boolean) } : {}), ...(cta.trim() ? { cta: cta.trim() } : {}),
             });
@@ -81,6 +81,7 @@ export function PlayPostModal({ companyId, locationId, play, prefill, formats, o
             <ModalHeader toggle={onClose}>Criar publicação</ModalHeader>
             <ModalBody>
                 <p className="text-muted fs-13">Cria uma ideia na Linha Editorial, já preenchida com o que fazer, onde e quando. Reveja antes de criar.</p>
+                {play?.post_note && <p className="fs-13 border border-dashed rounded p-2" data-testid="play-post-note"><i className="ri-image-line me-1" aria-hidden />{play.post_note}</p>}
                 <div className="mb-3">
                     <Label for="play-post-title">Tema</Label>
                     <Input id="play-post-title" type="textarea" rows={2} maxLength={255} value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -148,10 +149,10 @@ type CaptionRequest = AiPollable & { used: number; cap: number; result: { networ
  * "Sugerir texto": o "Gerar legenda" com os dados da jogada, sem criar publicação. A proposta
  * escolhida abre o "Criar publicação" preenchido. Conta para o limite das legendas.
  */
-export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse }: {
-    companyId: number; locationId: number | null; play: CompassPlay | null; onClose: () => void; onUse: (p: CompassPlay, prefill: PostPrefill) => void;
+export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse, api = restaurantAdapter.api }: {
+    companyId: number; locationId: number | null; play: CompassPlay | null; onClose: () => void; onUse: (p: CompassPlay, prefill: PostPrefill) => void; api?: CompassApi;
 }) {
-    const fetchOne = useCallback((id: number) => getPlayCaption(companyId, id), [companyId]);
+    const fetchOne = useCallback((id: number) => api.getCaption(companyId, id), [companyId, api]);
     const { data, busy, start, reset } = useAiRequestPoll<CaptionRequest>(fetchOne);
     const [failed, setFailed] = useState<string | null>(null);
 
@@ -159,9 +160,9 @@ export function PlayCaptionModal({ companyId, locationId, play, onClose, onUse }
         if (!play) return;
         setFailed(null);
         try {
-            await start(() => requestPlayCaption(companyId, { play_key: play.key, location_id: locationId || undefined, networks: play.where.networks.map((n) => n.network) }));
+            await start(() => api.requestCaption(companyId, { play_key: play.key, location_id: locationId || undefined, networks: play.where.networks.map((n) => n.network) }));
         } catch (e: any) { setFailed(errorText(e, "Não foi possível pedir as propostas.")); }
-    }, [play, companyId, locationId, start]);
+    }, [play, companyId, locationId, start, api]);
 
     useEffect(() => { if (play) void ask(); else reset(); }, [play]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -220,6 +221,14 @@ export function PlayDetailModal({ play, onClose }: { play: CompassPlay | null; o
                         <ul className="ps-3 fs-14 lh-base mb-3">
                             {play.detail.sentences.map((s, i) => <li key={i} className="mb-2">{s}</li>)}
                         </ul>
+                        {play.items && play.items.length > 0 && (
+                            <>
+                                <h6 className="text-uppercase text-muted fs-12 mb-2">Veículos</h6>
+                                <ul className="list-unstyled vstack gap-1 fs-14 mb-3">
+                                    {play.items.map((it) => <li key={it.car_id}>{it.label}{it.detail ? <span className="text-muted">, {it.detail}</span> : null}</li>)}
+                                </ul>
+                            </>
+                        )}
                         {play.detail.sample && (
                             <>
                                 <h6 className="text-uppercase text-muted fs-12 mb-1">Amostra</h6>

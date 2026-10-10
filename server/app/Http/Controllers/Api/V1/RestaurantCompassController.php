@@ -41,14 +41,9 @@ class RestaurantCompassController extends Controller
             return ApiResponse::error('Acesso negado: utilizador inválido.', 403);
         }
         $data = $request->validate(['location_id' => ['nullable', 'integer'], 'summary' => ['nullable', 'boolean'], 'plays_only' => ['nullable', 'boolean']]);
-        [$can, $reason] = $this->panel->canAct($request->user(), $companyId);
 
-        // Sem Finanças, sem os valores em euros (o backend não os envia).
-        $payload = \App\Services\Restaurant\CompassFinancials::forUser(
-            $this->compass->payload($companyId, isset($data['location_id']) ? (int) $data['location_id'] : null, (bool) ($data['summary'] ?? false), (bool) ($data['plays_only'] ?? false)),
-            $request->user(), $companyId);
-
-        return ApiResponse::success($payload + ['can_act' => $can, 'can_act_reason' => $reason, 'formats' => EditorialPost::FORMATS], 'Bússola.');
+        // O fornecedor da restauração da Bússola comum (sem Finanças, sem os valores em euros).
+        return ApiResponse::success(app(\App\Services\Restaurant\RestaurantCompassProvider::class)->pageFor($request->user(), $companyId, $data), 'Bússola.');
     }
 
     public function heatmap(Request $request, int $companyId)

@@ -1,15 +1,19 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import { Badge, Button, Progress } from "reactstrap";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import HiddenMoney from "Components/Common/HiddenMoney";
 import type { CompassPlay } from "common/models/bussola.model";
+import { isSingleItem } from "./compassAdapter";
 
 /**
  * Uma jogada da semana (Bússola): o tipo e as lojas (avatar com ícone, como nos widgets do
  * Velzon), o título com verbo, o número grande, as barras com rótulo e valor (barras de
  * progresso) e o bloco "O que fazer" (O quê, Onde e Quando), com os botões. Vive dentro do
  * cartão "As 3 jogadas da semana" (moldura com borda, nunca cartão dentro de cartão).
+ * Comum aos ramos: o texto e a regra do "Não voltar a sugerir", a lista de veículos, o anúncio
+ * no "Onde" e os botões próprios de cada ramo vêm de quem o usa (por omissão, a restauração).
  */
 type Props = {
     companyId: number;
@@ -21,12 +25,20 @@ type Props = {
     onDetail: (p: CompassPlay) => void;
     /** Ignorar durante 4 semanas, ou (artigo) não voltar a sugerir. */
     onIgnore: (p: CompassPlay, permanent: boolean) => void;
+    /** O "Não voltar a sugerir" (texto e quando aparece). Por omissão, o do artigo da restauração. */
+    excludeLabel?: string;
+    canExclude?: (p: CompassPlay) => boolean;
+    /** Mostrar "Criar publicação" e "Sugerir texto" (por omissão, sim). */
+    showCreate?: boolean;
+    showSuggest?: boolean;
+    /** Botões próprios do ramo (por exemplo, "Ver veículo"), depois dos comuns. */
+    extraButtons?: React.ReactNode;
 };
 
-/** A jogada é de um só artigo (pode ser excluído das sugestões). */
-export const isSingleItem = (p: CompassPlay) => p.type !== "weak_period" && p.key.includes(":prod:");
+export { isSingleItem };
 
-export default function PlayCard({ companyId, play, canAct, canActReason, onCreate, onSuggest, onDetail, onIgnore }: Props) {
+export default function PlayCard({ companyId, play, canAct, canActReason, onCreate, onSuggest, onDetail, onIgnore,
+    excludeLabel = "Não voltar a sugerir este artigo", canExclude = isSingleItem, showCreate = true, showSuggest = true, extraButtons }: Props) {
     const c = play.color;
     const noAct = canAct ? null : canActReason || "Sem permissão para criar publicações.";
 
@@ -45,7 +57,7 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                 </div>
                 <ActionsMenu size="sm" label={`Mais ações: ${play.title}`} disabled={!canAct} items={[
                     { label: "Ignorar durante 4 semanas", icon: "ri-eye-off-line", onClick: () => onIgnore(play, false) },
-                    { label: "Não voltar a sugerir este artigo", icon: "ri-forbid-2-line", hidden: !isSingleItem(play), onClick: () => onIgnore(play, true) },
+                    { label: excludeLabel, icon: "ri-forbid-2-line", hidden: !canExclude(play), onClick: () => onIgnore(play, true) },
                 ]} />
             </div>
             <h5 className="fs-16 mb-2">{play.title}</h5>
@@ -64,6 +76,16 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                     </div>
                 ))}
             </div>
+            {play.items && play.items.length > 0 && (
+                <ul className="list-unstyled vstack gap-1 fs-13 mb-3" data-testid="play-items">
+                    {play.items.map((it) => (
+                        <li key={it.car_id} className="d-flex justify-content-between gap-2">
+                            <span className="text-truncate">{it.label}</span>
+                            {it.detail && <span className="text-muted text-nowrap">{it.detail}</span>}
+                        </li>
+                    ))}
+                </ul>
+            )}
             <div className="bg-light-subtle border border-dashed rounded p-3 mt-auto" data-testid="play-todo">
                 <p className="text-uppercase fw-semibold text-muted fs-11 mb-2">O que fazer</p>
                 <dl className="row g-0 mb-0 fs-13">
@@ -71,6 +93,7 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                     <dd className="col-9 mb-2">{play.what.text}</dd>
                     <dt className="col-3 text-muted fw-normal">Onde</dt>
                     <dd className="col-9 mb-2" data-testid="play-where">
+                        {play.where.ad && <span className="d-block">{play.where.ad}</span>}
                         {play.where.networks.map((n) => <span key={n.network} className="d-block">{n.label}: {n.format_label}</span>)}
                         {!play.where.connected && (
                             <span className="d-block text-muted fs-12 mt-1">
@@ -86,8 +109,9 @@ export default function PlayCard({ companyId, play, canAct, canActReason, onCrea
                 </dl>
             </div>
             <div className="d-flex flex-wrap gap-2 mt-3">
-                <ReasonButton color="outline-primary" size="sm" onClick={() => onCreate(play)} reason={noAct}><i className="ri-add-line me-1" />Criar publicação</ReasonButton>
-                <ReasonButton color="outline-primary" size="sm" onClick={() => onSuggest(play)} reason={noAct}><i className="ri-quill-pen-line me-1" />Sugerir texto</ReasonButton>
+                {showCreate && <ReasonButton color="outline-primary" size="sm" onClick={() => onCreate(play)} reason={noAct}><i className="ri-add-line me-1" />Criar publicação</ReasonButton>}
+                {showSuggest && <ReasonButton color="outline-primary" size="sm" onClick={() => onSuggest(play)} reason={noAct}><i className="ri-quill-pen-line me-1" />Sugerir texto</ReasonButton>}
+                {extraButtons}
                 <Button color="link" size="sm" className="px-1" onClick={() => onDetail(play)}>Ver detalhe</Button>
             </div>
         </div>

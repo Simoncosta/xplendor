@@ -1,0 +1,534 @@
+{
+    "success": true,
+    "message": "O que publicar e quando.",
+    "data": {
+        "enabled": true,
+        "locations": [
+            {
+                "id": 990011,
+                "name": "Baixa"
+            },
+            {
+                "id": 990012,
+                "name": "Costa"
+            }
+        ],
+        "location_id": null,
+        "can_act": true,
+        "can_act_reason": null,
+        "formats": [
+            "Carrossel",
+            "Imagem única",
+            "Reels",
+            "Stories",
+            "Vídeo",
+            "Live",
+            "Infográfico",
+            "Citação",
+            "Checklist",
+            "Tutorial",
+            "Antes e depois",
+            "Bastidores",
+            "Enquete/Interativo",
+            "Depoimento",
+            "Dica de expert",
+            "Notícia",
+            "Institucional",
+            "Sazonal"
+        ],
+        "networks": [
+            "instagram",
+            "facebook"
+        ],
+        "ignore_days": 28,
+        "show_ignored": false,
+        "special_days": {
+            "2026-11-01": "Todos os Santos",
+            "2026-12-01": "Restauração da Independência",
+            "2026-12-08": "Imaculada Conceição",
+            "2026-12-25": "Natal",
+            "2027-01-01": "Ano Novo"
+        },
+        "computed_at": "2026-10-08T10:00:00+00:00",
+        "suggestions": [
+            {
+                "key": "weak_period:990011:3:almoco",
+                "type": "weak_period",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título weak_period:990011:3:almoco",
+                "sentence": "O turno ficou 50% abaixo da média (média de (valor reservado) contra (valor reservado), em 8 semanas).",
+                "numbers": {
+                    "weekday": 3,
+                    "shift": "almoco",
+                    "mode": "hours",
+                    "avg_cents": null,
+                    "mean_cents": null,
+                    "pct_below": 50,
+                    "offset_days": 1
+                },
+                "sample": {
+                    "from": "2026-08-13",
+                    "to": "2026-10-07",
+                    "occurrences": 8,
+                    "special_days_excluded": [
+                        "2026-08-15"
+                    ]
+                },
+                "theme": "Tema weak_period:990011:3:almoco",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "weak_period:990011:2:jantar",
+                "type": "weak_period",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "media",
+                "title": "Título weak_period:990011:2:jantar",
+                "sentence": "O turno ficou 30% abaixo da média (média de (valor reservado) contra (valor reservado), em 8 semanas).",
+                "numbers": {
+                    "weekday": 2,
+                    "shift": "jantar",
+                    "mode": "hours",
+                    "avg_cents": null,
+                    "mean_cents": null,
+                    "pct_below": 30,
+                    "offset_days": 1
+                },
+                "sample": {
+                    "from": "2026-08-13",
+                    "to": "2026-10-07",
+                    "occurrences": 8,
+                    "special_days_excluded": [
+                        "2026-08-15"
+                    ]
+                },
+                "theme": "Tema weak_period:990011:2:jantar",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "weak_period:990012:4:almoco",
+                "type": "weak_period",
+                "kind": "suggestion",
+                "location_id": 990012,
+                "location": "Costa",
+                "confidence": "alta",
+                "title": "Título weak_period:990012:4:almoco",
+                "sentence": "O turno ficou 40% abaixo da média (média de (valor reservado) contra (valor reservado), em 8 semanas).",
+                "numbers": {
+                    "weekday": 4,
+                    "shift": "almoco",
+                    "mode": "hours",
+                    "avg_cents": null,
+                    "mean_cents": null,
+                    "pct_below": 40,
+                    "offset_days": 1
+                },
+                "sample": {
+                    "from": "2026-08-13",
+                    "to": "2026-10-07",
+                    "occurrences": 8,
+                    "special_days_excluded": [
+                        "2026-08-15"
+                    ]
+                },
+                "theme": "Tema weak_period:990012:4:almoco",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "weak_period:990012:6:jantar",
+                "type": "weak_period",
+                "kind": "suggestion",
+                "location_id": 990012,
+                "location": "Costa",
+                "confidence": "media",
+                "title": "Título weak_period:990012:6:jantar",
+                "sentence": "O turno ficou 25% abaixo da média (média de (valor reservado) contra (valor reservado), em 8 semanas).",
+                "numbers": {
+                    "weekday": 6,
+                    "shift": "jantar",
+                    "mode": "hours",
+                    "avg_cents": null,
+                    "mean_cents": null,
+                    "pct_below": 25,
+                    "offset_days": 1
+                },
+                "sample": {
+                    "from": "2026-08-13",
+                    "to": "2026-10-07",
+                    "occurrences": 8,
+                    "special_days_excluded": [
+                        "2026-08-15"
+                    ]
+                },
+                "theme": "Tema weak_period:990012:6:jantar",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_down:990011:S1",
+                "type": "item_down",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_down:990011:S1",
+                "sentence": "Cheesecake: de 100 para 40 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "S1",
+                    "name": "Cheesecake",
+                    "qty_now": 40,
+                    "qty_before": 100,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": -60,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_down:990011:S1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_down:990011:S2",
+                "type": "item_down",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_down:990011:S2",
+                "sentence": "Mousse: de 80 para 30 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "S2",
+                    "name": "Mousse",
+                    "qty_now": 30,
+                    "qty_before": 80,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": -62.5,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_down:990011:S2",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_up:990011:P1",
+                "type": "item_up",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_up:990011:P1",
+                "sentence": "Bitoque: de 50 para 90 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "P1",
+                    "name": "Bitoque",
+                    "qty_now": 90,
+                    "qty_before": 50,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": 80,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_up:990011:P1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_up:990012:P1",
+                "type": "item_up",
+                "kind": "suggestion",
+                "location_id": 990012,
+                "location": "Costa",
+                "confidence": "alta",
+                "title": "Título item_up:990012:P1",
+                "sentence": "Bitoque: de 40 para 70 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "P1",
+                    "name": "Bitoque",
+                    "qty_now": 70,
+                    "qty_before": 40,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": 75,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_up:990012:P1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "stale_item:990012:V1",
+                "type": "stale_item",
+                "kind": "suggestion",
+                "location_id": 990012,
+                "location": "Costa",
+                "confidence": "media",
+                "title": "Título stale_item:990012:V1",
+                "sentence": "O Vinho da casa vendia 30 unidades e não vende há 35 dias.",
+                "numbers": {
+                    "product_id": "V1",
+                    "name": "Vinho da casa",
+                    "qty_now": 0,
+                    "qty_before": 30,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "days": 35
+                },
+                "sample": {
+                    "from": "2026-08-13",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema stale_item:990012:V1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            }
+        ],
+        "changes": [
+            {
+                "key": "item_down:990011:S1",
+                "type": "item_down",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_down:990011:S1",
+                "sentence": "Cheesecake: de 100 para 40 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "S1",
+                    "name": "Cheesecake",
+                    "qty_now": 40,
+                    "qty_before": 100,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": -60,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_down:990011:S1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_down:990011:S2",
+                "type": "item_down",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_down:990011:S2",
+                "sentence": "Mousse: de 80 para 30 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "S2",
+                    "name": "Mousse",
+                    "qty_now": 30,
+                    "qty_before": 80,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": -62.5,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_down:990011:S2",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_up:990011:P1",
+                "type": "item_up",
+                "kind": "suggestion",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título item_up:990011:P1",
+                "sentence": "Bitoque: de 50 para 90 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "P1",
+                    "name": "Bitoque",
+                    "qty_now": 90,
+                    "qty_before": 50,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": 80,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_up:990011:P1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            },
+            {
+                "key": "item_up:990012:P1",
+                "type": "item_up",
+                "kind": "suggestion",
+                "location_id": 990012,
+                "location": "Costa",
+                "confidence": "alta",
+                "title": "Título item_up:990012:P1",
+                "sentence": "Bitoque: de 40 para 70 unidades (de (valor reservado) para (valor reservado)).",
+                "numbers": {
+                    "product_id": "P1",
+                    "name": "Bitoque",
+                    "qty_now": 70,
+                    "qty_before": 40,
+                    "net_now_cents": null,
+                    "net_before_cents": null,
+                    "variation_pct": 75,
+                    "store_variation_pct": -4
+                },
+                "sample": {
+                    "from": "2026-09-10",
+                    "to": "2026-10-07"
+                },
+                "theme": "Tema item_up:990012:P1",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            }
+        ],
+        "top_items": [],
+        "top_categories": [],
+        "lead_time": [
+            {
+                "key": "lead_time:990011",
+                "type": "lead_time",
+                "kind": "info",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título lead_time:990011",
+                "sentence": "42,5% das reservas são feitas no próprio dia.",
+                "numbers": {
+                    "total": 200,
+                    "shares": {
+                        "same_day": 42.5,
+                        "d1_2": 30,
+                        "d3_7": 20,
+                        "d8_30": 7.5,
+                        "d31_plus": 0
+                    }
+                },
+                "sample": [],
+                "theme": "Tema lead_time:990011",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            }
+        ],
+        "delivery": [],
+        "channels": [
+            {
+                "key": "channels:990011",
+                "type": "channels",
+                "kind": "info",
+                "location_id": 990011,
+                "location": "Baixa",
+                "confidence": "alta",
+                "title": "Título channels:990011",
+                "sentence": "A maior parte das reservas é registada pela equipa.",
+                "numbers": {
+                    "total": 200,
+                    "channels": {
+                        "software": {
+                            "reservations": 120,
+                            "share_pct": 60
+                        },
+                        "moduloweb": {
+                            "reservations": 60,
+                            "share_pct": 30
+                        },
+                        "walk in": {
+                            "reservations": 20,
+                            "share_pct": 10
+                        }
+                    }
+                },
+                "sample": [],
+                "theme": "Tema channels:990011",
+                "suggested_date": "2026-10-01",
+                "priority": 0,
+                "hidden": false,
+                "hidden_until": null,
+                "post": null
+            }
+        ],
+        "availability": [],
+        "hidden_count": 0,
+        "categories_pending": 0,
+        "financial": {
+            "visible": false,
+            "note": "Sem acesso aos valores financeiros"
+        }
+    }
+}

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Restaurant;
 
-use App\Access\Access;
 use App\Models\User;
 use App\Support\Text\MoneyText;
 
@@ -21,11 +20,12 @@ use App\Support\Text\MoneyText;
  */
 final class CompassFinancials
 {
-    public const NOTE = 'Sem acesso aos valores financeiros';
+    public const NOTE = \App\Services\Compass\CompassAccess::NO_FINANCE_NOTE;
 
+    /** Quem vê as Finanças (núcleo comum da Bússola). */
     public static function visibleTo(?User $user, int $companyId): bool
     {
-        return $user !== null && app(Access::class)->can($user, $companyId, 'financas.ver')->allowed;
+        return \App\Services\Compass\CompassAccess::seesFinance($user, $companyId);
     }
 
     /** O payload para esta pessoa, com o indicador financial. */

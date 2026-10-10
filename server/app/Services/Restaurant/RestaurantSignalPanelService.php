@@ -45,14 +45,7 @@ class RestaurantSignalPanelService
     /** Pode criar publicações e ignorar sugestões? Devolve [pode, motivo se não pode]. */
     public function canAct(User $user, int $companyId): array
     {
-        if (! $this->modules->isEnabled($companyId, 'linha_editorial')) {
-            return [false, 'A Linha Editorial não está ativa nesta empresa.'];
-        }
-        if (! EditorialWorkflowService::isProducer($user, $companyId)) {
-            return [false, 'Só quem produz na Linha Editorial pode criar publicações ou ignorar sugestões.'];
-        }
-
-        return [true, null];
+        return app(\App\Services\Compass\CompassAccess::class)->canAct($user, $companyId); // núcleo comum da Bússola
     }
 
     public function panel(int $companyId, User $user, ?int $locationId = null, bool $showIgnored = false): array
