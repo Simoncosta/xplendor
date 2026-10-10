@@ -108,6 +108,8 @@ Estão em `documents/NOITE-PERGUNTAS.md`, cada uma com a decisão tomada por omi
   - **passa a poder**, em qualquer empresa: criar e alterar utilizadores, dar e retirar acessos aos colaboradores, e escolher os aprovadores;
   - **deixa de poder**, nas **outras** empresas: aceitar orçamentos, indicar o pagamento de uma cobrança, aprovar artigos do blog e decidir sobre a gestão por agências; na XPLENDOR conta como administrador, também nestas decisões (resposta 1 do pré-deploy);
   - continua a marcar as cobranças como pagas no `/admin`.
+- **Faturação da XPLENDOR só do Administrador** (complemento ao pré-deploy): os utilizadores e os aprovadores deixam de ver e aceitar os orçamentos e as cobranças (abrem os pedidos de suporte e conversam, sem o valor); a agência deixa de ver a lista dos orçamentos; o root, noutras empresas, trata-os só no `/admin`.
+- **Bússola sem Finanças:** quem não tem a permissão de ver as Finanças vê a Bússola sem os valores em euros (hoje ninguém: os perfis "como hoje" mantêm as Finanças).
 - **Empresas sem o módulo "Suporte / Tarefas"** perdem só as tarefas. O suporte com a XPLENDOR (o botão flutuante, os pedidos e os orçamentos) passou a área base, em todas as empresas (resposta 3 do pré-deploy).
 - **Empresas sem a "Análise de Marketing"** perdem a página da Meta / Anúncios (o tráfego do site continua: também é lido no separador das integrações).
 - **Empresas do PingWin sem uma secção** (lojas, artigos, faturas…) deixam de chegar a essa secção também pela API (D8).
@@ -147,4 +149,4 @@ Fora do pedido, mas notado (resolvido no pré-deploy):
 - Os problemas de exposição do disco público (`documents/r2/INVENTARIO.md`): resolvidos no ponto 5.
 - Gravar uma fatura do OCR usava PATCH numa rota só com PUT: corrigido no ponto 4.
 
-**A lista de deploy completa, com tudo o que está no `main` desde o último deploy, está em `documents/DEPLOY-LISTA-CONSOLIDADA.md`.**
+**A lista de deploy, num só bloco e pela ordem do dia, com tudo o que está no `main` desde o último deploy, está em `documents/DEPLOY-ACL-R2.md`.**

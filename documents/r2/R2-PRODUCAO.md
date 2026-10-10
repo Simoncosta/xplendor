@@ -57,6 +57,8 @@ PRIVATE_FILES_DISK=local
 
 ## 4. Deploy e migração dos ficheiros (por esta ordem)
 
+> A ordem do dia completa (cópia da base de dados, deploy, paragens para verificar, R2 e backfills) está em `documents/DEPLOY-ACL-R2.md`, que prevalece sobre os passos 1 e 2 abaixo (hoje entram 27 migrações e o `deploy.sh` já corre o Composer).
+
 1. **Deploy normal**, como habitualmente (`deploy.sh`). Entram três migrações aditivas:
    - `2026_12_20_100000_create_permission_profiles` (ACL);
    - `2026_12_21_100000_add_profile_suggestions` (ACL);
