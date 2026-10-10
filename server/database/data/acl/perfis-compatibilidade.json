@@ -1,0 +1,93 @@
+{
+    "perfis": {
+        "cliente_admin": {
+            "lado": "cliente",
+            "nome": "Administrador",
+            "negadas": [
+                "agencia.configurar"
+            ]
+        },
+        "cliente_utilizador": {
+            "lado": "cliente",
+            "nome": "Utilizador (como hoje)",
+            "negadas": [
+                "agencia.configurar",
+                "blog.aprovar",
+                "editorial.aprovar",
+                "editorial.configurar",
+                "empresa.aprovar",
+                "empresa.editar",
+                "integracoes.configurar",
+                "marca.criar",
+                "marca.editar",
+                "restauracao.configurar",
+                "utilizadores.apagar",
+                "utilizadores.configurar",
+                "utilizadores.criar",
+                "utilizadores.editar"
+            ]
+        },
+        "agencia_admin": {
+            "lado": "agencia",
+            "nome": "Administrador da agência (como hoje)",
+            "negadas": []
+        },
+        "agencia_membro": {
+            "lado": "agencia",
+            "nome": "Gestor de clientes (como hoje)",
+            "negadas": [
+                "integracoes.configurar",
+                "integracoes.editar",
+                "restauracao.configurar"
+            ]
+        },
+        "teto_agencia": {
+            "lado": "teto",
+            "nome": "Agência convidada (como hoje)",
+            "negadas": [
+                "blog.aprovar",
+                "editorial.aprovar",
+                "empresa.aprovar",
+                "empresa.editar",
+                "faturacao_xplendor.aprovar",
+                "faturacao_xplendor.ver",
+                "utilizadores.configurar"
+            ]
+        }
+    },
+    "aprovador": "editorial.aprovar",
+    "root": {
+        "propria": [
+            "GET api/v1/companies/{id}/management/requests",
+            "POST api/v1/companies/{id}/editorial/approvals/approve-all",
+            "POST api/v1/companies/{id}/editorial/posts/{postId}/approve",
+            "POST api/v1/companies/{id}/editorial/posts/{postId}/request-changes",
+            "POST api/v1/companies/{id}/management/connections",
+            "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
+            "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
+            "POST api/v1/companies/{id}/users",
+            "PUT api/v1/companies/{id}/users/{user}"
+        ],
+        "outra": [
+            "DELETE api/v1/companies/{id}/collaborators/{collaborator}/access/invite",
+            "DELETE api/v1/companies/{id}/management",
+            "GET api/v1/companies/{id}/management/requests",
+            "POST api/v1/companies/{id}/blogs/{blog}/approve",
+            "POST api/v1/companies/{id}/blogs/{blog}/back-to-draft",
+            "POST api/v1/companies/{id}/blogs/{blog}/request-changes",
+            "POST api/v1/companies/{id}/collaborators/{collaborator}/access",
+            "POST api/v1/companies/{id}/collaborators/{collaborator}/access/resend",
+            "POST api/v1/companies/{id}/collaborators/{collaborator}/access/restore",
+            "POST api/v1/companies/{id}/collaborators/{collaborator}/access/revoke",
+            "POST api/v1/companies/{id}/editorial/approvals/approve-all",
+            "POST api/v1/companies/{id}/editorial/posts/{postId}/approve",
+            "POST api/v1/companies/{id}/editorial/posts/{postId}/request-changes",
+            "POST api/v1/companies/{id}/management/connections",
+            "POST api/v1/companies/{id}/management/requests/{requestId}/accept",
+            "POST api/v1/companies/{id}/management/requests/{requestId}/decline",
+            "POST api/v1/companies/{id}/users",
+            "PUT api/v1/companies/{id}/editorial/approvers/{userId}",
+            "PUT api/v1/companies/{id}/users/{user}"
+        ]
+    }
+}

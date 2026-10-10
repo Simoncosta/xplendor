@@ -101,7 +101,7 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('check_company_subscription')->group(function () {
             // tenant: o {company} tem de ser a empresa do utilizador (ou root).
-            Route::apiResource('/companies', CompanyController::class)->except(['store'])->middleware('tenant');
+            Route::apiResource('/companies', CompanyController::class)->except(['store'])->middleware(['tenant', 'permission']);
 
             // Callback OAuth (legado) - sem prefixo de company: a empresa vem do
             // nonce em cache (state), validado contra a empresa do utilizador.
@@ -109,7 +109,8 @@ Route::prefix('v1')->group(function () {
 
             // tenant: portão único — o {id} tem de ser a empresa do utilizador (ou
             // root). Corre antes do ensure_module das rotas de dentro do grupo.
-            Route::prefix('/companies/{id}')->middleware('tenant')->group(function () {
+            // permission: a permissão de cada rota (app/Access/RoutePermissions.php), depois do tenant.
+            Route::prefix('/companies/{id}')->middleware(['tenant', 'permission'])->group(function () {
                 Route::get('/decisions', [CarDecisionController::class, 'index']);
                 Route::get('/alerts', [AlertController::class, 'index']);
                 Route::get('/alerts/unread-count', [AlertController::class, 'unreadCount']);
