@@ -282,13 +282,13 @@ const Navdata = () => {
                 updateIconSidebar(e);
             },
             subItems: [
-                { id: "tasks", label: "Tarefas", link: "/tasks", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
+                { id: "tasks", label: "Tarefas", link: "/tasks", parentId: "equipa", module: "support_tasks", permission: "tarefas.ver" },
                 // ⚠️ "Orçamentos" agora aponta para os orçamentos-em-tickets DO STAND
                 // (site_change: ver, somar, aprovar). A antiga tela de quotes avulsos
                 // (/quotes) foi ESCONDIDA do menu do cliente — serve o caso off-platform
                 // que é do ADMIN (/admin/quotes continua). A rota /quotes NÃO foi apagada.
-                { id: "orcamentos", label: "Orçamentos", link: "/orcamentos", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
-                { id: "support", label: "Suporte", link: "/support", parentId: "equipa", module: "support_tasks", permission: "suporte.ver" },
+                { id: "orcamentos", label: "Orçamentos", link: "/orcamentos", parentId: "equipa", permission: "suporte.ver" },
+                { id: "support", label: "Suporte", link: "/support", parentId: "equipa", permission: "suporte.ver" },
             ],
         },
         // ── Configurações — só conta/organização (Empresas foi para Administração;

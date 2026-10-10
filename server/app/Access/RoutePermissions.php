@@ -392,11 +392,11 @@ final class RoutePermissions
         'GET {id}/support-tickets/quotes' => 'suporte.ver',
         'GET {id}/support-tickets/{ticket}' => 'suporte.ver',
         'POST {id}/support-tickets/{ticket}/messages' => 'suporte.criar',
-        'GET {id}/tasks' => 'suporte.ver',
-        'POST {id}/tasks' => 'suporte.criar',
-        'DELETE {id}/tasks/{task}' => 'suporte.apagar',
-        'PUT {id}/tasks/{task}' => 'suporte.editar',
-        'PATCH {id}/tasks/{task}/move' => 'suporte.editar',
+        'GET {id}/tasks' => 'tarefas.ver',
+        'POST {id}/tasks' => 'tarefas.criar',
+        'DELETE {id}/tasks/{task}' => 'tarefas.apagar',
+        'PUT {id}/tasks/{task}' => 'tarefas.editar',
+        'PATCH {id}/tasks/{task}/move' => 'tarefas.editar',
         // ── agencia ──
         'POST {id}/management/first-admin' => 'agencia.configurar',
         // ── plataforma ──
@@ -419,7 +419,8 @@ final class RoutePermissions
 
     /**
      * D8: módulos verificados no backend nas rotas que hoje só o menu escondia (os 9 de
-     * restauracao_*, marketing_analytics e support_tasks). Só as rotas EXCLUSIVAS de cada
+     * restauracao_*, marketing_analytics e support_tasks, este só nas tarefas: o suporte com a
+     * XPLENDOR é base, em todas as empresas). Só as rotas EXCLUSIVAS de cada
      * módulo: as partilhadas com páginas de outros módulos (por exemplo, a lista dos
      * fornecedores do PingWin, usada nos artigos e nos fornecedores) ficam só com o módulo
      * principal. Somam-se aos ensure_module da própria rota.
@@ -494,13 +495,6 @@ final class RoutePermissions
         'DELETE {id}/integrations/pingwin/payment-conditions/{paycondId}' => 'restauracao_condicoes_pagamento',
         'GET {id}/analytics/meta/overview' => 'marketing_analytics',
         'GET {id}/analytics/meta/ad-tag-warnings' => 'marketing_analytics',
-        'GET {id}/support-tickets' => 'support_tasks',
-        'POST {id}/support-tickets' => 'support_tasks',
-        'GET {id}/support-tickets/quotes' => 'support_tasks',
-        'POST {id}/support-tickets/quotes/approve' => 'support_tasks',
-        'GET {id}/support-tickets/{ticket}' => 'support_tasks',
-        'POST {id}/support-tickets/{ticket}/messages' => 'support_tasks',
-        'PATCH {id}/support-tickets/{ticket}/quote-decision' => 'support_tasks',
         'GET {id}/tasks' => 'support_tasks',
         'POST {id}/tasks' => 'support_tasks',
         'PUT {id}/tasks/{task}' => 'support_tasks',

@@ -109,16 +109,16 @@ class AccessF3DecisionsTest extends TestCase
         $this->modules($this->client, ['pingwin', 'linha_editorial']); // sem secções, sem suporte nem análise de marketing
 
         foreach (['integrations/pingwin/locations', 'integrations/pingwin/catalog', 'ocr/invoices', 'integrations/pingwin/units', 'analytics/pingwin/calendar',
-            'support-tickets', 'tasks', 'analytics/meta/overview'] as $path) {
+            'tasks', 'analytics/meta/overview'] as $path) {
             $this->actingAs($admin, 'sanctum')->getJson($this->url($path))->assertStatus(403)->assertJsonPath('reason', 'modulo');
         }
-        // As partilhadas e as do módulo principal continuam.
-        foreach (['integrations/pingwin/suppliers', 'integrations/covermanager', 'analytics/ga4/traffic', 'marketing/bussola'] as $path) {
+        // As partilhadas e as do módulo principal continuam; o suporte com a XPLENDOR é base.
+        foreach (['integrations/pingwin/suppliers', 'integrations/covermanager', 'analytics/ga4/traffic', 'marketing/bussola', 'support-tickets', 'support-tickets/quotes'] as $path) {
             $this->assertNotSame(403, $this->actingAs($admin, 'sanctum')->getJson($this->url($path))->getStatusCode(), $path);
         }
 
         $this->modules($this->client, ['pingwin', 'restauracao_lojas', 'support_tasks', 'marketing_analytics']);
-        foreach (['integrations/pingwin/locations', 'support-tickets', 'analytics/meta/overview'] as $path) {
+        foreach (['integrations/pingwin/locations', 'tasks', 'analytics/meta/overview'] as $path) {
             $this->assertNotSame(403, $this->actingAs($admin, 'sanctum')->getJson($this->url($path))->getStatusCode(), $path);
         }
     }
@@ -128,6 +128,6 @@ class AccessF3DecisionsTest extends TestCase
         $root = User::factory()->create(['company_id' => $this->other->id, 'role' => 'root']);
         $this->modules($this->client, []);
 
-        $this->assertNotSame(403, $this->actingAs($root, 'sanctum')->getJson($this->url('support-tickets'))->getStatusCode());
+        $this->assertNotSame(403, $this->actingAs($root, 'sanctum')->getJson($this->url('tasks'))->getStatusCode());
     }
 }

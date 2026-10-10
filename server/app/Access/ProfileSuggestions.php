@@ -36,18 +36,18 @@ final class ProfileSuggestions
                 'editorial.ver', 'editorial.criar', 'editorial.editar', 'editorial.aprovar', 'editorial.apagar',
                 'blog.ver', 'blog.criar', 'blog.editar', 'blog.aprovar', 'blog.apagar',
                 'marca.ver', 'marca.criar', 'marca.editar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver',
-                'restauracao.ver', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'suporte.editar',
+                'restauracao.ver', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
             ]],
             self::FINANCE => [PermissionProfile::SIDE_CLIENT, 'Financeiro', 'Trata das finanças, das cobranças e orçamentos da XPLENDOR e do back-office da restauração.', false, [
                 'empresa.ver', 'utilizadores.ver', 'editorial.ver', 'resultados.ver',
                 'financas.ver', 'financas.criar', 'financas.editar', 'financas.apagar', 'faturacao_xplendor.ver', 'faturacao_xplendor.aprovar',
-                'restauracao.ver', 'restauracao.criar', 'restauracao.editar', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'suporte.editar',
+                'restauracao.ver', 'restauracao.criar', 'restauracao.editar', 'automovel.ver', 'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar', 'tarefas.editar',
             ]],
             // D9: vê a empresa, a Linha Editorial, o blog, a marca, a Bússola, os resultados e o
-            // suporte; não vê as Finanças, a faturação da XPLENDOR, os utilizadores, as
+            // suporte (e as tarefas, que eram do suporte); não vê as Finanças, a faturação da XPLENDOR, os utilizadores, as
             // integrações nem o back-office da restauração.
             self::READ_ONLY => [PermissionProfile::SIDE_CLIENT, 'Só leitura', 'Consulta, sem alterar nada. Não vê as finanças, a faturação, a equipa, as integrações nem o back-office da restauração.', false, [
-                'empresa.ver', 'editorial.ver', 'blog.ver', 'marca.ver', 'bussola.ver', 'resultados.ver', 'suporte.ver',
+                'empresa.ver', 'editorial.ver', 'blog.ver', 'marca.ver', 'bussola.ver', 'resultados.ver', 'suporte.ver', 'tarefas.ver',
             ]],
             // D14: o caso da Media Tailors na Yuko (utilizadores da própria empresa).
             self::GUEST_AGENCY => [PermissionProfile::SIDE_CLIENT, 'Agência convidada', 'Para uma agência que trabalha com a empresa: produz na Linha Editorial e na Bússola e vê os resultados, sem aprovar.', false, [
@@ -57,7 +57,7 @@ final class ProfileSuggestions
             self::AGENCY_MANAGER => [PermissionProfile::SIDE_AGENCY, 'Gestor de clientes', 'Produz conteúdos, trata da marca e da Bússola e vê os resultados dos clientes que gere.', false, [
                 'editorial.ver', 'editorial.criar', 'editorial.editar', 'editorial.apagar', 'blog.ver', 'blog.criar', 'blog.editar', 'blog.apagar',
                 'marca.ver', 'marca.criar', 'marca.editar', 'bussola.ver', 'bussola.criar', 'bussola.editar', 'resultados.ver', 'integracoes.ver',
-                'suporte.ver', 'suporte.criar',
+                'suporte.ver', 'suporte.criar', 'tarefas.ver', 'tarefas.criar',
             ]],
             // D11: só os clientes atribuídos, mesmo com team_scope = all.
             self::AGENCY_CREATIVE => [PermissionProfile::SIDE_AGENCY, 'Criativo externo', 'Produz conteúdos só nos clientes a que está atribuído.', true, [

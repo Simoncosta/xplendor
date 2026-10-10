@@ -45,7 +45,10 @@ final class Permissions
         'financas' => ['label' => 'Finanças', 'module' => 'finance', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'restauracao' => ['label' => 'Restauração', 'module' => 'pingwin', 'actions' => ['ver', 'criar', 'editar', 'apagar', 'configurar']],
         'automovel' => ['label' => 'Automóvel', 'module' => 'stock', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
-        'suporte' => ['label' => 'Suporte', 'module' => 'support_tasks', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
+        // O suporte com a XPLENDOR (pedidos, mensagens, orçamentos) é base, em todas as empresas;
+        // as tarefas da equipa seguem o módulo "Suporte / Tarefas".
+        'suporte' => ['label' => 'Suporte da XPLENDOR', 'module' => null, 'actions' => ['ver', 'criar']],
+        'tarefas' => ['label' => 'Tarefas', 'module' => 'support_tasks', 'actions' => ['ver', 'criar', 'editar', 'apagar']],
         'agencia' => ['label' => 'Agência gestora', 'module' => null, 'actions' => ['configurar']],
         'plataforma' => ['label' => 'Plataforma', 'module' => null, 'actions' => ['configurar']],
     ];

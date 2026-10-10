@@ -11,12 +11,12 @@ import { useModules } from "contexts/ModulesContext";
  * de WhatsApp for adicionado, empilhar acima deste (ex.: bottom: 92px). z-index
  * abaixo dos modais (1050) para não os tapar.
  *
- * ACL (F4): só aparece com o módulo "Suporte / Tarefas" ativo e a permissão suporte.ver
- * (o backend recusa as rotas do suporte sem eles, decisão D8).
+ * ACL: o suporte com a XPLENDOR é base (em todas as empresas, sem módulo); o botão só não
+ * aparece a quem o perfil não deixa ver o suporte (suporte.ver).
  */
 const SupportFab = () => {
-    const { has, can } = useModules();
-    if (!has("support_tasks") || !can("suporte.ver")) return null;
+    const { can } = useModules();
+    if (!can("suporte.ver")) return null;
 
     return (
         <Link

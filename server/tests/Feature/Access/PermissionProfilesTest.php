@@ -78,7 +78,7 @@ class PermissionProfilesTest extends TestCase
     public function test_d9_read_only_suggestion_has_exactly_the_decided_areas(): void
     {
         $this->assertSame(
-            ['blog.ver', 'bussola.ver', 'editorial.ver', 'empresa.ver', 'marca.ver', 'resultados.ver', 'suporte.ver'],
+            ['blog.ver', 'bussola.ver', 'editorial.ver', 'empresa.ver', 'marca.ver', 'resultados.ver', 'suporte.ver', 'tarefas.ver'],
             $this->suggestion(ProfileSuggestions::READ_ONLY)->permissionKeys(),
         );
     }

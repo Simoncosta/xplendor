@@ -73,30 +73,18 @@ O PingWin, o CoverManager, o GA4 e a Carmine passam a pedir a mesma permissão q
 - passa a 403: `POST {id}/integrations/pingwin/connect`
 - passa a 403: `PUT {id}/carmine-connection/{carmine_connection}`
 
-## 5. D8: os 11 módulos que só escondiam o menu passam a ser verificados no backend
+## 5. D8: os módulos que só escondiam o menu passam a ser verificados no backend
 
-As 9 secções da restauração, a Análise de Marketing e o Suporte e Tarefas. Só nas rotas exclusivas de cada módulo (`RoutePermissions::MODULES`, 81 rotas, a partir do mapa das páginas do ecrã): as rotas partilhadas por páginas de módulos diferentes ficam só com o módulo principal (por exemplo, a lista dos fornecedores do PingWin, o estado do CoverManager e o tráfego do GA4, que o separador das integrações também lê).
+As 9 secções da restauração, a Análise de Marketing e as Tarefas. Só nas rotas exclusivas de cada módulo (`RoutePermissions::MODULES`, a partir do mapa das páginas do ecrã): as rotas partilhadas por páginas de módulos diferentes ficam só com o módulo principal (por exemplo, a lista dos fornecedores do PingWin, o estado do CoverManager e o tráfego do GA4, que o separador das integrações também lê).
 
-Na fotografia, a empresa sem módulos já não tinha o PingWin, por isso a diferença vê-se no Suporte, nas Tarefas e na Meta; as secções da restauração estão cobertas em `AccessF3DecisionsTest::test_d8_…` (uma empresa com o PingWin e sem secções).
+**O suporte com a XPLENDOR é base** (resposta à pergunta 3 da noite): os pedidos de suporte, as mensagens, os orçamentos da XPLENDOR e o botão flutuante funcionam em todas as empresas, sem módulo. No catálogo, a área `suporte` ficou com "ver" e "criar", e as tarefas da equipa passaram a uma área própria, `tarefas`, que continua no módulo "Suporte / Tarefas". Os perfis de compatibilidade ficam com as duas; nos perfis personalizados, quem tinha o suporte fica também com as tarefas (migração `2026_12_23_100000_split_support_and_tasks_permissions`).
 
-**Atenção:** o botão flutuante do suporte aparece em todas as empresas. Numa empresa sem o módulo Suporte e Tarefas passa a dar 403; a F4 esconde-o quando o módulo está desligado.
+Na fotografia, a empresa sem módulos já não tinha o PingWin, por isso a diferença vê-se nas Tarefas e na Meta. As secções da restauração estão cobertas em `AccessF3DecisionsTest::test_d8_…` (uma empresa com o PingWin e sem secções).
 
-**sem_modulos_admin**
+**Administrador de uma empresa sem módulos**
 
-- passa a 403: `DELETE {id}/tasks/{task}`
-- passa a 403: `GET {id}/analytics/meta/ad-tag-warnings`
-- passa a 403: `GET {id}/analytics/meta/overview`
-- passa a 403: `GET {id}/support-tickets`
-- passa a 403: `GET {id}/support-tickets/quotes`
-- passa a 403: `GET {id}/support-tickets/{ticket}`
-- passa a 403: `GET {id}/tasks`
-- passa a 403: `PATCH {id}/support-tickets/{ticket}/quote-decision`
-- passa a 403: `PATCH {id}/tasks/{task}/move`
-- passa a 403: `POST {id}/support-tickets`
-- passa a 403: `POST {id}/support-tickets/quotes/approve`
-- passa a 403: `POST {id}/support-tickets/{ticket}/messages`
-- passa a 403: `POST {id}/tasks`
-- passa a 403: `PUT {id}/tasks/{task}`
+- passa a 403: `GET`, `POST`, `PUT` e `DELETE` das tarefas (`{id}/tasks…`), `GET {id}/analytics/meta/overview`, `GET {id}/analytics/meta/ad-tag-warnings`
+- o suporte com a XPLENDOR continua a abrir
 
 ## 6. Antes e depois (rotas com 403 por ator)
 
@@ -114,4 +102,16 @@ Na fotografia, a empresa sem módulos já não tinha o PingWin, por isso a difer
 | Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 62 |
 | Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 228 |
 
-Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.
+Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.| Ator | Antes | Depois (com o pré-deploy) |
+|---|---|---|
+| Administrador do cliente (`cliente_admin`) | 3 | 3 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 67 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 61 |
+| Root na própria empresa (`root_propria`) | 9 | 0 |
+| Root noutra empresa (`root_outra`) | 19 | 16 |
+| Administrador da agência (`agencia_admin`) | 28 | 33 |
+| Membro da agência (`agencia_membro`) | 52 | 57 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 56 |
+| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 62 |
+| Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 221 |

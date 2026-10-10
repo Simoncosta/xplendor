@@ -238,15 +238,15 @@ const authProtectedRoutes = [
 
     // Internal tools
     // Suporte (lado stand) — tickets da própria empresa.
-    { path: "/support", component: <RequireModule module="support_tasks" permission="suporte.ver"><SupportTicketsList /></RequireModule> },
+    { path: "/support", component: <RequireModule permission="suporte.ver"><SupportTicketsList /></RequireModule> },
     // Orçamentos-em-tickets do STAND (site_change): ver, somar, aprovar pacote.
-    { path: "/orcamentos", component: <RequireModule module="support_tasks" permission="suporte.ver"><OrcamentosStand /></RequireModule> },
-    { path: "/support/:id", component: <RequireModule module="support_tasks" permission="suporte.ver"><SupportTicketDetail /></RequireModule> },
+    { path: "/orcamentos", component: <RequireModule permission="suporte.ver"><OrcamentosStand /></RequireModule> },
+    { path: "/support/:id", component: <RequireModule permission="suporte.ver"><SupportTicketDetail /></RequireModule> },
 
     // Tarefas — Kanban interno da equipa (partilhado por company_id).
-    { path: "/tasks", component: <RequireModule module="support_tasks" permission="suporte.ver"><CompanyTasksKanban /></RequireModule> },
+    { path: "/tasks", component: <RequireModule module="support_tasks" permission="tarefas.ver"><CompanyTasksKanban /></RequireModule> },
     // Detalhe de uma tarefa (visual TaskDetails do template).
-    { path: "/tasks/:id", component: <RequireModule module="support_tasks" permission="suporte.ver"><CompanyTaskDetails /></RequireModule> },
+    { path: "/tasks/:id", component: <RequireModule module="support_tasks" permission="tarefas.ver"><CompanyTaskDetails /></RequireModule> },
 
     // Tráfego do site — dados GA4 da propriedade do cliente (scoped por company_id).
     { path: "/trafego-site", component: <RequireModule module="marketing_analytics" permission="resultados.ver"><WebsiteTraffic /></RequireModule> },
