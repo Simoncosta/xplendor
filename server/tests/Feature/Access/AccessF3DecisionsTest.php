@@ -71,6 +71,16 @@ class AccessF3DecisionsTest extends TestCase
             ->assertStatus(403)->assertJsonPath('reason', 'decisao_do_cliente');
     }
 
+    public function test_d1_in_its_own_company_root_counts_as_administrator_also_in_client_decisions(): void
+    {
+        $root = User::factory()->create(['company_id' => $this->client->id, 'role' => 'root']);
+        $access = app(\App\Access\Access::class);
+        foreach (['editorial.aprovar', 'blog.aprovar', 'faturacao_xplendor.aprovar', 'empresa.aprovar'] as $p) {
+            $this->assertTrue($access->can($root, $this->client->id, $p)->allowed, "{$p} na própria empresa");
+            $this->assertTrue($access->can($root, $this->other->id, $p)->denied(), "{$p} noutra empresa");
+        }
+    }
+
     public function test_d6_the_content_approver_also_approves_the_blog(): void
     {
         $author = User::factory()->create(['company_id' => $this->client->id, 'role' => 'user']);

@@ -99,16 +99,16 @@ class RootOwnCompanyAdminActionsTest extends TestCase
         ];
     }
 
-    /** ACL, D1: o root passa em tudo, exceto nas decisões do cliente (nem na própria empresa as toma). */
+    /** ACL, D1: na própria empresa o root conta como administrador, também nas decisões (aprovar os artigos). */
     public function test_root_acts_as_admin_of_its_own_company(): void
     {
-        foreach ($this->actions($this->x) as [$name, $method, $url, $body, $kind]) {
+        foreach ($this->actions($this->x) as [$name, $method, $url, $body]) {
             $status = $this->as($this->root)->json($method, $url, $body)->status();
-            $this->assertSame($kind === 'decisao' ? 403 : 200, $status, "O root na própria empresa: {$name}.");
+            $this->assertSame(200, $status, "O root na própria empresa deve poder: {$name}.");
         }
-        // As ações tiveram efeito na empresa do root (a aprovação do artigo é do cliente: não).
+        // As ações tiveram efeito na empresa do root.
         $this->assertSame('revoked', CompanyIntegration::where('company_id', $this->x->id)->value('status'));
-        $this->assertNotSame('published', DB::table('blogs')->where('company_id', $this->x->id)->value('status'));
+        $this->assertSame('published', DB::table('blogs')->where('company_id', $this->x->id)->value('status'));
         // E nada mudou na outra empresa.
         $this->assertSame('active', CompanyIntegration::where('company_id', $this->b->id)->value('status'));
         $this->assertSame(SocialConnection::STATUS_ACTIVE, SocialConnection::where('company_id', $this->b->id)->value('status'));

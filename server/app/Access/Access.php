@@ -18,9 +18,9 @@ use App\Services\Tenancy\CompanyAccess;
  *   2. plataforma: só o root;
  *   3. módulos: os módulos pedidos (os do ensure_module da rota) têm de estar ativos;
  *   4. impersonation: as rotas sensíveis (block_when_impersonating) ficam recusadas;
- *   5. root (D1): passa em todas as permissões, EXCETO as decisões do cliente (aprovar
- *      conteúdos, aceitar orçamentos, aceitar ou terminar a gestão), que exigem uma pessoa
- *      do próprio cliente — nem na própria empresa o root as toma, como hoje;
+ *   5. root (D1): passa em todas as permissões; noutras empresas, as decisões do cliente
+ *      (aprovar conteúdos, aceitar orçamentos, aceitar ou terminar a gestão) exigem uma pessoa
+ *      do próprio cliente; na própria empresa, o root conta como administrador;
  *   6. perfil: own → o perfil do utilizador (users.profile_id; + editorial.aprovar se for
  *      aprovador); agency → o perfil dentro dos clientes (users.agency_profile_id) ∩ o teto
  *      que o cliente deu à agência (company_managements.guest_profile_id). Sem perfil
@@ -66,7 +66,9 @@ class Access
         }
 
         if ($user->role === 'root') {
-            return Permissions::isClientDecision($permission)
+            // D1: noutras empresas, as decisões do cliente são do cliente. Na PRÓPRIA empresa, o
+            // root conta como administrador, também nas decisões (aprovar os artigos da XPLENDOR).
+            return Permissions::isClientDecision($permission) && $kind !== CompanyAccess::OWN
                 ? Decision::deny('Esta decisão é do cliente: tem de ser tomada por uma pessoa da própria empresa.', Decision::CLIENT_DECISION)
                 : Decision::allow();
         }

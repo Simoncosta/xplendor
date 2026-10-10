@@ -18,39 +18,24 @@ Os 403 que ainda podem sair de um controller estão numa lista fechada, cada um 
 
 O teste de arquitetura lê as subpastas (Admin, Agency) e proíbe comparar o papel num controller: o root e o admin passaram a `isRoot()` e `isAdmin()`.
 
-## 2. D1: o root passa em tudo, exceto nas decisões do cliente
+## 2. D1: o root passa em tudo; noutras empresas, as decisões do cliente são do cliente
 
-As decisões do cliente são `editorial.aprovar`, `blog.aprovar`, `faturacao_xplendor.aprovar` (aceitar orçamentos, indicar o pagamento de uma cobrança) e `empresa.aprovar` (aceitar, recusar ou terminar a gestão por uma agência). Nem na própria empresa o root as toma (como hoje na Linha Editorial).
+As decisões do cliente são `editorial.aprovar`, `blog.aprovar`, `faturacao_xplendor.aprovar` (aceitar orçamentos, indicar o pagamento de uma cobrança) e `empresa.aprovar` (aceitar, recusar ou terminar a gestão por uma agência).
 
-**Atenção:** a D1 diz "como hoje", mas hoje o root aceitava orçamentos noutras empresas, aprovava artigos do blog na própria empresa e indicava pagamentos de cobranças. Com a D1 deixa de poder (o root continua a marcar as cobranças como pagas no painel /admin). Ver `documents/NOITE-PERGUNTAS.md`.
+- **Noutras empresas**, o root não as toma: exigem uma pessoa do próprio cliente (confirmado na resposta à pergunta 1 da noite).
+- **Na própria empresa**, o root conta como administrador, também nas decisões (por exemplo, aprovar os artigos do blog da XPLENDOR). Foi corrigido no pré-deploy: na noite, o root também ficava sem as decisões na própria empresa.
 
-**root_outra**
+Hoje o root aceitava orçamentos e indicava pagamentos noutras empresas; com a D1 deixa de poder (continua a marcar as cobranças como pagas no painel `/admin`).
 
-- passa a 403: `PATCH {id}/quotes/{quote}/decision`
-- passa a 403: `PATCH {id}/support-tickets/{ticket}/quote-decision`
-- passa a 403: `POST {id}/support-tickets/quotes/approve`
-- passa a 403: `POST {id}/xplendor-charges/{chargeId}/paid`
-- deixa de dar 403: `DELETE {id}/collaborators/{collaborator}/access/invite` (agora 404)
-- deixa de dar 403: `POST {id}/collaborators/{collaborator}/access` (agora 200)
-- deixa de dar 403: `POST {id}/collaborators/{collaborator}/access/resend` (agora 200)
-- deixa de dar 403: `POST {id}/collaborators/{collaborator}/access/restore` (agora 422)
-- deixa de dar 403: `POST {id}/collaborators/{collaborator}/access/revoke` (agora 422)
-- deixa de dar 403: `POST {id}/users` (agora 200)
-- deixa de dar 403: `PUT {id}/editorial/approvers/{userId}` (agora 422)
-- deixa de dar 403: `PUT {id}/users/{user}` (agora 200)
+**Root noutra empresa**
 
-**root_propria**
+- passa a 403: `PATCH {id}/quotes/{quote}/decision`, `PATCH {id}/support-tickets/{ticket}/quote-decision`, `POST {id}/support-tickets/quotes/approve`, `POST {id}/xplendor-charges/{chargeId}/paid`
+- deixa de dar 403: `POST {id}/users`, `PUT {id}/users/{user}`, `POST {id}/collaborators/{collaborator}/access` (e reenviar, repor, retirar, cancelar o convite), `PUT {id}/editorial/approvers/{userId}`
 
-- passa a 403: `DELETE {id}/management`
-- passa a 403: `PATCH {id}/quotes/{quote}/decision`
-- passa a 403: `PATCH {id}/support-tickets/{ticket}/quote-decision`
-- passa a 403: `POST {id}/blogs/{blog}/approve`
-- passa a 403: `POST {id}/blogs/{blog}/back-to-draft`
-- passa a 403: `POST {id}/blogs/{blog}/request-changes`
-- passa a 403: `POST {id}/support-tickets/quotes/approve`
-- passa a 403: `POST {id}/xplendor-charges/{chargeId}/paid`
-- deixa de dar 403: `POST {id}/users` (agora 200)
-- deixa de dar 403: `PUT {id}/users/{user}` (agora 200)
+**Root na própria empresa**
+
+- deixa de dar 403 em todas as rotas que hoje lhe davam 403: criar e alterar utilizadores, aprovar e pedir alterações na Linha Editorial, os pedidos e as ligações da gestão por agências.
+- Nenhuma rota passa a 403.
 
 ## 3. D6: a aprovação do blog passa a blog.aprovar
 
@@ -115,18 +100,18 @@ Na fotografia, a empresa sem módulos já não tinha o PingWin, por isso a difer
 
 ## 6. Antes e depois (rotas com 403 por ator)
 
-| Ator | Antes | Depois da F3 |
+| Ator | Antes | Depois (com o pré-deploy) |
 |---|---|---|
 | Administrador do cliente (`cliente_admin`) | 3 | 3 |
-| Utilizador do cliente (`cliente_utilizador`) | 54 | 62 |
-| Utilizador aprovador (`cliente_aprovador`) | 51 | 56 |
-| Root na própria empresa (`root_propria`) | 9 | 15 |
-| Root noutra empresa (`root_outra`) | 19 | 15 |
-| Administrador da agência (`agencia_admin`) | 28 | 28 |
-| Membro da agência (`agencia_membro`) | 52 | 52 |
-| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 51 |
-| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 56 |
-| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 57 |
+| Utilizador do cliente (`cliente_utilizador`) | 54 | 67 |
+| Utilizador aprovador (`cliente_aprovador`) | 51 | 61 |
+| Root na própria empresa (`root_propria`) | 9 | 0 |
+| Root noutra empresa (`root_outra`) | 19 | 16 |
+| Administrador da agência (`agencia_admin`) | 28 | 33 |
+| Membro da agência (`agencia_membro`) | 52 | 57 |
+| Membro da agência, numa empresa que a agência criou e ainda sem administrador (`agencia_membro_criou`) | 51 | 56 |
+| Root a impersonar o administrador (`impersonacao_admin`) | 56 | 61 |
+| Root a impersonar um utilizador (`impersonacao_utilizador`) | 57 | 62 |
 | Administrador de uma empresa sem módulos (`sem_modulos_admin`) | 214 | 228 |
 
 Fotografias: `server/tests/Fixtures/acl/fotografia-antes/` (antes, congelada) e `server/tests/Fixtures/acl/fotografia/` (depois). Critério da F3 (`AccessSnapshotTest::test_403_if_and_only_if_access_denies`): para cada rota e cada ator, a resposta é 403 se e só se o Access disser que não.

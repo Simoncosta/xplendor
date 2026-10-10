@@ -1,4 +1,6 @@
-# Noite ACL e R2: perguntas pendentes
+# Noite ACL e R2: perguntas (respondidas no pré-deploy)
+
+**Respostas:** 1. D1 confirmada nas outras empresas; na própria empresa o root conta como administrador também nas decisões do cliente. 2. D9 fica como proposto. 3. O suporte com a XPLENDOR passa a área base, sem módulo; as tarefas continuam no módulo "Suporte / Tarefas".
 
 Cada pergunta tem a decisão que tomei por omissão para não parar o trabalho. Nada disto foi para produção.
 
