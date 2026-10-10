@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Card, CardBody, CardHeader, Container, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Table } from "reactstrap";
+import { Badge, Button, Container, Label, Modal, ModalBody, ModalFooter, ModalHeader, Spinner, Table } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import {
     applyAiModelToAll, chooseAiBlindCase, createAiBlindTest, getAiBlindTest, getAiBlindTests, getAiModels, updateAiModel,
 } from "helpers/laravel_helper";
@@ -74,20 +76,71 @@ export default function AiModelsPage() {
         finally { setSaving(null); }
     };
 
+    const viewToggle = (
+        <div className="xp-seg" role="tablist" aria-label="Vista">
+            <button type="button" role="tab" aria-selected={view === "functions"} className={view === "functions" ? "on" : ""} onClick={() => setView("functions")}>Funções</button>
+            <button type="button" role="tab" aria-selected={view === "blind"} className={view === "blind" ? "on" : ""} onClick={() => setView("blind")}>Teste às cegas</button>
+        </div>
+    );
+
+    const fnCols = useDataColumns<Fn>("administracao.ia.funcoes", [
+        {
+            id: "fn", header: "Função", value: (f) => f.label, hideable: false, mobile: "title",
+            cell: (f) => (
+                <div data-testid={`ai-fn-${f.key}`}>
+                    <div className="fw-semibold">{f.label}</div>
+                    {f.hint && <div className="text-muted fs-12">{f.hint}</div>}
+                </div>
+            ),
+        },
+        {
+            id: "model", header: "Modelo", value: (f) => f.model, hideable: false, className: "", sortable: false,
+            cell: (f) => {
+                const missing = missingKey(f.model);
+                return (
+                    <div style={{ minWidth: 200 }}>
+                        <XSelect small ariaLabel={`Modelo: ${f.label}`} value={f.model} disabled={saving === f.key} onChange={(m) => m !== f.model && save(f, m, f.effort)}
+                            options={f.reserve && f.model && !models.some((m) => m.key === f.model) ? [...modelOptions, { value: f.model, label: `${f.model} (reserva do .env)` }] : modelOptions} />
+                        {f.reserve && <div className="text-muted fs-12 mt-1" data-testid={`ai-fn-reserve-${f.key}`}>{f.model ? `Reserva do .env (${f.reserve_env}): ${f.model}.` : `Sem modelo: escolha um aqui ou defina ${f.reserve_env} no .env.`}</div>}
+                        {missing && <div className="text-warning fs-12 mt-1">Sem a chave da {missing.label}.</div>}
+                    </div>
+                );
+            },
+        },
+        {
+            id: "effort", header: "Raciocínio", value: (f) => f.effort, sortable: false,
+            cell: (f) => <div style={{ minWidth: 130 }}><XSelect small ariaLabel={`Raciocínio: ${f.label}`} options={effortOptions(f.model)} value={f.effort} disabled={saving === f.key} onChange={(e) => e !== f.effort && save(f, f.model, e)} /></div>,
+        },
+        {
+            id: "requests", header: "Pedidos este mês", align: "end",
+            value: (f) => data?.usage.find((x) => x.function === f.key)?.requests ?? 0,
+            cell: (f) => { const u = data?.usage.find((x) => x.function === f.key); return <>{u ? u.requests : 0}{u && u.provider_errors > 0 && <div className="text-muted fs-12">{u.provider_errors} com erro do fornecedor</div>}</>; },
+        },
+        { id: "cost", header: "Custo este mês", align: "end", nowrap: true, value: (f) => data?.usage.find((x) => x.function === f.key)?.cost_usd ?? 0, cell: (f) => usd(data?.usage.find((x) => x.function === f.key)?.cost_usd ?? 0) },
+    ] as DTColumn<Fn>[]);
+
+    const priceCols = useDataColumns<Model>("administracao.ia.precos", [
+        { id: "model", header: "Modelo", value: (m) => m.label, hideable: false, mobile: "title", cell: (m) => <span className="fw-semibold">{m.label}</span> },
+        { id: "provider", header: "Fornecedor", value: (m) => providerLabel(m.provider) },
+        { id: "input", header: "Entrada", align: "end", value: (m) => m.prices?.input, cell: (m) => (m.prices ? usd(m.prices.input, 2) : <span className="text-warning">Preço por confirmar (custo desconhecido)</span>) },
+        { id: "cached", header: "Entrada em cache", align: "end", value: (m) => m.prices?.cached_input, cell: (m) => (m.prices ? usd(m.prices.cached_input, 2) : "—") },
+        { id: "output", header: "Saída e raciocínio", align: "end", value: (m) => m.prices?.output, cell: (m) => (m.prices ? usd(m.prices.output, 2) : "—") },
+    ] as DTColumn<Model>[]);
+
+    const historyCols = useDataColumns<HistoryRow>("administracao.ia.historico", [
+        { id: "at", header: "Data", value: (h) => h.at, cell: (h) => dmyHm(h.at), nowrap: true },
+        { id: "fn", header: "Função", value: (h) => functionLabel(h.function), mobile: "title", cell: (h) => <>{functionLabel(h.function)}{h.applied_to_all && <Badge color="light" className="text-body fw-normal ms-2">Todas as funções</Badge>}</> },
+        { id: "from", header: "Antes", value: (h) => h.from ?? "", cell: (h) => <span className="text-muted">{h.from ?? "Valor inicial"}</span> },
+        { id: "to", header: "Depois", value: (h) => h.to },
+        { id: "user", header: "Por", value: (h) => h.user ?? "" },
+    ] as DTColumn<HistoryRow>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Modelos de IA" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description="O fornecedor, o modelo e o nível de raciocínio de cada função de IA. As chaves ficam só no servidor. O OCR das faturas escolhe-se aqui à parte (sem escolha, vale o modelo do .env)."
-                    actions={view === "functions"
-                        ? <ReasonButton color="primary" onClick={() => setApplyOpen(true)} reason={!data ? "A carregar." : null}><i className="ri-stack-line me-1" />Aplicar a todas as funções</ReasonButton>
-                        : <Button color="primary" onClick={() => setNewTestOpen(true)}><i className="ri-add-line me-1" />Novo teste</Button>} />
-
-                <div className="xp-seg mb-3" role="tablist" aria-label="Vista">
-                    <button type="button" role="tab" aria-selected={view === "functions"} className={view === "functions" ? "on" : ""} onClick={() => setView("functions")}>Funções</button>
-                    <button type="button" role="tab" aria-selected={view === "blind"} className={view === "blind" ? "on" : ""} onClick={() => setView("blind")}>Teste às cegas</button>
-                </div>
+                    info="O fornecedor, o modelo e o nível de raciocínio de cada função de IA. As chaves ficam só no servidor. O OCR das faturas escolhe-se aqui à parte (sem escolha, vale o modelo do .env)." />
 
                 {!data ? <div className="text-center py-5"><Spinner color="primary" /></div> : view === "functions" ? (
                     <>
@@ -96,104 +149,30 @@ export default function AiModelsPage() {
                                 <i className="ri-key-2-line me-1" />A chave da {p.label} não está configurada no servidor. As funções com um modelo da {p.label} vão falhar até ser configurada.
                             </div>
                         ))}
-                        <Card>
-                            <CardHeader><h5 className="card-title mb-0">Funções</h5></CardHeader>
-                            <CardBody>
-                                <div className="table-responsive">
-                                    <Table className="align-middle mb-0 fs-13">
-                                        <thead className="text-muted table-light">
-                                            <tr><th>Função</th><th style={{ minWidth: 200 }}>Modelo<span className="d-md-none"> e raciocínio</span></th><th className="d-none d-md-table-cell" style={{ minWidth: 130 }}>Raciocínio</th><th className="text-end d-none d-md-table-cell">Pedidos este mês</th><th className="text-end d-none d-md-table-cell">Custo este mês</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {data.functions.map((f) => {
-                                                const u = data.usage.find((x) => x.function === f.key);
-                                                const missing = missingKey(f.model);
-                                                return (
-                                                    <tr key={f.key} data-testid={`ai-fn-${f.key}`}>
-                                                        <td>
-                                                            <div className="fw-semibold">{f.label}</div>
-                                                            {f.hint && <div className="text-muted fs-12">{f.hint}</div>}
-                                                            <div className="text-muted fs-12 d-md-none mt-1">Este mês: {u ? u.requests : 0} pedidos, {usd(u?.cost_usd ?? 0)}</div>
-                                                        </td>
-                                                        <td>
-                                                            <XSelect small ariaLabel={`Modelo: ${f.label}`} value={f.model} disabled={saving === f.key} onChange={(m) => m !== f.model && save(f, m, f.effort)}
-                                                                options={f.reserve && f.model && !models.some((m) => m.key === f.model) ? [...modelOptions, { value: f.model, label: `${f.model} (reserva do .env)` }] : modelOptions} />
-                                                            {f.reserve && <div className="text-muted fs-12 mt-1" data-testid={`ai-fn-reserve-${f.key}`}>{f.model ? `Reserva do .env (${f.reserve_env}): ${f.model}.` : `Sem modelo: escolha um aqui ou defina ${f.reserve_env} no .env.`}</div>}
-                                                            {missing && <div className="text-warning fs-12 mt-1">Sem a chave da {missing.label}.</div>}
-                                                            <div className="d-md-none mt-2">
-                                                                <XSelect small ariaLabel={`Raciocínio: ${f.label}`} options={effortOptions(f.model)} value={f.effort} disabled={saving === f.key} onChange={(e) => e !== f.effort && save(f, f.model, e)} />
-                                                            </div>
-                                                        </td>
-                                                        <td className="d-none d-md-table-cell">
-                                                            <XSelect small ariaLabel={`Raciocínio: ${f.label}`} options={effortOptions(f.model)} value={f.effort} disabled={saving === f.key} onChange={(e) => e !== f.effort && save(f, f.model, e)} />
-                                                        </td>
-                                                        <td className="text-end d-none d-md-table-cell">
-                                                            {u ? u.requests : 0}
-                                                            {u && u.provider_errors > 0 && <div className="text-muted fs-12">{u.provider_errors} com erro do fornecedor</div>}
-                                                        </td>
-                                                        <td className="text-end text-nowrap d-none d-md-table-cell">{usd(u?.cost_usd ?? 0)}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </Table>
-                                </div>
-                                <p className="text-muted fs-12 mt-3 mb-0">
-                                    A troca vale a partir do pedido seguinte de cada função. O raciocínio está sempre ligado: o nível define quanto o modelo pensa antes de responder (mais raciocínio, mais custo e mais tempo).
-                                </p>
-                            </CardBody>
-                        </Card>
+                        {/* A vista (Funções / Teste às cegas) e a ação principal no cabeçalho do primeiro cartão. */}
+                        <PageCard
+                            title="Funções"
+                            info="A troca vale a partir do pedido seguinte de cada função. O raciocínio está sempre ligado: o nível define quanto o modelo pensa antes de responder (mais raciocínio, mais custo e mais tempo)."
+                            actions={<>
+                                {viewToggle}
+                                {fnCols.selector}
+                                <ReasonButton size="sm" color="primary" onClick={() => setApplyOpen(true)} reason={!data ? "A carregar." : null}><i className="ri-stack-line me-1" />Aplicar a todas as funções</ReasonButton>
+                            </>}
+                        >
+                            <DataTable columns={fnCols} data={data.functions} rowKey={(f) => f.key} caption="Funções de IA" paginate={false} />
+                        </PageCard>
 
-                        <Card>
-                            <CardHeader><h5 className="card-title mb-0">Preços</h5></CardHeader>
-                            <CardBody>
-                                <div className="table-responsive">
-                                    <Table className="align-middle mb-0 fs-13">
-                                        <thead className="text-muted table-light">
-                                            <tr><th>Modelo</th><th>Fornecedor</th><th className="text-end">Entrada</th><th className="text-end">Entrada em cache</th><th className="text-end">Saída e raciocínio</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {models.map((m) => (
-                                                <tr key={m.key}>
-                                                    <td className="fw-semibold">{m.label}</td><td>{providerLabel(m.provider)}</td>
-                                                    {m.prices ? (
-                                                        <><td className="text-end">{usd(m.prices.input, 2)}</td><td className="text-end">{usd(m.prices.cached_input, 2)}</td><td className="text-end">{usd(m.prices.output, 2)}</td></>
-                                                    ) : (
-                                                        <td colSpan={3} className="text-end text-warning">Preço por confirmar (custo desconhecido)</td>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
-                                </div>
-                                <p className="text-muted fs-12 mt-3 mb-0">Por milhão de tokens. O custo de cada pedido é calculado com estes preços e fica registado.</p>
-                            </CardBody>
-                        </Card>
+                        <PageCard title="Preços" info="Por milhão de tokens. O custo de cada pedido é calculado com estes preços e fica registado." actions={priceCols.selector}>
+                            <DataTable columns={priceCols} data={models} rowKey={(m) => m.key} caption="Preços dos modelos" />
+                        </PageCard>
 
-                        <Card>
-                            <CardHeader><h5 className="card-title mb-0">Histórico de alterações</h5></CardHeader>
-                            <CardBody>
-                                {data.history.length === 0 ? <p className="text-muted mb-0">Ainda não houve alterações: todas as funções usam os valores iniciais.</p> : (
-                                    <div className="table-responsive">
-                                        <Table className="align-middle mb-0 fs-13">
-                                            <thead className="text-muted table-light"><tr><th>Data</th><th>Função</th><th>Antes</th><th>Depois</th><th>Por</th></tr></thead>
-                                            <tbody>
-                                                {data.history.map((h, i) => (
-                                                    <tr key={i}>
-                                                        <td className="text-nowrap">{dmyHm(h.at)}</td>
-                                                        <td>{functionLabel(h.function)}{h.applied_to_all && <Badge color="light" className="text-body fw-normal ms-2">Todas as funções</Badge>}</td>
-                                                        <td className="text-muted">{h.from ?? "Valor inicial"}</td><td>{h.to}</td><td>{h.user ?? ""}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </Table>
-                                    </div>
-                                )}
-                            </CardBody>
-                        </Card>
+                        <PageCard title="Histórico de alterações" actions={historyCols.selector}>
+                            <DataTable columns={historyCols} data={data.history} rowKey={(h) => `${h.at}-${h.function}`} caption="Histórico de alterações"
+                                empty={{ message: "Ainda não houve alterações: todas as funções usam os valores iniciais." }} />
+                        </PageCard>
                     </>
                 ) : (
-                    <BlindTests functionLabel={functionLabel} />
+                    <BlindTests functionLabel={functionLabel} viewToggle={viewToggle} onNewTest={() => setNewTestOpen(true)} />
                 )}
             </Container>
 
@@ -281,7 +260,7 @@ function NewBlindTestModal({ isOpen, onClose, functions, onCreated }: { isOpen: 
     );
 }
 
-function BlindTests({ functionLabel }: { functionLabel: (k: string) => string }) {
+function BlindTests({ functionLabel, viewToggle, onNewTest }: { functionLabel: (k: string) => string; viewToggle: React.ReactNode; onNewTest: () => void }) {
     const [tests, setTests] = useState<BlindRow[] | null>(null);
     const [report, setReport] = useState<ReportRow[]>([]);
     const [open, setOpen] = useState<number | null>(null);
@@ -298,40 +277,35 @@ function BlindTests({ functionLabel }: { functionLabel: (k: string) => string })
         return () => { if (timer.current) clearTimeout(timer.current); };
     }, [tests, load]);
 
+    const testCols = useDataColumns<BlindRow>("administracao.ia.testes", [
+        { id: "fn", header: "Função", value: (t) => t.function_label, hideable: false, mobile: "title", cell: (t) => <span className="fw-semibold">{t.function_label}</span> },
+        { id: "created", header: "Criado", value: (t) => t.created_at, cell: (t) => dmyHm(t.created_at), nowrap: true },
+        { id: "status", header: "Estado", value: (t) => t.status, cell: (t) => (t.status === "generating" ? <span className="text-muted"><Spinner size="sm" className="me-1" />A gerar</span> : <Badge color="success-subtle" className="text-success fw-normal">Pronto</Badge>) },
+        { id: "chosen", header: "Avaliados", value: (t) => t.chosen, cell: (t) => `${t.chosen}/${t.total}` },
+        { id: "models", header: "Modelos", value: (t) => (t.models ? t.models.join(" e ") : ""), cell: (t) => (t.models ? t.models.join(" e ") : <span className="text-muted">Revelados no fim</span>) },
+    ] as DTColumn<BlindRow>[]);
+
     return (
         <>
-            <Card>
-                <CardHeader><h5 className="card-title mb-0">Testes</h5></CardHeader>
-                <CardBody>
-                    {tests === null ? <div className="text-center py-3"><Spinner size="sm" /></div> : tests.length === 0
-                        ? <p className="text-muted mb-0">Ainda não há testes. Use "Novo teste" para gerar 10 casos de uma função.</p>
-                        : (
-                            <div className="table-responsive">
-                                <Table className="align-middle mb-0 fs-13">
-                                    <thead className="text-muted table-light"><tr><th>Função</th><th>Criado</th><th>Estado</th><th>Avaliados</th><th>Modelos</th><th /></tr></thead>
-                                    <tbody>
-                                        {tests.map((t) => (
-                                            <tr key={t.id}>
-                                                <td className="fw-semibold">{t.function_label}</td>
-                                                <td className="text-nowrap">{dmyHm(t.created_at)}</td>
-                                                <td>{t.status === "generating" ? <span className="text-muted"><Spinner size="sm" className="me-1" />A gerar</span> : <Badge color="success-subtle" className="text-success fw-normal">Pronto</Badge>}</td>
-                                                <td>{t.chosen}/{t.total}</td>
-                                                <td>{t.models ? t.models.join(" e ") : <span className="text-muted">Revelados no fim</span>}</td>
-                                                <td className="text-end">
-                                                    <Button size="sm" color="outline-primary" onClick={() => setOpen(t.id)}>{t.complete ? "Ver" : "Avaliar"}</Button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        )}
-                </CardBody>
-            </Card>
+            <PageCard title="Testes"
+                actions={<>
+                    {viewToggle}
+                    {testCols.selector}
+                    <Button size="sm" color="primary" onClick={onNewTest}><i className="ri-add-line me-1" />Novo teste</Button>
+                </>}>
+                <DataTable
+                    columns={testCols}
+                    data={tests ?? []}
+                    rowKey={(t) => t.id}
+                    loading={tests === null}
+                    caption="Testes às cegas"
+                    empty={{ message: <>Ainda não há testes. Use "Novo teste" para gerar 10 casos de uma função.</> }}
+                    rowActions={(t) => <Button size="sm" color="outline-primary" onClick={() => setOpen(t.id)}>{t.complete ? "Ver" : "Avaliar"}</Button>}
+                />
+            </PageCard>
 
-            <Card>
-                <CardHeader><h5 className="card-title mb-0">Relatório por função</h5></CardHeader>
-                <CardBody>
+            {/* Relatório agrupado por função (duas linhas por função, com rowSpan): fica em tabela própria. */}
+            <PageCard title="Relatório por função" flush={false}>
                     {report.length === 0 ? <p className="text-muted mb-0">O relatório aparece quando um teste estiver avaliado por inteiro (os modelos só são revelados nessa altura).</p> : (
                         <div className="table-responsive">
                             <Table className="align-middle mb-0 fs-13" data-testid="blind-report">
@@ -354,8 +328,7 @@ function BlindTests({ functionLabel }: { functionLabel: (k: string) => string })
                             </Table>
                         </div>
                     )}
-                </CardBody>
-            </Card>
+            </PageCard>
 
             {open !== null && <BlindTestModal testId={open} onClose={() => { setOpen(null); load(); }} />}
         </>

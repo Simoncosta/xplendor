@@ -1,46 +1,30 @@
 // React
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 // Components
-import { Badge, Button, Card, CardBody, Col, Container, Row, Spinner } from 'reactstrap';
+import { Badge, Button, Container, Spinner } from 'reactstrap';
 import { ToastContainer, toast } from 'react-toastify';
-import XTanStackTable from 'Components/Common/XTanStackTable';
 import PageHeader from 'Components/Common/PageHeader';
+import PageCard from 'Components/Common/PageCard';
+import DataTable, { DTColumn, useDataColumns } from 'Components/Common/DataTable';
+import RestFilterBar from 'Components/Common/RestFilterBar';
 import ActionsMenu from 'Components/Common/ActionsMenu';
 import CompanyUsersModal from './components/CompanyUsersModal';
 import CompanyEditModal from './components/CompanyEditModal';
 import CompanyRequestsModal from './components/CompanyRequestsModal';
 import ManagementRequestsAdminModal from './components/ManagementRequestsAdminModal';
-import { createSelector } from 'reselect';
-// Slices
-import { getCompaniesPaginate } from 'slices/companies/thunk';
-import { getAdminAgencies, getAdminCompanyRequests, setAdminCompanyStatus } from 'helpers/laravel_helper';
+import { fetchAllPages } from 'helpers/fetchAllPages';
+import { getCompaniesPaginate, getAdminAgencies, getAdminCompanyRequests, setAdminCompanyStatus } from 'helpers/laravel_helper';
 import { confirmAction } from 'helpers/swal';
 
-const selectCompanyState = (state: any) => state.Company;
-
-const selectCompanyListViewModel = createSelector(
-    [selectCompanyState],
-    (companyState: any) => ({
-        companies: companyState.data.companies,
-        meta: companyState.data.meta,
-        loading: companyState.loading.list,
-    })
-);
-
 const CompanyList = () => {
-    const dispatch: any = useDispatch();
     document.title = "Empresas | Xplendor";
 
-    // Redux direto, sem reselect desnecessário
-    const { companies, meta, loading } = useSelector(selectCompanyListViewModel);
-
-    // Paginação controlada no pai (server-side)
-    const [pagination, setPagination] = useState({
-        pageIndex: 0,
-        pageSize: 10,
-    });
+    // UI-2d: todas as empresas (a API pagina mas não ordena); o DataTable ordena, pesquisa e
+    // pagina no browser. Ordenar passou a funcionar (antes as setas não faziam nada).
+    const [companies, setCompanies] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [search, setSearch] = useState("");
 
     const [busyId, setBusyId] = useState<number | null>(null);
     const [usersFor, setUsersFor] = useState<{ id: number; name: string } | null>(null);
@@ -72,15 +56,13 @@ const CompanyList = () => {
     };
 
     const refetch = useCallback(() => {
-        dispatch(
-            getCompaniesPaginate({
-                page: pagination.pageIndex + 1,
-                perPage: pagination.pageSize,
-            })
-        );
-    }, [dispatch, pagination.pageIndex, pagination.pageSize]);
+        setLoading(true);
+        fetchAllPages<any>((page) => getCompaniesPaginate({ page, perPage: 100 }), (r) => r?.data)
+            .then(({ rows }) => setCompanies(rows))
+            .catch(() => setCompanies([]))
+            .finally(() => setLoading(false));
+    }, []);
 
-    // Fetch sempre que mudar página ou tamanho
     useEffect(() => { refetch(); }, [refetch]);
 
     // Ativar/inativar — SEMPRE com confirmação (inativar tira acesso a utilizadores reais).
@@ -117,131 +99,104 @@ const CompanyList = () => {
         }
     }, [refetch]);
 
-    const columns = useMemo(
-        () => [
-            {
-                header: "Nome",
-                cell: (cellProps: any) => {
-                    return (
-                        <div className="d-flex align-items-center">
-                            {
-                                cellProps.row.original.logo_path && (
-                                    <div className="flex-shrink-0 me-2">
-                                        <img src={process.env.REACT_APP_PUBLIC_URL + cellProps.row.original.logo_path} alt="" className="avatar-xs rounded-circle" />
-                                    </div>
-                                )
-                            }
-                            {cellProps.row.original.fiscal_name}
+    const cols = useDataColumns<any>("administracao.empresas", [
+        {
+            id: "name", header: "Nome", value: (c) => c.fiscal_name, hideable: false, mobile: "title",
+            cell: (c) => (
+                <div className="d-flex align-items-center">
+                    {c.logo_path && (
+                        <div className="flex-shrink-0 me-2">
+                            <img src={process.env.REACT_APP_PUBLIC_URL + c.logo_path} alt="" className="avatar-xs rounded-circle" />
                         </div>
-                    )
-                },
-                accessorKey: "fiscal_name",
-                enableColumnFilter: false,
-            },
-            {
-                header: "NIF",
-                accessorKey: "nipc",
-                enableColumnFilter: false,
-            },
-            {
-                // Gestão por agências: agência, ou a agência gestora.
-                header: "Agência",
-                enableColumnFilter: false,
-                cell: (cellProps: any) => {
-                    const c = cellProps.row.original;
-                    const managedBy = c.active_management?.agency;
-                    if (c.agency_enabled_at) {
-                        const b = agencyBilling[c.id];
-                        return (
-                            <span className="d-inline-flex flex-wrap align-items-center gap-2">
-                                <Badge color="info" className="fw-normal"><i className="ri-team-line me-1" />Agência</Badge>
-                                {b && <span className="fs-12 text-muted" data-testid="agency-billing-count" title="Empresas que contam para a agência (sem subscrição própria)">Contam {b.current} este mês, {b.next} no próximo</span>}
-                            </span>
-                        );
-                    }
-                    if (managedBy) return <span className="fs-13">Gerida por <strong>{managedBy.trade_name || managedBy.fiscal_name}</strong></span>;
-                    return <span className="text-muted">-</span>;
-                },
-            },
-            {
-                header: "Estado",
-                enableColumnFilter: false,
-                cell: (cellProps: any) => {
-                    const active = !!cellProps.row.original.is_active;
+                    )}
+                    {c.fiscal_name}
+                </div>
+            ),
+        },
+        { id: "nif", header: "NIF", value: (c) => c.nipc ?? "" },
+        {
+            // Gestão por agências: agência, ou a agência gestora.
+            id: "agency", header: "Agência",
+            value: (c) => (c.agency_enabled_at ? "Agência" : c.active_management?.agency ? (c.active_management.agency.trade_name || c.active_management.agency.fiscal_name) : ""),
+            cell: (c) => {
+                const managedBy = c.active_management?.agency;
+                if (c.agency_enabled_at) {
+                    const b = agencyBilling[c.id];
                     return (
-                        <Badge color={active ? "success" : "danger"}>
-                            {active ? "Ativa" : "Inativa"}
-                        </Badge>
-                    );
-                },
-            },
-            {
-                header: "Ação",
-                cell: (cellProps: any) => {
-                    const c = cellProps.row.original;
-                    const active = !!c.is_active;
-                    const busy = busyId === c.id;
-                    const name = c.fiscal_name || `Empresa #${c.id}`;
-                    return (
-                        <div className="d-flex align-items-center gap-2">
-                            <Button size="sm" color="outline-primary" className="text-nowrap" onClick={() => setEditing(c.id)}>
-                                <i className="ri-pencil-line align-bottom me-1" />Editar
-                            </Button>
-                            <ActionsMenu size="sm" label={`Mais ações: ${name}`} disabled={busy} items={[
-                                { label: "Utilizadores", icon: "ri-team-line", onClick: () => setUsersFor({ id: c.id, name }) },
-                                { label: "Ver perfil", icon: "ri-eye-line", to: `/companies/${c.id}` },
-                                { label: "Ativar", icon: "ri-check-line", onClick: () => toggleStatus(c), hidden: active },
-                                { label: "Inativar", icon: "ri-forbid-2-line", danger: true, onClick: () => toggleStatus(c), hidden: !active },
-                            ]} />
-                            {busy && <Spinner size="sm" />}
-                        </div>
+                        <span className="d-inline-flex flex-wrap align-items-center gap-2">
+                            <Badge color="info" className="fw-normal"><i className="ri-team-line me-1" />Agência</Badge>
+                            {b && <span className="fs-12 text-muted" data-testid="agency-billing-count" title="Empresas que contam para a agência (sem subscrição própria)">Contam {b.current} este mês, {b.next} no próximo</span>}
+                        </span>
                     );
                 }
+                if (managedBy) return <span className="fs-13">Gerida por <strong>{managedBy.trade_name || managedBy.fiscal_name}</strong></span>;
+                return <span className="text-muted">-</span>;
             },
-        ],
-        [busyId, toggleStatus, agencyBilling]
-    );
+        },
+        {
+            id: "status", header: "Estado", value: (c) => (c.is_active ? "Ativa" : "Inativa"),
+            cell: (c) => <Badge color={c.is_active ? "success" : "danger"}>{c.is_active ? "Ativa" : "Inativa"}</Badge>,
+        },
+    ] as DTColumn<any>[]);
+
+    const rowActions = (c: any) => {
+        const active = !!c.is_active;
+        const busy = busyId === c.id;
+        const name = c.fiscal_name || `Empresa #${c.id}`;
+        return (
+            <>
+                <Button size="sm" color="outline-primary" className="text-nowrap" onClick={() => setEditing(c.id)}>
+                    <i className="ri-pencil-line align-bottom me-1" />Editar
+                </Button>
+                <ActionsMenu size="sm" label={`Mais ações: ${name}`} disabled={busy} items={[
+                    { label: "Utilizadores", icon: "ri-team-line", onClick: () => setUsersFor({ id: c.id, name }) },
+                    { label: "Ver perfil", icon: "ri-eye-line", to: `/companies/${c.id}` },
+                    { label: "Ativar", icon: "ri-check-line", onClick: () => toggleStatus(c), hidden: active },
+                    { label: "Inativar", icon: "ri-forbid-2-line", danger: true, onClick: () => toggleStatus(c), hidden: !active },
+                ]} />
+                {busy && <Spinner size="sm" />}
+            </>
+        );
+    };
 
     return (
         <React.Fragment>
             <div className="page-content">
+                <ToastContainer closeButton={false} limit={1} />
                 <Container fluid>
                     <PageHeader title="Empresas" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                        description="As empresas da plataforma, as agências, os pedidos de nova empresa gerida e os pedidos de gestão."
+                        info="As empresas da plataforma, as agências, os pedidos de nova empresa gerida e os pedidos de gestão." />
+                    <PageCard
+                        title="Empresas"
+                        status={!loading ? <>{companies.length} empresa{companies.length === 1 ? "" : "s"}</> : undefined}
+                        loading={loading && companies.length > 0}
                         actions={<>
-                            <Button color="outline-primary" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
+                            {cols.selector}
+                            <Button size="sm" color="outline-primary" onClick={() => setRequestsOpen(true)} data-testid="company-requests-button">
                                 <i className="ri-inbox-line align-bottom me-1" />Pedidos de empresa nova{pendingRequests > 0 ? ` (${pendingRequests})` : ""}
                             </Button>
-                            <Button color="outline-primary" onClick={() => setMgmtOpen(true)} data-testid="management-requests-button">
+                            <Button size="sm" color="outline-primary" onClick={() => setMgmtOpen(true)} data-testid="management-requests-button">
                                 <i className="ri-links-line align-bottom me-1" />Pedidos de gestão
                             </Button>
-                            <Button color="primary" onClick={() => setEditing(null)}>
+                            <Button size="sm" color="primary" onClick={() => setEditing(null)}>
                                 <i className="ri-add-line align-bottom me-1" />Nova empresa
                             </Button>
-                        </>} />
-                    <Row>
-                        <Col lg={12}>
-                            <Card id="companyList">
-                                <CardBody>
-                                    <div>
-                                        <XTanStackTable
-                                            columns={(columns || [])}
-                                            data={(companies || [])}
-                                            loading={loading}
-                                            pagination={pagination}
-                                            onPaginationChange={setPagination}
-                                            pageCount={meta?.last_page ?? 0}
-                                            total={meta?.total}
-                                            SearchPlaceholder='Pesquisar'
-                                            isBordered={true}
-                                            theadClass="text-muted table-light"
-                                        />
-                                        <ToastContainer closeButton={false} limit={1} />
-                                    </div>
-                                </CardBody>
-                            </Card>
-                        </Col>
-                    </Row>
+                        </>}
+                        filters={<RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar (nome, NIF ou agência)…"
+                            activeCount={search ? 1 : 0} onClear={() => setSearch("")} />}
+                    >
+                        <DataTable
+                            columns={cols}
+                            data={companies}
+                            rowKey={(c) => c.id}
+                            loading={loading}
+                            search={search}
+                            pageSize={10}
+                            caption="Empresas"
+                            empty={{ message: "Sem empresas." }}
+                            rowActions={rowActions}
+                        />
+                    </PageCard>
                 </Container>
             </div>
 

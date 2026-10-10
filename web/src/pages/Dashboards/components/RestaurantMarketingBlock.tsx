@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ReactApexChart from "react-apexcharts";
-import Select from "react-select";
 import { Alert, Card, CardBody, Col, Row, Spinner } from "reactstrap";
 import getChartColorsArray from "Components/Common/ChartsDynamicColor";
 import { getRestaurantMarketing } from "helpers/laravel_helper";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { MarketingComparison, RestaurantMarketing } from "common/models/restaurantMarketing.model";
+import XSelect from "Components/Common/Select";
 import DashboardSectionHeader from "./DashboardSectionHeader";
 import RecommendationsCard, { type RecommendationsState } from "./RecommendationsCard";
 import { buildInsights, comparisonTag, eur0, int, monthLong, signedPct, signedPp, usesSeasonalityWarning } from "./restaurantMarketingText";
@@ -162,18 +161,7 @@ export default function RestaurantMarketingBlock({ companyId, recommendations }:
     const header = (
         // Sem título: está dentro do separador "Marketing e resultados", que já o diz.
         <DashboardSectionHeader subtitle="Como estão a empresa e o marketing no mês escolhido.">
-            <div style={{ minWidth: 240 }}>
-                <Select
-                    styles={reactSelectTheme}
-                    menuPortalTarget={document.body}
-                    options={monthOptions}
-                    value={monthOptions.find((o) => o.value === month) ?? monthOptions[0]}
-                    onChange={(o: any) => o && setMonth(o.value)}
-                    isSearchable={false}
-                    isDisabled={loading}
-                    aria-label="Mês"
-                />
-            </div>
+            <XSelect small width={240} ariaLabel="Mês" options={monthOptions} value={month} onChange={setMonth} searchable={false} disabled={loading} />
         </DashboardSectionHeader>
     );
 

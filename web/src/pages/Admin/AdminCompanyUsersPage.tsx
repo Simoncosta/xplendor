@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { Card, CardBody, Container, Spinner, Table, Alert, Badge, Button } from "reactstrap";
+import { Container, Alert, Badge, Button } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import { getAdminCompanyUsers } from "helpers/laravel_helper";
 import { startImpersonationFlow } from "helpers/impersonation";
 import { isPlatformRoot, isRootRole } from "helpers/roles";
@@ -50,6 +52,14 @@ export default function AdminCompanyUsersPage() {
 
     useEffect(() => { if (isRoot && cid) load(); else setLoading(false); }, [isRoot, cid, load]);
 
+    const roleMeta = (role: string) => ROLE_META[role] ?? { label: role, color: "secondary" };
+    // Os hooks ficam antes do "acesso restrito" (regra dos hooks).
+    const cols = useDataColumns<AdminUser>("administracao.root-utilizadores", [
+        { id: "name", header: "Nome", value: (u) => u.name, hideable: false, mobile: "title", cell: (u) => <span className="fw-semibold">{u.name}</span> },
+        { id: "email", header: "Email", value: (u) => u.email },
+        { id: "role", header: "Perfil", value: (u) => roleMeta(u.role).label, cell: (u) => { const m = roleMeta(u.role); return <Badge color={m.color} className={`bg-${m.color}-subtle text-${m.color}`}>{m.label}</Badge>; } },
+    ] as DTColumn<AdminUser>[]);
+
     const enterAs = async (id: number) => {
         setBusy(true);
         try { await startImpersonationFlow(id); } // recarrega a app na identidade do alvo
@@ -64,58 +74,36 @@ export default function AdminCompanyUsersPage() {
         );
     }
 
-    const roleBadge = (role: string) => {
-        const m = ROLE_META[role] ?? { label: role, color: "secondary" };
-        return <Badge color={m.color} className={`bg-${m.color}-subtle text-${m.color}`}>{m.label}</Badge>;
-    };
-
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title={companyName || `Empresa #${cid}`} crumbLabel="Utilizadores"
                     breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Empresas", to: "/root/companies" }]}
-                    description="Utilizadores desta empresa."
-                    actions={<Button color="outline-primary" onClick={() => navigate("/root/companies")}><i className="ri-arrow-left-line me-1" />Voltar</Button>} />
+                    info="Utilizadores desta empresa." />
 
-                <Card>
-                    <CardBody>
-                        {loading ? (
-                            <div className="text-center py-5"><Spinner color="primary" /></div>
-                        ) : (
-                            <div className="table-responsive">
-                                <Table className="align-middle table-hover mb-0">
-                                    <thead>
-                                        <tr className="text-muted fs-12 text-uppercase">
-                                            <th>Nome</th><th>Email</th><th>Perfil</th><th className="text-end"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {users.length === 0 ? (
-                                            <tr><td colSpan={4} className="text-center text-muted py-4">Sem utilizadores.</td></tr>
-                                        ) : users.map((u) => {
-                                            const canImpersonate = !isRootRole(u.role) && u.id !== me?.id;
-                                            return (
-                                                <tr key={u.id}>
-                                                    <td className="fw-semibold">{u.name}</td>
-                                                    <td>{u.email}</td>
-                                                    <td>{roleBadge(u.role)}</td>
-                                                    <td className="text-end">
-                                                        {canImpersonate && (
-                                                            <Button color="outline-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
-                                                                <i className="ri-spy-line me-1" />Entrar como
-                                                            </Button>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </Table>
-                            </div>
-                        )}
-                    </CardBody>
-                </Card>
+                <PageCard
+                    title="Utilizadores"
+                    status={!loading ? <>{users.length} utilizador{users.length === 1 ? "" : "es"}</> : undefined}
+                    actions={<>
+                        {cols.selector}
+                        <Button size="sm" color="outline-primary" onClick={() => navigate("/root/companies")}><i className="ri-arrow-left-line me-1" />Voltar</Button>
+                    </>}
+                >
+                    <DataTable
+                        columns={cols}
+                        data={users}
+                        rowKey={(u) => u.id}
+                        loading={loading}
+                        caption="Utilizadores da empresa"
+                        empty={{ message: "Sem utilizadores." }}
+                        rowActions={(u) => (!isRootRole(u.role) && u.id !== me?.id) ? (
+                            <Button color="outline-primary" size="sm" disabled={busy} onClick={() => enterAs(u.id)}>
+                                <i className="ri-spy-line me-1" />Entrar como
+                            </Button>
+                        ) : null}
+                    />
+                </PageCard>
             </Container>
         </div>
     );

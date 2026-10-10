@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Badge, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
+import { Badge, Button, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import ReasonButton from "Components/Common/ReasonButton";
 import { ToastContainer, toast } from "react-toastify";
 import { createServiceCatalogItem, getServiceCatalog, updateServiceCatalogItem } from "helpers/laravel_helper";
@@ -73,61 +75,67 @@ const ServiceCatalogPage = () => {
         }
     };
 
+    const cols = useDataColumns<ICatalogItem>("administracao.catalogo-servicos", [
+        {
+            id: "name", header: "Serviço", value: (i) => i.name, hideable: false, mobile: "title",
+            cell: (i) => (
+                <div style={{ minWidth: 200 }}>
+                    <div className="fw-medium">{i.name}</div>
+                    {i.description && <small className="text-muted d-block">{i.description}</small>}
+                    <small className={(i.onboarding_checklist?.length ?? 0) > 0 ? "text-muted" : "text-warning"}>
+                        <i className="ri-rocket-2-line me-1" />
+                        {(i.onboarding_checklist?.length ?? 0) > 0
+                            ? `Lista de arranque: ${i.onboarding_checklist!.length} ${i.onboarding_checklist!.length === 1 ? "tarefa" : "tarefas"}`
+                            : "Sem lista de arranque"}
+                    </small>
+                </div>
+            ),
+        },
+        { id: "price", header: "Preço", value: (i) => i.unit_price, cell: (i) => <>{formatQuoteEuro(i.unit_price)} <small className="text-muted">{UNIT_LABEL[i.unit]}</small></>, align: "end", nowrap: true },
+        { id: "billing", header: "Cobrança", value: (i) => BILLING_LABEL[i.billing_type], cell: (i) => <Badge color={i.billing_type === "monthly" ? "info" : "secondary"}>{BILLING_LABEL[i.billing_type]}</Badge> },
+        {
+            id: "active", header: "Estado", value: (i) => (i.active ? 1 : 0),
+            cell: (i) => (
+                <div className="form-check form-switch mb-0">
+                    <Input className="form-check-input" type="switch" checked={i.active} onChange={() => void toggle(i)} aria-label="Ativo" />
+                    <small className="text-muted">{i.active ? "Ativo" : "Desativado"}</small>
+                </div>
+            ),
+        },
+    ] as DTColumn<ICatalogItem>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Catálogo de serviços" breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Orçamentos", to: "/admin/quotes" }]}
-                    description="Preços sugeridos nos orçamentos (editáveis em cada orçamento). Valores sem IVA."
-                    actions={<button className="btn btn-primary" onClick={() => setEditing({ ...EMPTY })}><i className="ri-add-line me-1" />Novo serviço</button>} />
+                    info="Preços sugeridos nos orçamentos (editáveis em cada orçamento). Valores sem IVA." />
 
-                <Card>
-                    <CardBody>
-                        {loading ? (
-                            <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                        ) : items.length === 0 ? (
-                            <p className="text-muted mb-0">Ainda não há serviços no catálogo.</p>
-                        ) : (
-                            <div className="table-responsive">
-                                <table className="table align-middle mb-0">
-                                    <thead className="table-light text-muted">
-                                        <tr><th>Serviço</th><th className="text-end">Preço</th><th>Cobrança</th><th>Estado</th><th /></tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((i) => (
-                                            <tr key={i.id} className={i.active ? "" : "opacity-50"}>
-                                                <td style={{ minWidth: 200 }}>
-                                                    <div className="fw-medium">{i.name}</div>
-                                                    {i.description && <small className="text-muted d-block">{i.description}</small>}
-                                                    <small className={(i.onboarding_checklist?.length ?? 0) > 0 ? "text-muted" : "text-warning"}>
-                                                        <i className="ri-rocket-2-line me-1" />
-                                                        {(i.onboarding_checklist?.length ?? 0) > 0
-                                                            ? `Lista de arranque: ${i.onboarding_checklist!.length} ${i.onboarding_checklist!.length === 1 ? "tarefa" : "tarefas"}`
-                                                            : "Sem lista de arranque"}
-                                                    </small>
-                                                </td>
-                                                <td className="text-end text-nowrap">{formatQuoteEuro(i.unit_price)} <small className="text-muted">{UNIT_LABEL[i.unit]}</small></td>
-                                                <td><Badge color={i.billing_type === "monthly" ? "info" : "secondary"}>{BILLING_LABEL[i.billing_type]}</Badge></td>
-                                                <td>
-                                                    <div className="form-check form-switch mb-0">
-                                                        <Input className="form-check-input" type="switch" checked={i.active} onChange={() => void toggle(i)} aria-label="Ativo" />
-                                                        <small className="text-muted">{i.active ? "Ativo" : "Desativado"}</small>
-                                                    </div>
-                                                </td>
-                                                <td className="text-end">
-                                                    <button className="btn btn-outline-primary btn-sm" aria-label={`Editar ${i.name}`} onClick={() => setEditing({
-                                                        id: i.id, name: i.name, description: i.description ?? "", unit_price: String(i.unit_price),
-                                                        unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: toTasks(i.onboarding_checklist),
-                                                    })}><i className="ri-edit-line" /></button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                <PageCard
+                    title="Serviços"
+                    status={!loading ? <>{items.length} serviço{items.length === 1 ? "" : "s"}</> : undefined}
+                    loading={loading && items.length > 0}
+                    actions={<>
+                        {cols.selector}
+                        <Button size="sm" color="primary" onClick={() => setEditing({ ...EMPTY })}><i className="ri-add-line me-1" />Novo serviço</Button>
+                    </>}
+                >
+                    <DataTable
+                        columns={cols}
+                        data={items}
+                        rowKey={(i) => i.id}
+                        loading={loading}
+                        caption="Catálogo de serviços"
+                        rowClassName={(i) => (i.active ? undefined : "opacity-50")}
+                        empty={{ message: "Ainda não há serviços no catálogo." }}
+                        rowActions={(i) => (
+                            <Button size="sm" color="outline-primary" aria-label={`Editar ${i.name}`} onClick={() => setEditing({
+                                id: i.id, name: i.name, description: i.description ?? "", unit_price: String(i.unit_price),
+                                unit: i.unit, billing_type: i.billing_type, active: i.active, checklist: toTasks(i.onboarding_checklist),
+                            })}><i className="ri-edit-line" /></Button>
                         )}
-                    </CardBody>
-                </Card>
+                    />
+                </PageCard>
 
                 <Modal isOpen={editing !== null} toggle={() => !saving && setEditing(null)} centered>
                     <ModalHeader toggle={() => !saving && setEditing(null)}>{editing?.id ? "Editar serviço" : "Novo serviço"}</ModalHeader>
@@ -168,18 +176,18 @@ const ServiceCatalogPage = () => {
                                 <div className="vstack gap-2">
                                     {editing.checklist.map((t, idx) => (
                                         <div key={idx} className="d-flex flex-wrap flex-md-nowrap gap-2">
-                                            <Input className="flex-grow-1" style={{ minWidth: 200 }} value={t.title} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
+                                            <Input bsSize="sm" className="flex-grow-1" style={{ minWidth: 200 }} value={t.title} maxLength={200} placeholder={`Tarefa ${idx + 1}`} aria-label={`Tarefa ${idx + 1}`}
                                                 onChange={(e) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? { ...x, title: e.target.value } : x)) })} />
                                             <XSelect small width={250} ariaLabel={`Como se marca a tarefa ${idx + 1}`} options={TASK_KEYS} value={t.key ?? ""}
                                                 onChange={(v) => setEditing({ ...editing, checklist: editing.checklist.map((x, j) => (j === idx ? { ...x, key: v || null } : x)) })} />
-                                            <button type="button" className={`btn btn-outline-primary btn-sm ${idx === 0 ? "invisible" : ""}`} aria-label="Subir"
+                                            <Button type="button" size="sm" color="outline-primary" className={idx === 0 ? "invisible" : ""} aria-label="Subir"
                                                 onClick={() => { const c = [...editing.checklist]; [c[idx - 1], c[idx]] = [c[idx], c[idx - 1]]; setEditing({ ...editing, checklist: c }); }}>
                                                 <i className="ri-arrow-up-line" />
-                                            </button>
-                                            <button type="button" className="btn btn-outline-danger btn-sm" aria-label="Remover tarefa"
+                                            </Button>
+                                            <Button type="button" size="sm" color="outline-danger" aria-label="Remover tarefa"
                                                 onClick={() => setEditing({ ...editing, checklist: editing.checklist.filter((_, j) => j !== idx) })}>
                                                 <i className="ri-delete-bin-line" />
-                                            </button>
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
@@ -191,7 +199,7 @@ const ServiceCatalogPage = () => {
                         </ModalBody>
                     )}
                     <ModalFooter>
-                        <button className="btn btn-light" onClick={() => setEditing(null)} disabled={saving}>Cancelar</button>
+                        <Button color="light" onClick={() => setEditing(null)} disabled={saving}>Cancelar</Button>
                         <ReasonButton color="primary" onClick={() => void save()} disabled={saving}
                             reason={!editing?.name.trim() ? "Indique o nome do serviço." : editing?.unit_price === "" ? "Indique o preço." : null}>
                             {saving ? <Spinner size="sm" /> : "Guardar"}

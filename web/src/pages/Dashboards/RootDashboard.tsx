@@ -98,7 +98,8 @@ export default function RootDashboard() {
     return (
         <div className="page-content">
             <Container fluid>
-                <PageHeader title="Painel de gestão" breadcrumbs={[{ label: "Dashboards" }]} description="O trabalho pendente e a escala da plataforma." />
+                <PageHeader title="Painel de gestão" breadcrumbs={[{ label: "Dashboards" }]}
+                    info={<>O trabalho pendente e a escala da plataforma. Os valores em € são <strong>pipeline comercial</strong> (orçamentos e pedidos), não são faturação das empresas.</>} />
 
                 {/* ───────── ZONA 1 — TRABALHO PENDENTE ───────── */}
                 <div className="d-flex align-items-center gap-2 mb-2">
@@ -144,8 +145,8 @@ export default function RootDashboard() {
                     </Row>
                 )}
 
-                {/* Nota clara: valores € são pipeline comercial, não faturação das empresas. */}
-                <p className="text-muted fs-12 mb-4"><i className="ri-information-line me-1" />Os valores em € são <strong>pipeline comercial</strong> (orçamentos e pedidos), não são faturação das empresas.</p>
+                {/* A nota "valores € = pipeline comercial, não faturação" está no (i) da página. */}
+                <div className="mb-4" />
 
                 {/* ───────── ZONA 2 — ESCALA ───────── */}
                 <div className="d-flex align-items-center gap-2 mb-2">

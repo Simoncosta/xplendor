@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardBody, Container, Spinner, Table, Alert, Badge } from "reactstrap";
+import { Container, Alert, Badge } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import { getAdminCompanies } from "helpers/laravel_helper";
 import { isRootRole, sessionUser } from "helpers/roles";
 
@@ -47,6 +50,16 @@ export default function AdminCompaniesPage() {
 
     useEffect(() => { if (isRoot) load(); else setLoading(false); }, [isRoot, load]);
 
+    const [search, setSearch] = useState("");
+    const statusMeta = (c: Company) => STATUS_META[c.subscription_status] ?? { label: c.subscription_status, color: "secondary" };
+    // Os hooks ficam antes do "acesso restrito" (regra dos hooks).
+    const cols = useDataColumns<Company>("administracao.root-empresas", [
+        { id: "name", header: "Empresa", value: (c) => c.name, hideable: false, mobile: "title", cell: (c) => <span className="fw-semibold">{c.name}</span> },
+        { id: "plan", header: "Plano", value: (c) => c.plan ?? "", cell: (c) => c.plan ?? <span className="text-muted">Sem plano</span> },
+        { id: "status", header: "Estado", value: (c) => statusMeta(c).label, cell: (c) => { const m = statusMeta(c); return <Badge color={m.color} className={`bg-${m.color}-subtle text-${m.color}`}>{m.label}</Badge>; } },
+        { id: "users", header: "Utilizadores", value: (c) => c.users_count, align: "end" },
+    ] as DTColumn<Company>[]);
+
     if (!isRoot) {
         return (
             <div className="page-content"><Container fluid>
@@ -55,47 +68,36 @@ export default function AdminCompaniesPage() {
         );
     }
 
-    const statusBadge = (c: Company) => {
-        const m = STATUS_META[c.subscription_status] ?? { label: c.subscription_status, color: "secondary" };
-        return <Badge color={m.color} className={`bg-${m.color}-subtle text-${m.color}`}>{m.label}</Badge>;
-    };
+    const open = (c: Company) => navigate(`/root/companies/${c.id}/users`, { state: { name: c.name } });
 
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Empresas" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description="Escolha uma empresa para ver os utilizadores e, se precisar, entrar como um deles." />
-                <Card>
-                    <CardBody>
-                        {loading ? (
-                            <div className="text-center py-5"><Spinner color="primary" /></div>
-                        ) : (
-                            <div className="table-responsive">
-                                <Table className="align-middle table-hover mb-0">
-                                    <thead>
-                                        <tr className="text-muted fs-12 text-uppercase">
-                                            <th>Empresa</th><th>Plano</th><th>Estado</th><th className="text-end">Utilizadores</th><th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {companies.length === 0 ? (
-                                            <tr><td colSpan={5} className="text-center text-muted py-4">Sem empresas.</td></tr>
-                                        ) : companies.map((c) => (
-                                            <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/root/companies/${c.id}/users`, { state: { name: c.name } })}>
-                                                <td className="fw-semibold">{c.name}</td>
-                                                <td>{c.plan ?? <span className="text-muted">Sem plano</span>}</td>
-                                                <td>{statusBadge(c)}</td>
-                                                <td className="text-end">{c.users_count}</td>
-                                                <td className="text-end"><i className="ri-arrow-right-s-line fs-4 text-muted" /></td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
+                    info="Escolha uma empresa para ver os utilizadores e, se precisar, entrar como um deles." />
+                <PageCard
+                    title="Empresas"
+                    status={!loading ? <>{companies.length} empresa{companies.length === 1 ? "" : "s"}</> : undefined}
+                    actions={cols.selector}
+                    filters={<RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar empresa…" activeCount={search ? 1 : 0} onClear={() => setSearch("")} />}
+                >
+                    <DataTable
+                        columns={cols}
+                        data={companies}
+                        rowKey={(c) => c.id}
+                        loading={loading}
+                        search={search}
+                        caption="Empresas da plataforma"
+                        onRowClick={open}
+                        empty={{ message: "Sem empresas." }}
+                        rowActions={(c) => (
+                            <button type="button" className="btn btn-outline-primary btn-sm" title="Ver utilizadores" aria-label={`Ver utilizadores: ${c.name}`} onClick={(e) => { e.stopPropagation(); open(c); }}>
+                                <i className="ri-arrow-right-s-line" />
+                            </button>
                         )}
-                    </CardBody>
-                </Card>
+                    />
+                </PageCard>
             </Container>
         </div>
     );

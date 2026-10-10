@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, CardBody, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner, Table } from "reactstrap";
-import Select from "react-select";
+import { Badge, Button, Col, Container, Input, Label, Modal, ModalBody, ModalFooter, ModalHeader, Row, Spinner } from "reactstrap";
 import { toast, ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import XSelect from "Components/Common/Select";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import { confirmAction } from "helpers/swal";
 import { createCreativeFormatRule, deleteCreativeFormatRule, getCreativeFormatRules, updateCreativeFormatRule } from "helpers/laravel_helper";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
 import type { CreativeFormatRule } from "common/models/brandAssistants.model";
 
 /**
@@ -99,53 +100,56 @@ export default function CreativeFormatRulesPage() {
 
     const formatOptions = form ? formats[form.channel] : [];
 
+    const cols = useDataColumns<CreativeFormatRule>("administracao.regras-formato", [
+        { id: "channel", header: "Rede", value: (r) => CHANNELS.find((c) => c.value === r.channel)?.label ?? r.channel },
+        { id: "band", header: "Seguidores", value: (r) => r.followers_min, cell: (r) => bandLabel(r), nowrap: true },
+        { id: "rank", header: "Ordem", value: (r) => r.rank, align: "end" },
+        { id: "format", header: "Formato", value: (r) => labelOf(r.format_key), hideable: false, mobile: "title" },
+        { id: "rate", header: "Taxa de interação", value: (r) => r.engagement_rate ?? undefined, align: "end", nowrap: true,
+            cell: (r) => (r.engagement_rate === null ? <span className="text-muted">Sem valor</span> : `${r.engagement_rate.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}%`) },
+        { id: "note", header: "Nota", value: (r) => r.note ?? "", cell: (r) => <span className="text-wrap d-inline-block" style={{ maxWidth: 260 }}>{r.note}</span>, defaultVisible: false },
+        { id: "source", header: "Fonte", value: (r) => r.source_label,
+            cell: (r) => <span className="text-wrap d-inline-block" style={{ maxWidth: 220 }}>{r.source_url ? <a href={r.source_url} target="_blank" rel="noopener noreferrer">{r.source_label}</a> : r.source_label}</span> },
+        { id: "active", header: "Estado", value: (r) => (r.is_active ? 1 : 0),
+            cell: (r) => (r.is_active ? <Badge color="success-subtle" className="text-success">Ativa</Badge> : <Badge color="light" className="text-muted">Inativa</Badge>) },
+    ] as DTColumn<CreativeFormatRule>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Regras de formato" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description={<>Referência de mercado usada pelo "Sugerir criativo" quando a conta ainda não tem histórico próprio. Cada regra indica a fonte, que é mostrada a quem recebe a sugestão.</>}
-                    actions={<Button color="primary" onClick={() => setForm({ ...EMPTY })}><i className="ri-add-line me-1" />Nova regra</Button>} />
-                <Card>
-                    <CardBody>
-                        {loading ? <div className="text-center py-4"><Spinner size="sm" /></div> : (
-                            <div className="table-responsive">
-                                <Table className="align-middle table-nowrap mb-0 fs-13">
-                                    <thead className="text-muted table-light">
-                                        <tr>
-                                            <th>Rede</th><th>Seguidores</th><th>Ordem</th><th>Formato</th><th className="text-end">Taxa de interação</th>
-                                            <th>Nota</th><th>Fonte</th><th>Estado</th><th />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {rules.map((r) => (
-                                            <tr key={r.id}>
-                                                <td>{CHANNELS.find((c) => c.value === r.channel)?.label}</td>
-                                                <td>{bandLabel(r)}</td>
-                                                <td>{r.rank}</td>
-                                                <td>{labelOf(r.format_key)}</td>
-                                                <td className="text-end">{r.engagement_rate === null ? <span className="text-muted">Sem valor</span> : `${r.engagement_rate.toLocaleString("pt-PT", { minimumFractionDigits: 2 })}%`}</td>
-                                                <td className="text-wrap" style={{ maxWidth: 260 }}>{r.note}</td>
-                                                <td className="text-wrap" style={{ maxWidth: 220 }}>
-                                                    {r.source_url ? <a href={r.source_url} target="_blank" rel="noopener noreferrer">{r.source_label}</a> : r.source_label}
-                                                </td>
-                                                <td>{r.is_active ? <Badge color="success-subtle" className="text-success">Ativa</Badge> : <Badge color="light" className="text-muted">Inativa</Badge>}</td>
-                                                <td className="text-end">
-                                                    <div className="d-inline-flex gap-1">
-                                                        <Button size="sm" color="outline-primary" onClick={() => edit(r)} aria-label="Editar"><i className="ri-pencil-line" /></Button>
-                                                        <ActionsMenu size="sm" label={`Mais ações: ${labelOf(r.format_key)}`} items={[
-                                                            { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(r) },
-                                                        ]} />
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </div>
+                    info={<>Referência de mercado usada pelo "Sugerir criativo" quando a conta ainda não tem histórico próprio. Cada regra indica a fonte, que é mostrada a quem recebe a sugestão.</>} />
+                <PageCard
+                    title="Regras"
+                    status={!loading ? <>{rules.length} regra{rules.length === 1 ? "" : "s"}{rules.some((r) => !r.is_active) ? ` · ${rules.filter((r) => !r.is_active).length} inativa(s)` : ""}</> : undefined}
+                    loading={loading && rules.length > 0}
+                    actions={<>
+                        {cols.selector}
+                        <Button size="sm" color="primary" onClick={() => setForm({ ...EMPTY })}><i className="ri-add-line me-1" />Nova regra</Button>
+                    </>}
+                >
+                    <DataTable
+                        columns={cols}
+                        data={rules}
+                        rowKey={(r) => r.id}
+                        loading={loading}
+                        caption="Regras de formato"
+                        // Estado de vazio (UI-2d): antes a tabela ficava só com o cabeçalho.
+                        empty={{
+                            message: "Ainda não há regras de formato. Sem elas, o \"Sugerir criativo\" só usa o histórico de cada conta.",
+                            action: <Button size="sm" color="outline-primary" onClick={() => setForm({ ...EMPTY })}><i className="ri-add-line me-1" />Nova regra</Button>,
+                        }}
+                        rowActions={(r) => (
+                            <>
+                                <Button size="sm" color="outline-primary" onClick={() => edit(r)} aria-label="Editar"><i className="ri-pencil-line" /></Button>
+                                <ActionsMenu size="sm" label={`Mais ações: ${labelOf(r.format_key)}`} items={[
+                                    { label: "Apagar", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(r) },
+                                ]} />
+                            </>
                         )}
-                    </CardBody>
-                </Card>
+                    />
+                </PageCard>
             </Container>
 
             <Modal isOpen={form !== null} toggle={() => setForm(null)} centered>
@@ -155,16 +159,13 @@ export default function CreativeFormatRulesPage() {
                         <Row className="g-2">
                             <Col sm={6}>
                                 <Label>Rede</Label>
-                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={CHANNELS} isSearchable={false}
-                                    value={CHANNELS.find((c) => c.value === form.channel)}
-                                    onChange={(o: any) => setForm({ ...form, channel: o.value, format_key: "" })} />
+                                <XSelect ariaLabel="Rede" options={CHANNELS} searchable={false} value={form.channel}
+                                    onChange={(v) => setForm({ ...form, channel: v as typeof form.channel, format_key: "" })} />
                             </Col>
                             <Col sm={6}>
                                 <Label>Formato</Label>
-                                <Select styles={reactSelectTheme} menuPortalTarget={document.body} options={formatOptions} isSearchable={false}
-                                    placeholder="Escolha o formato"
-                                    value={formatOptions.find((o) => o.value === form.format_key) ?? null}
-                                    onChange={(o: any) => setForm({ ...form, format_key: o?.value ?? "" })} />
+                                <XSelect ariaLabel="Formato" options={formatOptions} searchable={false} placeholder="Escolha o formato"
+                                    value={form.format_key || null} onChange={(v) => setForm({ ...form, format_key: v })} />
                             </Col>
                             <Col sm={4}><Label>Seguidores, de</Label><Input type="number" min={0} value={form.followers_min} onChange={(e) => setForm({ ...form, followers_min: e.target.value })} /></Col>
                             <Col sm={4}><Label>até</Label><Input type="number" min={0} placeholder="Sem limite" value={form.followers_max} onChange={(e) => setForm({ ...form, followers_max: e.target.value })} /></Col>

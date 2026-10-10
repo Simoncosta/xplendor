@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Label, Row, Spinner } from "reactstrap";
 import Select from "react-select";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 import { ToastContainer, toast } from "react-toastify";
@@ -14,6 +15,7 @@ import {
 import { openPdfGet } from "helpers/download_helper";
 import QuoteActivityCard from "./QuoteActivityCard";
 import QuoteSelect from "./QuoteSelect";
+import XSelect from "Components/Common/Select";
 import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { confirmAction } from "helpers/swal";
 import {
@@ -380,9 +382,7 @@ const QuoteEditor = () => {
     }));
     const versionsCard = (quote?.versions?.length ?? 0) > 0 ? (
 
-                                <Card className="mb-3">
-                                    <CardHeader><h6 className="mb-0">Versões enviadas</h6></CardHeader>
-                                    <CardBody>
+                                <PageCard className="mb-3" title="Versões enviadas" flush={false}>
                                         <ul className="list-unstyled vstack gap-2 mb-0">
                                             {quote!.versions!.map((v) => (
                                                 <li key={v.version} className="d-flex align-items-center justify-content-between gap-2">
@@ -396,10 +396,13 @@ const QuoteEditor = () => {
                                                 </li>
                                             ))}
                                         </ul>
-                                    </CardBody>
-                                </Card>
+                                </PageCard>
                             
     ) : null;
+    // As mesmas condições dos avisos do cartão "Orçamento" (cada uma calculada à parte).
+    const alertLinked = status === "sent" && !!quote?.company_id;
+    const alertChanges = !!lastChangeRequest && !!quote?.changes_requested_at && (status === "sent" || status === "draft");
+    const hasAlerts = readOnly || alertLinked || reopening || alertChanges;
     const hasMonthly = totals.buckets.monthly.count > 0;
     const hasOneOff = totals.buckets.one_off.count > 0;
 
@@ -415,67 +418,72 @@ const QuoteEditor = () => {
                     </span>}
                     crumbLabel={isNew ? "Novo orçamento" : quote?.display_number ?? "Orçamento"}
                     breadcrumbs={[{ label: "Administração", to: "/admin" }, { label: "Orçamentos", to: "/admin/quotes" }]}
-                    description={<>
+                />
+
+                {/* As ações do orçamento ficam no cabeçalho deste cartão (design-system §2); os avisos no corpo. */}
+                <PageCard
+                    title="Orçamento"
+                    status={<>
                         {dirty && !readOnly && <span className="text-warning me-2">Alterações por guardar.</span>}
                         {quote?.sent_at && <>Enviado a {longDate(quote.sent_at)}{quote.valid_until ? `, válido até ${longDate(quote.valid_until)}` : ""}{quote.legacy_status ? ", migrado do módulo anterior" : ""}.</>}
                     </>}
                     actions={<>
-                        <ReasonButton color="outline-primary" onClick={() => void preview()} disabled={busy}
+                        <ReasonButton size="sm" color="outline-primary" onClick={() => void preview()} disabled={busy}
                             reason={form.lines.length === 0 ? "Adicione pelo menos um serviço para pré-visualizar." : null}>
                             <i className="ri-file-pdf-line me-1" />Pré-visualizar PDF
                         </ReasonButton>
                         {status === "sent" && !quote?.company_id && (
-                            <Button color="outline-primary" onClick={() => void decide("refuse")} disabled={busy}><i className="ri-close-line me-1" />Recusado</Button>
+                            <Button size="sm" color="outline-primary" onClick={() => void decide("refuse")} disabled={busy}><i className="ri-close-line me-1" />Recusado</Button>
                         )}
                         {quote && (
-                            <ActionsMenu label="Mais ações do orçamento" disabled={busy} items={[
+                            <ActionsMenu size="sm" label="Mais ações do orçamento" disabled={busy} items={[
                                 { label: "Duplicar", icon: "ri-file-copy-line", onClick: () => void duplicate() },
                                 { label: "Apagar rascunho", icon: "ri-delete-bin-line", danger: true, onClick: () => void remove(), hidden: !(status === "draft" && !quote.number) },
                             ]} />
                         )}
                         {!readOnly && (
-                            <ReasonButton color={status === "draft" ? "outline-primary" : "primary"} onClick={() => void save()} disabled={busy}
+                            <ReasonButton size="sm" color={status === "draft" ? "outline-primary" : "primary"} onClick={() => void save()} disabled={busy}
                                 reason={!dirty && !isNew ? "Sem alterações por guardar." : null}>
                                 <i className="ri-save-line me-1" />{reopening ? `Guardar como versão ${(quote?.version ?? 1) + 1}` : "Guardar rascunho"}
                             </ReasonButton>
                         )}
                         {status === "draft" && (
-                            <ReasonButton color="primary" onClick={() => void send()} disabled={busy}
+                            <ReasonButton size="sm" color="primary" onClick={() => void send()} disabled={busy}
                                 reason={form.lines.length === 0 ? "Adicione pelo menos um serviço antes de enviar." : null}>
                                 <i className="ri-send-plane-line me-1" />Marcar como enviado
                             </ReasonButton>
                         )}
                         {status === "sent" && !quote?.company_id && (
-                            <Button color="success" onClick={() => void decide("accept")} disabled={busy}><i className="ri-check-line me-1" />Marcar como aceite</Button>
+                            <Button size="sm" color="success" onClick={() => void decide("accept")} disabled={busy}><i className="ri-check-line me-1" />Marcar como aceite</Button>
                         )}
-                    </>} />
-
-                {readOnly && <Alert color="success" className="py-2">Orçamento aceite: já não se altera. Para propor outras condições, duplique-o.</Alert>}
-                {status === "sent" && quote?.company_id && <Alert color="info" className="py-2">Ligado a {quote.company_name}: a empresa aceita ou recusa no painel dela.</Alert>}
-                {reopening && (
-                    <Alert color="warning" className="py-2">
-                        {status === "sent"
-                            ? `Se alterar e guardar, é criada a versão ${(quote?.version ?? 1) + 1}. A versão ${quote?.version} fica guardada com o PDF enviado.`
-                            : `Se alterar e guardar, o orçamento reabre como versão ${(quote?.version ?? 1) + 1}, em rascunho.`}
-                    </Alert>
-                )}
-
-                {lastChangeRequest && quote?.changes_requested_at && (status === "sent" || status === "draft") && (
-                    <Alert color="warning" className="py-2">
-                        <strong>O cliente pediu alterações</strong> a {longDateTime(lastChangeRequest.created_at)} (versão {lastChangeRequest.version}):
-                        <div className="mt-1" style={{ whiteSpace: "pre-line" }}>{lastChangeRequest.message}</div>
-                        {status === "sent" && <small className="d-block mt-1">Altere e guarde para criar a versão seguinte; depois envie o novo link.</small>}
-                    </Alert>
-                )}
+                    </>}
+                    bodyClassName={hasAlerts ? "px-3 pt-3" : ""}
+                >
+                    {readOnly && <Alert color="success" className="py-2">Orçamento aceite: já não se altera. Para propor outras condições, duplique-o.</Alert>}
+                    {status === "sent" && quote?.company_id && <Alert color="info" className="py-2">Ligado a {quote.company_name}: a empresa aceita ou recusa no painel dela.</Alert>}
+                    {reopening && (
+                        <Alert color="warning" className="py-2">
+                            {status === "sent"
+                                ? `Se alterar e guardar, é criada a versão ${(quote?.version ?? 1) + 1}. A versão ${quote?.version} fica guardada com o PDF enviado.`
+                                : `Se alterar e guardar, o orçamento reabre como versão ${(quote?.version ?? 1) + 1}, em rascunho.`}
+                        </Alert>
+                    )}
+    
+                    {lastChangeRequest && quote?.changes_requested_at && (status === "sent" || status === "draft") && (
+                        <Alert color="warning" className="py-2">
+                            <strong>O cliente pediu alterações</strong> a {longDateTime(lastChangeRequest.created_at)} (versão {lastChangeRequest.version}):
+                            <div className="mt-1" style={{ whiteSpace: "pre-line" }}>{lastChangeRequest.message}</div>
+                            {status === "sent" && <small className="d-block mt-1">Altere e guarde para criar a versão seguinte; depois envie o novo link.</small>}
+                        </Alert>
+                    )}
+                </PageCard>
 
                 <Row className="g-3">
                         <Col xl={8}>
                             {quote && <QuoteActivityCard quote={quote} activity={activity} loading={activityLoading} />}
                             <fieldset disabled={readOnly}>
                             {/* Cliente */}
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Cliente</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Cliente" flush={false}>
                                     <div className="d-flex gap-3 mb-3">
                                         <div className="form-check">
                                             <Input className="form-check-input" type="radio" id="cm-existing" checked={form.customerMode === "existing"} onChange={() => set("customerMode", "existing")} />
@@ -515,37 +523,29 @@ const QuoteEditor = () => {
                                             value={form.company_id} onChange={(v) => set("company_id", v)} />
                                         <small className="text-muted">Com ligação, a empresa recebe um email quando o orçamento é enviado e decide no painel dela.</small>
                                     </div>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {/* Apresentação */}
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Apresentação</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Apresentação" flush={false}>
                                     <Label className="form-label">Título (opcional)</Label>
                                     <Input className="mb-2" value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Ex.: Presença digital e tráfego pago" />
                                     <Label className="form-label">Introdução (opcional, aparece no PDF)</Label>
                                     <Input type="textarea" rows={3} value={form.intro} onChange={(e) => set("intro", e.target.value)}
                                         placeholder="Ex.: Proposta para gestão das redes sociais e das campanhas de anúncios." />
                                     <small className="text-muted">Título e introdução são opcionais: se ficarem vazios, não aparecem no PDF.</small>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {/* Linhas */}
-                            <Card className="mb-3">
-                                <CardHeader className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                                    <h6 className="mb-0">Serviços</h6>
-                                    {!readOnly && (
-                                        <div className="d-flex gap-2 flex-wrap" style={{ minWidth: 0 }}>
-                                            <div style={{ minWidth: 260 }}>
-                                                <Select classNamePrefix="react-select" styles={reactSelectTheme} menuPortalTarget={document.body} placeholder="Adicionar do catálogo" value={null}
-                                                    noOptionsMessage={() => "Sem resultados"} options={catalogOptions} onChange={(opt: any) => opt && addFromCatalog(opt.item)} />
-                                            </div>
-                                            <button type="button" className="btn btn-outline-primary btn-sm" onClick={addCustom}><i className="ri-add-line me-1" />Linha personalizada</button>
-                                        </div>
-                                    )}
-                                </CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Serviços" flush={false}
+                                actions={!readOnly ? (
+                                    <>
+                                        {/* Escolher um serviço acrescenta a linha (o seletor volta a ficar vazio). */}
+                                        <XSelect<number> small width={260} searchable ariaLabel="Adicionar do catálogo" placeholder="Adicionar do catálogo" value={null}
+                                            options={catalogOptions.map((o) => ({ value: o.value, label: o.label }))}
+                                            onChange={(v) => { const it = catalog.find((c) => c.id === v); if (it) addFromCatalog(it); }} />
+                                        <button type="button" className="btn btn-outline-primary btn-sm" onClick={addCustom}><i className="ri-add-line me-1" />Linha personalizada</button>
+                                    </>
+                                ) : undefined}>
                                     {form.lines.length === 0 ? (
                                         <p className="text-muted mb-0">Sem linhas. Adicione serviços do catálogo ou uma linha personalizada.</p>
                                     ) : (
@@ -621,13 +621,10 @@ const QuoteEditor = () => {
                                             ))}
                                         </div>
                                     )}
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {/* Desconto de pacote */}
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Desconto de pacote (opcional)</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Desconto de pacote (opcional)" flush={false}>
                                     <Row className="g-2 align-items-end">
                                         <Col md={4}>
                                             <Label className="form-label" for="package-type">Tipo</Label>
@@ -672,13 +669,10 @@ const QuoteEditor = () => {
                                             </>
                                         )}
                                     </Row>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
 
                             {/* Condições */}
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Condições</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Condições" flush={false}>
                                     {/* Cada condição só aparece (aqui e no PDF) quando há linhas do tipo a que se refere. */}
                                     <Row className="g-2">
                                         {!hasMonthly && !hasOneOff && (
@@ -714,8 +708,7 @@ const QuoteEditor = () => {
                                             <small className="text-muted d-block mt-1">Sempre no PDF: "{VAT_NOTE}" e "{ADS_NOTE}"</small>
                                         </Col>
                                     </Row>
-                                </CardBody>
-                            </Card>
+                            </PageCard>
                             </fieldset>
                         </Col>
 
@@ -726,9 +719,7 @@ const QuoteEditor = () => {
                                 (display: contents) para os totais ficarem fixos em toda a coluna e as notas seguirem o scroll. */}
                             <div style={stickyMode === "all" ? stickyStyle : stickyMode === "totals" ? { display: "contents" } : undefined}>
                             <div ref={totalsRef} style={stickyMode === "totals" ? stickyStyle : undefined}>
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Totais (sem IVA)</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Totais (sem IVA)" flush={false}>
                                     {!hasMonthly && !hasOneOff && <p className="text-muted mb-0">Acrescente linhas para ver os totais.</p>}
                                     {hasMonthly && (
                                         <div className="border rounded p-3 mb-2">
@@ -749,17 +740,13 @@ const QuoteEditor = () => {
                                         </div>
                                     )}
                                     {(hasMonthly || hasOneOff) && <p className="fw-semibold fs-13 mb-0">{VAT_NOTE}</p>}
-                                </CardBody>
-                            </Card>
+                            </PageCard>
                             </div>
 
                             <div ref={notesRef}>
-                            <Card className="mb-3">
-                                <CardHeader><h6 className="mb-0">Notas internas</h6></CardHeader>
-                                <CardBody>
+                            <PageCard className="mb-3" title="Notas internas" flush={false}>
                                     <Input type="textarea" rows={3} disabled={readOnly} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Não aparecem no PDF nem para o cliente." />
-                                </CardBody>
-                            </Card>
+                            </PageCard>
                             </div>
                             </div>
 

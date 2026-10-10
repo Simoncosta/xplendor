@@ -4,8 +4,11 @@ import { toast, ToastContainer } from "react-toastify";
 import { adminChargeAction, adminChargeFilePath, createAdminCharge, getAdminCharges, getAdminCompanies } from "helpers/laravel_helper";
 import { openFileGet, openPdfGet } from "helpers/download_helper";
 import { AdminCharge, CHARGE_STATUS_META, ChargeStatus, dmy, euro } from "common/models/charge.model";
-import XSelect from "pages/Editorial/XSelect";
+import XSelect from "Components/Common/Select";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
 import ActionsMenu from "Components/Common/ActionsMenu";
 import ReasonButton from "Components/Common/ReasonButton";
 
@@ -97,13 +100,64 @@ export default function AdminChargesPage() {
         try { await navigator.clipboard.writeText(c.link); toast.success("Link copiado."); } catch { window.prompt("Copie o link:", c.link); }
     };
 
+    const cols = useDataColumns<AdminCharge>("administracao.cobrancas", [
+        { id: "company", header: "Empresa", value: (c) => c.company, hideable: false, mobile: "title", cell: (c) => <span className="fw-semibold">{c.company}</span> },
+        {
+            id: "description", header: "Descrição", value: (c) => c.description,
+            cell: (c) => (
+                <div style={{ minWidth: 180 }}>
+                    <div className="text-break">{c.description}</div>
+                    {c.recipients.length === 0 && <div className="fs-12 text-danger">Sem destinatário</div>}
+                    {c.status === "payment_indicated" && (
+                        <div className="fs-12 mt-1 text-info-emphasis">
+                            <i className="ri-information-line me-1" />Pagamento indicado a {dmy(c.payment_indicated_at)} ({c.payment_indicated_via === "link" ? "pelo link" : "na plataforma"}){c.payment_note ? `: ${c.payment_note}` : ""}
+                        </div>
+                    )}
+                    {c.status === "cancelled" && c.cancel_reason && <div className="fs-12 mt-1 text-muted">Anulada: {c.cancel_reason}</div>}
+                </div>
+            ),
+        },
+        {
+            id: "due", header: "Vence a", value: (c) => c.due_date, nowrap: true,
+            cell: (c) => <><span className={c.overdue ? "text-danger fw-semibold" : ""}>{dmy(c.due_date)}</span>{c.overdue && <Badge color="danger" className="ms-2 fw-normal">Vencida</Badge>}</>,
+        },
+        { id: "reminders", header: "Lembretes", value: (c) => (c.reminders_enabled ? 1 : 0), cell: (c) => (c.reminders_enabled ? `Ligados${c.last_reminder_on ? `, último a ${dmy(c.last_reminder_on)}` : ""}` : "Desligados"), defaultVisible: false },
+        { id: "opened", header: "Aberto", value: (c) => c.open_count, cell: (c) => `${c.open_count} ${c.open_count === 1 ? "vez" : "vezes"}`, defaultVisible: false, nowrap: true },
+        { id: "amount", header: "Valor", value: (c) => c.amount, cell: (c) => <span className="fw-semibold">{euro(c.amount)}</span>, align: "end", nowrap: true },
+        { id: "status", header: "Estado", value: (c) => CHARGE_STATUS_META[c.status].label, cell: (c) => <Badge color={CHARGE_STATUS_META[c.status].color} className="fw-normal">{CHARGE_STATUS_META[c.status].label}</Badge> },
+    ] as DTColumn<AdminCharge>[]);
+
+    const rowActions = (c: AdminCharge) => {
+        const live = c.status === "open" || c.status === "payment_indicated";
+        return (
+            <>
+                <Button size="sm" color="outline-primary" title="Ver a fatura" aria-label={`Fatura: ${c.description}`} onClick={async () => { const r = await openPdfGet(adminChargeFilePath(c.id, "invoice")); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
+                    <i className="ri-file-pdf-2-line" />
+                </Button>
+                {live && (
+                    <Button size="sm" color="success" disabled={busy === c.id} onClick={() => act(c, "paid", "Cobrança marcada como paga.")}>
+                        <i className="ri-check-double-line me-1" />{c.status === "payment_indicated" ? "Confirmar pagamento" : "Marcar como paga"}
+                    </Button>
+                )}
+                <ActionsMenu size="sm" label={`Mais ações: ${c.description}`} disabled={busy === c.id} items={[
+                    { label: "Enviar agora", icon: "ri-mail-send-line", hidden: !live, onClick: () => act(c, "send", "Email enviado.") },
+                    { label: "Comprovativo", icon: "ri-attachment-2", hidden: !c.has_proof, onClick: async () => { const r = await openFileGet(adminChargeFilePath(c.id, "proof")); if (!r.ok) toast.error("Não foi possível abrir o comprovativo."); } },
+                    { label: "Copiar link", icon: "ri-link", hidden: !c.link, onClick: () => copyLink(c) },
+                    { label: "Recusar o pagamento indicado", icon: "ri-close-circle-line", hidden: c.status !== "payment_indicated", onClick: () => { setText(""); setDialog({ kind: "refuse", charge: c }); } },
+                    { label: "Anular", icon: "ri-forbid-2-line", danger: true, hidden: !live, onClick: () => { setText(""); setDialog({ kind: "cancel", charge: c }); } },
+                ]} />
+            </>
+        );
+    };
+
+    const FL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Cobranças" breadcrumbs={[{ label: "Administração" }]}
-                    description="Faturas da XPLENDOR aos clientes (emitidas no programa certificado; aqui só se carregam e acompanham)."
-                    actions={<Button color="primary" onClick={() => setCreating(true)}><i className="ri-add-line me-1" />Nova cobrança</Button>} />
+                    info="Faturas da XPLENDOR aos clientes (emitidas no programa certificado; aqui só se carregam e acompanham)." />
 
                 <Row className="g-3 mb-3">
                     <Col sm={6} xl={4}><Stat icon="ri-time-line" color="warning" label="Em aberto" value={euro(summary?.open_amount ?? 0)} /></Col>
@@ -111,80 +165,43 @@ export default function AdminChargesPage() {
                     <Col sm={12} xl={4}><Stat icon="ri-checkbox-circle-line" color="info" label="Pagamentos indicados por confirmar" value={summary?.indicated_count ?? 0} /></Col>
                 </Row>
 
-                <Card>
-                    <CardBody>
-                        <Row className="g-2 mb-3 align-items-end">
-                            <Col sm={4} lg={3}>
-                                <Label for="charges-status" className="mb-1">Estado</Label>
-                                <XSelect<string> id="charges-status" value={fStatus} onChange={setFStatus}
+                <PageCard
+                    title="Cobranças"
+                    status={!loading ? <>{charges.length} cobrança{charges.length === 1 ? "" : "s"}</> : undefined}
+                    loading={loading && charges.length > 0}
+                    actions={<>
+                        {cols.selector}
+                        <Button size="sm" color="primary" onClick={() => setCreating(true)}><i className="ri-add-line me-1" />Nova cobrança</Button>
+                    </>}
+                    filters={
+                        <RestFilterBar activeCount={(fStatus ? 1 : 0) + (fCompany ? 1 : 0) + (fOverdue ? 1 : 0)} onClear={() => { setFStatus(""); setFCompany(0); setFOverdue(false); }}>
+                            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                                <Label for="charges-status" className={FL}>Estado</Label>
+                                <XSelect<string> small id="charges-status" value={fStatus} onChange={setFStatus} searchable={false}
                                     options={[{ value: "", label: "Todos" }, ...(Object.keys(CHARGE_STATUS_META) as ChargeStatus[]).map((s) => ({ value: s, label: CHARGE_STATUS_META[s].label }))]} />
-                            </Col>
-                            <Col sm={5} lg={4}>
-                                <Label for="charges-company" className="mb-1">Empresa</Label>
-                                <XSelect<number> id="charges-company" value={fCompany} onChange={setFCompany} searchable options={[{ value: 0, label: "Todas" }, ...companies]} />
-                            </Col>
-                            <Col sm={3} lg="auto">
-                                <div className="form-check form-switch mb-2">
-                                    <Input type="switch" className="form-check-input" id="charges-overdue" checked={fOverdue} onChange={(e) => setFOverdue(e.target.checked)} />
-                                    <Label className="form-check-label" for="charges-overdue">Só vencidas</Label>
-                                </div>
-                            </Col>
-                        </Row>
-
-                        {loading ? <div className="text-center py-4"><Spinner size="sm" /></div> : charges.length === 0 ? (
-                            <p className="text-muted text-center py-4 mb-0">Sem cobranças para os filtros escolhidos.</p>
-                        ) : (
-                            <ul className="list-unstyled mb-0" data-testid="charges-list">
-                                {charges.map((c) => (
-                                    <li key={c.id} className={`border rounded p-3 mb-2 ${c.overdue ? "border-danger" : ""}`} data-charge={c.id}>
-                                        <div className="d-flex flex-wrap align-items-start gap-2">
-                                            <div className="me-auto min-w-0">
-                                                <div className="fw-semibold">{c.company}</div>
-                                                <div className="text-truncate">{c.description}</div>
-                                                <div className="text-muted fs-12">
-                                                    Vence a <span className={c.overdue ? "text-danger fw-semibold" : ""}>{dmy(c.due_date)}</span>
-                                                    {c.overdue && <Badge color="danger" className="ms-2 fw-normal">Vencida</Badge>}
-                                                    {" · "}{c.reminders_enabled ? `Lembretes ligados${c.last_reminder_on ? `, último a ${dmy(c.last_reminder_on)}` : ""}` : "Lembretes desligados"}
-                                                    {" · "}Aberto {c.open_count} {c.open_count === 1 ? "vez" : "vezes"}
-                                                    {c.recipients.length === 0 && <span className="text-danger"> · Sem destinatário</span>}
-                                                </div>
-                                                {c.status === "payment_indicated" && (
-                                                    <div className="fs-12 mt-1 text-info-emphasis">
-                                                        <i className="ri-information-line me-1" />Pagamento indicado a {dmy(c.payment_indicated_at)} ({c.payment_indicated_via === "link" ? "pelo link" : "na plataforma"}){c.payment_note ? `: ${c.payment_note}` : ""}
-                                                    </div>
-                                                )}
-                                                {c.status === "cancelled" && c.cancel_reason && <div className="fs-12 mt-1 text-muted">Anulada: {c.cancel_reason}</div>}
-                                            </div>
-                                            <div className="text-end">
-                                                <div className="fs-16 fw-semibold">{euro(c.amount)}</div>
-                                                <Badge color={CHARGE_STATUS_META[c.status].color} className="fw-normal">{CHARGE_STATUS_META[c.status].label}</Badge>
-                                            </div>
-                                        </div>
-                                        <div className="d-flex flex-wrap gap-1 mt-2">
-                                            <Button size="sm" color="outline-primary" onClick={async () => { const r = await openPdfGet(adminChargeFilePath(c.id, "invoice")); if (!r.ok) toast.error("Não foi possível abrir a fatura."); }}>
-                                                <i className="ri-file-pdf-2-line me-1" />Fatura
-                                            </Button>
-                                            {(c.status === "open" || c.status === "payment_indicated") && (
-                                                <>
-                                                    <Button size="sm" color="outline-primary" disabled={busy === c.id} onClick={() => act(c, "send", "Email enviado.")}><i className="ri-mail-send-line me-1" />Enviar agora</Button>
-                                                    <Button size="sm" color="success" disabled={busy === c.id} onClick={() => act(c, "paid", "Cobrança marcada como paga.")}>
-                                                        <i className="ri-check-double-line me-1" />{c.status === "payment_indicated" ? "Confirmar pagamento" : "Marcar como paga"}
-                                                    </Button>
-                                                </>
-                                            )}
-                                            <ActionsMenu size="sm" label={`Mais ações: ${c.description}`} disabled={busy === c.id} items={[
-                                                { label: "Comprovativo", icon: "ri-attachment-2", hidden: !c.has_proof, onClick: async () => { const r = await openFileGet(adminChargeFilePath(c.id, "proof")); if (!r.ok) toast.error("Não foi possível abrir o comprovativo."); } },
-                                                { label: "Copiar link", icon: "ri-link", hidden: !c.link, onClick: () => copyLink(c) },
-                                                { label: "Recusar o pagamento indicado", icon: "ri-close-circle-line", hidden: c.status !== "payment_indicated", onClick: () => { setText(""); setDialog({ kind: "refuse", charge: c }); } },
-                                                { label: "Anular", icon: "ri-forbid-2-line", danger: true, hidden: !(c.status === "open" || c.status === "payment_indicated"), onClick: () => { setText(""); setDialog({ kind: "cancel", charge: c }); } },
-                                            ]} />
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
-                    </CardBody>
-                </Card>
+                            </div>
+                            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                                <Label for="charges-company" className={FL}>Empresa</Label>
+                                <XSelect<number> small id="charges-company" value={fCompany} onChange={setFCompany} searchable options={[{ value: 0, label: "Todas" }, ...companies]} />
+                            </div>
+                            <div className="form-check form-switch mb-1 align-self-center" style={{ flex: "0 0 auto" }}>
+                                <Input type="switch" className="form-check-input" id="charges-overdue" checked={fOverdue} onChange={(e) => setFOverdue(e.target.checked)} />
+                                <Label className="form-check-label fs-12" for="charges-overdue">Só vencidas</Label>
+                            </div>
+                        </RestFilterBar>
+                    }
+                >
+                    <DataTable
+                        data-testid="charges-list"
+                        columns={cols}
+                        data={charges}
+                        rowKey={(c) => c.id}
+                        loading={loading}
+                        caption="Cobranças"
+                        empty={{ message: "Sem cobranças para os filtros escolhidos." }}
+                        rowActions={rowActions}
+                    />
+                </PageCard>
             </Container>
 
             <Modal isOpen={creating} toggle={() => busy !== "new" && setCreating(false)} centered>

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Alert, Card, CardBody, Col, Row, Spinner, Table } from "reactstrap";
+import { Alert, Col, Row, Spinner } from "reactstrap";
 import { getAutomotiveHub, getAutomotiveHubFunnel } from "helpers/laravel_helper";
 import type { AutomotiveFunnel, AutomotiveHub, FunnelRow, FunnelSortKey, HubPrice, SortDirection } from "common/models/automotiveHub.model";
 import type { Recommendation, RecommendationLevel } from "common/models/recommendation.model";
-import Pagination from "Components/Common/Pagination";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
 import { MetricCard } from "./AutomotiveMarketingBlock";
 import { eur2 } from "./automotiveMarketingText";
 import { eur0, int } from "./restaurantMarketingText";
@@ -119,27 +120,6 @@ const Cpl = ({ value, state }: { value: number | null; state: FunnelRow["cpl_sta
  * viaturas, antes da paginação): ordenar por vistas dá o top real, não só o da
  * página. Primeiro clique: maior primeiro; segundo clique na mesma coluna: inverte.
  */
-function SortableTh({ label, sortKey, sort, onSort }: {
-    label: string;
-    sortKey: FunnelSortKey;
-    sort: { by: FunnelSortKey; direction: SortDirection };
-    onSort: (key: FunnelSortKey) => void;
-}) {
-    const active = sort.by === sortKey;
-    const icon = !active ? "ri-arrow-up-down-line opacity-50" : sort.direction === "desc" ? "ri-arrow-down-line" : "ri-arrow-up-line";
-    return (
-        <th className="text-end" aria-sort={active ? (sort.direction === "desc" ? "descending" : "ascending") : "none"}>
-            <button
-                type="button"
-                className={`btn btn-link btn-sm p-0 text-decoration-none fs-13 ${active ? "text-primary fw-semibold" : "text-muted"}`}
-                onClick={() => onSort(sortKey)}
-                title={`Ordenar por ${label.toLowerCase()}`}
-            >
-                {label} <i className={icon} />
-            </button>
-        </th>
-    );
-}
 
 function FunnelCard({ companyId }: { companyId: number }) {
     const [days, setDays] = useState<14 | 30>(30);
@@ -167,97 +147,77 @@ function FunnelCard({ companyId }: { companyId: number }) {
     };
 
     const t = data?.totals;
+    const DEFAULT_SORT = { by: "days_in_stock" as FunnelSortKey, direction: "desc" as SortDirection };
+
+    const cols = useDataColumns<FunnelRow>("dashboard.automovel.funil", [
+        { id: "car", header: "Viatura", value: (r) => r.car_title, hideable: false, mobile: "title", sortable: false,
+            cell: (r) => <Link to={`/cars/${r.car_id}`} className="text-body fw-medium" style={{ minWidth: 180, display: "inline-block" }}>{r.car_title || `Viatura n.º ${r.car_id}`}</Link> },
+        { id: "days", header: "Dias em stock", value: (r) => r.days_in_stock, sortKey: "days_in_stock", align: "end", cell: (r) => int(r.days_in_stock) },
+        { id: "price", header: "Preço face ao mercado", cell: (r) => <PriceBadge price={r.price} /> },
+        { id: "views", header: "Vistas", value: (r) => r.views, sortKey: "views", align: "end", cell: (r) => int(r.views) },
+        { id: "contacts", header: "Contactos", value: (r) => r.contacts, sortKey: "contacts", align: "end", cell: (r) => int(r.contacts) },
+        { id: "leads", header: "Leads", value: (r) => r.leads, sortKey: "leads", align: "end", cell: (r) => <>{int(r.leads)}{r.paid_leads > 0 && <span className="text-muted fs-11"> ({int(r.paid_leads)} pagas)</span>}</> },
+        { id: "sale", header: "Venda", cell: (r) => (r.sold ? <span className="badge bg-success-subtle text-success fw-normal">Vendida {dm(r.sold_at)}</span> : <span className="text-muted">—</span>) },
+        { id: "spend", header: "Investimento", align: "end", cell: (r) => (r.paid_spend > 0 ? eur0(r.paid_spend) : <span className="text-muted">—</span>) },
+        { id: "cpl", header: "CPL pago", align: "end", cell: (r) => <Cpl value={r.cpl} state={r.cpl_state} />, defaultVisible: false },
+        { id: "ad", header: "Anúncio", cell: (r) => <AdStatus s={r.ad_status} />, defaultVisible: false },
+    ] as DTColumn<FunnelRow>[]);
+
+    const sortId: Record<string, string> = { days_in_stock: "days", views: "views", contacts: "contacts", leads: "leads" };
 
     return (
-        <Card className="mb-3">
-            <CardBody>
-                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                    <div>
-                        <h6 className="text-uppercase text-muted fs-12 mb-1">Funil por viatura</h6>
-                        <p className="text-muted fs-12 mb-0">
-                            Vistas, contactos diretos (WhatsApp, chamada, telefone), leads e venda nos últimos {days} dias, com o investimento Meta atribuído a cada viatura.
-                        </p>
-                    </div>
-                    <div className="xp-seg" role="tablist" aria-label="Período do funil">
-                        {([14, 30] as const).map((d) => (
-                            <button key={d} type="button" role="tab" aria-selected={days === d} className={days === d ? "on" : ""} onClick={() => { setDays(d); setPage(1); }}>{d} dias</button>
-                        ))}
-                    </div>
+        <PageCard
+            title="Funil por viatura"
+            info={<>Vistas, contactos diretos (WhatsApp, chamada, telefone), leads e venda nos últimos {days} dias, com o investimento Meta atribuído a cada viatura.</>}
+            loading={loading && !!data}
+            actions={<>
+                <div className="xp-seg" role="tablist" aria-label="Período do funil">
+                    {([14, 30] as const).map((d) => (
+                        <button key={d} type="button" role="tab" aria-selected={days === d} className={days === d ? "on" : ""} onClick={() => { setDays(d); setPage(1); }}>{d} dias</button>
+                    ))}
                 </div>
-
-                {loading && !data ? (
-                    <div className="py-3 text-center"><Spinner size="sm" color="primary" /></div>
-                ) : error || !data ? (
-                    <p className="text-muted mb-0 fs-13">Não foi possível carregar o funil. Tente novamente dentro de momentos.</p>
-                ) : data.rows.length === 0 ? (
-                    <p className="text-muted mb-0 fs-13">Sem viaturas em stock nem vendidas neste período.</p>
-                ) : (
-                    <div className="table-responsive" style={{ opacity: loading ? 0.6 : 1 }}>
-                        <Table className="table-sm align-middle mb-0 fs-13">
-                            <thead className="text-muted">
-                                <tr>
-                                    <th>Viatura</th>
-                                    <SortableTh label="Dias em stock" sortKey="days_in_stock" sort={sort} onSort={onSort} />
-                                    <th>Preço face ao mercado</th>
-                                    <SortableTh label="Vistas" sortKey="views" sort={sort} onSort={onSort} />
-                                    <SortableTh label="Contactos" sortKey="contacts" sort={sort} onSort={onSort} />
-                                    <SortableTh label="Leads" sortKey="leads" sort={sort} onSort={onSort} />
-                                    <th>Venda</th>
-                                    <th className="text-end">Investimento</th>
-                                    <th className="text-end">CPL pago</th>
-                                    <th>Anúncio</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.rows.map((r) => (
-                                    <tr key={r.car_id}>
-                                        <td style={{ minWidth: 180 }}><Link to={`/cars/${r.car_id}`} className="text-body fw-medium">{r.car_title || `Viatura n.º ${r.car_id}`}</Link></td>
-                                        <td className="text-end">{int(r.days_in_stock)}</td>
-                                        <td><PriceBadge price={r.price} /></td>
-                                        <td className="text-end">{int(r.views)}</td>
-                                        <td className="text-end">{int(r.contacts)}</td>
-                                        <td className="text-end">{int(r.leads)}{r.paid_leads > 0 && <span className="text-muted fs-11"> ({int(r.paid_leads)} pagas)</span>}</td>
-                                        <td>{r.sold ? <span className="badge bg-success-subtle text-success fw-normal">Vendida {dm(r.sold_at)}</span> : <span className="text-muted">—</span>}</td>
-                                        <td className="text-end">{r.paid_spend > 0 ? eur0(r.paid_spend) : <span className="text-muted">—</span>}</td>
-                                        <td className="text-end"><Cpl value={r.cpl} state={r.cpl_state} /></td>
-                                        <td><AdStatus s={r.ad_status} /></td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                            {t && (
-                                <tfoot className="fw-semibold">
-                                    <tr>
-                                        <td>Total de todas as páginas ({int(t.cars)} viaturas)</td>
-                                        <td />
-                                        <td />
-                                        <td className="text-end">{int(t.views)}</td>
-                                        <td className="text-end">{int(t.contacts)}</td>
-                                        <td className="text-end">{int(t.leads)}</td>
-                                        <td>{int(t.sales)} {t.sales === 1 ? "venda" : "vendas"}</td>
-                                        <td className="text-end">{t.paid_spend > 0 ? eur0(t.paid_spend) : "—"}</td>
-                                        <td className="text-end"><Cpl value={t.cpl} state={t.cpl_state} /></td>
-                                        <td />
-                                    </tr>
-                                </tfoot>
-                            )}
-                        </Table>
-                    </div>
-                )}
-                {data && data.pagination.last_page > 1 && (
-                    <div className="mt-3">
-                        <Pagination
-                            currentPage={data.pagination.current_page}
-                            lastPage={data.pagination.last_page}
-                            total={data.pagination.total}
-                            perPage={data.pagination.per_page}
-                            from={data.pagination.from}
-                            to={data.pagination.to}
-                            onPageChange={(p) => setPage(p)}
-                        />
-                    </div>
-                )}
-            </CardBody>
-        </Card>
+                {cols.selector}
+            </>}
+        >
+            {error && !data ? (
+                <p className="text-muted mb-0 fs-13 p-3">Não foi possível carregar o funil. Tente novamente dentro de momentos.</p>
+            ) : (
+                <DataTable
+                    columns={cols}
+                    data={data?.rows ?? []}
+                    rowKey={(r) => r.car_id}
+                    mode="server"
+                    loading={loading}
+                    caption="Funil por viatura"
+                    empty={{ message: "Sem viaturas em stock nem vendidas neste período." }}
+                    footerRow={t && (data?.rows.length ?? 0) > 0 ? {
+                        label: `Total de todas as páginas (${int(t.cars)} viaturas)`,
+                        cells: {
+                            views: int(t.views), contacts: int(t.contacts), leads: int(t.leads),
+                            sale: `${int(t.sales)} ${t.sales === 1 ? "venda" : "vendas"}`,
+                            spend: t.paid_spend > 0 ? eur0(t.paid_spend) : "—",
+                            cpl: <Cpl value={t.cpl} state={t.cpl_state} />,
+                        },
+                    } : undefined}
+                    server={data ? {
+                        page: data.pagination.current_page,
+                        lastPage: data.pagination.last_page,
+                        total: data.pagination.total,
+                        perPage: data.pagination.per_page,
+                        from: data.pagination.from,
+                        to: data.pagination.to,
+                        onPageChange: setPage,
+                        sort: { id: sortId[sort.by] ?? "days", desc: sort.direction === "desc" },
+                        onSortChange: (next) => {
+                            // Sem ordenação volta à de omissão (dias em stock, decrescente); se já era essa, passa a crescente.
+                            const isDefault = sort.by === DEFAULT_SORT.by && sort.direction === DEFAULT_SORT.direction;
+                            setSort(next ? { by: next.key as FunnelSortKey, direction: next.desc ? "desc" : "asc" } : (isDefault ? { by: DEFAULT_SORT.by, direction: "asc" } : DEFAULT_SORT));
+                            setPage(1);
+                        },
+                    } : undefined}
+                />
+            )}
+        </PageCard>
     );
 }
 
@@ -385,14 +345,11 @@ export default function AutomotiveHubStock({ companyId, onHighCount }: {
             )}
 
             {/* ── RECOMENDAÇÕES (o mesmo motor do contador do separador) ── */}
-            <Card className="mb-3">
-                <CardBody>
-                    <div className="d-flex flex-wrap align-items-baseline justify-content-between gap-2 mb-3">
-                        <h6 className="text-uppercase text-muted fs-12 mb-0"><i className="ri-lightbulb-flash-line me-1 text-warning" />Recomendações</h6>
-                        {recs.total > recs.recommendations.length && (
-                            <span className="text-muted fs-12">As {recs.recommendations.length} mais prioritárias de {int(recs.total)}, uma por viatura.</span>
-                        )}
-                    </div>
+            <PageCard
+                title={<><i className="ri-lightbulb-flash-line me-1 text-warning" />Recomendações</>}
+                flush={false}
+                status={recs.total > recs.recommendations.length ? <>As {recs.recommendations.length} mais prioritárias de {int(recs.total)}, uma por viatura.</> : undefined}
+            >
                     {recs.recommendations.length === 0 ? (
                         <p className="text-muted mb-0 fs-13">Sem recomendações neste momento.</p>
                     ) : (
@@ -403,8 +360,7 @@ export default function AutomotiveHubStock({ companyId, onHighCount }: {
                     {recs.notices.map((n) => (
                         <p key={n.code} className="text-muted fs-12 mb-0 mt-2"><i className="ri-information-line me-1" />{n.message}</p>
                     ))}
-                </CardBody>
-            </Card>
+            </PageCard>
 
             {/* ── FUNIL POR VIATURA ── */}
             <FunnelCard companyId={companyId} />

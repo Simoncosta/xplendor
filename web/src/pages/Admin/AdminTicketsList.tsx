@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Card, CardBody, Col, Container, Row, Badge, Spinner, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
+import { useNavigate } from "react-router-dom";
+import { Card, CardBody, Col, Container, Row, Badge, Modal, ModalHeader, ModalBody, ModalFooter } from "reactstrap";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
+import XSelect from "Components/Common/Select";
 import { ToastContainer, toast } from "react-toastify";
-import Select from "react-select";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
 import { getAdminTickets, getAdminTicketsSummary, updateAdminTicketStatus, getAdminTicketsQuotePipeline } from "helpers/laravel_helper";
 import {
     ISupportTicket, SupportTicketStatus, SupportTicketType, QuoteStatus,
@@ -24,23 +26,6 @@ const PIPELINE_CARDS: { key: QuoteStatus; color: string; icon: string }[] = [
 
 type ViewMode = "list" | "kanban";
 
-type FilterOption = { value: string; label: string };
-
-/** Filtro com o react-select da app (segue o tema claro/escuro). "" = todos. */
-const FilterSelect = ({ value, onChange, options, label, searchable = false }: {
-    value: string; onChange: (v: string) => void; options: FilterOption[]; label: string; searchable?: boolean;
-}) => (
-    <Select
-        aria-label={label}
-        styles={reactSelectTheme}
-        menuPortalTarget={document.body}
-        isSearchable={searchable}
-        noOptionsMessage={() => "Sem resultados"}
-        options={options}
-        value={options.find((o) => o.value === value) ?? options[0]}
-        onChange={(o: any) => onChange(o?.value ?? "")}
-    />
-);
 
 interface Summary { open: number; in_review: number; pending: number; resolved: number; closed: number; total: number; }
 
@@ -56,6 +41,7 @@ const TYPE_OPTIONS: SupportTicketType[] = ["idea", "improvement", "bug", "sugges
  */
 const AdminTicketsList = () => {
     document.title = "Administração do suporte | Xplendor";
+    const navigate = useNavigate();
 
     const [summary, setSummary] = useState<Summary | null>(null);
     const [tickets, setTickets] = useState<ISupportTicket[]>([]);
@@ -164,18 +150,54 @@ const AdminTicketsList = () => {
         { label: "Total", value: summary?.total ?? 0, color: "secondary", icon: "ri-stack-line" },
     ]), [summary]);
 
+    const FL = "text-muted fw-semibold fs-11 text-uppercase mb-1";
+    const cols = useDataColumns<ISupportTicket>("administracao.tickets", [
+        {
+            id: "select", header: "Selecionar", hideable: false, sortable: false,
+            cell: (t) => (t.type === "site_change" && t.quoted_amount != null)
+                ? <input type="checkbox" className="form-check-input mt-0" checked={selected.has(t.id)} onChange={() => toggleSel(t.id)} onClick={(e) => e.stopPropagation()} aria-label={`Selecionar orçamento: ${t.title}`} />
+                : null,
+        },
+        {
+            id: "title", header: "Ticket", value: (t) => t.title, hideable: false, mobile: "title",
+            cell: (t) => {
+                const tm = TICKET_TYPE_META[t.type];
+                const isPaid = t.type === "site_change";
+                return (
+                    <span className="d-inline-flex align-items-center gap-2" style={{ minWidth: 0 }}>
+                        <span className="avatar-xs flex-shrink-0"><span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span></span>
+                        <span className="fw-medium text-break">
+                            {t.title}
+                            {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago{t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}</span>}
+                        </span>
+                    </span>
+                );
+            },
+        },
+        { id: "company", header: "Empresa", value: (t) => t.company_name ?? `Empresa #${t.company_id}`, mobile: "subtitle", cell: (t) => <span className="fw-semibold">{t.company_name ?? `Empresa #${t.company_id}`}</span> },
+        { id: "type", header: "Tipo", value: (t) => TICKET_TYPE_META[t.type].label },
+        { id: "author", header: "Autor", value: (t) => t.author_name ?? "", cell: (t) => t.author_name || "—", defaultVisible: false },
+        { id: "messages", header: "Mensagens", value: (t) => t.messages_count ?? 0, cell: (t) => t.messages_count || "—", align: "end" },
+        {
+            id: "status", header: "Estado",
+            value: (t) => (t.type === "site_change" && t.quote_status ? QUOTE_STATUS_META[t.quote_status].label : TICKET_STATUS_META[t.status].label),
+            cell: (t) => {
+                const qm = t.type === "site_change" && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
+                const sm = TICKET_STATUS_META[t.status];
+                return qm ? <Badge color={qm.color}>{qm.label}</Badge> : <Badge color={sm.color}>{sm.label}</Badge>;
+            },
+        },
+    ] as DTColumn<ISupportTicket>[]);
+
+    const filterCount = [view === "list" && fStatus, fCompany, fType].filter(Boolean).length;
+    const hasSelection = view === "list" && selectedTickets.length > 0;
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Tickets" breadcrumbs={[{ label: "Administração" }]}
-                    description="Tickets de todas as empresas. Por tratar primeiro."
-                    actions={
-                        <div className="xp-seg" role="tablist" aria-label="Vista">
-                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
-                            <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
-                        </div>
-                    } />
+                    info="Tickets de todas as empresas. Por tratar primeiro." />
 
                 {typeChangeModal}
 
@@ -250,96 +272,71 @@ const AdminTicketsList = () => {
                     </Row>
                 )}
 
-                <Card>
-                    <CardBody>
-                        {/* Filtros. O de ESTADO só faz sentido na Lista — no Kanban
-                            as colunas SÃO os estados, por isso é omitido lá. */}
-                        <Row className="g-2 mb-3">
+                {/* Ações em massa no cabeçalho do cartão (já não há barra fixa no fundo). */}
+                <PageCard
+                    title="Tickets"
+                    flush={view === "list"}
+                    loading={loading && tickets.length > 0}
+                    status={hasSelection
+                        ? <><span className="fw-semibold text-body">{selectedTickets.length} selecionado{selectedTickets.length === 1 ? "" : "s"}</span> · Total: <strong className="text-body">{formatEuro(selTotalAmount)}</strong> · {selTotalHours}h (sem IVA)</>
+                        : !loading ? <>{tickets.length} ticket{tickets.length === 1 ? "" : "s"}</> : undefined}
+                    actions={<>
+                        <div className="xp-seg" role="tablist" aria-label="Vista">
+                            <button type="button" role="tab" aria-selected={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}><i className="ri-list-check me-1" />Lista</button>
+                            <button type="button" role="tab" aria-selected={view === "kanban"} className={view === "kanban" ? "on" : ""} onClick={() => setView("kanban")}><i className="ri-layout-grid-line me-1" />Kanban</button>
+                        </div>
+                        {view === "list" && cols.selector}
+                        {hasSelection && (
+                            <>
+                                <button className="btn btn-outline-primary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
+                                <button className="btn btn-primary btn-sm" onClick={() => setResumoOpen(true)}><i className="ri-file-list-3-line me-1" />Gerar resumo</button>
+                            </>
+                        )}
+                    </>}
+                    filters={
+                        // O filtro de ESTADO só faz sentido na Lista: no Kanban as colunas SÃO os estados.
+                        <RestFilterBar activeCount={filterCount} onClear={() => { setFStatus(""); setFCompany(""); setFType(""); }}>
                             {view === "list" && (
-                                <Col md={4}>
-                                    <FilterSelect value={fStatus} onChange={setFStatus} label="Filtrar por estado"
+                                <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                                    <div className={FL}>Estado</div>
+                                    <XSelect small value={fStatus} onChange={setFStatus} ariaLabel="Filtrar por estado" searchable={false}
                                         options={[{ value: "", label: "Todos os estados" }, ...STATUS_OPTIONS.map((st) => ({ value: st, label: TICKET_STATUS_META[st].label }))]} />
-                                </Col>
+                                </div>
                             )}
-                            <Col md={4}>
-                                <FilterSelect value={fCompany} onChange={setFCompany} label="Filtrar por empresa" searchable
+                            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                                <div className={FL}>Empresa</div>
+                                <XSelect small value={fCompany} onChange={setFCompany} ariaLabel="Filtrar por empresa" searchable
                                     options={[{ value: "", label: "Todas as empresas" }, ...companyOptions.map((c) => ({ value: String(c.id), label: c.name }))]} />
-                            </Col>
-                            <Col md={4}>
-                                <FilterSelect value={fType} onChange={setFType} label="Filtrar por tipo"
+                            </div>
+                            <div style={{ flex: "1 1 180px", minWidth: 0 }}>
+                                <div className={FL}>Tipo</div>
+                                <XSelect small value={fType} onChange={setFType} ariaLabel="Filtrar por tipo" searchable={false}
                                     options={[{ value: "", label: "Todos os tipos" }, ...TYPE_OPTIONS.map((t) => ({ value: t, label: TICKET_TYPE_META[t].label }))]} />
-                            </Col>
-                        </Row>
-
-                        {loading ? (
-                            <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                        ) : view === "kanban" ? (
-                            <AdminTicketsKanban
+                            </div>
+                        </RestFilterBar>
+                    }
+                >
+                    {view === "kanban" ? (
+                        loading
+                            ? <div className="text-muted">A carregar…</div>
+                            : <AdminTicketsKanban
                                 tickets={tickets}
                                 detailHref={(id: number) => `/admin/tickets/${id}`}
                                 onStatusChange={changeTicketStatus}
                                 onTypeChange={changeTicketType}
                             />
-                        ) : tickets.length === 0 ? (
-                            <p className="text-muted mb-0">Sem tickets para os filtros escolhidos.</p>
-                        ) : (
-                            <div className="d-flex flex-column gap-2">
-                                {tickets.map((t) => {
-                                    const tm = TICKET_TYPE_META[t.type];
-                                    const isPaid = t.type === "site_change";
-                                    const selectable = isPaid && t.quoted_amount != null;
-                                    const qm = isPaid && t.quote_status ? QUOTE_STATUS_META[t.quote_status] : null;
-                                    const sm = TICKET_STATUS_META[t.status];
-                                    return (
-                                        <div key={t.id} className="d-flex align-items-center gap-2">
-                                        {/* Checkbox só para orçamentos (site_change com valor). */}
-                                        <input type="checkbox" className="form-check-input flex-shrink-0 mt-0"
-                                            style={{ visibility: selectable ? "visible" : "hidden" }}
-                                            checked={selected.has(t.id)} onChange={() => toggleSel(t.id)}
-                                            aria-label="Selecionar orçamento" />
-                                        <Link to={`/admin/tickets/${t.id}`} className="flex-grow-1 d-flex align-items-center gap-3 border rounded p-3 text-reset text-decoration-none" style={{ minWidth: 0 }}>
-                                            <span className="avatar-xs flex-shrink-0"><span className={"avatar-title rounded fs-18 " + (isPaid ? "bg-warning-subtle text-warning" : "bg-light text-primary")}><i className={tm.icon} /></span></span>
-                                            <div className="flex-grow-1 min-w-0">
-                                                <div className="fw-medium text-truncate">
-                                                    {t.title}
-                                                    {isPaid && <span className="badge bg-warning-subtle text-warning ms-2"><i className="ri-money-euro-circle-line me-1" />Pago{t.quoted_amount != null ? ` · ${formatEuro(t.quoted_amount)}` : ""}</span>}
-                                                </div>
-                                                <small className="text-muted">
-                                                    <span className="fw-semibold">{t.company_name ?? `Empresa #${t.company_id}`}</span>
-                                                    {" · "}{tm.label}{t.author_name ? ` · ${t.author_name}` : ""}
-                                                    {t.messages_count ? ` · ${t.messages_count} msg` : ""}
-                                                </small>
-                                            </div>
-                                            {qm
-                                                ? <Badge color={qm.color} className="flex-shrink-0">{qm.label}</Badge>
-                                                : <Badge color={sm.color} className="flex-shrink-0">{sm.label}</Badge>}
-                                            <i className="ri-arrow-right-s-line fs-18 text-muted flex-shrink-0" />
-                                        </Link>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </CardBody>
-                </Card>
-
-                {/* Barra de total dos selecionados (aparece na Lista quando há seleção). */}
-                {view === "list" && selectedTickets.length > 0 && (
-                    <div className="position-fixed bottom-0 start-0 end-0 p-3" style={{ zIndex: 1030, pointerEvents: "none" }}>
-                        <Card className="mb-0 shadow mx-auto" style={{ maxWidth: 780, pointerEvents: "auto", border: "1px solid var(--vz-border-color)" }}>
-                            <CardBody className="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                                <div>
-                                    <span className="fw-semibold">Selecionados: {selectedTickets.length}</span>
-                                    <span className="text-muted"> · Total: <strong className="text-body">{formatEuro(selTotalAmount)}</strong> · {selTotalHours}h (sem IVA)</span>
-                                </div>
-                                <div className="d-flex gap-2">
-                                    <button className="btn btn-outline-primary btn-sm" onClick={() => setSelected(new Set())}>Limpar</button>
-                                    <button className="btn btn-primary btn-sm" onClick={() => setResumoOpen(true)}><i className="ri-file-list-3-line me-1" />Gerar resumo</button>
-                                </div>
-                            </CardBody>
-                        </Card>
-                    </div>
-                )}
+                    ) : (
+                        <DataTable
+                            columns={cols}
+                            data={tickets}
+                            rowKey={(t) => t.id}
+                            loading={loading}
+                            caption="Tickets"
+                            onRowClick={(t) => navigate(`/admin/tickets/${t.id}`)}
+                            empty={{ message: "Sem tickets para os filtros escolhidos." }}
+                        />
+                    )}
+                </PageCard>
 
                 {/* Resumo dos selecionados — para o Simon comunicar à Matilde. */}
                 <Modal isOpen={resumoOpen} toggle={() => setResumoOpen(false)} centered size="lg">

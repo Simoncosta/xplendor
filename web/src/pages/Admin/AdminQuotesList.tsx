@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Badge, Card, CardBody, Col, Container, Input, Row, Spinner } from "reactstrap";
+import { Badge, Card, CardBody, Col, Container, Row } from "reactstrap";
 import { ToastContainer } from "react-toastify";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
+import XSelect from "Components/Common/Select";
 import { getAdminQuotes, getAdminQuotesSummary } from "helpers/laravel_helper";
-import QuoteSelect from "./QuoteSelect";
 import {
     IQuote, IQuoteSummary, QUOTE_STATUSES, QUOTE_STATUS_META, formatQuoteEuro, longDate,
 } from "common/models/quote.model";
@@ -57,16 +60,45 @@ const AdminQuotesList = () => {
 
     const year = summary?.accepted_year.year ?? new Date().getFullYear();
 
+    const cols = useDataColumns<IQuote>("administracao.orcamentos", [
+        {
+            id: "number", header: "Número", value: (q) => q.display_number, hideable: false, nowrap: true,
+            cell: (q) => <><span className="fw-semibold">{q.display_number}</span>{q.version > 1 && <small className="text-muted ms-1">v{q.version}</small>}</>,
+        },
+        {
+            id: "client", header: "Cliente", value: (q) => q.client_name, mobile: "title",
+            cell: (q) => (
+                <div style={{ minWidth: 180 }}>
+                    <div className="fw-medium">{q.client_name}</div>
+                    <small className="text-muted">{q.title || q.description}{q.company_name ? ` · ligado a ${q.company_name}` : ""}</small>
+                </div>
+            ),
+        },
+        { id: "status", header: "Estado", value: (q) => QUOTE_STATUS_META[q.status].label, cell: (q) => <Badge color={QUOTE_STATUS_META[q.status].color}>{QUOTE_STATUS_META[q.status].label}</Badge> },
+        { id: "monthly", header: "Mensal", value: (q) => q.total_monthly, cell: (q) => (q.total_monthly > 0 ? `${formatQuoteEuro(q.total_monthly)}/mês` : <span className="text-muted">0,00 €</span>), align: "end", nowrap: true },
+        { id: "oneoff", header: "Valor único", value: (q) => q.total_one_off, cell: (q) => formatQuoteEuro(q.total_one_off), align: "end", nowrap: true },
+        { id: "valid", header: "Válido até", value: (q) => q.valid_until ?? undefined, cell: (q) => (q.valid_until ? longDate(q.valid_until) : <span className="text-muted">Sem data</span>), nowrap: true },
+        {
+            id: "seen", header: "Visto", value: (q) => q.open_count ?? 0, nowrap: true,
+            cell: (q) => (
+                <>
+                    {(q.open_count ?? 0) > 0 ? (
+                        <span className="text-success" title={q.last_opened_at ? `Última abertura: ${longDate(q.last_opened_at)}` : undefined}>
+                            <i className="ri-eye-line me-1" />{q.open_count} {q.open_count === 1 ? "vez" : "vezes"}
+                        </span>
+                    ) : q.status === "draft" ? <span className="text-muted">Por enviar</span> : <span className="text-muted"><i className="ri-eye-off-line me-1" />Não visto</span>}
+                    {q.changes_requested_at && q.status === "sent" && <div><small className="text-warning">Pediu alterações</small></div>}
+                </>
+            ),
+        },
+    ] as DTColumn<IQuote>[]);
+
     return (
         <div className="page-content">
             <ToastContainer />
             <Container fluid>
                 <PageHeader title="Orçamentos" breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description="Orçamentos de serviços da XPLENDOR. Valores sem IVA."
-                    actions={<>
-                        <Link to="/admin/service-catalog" className="btn btn-outline-primary"><i className="ri-price-tag-3-line me-1" />Catálogo de serviços</Link>
-                        <Link to="/admin/quotes/new" className="btn btn-primary"><i className="ri-add-line me-1" />Novo orçamento</Link>
-                    </>} />
+                    info="Orçamentos de serviços da XPLENDOR. Valores sem IVA." />
 
                 {summary && (
                     <Row className="g-3 mb-3">
@@ -93,71 +125,41 @@ const AdminQuotesList = () => {
                     </Row>
                 )}
 
-                <Card>
-                    <CardBody>
-                        <Row className="g-2 mb-3">
-                            <Col md={4}>
-                                <QuoteSelect<string> ariaLabel="Estado" value={fStatus} onChange={(v) => setFStatus(v ?? "")}
+                <PageCard
+                    title="Orçamentos"
+                    info="Os totais mensal e de valor único nunca se somam. Acresce IVA à taxa legal em vigor."
+                    status={!loading ? <>{quotes.length} orçamento{quotes.length === 1 ? "" : "s"}</> : undefined}
+                    loading={loading && quotes.length > 0}
+                    actions={<>
+                        {cols.selector}
+                        <Link to="/admin/service-catalog" className="btn btn-outline-primary btn-sm"><i className="ri-price-tag-3-line me-1" />Catálogo de serviços</Link>
+                        <Link to="/admin/quotes/new" className="btn btn-primary btn-sm"><i className="ri-add-line me-1" />Novo orçamento</Link>
+                    </>}
+                    filters={
+                        <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Pesquisar por cliente, título ou número"
+                            activeCount={(search ? 1 : 0) + (fStatus ? 1 : 0)} onClear={() => { setSearch(""); setFStatus(""); }}>
+                            <div style={{ flex: "0 1 220px", minWidth: 0 }}>
+                                <XSelect<string> small ariaLabel="Estado" value={fStatus} onChange={(v) => setFStatus(v ?? "")} searchable={false}
                                     options={[{ value: "", label: "Todos os estados" }, ...QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_META[s].label }))]} />
-                            </Col>
-                            <Col md={8}>
-                                <Input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Pesquisar por cliente, título ou número" />
-                            </Col>
-                        </Row>
-
-                        {loading ? (
-                            <div className="d-flex align-items-center gap-2 text-muted"><Spinner size="sm" /> A carregar…</div>
-                        ) : quotes.length === 0 ? (
-                            <p className="text-muted mb-0">Sem orçamentos para os filtros escolhidos.</p>
-                        ) : (
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead className="table-light text-muted">
-                                        <tr>
-                                            <th>Número</th>
-                                            <th>Cliente</th>
-                                            <th>Estado</th>
-                                            <th className="text-end">Mensal</th>
-                                            <th className="text-end">Valor único</th>
-                                            <th>Válido até</th>
-                                            <th>Visto</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {quotes.map((q) => {
-                                            const sm = QUOTE_STATUS_META[q.status];
-                                            return (
-                                                <tr key={q.id} role="button" onClick={() => navigate(`/admin/quotes/${q.id}`)}>
-                                                    <td className="text-nowrap">
-                                                        <span className="fw-semibold">{q.display_number}</span>
-                                                        {q.version > 1 && <small className="text-muted ms-1">v{q.version}</small>}
-                                                    </td>
-                                                    <td style={{ minWidth: 180 }}>
-                                                        <div className="fw-medium">{q.client_name}</div>
-                                                        <small className="text-muted">{q.title || q.description}{q.company_name ? ` · ligado a ${q.company_name}` : ""}</small>
-                                                    </td>
-                                                    <td><Badge color={sm.color}>{sm.label}</Badge></td>
-                                                    <td className="text-end text-nowrap">{q.total_monthly > 0 ? `${formatQuoteEuro(q.total_monthly)}/mês` : <span className="text-muted">0,00 €</span>}</td>
-                                                    <td className="text-end text-nowrap">{formatQuoteEuro(q.total_one_off)}</td>
-                                                    <td className="text-nowrap">{q.valid_until ? longDate(q.valid_until) : <span className="text-muted">Sem data</span>}</td>
-                                                    <td className="text-nowrap">
-                                                        {(q.open_count ?? 0) > 0 ? (
-                                                            <span className="text-success" title={q.last_opened_at ? `Última abertura: ${longDate(q.last_opened_at)}` : undefined}>
-                                                                <i className="ri-eye-line me-1" />{q.open_count} {q.open_count === 1 ? "vez" : "vezes"}
-                                                            </span>
-                                                        ) : q.status === "draft" ? <span className="text-muted">Por enviar</span> : <span className="text-muted"><i className="ri-eye-off-line me-1" />Não visto</span>}
-                                                        {q.changes_requested_at && q.status === "sent" && <div><small className="text-warning">Pediu alterações</small></div>}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
                             </div>
+                        </RestFilterBar>
+                    }
+                >
+                    <DataTable
+                        columns={cols}
+                        data={quotes}
+                        rowKey={(q) => q.id}
+                        loading={loading}
+                        caption="Orçamentos de serviços"
+                        onRowClick={(q) => navigate(`/admin/quotes/${q.id}`)}
+                        empty={{ message: "Sem orçamentos para os filtros escolhidos." }}
+                        rowActions={(q) => (
+                            <Link to={`/admin/quotes/${q.id}`} className="btn btn-outline-primary btn-sm" title="Abrir" aria-label={`Abrir: ${q.display_number}`} onClick={(e) => e.stopPropagation()}>
+                                <i className="ri-pencil-line" />
+                            </Link>
                         )}
-                        <p className="text-muted fs-12 mt-3 mb-0"><i className="ri-information-line me-1" />Os totais mensal e de valor único nunca se somam. Acresce IVA à taxa legal em vigor.</p>
-                    </CardBody>
-                </Card>
+                    />
+                </PageCard>
             </Container>
         </div>
     );

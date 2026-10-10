@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardBody, Col, Container, Row, Badge, Spinner, Input, Table } from "reactstrap";
-import Select from "react-select";
+import { Card, CardBody, Col, Container, Row, Badge } from "reactstrap";
 import { ToastContainer } from "react-toastify";
-import { reactSelectTheme } from "helpers/reactSelectStyles";
 import PageHeader from "Components/Common/PageHeader";
+import PageCard from "Components/Common/PageCard";
+import DataTable, { DTColumn, useDataColumns } from "Components/Common/DataTable";
+import RestFilterBar from "Components/Common/RestFilterBar";
+import XSelect, { XMultiSelect } from "Components/Common/Select";
 import {
     getAdminStock, getAdminStockSummary, getAdminStockCompanies,
 } from "helpers/laravel_helper";
@@ -71,13 +73,40 @@ const AdminStockList = () => {
     useEffect(() => { load(); }, [load]);
 
     const companyOptions = useMemo(
-        () => companies.map((c) => ({ value: c.id, label: `${c.name} (${c.count})` })),
+        () => [{ value: 0, label: "Todas as empresas" }, ...companies.map((c) => ({ value: c.id, label: `${c.name} (${c.count})` }))],
         [companies],
     );
     const statusOptions = useMemo(
         () => CAR_STATUS_OPTIONS.map((s) => ({ value: s, label: CAR_STATUS_META[s].label })),
         [],
     );
+
+    const cols = useDataColumns<IAdminStockCar>("administracao.stock", [
+        { id: "company", header: "Empresa", value: (c) => c.company_name ?? `Empresa #${c.company_id}`, cell: (c) => <span className="fw-medium">{c.company_name ?? `Empresa #${c.company_id}`}</span>, mobile: "subtitle" },
+        {
+            id: "car", header: "Viatura", value: (c) => carTitle(c), hideable: false, mobile: "title",
+            cell: (c) => (
+                <div className="d-flex align-items-center gap-2">
+                    {c.thumbnail
+                        ? <img src={c.thumbnail} alt="" width={54} height={38} style={{ objectFit: "cover", borderRadius: 6 }} className="flex-shrink-0" />
+                        : <span className="flex-shrink-0 d-inline-flex align-items-center justify-content-center text-muted" style={{ width: 54, height: 38, borderRadius: 6, background: "var(--vz-light)" }}><i className="ri-car-line" /></span>}
+                    <div className="min-w-0">
+                        <div className="fw-medium text-truncate">{carTitle(c)}</div>
+                        {c.version && <small className="text-muted text-truncate d-block">{c.version}</small>}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: "status", header: "Estado",
+            cell: (c) => { const sm = CAR_STATUS_META[c.status]; return <Badge color={sm?.color ?? "light"} className={sm?.color === "light" ? "text-body" : ""}>{sm?.label ?? c.status}</Badge>; },
+        },
+        { id: "year", header: "Ano / Km", cell: (c) => <span className="text-muted">{c.registration_year ?? "—"}{c.mileage_km != null ? ` · ${c.mileage_km.toLocaleString("pt-PT")} km` : ""}</span>, nowrap: true },
+        {
+            id: "price", header: "Preço", align: "end", nowrap: true,
+            cell: (c) => c.hide_price_online ? <span className="text-muted fs-12">Sob consulta</span> : <span className="fw-semibold">{formatStockEuro(c.promo_price_gross ?? c.price_gross)}</span>,
+        },
+    ] as DTColumn<IAdminStockCar>[]);
 
     const cards = useMemo(() => ([
         { label: "Veículos na plataforma", value: summary?.total_vehicles ?? 0, icon: "ri-car-line", color: "primary" },
@@ -93,7 +122,7 @@ const AdminStockList = () => {
                 <PageHeader
                     title="Stock global"
                     breadcrumbs={[{ label: "Administração", to: "/admin" }]}
-                    description="Todos os veículos das empresas ativas da plataforma. Empresas inativas não aparecem."
+                    info="Todos os veículos das empresas ativas da plataforma. Empresas inativas não aparecem."
                 />
 
                 {/* Cartões do topo — embrião das métricas globais */}
@@ -115,112 +144,40 @@ const AdminStockList = () => {
                     ))}
                 </Row>
 
-                <Card>
-                    <CardBody>
-                        {/* Filtros */}
-                        <Row className="g-2 mb-3">
-                            <Col md={4}>
-                                <Select
-                                    styles={reactSelectTheme}
-                                    menuPortalTarget={document.body}
-                                    aria-label="Empresa"
-                                    isClearable
-                                    placeholder="Todas as empresas"
-                                    options={companyOptions}
-                                    value={companyOptions.find((o) => o.value === company) ?? null}
-                                    onChange={(opt: any) => setCompany(opt?.value ?? null)}
-                                />
-                            </Col>
-                            <Col md={4}>
-                                <Select
-                                    styles={reactSelectTheme}
-                                    menuPortalTarget={document.body}
-                                    aria-label="Estados"
-                                    isMulti
-                                    placeholder="Todos os estados"
-                                    options={statusOptions}
-                                    value={statusOptions.filter((o) => statuses.includes(o.value))}
-                                    onChange={(opts: any) => setStatuses((opts || []).map((o: any) => o.value))}
-                                />
-                            </Col>
-                            <Col md={4}>
-                                <Input
-                                    type="text"
-                                    placeholder="Procurar marca, modelo, matrícula, empresa…"
-                                    aria-label="Procurar"
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
-                            </Col>
-                        </Row>
-
-                        {loading ? (
-                            <div className="d-flex align-items-center gap-2 text-muted py-4"><Spinner size="sm" /> A carregar…</div>
-                        ) : cars.length === 0 ? (
-                            <p className="text-muted mb-0 py-3">Sem veículos para os filtros escolhidos.</p>
-                        ) : (
-                            <>
-                                <div className="table-responsive">
-                                    <Table className="align-middle table-nowrap mb-0">
-                                        <thead className="text-muted table-light">
-                                            <tr>
-                                                <th>Empresa</th>
-                                                <th>Viatura</th>
-                                                <th>Estado</th>
-                                                <th>Ano / Km</th>
-                                                <th className="text-end">Preço</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {cars.map((c) => {
-                                                const sm = CAR_STATUS_META[c.status];
-                                                return (
-                                                    <tr key={c.id}>
-                                                        <td><span className="fw-medium">{c.company_name ?? `Empresa #${c.company_id}`}</span></td>
-                                                        <td>
-                                                            <div className="d-flex align-items-center gap-2">
-                                                                {c.thumbnail
-                                                                    ? <img src={c.thumbnail} alt="" width={54} height={38} style={{ objectFit: "cover", borderRadius: 6 }} className="flex-shrink-0" />
-                                                                    : <span className="flex-shrink-0 d-inline-flex align-items-center justify-content-center text-muted" style={{ width: 54, height: 38, borderRadius: 6, background: "var(--vz-light)" }}><i className="ri-car-line" /></span>}
-                                                                <div className="min-w-0">
-                                                                    <div className="fw-medium text-truncate">{carTitle(c)}</div>
-                                                                    {c.version && <small className="text-muted text-truncate d-block">{c.version}</small>}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td><Badge color={sm?.color ?? "light"} className={sm?.color === "light" ? "text-body" : ""}>{sm?.label ?? c.status}</Badge></td>
-                                                        <td className="text-muted">
-                                                            {c.registration_year ?? "—"}
-                                                            {c.mileage_km != null ? ` · ${c.mileage_km.toLocaleString("pt-PT")} km` : ""}
-                                                        </td>
-                                                        <td className="text-end">
-                                                            {c.hide_price_online
-                                                                ? <span className="text-muted fs-12">Sob consulta</span>
-                                                                : <span className="fw-semibold">{formatStockEuro(c.promo_price_gross ?? c.price_gross)}</span>}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </Table>
-                                </div>
-
-                                {/* Paginação */}
-                                <div className="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-3">
-                                    <small className="text-muted">{total} veículo{total === 1 ? "" : "s"} · página {page} de {lastPage}</small>
-                                    <div className="d-flex gap-2">
-                                        <button type="button" className={`btn btn-outline-primary btn-sm${page <= 1 ? " invisible" : ""}`} aria-hidden={page <= 1} tabIndex={page <= 1 ? -1 : undefined} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                                            <i className="ri-arrow-left-s-line" /> Anterior
-                                        </button>
-                                        <button type="button" className={`btn btn-outline-primary btn-sm${page >= lastPage ? " invisible" : ""}`} aria-hidden={page >= lastPage} tabIndex={page >= lastPage ? -1 : undefined} onClick={() => setPage((p) => Math.min(lastPage, p + 1))}>
-                                            Seguinte <i className="ri-arrow-right-s-line" />
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </CardBody>
-                </Card>
+                <PageCard
+                    title="Veículos"
+                    status={!loading ? <>{total} veículo{total === 1 ? "" : "s"}</> : undefined}
+                    loading={loading && cars.length > 0}
+                    actions={cols.selector}
+                    filters={
+                        <RestFilterBar search={search} onSearchChange={setSearch} searchPlaceholder="Procurar marca, modelo, matrícula, empresa…"
+                            activeCount={(company ? 1 : 0) + (statuses.length ? 1 : 0) + (search ? 1 : 0)}
+                            onClear={() => { setCompany(null); setStatuses([]); setSearch(""); }}>
+                            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                                <XSelect<number> small searchable ariaLabel="Empresa" options={companyOptions} value={company ?? 0} onChange={(v) => setCompany(v || null)} />
+                            </div>
+                            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+                                <XMultiSelect<CarStatus> small ariaLabel="Estados" placeholder="Todos os estados" options={statusOptions} value={statuses} onChange={setStatuses} />
+                            </div>
+                        </RestFilterBar>
+                    }
+                >
+                    <DataTable
+                        columns={cols}
+                        data={cars}
+                        rowKey={(c) => c.id}
+                        mode="server"
+                        loading={loading}
+                        caption="Stock global"
+                        empty={{ message: "Sem veículos para os filtros escolhidos." }}
+                        server={{
+                            page, lastPage, total, perPage: PER_PAGE,
+                            from: total ? (page - 1) * PER_PAGE + 1 : 0,
+                            to: Math.min(total, page * PER_PAGE),
+                            onPageChange: setPage,
+                        }}
+                    />
+                </PageCard>
             </Container>
         </div>
     );
