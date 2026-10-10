@@ -236,6 +236,46 @@ class InvoiceOcrService
         ];
     }
 
+    /** Leitura local, sem IA (scraper): tem QR, quantas páginas, quanto texto. Para a amostra do ocr:compare. */
+    public function inspectFile(string $bytes, string $mime): array
+    {
+        $an = $this->analyzeFile($bytes, $mime, 'never');
+        $qr = AtInvoiceQr::parse($an['qr']['raw'] ?? null);
+
+        return ['qr' => $qr !== null && $qr['valid'], 'pages' => (int) ($an['pages'] ?? 1), 'text_chars' => (int) ($an['text_chars'] ?? 0)];
+    }
+
+    /**
+     * Comparação dos modelos (ocr:compare): UMA leitura SEM o QR (o prompt completo, para medir
+     * o modelo), com o fornecedor, o modelo e o esforço dados. Não grava nada. Anthropic: o
+     * ficheiro original; OpenAI: como hoje no caminho das imagens (as páginas rasterizadas pelo
+     * scraper, ou a fotografia).
+     *
+     * @return array{clean: ?array, tokens_in: int, tokens_out: int, cost_usd: ?float, ms: int, error: ?string}
+     */
+    public function readForComparison(string $provider, string $model, string $effort, string $bytes, string $mime): array
+    {
+        $isPdf = $this->isPdf($mime, '');
+        $this->file = ['bytes' => $bytes, 'mime' => $mime, 'is_pdf' => $isPdf];
+        $t0 = hrtime(true);
+        try {
+            if ($provider === 'anthropic') {
+                $res = $this->callAnthropic(['function' => 'ocr_image', 'model' => $model, 'effort' => $effort], $this->prompt(), null);
+            } else {
+                $images = $isPdf ? ($this->analyzeFile($bytes, $mime, 'always')['images'] ?? []) : [['page' => 1, 'mime' => $mime, 'base64' => base64_encode($bytes)]];
+                $res = $this->callModel($model, $this->prompt(), $this->userContent('imagem', null, '', $images), $effort);
+            }
+
+            return ['clean' => $this->sanitize($this->decodeJson($res['content'])), 'tokens_in' => $res['tokens_in'], 'tokens_out' => $res['tokens_out'],
+                'cost_usd' => $this->costUsd($model, $res['tokens_in'], $res['tokens_out']), 'ms' => $this->elapsedMs($t0), 'error' => null];
+        } catch (OcrModelStopped $e) {
+            return ['clean' => null, 'tokens_in' => $e->tokensIn, 'tokens_out' => $e->tokensOut,
+                'cost_usd' => $this->costUsd($model, $e->tokensIn, $e->tokensOut), 'ms' => $this->elapsedMs($t0), 'error' => $e->reason];
+        } catch (\Throwable $e) {
+            return ['clean' => null, 'tokens_in' => 0, 'tokens_out' => 0, 'cost_usd' => 0.0, 'ms' => $this->elapsedMs($t0), 'error' => mb_substr($e->getMessage(), 0, 300)];
+        }
+    }
+
     /**
      * Anthropic: o ficheiro original (PDF como documento, fotografia como imagem), saída
      * estruturada com o esquema de hoje. Com QR, só as linhas (e as bases para se conferir).
