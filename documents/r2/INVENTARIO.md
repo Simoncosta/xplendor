@@ -39,7 +39,7 @@ Levantamento do código (só leitura) e dos tamanhos em dev. Discos em `server/c
 - A rota antiga **`/api/media/{path}`** expõe todo o disco público, com CORS para localhost.
 - Vários `Storage::url()` usam o disco por omissão por acaso; se `FILESYSTEM_DISK` mudar, esses URLs partem. Devem passar a `Storage::disk('public')->url()`.
 - O apagamento definitivo de uma empresa não apagava os envios em partes por concluir: corrigido esta noite (apaga-os, e apaga também no R2 e na cópia local).
-- `league/commonmark` tem dois avisos de segurança no `composer audit` (já existia antes desta noite).
+- `league/commonmark` tem dois avisos de segurança no `composer audit` (já existia antes desta noite). Resolvido no pré-deploy (ponto 6): 2.10.3, sem avisos.
 
 ## Resolvido no pré-deploy (ponto 5)
 
